@@ -312,6 +312,20 @@ EOF
     fi
 }
 
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/PaddlePaddle/FluidAPISpec/master/API.spec} \
+        > origin.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py origin.spec new.spec
+    deactivate
+}
+
+
 function single_test() {
     TEST_NAME=$1
     if [ -z "${TEST_NAME}" ]; then
@@ -496,8 +510,20 @@ function gen_fluid_inference_lib() {
 EOF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
-        mv fluid_install_dir fluid
+        cp -r fluid_install_dir fluid
         tar -cf fluid.tgz fluid
+      fi
+}
+
+function test_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+        cat <<EOF
+    ========================================
+    Testing fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
+        sh run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
 
@@ -550,9 +576,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       *)
         print_usage
