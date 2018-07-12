@@ -20,7 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/pybind/pybind.h"
 
 DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
@@ -33,7 +33,7 @@ namespace inference {
 
 void Init(const std::vector<std::string> argv) {
   framework::InitGflags(argv);
-  operators::math::SetNumThreads(FLAGS_math_num_threads);
+  platform::SetNumThreads(FLAGS_math_num_threads);
   // init devices
   std::vector<int> devices;
   std::string token;
