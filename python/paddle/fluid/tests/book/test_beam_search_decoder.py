@@ -243,7 +243,7 @@ def decode_main(use_cuda):
     ]
     feeder = fluid.DataFeeder(feed_list, place)
 
-    data = train_reader.next()
+    data = train_reader().next()
     feed_dict = feeder.feed(map(lambda x: [x[0]], data))
     feed_dict['init_ids'] = init_ids
     feed_dict['init_scores'] = init_scores
