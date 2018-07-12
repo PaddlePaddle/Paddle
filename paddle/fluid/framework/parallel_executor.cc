@@ -135,14 +135,8 @@ ParallelExecutor::ParallelExecutor(
   builder_ = builder_factory.Create();
   std::unique_ptr<Graph> graph = builder_->Build(ProgramToGraph(main_program));
 
-  std::unique_ptr<details::SSAGraph> ssa_graph(new details::SSAGraph);
-  ssa_graph->vars_ = std::move(graph->Get<details::GraphVars>("vars"));
-  ssa_graph->ops_ = std::move(graph->Get<details::GraphOps>("ops"));
-  ssa_graph->dep_vars_ =
-      std::move(graph->Get<details::GraphDepVars>("dep_vars"));
-
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places, std::move(ssa_graph)));
+      exec_strategy, member_->local_scopes_, places, std::move(graph)));
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),

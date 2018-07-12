@@ -14,13 +14,14 @@
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
+#include "paddle/fluid/framework/details/ssa_graph_builder.h"
+
 namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places,
-    std::unique_ptr<SSAGraph> &&graph)
+    const std::vector<platform::Place> &places, std::unique_ptr<Graph> &&graph)
     : graph_(std::move(graph)),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
@@ -43,18 +44,18 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<OpHandleBase *> delayed_ops;
 
   // Transform SSAGraph to pending_ops & pending_vars
-  for (auto &var_map : graph_->vars_) {
+  for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
         InsertPendingVar(&pending_vars, &ready_vars, version_pair.get());
       }
     }
   }
-  for (auto &var : graph_->dep_vars_) {
+  for (auto &var : graph_->Get<details::GraphDepVars>("dep_vars")) {
     InsertPendingVar(&pending_vars, &ready_vars, var.get());
   }
 
-  for (auto &op : graph_->ops_) {
+  for (auto &op : graph_->Get<details::GraphOps>("ops")) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
@@ -158,7 +159,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->vars_) {
+    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());

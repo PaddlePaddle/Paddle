@@ -21,7 +21,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
-struct SSAGraph;
+
 class SSAGraphPrinter {
  public:
   virtual ~SSAGraphPrinter() {}
