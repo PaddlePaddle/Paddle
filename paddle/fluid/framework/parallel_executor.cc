@@ -95,7 +95,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevs(bcast_vars);
+    BCastParamsToDevices(bcast_vars);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -131,7 +131,7 @@ ParallelExecutor::ParallelExecutor(
       member_->places_, std::move(member_->executor_)));
 }
 
-void ParallelExecutor::BCastParamsToDevs(
+void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
   // the the initializing bcast, all vars would be bcast from device(0),
   // otherwise
