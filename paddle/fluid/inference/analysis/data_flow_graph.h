@@ -61,7 +61,7 @@ struct DataFlowGraph {
  * The BFS start from a graph's inputs, the graph should be fully-connected, so
  * that the iterator can reach the end.
  */
-template<>
+template <>
 struct GraphTraits<DataFlowGraph> {
   // BFS iterator on nodes.
   struct NodesBFSIterator

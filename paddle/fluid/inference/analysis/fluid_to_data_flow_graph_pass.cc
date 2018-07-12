@@ -62,7 +62,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     o->SetPbMsg(op.SerializeAsString());
 
     // set inputs and outputs
-    std::unordered_set<Node*> inlinks;
+    std::unordered_set<Node *> inlinks;
     for (int j = 0; j < op.inputs_size(); j++) {
       auto &in_var = op.inputs(j);
       for (int k = 0; k < in_var.arguments_size(); k++) {
@@ -83,7 +83,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
           out_alias->SetName(out->name());
           out_alias->SetPbDesc(out->pb_desc());
           out_alias->SetPbMsg(out->pb_msg());
-          var2id[out_alias->name()] = out_alias->id(); // update a -> a0
+          var2id[out_alias->name()] = out_alias->id();  // update a -> a0
           out = out_alias;
         }
         out->inlinks.push_back(o);
