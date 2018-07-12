@@ -78,6 +78,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     set.clear();
   };
 
+  // Clean run context
   run_op_futures_.clear();
   exception_.reset();
 
@@ -109,11 +110,9 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
         std::exception *exp = exception_.get();
         if (dynamic_cast<platform::EOFException *>(exp)) {
           auto e = *static_cast<platform::EOFException *>(exp);
-          exception_.reset();
           throw e;
         } else if (dynamic_cast<platform::EnforceNotMet *>(exp)) {
           auto e = *static_cast<platform::EnforceNotMet *>(exp);
-          exception_.reset();
           throw e;
         } else {
           LOG(FATAL) << "Unknown exception.";
