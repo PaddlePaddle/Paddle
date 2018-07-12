@@ -62,6 +62,8 @@ void MatrixBitCodeFunctor<T>::Sum(const framework::Tensor& tmat,
     int code_length = code.get_length();
     for (int j = 0; j < code_length; ++j) {
       if (code.calc_bit(j)) {
+        // calc_bit starts from right most bit, while data in tmat[i] is in the
+        // reverse order.
         sm += tmat.data<T>()[i * o_width + j];
       }
     }

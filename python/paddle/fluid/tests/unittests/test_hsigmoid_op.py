@@ -37,7 +37,6 @@ class CodeTable(object):
 
 
 def hsigmoid(x, w, label, bias, num_classes):
-    global pre_output
     batch_size = x.shape[0]
     code_length = find_latest_set(num_classes - 1)
     code_table = [0 for _ in range(code_length)]
@@ -50,12 +49,12 @@ def hsigmoid(x, w, label, bias, num_classes):
         for j in range(length):
             idx = code_table.cal_index(j)
             pre_output[i][j] += bias[0][idx]
-    for j in range(batch_size):
-        code_table = CodeTable(num_classes, label[j])
+    for i in range(batch_size):
+        code_table = CodeTable(num_classes, label[i])
         length = code_table.get_length()
-        for k in range(length):
-            idx = code_table.cal_index(k)
-            pre_output[j][k] = np.dot(w[idx], x[j])
+        for j in range(length):
+            idx = code_table.cal_index(j)
+            pre_output[i][j] += np.dot(w[idx], x[i])
     # clip[-40.0, 40.0]
     pre_output = np.clip(pre_output, -40.0, 40.0)
     # out(i, 0) = \sum_j  bit(i, j) * preout(i, j)
@@ -71,22 +70,22 @@ def hsigmoid(x, w, label, bias, num_classes):
     pre_output = np.log(1 + np.exp(pre_output))
     pre_sum = pre_output.sum(1).reshape((batch_size, 1))
     out += pre_sum
-    return out
+    return pre_output, out
 
 
 class TestHSigmoidOp(OpTest):
     def setUp(self):
         self.op_type = "hierarchical_sigmoid"
         num_classes = 6
-        feature_size = 5
+        feature_size = 8
         batch_size = 4
         x = np.random.random((batch_size, feature_size)).astype("float32")
         w = np.random.random((num_classes - 1, feature_size)).astype("float32")
-        label = np.random.randint(0, num_classes, batch_size)
+        label = np.random.randint(0, num_classes, (batch_size, 1))
         bias = np.random.random((1, num_classes - 1)).astype("float32")
         self.attrs = {'num_classes': num_classes}
         self.inputs = {'X': x, 'W': w, 'Label': label, 'Bias': bias}
-        out = hsigmoid(x, w, label, bias, num_classes)
+        pre_output, out = hsigmoid(x, w, label, bias, num_classes)
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
