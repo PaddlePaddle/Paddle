@@ -16,6 +16,7 @@ from __future__ import print_function
 import unittest
 
 import paddle.fluid.layers as layers
+from paddle.fluid.layers.device import get_places
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
@@ -238,7 +239,7 @@ class TestBook(unittest.TestCase):
     def test_get_places(self):
         program = Program()
         with program_guard(program):
-            x = layers.get_places(device_count=4)
+            x = get_places(device_count=4)
             self.assertIsNotNone(x)
         print(str(program))
 
