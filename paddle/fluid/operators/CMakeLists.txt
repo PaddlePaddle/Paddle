@@ -265,6 +265,7 @@ op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
+op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
 
 if (WITH_GPU)
