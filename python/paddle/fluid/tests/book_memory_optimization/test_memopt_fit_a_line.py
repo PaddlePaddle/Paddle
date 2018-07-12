@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import paddle.fluid as fluid
 import math
 import sys
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
 
 # need to fix random seed and training data to compare the loss
 # value accurately calculated by the default and the memory optimization
@@ -34,7 +35,7 @@ if fluid.core.is_compiled_with_cuda():
     use_nccl = False
     place = fluid.CUDAPlace(0)
 
-places = fluid.layers.get_places(device_count=0, device_type=device_type)
+places = get_places(device_count=0, device_type=device_type)
 pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
 with pd.do():
     x_ = pd.read_input(x)
