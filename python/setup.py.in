@@ -17,7 +17,7 @@ def git_commit():
         git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
     except:
         git_commit = 'Unknown'
-    return git_commit
+    return str(git_commit)
 
 def _get_version_detail(idx):
     assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
@@ -67,13 +67,13 @@ with_mkl        = '%(with_mkl)s'
 
 def show():
     if istaged:
-        print 'full_version:', full_version
-        print 'major:', major
-        print 'minor:', minor
-        print 'patch:', patch
-        print 'rc:', rc
+        print('full_version:', full_version)
+        print('major:', major)
+        print('minor:', minor)
+        print('patch:', patch)
+        print('rc:', rc)
     else:
-        print 'commit:', commit
+        print('commit:', commit)
 
 def mkl():
     return with_mkl
