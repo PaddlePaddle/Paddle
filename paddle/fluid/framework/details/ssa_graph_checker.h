@@ -21,7 +21,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-struct SSAGraph;
 
 class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
  public:
