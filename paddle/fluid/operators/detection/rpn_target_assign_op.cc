@@ -86,8 +86,9 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                          std::minstd_rand engine,
                          std::vector<int>* inds) const {
     std::uniform_real_distribution<float> uniform(0, 1);
-    if (inds->size() > num) {
-      for (int i = num; i < inds->size(); ++i) {
+    const int64_t size = static_cast<int64_t>(inds->size());
+    if (size > num) {
+      for (int64_t i = num; i < size; ++i) {
         int rng_ind = std::floor(uniform(engine) * i);
         if (rng_ind < num)
           std::iter_swap(inds->begin() + rng_ind + offset,
