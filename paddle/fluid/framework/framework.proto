@@ -53,13 +53,23 @@ message OpDesc {
   message Var {
     required string parameter = 1;
     repeated string arguments = 2;
+    optional int32 version = 3;
+    // desired place for running the op.
+    optional string place = 4;
   };
+
+  message OpTag {
+    required string key = 1;
+    required string value = 2;
+  }
 
   required string type = 3;
   repeated Var inputs = 1;
   repeated Var outputs = 2;
   repeated Attr attrs = 4;
   optional bool is_target = 5 [ default = false ];
+  repeated OpTag tags = 6;
+  optional string opid = 7;
 };
 
 // OpProto describes a C++ framework::OperatorBase derived class.
@@ -164,6 +174,14 @@ message VarDesc {
   required string name = 1;
   required VarType type = 2;
   optional bool persistable = 3 [ default = false ];
+  optional bool trainable = 4 [ default = false ];
+  // Actual storage place of the variable
+  // place should be like:
+  // CUDAPlace:0,1,2,3
+  // CPU:8
+  optional string place = 5;
+  optional string upstream_opid = 6;
+  optional string downstream_opid = 7;
 }
 
 message BlockDesc {
@@ -172,6 +190,7 @@ message BlockDesc {
   repeated VarDesc vars = 3;
   repeated OpDesc ops = 4;
   optional int32 forward_block_idx = 5 [ default = -1 ];
+  optional string block_name = 6;
 }
 
 // Please refer to

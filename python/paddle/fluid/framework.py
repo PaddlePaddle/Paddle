@@ -1386,6 +1386,10 @@ class Program(object):
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
+    def proto(self):
+        protostr = self.desc.serialize_to_string()
+        return framework_pb2.ProgramDesc.FromString(str(protostr))
+
     def get_desc(self):
         """
         Get the C++ side of `ProgramDesc` object pointer. The C++ object is

@@ -109,6 +109,8 @@ class VarDesc {
 
   void SetPersistable(bool persistable) { desc_.set_persistable(persistable); }
 
+  void SetUpstreamOpId(const std::string& opid) { desc_.set_upstream_opid(opid); }
+
  private:
   const proto::VarType::ChannelDesc &channel_desc() const;
   const proto::VarType::TensorDesc &tensor_desc() const;

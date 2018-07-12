@@ -1,4 +1,5 @@
 add_subdirectory(details)
+add_subdirectory(ir_optimizer)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
