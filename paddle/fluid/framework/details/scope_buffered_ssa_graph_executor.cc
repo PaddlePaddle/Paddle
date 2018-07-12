@@ -54,6 +54,13 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       }
     }
   }
+  std::vector<framework::LoDTensor> fetch_data;
+  std::exception_ptr eptr;
+  try {
+    fetch_data = underlying_executor_->Run(fetch_tensors);
+  } catch (...) {
+    eptr = std::current_exception();
+  }
 
   std::vector<framework::LoDTensor> fetch_data;
   std::exception_ptr eptr;
