@@ -136,7 +136,7 @@ T castInt(PyObject* obj, bool* ok = nullptr) {
     return (T)0;
   }
 }
-#endif // PY_MAJOR_VERSION >= 3
+#endif  // PY_MAJOR_VERSION >= 3
 
 /**
  * Invoke repr of python object.

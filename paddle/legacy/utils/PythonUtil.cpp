@@ -142,7 +142,7 @@ std::string callPythonFunc(const std::string& moduleName,
   return std::string(str, (size_t)str_size);
 #else
   return std::string(PyString_AsString(obj.get()), PyString_Size(obj.get()));
-#endif // PY_MAJOR_VERSION >= 3
+#endif  // PY_MAJOR_VERSION >= 3
 }
 
 PyObjectPtr createPythonClass(
