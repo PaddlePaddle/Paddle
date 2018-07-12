@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-import argparse
-import paddle.fluid as fluid
-import paddle
-import sys
-import numpy
-import unittest
+
 import math
-import sys
 import os
+import sys
+import unittest
+
+import numpy
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
 
 BATCH_SIZE = 64
 
@@ -76,7 +78,7 @@ def train(nn_type,
         net_conf = conv_net
 
     if parallel:
-        places = fluid.layers.get_places()
+        places = get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             img_ = pd.read_input(img)

@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 
-inference_api_test(simple_on_word2vec ARGS test_word2vec)
-
 option(WITH_INFERENCE_DEMO "Compile with Inference demo" OFF)
 if(NOT WITH_INFERENCE_DEMO)
   return()
