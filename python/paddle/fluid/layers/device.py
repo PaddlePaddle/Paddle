@@ -18,10 +18,12 @@ All util layers.
 from layer_function_generator import autodoc
 from ..framework import unique_name
 from ..layer_helper import LayerHelper
+from ..annotations import deprecated
 
-__all__ = ['get_places']
+__all__ = []
 
 
+@deprecated(since='0.15.0', instead="ParallelExecutor")
 @autodoc()
 def get_places(device_count=None, device_type=None):
     helper = LayerHelper('get_places', **locals())
