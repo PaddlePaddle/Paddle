@@ -17,6 +17,7 @@ def git_commit():
         git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
     except:
         git_commit = 'Unknown'
+    git_commit = git_commit.decode()
     return str(git_commit)
 
 def _get_version_detail(idx):
@@ -44,6 +45,7 @@ def is_taged():
     try:
         cmd = ['git', 'describe', '--exact-match', '--tags']
         git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+        git_tag = git_tag.decode()
     except:
         return False
 

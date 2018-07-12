@@ -20,7 +20,7 @@ __all__ = [
 from threading import Thread
 import subprocess
 
-from Queue import Queue
+from six.moves import queue
 import itertools
 import random
 import zlib
@@ -190,7 +190,7 @@ def buffered(reader, size):
 
     def data_reader():
         r = reader()
-        q = Queue(maxsize=size)
+        q = queue(maxsize=size)
         t = Thread(
             target=read_worker, args=(
                 r,
@@ -293,8 +293,8 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         out_queue.put(end)
 
     def xreader():
-        in_queue = Queue(buffer_size)
-        out_queue = Queue(buffer_size)
+        in_queue = queue(buffer_size)
+        out_queue = queue(buffer_size)
         out_order = [0]
         # start a read worker in a thread
         target = order_read_worker if order else read_worker
