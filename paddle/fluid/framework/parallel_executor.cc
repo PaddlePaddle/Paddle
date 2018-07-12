@@ -133,7 +133,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   builder_ = builder_factory.Create();
-  std::unique_ptr<Graph> graph = builder_->Build(main_program);
+  std::unique_ptr<Graph> graph = builder_->Build(ProgramToGraph(main_program));
 
   std::unique_ptr<details::SSAGraph> ssa_graph(new details::SSAGraph);
   ssa_graph->vars_ = std::move(graph->Get<details::GraphVars>("vars"));
