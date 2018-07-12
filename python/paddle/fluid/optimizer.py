@@ -29,7 +29,7 @@ __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
     'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
     'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'Optimizer', 'RMSPropOptimizer'
+    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'RMSPropOptimizer'
 ]
 
 
@@ -67,7 +67,7 @@ class Optimizer(object):
         self._LARS_weight_decay = LARS_weight_decay
 
     def _create_global_learning_rate(self):
-        lr = self.global_learning_rate()
+        lr = self._global_learning_rate()
 
         if isinstance(lr, framework.Variable):
             return
@@ -86,7 +86,7 @@ class Optimizer(object):
             dtype='float32' if self._dtype == None else self._dtype,
             persistable=True)
 
-    def global_learning_rate(self, program=None):
+    def _global_learning_rate(self, program=None):
         """
         get global decayed learning rate
         :return:
@@ -110,9 +110,9 @@ class Optimizer(object):
             return param_lr
         else:
             if param_lr == 1.0:
-                return self.global_learning_rate()
+                return self._global_learning_rate()
             else:
-                return self.global_learning_rate() * param_lr
+                return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -185,10 +185,10 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def create_optimization_pass(self,
-                                 parameters_and_grads,
-                                 loss,
-                                 startup_program=None):
+    def _create_optimization_pass(self,
+                                  parameters_and_grads,
+                                  loss,
+                                  startup_program=None):
         """Add optimization operators to update gradients to variables.
 
         Args:
@@ -221,7 +221,7 @@ class Optimizer(object):
             self._create_global_learning_rate()
             if self._LARS_weight_decay > 0.0:
                 layers.append_LARS(parameters_and_grads,
-                                   self.global_learning_rate(),
+                                   self._global_learning_rate(),
                                    self._LARS_weight_decay)
 
             optimize_ops = []
@@ -263,8 +263,8 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
 
-        optimize_ops = self.create_optimization_pass(params_grads, loss,
-                                                     startup_program)
+        optimize_ops = self._create_optimization_pass(params_grads, loss,
+                                                      startup_program)
         return optimize_ops, params_grads
 
 
