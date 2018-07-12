@@ -456,7 +456,7 @@ def py_reader(capacity, shapes, lod_levels, dtypes):
     Variable would invoke `pop()` method of the queue to retrieve the 
     feeding data. The process of feeding data in Python side and fetching 
     data in C++ side can run in parallel. The BlockingQueue should be closed 
-    using `push_eof()` method when unused.
+    using `close()` method when unused.
 
     Args:
        capacity(int): The maximum capacity of the BlockingQueue.
