@@ -1158,7 +1158,8 @@ class ModelAverage(Optimizer):
                 self.params_grads.append((param, grad))
 
         for param, grad in self.params_grads:
-            self._append_average_accumulate_op(param)
+            with param.block.program.optimized_guard(param):
+                self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
         block = self.apply_program.global_block()
