@@ -135,5 +135,9 @@ def parse_args():
         '--no_random',
         action='store_true',
         help='If set, keep the random seed and do not shuffle the data.')
+    parser.add_argument(
+        '--use_lars',
+        action='store_true',
+        help='If set, use lars for optimizers, ONLY support resnet module.')
     args = parser.parse_args()
     return args

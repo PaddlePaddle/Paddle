@@ -16,6 +16,7 @@ import argparse
 import cProfile
 import time
 import os
+import traceback
 
 import numpy as np
 
@@ -101,13 +102,22 @@ def dist_transpile(trainer_id, args):
         )
 
 
-def test(exe, inference_program, test_reader, feeder, batch_acc):
+def test(exe, inference_program, test_reader, feeder, batch_acc, args):
     accuracy_evaluator = fluid.metrics.Accuracy()
-    for batch_id, data in enumerate(test_reader()):
-        acc = exe.run(inference_program,
-                      feed=feeder.feed(data),
-                      fetch_list=[batch_acc])
-        accuracy_evaluator.update(value=np.array(acc), weight=len(data))
+    if args.use_reader_op:
+        while True:
+            try:
+                acc = exe.run(inference_program, fetch_list=[batch_acc])
+                accuracy_evaluator.update(
+                    value=np.array(acc), weight=args.batch_size)
+            except fluid.core.EOFException as eof:
+                break
+    else:
+        for batch_id, data in enumerate(test_reader()):
+            acc = exe.run(inference_program,
+                          feed=feeder.feed(data),
+                          fetch_list=[batch_acc])
+            accuracy_evaluator.update(value=np.array(acc), weight=len(data))
 
     return accuracy_evaluator.eval()
 
@@ -200,13 +210,13 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                    batch_acc, args, train_prog, startup_prog, nccl_id_var,
                    num_trainers, trainer_id):
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
+    feeder = None
     if not args.use_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
             if var.is_data
         ]
         feeder = fluid.DataFeeder(feed_var_list, place)
-
     # generate fake:
     if args.use_fake_data:
         for var in feed_var_list:
@@ -265,7 +275,10 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             if args.use_fake_data or args.use_reader_op:
                 try:
                     loss, = exe.run([avg_loss.name])
+                except fluid.core.EOFException as eof:
+                    break
                 except fluid.core.EnforceNotMet as ex:
+                    traceback.print_exc()
                     break
             else:
                 loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
@@ -274,12 +287,6 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             else:
                 num_samples += len(data)
 
-            if not args.no_test and batch_acc:
-                if batch_id % 1000 == 0:
-                    test_acc = test(startup_exe, infer_prog, test_reader,
-                                    feeder, batch_acc)
-                    print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
-
             iters += 1
             if batch_id % 1 == 0:
                 print("Pass %d, batch %d, loss %s" %
@@ -287,6 +294,10 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
             batch_id += 1
 
         print_train_time(start_time, time.time(), num_samples)
+        if not args.no_test and batch_acc:
+            test_acc = test(startup_exe, infer_prog, test_reader, feeder,
+                            batch_acc, args)
+            print("Pass: %d, Test Accuracy: %f\n" % (pass_id, test_acc))
 
 
 def print_arguments(args):
