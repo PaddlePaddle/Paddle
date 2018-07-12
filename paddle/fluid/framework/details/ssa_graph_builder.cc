@@ -27,8 +27,8 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
       auto it_old = name_pair.second.rbegin();
       ++it_old;
       for (; it_old != name_pair.second.rend(); it_new = it_old, ++it_old) {
-        auto *write_op = (*it_new)->generated_op_;
-        auto &read_ops = (*it_old)->pending_ops_;
+        OpHandleBase *write_op = (*it_new)->GeneratedOp();
+        const auto &read_ops = (*it_old)->PendingOps();
 
         for (auto *read_op : read_ops) {
           // Manually add a dependency var from read_op to write_op;
@@ -37,7 +37,8 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
             continue;
           }
 
-          auto *dep_var = new DummyVarHandle();
+          graph->nodes.emplace_back(new ir::Node(ir::Node::Type::kVariable));
+          auto *dep_var = new DummyVarHandle(graph->nodes.back().get());
           read_op->AddOutput(dep_var);
           write_op->AddInput(dep_var);
           graph->Get<GraphDepVars>("dep_vars").emplace(dep_var);
@@ -54,7 +55,9 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   auto &var_holder = var_holders[each_var_name];
   VarHandle *var = nullptr;
   if (var_holder.empty()) {
-    var = new VarHandle(0, place_offset, each_var_name, place);
+    graph->nodes.emplace_back(new ir::Node(ir::Node::Type::kVariable));
+    var = new VarHandle(graph->nodes.back().get(), 0, place_offset,
+                        each_var_name, place);
     var_holder.emplace_back(var);
   } else {
     var = var_holder.rbegin()->get();
@@ -68,7 +71,9 @@ void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
                                      size_t place_offset) {
   auto &vars = graph->Get<GraphVars>("vars")[place_offset][each_var_name];
   size_t version = vars.size();
-  auto var = new VarHandle(version, place_offset, each_var_name, place);
+  graph->nodes.emplace_back(new ir::Node(ir::Node::Type::kVariable));
+  auto var = new VarHandle(graph->nodes.back().get(), version, place_offset,
+                           each_var_name, place);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
 }
@@ -80,7 +85,8 @@ void SSAGraphBuilder::AddOutputToLeafOps(Graph *graph) {
     if (!op->Outputs().empty()) {
       continue;
     }
-    auto *dummy_leaf = new DummyVarHandle();
+    graph->nodes.emplace_back(new ir::Node(ir::Node::Type::kVariable));
+    auto *dummy_leaf = new DummyVarHandle(graph->nodes.back().get());
     graph->Get<GraphDepVars>("dep_vars").emplace(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }
