@@ -184,7 +184,7 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                 fetches = [as_numpy(fetch) for fetch in fetches]
                 self.outputs.append(fetches)
 
-            feed_queue.push_eof()
+            feed_queue.close()
             self.validate()
 
     def validate(self):

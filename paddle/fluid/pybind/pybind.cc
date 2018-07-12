@@ -313,8 +313,8 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("size", &LoDTensorBlockingQueue::Size)
       .def("capacity", &LoDTensorBlockingQueue::Cap)
-      .def("push_eof", &LoDTensorBlockingQueue::Close)
-      .def("is_eof", &LoDTensorBlockingQueue::IsClosed);
+      .def("close", &LoDTensorBlockingQueue::Close)
+      .def("is_closed", &LoDTensorBlockingQueue::IsClosed);
 
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,
