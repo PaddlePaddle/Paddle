@@ -123,7 +123,7 @@ class Optimizer(object):
         """
         pass
 
-    def _finish_update(self, block, parameters):
+    def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
            before completing an optimization step
 
@@ -226,10 +226,11 @@ class Optimizer(object):
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
                 with param_and_grad[1].block.program.optimized_guard(
                         param_and_grad[1]):
-                    if param_and_grad[0].trainable is True and param_and_grad[
-                            1] is not None:
+                    if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
@@ -563,12 +564,14 @@ class AdamOptimizer(Optimizer):
 
         return adam_op
 
-    def _finish_update(self, block, parameters):
+    def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        for param, grad in parameters:
+        for param, grad in parameters_and_grads:
+            if grad is None:
+                continue
             with grad.block.program.optimized_guard(grad):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
@@ -690,13 +693,15 @@ class AdamaxOptimizer(Optimizer):
 
         return adamax_op
 
-    def _finish_update(self, block, parameters):
+    def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        for param in parameters:
-            with param.block.program.optimized_guard(param):
+        for param, grad in parameters_and_grads:
+            if grad is None:
+                continue
+            with grad.block.program.optimized_guard(grad):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 main_block.append_op(
@@ -1157,6 +1162,8 @@ class ModelAverage(Optimizer):
                 self.params_grads.append((param, grad))
 
         for param, grad in self.params_grads:
+            if grad is None:
+                continue
             with grad.block.program.optimized_guard(grad):
                 self._append_average_accumulate_op(param)
 
