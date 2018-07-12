@@ -160,7 +160,7 @@ class StateCell(object):
         cell_size (int): The RNN decoder size.
         inputs (dict): A feeding dict of {name(str) : Variable}. It specifies
             the names of step inputs for RNN cell, and the associated variables.
-            The variable could initially be None and set it manually during each
+            The variable could initially be None and set manually during each
             RNN step.
         states (dict): A feeding dict of {name(str) : InitState object}. It
             specifies the names of hidden states and their initialized state.

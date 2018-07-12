@@ -176,7 +176,7 @@ def train_main(use_cuda):
     optimizer = fluid.optimizer.Adagrad(learning_rate=1e-3)
     optimizer.minimize(avg_cost)
 
-    train_data = paddle.batch(
+    train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
@@ -194,9 +194,8 @@ def train_main(use_cuda):
         ]
         feeder = fluid.DataFeeder(feed_list, place)
 
-        batch_id = 0
         for pass_id in xrange(1):
-            for data in train_data():
+            for batch_id, data in enumerate(train_reader()):
                 outs = exe.run(main_program,
                                feed=feeder.feed(data),
                                fetch_list=[avg_cost])
@@ -205,7 +204,6 @@ def train_main(use_cuda):
                       " avg_cost=" + str(avg_cost_val))
                 if batch_id > 3:
                     break
-                batch_id += 1
 
     train_loop(framework.default_main_program())
 
@@ -233,7 +231,7 @@ def decode_main(use_cuda):
     init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
     init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
 
-    train_data = paddle.batch(
+    train_reader = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
@@ -245,18 +243,17 @@ def decode_main(use_cuda):
     ]
     feeder = fluid.DataFeeder(feed_list, place)
 
-    for data in train_data():
-        feed_dict = feeder.feed(map(lambda x: [x[0]], data))
-        feed_dict['init_ids'] = init_ids
-        feed_dict['init_scores'] = init_scores
+    data = train_reader.next()
+    feed_dict = feeder.feed(map(lambda x: [x[0]], data))
+    feed_dict['init_ids'] = init_ids
+    feed_dict['init_scores'] = init_scores
 
-        result_ids, result_scores = exe.run(
-            framework.default_main_program(),
-            feed=feed_dict,
-            fetch_list=[translation_ids, translation_scores],
-            return_numpy=False)
-        print result_ids.lod()
-        break
+    result_ids, result_scores = exe.run(
+        framework.default_main_program(),
+        feed=feed_dict,
+        fetch_list=[translation_ids, translation_scores],
+        return_numpy=False)
+    print result_ids.lod()
 
 
 class TestMachineTranslation(unittest.TestCase):
