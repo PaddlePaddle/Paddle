@@ -570,21 +570,22 @@ class AdamOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param in parameters:
-            beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                                  param)
-            beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
-                                                  param)
-            main_block.append_op(
-                type="scale",
-                inputs={"X": beta1_pow_acc},
-                outputs={"Out": beta1_pow_acc},
-                attrs={"scale": self._beta1})
+            with param.block.program.optimized_guard(param):
+                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                                      param)
+                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                                      param)
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta1_pow_acc},
+                    outputs={"Out": beta1_pow_acc},
+                    attrs={"scale": self._beta1})
 
-            main_block.append_op(
-                type="scale",
-                inputs={"X": beta2_pow_acc},
-                outputs={"Out": beta2_pow_acc},
-                attrs={"scale": self._beta2})
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta2_pow_acc},
+                    outputs={"Out": beta2_pow_acc},
+                    attrs={"scale": self._beta2})
 
 
 class AdamaxOptimizer(Optimizer):
@@ -696,13 +697,14 @@ class AdamaxOptimizer(Optimizer):
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
         for param in parameters:
-            beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
-                                                  param)
-            main_block.append_op(
-                type="scale",
-                inputs={"X": beta1_pow_acc},
-                outputs={"Out": beta1_pow_acc},
-                attrs={"scale": self._beta1})
+            with param.block.program.optimized_guard(param):
+                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                                      param)
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta1_pow_acc},
+                    outputs={"Out": beta1_pow_acc},
+                    attrs={"scale": self._beta1})
 
 
 class DecayedAdagradOptimizer(Optimizer):
