@@ -25,7 +25,7 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
+        tensor._set_dims([1000, 784])
         tensor._alloc_int(place)
         tensor_array = numpy.array(tensor)
         self.assertEqual((1000, 784), tensor_array.shape)
@@ -44,7 +44,7 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
+        tensor._set_dims([1000, 784])
         tensor._alloc_float(place)
 
         tensor_array = numpy.array(tensor)
@@ -63,7 +63,7 @@ class TestTensor(unittest.TestCase):
         var_lod = scope.var("test_lod_tensor")
         lod_tensor = var_lod.get_tensor()
 
-        lod_tensor.set_dims([4, 4, 6])
+        lod_tensor._set_dims([4, 4, 6])
         lod_tensor._alloc_int(place)
         array = numpy.array(lod_tensor)
         array[0, 0, 0] = 3
@@ -84,7 +84,7 @@ class TestTensor(unittest.TestCase):
         var_lod = scope.var("test_lod_tensor")
 
         lod_tensor = var_lod.get_tensor()
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor._alloc_float(place)
 
         tensor_array = numpy.array(lod_tensor)
@@ -108,7 +108,7 @@ class TestTensor(unittest.TestCase):
         lod_py = [[2, 1], [1, 2, 2]]
         lod_tensor = core.LoDTensor()
 
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
         lod_tensor._alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
@@ -128,7 +128,7 @@ class TestTensor(unittest.TestCase):
         lod_py = [[2, 1], [1, 2, 2]]
         lod_tensor = core.LoDTensor()
 
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
         lod_tensor._alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
@@ -148,7 +148,7 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([0, 1])
+        tensor._set_dims([0, 1])
         tensor._alloc_float(place)
 
         tensor_array = numpy.array(tensor)
