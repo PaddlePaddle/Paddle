@@ -28,7 +28,7 @@ namespace framework {
 namespace details {
 struct ComputationOpHandle : public OpHandleBase {
  public:
-  ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
+  ComputationOpHandle(ir::Node *node, const OpDesc &op_desc, Scope *scope,
                       platform::Place place);
 
   std::string Name() const override;

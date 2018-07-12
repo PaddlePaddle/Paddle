@@ -28,7 +28,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const Graph *graph) const {
 
   auto insert_pending_var = [&](VarHandleBase *var) {
     pending_vars.insert(var);
-    if (var->generated_op_ == nullptr) {
+    if (var->GeneratedOp() == nullptr) {
       ready_vars.emplace(var);
     }
   };
@@ -71,7 +71,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const Graph *graph) const {
 
     for (auto ready_var : ready_vars) {
       pending_vars.erase(ready_var);
-      for (auto *op : ready_var->pending_ops_) {
+      for (auto *op : ready_var->PendingOps()) {
         auto &deps = --pending_ops[op];
         if (deps == 0) {
           ready_ops.insert(op);

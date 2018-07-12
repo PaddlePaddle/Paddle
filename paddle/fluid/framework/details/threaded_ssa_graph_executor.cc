@@ -65,11 +65,12 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   // Step 2. Insert FetchOps
   std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
+  std::vector<std::unique_ptr<ir::Node>> tmp_nodes;
   std::unordered_set<std::unique_ptr<VarHandleBase>> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
-  InsertFetchOps(fetch_tensors, &fetch_ops, &fetch_dependencies, &pending_ops,
-                 &pending_vars, &ready_vars, &fetch_data);
+  InsertFetchOps(fetch_tensors, &fetch_ops, &tmp_nodes, &fetch_dependencies,
+                 &pending_ops, &pending_vars, &ready_vars, &fetch_data);
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
@@ -126,7 +127,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     // Find the ready_ops after the ready_var.
     for (auto ready_var : cur_ready_vars) {
       pending_vars.erase(ready_var);
-      for (auto *op : ready_var->pending_ops_) {
+      for (auto *op : ready_var->PendingOps()) {
         auto &deps = pending_ops[op];
         --deps;
         if (deps == 0) {
@@ -152,6 +153,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 void ThreadedSSAGraphExecutor::InsertFetchOps(
     const std::vector<std::string> &fetch_tensors,
     std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+    std::vector<std::unique_ptr<ir::Node>> *temp_nodes,
     std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
     std::unordered_map<OpHandleBase *, size_t> *pending_ops,
     std::unordered_set<VarHandleBase *> *pending_vars,
@@ -170,7 +172,10 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
     auto &vars = fetched_vars.at(var_name);
-    auto *op = new FetchOpHandle(fetch_data, i, &local_scopes_);
+
+    ir::Node *fetch_n = new ir::Node(ir::Node::Type::kOperation);
+    auto *op = new FetchOpHandle(fetch_n, fetch_data, i, &local_scopes_);
+    temp_nodes->emplace_back(fetch_n);
     fetch_ops->emplace_back(op);
 
     for (auto &p : places_) {
@@ -181,9 +186,11 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       op->AddInput(var);
     }
 
-    auto *fetch_dummy = new DummyVarHandle();
+    ir::Node *dummy_n = new ir::Node(ir::Node::Type::kVariable);
+    auto *fetch_dummy = new DummyVarHandle(dummy_n);
     op->AddOutput(fetch_dummy);
     fetch_dependencies->emplace(fetch_dummy);
+    temp_nodes->emplace_back(dummy_n);
     this->InsertPendingVar(pending_vars, ready_vars, fetch_dummy);
     this->InsertPendingOp(pending_ops, op);
   }
@@ -199,7 +206,7 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
     std::unordered_set<VarHandleBase *> *pending_vars,
     BlockingQueue<VarHandleBase *> *ready_vars, VarHandleBase *var) const {
   pending_vars->insert(var);
-  if (var->generated_op_ == nullptr) {
+  if (var->GeneratedOp() == nullptr) {
     ready_vars->Push(var);
   }
 }
