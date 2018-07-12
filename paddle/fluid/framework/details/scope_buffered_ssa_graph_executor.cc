@@ -54,7 +54,6 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       }
     }
   }
-
   std::vector<framework::LoDTensor> fetch_data;
   std::exception_ptr eptr;
   try {
@@ -62,6 +61,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   } catch (...) {
     eptr = std::current_exception();
   }
+
   drop_scope_counter_ += 1;
   if (!fetch_tensors.empty() ||
       drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
@@ -76,7 +76,6 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       scope->DeleteScope(local_scope);
     }
   }
-
   if (eptr) {
     std::rethrow_exception(eptr);
   } else {
