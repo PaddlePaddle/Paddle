@@ -78,6 +78,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
  private:
   ExecutionStrategy strategy_;
+  // use std::list because clear(), push_back, and for_each are O(1)
   std::list<std::future<void>> run_op_futures_;
 };
 
