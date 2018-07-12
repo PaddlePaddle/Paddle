@@ -508,6 +508,7 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
+        cmake .. -DWITH_DISTRIBUTE=OFF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
@@ -569,6 +570,7 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       check_style)
         check_style

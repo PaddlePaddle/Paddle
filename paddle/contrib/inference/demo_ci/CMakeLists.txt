@@ -54,9 +54,7 @@ endif()
 
 if(WITH_STATIC_LIB)
   set(DEPS
-      "-Wl,--whole-archive"
       ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a
-      "-Wl,--no-whole-archive"
       ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.a)
 else()
   # Note: libpaddle_inference_api.so must put before libpaddle_fluid.so
