@@ -226,8 +226,8 @@ class Optimizer(object):
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
-                with param_and_grad[0].block.program.optimized_guard(
-                        param_and_grad[0]):
+                with param_and_grad[1].block.program.optimized_guard(
+                        param_and_grad[1]):
                     if param_and_grad[0].trainable is True and param_and_grad[
                             1] is not None:
                         optimize_op = self._append_optimize_op(loss.block,
@@ -236,8 +236,7 @@ class Optimizer(object):
 
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block,
-                                [p[0] for p in parameters_and_grads])
+            self._finish_update(loss.block, parameters_and_grads)
 
             end = len(global_block.ops)
             return global_block.slice_ops(start, end)
@@ -569,8 +568,8 @@ class AdamOptimizer(Optimizer):
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        for param in parameters:
-            with param.block.program.optimized_guard(param):
+        for param, grad in parameters:
+            with grad.block.program.optimized_guard(grad):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
@@ -1158,7 +1157,7 @@ class ModelAverage(Optimizer):
                 self.params_grads.append((param, grad))
 
         for param, grad in self.params_grads:
-            with param.block.program.optimized_guard(param):
+            with grad.block.program.optimized_guard(grad):
                 self._append_average_accumulate_op(param)
 
         self.apply_program = Program()

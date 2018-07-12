@@ -428,13 +428,13 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(const OpDesc &op) const {
   if (op_role != static_cast<int>(framework::OpRole::kOptimize)) {
     return -1;
   }
-  auto params = boost::get<std::vector<std::string>>(
+  auto grad = boost::get<std::vector<std::string>>(
       op.GetNullableAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
-  PADDLE_ENFORCE_EQ(params.size(), 1U);
-  std::string grad = framework::GradVarName(params[0]);
-  int dev_id = GetVarDeviceID(grad);
-  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.");
+  PADDLE_ENFORCE_EQ(grad.size(), 1U);
+  int dev_id = GetVarDeviceID(grad[0]);
+  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.[%s, %s]", op.Type(),
+                    grad[0]);
   return dev_id;
 }
 

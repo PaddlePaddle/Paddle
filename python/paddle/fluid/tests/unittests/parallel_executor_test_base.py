@@ -73,7 +73,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.share_parameter_between_cards = share_parameter_between_cards
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-
+            build_strategy.debug_graphviz_path = "./graph.dot"
             if share_parameter_between_cards:
                 assert use_reduce and not use_cuda, \
                     "If share_parameter_between_cards is True, reduce_strategy " \

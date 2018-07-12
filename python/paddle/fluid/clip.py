@@ -327,7 +327,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
 def append_gradient_clip_ops(param_grad):
     context = dict()
     for p, g in param_grad:
-        with p.block.program.optimized_guard(p):
+        with g.block.program.optimized_guard(g):
             clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
             if clip_attr is None:
                 clip_attr = NullGradientClipAttr()
@@ -340,7 +340,7 @@ def append_gradient_clip_ops(param_grad):
 
     res = []
     for p, g in param_grad:
-        with p.block.program.optimized_guard(p):
+        with g.block.program.optimized_guard(g):
             res.append(clip_attr.create_operators(param=p, grad=g))
 
     return res

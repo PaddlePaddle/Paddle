@@ -67,6 +67,12 @@ ParallelExecutor::ParallelExecutor(
   member_->share_parameter_between_cards_ =
       build_strategy.share_parameter_between_cards_;
 
+  if (build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
+    PADDLE_ENFORCE(places.size() > 1,
+                   "If you set build_strategy.reduce with 'Reduce',"
+                   "the number of places must be greater than 1.");
+  }
+
   if (build_strategy.share_parameter_between_cards_) {
     PADDLE_ENFORCE(
         !member_->use_cuda_,

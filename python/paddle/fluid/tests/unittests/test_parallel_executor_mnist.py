@@ -164,8 +164,8 @@ class TestMNIST(TestParallelExecutorBase):
 
     def test_simple_fc_parallel_accuracy_with_new_strategy(self):
         # use_cuda, use_reduce, share_parameter_between_cards
-        # self.check_simple_fc_parallel_accuracy(True, True)
-        # self.check_simple_fc_parallel_accuracy(False, True)
+        self.check_simple_fc_parallel_accuracy(True, True)
+        self.check_simple_fc_parallel_accuracy(False, True)
         self.check_simple_fc_parallel_accuracy(False, True, True)
 
     def check_batchnorm_fc_convergence(self,
