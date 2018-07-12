@@ -168,8 +168,8 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
 }
 
 std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Build(
-    const ProgramDesc &program) const {
-  std::unique_ptr<Graph> graph(new Graph);
+    std::unique_ptr<Graph> graph) const {
+  const ProgramDesc &program = graph->Program();
   for (auto *var : program.Block(0).AllVars()) {
     all_vars_.emplace(var->Name(), var);
   }

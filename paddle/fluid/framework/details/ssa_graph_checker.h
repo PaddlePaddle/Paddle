@@ -29,10 +29,10 @@ class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
       std::unique_ptr<SSAGraphBuilder>&& builder)
       : builder_(std::move(builder)) {}
 
-  std::unique_ptr<Graph> Build(const ProgramDesc& program) const override {
-    auto graph = builder_->Build(program);
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
-    return graph;
+  std::unique_ptr<Graph> Build(std::unique_ptr<Graph> graph) const override {
+    auto new_graph = builder_->Build(std::move(graph));
+    PADDLE_ENFORCE(IsValidGraph(new_graph.get()));
+    return new_graph;
   }
 
   int GetVarDeviceID(const std::string& var_name) const override {

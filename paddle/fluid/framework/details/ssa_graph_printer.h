@@ -50,10 +50,10 @@ class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
         stream_ptr_(std::move(sout)),
         stream_ref_(*stream_ptr_) {}
 
-  std::unique_ptr<Graph> Build(const ProgramDesc& program) const override {
-    auto graph = builder_->Build(program);
-    printer_->Print(*graph, stream_ref_);
-    return graph;
+  std::unique_ptr<Graph> Build(std::unique_ptr<Graph> graph) const override {
+    auto new_graph = builder_->Build(std::move(graph));
+    printer_->Print(*new_graph, stream_ref_);
+    return new_graph;
   }
 
   int GetVarDeviceID(const std::string& var_name) const override {

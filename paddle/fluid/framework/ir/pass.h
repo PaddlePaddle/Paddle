@@ -30,11 +30,5 @@ class Pass {
   }
 };
 
-std::unique_ptr<Graph> ProgramToGraph(const ProgramDesc& program) {
-  std::unique_ptr<Graph> g(new Graph);
-
-  return std::move(g);
-}
-
 }  // namespace framework
 }  // namespace paddle

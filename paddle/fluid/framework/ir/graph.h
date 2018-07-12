@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -28,6 +29,8 @@ namespace framework {
 
 class Graph {
  public:
+  explicit Graph(const ProgramDesc& program) : program_(program) {}
+
   virtual ~Graph() {
     for (auto& attr : attrs_) {
       attr_dels_[attr.first]();
@@ -35,6 +38,8 @@ class Graph {
     attrs_.clear();
     attr_dels_.clear();
   }
+
+  const ProgramDesc& Program() const { return program_; }
 
   template <typename AttrType>
   AttrType& Get(const std::string& attr_name) const {
@@ -63,9 +68,12 @@ class Graph {
   std::vector<std::unique_ptr<ir::Node>> nodes;
 
  private:
+  const ProgramDesc& program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
 };
+
+std::unique_ptr<Graph> ProgramToGraph(const ProgramDesc& program);
 
 }  // namespace framework
 }  // namespace paddle
