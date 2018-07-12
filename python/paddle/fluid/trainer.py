@@ -279,7 +279,7 @@ class Trainer(object):
             exe = executor.Executor(place)
             exe.run(self.startup_program)
 
-        if self.checkpoint_cfg and self.checkpoint_cfg.load_serial:
+        if self.checkpoint_cfg and self.checkpoint_cfg.load_serial is not None:
             self._load_checkpoint()
 
         if param_path and os.path.isdir(param_path):
