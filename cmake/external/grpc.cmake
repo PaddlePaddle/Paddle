@@ -50,6 +50,7 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
+    PATCH_COMMAND git apply ${PADDLE_SOURCE_DIR}/patches/grpc/fix_too_early_destory.patch
     # NOTE(yuyang18):
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.
