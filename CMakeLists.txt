@@ -146,6 +146,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -230,6 +231,10 @@ endif(WITH_AMD_GPU)
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
+endif()
+
+if(WITH_LIBXSMM)
+    list(APPEND EXTERNAL_LIBS ${LIBXSMM_LIBS})
 endif()
 
 if(WITH_MKLDNN)
