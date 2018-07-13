@@ -181,8 +181,8 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     // FIXME(zengjinle): when use_cudnn is false,
     // dropout GPU kernel supports FP16 and FP32,
     // but dropout_grad GPU kernel only supports FP32
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
+    auto input_data_type = framework::ToDataType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
     if (platform::is_gpu_place(place) && !use_cudnn) {
       input_data_type = framework::proto::VarType::FP32;
     }

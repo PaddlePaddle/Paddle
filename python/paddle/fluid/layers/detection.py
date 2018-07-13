@@ -30,6 +30,7 @@ __all__ = [
     'detection_output',
     'ssd_loss',
     'detection_map',
+    'rpn_target_assign',
     'anchor_generator',
 ]
 
@@ -42,6 +43,135 @@ __all__ += __auto__
 
 for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+
+def rpn_target_assign(loc,
+                      scores,
+                      anchor_box,
+                      gt_box,
+                      rpn_batch_size_per_im=256,
+                      fg_fraction=0.25,
+                      rpn_positive_overlap=0.7,
+                      rpn_negative_overlap=0.3):
+    """
+    ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
+
+    This layer can be, for given the  Intersection-over-Union (IoU) overlap
+    between anchors and ground truth boxes, to assign classification and
+    regression targets to each each anchor, these target labels are used for
+    train RPN. The classification targets is a binary class label (of being
+    an object or not). Following the paper of Faster-RCNN, the positive labels
+    are two kinds of anchors: (i) the anchor/anchors with the highest IoU
+    overlap with a ground-truth box, or (ii) an anchor that has an IoU overlap
+    higher than rpn_positive_overlap(0.7) with any ground-truth box. Note
+    that a single ground-truth box may assign positive labels to multiple
+    anchors. A non-positive anchor is when its IoU ratio is lower than
+    rpn_negative_overlap (0.3) for all ground-truth boxes. Anchors that are
+    neither positive nor negative do not contribute to the training objective.
+    The regression targets are the encoded ground-truth boxes associated with
+    the positive anchors.
+
+    Args:
+        loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax].
+        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
+        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+            each box is represented as [xmin, ymin, xmax, ymax],
+            [xmin, ymin] is the left top coordinate of the anchor box,
+            if the input is image feature map, they are close to the origin
+            of the coordinate system. [xmax, ymax] is the right bottom
+            coordinate of the anchor box.
+        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            bboxes of mini-batch input.
+        rpn_batch_size_per_im(int): Total number of RPN examples per image.
+        fg_fraction(float): Target fraction of RoI minibatch that is labeled
+            foreground (i.e. class > 0), 0-th class is background.
+        rpn_positive_overlap(float): Minimum overlap required between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a positive
+            example.
+        rpn_negative_overlap(float): Maximum overlap allowed between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a negative
+            examples.
+
+    Returns:
+        tuple: 
+               A tuple(predicted_scores, predicted_location, target_label,
+               target_bbox) is returned. The predicted_scores and
+               predicted_location is the predicted result of the RPN.
+               The target_label and target_bbox is the ground truth,
+               respectively. The predicted_location is a 2D Tensor with shape
+               [F, 4], and the shape of target_bbox is same as the shape of
+               the predicted_location, F is the number of the foreground
+               anchors. The predicted_scores is a 2D Tensor with shape
+               [F + B, 1], and the shape of target_label is same as the shape
+               of the predicted_scores, B is the number of the background
+               anchors, the F and B is depends on the input of this operator. 
+
+    Examples:
+        .. code-block:: python
+
+        loc = layers.data(name='location', shape=[2, 80],
+                          append_batch_size=False, dtype='float32')
+        scores = layers.data(name='scores', shape=[2, 40],
+                          append_batch_size=False, dtype='float32')
+        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                          append_batch_size=False, dtype='float32')
+        gt_box = layers.data(name='gt_box', shape=[10, 4],
+                         append_batch_size=False, dtype='float32')
+        loc_pred, score_pred, loc_target, score_target =
+            fluid.layers.detection_output(loc=location,
+                                          scores=scores,
+                                          anchor_box=anchor_box,
+                                          gt_box=gt_box)
+    """
+
+    helper = LayerHelper('rpn_target_assign', **locals())
+    # 1. Compute the regression target bboxes
+    target_bbox = box_coder(
+        prior_box=anchor_box,
+        target_box=gt_box,
+        code_type='encode_center_size',
+        box_normalized=False)
+
+    # 2. Compute overlaps between the prior boxes and the gt boxes overlaps
+    iou = iou_similarity(x=gt_box, y=anchor_box)
+
+    # 3. Assign target label to anchors
+    loc_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    score_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    target_label = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    helper.append_op(
+        type="rpn_target_assign",
+        inputs={'Overlap': iou, },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+        },
+        attrs={
+            'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_positive_overlap': rpn_positive_overlap,
+            'rpn_negative_overlap': rpn_negative_overlap,
+            'fg_fraction': fg_fraction,
+        })
+
+    # 4. Reshape and gather the target entry
+    scores = nn.reshape(x=scores, shape=(-1, 1))
+    loc = nn.reshape(x=loc, shape=(-1, 4))
+    target_label = nn.reshape(x=target_label, shape=(-1, 1))
+    target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
+
+    predicted_scores = nn.gather(scores, score_index)
+    predicted_location = nn.gather(loc, loc_index)
+    target_label = nn.gather(target_label, score_index)
+    target_bbox = nn.gather(target_bbox, loc_index)
+    return predicted_scores, predicted_loc, target_label, target_bbox
 
 
 def detection_output(loc,
@@ -388,7 +518,6 @@ def target_assign(input,
 
     Returns:
         tuple: 
-        
                A tuple(out, out_weight) is returned. out is a 3D Tensor with 
                shape [N, P, K], N and P is the same as they are in 
                `neg_indices`, K is the same as it in input of X. If 
@@ -660,7 +789,8 @@ def prior_box(input,
               clip=False,
               steps=[0.0, 0.0],
               offset=0.5,
-              name=None):
+              name=None,
+              min_max_aspect_ratios_order=False):
     """
     **Prior Box Operator**
 
@@ -689,6 +819,11 @@ def prior_box(input,
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with 
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the final
+            detection results. Default: False.
 
     Returns:
         tuple: A tuple with two Variable (boxes, variances)
@@ -742,7 +877,8 @@ def prior_box(input,
         'clip': clip,
         'step_w': steps[0],
         'step_h': steps[1],
-        'offset': offset
+        'offset': offset,
+        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
     }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
         if not _is_list_or_tuple_(max_sizes):
@@ -782,7 +918,8 @@ def multi_box_head(inputs,
                    kernel_size=1,
                    pad=0,
                    stride=1,
-                   name=None):
+                   name=None,
+                   min_max_aspect_ratios_order=False):
     """
     Generate prior boxes for SSD(Single Shot MultiBox Detector)
     algorithm. The details of this algorithm, please refer the
@@ -825,6 +962,11 @@ def multi_box_head(inputs,
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
        name(str): Name of the prior box layer. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with 
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the fininal
+            detection results. Default: False.
 
     Returns:
         tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
@@ -939,7 +1081,8 @@ def multi_box_head(inputs,
         step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
         box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
-                             variance, flip, clip, step, offset)
+                             variance, flip, clip, step, offset, None,
+                             min_max_aspect_ratios_order)
 
         box_results.append(box)
         var_results.append(var)

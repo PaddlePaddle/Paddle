@@ -33,8 +33,7 @@ class OpBuilder(object):
     def add_output(self, name, var_name=None):
         self._add_input_or_output(name, False, var_name, None)
 
-    @staticmethod
-    def _isinstancelist(value, value_type):
+    def _isinstancelist(self, value, value_type):
         if (isinstance(value, list) or isinstance(value,
                                                   tuple)) and len(value) > 0:
             for e in value:
@@ -45,8 +44,7 @@ class OpBuilder(object):
         else:
             return False
 
-    @staticmethod
-    def _set_attr_value(apt, value):
+    def _set_attr_value(self, apt, value):
         if isinstance(value, bool):
             apt.type = framework_pb2.BOOLEAN
             apt.b = value
@@ -62,16 +60,16 @@ class OpBuilder(object):
         elif isinstance(value, basestring):
             apt.type = framework_pb2.STRING
             apt.s = value
-        elif _isinstancelist(value, bool):
+        elif self._isinstancelist(value, bool):
             apt.type = framework_pb2.BOOLEANS
             apt.bools = value
-        elif _isinstancelist(value, int):
+        elif self._isinstancelist(value, int):
             apt.type = framework_pb2.INTS
             apt.ints = value
-        elif _isinstancelist(value, float):
+        elif self._isinstancelist(value, float):
             apt.type = framework_pb2.FLOATS
             apt.floats = value
-        elif _isinstancelist(value, basestring):
+        elif self._isinstancelist(value, basestring):
             apt.type = framework_pb2.STRINGS
             apt.strings = value
         else:
@@ -79,6 +77,9 @@ class OpBuilder(object):
                             (type(value), value))
 
     def add_attr(self, name, value):
+        if value is None:
+            return
+
         apt = self.op_desc.attrs.add()
         apt.name = name
         self._set_attr_value(apt, value)

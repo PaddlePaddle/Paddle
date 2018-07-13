@@ -68,6 +68,8 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto flip = ctx.Attr<bool>("flip");
     auto clip = ctx.Attr<bool>("clip");
+    auto min_max_aspect_ratios_order =
+        ctx.Attr<bool>("min_max_aspect_ratios_order");
 
     std::vector<float> aspect_ratios;
     ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
@@ -108,26 +110,59 @@ class PriorBoxOpKernel : public framework::OpKernel<T> {
         int idx = 0;
         for (size_t s = 0; s < min_sizes.size(); ++s) {
           auto min_size = min_sizes[s];
-          // priors with different aspect ratios
-          for (size_t r = 0; r < aspect_ratios.size(); ++r) {
-            float ar = aspect_ratios[r];
-            box_width = min_size * sqrt(ar) / 2.;
-            box_height = min_size / sqrt(ar) / 2.;
+          if (min_max_aspect_ratios_order) {
+            box_width = box_height = min_size / 2.;
             e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
             e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
             e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
             e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
             idx++;
-          }
-          if (max_sizes.size() > 0) {
-            auto max_size = max_sizes[s];
-            // square prior with size sqrt(minSize * maxSize)
-            box_width = box_height = sqrt(min_size * max_size) / 2.;
-            e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
-            e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
-            e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
-            e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
-            idx++;
+            if (max_sizes.size() > 0) {
+              auto max_size = max_sizes[s];
+              // square prior with size sqrt(minSize * maxSize)
+              box_width = box_height = sqrt(min_size * max_size) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+            // priors with different aspect ratios
+            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+              float ar = aspect_ratios[r];
+              if (fabs(ar - 1.) < 1e-6) {
+                continue;
+              }
+              box_width = min_size * sqrt(ar) / 2.;
+              box_height = min_size / sqrt(ar) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+          } else {
+            // priors with different aspect ratios
+            for (size_t r = 0; r < aspect_ratios.size(); ++r) {
+              float ar = aspect_ratios[r];
+              box_width = min_size * sqrt(ar) / 2.;
+              box_height = min_size / sqrt(ar) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
+            if (max_sizes.size() > 0) {
+              auto max_size = max_sizes[s];
+              // square prior with size sqrt(minSize * maxSize)
+              box_width = box_height = sqrt(min_size * max_size) / 2.;
+              e_boxes(h, w, idx, 0) = (center_x - box_width) / img_width;
+              e_boxes(h, w, idx, 1) = (center_y - box_height) / img_height;
+              e_boxes(h, w, idx, 2) = (center_x + box_width) / img_width;
+              e_boxes(h, w, idx, 3) = (center_y + box_height) / img_height;
+              idx++;
+            }
           }
         }
       }
