@@ -25,8 +25,8 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
-        tensor.alloc_int(place)
+        tensor._set_dims([1000, 784])
+        tensor._alloc_int(place)
         tensor_array = numpy.array(tensor)
         self.assertEqual((1000, 784), tensor_array.shape)
         tensor_array[3, 9] = 1
@@ -44,8 +44,8 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
-        tensor.alloc_float(place)
+        tensor._set_dims([1000, 784])
+        tensor._alloc_float(place)
 
         tensor_array = numpy.array(tensor)
         self.assertEqual((1000, 784), tensor_array.shape)
@@ -63,8 +63,8 @@ class TestTensor(unittest.TestCase):
         var_lod = scope.var("test_lod_tensor")
         lod_tensor = var_lod.get_tensor()
 
-        lod_tensor.set_dims([4, 4, 6])
-        lod_tensor.alloc_int(place)
+        lod_tensor._set_dims([4, 4, 6])
+        lod_tensor._alloc_int(place)
         array = numpy.array(lod_tensor)
         array[0, 0, 0] = 3
         array[3, 3, 5] = 10
@@ -84,8 +84,8 @@ class TestTensor(unittest.TestCase):
         var_lod = scope.var("test_lod_tensor")
 
         lod_tensor = var_lod.get_tensor()
-        lod_tensor.set_dims([5, 2, 3, 4])
-        lod_tensor.alloc_float(place)
+        lod_tensor._set_dims([5, 2, 3, 4])
+        lod_tensor._alloc_float(place)
 
         tensor_array = numpy.array(lod_tensor)
         self.assertEqual((5, 2, 3, 4), tensor_array.shape)
@@ -104,14 +104,13 @@ class TestTensor(unittest.TestCase):
         self.assertListEqual(lod_py, lod)
 
     def test_lod_tensor_init(self):
-        scope = core.Scope()
         place = core.CPUPlace()
         lod_py = [[2, 1], [1, 2, 2]]
         lod_tensor = core.LoDTensor()
 
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
-        lod_tensor.alloc_float(place)
+        lod_tensor._alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
         tensor_array[0, 0, 0, 1] = 2.0
@@ -129,9 +128,9 @@ class TestTensor(unittest.TestCase):
         lod_py = [[2, 1], [1, 2, 2]]
         lod_tensor = core.LoDTensor()
 
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
-        lod_tensor.alloc_float(place)
+        lod_tensor._alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
         tensor_array[0, 0, 0, 1] = 2.0
@@ -149,15 +148,15 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([0, 1])
-        tensor.alloc_float(place)
+        tensor._set_dims([0, 1])
+        tensor._alloc_float(place)
 
         tensor_array = numpy.array(tensor)
         self.assertEqual((0, 1), tensor_array.shape)
 
         if core.is_compiled_with_cuda():
             gpu_place = core.CUDAPlace(0)
-            tensor.alloc_float(gpu_place)
+            tensor._alloc_float(gpu_place)
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
 
