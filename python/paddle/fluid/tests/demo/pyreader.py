@@ -75,11 +75,13 @@ def main():
             adam.minimize(loss)
 
     test_prog = fluid.Program()
-    with fluid.program_guard(test_prog, fluid.Program()):
+    test_startup = fluid.Program()
+    with fluid.program_guard(test_prog, test_startup):
         with fluid.unique_name.guard():
             test_loss, test_queue, test_reader = network(False)
 
     fluid.Executor(fluid.CUDAPlace(0)).run(startup_prog)
+    fluid.Executor(fluid.CUDAPlace(0)).run(test_startup)
 
     trainer = fluid.ParallelExecutor(
         use_cuda=True, loss_name=loss.name, main_program=train_prog)
