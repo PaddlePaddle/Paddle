@@ -102,6 +102,7 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
         num_thresholds(int): The number of thresholds to use when discretizing 
                              the roc curve. Default 200.
+        topk(int): only topk number of prediction output will be used for auc.
 
     Returns:
         Variable: A scalar representing the current AUC.
