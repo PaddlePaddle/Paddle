@@ -88,6 +88,18 @@ PD_API paddle_error paddle_arguments_get_value(paddle_arguments args,
                                                paddle_matrix mat);
 
 /**
+ * @brief paddle_arguments_get_prob Get the prob matrix of beam search, which
+ *        slot ID is `ID`
+ * @param [in] args arguments array
+ * @param [in] ID array index
+ * @param [out] mat matrix pointer
+ * @return paddle_error
+ */
+PD_API paddle_error paddle_arguments_get_prob(paddle_arguments args,
+                                              uint64_t ID,
+                                              paddle_matrix mat);
+
+/**
  * @brief PDArgsGetIds Get the integer vector of one argument in array, which
  *        index is `ID`.
  * @param args arguments array
