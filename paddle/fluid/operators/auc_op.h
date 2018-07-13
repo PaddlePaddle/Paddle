@@ -36,10 +36,10 @@ class AucKernel : public framework::OpKernel<T> {
     auto* auc = ctx.Output<Tensor>("AUC");
     // Only use output var for now, make sure it's persistable and
     // not cleaned up for each batch.
-    auto* true_positive = ctx.Output<Tensor>("TP");
-    auto* false_positive = ctx.Output<Tensor>("FP");
-    auto* true_negative = ctx.Output<Tensor>("TN");
-    auto* false_negative = ctx.Output<Tensor>("FN");
+    auto* true_positive = ctx.Output<Tensor>("TPOut");
+    auto* false_positive = ctx.Output<Tensor>("FPOut");
+    auto* true_negative = ctx.Output<Tensor>("TNOut");
+    auto* false_negative = ctx.Output<Tensor>("FNOut");
 
     float* auc_data = auc->mutable_data<float>(ctx.GetPlace());
 

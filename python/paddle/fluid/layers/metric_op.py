@@ -150,9 +150,9 @@ def auc(input, label, curve='ROC', num_thresholds=200, k=1):
                "num_thresholds": num_thresholds},
         outputs={
             "AUC": [auc_out],
-            "TP": [tp],
-            "TN": [tn],
-            "FP": [fp],
-            "FN": [fn]
+            "TPOut": [tp],
+            "TNOut": [tn],
+            "FPOut": [fp],
+            "FNOut": [fn]
         })
     return auc_out

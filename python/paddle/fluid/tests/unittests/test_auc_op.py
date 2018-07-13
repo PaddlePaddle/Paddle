@@ -86,10 +86,10 @@ class TestAucOp(OpTest):
 
         self.outputs = {
             'AUC': auc_value,
-            'TP': tp_list,
-            'FN': fn_list,
-            'TN': tn_list,
-            'FP': fp_list
+            'TPOut': tp_list,
+            'FNOut': fn_list,
+            'TNOut': tn_list,
+            'FPOut': fp_list
         }
 
     def test_check_output(self):

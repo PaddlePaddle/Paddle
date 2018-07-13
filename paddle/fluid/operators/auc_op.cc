@@ -78,10 +78,10 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
-    AddOutput("TP", "True-Positive value.");
-    AddOutput("FP", "False-Positive value.");
-    AddOutput("TN", "True-Negative value.");
-    AddOutput("FN", "False-Negative value.");
+    AddOutput("TPOut", "True-Positive value.");
+    AddOutput("FPOut", "False-Positive value.");
+    AddOutput("TNOut", "True-Negative value.");
+    AddOutput("FNOut", "False-Negative value.");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
