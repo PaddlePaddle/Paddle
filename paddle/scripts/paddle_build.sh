@@ -524,7 +524,7 @@ function test_fluid_inference_lib() {
     ========================================
 EOF
         cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
-        sh run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
 
