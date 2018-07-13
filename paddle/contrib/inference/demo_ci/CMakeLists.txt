@@ -52,12 +52,12 @@ else()
   set(MATH_LIB ${PADDLE_LIB}/third_party/install/openblas/lib/libopenblas.a)
 endif()
 
+# Note: libpaddle_inference_api.so/a must put before libpaddle_fluid.so/a
 if(WITH_STATIC_LIB)
   set(DEPS
-      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a
-      ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.a)
+      ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.a
+      ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.a)
 else()
-  # Note: libpaddle_inference_api.so must put before libpaddle_fluid.so
   set(DEPS
       ${PADDLE_LIB}/contrib/inference/libpaddle_inference_api.so
       ${PADDLE_LIB}/paddle/fluid/inference/libpaddle_fluid.so)
