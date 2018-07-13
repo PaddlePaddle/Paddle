@@ -60,8 +60,8 @@ def get_numeric_gradient(place,
         return np.array(sum).mean()
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
-    tensor_size = product(tensor_to_check.get_dims())
-    tensor_to_check_dtype = tensor_to_check.dtype()
+    tensor_size = product(tensor_to_check.shape())
+    tensor_to_check_dtype = tensor_to_check._dtype()
     if tensor_to_check_dtype == core.VarDesc.VarType.FP32:
         tensor_to_check_dtype = np.float32
     elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
@@ -74,15 +74,15 @@ def get_numeric_gradient(place,
 
     def __get_elem__(tensor, i):
         if tensor_to_check_dtype == np.float32:
-            return tensor.get_float_element(i)
+            return tensor._get_float_element(i)
         else:
-            return tensor.get_double_element(i)
+            return tensor._get_double_element(i)
 
     def __set_elem__(tensor, i, e):
         if tensor_to_check_dtype == np.float32:
-            tensor.set_float_element(i, e)
+            tensor._set_float_element(i, e)
         else:
-            tensor.set_double_element(i, e)
+            tensor._set_double_element(i, e)
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
@@ -107,7 +107,7 @@ def get_numeric_gradient(place,
         __set_elem__(tensor_to_check, i, origin)
         gradient_flat[i] = (y_pos - y_neg) / delta / 2
 
-    return gradient_flat.reshape(tensor_to_check.get_dims())
+    return gradient_flat.reshape(tensor_to_check.shape())
 
 
 class OpTest(unittest.TestCase):
@@ -125,7 +125,7 @@ class OpTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        '''Restore random seeds'''
+        """Restore random seeds"""
         np.random.set_state(cls._np_rand_state)
         random.setstate(cls._py_rand_state)
 
