@@ -243,7 +243,7 @@ PYBIND11_PLUGIN(core) {
 #ifndef PADDLE_WITH_CUDA
              self.set_rows(rows);
 #else
-    Vector<int64_t> new_rows(rows);
+        Vector<int64_t> new_rows(rows);
         self.set_rows(new_rows);
 #endif
            })
@@ -251,7 +251,7 @@ PYBIND11_PLUGIN(core) {
 #ifndef PADDLE_WITH_CUDA
         return self.rows();
 #else
-    auto rows = self.rows();
+         auto rows = self.rows();
          std::vector<int64_t> new_rows;
          new_rows.reserve(rows.size());
          std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
@@ -407,30 +407,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def("temp", []() { return kTempVarName; });
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-  .def_static("create",
-  [](paddle::platform::CPUPlace& place)
-  -> paddle::platform::DeviceContext* {
-    return new paddle::platform::CPUDeviceContext();
-  })
-  .def_static("create",
-  [](paddle::platform::CUDAPlace& place)
-  -> paddle::platform::DeviceContext* {
+      .def_static("create",
+                  [](paddle::platform::CPUPlace& place)
+                      -> paddle::platform::DeviceContext* {
+                    return new paddle::platform::CPUDeviceContext();
+                  })
+      .def_static("create",
+                  [](paddle::platform::CUDAPlace& place)
+                      -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
+                    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
 #else
-    return new paddle::platform::CUDADeviceContext(place);
+                    return new paddle::platform::CUDADeviceContext(place);
 #endif
-  })
-  .def_static("create",
-  [](paddle::platform::CUDAPinnedPlace& place)
-  -> paddle::platform::DeviceContext* {
+                  })
+          .def_static("create",
+                [](paddle::platform::CUDAPinnedPlace& place)
+                        -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW(
-      "CUDAPinnedPlace is not supported in CPU device.");
+                  PADDLE_THROW(
+                        "CUDAPinnedPlace is not supported in CPU device.");
 #else
-    return new paddle::platform::CUDAPinnedDeviceContext(place);
+                  return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
-  });;
+                });;
 // clang-format on
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());

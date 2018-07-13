@@ -50,6 +50,7 @@ class TestParallelExecutorBase(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         startup.random_seed = 1  # Fix random seed
+        main.random_seed = 1
         with fluid.program_guard(main, startup):
             if seed is not None:
                 startup.random_seed = seed
@@ -71,7 +72,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy = fluid.BuildStrategy()
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-            build_strategy.debug_graphviz_path = "./graph.dot"
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(

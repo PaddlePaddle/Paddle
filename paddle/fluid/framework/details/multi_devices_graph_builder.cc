@@ -427,7 +427,7 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(const OpDesc &op) const {
     return -1;
   }
   auto param_grad = boost::get<std::vector<std::string>>(
-      op.GetNullableAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+      op.GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
   PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
   int dev_id = GetVarDeviceID(param_grad[1]);

@@ -15,10 +15,7 @@
 import framework
 from . import core
 
-__all__ = [
-    'append_regularization_ops', 'L1Decay', 'L2Decay', 'L1DecayRegularizer',
-    'L2DecayRegularizer'
-]
+__all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
 def append_regularization_ops(parameters_and_grads, regularization=None):
