@@ -1,42 +1,45 @@
 language: cpp
 cache:
   directories:
-    - $HOME/.ccache
-    - $HOME/.cache/pip
-    - $TRAVIS_BUILD_DIR/build/third_party
-    - $TRAVIS_BUILD_DIR/build_android/third_party
+  - "$HOME/.ccache"
+  - "$HOME/.cache/pip"
+  - "$TRAVIS_BUILD_DIR/build/third_party"
+  - "$TRAVIS_BUILD_DIR/build_android/third_party"
 sudo: required
 dist: trusty
 services:
-  - docker
+- docker
 os:
-  - linux
+- linux
 env:
+  matrix:
   - JOB=doc
   - JOB=check_style
   - JOB=build_android
   - JOB=assert_api_not_changed
+  global:
+    secure: GBgLJ+GqT5HX5HB8fuxFgTPqC5JIiVHKfM9TgBNAxIQ8V/VsAW6+KTq+Y/NuzOjdXmT9FytMmaEFMn/tMgODkpeK0nrwl7gfifd2WumomoGl2VjuY5DeSSnEOj2HLbj6iXtQyAs/JyYvHVj14ihtBeyWjCMJr+X85XiYGjuLVC1GmTWbGInaMN88stxwV906QDuBMYeN2T68pFLsWJ6aS1OQsjfbKaSB1MihDYzGHGBwZrksftCILKnqitEJ1wGULlFubrNU6jlt8/Am1CE31uxPPEJkjxFxLYPqriPZ0UZrCzMB2vR9pmYx25zpJM81jyfDq6KlBEl0UzWhryT3vxcCm1m6PmlYYBAjeOvrT8HZEQThdEbFjBjoLC2SIvzeTJsRKAXJwBmOgwicCQQ43uznabqku05ivnBw8VK8rXnpnkfFIE8g58mFZikkQb5mDztRBtJLDuf2/GaoXX5dYxU65T3UksiVHDTKIrSIQrR9Q/9D+d1ePMe9oaABadBAeCaG1Ayo+xQT8KXPj0QOhBglMhD2tfxbs+J79jDOCOXbpX5UKhcbjcWXIlaBxrx2LXx0tQNx4RdILYQLEsKD9zTeE7NjKQeYQhU5UX8V/seIETUsSgTW0Mv5KBhlUg62BG7SOVfugflq69g0wQu8s7daUuEQSbRlyUaKMzrSI+E=
 addons:
   ssh_known_hosts: 13.229.163.131
 before_install:
-  # For pylint dockstring checker
-  - sudo pip install pylint pytest astroid isort
-  - |
-    function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
+- sudo pip install pylint pytest astroid isort
+- 'function timeout() { perl -e ''alarm shift; exec @ARGV'' "$@"; }
+
+'
 script:
-  - |
-    # 43min timeout
-    paddle/scripts/paddle_docker_build.sh ${JOB}
-    if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
-  - |
-    if [[ "$JOB" != "doc" ]]; then exit 0; fi;
-    # For document only
-    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
-    if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
-    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/master/scripts/deploy/deploy_docs.sh
-    export DOCS_DIR=`pwd`
-    cd ..
-    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH $DOCS_DIR $DOCS_DIR/build/doc/
+- |
+  # 43min timeout
+  paddle/scripts/paddle_docker_build.sh ${JOB}
+  if [ $? -eq 0 ] || [ $? -eq 142 ]; then true; else exit 1; fi;
+- |
+  if [[ "$JOB" != "doc" ]]; then exit 0; fi;
+  # For document only
+  if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+  if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
+  export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/master/scripts/deploy/deploy_docs.sh
+  export DOCS_DIR=`pwd`
+  cd ..
+  curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH $DOCS_DIR $DOCS_DIR/build/doc/
 notifications:
   email:
     on_success: change
