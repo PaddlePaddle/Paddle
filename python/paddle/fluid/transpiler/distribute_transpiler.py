@@ -109,6 +109,22 @@ def slice_variable(var_list, slice_count, min_block_size):
     return blocks
 
 
+class DistributeTranspilerConfig(object):
+    """
+    slice_var_up (bool): Do Tensor slice for pservers, default is True.
+    split_method (PSDispatcher): RoundRobin or HashName can be used
+        try to choose the best method to balance loads for pservers.
+    min_block_size (int): Minimum splitted element number in block.
+        According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
+        We can use bandwidth effiently when data size is larger than 2MB.If you 
+        want to change it, please be sure you see the slice_variable function.
+    """
+
+    slice_var_up = True
+    split_method = RoundRobin
+    min_block_size = 8192
+
+
 class DistributeTranspiler(object):
     """
     **DistributeTranspiler**
@@ -145,15 +161,20 @@ class DistributeTranspiler(object):
                 trainer_program = t.get_trainer_program()
     """
 
+    def __init__(self, config=None):
+        if config is not None:
+            assert (config.split_method.__bases__[0] == PSDispatcher)
+            assert (config.min_block_size >= 8192)
+            self.config = config
+        else:
+            self.config = DistributeTranspilerConfig()
+
     def transpile(self,
                   trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  slice_var_up=True,
-                  split_method=RoundRobin,
-                  sync_mode=True,
-                  min_block_size=8192):
+                  sync_mode=True):
         """
         Run the transpiler.
 
@@ -165,16 +186,8 @@ class DistributeTranspiler(object):
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int): number of trainers in the distributed job.
-            slice_var_up (bool): Do Tensor slice for pservers, default is True.
-            split_method (PSDispatcher): RoundRobin or HashName can be used
-                try to choose the best method to balance loads for pservers.
             sync_mode (bool): Do sync training or not, default is True.
-            min_block_size (int): Minimum splitted element number in block.
-                According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-                We can use bandwidth effiently when data size is larger than 2MB.If you 
-                want to change it, please be sure you see the slice_variable function.
         """
-        assert (split_method.__bases__[0] == PSDispatcher)
         if program is None:
             program = default_main_program()
         self.origin_program = program
@@ -182,15 +195,14 @@ class DistributeTranspiler(object):
         self.sync_mode = sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
-        self.min_block_size = min_block_size
         self.pserver_endpoints = pserver_endpoints
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
-        ps_dispatcher = split_method(self.pserver_endpoints)
+        ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
         # split and create vars, then put splited vars in dicts for later use.
-        self._init_splited_vars(slice_var_up)
+        self._init_splited_vars()
 
         # step 3.1: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
@@ -202,13 +214,13 @@ class DistributeTranspiler(object):
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
         grad_var_mapping_items = self.grad_var_mapping.items()
-        if not slice_var_up:
+        if not self.config.slice_var_up:
             np.random.shuffle(grad_var_mapping_items)
 
         for orig_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
 
-            if not slice_var_up:
+            if not self.config.slice_var_up:
                 assert (len(splited_vars) == 1)
 
             if len(splited_vars) == 1:
@@ -636,7 +648,7 @@ class DistributeTranspiler(object):
                 ]
         return param_list, grad_list
 
-    def _init_splited_vars(self, slice_var_up):
+    def _init_splited_vars(self):
         # update these mappings for further transpile:
         # 1. param_var_mapping: param var name -> [splited params vars]
         # 2. grad_var_mapping: grad var name -> [splited grads vars]
@@ -660,20 +672,22 @@ class DistributeTranspiler(object):
         param_list, grad_list = self._update_dist_lookup_table_vars(
             param_list, grad_list, self.params_grads)
 
-        if slice_var_up:
+        if self.config.slice_var_up:
             # when we slice var up into blocks, we will slice the var according to
             # pserver services' count. A pserver may have two or more listening ports.
             grad_blocks = slice_variable(grad_list,
                                          len(self.pserver_endpoints),
-                                         self.min_block_size)
+                                         self.config.min_block_size)
             param_blocks = slice_variable(param_list,
                                           len(self.pserver_endpoints),
-                                          self.min_block_size)
+                                          self.config.min_block_size)
         else:
             # when we do NOT slice var up into blocks, we will always slice params
             # grads into one block.
-            grad_blocks = slice_variable(grad_list, 1, self.min_block_size)
-            param_blocks = slice_variable(param_list, 1, self.min_block_size)
+            grad_blocks = slice_variable(grad_list, 1,
+                                         self.config.min_block_size)
+            param_blocks = slice_variable(param_list, 1,
+                                          self.config.min_block_size)
         assert (len(grad_blocks) == len(param_blocks))
 
         # origin_varname -> [splited_var]

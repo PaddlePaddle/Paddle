@@ -27,7 +27,6 @@ class TranspilerTest(unittest.TestCase):
         self.pserver_eps = "127.0.0.1:6174,127.0.0.1:6175"
         self.pserver1_ep = "127.0.0.1:6174"
         self.pserver2_ep = "127.0.0.1:6175"
-        self.slice_var_up = True
         self.sync_mode = True
         self.transpiler = None
 
@@ -52,28 +51,26 @@ class TranspilerTest(unittest.TestCase):
         self.origin_prog = main.clone()
         return main
 
-    def get_trainer(self, min_block_size=8192):
-        t = self._transpiler_instance(min_block_size)
+    def get_trainer(self, config=None):
+        t = self._transpiler_instance(config)
         return t.get_trainer_program()
 
-    def get_pserver(self, ep, min_block_size=8192):
-        t = self._transpiler_instance(min_block_size)
+    def get_pserver(self, ep, config=None):
+        t = self._transpiler_instance(config)
         pserver = t.get_pserver_program(ep)
         startup = t.get_startup_program(ep, pserver)
         return pserver, startup
 
-    def _transpiler_instance(self, min_block_size=8192):
+    def _transpiler_instance(self, config=None):
         if not self.transpiler:
             main = self.get_main_program()
-            self.transpiler = fluid.DistributeTranspiler()
+            self.transpiler = fluid.DistributeTranspiler(config=config)
             self.transpiler.transpile(
                 self.trainer_id,
                 program=main,
                 pservers=self.pserver_eps,
-                trainers=self.trainers,
-                slice_var_up=self.slice_var_up,
-                sync_mode=self.sync_mode,
-                min_block_size=min_block_size)
+                trainers=self.trainers)
+
         return self.transpiler
 
 
@@ -127,11 +124,13 @@ class TestBasicModel(TranspilerTest):
 
 class TestBasicModelWithLargeBlockSize(TranspilerTest):
     def test_transpiler(self):
-        min_block_size = 1048576
-        pserver, startup = self.get_pserver(self.pserver1_ep, min_block_size)
-        pserver2, startup2 = self.get_pserver(self.pserver2_ep, min_block_size)
+        config = fluid.DistributeTranspilerConfig()
+        config.min_block_size = 1048576
 
-        trainer = self.get_trainer(min_block_size)
+        pserver, startup = self.get_pserver(self.pserver1_ep, config)
+        pserver2, startup2 = self.get_pserver(self.pserver2_ep, config)
+
+        trainer = self.get_trainer(config)
 
         self.assertEqual([op.type for op in trainer.global_block().ops], [
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
@@ -177,11 +176,13 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
 class TestNoSliceVar(TranspilerTest):
     def setUp(self):
         super(TestNoSliceVar, self).setUp()
-        self.slice_var_up = False
 
     def test_transpiler(self):
-        _, startup = self.get_pserver(self.pserver1_ep)
-        _, startup2 = self.get_pserver(self.pserver2_ep)
+        config = fluid.DistributeTranspilerConfig()
+        config.slice_var_up = False
+
+        _, startup = self.get_pserver(self.pserver1_ep, config)
+        _, startup2 = self.get_pserver(self.pserver2_ep, config)
 
         if startup.global_block().vars.has_key("fc_w"):
             fc_w_var = startup.global_block().vars["fc_w"]
