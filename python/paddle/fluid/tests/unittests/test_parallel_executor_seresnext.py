@@ -166,7 +166,18 @@ class TestResnet(TestParallelExecutorBase):
         import functools
 
         batch_size = 2
-        self.check_network_convergence(
+
+        single_first_loss, single_last_loss = self.check_network_convergence(
+            functools.partial(
+                SE_ResNeXt50Small, batch_size=batch_size),
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            use_reduce=use_reduce,
+            optimizer=_optimizer,
+            use_parallel_executor=False)
+
+        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt50Small, batch_size=batch_size),
             iter=iter,
@@ -175,12 +186,17 @@ class TestResnet(TestParallelExecutorBase):
             use_reduce=use_reduce,
             optimizer=_optimizer)
 
-    def test_resnet_with_learning_rate_decay(self):
+        for p_f in parallel_first_loss:
+            self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
+        for p_l in parallel_last_loss:
+            self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
+
+    def test_seresnext_with_learning_rate_decay(self):
         self.check_resnet_convergence_with_learning_rate_decay(True, False)
         self.check_resnet_convergence_with_learning_rate_decay(
             False, False, iter=5)
 
-    def test_resnet_with_new_strategy_with_learning_rate_decay(self):
+    def test_seresnext_with_new_strategy_with_learning_rate_decay(self):
         self.check_resnet_convergence_with_learning_rate_decay(True, True)
         self.check_resnet_convergence_with_learning_rate_decay(
             False, True, iter=5)
