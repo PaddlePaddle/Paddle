@@ -60,7 +60,9 @@ GRPCClient::~GRPCClient() {
     for (auto& it : channels_) {
       it.second.reset();
     }
+    channels_.clear();
   }
+
   client_thread_->join();
 }
 

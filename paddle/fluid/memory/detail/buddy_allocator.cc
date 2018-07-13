@@ -19,8 +19,9 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
-BuddyAllocator::BuddyAllocator(SystemAllocator* system_allocator,
-                               size_t min_chunk_size, size_t max_chunk_size)
+BuddyAllocator::BuddyAllocator(
+    std::unique_ptr<SystemAllocator> system_allocator, size_t min_chunk_size,
+    size_t max_chunk_size)
     : min_chunk_size_(min_chunk_size),
       max_chunk_size_(max_chunk_size),
       cache_(system_allocator->UseGpu()),

@@ -44,14 +44,31 @@ endfunction(inference_api_test)
 cc_library(paddle_inference_api
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc
     DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+if(NOT APPLE)
+  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference_api.sym")
+  set_target_properties(paddle_inference_api PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+endif()
 
 # Here the shared library doesn't depend on other fluid libraries, or double free will occur.
 cc_library(paddle_inference_api_shared SHARED
     SRCS paddle_inference_api.cc paddle_inference_api_impl.cc)
+add_dependencies(paddle_inference_api_shared ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
 set_target_properties(paddle_inference_api_shared PROPERTIES OUTPUT_NAME paddle_inference_api)
+
 if(NOT APPLE)
-  set(LINK_FLAGS "-fPIC -fvisibility=hidden")
+  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_inference_api.map")
   set_target_properties(paddle_inference_api_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
+  FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
+    "execute_process(COMMAND bash -c \"${CMAKE_CURRENT_SOURCE_DIR}/check_symbol.sh"
+    " ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_inference_api.so\" RESULT_VARIABLE symbol_res)\n"
+    "if(NOT \"\${symbol_res}\" STREQUAL \"0\")\n"
+    "  message(FATAL_ERROR \"Check symbol failed.\")\n"
+    "endif()\n")
+  add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol"
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
+    DEPENDS paddle_inference_api_shared)
+  add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
 endif()
 
 cc_test(test_paddle_inference_api

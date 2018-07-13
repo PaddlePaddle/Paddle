@@ -103,6 +103,11 @@ if(ANDROID OR IOS)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
+if (APPLE OR WIN32)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL for building on mac and windows" FORCE)
+endif()
+
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
@@ -141,6 +146,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -225,6 +231,10 @@ endif(WITH_AMD_GPU)
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
+endif()
+
+if(WITH_LIBXSMM)
+    list(APPEND EXTERNAL_LIBS ${LIBXSMM_LIBS})
 endif()
 
 if(WITH_MKLDNN)

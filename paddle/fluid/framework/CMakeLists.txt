@@ -27,6 +27,7 @@ cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
 cc_library(reader SRCS reader.cc DEPS lod_tensor ddim)
+cc_test(reader_test SRCS reader_test.cc DEPS reader)
 
 cc_test(variable_test SRCS variable_test.cc)
 

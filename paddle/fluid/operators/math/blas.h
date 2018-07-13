@@ -21,6 +21,10 @@
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
+#ifdef PADDLE_WITH_LIBXSMM
+#include <libxsmm.h>
+#endif
+
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
 #endif
