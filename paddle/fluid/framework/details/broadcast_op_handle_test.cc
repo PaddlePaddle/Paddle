@@ -96,7 +96,7 @@ struct TestBroadcastOpHandle {
     }
     param_scopes_[input_scope_idx]->Var("input");
 
-    std::unique_ptr<ir::Node> n(new ir::Node());
+    std::unique_ptr<ir::Node> n(new ir::Node("node0"));
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
       op_handle_.reset(new BroadcastOpHandle(n.get(), local_scopes_, gpu_list_,
@@ -114,7 +114,7 @@ struct TestBroadcastOpHandle {
 #endif
     }
 
-    std::unique_ptr<ir::Node> v(new ir::Node());
+    std::unique_ptr<ir::Node> v(new ir::Node("node1"));
     auto* in_var_handle = new VarHandle(v.get(), 1, input_scope_idx, "input",
                                         gpu_list_[input_scope_idx]);
     vars_.emplace_back(in_var_handle);
@@ -122,7 +122,7 @@ struct TestBroadcastOpHandle {
 
     // add dummy var
 
-    std::unique_ptr<ir::Node> v2(new ir::Node());
+    std::unique_ptr<ir::Node> v2(new ir::Node("node2"));
     vars_.emplace_back(new DummyVarHandle(v2.get()));
     DummyVarHandle* dummy_var_handle =
         static_cast<DummyVarHandle*>(vars_.back().get());
@@ -133,7 +133,7 @@ struct TestBroadcastOpHandle {
       if (!use_gpu_) {
         op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       }
-      std::unique_ptr<ir::Node> v3(new ir::Node());
+      std::unique_ptr<ir::Node> v3(new ir::Node("node3"));
       VarHandle* out_var_handle =
           new VarHandle(v3.get(), 2, j, "out", gpu_list_[j]);
       vars_.emplace_back(out_var_handle);
@@ -141,7 +141,7 @@ struct TestBroadcastOpHandle {
     }
 
     // add dummy var
-    std::unique_ptr<ir::Node> v4(new ir::Node());
+    std::unique_ptr<ir::Node> v4(new ir::Node("node4"));
     vars_.emplace_back(new DummyVarHandle(v4.get()));
     DummyVarHandle* out_dummy_var_handle =
         static_cast<DummyVarHandle*>(vars_.back().get());

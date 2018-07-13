@@ -32,51 +32,43 @@ namespace ir {
 
 class Node {
  public:
-  enum class Type { kNone = -1, kOperation, kVariable };
+  enum class Type { kNone, kOperation, kVariable };
+  explicit Node(const std::string& name)
+      : name_(name),
+        var_desc_(nullptr),
+        op_desc_(nullptr),
+        type_(Type::kNone) {}
 
-  Node() : type_(Type::kNone) {}
+  explicit Node(VarDesc* var_desc)
+      : name_(var_desc->Name()),
+        var_desc_(var_desc),
+        op_desc_(nullptr),
+        type_(Type::kVariable) {}
 
-  explicit Node(Type type) : type_(type) {}
-
-  virtual ~Node() {
-    for (auto& attr : attrs_) {
-      if (attr_dels_.find(attr.first) != attr_dels_.end()) {
-        attr_dels_[attr.first]();
-      }
-    }
-    attr_dels_.clear();
-    attrs_.clear();
-  }
+  explicit Node(OpDesc* op_desc)
+      : name_(op_desc->Type()),
+        var_desc_(nullptr),
+        op_desc_(op_desc),
+        type_(Type::kOperation) {}
 
   Type NodeType() const { return type_; }
 
-  template <typename AttrType>
-  void Set(const std::string& name, AttrType attr) {
-    attrs_[name] = attr;
+  std::string Name() const { return name_; }
+
+  VarDesc* Var() {
+    PADDLE_ENFORCE(type_ == Type::kVariable);
+    return var_desc_;
   }
-
-  template <typename AttrType>
-  void Set(const std::string& name, AttrType* attr,
-           std::function<void(void)> attr_del) {
-    attrs_[name] = attr;
-    attr_dels_[name] = attr_del;
+  OpDesc* Op() {
+    PADDLE_ENFORCE(type_ == Type::kOperation);
+    return op_desc_;
   }
-
-  VarDesc* Var() { return var_desc_; }
-  OpDesc* Op() { return op_desc_; }
-
-  explicit Node(VarDesc* var_desc)
-      : var_desc_(var_desc), op_desc_(nullptr), type_(Type::kVariable) {}
-
-  explicit Node(OpDesc* op_desc)
-      : var_desc_(nullptr), op_desc_(op_desc), type_(Type::kOperation) {}
 
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 
  protected:
-  std::map<std::string, boost::any> attrs_;
-  std::map<std::string, std::function<void(void)>> attr_dels_;
+  const std::string name_;
   VarDesc* var_desc_;
   OpDesc* op_desc_;
   Type type_;

@@ -173,7 +173,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
     auto &var_name = fetch_tensors[i];
     auto &vars = fetched_vars.at(var_name);
 
-    ir::Node *fetch_n = new ir::Node(ir::Node::Type::kOperation);
+    ir::Node *fetch_n = new ir::Node("fetch");
     auto *op = new FetchOpHandle(fetch_n, fetch_data, i, &local_scopes_);
     temp_nodes->emplace_back(fetch_n);
     fetch_ops->emplace_back(op);
@@ -186,7 +186,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
       op->AddInput(var);
     }
 
-    ir::Node *dummy_n = new ir::Node(ir::Node::Type::kVariable);
+    ir::Node *dummy_n = new ir::Node("fetch");
     auto *fetch_dummy = new DummyVarHandle(dummy_n);
     op->AddOutput(fetch_dummy);
     fetch_dependencies->emplace(fetch_dummy);

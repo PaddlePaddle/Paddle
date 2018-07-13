@@ -97,7 +97,7 @@ struct TestReduceOpHandle {
     }
     param_scopes_[out_scope_idx]->Var("out");
 
-    nodes.emplace_back(new ir::Node());
+    nodes.emplace_back(new ir::Node("node"));
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
       op_handle_.reset(new ReduceOpHandle(nodes.back().get(), local_scopes_,
@@ -121,7 +121,7 @@ struct TestReduceOpHandle {
       if (!use_gpu_) {
         op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       }
-      nodes.emplace_back(new ir::Node());
+      nodes.emplace_back(new ir::Node("node1"));
       auto *in_var_handle =
           new VarHandle(nodes.back().get(), 1, j, "input", gpu_list_[j]);
       in_var_handle->ClearGeneratedOp();
@@ -137,7 +137,7 @@ struct TestReduceOpHandle {
     op_handle_->AddInput(in_dummy_var_handle);
 
     // add output
-    nodes.emplace_back(new ir::Node());
+    nodes.emplace_back(new ir::Node("node2"));
     auto *out_var_handle = new VarHandle(nodes.back().get(), 2, out_scope_idx,
                                          "out", gpu_list_[out_scope_idx]);
     vars_.emplace_back(out_var_handle);
