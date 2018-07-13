@@ -19,10 +19,10 @@
 namespace paddle {
 namespace framework {
 namespace details {
-ComputationOpHandle::ComputationOpHandle(ir::Node *node, const OpDesc &op_desc,
-                                         Scope *scope, platform::Place place)
+ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
+                                         platform::Place place)
     : OpHandleBase(node),
-      op_(framework::OpRegistry::CreateOp(op_desc)),
+      op_(framework::OpRegistry::CreateOp(*node->Op())),
       scope_(scope),
       place_(place) {}
 

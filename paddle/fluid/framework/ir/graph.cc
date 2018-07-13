@@ -35,19 +35,15 @@ std::unique_ptr<Graph> ProgramToGraph(const ProgramDesc &program) {
       if (all_vars.count(each_var_name) != 0) {
         var = graph->CreateVarNode(all_vars.at(each_var_name));
       } else {
-        var = graph->CreateVarNode(each_var_name);
+        LOG(ERROR) << "input var not in all_var list: " << each_var_name;
+        var = graph->CreateEmptyNode(each_var_name);
       }
       node->inputs.push_back(var);
       var->outputs.push_back(node);
     }
 
     for (auto &each_var_name : op->OutputArgumentNames()) {
-      ir::Node *var = nullptr;
-      if (all_vars.count(each_var_name) != 0) {
-        var = graph->CreateVarNode(all_vars.at(each_var_name));
-      } else {
-        var = graph->CreateVarNode(each_var_name);
-      }
+      ir::Node *var = graph->CreateVarNode(all_vars.at(each_var_name));
       node->outputs.push_back(var);
       var->inputs.push_back(node);
     }
