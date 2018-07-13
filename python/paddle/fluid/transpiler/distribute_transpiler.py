@@ -373,14 +373,6 @@ class DistributeTranspiler(object):
         # Iterate through the ops, and if an op and the optimize ops
         # which located on current pserver are in one set, then
         # append it into the sub program.
-
-        global_ops = []
-        # HACK: optimization global ops only used to scale beta1 and beta2
-        # replace it with dependency engine.
-        for op in self.optimize_ops:
-            if self._is_post_optimize_op(op):
-                global_ops.append(op)
-
         def __append_optimize_op__(op, block, grad_to_block_id, merged_var,
                                    lr_ops):
             if self._is_optimizer_op(op):
@@ -449,20 +441,12 @@ class DistributeTranspiler(object):
                         grad_to_block_id, self.origin_program)
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
-                if ufind.is_connected(op, opt_op) and op not in global_ops:
+                if ufind.is_connected(op, opt_op):
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
         # dedup grad to ids list
         grad_to_block_id = list(set(grad_to_block_id))
-        # append global ops
-        if global_ops:
-            opt_state_block = pserver_program.create_block(
-                pserver_program.num_blocks - 1)
-            optimize_blocks.append(opt_state_block)
-            for glb_op in global_ops:
-                __append_optimize_op__(glb_op, opt_state_block,
-                                       grad_to_block_id, None, lr_ops)
 
         # process distributed lookup_table
         prefetch_var_name_to_block_id = []
@@ -1287,22 +1271,16 @@ class DistributeTranspiler(object):
         # If one op's input is another op's output or
         # one op's output is another op's input, we say
         # the two operator is connected.
-        def _append_inname_remove_beta(varname_list):
+        def _append_inname(varname_list):
             op_input_names = []
             for in_name in varname_list:
-                # HACK: remove beta1 and beta2 to avoid let all
-                # ops connected.
-                if in_name.startswith("beta2_pow_acc") or \
-                    in_name.startswith("beta1_pow_acc"):
-                    continue
-                else:
-                    op_input_names.append(in_name)
+                op_input_names.append(in_name)
             return op_input_names
 
-        op1_input_names = _append_inname_remove_beta(op1.desc.input_arg_names())
+        op1_input_names = _append_inname(op1.desc.input_arg_names())
         op1_output_names = op1.desc.output_arg_names()
 
-        op2_input_names = _append_inname_remove_beta(op2.desc.input_arg_names())
+        op2_input_names = _append_inname(op2.desc.input_arg_names())
         op2_output_names = op2.desc.output_arg_names()
 
         if set(op1_output_names) & set(op2_input_names) or \
@@ -1425,7 +1403,7 @@ class DistributeTranspiler(object):
 
     def _get_optimize_pass(self):
         """
-        Get optimizer operators, paramters and gradients from origin_program
+        Get optimizer operators, parameters and gradients from origin_program
         Returns:
             opt_ops (list): optimize operators.
             params_grads (dict): paramter->gradient.
@@ -1448,19 +1426,6 @@ class DistributeTranspiler(object):
                             origin_var_dict[param_name],
                             origin_var_dict[input_name]
                         ])
-            elif self._is_post_optimize_op(op):
-                opt_ops.append(op)
             else:
                 pass
         return opt_ops, params_grads
-
-    def _is_post_optimize_op(self, op):
-        """
-        A hack function to determinate whether the input operator
-        is connected to optimize operator.
-        """
-        post_optimize = core.op_proto_and_checker_maker.OpRole.PostOptimize
-        if RPC_OP_ROLE_ATTR_NAME in op.attrs and \
-            int(op.attrs[RPC_OP_ROLE_ATTR_NAME]) == int(post_optimize):
-            return True
-        return False
