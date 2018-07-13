@@ -326,7 +326,7 @@ function assert_api_not_changed() {
     deactivate
 
     git diff --name-only HEAD^ | grep "paddle/fluid/API.spec"
-    if [ $? == 0 && "${PR_ID}" != "" ]; then
+    if [ $? == 0 ] && [ "${PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/${PR_ID}/reviews | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2`
         if [ "${APPROVALS}" == "FALSE" ]; then
