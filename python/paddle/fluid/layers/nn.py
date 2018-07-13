@@ -5296,7 +5296,7 @@ def rank_loss(label, left, right, name=None):
     P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
     the input pair.
     
-    The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
+    The RankLoss layer takes three inputs: Left (o_i), Right (o_j) and Label
     (P_{i,j}), which represent the output score of RankNet for the two docs and
     the label respectively, and yields the rank loss C_{i,j} using the following
     equation:
@@ -5307,7 +5307,7 @@ def rank_loss(label, left, right, name=None):
       \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
     $$
     
-    The operator can take batch inputs with size batch_size (batch_size >= 1).
+    This layer can take batch inputs with size batch_size (batch_size >= 1).
     
     Args:
         label (Variable): The label indicating A ranked higher than B or not.
