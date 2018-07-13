@@ -14,10 +14,6 @@ cc_library(paddle_fluid_api
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
-if(WITH_CONTRIB)
-  set(fluid_modules "${fluid_modules}" paddle_inference_api)
-endif()
-
 # Create static library
 cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api)
 if(NOT APPLE)
