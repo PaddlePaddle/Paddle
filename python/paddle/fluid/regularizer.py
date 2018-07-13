@@ -44,12 +44,11 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
-        with param.block.program.optimized_guard(param):
-            # If no gradient then we don't need to do anything
-            if grad is None:
-                params_and_grads.append((param, grad))
-                continue
-
+        # If no gradient then we don't need to do anything
+        if grad is None:
+            params_and_grads.append((param, grad))
+            continue
+        with param.block.program.optimized_guard([param, grad]):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
