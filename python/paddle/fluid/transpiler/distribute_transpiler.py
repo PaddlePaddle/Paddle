@@ -1391,13 +1391,11 @@ class DistributeTranspiler(object):
         # optimize
         op_maker = core.op_proto_and_checker_maker
         optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        pre_optimize_role = core.op_proto_and_checker_maker.OpRole.PreOptimize
-        post_optimize_role = core.op_proto_and_checker_maker.OpRole.PostOptimize
+        lr_decay_role = core.op_proto_and_checker_maker.OpRole.LRDecay
         if op_maker.kOpRoleAttrName() in op.attrs:
             role = int(op.attrs[op_maker.kOpRoleAttrName()])
             if role == int(optimize_role) or \
-                role == int(pre_optimize_role) or \
-                role == int(post_optimize_role):
+                role == int(lr_decay_role):
                 return True
         return False
 

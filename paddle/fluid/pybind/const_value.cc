@@ -32,8 +32,7 @@ void BindConstValue(pybind11::module* m) {
       .value("Forward", framework::OpRole::kForward)
       .value("Backward", framework::OpRole::kBackward)
       .value("Optimize", framework::OpRole::kOptimize)
-      .value("PostOptimize", framework::OpRole::kPostOptimize)
-      .value("PreOptimize", framework::OpRole::kPreOptimize)
+      .value("LRDecay", framework::OpRole::kLRDecay)
       .value("Loss", framework::OpRole::kLoss)
       .value("RPC", framework::OpRole::kRPC);
 
