@@ -1319,7 +1319,7 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimized_guard(self, var):
+    def optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
@@ -1327,17 +1327,22 @@ class Program(object):
         Notes: This is a very low level API. Users should not use it directly.
 
         Args:
-            var(Variable|str): The variable (name) to be optimized.
+            param_and_grads(list): The variables (names) to be optimized.
 
         Examples:
 
             >>> p, g = backward(...)
-            >>> with program.optimized_guard(p):
+            >>> with program.optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
+        assert len(
+            param_and_grads) == 2, "The parameter should be [parm, grad]."
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
-        self._op_role_var = [var.name if isinstance(var, Variable) else var]
+        self._op_role_var = [
+            var.name if isinstance(var, Variable) else var
+            for var in param_and_grads
+        ]
         yield
         self._op_role_var = []
         self._current_role = OpRole.Forward
