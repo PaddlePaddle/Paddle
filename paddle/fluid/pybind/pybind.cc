@@ -14,6 +14,7 @@ limitations under the License. */
 #include <Python.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
 #include <unordered_map>
@@ -310,7 +311,8 @@ All parameter, weight, gradient are variables in Paddle.
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
-  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
+  py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
+      m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
@@ -325,7 +327,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,
            const std::vector<std::vector<int64_t>> &shapes)
-            -> LoDTensorBlockingQueue * {
+            -> std::shared_ptr<LoDTensorBlockingQueue> {
               std::vector<DDim> dims(shapes.size());
               std::transform(shapes.begin(), shapes.end(), dims.begin(),
                              [](const std::vector<int64_t> &shape) {
@@ -333,9 +335,9 @@ All parameter, weight, gradient are variables in Paddle.
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
               holder->InitOnce(capacity, dims);
-              return holder->GetQueue().get();
+              return holder->GetQueue();
             },
-        py::return_value_policy::reference);
+        py::return_value_policy::copy);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -543,6 +545,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__init__",
+           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
            [](LoDTensorArray &self, size_t i) { return &self.at(i); },
            py::return_value_policy::reference)
