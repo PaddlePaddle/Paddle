@@ -95,7 +95,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToGPUs(bcast_vars);
+    BCastParamsToDevs(bcast_vars);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -131,7 +131,7 @@ ParallelExecutor::ParallelExecutor(
       member_->places_, std::move(member_->executor_)));
 }
 
-void ParallelExecutor::BCastParamsToGPUs(
+void ParallelExecutor::BCastParamsToDevs(
     const std::unordered_set<std::string> &vars) const {
   // the the initializing bcast, all vars would be bcast from device(0),
   // otherwise
@@ -202,7 +202,11 @@ void ParallelExecutor::BCastParamsToGPUs(
 #endif
     } else {
       platform::CPUPlace cpu;
-      for (size_t i = 1; i < member_->places_.size(); ++i) {
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        if ((initializing && i == 0) ||
+            (!initializing && static_cast<int>(i) == var_dev_id))
+          continue;
+
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
         t->Resize(dims);
