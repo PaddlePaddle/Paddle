@@ -23,13 +23,13 @@ namespace reader {
 
 // 'Double buffer' means we shall maintain two batches of input data at the same
 // time. So the kCacheSize shoul be at least 2.
-static constexpr size_t kCacheSize = 5;
+static constexpr size_t kCacheSize = 3;
 // There will be two bacthes out of the channel during training:
 // 1. the one waiting to be sent to the channel
 // 2. the one just be received from the channel, which is also being used by
 // subsequent operators.
 // So the channel size should be kChacheSize - 2
-static constexpr size_t kChannelSize = 3;  // kCacheSize - 2
+static constexpr size_t kChannelSize = 1;  // kCacheSize - 2
 
 class DoubleBufferReader : public framework::DecoratedReader {
  public:
@@ -50,12 +50,21 @@ class DoubleBufferReader : public framework::DecoratedReader {
     StartPrefetcher();
   }
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override;
-  void ReInit() override;
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
   ~DoubleBufferReader() { EndPrefetcher(); }
 
  private:
+  void ShutdownImpl() override {
+    EndPrefetcher();
+    reader_->Shutdown();
+  }
+
+  void StartImpl() override {
+    reader_->Start();
+    StartPrefetcher();
+  }
+
   void StartPrefetcher() {
     channel_ = new reader::BlockingQueue<size_t>(kChannelSize);
     prefetcher_ = std::thread([this] { PrefetchThreadFunc(); });
@@ -109,7 +118,8 @@ class CreateDoubleBufferReaderOp : public framework::OperatorBase {
       place = platform::CUDAPlace(static_cast<int>(num));
     }
 
-    out->Reset(new DoubleBufferReader(underlying_reader.Get(), place));
+    out->Reset(framework::MakeDecoratedReader<DoubleBufferReader>(
+        underlying_reader, place));
   }
 };
 
@@ -136,7 +146,7 @@ class CreateDoubleBufferReaderOpMaker : public DecoratedReaderMakerBase {
   }
 };
 
-void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
+void DoubleBufferReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
   size_t cached_tensor_id;
   if (channel_->Receive(&cached_tensor_id)) {
     if (platform::is_gpu_place(place_)) {
@@ -148,12 +158,6 @@ void DoubleBufferReader::ReadNext(std::vector<framework::LoDTensor>* out) {
   } else {
     out->clear();
   }
-}
-
-void DoubleBufferReader::ReInit() {
-  reader_->ReInit();
-  EndPrefetcher();
-  StartPrefetcher();
 }
 
 void DoubleBufferReader::PrefetchThreadFunc() {

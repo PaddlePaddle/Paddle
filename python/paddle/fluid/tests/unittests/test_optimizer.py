@@ -97,7 +97,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
-        opts = momentum_optimizer.create_optimization_pass(
+        opts = momentum_optimizer._create_optimization_pass(
             params_grads, mul_out, init_program)
         self.assertEqual(len(opts), 3)
         sgd_op = opts[-1]
@@ -151,7 +151,7 @@ class TestMomentumOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(momentum_optimizer.get_accumulators()), 0)
-        opts = momentum_optimizer.create_optimization_pass(
+        opts = momentum_optimizer._create_optimization_pass(
             params_grads, mul_out, init_program)
         self.assertEqual(len(opts), 3)
         sgd_op = opts[-1]
@@ -214,8 +214,8 @@ class TestAdagradOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adagrad_optimizer.get_accumulators()), 0)
-        opts = adagrad_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                          init_program)
+        opts = adagrad_optimizer._create_optimization_pass(
+            params_grads, mul_out, init_program)
         self.assertEqual(len(opts), 3)
         self.assertEqual([op.type for op in opts],
                          ["fill_constant", "elementwise_mul", "adagrad"])
@@ -278,8 +278,8 @@ class TestAdamOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adam_optimizer.get_accumulators()), 0)
-        opts = adam_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                       init_program)
+        opts = adam_optimizer._create_optimization_pass(params_grads, mul_out,
+                                                        init_program)
         self.assertEqual(len(opts), 5)
         self.assertEqual(
             [op.type for op in opts],
@@ -287,7 +287,7 @@ class TestAdamOptimizer(unittest.TestCase):
 
         # Check accumulators
         accumulators = adam_optimizer.get_accumulators()
-        self.assertEqual(len(accumulators), 2)
+        self.assertEqual(len(accumulators), 4)
         self.assertTrue(adam_optimizer.get_moment1_str() in accumulators)
         self.assertTrue(adam_optimizer.get_moment2_str() in accumulators)
         moment1_acc = accumulators[adam_optimizer.get_moment1_str()]
@@ -345,8 +345,8 @@ class TestAdamaxOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(adamax_optimizer.get_accumulators()), 0)
-        opts = adamax_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                         init_program)
+        opts = adamax_optimizer._create_optimization_pass(params_grads, mul_out,
+                                                          init_program)
         self.assertEqual(len(opts), 4)
         self.assertEqual(
             [op.type for op in opts],
@@ -354,7 +354,7 @@ class TestAdamaxOptimizer(unittest.TestCase):
 
         # Check accumulators
         accumulators = adamax_optimizer.get_accumulators()
-        self.assertEqual(len(accumulators), 2)
+        self.assertEqual(len(accumulators), 3)
         self.assertTrue(adamax_optimizer.get_moment_str() in accumulators)
         self.assertTrue(adamax_optimizer.get_inf_norm_str() in accumulators)
         moment_acc = accumulators[adamax_optimizer.get_moment_str()]
@@ -409,7 +409,7 @@ class TestDecayedAdagradOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(decayed_adagrad_optimizer.get_accumulators()), 0)
-        opts = decayed_adagrad_optimizer.create_optimization_pass(
+        opts = decayed_adagrad_optimizer._create_optimization_pass(
             params_grads, mul_out, init_program)
         self.assertEqual(len(opts), 3)
         self.assertEqual(
@@ -475,8 +475,8 @@ class TestFtrlOptimizer(unittest.TestCase):
         params_grads = append_backward(mean_out)
         self.assertEqual(len(params_grads), 1)
         self.assertEqual(len(ftrl_optimizer.get_accumulators()), 0)
-        opts = ftrl_optimizer.create_optimization_pass(params_grads, mul_out,
-                                                       init_program)
+        opts = ftrl_optimizer._create_optimization_pass(params_grads, mul_out,
+                                                        init_program)
         self.assertEqual(len(opts), 3)
         self.assertEqual([op.type for op in opts],
                          ["fill_constant", "elementwise_mul", "ftrl"])

@@ -14,10 +14,11 @@
 
 import paddle
 import paddle.fluid.layers as layers
-from paddle.fluid.framework import Program, program_guard, default_main_program, default_startup_program
+from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import MomentumOptimizer
 import paddle.fluid.core as core
+import paddle.fluid as fluid
 import unittest
 import numpy as np
 
@@ -31,14 +32,13 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             label = layers.data(name='y', shape=[1], dtype='int64')
 
-            limit = layers.fill_constant_batch_size_like(
-                input=label, dtype='int64', shape=[1], value=5.0)
+            limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
             cond = layers.less_than(x=label, y=limit)
             true_image, false_image = layers.split_lod_tensor(
                 input=image, mask=cond)
 
             true_out = layers.create_tensor(dtype='float32')
-            true_cond = layers.ConditionalBlock([true_image])
+            true_cond = layers.ConditionalBlock([cond])
 
             with true_cond.block():
                 hidden = layers.fc(input=true_image, size=100, act='tanh')
@@ -46,7 +46,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 layers.assign(input=prob, output=true_out)
 
             false_out = layers.create_tensor(dtype='float32')
-            false_cond = layers.ConditionalBlock([false_image])
+            false_cond = layers.ConditionalBlock([cond])
 
             with false_cond.block():
                 hidden = layers.fc(input=false_image, size=200, act='tanh')
@@ -64,7 +64,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 paddle.dataset.mnist.train(), buf_size=8192),
-            batch_size=200)
+            batch_size=10)
 
         place = core.CPUPlace()
         exe = Executor(place)
@@ -94,8 +94,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             label = layers.data(name='y', shape=[1], dtype='int64')
 
-            limit = layers.fill_constant_batch_size_like(
-                input=label, dtype='int64', shape=[1], value=5.0)
+            limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
             cond = layers.less_than(x=label, y=limit)
             ie = layers.IfElse(cond)
 
@@ -125,7 +124,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
         place = core.CPUPlace()
         exe = Executor(place)
 
-        exe.run(kwargs['startup_program'])
+        exe.run(startup_prog)
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for data in train_reader():
@@ -133,7 +132,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 y_data = np.array(map(lambda x: x[1], data)).astype("int64")
                 y_data = y_data.reshape((y_data.shape[0], 1))
 
-                outs = exe.run(kwargs['main_program'],
+                outs = exe.run(prog,
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])
@@ -143,6 +142,67 @@ class TestMNISTIfElseOp(unittest.TestCase):
         self.assertFalse(True)
 
 
+class TestIfElse(unittest.TestCase):
+    def set_test_case(self):
+        # condiction is: self.data < self.cond_value
+        self.cond_value = 0.5
+        self.data = np.random.rand(25, 1).astype(np.float32)
+
+    def compare_ifelse_op_and_numpy(self, place):
+        self.set_test_case()
+
+        prog = Program()
+        startup_prog = Program()
+        with program_guard(prog, startup_prog):
+            src = layers.data(name='data', shape=[1], dtype='float32')
+            cond = layers.fill_constant(
+                [1], dtype='float32', value=self.cond_value)
+            ifcond = layers.less_than(x=src, y=cond)
+            ie = layers.IfElse(ifcond)
+            with ie.true_block():
+                true_target = ie.input(src)
+                ie.output(true_target)
+
+            with ie.false_block():
+                false_target = ie.input(src)
+                ie.output(false_target)
+            if_out = ie()
+            out = layers.reduce_sum(if_out)
+
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            fetch_list = [out]
+            o1, = exe.run(fluid.default_main_program(),
+                          feed={'data': self.data},
+                          fetch_list=[out])
+            o2 = np.sum(self.data)
+            self.assertTrue(
+                np.allclose(
+                    o1, o2, atol=1e-8),
+                "IfElse result : " + str(o1) + "\n Numpy result :" + str(o2))
+
+    def test_cpu(self):
+        self.compare_ifelse_op_and_numpy(fluid.CPUPlace())
+
+    def test_cuda(self):
+        if not core.is_compiled_with_cuda():
+            return
+        self.compare_ifelse_op_and_numpy(fluid.CUDAPlace(0))
+
+
+class TestIfElseTrueBranch(TestIfElse):
+    def set_test_case(self):
+        # condiction is: self.data < self.cond_value
+        self.cond_value = 10.
+        self.data = np.random.rand(25, 1).astype(np.float32)
+
+
+class TestIfElseFalseBranch(TestIfElse):
+    def set_test_case(self):
+        # condiction is: self.data < self.cond_value
+        self.cond_value = -10.
+        self.data = np.random.rand(25, 1).astype(np.float32)
+
+
 if __name__ == '__main__':
-    # temp disable if else unittest since it could be buggy.
-    exit(0)
+    unittest.main()

@@ -14,6 +14,7 @@ limitations under the License. */
 #include <Python.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
 #include <unordered_map>
@@ -63,6 +64,14 @@ bool IsCompiledWithCUDA() {
   return false;
 #else
   return true;
+#endif
+}
+
+bool IsCompiledWithDIST() {
+#ifdef PADDLE_WITH_DIST
+  return true;
+#else
+  return false;
 #endif
 }
 
@@ -296,13 +305,14 @@ All parameter, weight, gradient are variables in Paddle.
            py::return_value_policy::reference);
 
   py::class_<framework::ReaderHolder>(m, "Reader", "")
-      .def("reset", &framework::ReaderHolder::ReInit);
+      .def("reset", &framework::ReaderHolder::ResetAll);
 
   using LoDTensorBlockingQueue =
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
-  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
+  py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
+      m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
@@ -317,7 +327,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,
            const std::vector<std::vector<int64_t>> &shapes)
-            -> LoDTensorBlockingQueue * {
+            -> std::shared_ptr<LoDTensorBlockingQueue> {
               std::vector<DDim> dims(shapes.size());
               std::transform(shapes.begin(), shapes.end(), dims.begin(),
                              [](const std::vector<int64_t> &shape) {
@@ -325,9 +335,9 @@ All parameter, weight, gradient are variables in Paddle.
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
               holder->InitOnce(capacity, dims);
-              return holder->GetQueue().get();
+              return holder->GetQueue();
             },
-        py::return_value_policy::reference);
+        py::return_value_policy::copy);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -508,6 +518,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
@@ -534,6 +545,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__init__",
+           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
            [](LoDTensorArray &self, size_t i) { return &self.at(i); },
            py::return_value_policy::reference)
@@ -656,7 +669,7 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
+      .def("bcast_params", &ParallelExecutor::BCastParamsToDevs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*
