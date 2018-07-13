@@ -48,8 +48,7 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         if grad is None:
             params_and_grads.append((param, grad))
             continue
-
-        with grad.block.program.optimized_guard(grad):
+        with param.block.program.optimized_guard([param, grad]):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
