@@ -789,7 +789,8 @@ def prior_box(input,
               clip=False,
               steps=[0.0, 0.0],
               offset=0.5,
-              name=None):
+              name=None,
+              min_max_aspect_ratios_order=False):
     """
     **Prior Box Operator**
 
@@ -818,6 +819,11 @@ def prior_box(input,
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with 
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the final
+            detection results. Default: False.
 
     Returns:
         tuple: A tuple with two Variable (boxes, variances)
@@ -871,7 +877,8 @@ def prior_box(input,
         'clip': clip,
         'step_w': steps[0],
         'step_h': steps[1],
-        'offset': offset
+        'offset': offset,
+        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
     }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
         if not _is_list_or_tuple_(max_sizes):
@@ -911,7 +918,8 @@ def multi_box_head(inputs,
                    kernel_size=1,
                    pad=0,
                    stride=1,
-                   name=None):
+                   name=None,
+                   min_max_aspect_ratios_order=False):
     """
     Generate prior boxes for SSD(Single Shot MultiBox Detector)
     algorithm. The details of this algorithm, please refer the
@@ -954,6 +962,11 @@ def multi_box_head(inputs,
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
        name(str): Name of the prior box layer. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with 
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the fininal
+            detection results. Default: False.
 
     Returns:
         tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
@@ -1068,7 +1081,8 @@ def multi_box_head(inputs,
         step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
         box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
-                             variance, flip, clip, step, offset)
+                             variance, flip, clip, step, offset, None,
+                             min_max_aspect_ratios_order)
 
         box_results.append(box)
         var_results.append(var)

@@ -222,15 +222,16 @@ class MKLDNNHandler {
 
   static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
                              const std::string& suffix) {
-    auto dims2str = [](const mkldnn::memory::dims& operand_dims) {
-      std::string dstr = "";
-      for (size_t i = 0; i < operand_dims.size(); ++i) {
-        dstr += std::to_string(operand_dims[i]) + "-";
-      }
-      return dstr;
-    };
-
     return dims2str(operand_dims) + suffix;
+  };
+
+ protected:
+  static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
+    std::string dstr = "";
+    for (size_t i = 0; i < operand_dims.size(); ++i) {
+      dstr += std::to_string(operand_dims[i]) + "-";
+    }
+    return dstr;
   }
 
  protected:
