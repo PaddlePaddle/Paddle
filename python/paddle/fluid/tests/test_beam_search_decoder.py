@@ -1,4 +1,5 @@
 #   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
+#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserve.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,14 +44,13 @@ beam_size = 2
 
 def encoder():
     # encoder
-    src_word_id = layers.data(
-        name="src_word_id", shape=[1], dtype='int64', lod_level=1)
+    src_word = layers.data(
+        name="src_word", shape=[1], dtype='int64', lod_level=1)
     src_embedding = layers.embedding(
-        input=src_word_id,
+        input=src_word,
         size=[dict_size, word_dim],
         dtype='float32',
-        is_sparse=IS_SPARSE,
-        param_attr=fluid.ParamAttr(name='vemb'))
+        is_sparse=IS_SPARSE)
 
     fc1 = layers.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
     lstm_hidden0, lstm_0 = layers.dynamic_lstm(input=fc1, size=hidden_dim * 4)
@@ -60,8 +60,7 @@ def encoder():
 
 def decoder_state_cell(context):
     h = InitState(init=context, need_reorder=True)
-    state_cell = StateCell(
-        cell_size=decoder_size, inputs={'x': None}, states={'h': h})
+    state_cell = StateCell(inputs={'x': None}, states={'h': h})
 
     @state_cell.state_updater
     def updater(state_cell):
@@ -79,13 +78,12 @@ def decoder_state_cell(context):
 def decoder_train(state_cell):
     # decoder
     trg_language_word = layers.data(
-        name="target_language_word", shape=[1], dtype='int64', lod_level=1)
+        name="target_word", shape=[1], dtype='int64', lod_level=1)
     trg_embedding = layers.embedding(
         input=trg_language_word,
         size=[dict_size, word_dim],
         dtype='float32',
-        is_sparse=IS_SPARSE,
-        param_attr=fluid.ParamAttr(name='vemb'))
+        is_sparse=IS_SPARSE)
 
     decoder = TrainingDecoder(state_cell)
 
@@ -107,54 +105,20 @@ def decoder_decode(state_cell):
     init_scores = layers.data(
         name="init_scores", shape=[1], dtype="float32", lod_level=2)
 
-    def embedding(input):
-        return layers.embedding(
-            input=input,
-            size=[dict_size, word_dim],
-            dtype='float32',
-            is_sparse=IS_SPARSE,
-            param_attr=fluid.ParamAttr('vemb'))
-
     decoder = BeamSearchDecoder(
-        state_cell, max_len=max_length, beam_size=beam_size, end_id=1)
-
-    with decoder.block():
-        prev_ids = decoder.read_array(init=init_ids, is_ids=True)
-        prev_scores = decoder.read_array(init=init_scores, is_scores=True)
-        prev_ids_embedding = embedding(prev_ids)
-        prev_state = decoder.state_cell.get_state('h')
-        prev_state_expanded = layers.sequence_expand(prev_state, prev_scores)
-        decoder.state_cell.set_state('h', prev_state_expanded)
-        decoder.state_cell.compute_state(inputs={'x': prev_ids_embedding})
-        current_state = decoder.state_cell.get_state('h')
-        current_state_with_lod = layers.lod_reset(
-            x=current_state, y=prev_scores)
-        scores = layers.fc(input=current_state_with_lod,
-                           size=target_dict_dim,
-                           act='softmax')
-        topk_scores, topk_indices = layers.topk(scores, k=topk_size)
-        accu_scores = layers.elementwise_add(
-            x=layers.log(x=layers.softmax(topk_scores)),
-            y=layers.reshape(
-                prev_scores, shape=[-1]),
-            axis=0)
-        selected_ids, selected_scores = layers.beam_search(
-            prev_ids,
-            prev_scores,
-            topk_indices,
-            accu_scores,
-            beam_size,
-            end_id=1,
-            level=0)
-
-        with layers.Switch() as switch:
-            with switch.case(layers.is_empty(selected_ids)):
-                decoder.early_stop()
-            with switch.default():
-                decoder.state_cell.update_states()
-                decoder.update_array(prev_ids, selected_ids)
-                decoder.update_array(prev_scores, selected_scores)
-
+        state_cell=state_cell,
+        init_ids=init_ids,
+        init_scores=init_scores,
+        target_dict_dim=target_dict_dim,
+        word_dim=word_dim,
+        init_var_dict={},
+        topk_size=topk_size,
+        sparse_emb=IS_SPARSE,
+        max_len=max_length,
+        beam_size=beam_size,
+        end_id=1,
+        name=None)
+    decoder.decode()
     translation_ids, translation_scores = decoder()
 
     return translation_ids, translation_scores
@@ -169,7 +133,7 @@ def train_main(use_cuda):
     state_cell = decoder_state_cell(context)
     rnn_out = decoder_train(state_cell)
     label = layers.data(
-        name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
+        name="target_next_word", shape=[1], dtype='int64', lod_level=1)
     cost = layers.cross_entropy(input=rnn_out, label=label)
     avg_cost = layers.mean(x=cost)
 
@@ -180,9 +144,7 @@ def train_main(use_cuda):
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
-    feed_order = [
-        'src_word_id', 'target_language_word', 'target_language_next_word'
-    ]
+    feed_order = ['src_word', 'target_word', 'target_next_word']
 
     exe = Executor(place)
 
@@ -236,7 +198,7 @@ def decode_main(use_cuda):
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
 
-    feed_order = ['src_word_id']
+    feed_order = ['src_word']
     feed_list = [
         framework.default_main_program().global_block().var(var_name)
         for var_name in feed_order
@@ -256,7 +218,7 @@ def decode_main(use_cuda):
     print result_ids.lod()
 
 
-class TestMachineTranslation(unittest.TestCase):
+class TestBeamSearchDecoder(unittest.TestCase):
     pass
 
 
@@ -277,7 +239,7 @@ def inject_test_train(use_cuda):
         with scope_prog_guard():
             train_main(use_cuda)
 
-    setattr(TestMachineTranslation, f_name, f)
+    setattr(TestBeamSearchDecoder, f_name, f)
 
 
 def inject_test_decode(use_cuda, decorator=None):
@@ -290,7 +252,7 @@ def inject_test_decode(use_cuda, decorator=None):
     if decorator is not None:
         f = decorator(f)
 
-    setattr(TestMachineTranslation, f_name, f)
+    setattr(TestBeamSearchDecoder, f_name, f)
 
 
 for _use_cuda_ in (False, True):

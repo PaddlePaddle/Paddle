@@ -29,10 +29,7 @@ from ... import core
 from ... import framework, unique_name
 from ...layer_helper import LayerHelper
 
-__all__ = [
-    'InitState', '_MemoryState', '_ArrayState', 'StateCell', 'TrainingDecoder',
-    'BeamSearchDecoder'
-]
+__all__ = ['InitState', 'StateCell', 'TrainingDecoder', 'BeamSearchDecoder']
 
 
 class _DecoderType:
@@ -53,6 +50,8 @@ class InitState(object):
         shape (tuple|list): If `init` is None, new Variable's shape. Default
             None.
         value (float): If `init` is None, new Variable's value. Default None.
+        init_boot (Variable): If provided, the initial variable will be created
+            with the same shape as this variable.
         need_reorder (bool): If set true, the init will be sorted by its lod
             rank within its batches. This should be used if `batch_size > 1`.
         dtype (np.dtype|core.VarDesc.VarType|str): Data type of the initial
@@ -69,13 +68,18 @@ class InitState(object):
                  init=None,
                  shape=None,
                  value=0.0,
+                 init_boot=None,
                  need_reorder=False,
                  dtype='float32'):
         if init is not None:
             self._init = init
+        elif init_boot is None:
+            raise ValueError(
+                'init_boot must be provided to infer the shape of InitState .\n')
         else:
-            self._init = layers.fill_constant(
-                shape=shape, dtype=dtype, value=value)
+            self._init = layers.fill_constant_batch_size_like(
+                input=init_boot, value=value, shape=shape, dtype=dtype)
+
         self._shape = shape
         self._value = value
         self._need_reorder = need_reorder
@@ -157,7 +161,6 @@ class StateCell(object):
     their associated variables.
 
     Args:
-        cell_size (int): The RNN decoder size.
         inputs (dict): A feeding dict of {name(str) : Variable}. It specifies
             the names of step inputs for RNN cell, and the associated variables.
             The variable could initially be None and set manually during each
@@ -173,12 +176,11 @@ class StateCell(object):
         .. code-block:: python
           hidden_state = InitState(init=encoder_out, need_reorder=True)
           state_cell = StateCell(
-              cell_size=decoder_size,
               inputs={'current_word': None},
               states={'h': hidden_state})
     """
 
-    def __init__(self, cell_size, inputs, states, name=None):
+    def __init__(self, inputs, states, name=None):
         self._helper = LayerHelper('state_cell', name=name)
         self._cur_states = {}
         self._state_names = []
@@ -506,19 +508,59 @@ class BeamSearchDecoder(object):
     Args:
         state_cell (StateCell): A StateCell object that handles the input and
             state variables.
+        init_ids (Variable): The init beam search token ids.
+        init_scores (Variable): The associated score of each id.
+        target_dict_dim (int): Size of dictionary.
+        word_dim (int): Word embedding dimension.
+        init_var_dict (dict): A feeding dict to feed the required variables to
+            the state cell. It will be used by state_cell 's compute method.
+            Default empty.
+        topk_size (int): The topk size used for beam search. Default 50.
         max_len (int): The maximum allowed length of the generated sentence.
-        beam_size (int): The beam width of beam search decode.
+            Default 100.
+        beam_size (int): The beam width of beam search decode. Default 1.
         end_id (int): The id of end token within beam search.
         name (str): The name of this decoder. Default None.
 
     Returns:
         BeamSearchDecoder: A initialized BeamSearchDecoder object.
+
+    Examples:
+    .. code-block:: python
+      decoder = BeamSearchDecoder(
+          state_cell=state_cell,
+          init_ids=init_ids,
+          init_scores=init_scores,
+          target_dict_dim=target_dict_dim,
+          word_dim=word_dim,
+          init_var_dict={},
+          topk_size=topk_size,
+          sparse_emb=IS_SPARSE,
+          max_len=max_length,
+          beam_size=beam_size,
+          end_id=1,
+          name=None
+      )
+      decoder.decode()
+      translation_ids, translation_scores = decoder()
     """
     BEFORE_BEAM_SEARCH_DECODER = 0
     IN_BEAM_SEARCH_DECODER = 1
     AFTER_BEAM_SEARCH_DECODER = 2
 
-    def __init__(self, state_cell, max_len, beam_size, end_id, name=None):
+    def __init__(self,
+                 state_cell,
+                 init_ids,
+                 init_scores,
+                 target_dict_dim,
+                 word_dim,
+                 init_var_dict={},
+                 topk_size=50,
+                 sparse_emb=True,
+                 max_len=100,
+                 beam_size=1,
+                 end_id=1,
+                 name=None):
         self._helper = LayerHelper('beam_search_decoder', name=name)
         self._counter = layers.zeros(shape=[1], dtype='int64')
         self._counter.stop_gradient = True
@@ -541,6 +583,14 @@ class BeamSearchDecoder(object):
         self._scores_array = None
         self._beam_size = beam_size
         self._end_id = end_id
+
+        self._init_ids = init_ids
+        self._init_scores = init_scores
+        self._target_dict_dim = target_dict_dim
+        self._topk_size = topk_size
+        self._sparse_emb = sparse_emb
+        self._word_dim = word_dim
+        self._init_var_dict = init_var_dict
 
     @contextlib.contextmanager
     def block(self):
@@ -578,6 +628,84 @@ class BeamSearchDecoder(object):
         """
         layers.fill_constant(
             shape=[1], value=0, dtype='bool', force_cpu=True, out=self._cond)
+
+    def decode(self):
+        """
+        Set up the computation within the decoder. Then you could call the
+        decoder to get the result of beam search decode. If you want to define
+        a more specific decoder, you could override this function.
+
+        Examples:
+        .. code-block:: python
+          decoder.decode()
+          translation_ids, translation_scores = decoder()
+        """
+        with self.block():
+            prev_ids = self.read_array(init=self._init_ids, is_ids=True)
+            prev_scores = self.read_array(
+                init=self._init_scores, is_scores=True)
+            prev_ids_embedding = layers.embedding(
+                input=prev_ids,
+                size=[self._target_dict_dim, self._word_dim],
+                dtype='float32',
+                is_sparse=self._sparse_emb)
+
+            feed_dict = {}
+            update_dict = {}
+
+            for init_var_name, init_var in self._init_var_dict.items():
+                if init_var_name not in self.state_cell._inputs:
+                    raise ValueError('Variable ' + init_var_name +
+                                     ' not found in StateCell!\n')
+
+                read_var = self.read_array(init=init_var)
+                update_dict[init_var_name] = read_var
+                feed_var_expanded = layers.sequence_expand(read_var,
+                                                           prev_scores)
+                feed_dict[init_var_name] = feed_var_expanded
+
+            for state_str in self._state_cell._state_names:
+                prev_state = self.state_cell.get_state(state_str)
+                prev_state_expanded = layers.sequence_expand(prev_state,
+                                                             prev_scores)
+                self.state_cell.set_state(state_str, prev_state_expanded)
+
+            for i, input_name in enumerate(self._state_cell._inputs):
+                if input_name not in feed_dict:
+                    feed_dict[input_name] = prev_ids_embedding
+                break
+
+            self.state_cell.compute_state(inputs=feed_dict)
+            current_state = self.state_cell.get_state('h')
+            current_state_with_lod = layers.lod_reset(
+                x=current_state, y=prev_scores)
+            scores = layers.fc(input=current_state_with_lod,
+                               size=self._target_dict_dim,
+                               act='softmax')
+            topk_scores, topk_indices = layers.topk(scores, k=self._topk_size)
+            accu_scores = layers.elementwise_add(
+                x=layers.log(x=topk_scores),
+                y=layers.reshape(
+                    prev_scores, shape=[-1]),
+                axis=0)
+            selected_ids, selected_scores = layers.beam_search(
+                prev_ids,
+                prev_scores,
+                topk_indices,
+                accu_scores,
+                self._beam_size,
+                end_id=1,
+                level=0)
+
+            with layers.Switch() as switch:
+                with switch.case(layers.is_empty(selected_ids)):
+                    self.early_stop()
+                with switch.default():
+                    self.state_cell.update_states()
+                    self.update_array(prev_ids, selected_ids)
+                    self.update_array(prev_scores, selected_scores)
+                    for update_name, var_to_update in update_dict.items():
+                        self.update_array(var_to_update, feed_dict[update_name])
 
     def read_array(self, init, is_ids=False, is_scores=False):
         """
