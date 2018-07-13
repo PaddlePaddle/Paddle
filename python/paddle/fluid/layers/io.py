@@ -520,7 +520,7 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None, name=None):
     startup_var = startup_blk.create_var(name=reader_name)
     startup_blk.append_op(
         type='create_py_reader',
-        inputs={'blocking_queue': queue_name},
+        inputs={'blocking_queue': [queue_name]},
         outputs={'Out': [startup_var]},
         attrs={
             'shape_concat': shape_concat,

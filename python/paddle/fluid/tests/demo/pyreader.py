@@ -15,6 +15,7 @@
 import paddle.fluid as fluid
 import paddle.dataset.mnist as mnist
 import paddle
+import paddle.v2
 import threading
 import numpy
 
@@ -91,7 +92,8 @@ def main():
 
     for epoch_id in xrange(10):
         train_data_thread = pipe_reader_to_queue(
-            paddle.batch(mnist.train(), 32), train_queue)
+            paddle.batch(paddle.v2.reader.firstn(mnist.train(), 32), 64),
+            train_queue)
         try:
             while True:
                 print 'train_loss', numpy.array(
