@@ -50,9 +50,9 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
     int64_t data[4] = {1, 2, 3, 4};
 
     PaddleTensor tensor{.name = "",
-                        .shape = std::vector<int>({4, 1}),
-                        .data = PaddleBuf(data, sizeof(data)),
-                        .dtype = PaddleDType::INT64};
+        .shape = std::vector<int>({4, 1}),
+        .data = PaddleBuf(data, sizeof(data)),
+        .dtype = PaddleDType::INT64};
 
     // For simplicity, we set all the slots with the same data.
     std::vector<PaddleTensor> slots(4, tensor);
@@ -71,8 +71,8 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
     const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
     ASSERT_EQ(num_elements, num_elements1);
 
-    auto* data0 = static_cast<float*>(outputs0.front().data.data());
-    auto* data1 = static_cast<float*>(outputs1.front().data.data());
+    auto *data0 = static_cast<float *>(outputs0.front().data.data());
+    auto *data1 = static_cast<float *>(outputs1.front().data.data());
 
     ASSERT_GT(num_elements, 0UL);
     for (size_t i = 0; i < num_elements; i++) {
@@ -81,10 +81,11 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   }
 }
 
-TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) {
+/*TEST(paddle_inference_api_tensorrt_subgraph_engine, without_tensorrt) {
   CompareTensorRTWithFluid(false);
+}*/
+TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) {
+  CompareTensorRTWithFluid(true);
 }
-// TEST(paddle_inference_api_tensorrt_subgraph_engine, with_tensorrt) {
-// CompareTensorRTWithFluid(true); }
 
 }  // namespace paddle

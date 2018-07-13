@@ -77,13 +77,14 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
       for (int k = 0; k < out_var.arguments_size(); k++) {
         auto *out = graph->nodes.GetMutable(var2id[out_var.arguments(k)]);
         if (inlinks.count(out)) {
-          LOG(INFO) << "loop found in graph, create SSA node";
           // Loop found, for example, a = op(a), use SSA, change to a1 = op(a).
           auto *out_alias = graph->nodes.Create(Node::Type::kValue);
           out_alias->SetName(out->name());
           out_alias->SetPbDesc(out->pb_desc());
           out_alias->SetPbMsg(out->pb_msg());
           var2id[out_alias->name()] = out_alias->id();  // update a -> a0
+          LOG(INFO) << "loop found in graph, create SSA alias node [" << out_alias->repr() << "] for [" << out->repr()
+                    << "]";
           out = out_alias;
         }
         out->inlinks.push_back(o);
