@@ -148,6 +148,7 @@ class ParallelExecutor(object):
                 lambda var: var.persistable and var.type != core.VarDesc.VarType.RAW,
                 main.list_vars())
         ]
+        sys.stderr.write('!!!!!!!!before\n')
 
         self.executor = core.ParallelExecutor(
             self._places,
@@ -158,6 +159,7 @@ class ParallelExecutor(object):
             set(self.persistable_vars), main.desc, loss_name
             if loss_name else '', scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
+        sys.stderr.write('!!!!!!!!after\n')
         self.scope = scope
 
     def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):

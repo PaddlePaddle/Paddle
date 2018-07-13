@@ -46,13 +46,11 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                           const std::vector<Scope *> &local_scopes,
                           const BuildStrategy &strategy);
 #endif
-
-  std::unique_ptr<Graph> Build(std::unique_ptr<Graph> graph) const override;
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const override;
   int GetVarDeviceID(const std::string &varname) const override;
 
  private:
-  void CreateOpHandleIOs(Graph *result, const OpDesc &op,
-                         size_t device_id) const;
+  void CreateOpHandleIOs(Graph *result, ir::Node *node, size_t device_id) const;
 
  private:
   std::string loss_var_name_;
@@ -64,40 +62,39 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
-  bool IsScaleLossOp(const OpDesc &op) const;
+  bool IsScaleLossOp(ir::Node *node) const;
 
-  void CreateRPCOp(Graph *result, const OpDesc &op) const;
-  void CreateDistTrainOp(Graph *result, const OpDesc &op) const;
+  void CreateRPCOp(Graph *result, ir::Node *node) const;
+  void CreateDistTrainOp(Graph *result, ir::Node *node) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
    */
-  bool IsDistTrainOp(const OpDesc &op,
-                     const std::vector<std::string> &send_vars,
+  bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
                      const std::vector<std::string> &recv_vars) const;
 
   std::vector<std::string> FindDistTrainSendVars(
-      const ProgramDesc &program) const;
+      const std::vector<std::unique_ptr<ir::Node>> &nodes) const;
 
   std::vector<std::string> FindDistTrainRecvVars(
-      const ProgramDesc &program) const;
+      const std::vector<std::unique_ptr<ir::Node>> &nodes) const;
 
   void ConnectOp(Graph *result, OpHandleBase *op,
                  const std::string &prev_op_name) const;
 
-  void CreateComputationalOps(Graph *result, const OpDesc &op,
+  void CreateComputationalOps(Graph *result, ir::Node *node,
                               size_t num_places) const;
 
   void CreateScaleLossGradOp(Graph *result) const;
   VarHandle *CreateReduceOp(Graph *result, const std::string &og,
                             int dst_dev_id) const;
-  void CreateComputationalOp(Graph *result, const OpDesc &op, int dev_id) const;
+  void CreateComputationalOp(Graph *result, ir::Node *node, int dev_id) const;
 
   bool IsParameterGradientOnce(
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
-  int GetOpDeviceID(const OpDesc &op) const;
+  int GetOpDeviceID(ir::Node *node) const;
 
   void InsertAllReduceOp(Graph *result, const std::string &og) const;
 
