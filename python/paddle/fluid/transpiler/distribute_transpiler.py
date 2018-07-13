@@ -153,7 +153,7 @@ class DistributeTranspiler(object):
                   slice_var_up=True,
                   split_method=RoundRobin,
                   sync_mode=True,
-                  min_block_size=1048576):
+                  min_block_size=8192):
         """
         Run the transpiler.
 
