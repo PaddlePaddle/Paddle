@@ -13,12 +13,45 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
 
 namespace paddle {
 namespace framework {
 
 std::unique_ptr<Graph> ProgramToGraph(const ProgramDesc &program) {
   std::unique_ptr<Graph> graph(new Graph(program));
+
+  std::unordered_map<std::string, VarDesc *> all_vars;
+  for (auto *var : program.Block(0).AllVars()) {
+    all_vars.emplace(var->Name(), var);
+  }
+
+  for (auto *op : program.Block(0).AllOps()) {
+    ir::Node *node = graph->CreateOpNode(op);
+
+    for (auto &each_var_name : op->InputArgumentNames()) {
+      ir::Node *var = nullptr;
+      if (all_vars.count(each_var_name) != 0) {
+        var = graph->CreateVarNode(all_vars.at(each_var_name));
+      } else {
+        var = graph->CreateVarNode(each_var_name);
+      }
+      node->inputs.push_back(var);
+      var->outputs.push_back(node);
+    }
+
+    for (auto &each_var_name : op->OutputArgumentNames()) {
+      ir::Node *var = nullptr;
+      if (all_vars.count(each_var_name) != 0) {
+        var = graph->CreateVarNode(all_vars.at(each_var_name));
+      } else {
+        var = graph->CreateVarNode(each_var_name);
+      }
+      node->outputs.push_back(var);
+      var->inputs.push_back(node);
+    }
+  }
   return std::move(graph);
 }
 

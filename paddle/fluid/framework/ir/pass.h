@@ -20,15 +20,15 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace ir {
 
 class Pass {
  public:
   Pass() = default;
   virtual ~Pass() {}
-  virtual std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) {
-    return std::move(graph);
-  }
-};
 
+  virtual std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const = 0;
+};
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

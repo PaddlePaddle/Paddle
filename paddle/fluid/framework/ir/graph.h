@@ -39,8 +39,6 @@ class Graph {
     attr_dels_.clear();
   }
 
-  const ProgramDesc& Program() const { return program_; }
-
   template <typename AttrType>
   AttrType& Get(const std::string& attr_name) const {
     return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
@@ -63,11 +61,30 @@ class Graph {
     return attr;
   }
 
+  ir::Node* CreateVarNode(VarDesc* var_desc) {
+    nodes.emplace_back(new ir::Node(var_desc));
+    return nodes.back().get();
+  }
+
+  ir::Node* CreateOpNode(OpDesc* op_desc) {
+    nodes.emplace_back(new ir::Node(op_desc));
+    return nodes.back().get();
+  }
+
+  // TODO(panyx0718): Need to handle CreateOpNode(nullptr).
+  ir::Node* CreateVarNode(const std::string& var_name) {
+    var_descs_.emplace_back(new VarDesc(var_name));
+    nodes.emplace_back(new ir::Node(var_descs_.back().get()));
+    return nodes.back().get();
+  }
+
   std::vector<ir::Node*> inputs;
   std::vector<ir::Node*> outputs;
   std::vector<std::unique_ptr<ir::Node>> nodes;
+  std::vector<std::unique_ptr<VarDesc>> var_descs_;
 
  private:
+  // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc& program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;

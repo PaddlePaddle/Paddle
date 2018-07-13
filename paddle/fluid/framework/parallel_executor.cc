@@ -131,13 +131,10 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_THROW("Not compiled with CUDA.");
 #endif
   }
-
   builder_ = builder_factory.Create();
-  std::unique_ptr<Graph> graph = builder_->Build(ProgramToGraph(main_program));
-
+  std::unique_ptr<Graph> graph = builder_->Apply(ProgramToGraph(main_program));
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
-
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
       member_->places_, std::move(member_->executor_)));

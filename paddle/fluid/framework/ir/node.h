@@ -21,6 +21,8 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/framework/op_desc.h"
+#include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/variant.h"
 
@@ -32,10 +34,12 @@ class Node {
  public:
   enum class Type { kNone = -1, kOperation, kVariable };
 
+  Node() : type_(Type::kNone) {}
+
   explicit Node(Type type) : type_(type) {}
 
   virtual ~Node() {
-    for (auto &attr : attrs_) {
+    for (auto& attr : attrs_) {
       if (attr_dels_.find(attr.first) != attr_dels_.end()) {
         attr_dels_[attr.first]();
       }
@@ -47,23 +51,34 @@ class Node {
   Type NodeType() const { return type_; }
 
   template <typename AttrType>
-  void Set(const std::string &name, AttrType attr) {
+  void Set(const std::string& name, AttrType attr) {
     attrs_[name] = attr;
   }
 
   template <typename AttrType>
-  void Set(const std::string &name, AttrType *attr,
+  void Set(const std::string& name, AttrType* attr,
            std::function<void(void)> attr_del) {
     attrs_[name] = attr;
     attr_dels_[name] = attr_del;
   }
 
-  std::vector<Node *> inputs;
-  std::vector<Node *> outputs;
+  VarDesc* Var() { return var_desc_; }
+  OpDesc* Op() { return op_desc_; }
+
+  explicit Node(VarDesc* var_desc)
+      : var_desc_(var_desc), op_desc_(nullptr), type_(Type::kVariable) {}
+
+  explicit Node(OpDesc* op_desc)
+      : var_desc_(nullptr), op_desc_(op_desc), type_(Type::kOperation) {}
+
+  std::vector<Node*> inputs;
+  std::vector<Node*> outputs;
 
  protected:
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
+  VarDesc* var_desc_;
+  OpDesc* op_desc_;
   Type type_;
 
  private:
