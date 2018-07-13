@@ -51,7 +51,7 @@ ExternalProject_Add(
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
                     -DCMAKE_PREFIX_PATH=${prefix_path}
-                    -DBRPC_WITH_GLOG=ON
+                    -DWITH_GLOG=ON
                     -DIOBUF_WITH_HUGE_BLOCK=ON
                     -DBRPC_WITH_RDMA=${WITH_BRPC_RDMA}
                     ${EXTERNAL_OPTIONAL_ARGS}

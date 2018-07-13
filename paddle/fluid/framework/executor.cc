@@ -47,14 +47,12 @@ Executor::Executor(const platform::Place& place) : place_(place) {}
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 void Executor::BeginPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
+  ::paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>()
       ->SendBeginPass();
 }
 
 void Executor::EndPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
+  ::paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>()
       ->SendEndPass();
 }
 #endif
