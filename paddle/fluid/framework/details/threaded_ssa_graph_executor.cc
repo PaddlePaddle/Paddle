@@ -168,7 +168,13 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
 
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
-    auto &vars = fetched_vars.at(var_name);
+
+    auto fetched_var_it = fetched_vars.find(var_name);
+    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
+                   "Cannot find fetched variable.(Perhaps the main_program "
+                   "is not set to ParallelExecutor)");
+
+    auto &vars = fetched_var_it->second;
     auto *op = new FetchOpHandle(fetch_data, i, &local_scopes_);
     fetch_ops->emplace_back(op);
 
