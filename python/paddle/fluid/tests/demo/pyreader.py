@@ -100,7 +100,7 @@ def main():
                     trainer.run(fetch_list=[loss.name]))
         except fluid.core.EOFException:
             print 'End of epoch', epoch_id
-            # train_reader.reset()
+            train_reader.reset()
         train_data_thread.join()
 
         test_data_thread = pipe_reader_to_queue(
@@ -111,7 +111,7 @@ def main():
                     tester.run(fetch_list=[test_loss.name]))
         except fluid.core.EOFException:
             print 'End of testing'
-            # test_reader.reset()
+            test_reader.reset()
 
         test_data_thread.join()
         break

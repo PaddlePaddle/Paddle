@@ -52,6 +52,8 @@ class DoubleBufferReader : public framework::DecoratedReader {
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
+  ~DoubleBufferReader() { Shutdown(); }
+
  private:
   void ShutdownImpl() override {
     reader_->Shutdown();
