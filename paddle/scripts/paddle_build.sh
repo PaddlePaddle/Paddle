@@ -324,8 +324,9 @@ function assert_api_not_changed() {
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
-    if [ ${TRAVIS} ]; then
-        git diff --name-only HEAD^ | grep "paddle/fluid/API.spec"
+
+    git diff --name-only HEAD^ | grep "paddle/fluid/API.spec"
+    if [ $? == 0 ]; then
         APPROVALS=`curl -H "Authorization: token ${API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pr/reviews | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2`
         if [ "${APPROVALS}" == "FALSE" ]; then
@@ -564,7 +565,6 @@ function main() {
         ;;
       doc)
         gen_docs
-        assert_api_not_changed
         ;;
       html)
         gen_html
