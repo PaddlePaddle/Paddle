@@ -110,6 +110,7 @@ __all__ = [
     'relu',
     'log',
     'crop',
+    'rank_loss',
 ]
 
 
@@ -5280,4 +5281,75 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def rank_loss(label, left, right, name=None):
+    """
+    **RankLoss layer for RankNet**
+
+    (http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf).
+    RankNet is a pairwise ranking model with
+    one training sample consisting of a pair of doc A and B, and the label P
+    indicating that A is ranked higher than B or not:
+    
+    P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
+    the input pair.
+    
+    The RankLoss operator takes three inputs: Left (o_i), Right (o_j) and Label
+    (P_{i,j}), which represent the output score of RankNet for the two docs and
+    the label respectively, and yields the rank loss C_{i,j} using the following
+    equation:
+    
+    $$
+      C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
+      o_{i,j} =  o_i - o_j  \\
+      \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
+    $$
+    
+    The operator can take batch inputs with size batch_size (batch_size >= 1).
+    
+    Args:
+        label (Variable): The label indicating A ranked higher than B or not.
+        left (Variable): The output of RankNet for doc A.
+        right (Variable): The output of RankNet for doc B.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        list: The output loss of RankLoss layer.
+
+    Raises:
+        ValueError: If label or left or right is not a Variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            out = fluid.layers.rank_loss(label, left, right)
+
+
+    """
+    helper = LayerHelper('rank_loss', **locals())
+
+    if not (isinstance(label, Variable)):
+        raise ValueError("The label should be a Variable")
+
+    if not (isinstance(left, Variable)):
+        raise ValueError("The left should be a Variable")
+
+    if not (isinstance(right, Variable)):
+        raise ValueError("The right should be a Variable")
+
+    out = helper.create_tmp_variable("float32")
+
+    helper.append_op(
+        type='rank_loss',
+        inputs={"Label": label,
+                "Left": left,
+                "Right": right},
+        outputs={'Out': out})
     return out
