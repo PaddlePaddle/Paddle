@@ -43,21 +43,6 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int col_height = col->dims()[3];
     int col_width = col->dims()[4];
 
-    PADDLE_ENFORCE_EQ((im_height + padding[0] + padding[2] -
-                       ((dilation[0] * (filter_height - 1) + 1))) /
-                              stride[0] +
-                          1,
-                      col_height,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
-    PADDLE_ENFORCE_EQ((im_width + padding[1] + padding[3] -
-                       ((dilation[1] * (filter_width - 1) + 1))) /
-                              stride[1] +
-                          1,
-                      col_width,
-                      "Output_height and padding(padding_up, padding_down) are "
-                      "inconsistent.");
-
     int channels_col = im_channels * filter_height * filter_width;
 
     const T* im_data = im.data<T>();
@@ -177,17 +162,6 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kOCF,
     int filter_width = col->dims()[4];
     int col_height = col->dims()[0];
     int col_width = col->dims()[1];
-
-    PADDLE_ENFORCE_EQ(
-        (im_height + padding[0] + padding[2] - filter_height) / stride[0] + 1,
-        col_height,
-        "Output_height and padding(padding_up, padding_down) are "
-        "inconsistent.");
-    PADDLE_ENFORCE_EQ(
-        (im_width + padding[1] + padding[3] - filter_width) / stride[1] + 1,
-        col_width,
-        "col_width and padding(padding_left, padding_right) are "
-        "inconsistent.");
 
     const T* im_data = im.data<T>();
     T* col_data = col->data<T>();
