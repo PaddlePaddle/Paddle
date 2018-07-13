@@ -14,6 +14,7 @@ limitations under the License. */
 #include <Python.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
 #include <unordered_map>
@@ -86,37 +87,37 @@ PYBIND11_PLUGIN(core) {
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
-      .def("get_dims",
+      .def("_get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
-      .def("set_dims",
+      .def("_set_dims",
            [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
-      .def("set_layout",
+      .def("_set_layout",
            [](Tensor &self, const std::string &layout) {
              self.set_layout(StringToDataLayout(layout));
            })
-      .def("alloc_float",
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("alloc_float",
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("alloc_int",
+      .def("_alloc_int",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("alloc_int",
+      .def("_alloc_int",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("alloc_int",
+      .def("_alloc_int",
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("alloc_float",
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -144,11 +145,11 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
-      .def("set_float_element", TensorSetElement<float>)
-      .def("get_float_element", TensorGetElement<float>)
-      .def("set_double_element", TensorSetElement<double>)
-      .def("get_double_element", TensorGetElement<double>)
-      .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
+      .def("_set_float_element", TensorSetElement<float>)
+      .def("_get_float_element", TensorGetElement<float>)
+      .def("_set_double_element", TensorSetElement<double>)
+      .def("_get_double_element", TensorGetElement<double>)
+      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def_buffer(
@@ -242,7 +243,7 @@ PYBIND11_PLUGIN(core) {
 #ifndef PADDLE_WITH_CUDA
              self.set_rows(rows);
 #else
-        Vector<int64_t> new_rows(rows);
+    Vector<int64_t> new_rows(rows);
         self.set_rows(new_rows);
 #endif
            })
@@ -250,7 +251,7 @@ PYBIND11_PLUGIN(core) {
 #ifndef PADDLE_WITH_CUDA
         return self.rows();
 #else
-         auto rows = self.rows();
+    auto rows = self.rows();
          std::vector<int64_t> new_rows;
          new_rows.reserve(rows.size());
          std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
@@ -310,7 +311,8 @@ All parameter, weight, gradient are variables in Paddle.
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
-  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
+  py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
+      m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
@@ -325,7 +327,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,
            const std::vector<std::vector<int64_t>> &shapes)
-            -> LoDTensorBlockingQueue * {
+            -> std::shared_ptr<LoDTensorBlockingQueue> {
               std::vector<DDim> dims(shapes.size());
               std::transform(shapes.begin(), shapes.end(), dims.begin(),
                              [](const std::vector<int64_t> &shape) {
@@ -333,9 +335,9 @@ All parameter, weight, gradient are variables in Paddle.
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
               holder->InitOnce(capacity, dims);
-              return holder->GetQueue().get();
+              return holder->GetQueue();
             },
-        py::return_value_policy::reference);
+        py::return_value_policy::copy);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -405,30 +407,30 @@ All parameter, weight, gradient are variables in Paddle.
       .def("temp", []() { return kTempVarName; });
   // clang-format off
   py::class_<paddle::platform::DeviceContext>(m, "DeviceContext")
-      .def_static("create",
-                  [](paddle::platform::CPUPlace& place)
-                      -> paddle::platform::DeviceContext* {
-                    return new paddle::platform::CPUDeviceContext();
-                  })
-      .def_static("create",
-                  [](paddle::platform::CUDAPlace& place)
-                      -> paddle::platform::DeviceContext* {
+  .def_static("create",
+  [](paddle::platform::CPUPlace& place)
+  -> paddle::platform::DeviceContext* {
+    return new paddle::platform::CPUDeviceContext();
+  })
+  .def_static("create",
+  [](paddle::platform::CUDAPlace& place)
+  -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
+    PADDLE_THROW("CUDAPlace is not supported in CPU device.");
 #else
-                    return new paddle::platform::CUDADeviceContext(place);
+    return new paddle::platform::CUDADeviceContext(place);
 #endif
-                  })
-          .def_static("create",
-                [](paddle::platform::CUDAPinnedPlace& place)
-                        -> paddle::platform::DeviceContext* {
+  })
+  .def_static("create",
+  [](paddle::platform::CUDAPinnedPlace& place)
+  -> paddle::platform::DeviceContext* {
 #ifndef PADDLE_WITH_CUDA
-                  PADDLE_THROW(
-                        "CUDAPinnedPlace is not supported in CPU device.");
+    PADDLE_THROW(
+      "CUDAPinnedPlace is not supported in CPU device.");
 #else
-                  return new paddle::platform::CUDAPinnedDeviceContext(place);
+    return new paddle::platform::CUDAPinnedDeviceContext(place);
 #endif
-                });;
+  });;
 // clang-format on
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::Communicator>(m, "Communicator").def(py::init<>());
@@ -543,6 +545,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__init__",
+           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
            [](LoDTensorArray &self, size_t i) { return &self.at(i); },
            py::return_value_policy::reference)
@@ -657,14 +661,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
-      .def_property("share_parameter_between_cards",
-                    [](const BuildStrategy &self) {
-                      return self.share_parameter_between_cards_;
-                    },
-                    [](BuildStrategy &self, bool shared) {
-                      self.share_parameter_between_cards_ = shared;
-                    });
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -672,7 +669,7 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
+      .def("bcast_params", &ParallelExecutor::BCastParamsToDevs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

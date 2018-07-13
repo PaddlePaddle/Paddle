@@ -101,10 +101,7 @@ class TestMNIST(TestParallelExecutorBase):
             fluid.recordio_writer.convert_reader_to_recordio_file(
                 MNIST_RECORDIO_FILE, reader, feeder)
 
-    def check_simple_fc_convergence(self,
-                                    use_cuda,
-                                    use_reduce=False,
-                                    share_parameter_between_cards=False):
+    def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
         self.check_network_convergence(simple_fc_net, use_cuda=use_cuda)
         self.check_network_convergence(
             simple_fc_net, use_cuda=use_cuda, allow_op_delay=True)
@@ -116,8 +113,7 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            use_reduce=use_reduce,
-            share_parameter_between_cards=share_parameter_between_cards)
+            use_reduce=use_reduce)
 
     def test_simple_fc(self):
         # use_cuda
@@ -125,15 +121,11 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_convergence(False)
 
     def test_simple_fc_with_new_strategy(self):
-        # use_cuda, use_reduce, share_parameter_between_cards
+        # use_cuda, use_reduce
         self.check_simple_fc_convergence(True, True)
         self.check_simple_fc_convergence(False, True)
-        self.check_simple_fc_convergence(False, True, True)
 
-    def check_simple_fc_parallel_accuracy(self,
-                                          use_cuda,
-                                          use_reduce=False,
-                                          share_parameter_between_cards=False):
+    def check_simple_fc_parallel_accuracy(self, use_cuda, use_reduce=False):
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
@@ -150,8 +142,7 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda,
             use_parallel_executor=True,
-            use_reduce=use_reduce,
-            share_parameter_between_cards=share_parameter_between_cards)
+            use_reduce=use_reduce)
 
         for p_f in parallel_first_loss:
             self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
@@ -163,15 +154,11 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_parallel_accuracy(False)
 
     def test_simple_fc_parallel_accuracy_with_new_strategy(self):
-        # use_cuda, use_reduce, share_parameter_between_cards
+        # use_cuda, use_reduce
         self.check_simple_fc_parallel_accuracy(True, True)
         self.check_simple_fc_parallel_accuracy(False, True)
-        self.check_simple_fc_parallel_accuracy(False, True, True)
 
-    def check_batchnorm_fc_convergence(self,
-                                       use_cuda,
-                                       use_reduce=False,
-                                       share_parameter_between_cards=False):
+    def check_batchnorm_fc_convergence(self, use_cuda, use_reduce=False):
         self.check_network_convergence(fc_with_batchnorm, use_cuda=use_cuda)
         img = np.zeros(shape=[32, 784], dtype='float32')
         label = np.ones(shape=[32, 1], dtype='int64')
@@ -180,18 +167,16 @@ class TestMNIST(TestParallelExecutorBase):
             feed_dict={"image": img,
                        "label": label},
             use_cuda=use_cuda,
-            use_reduce=use_reduce,
-            share_parameter_between_cards=share_parameter_between_cards)
+            use_reduce=use_reduce)
 
     def test_batchnorm_fc(self):
         self.check_batchnorm_fc_convergence(True)
         self.check_batchnorm_fc_convergence(False)
 
     def test_batchnorm_fc_with_new_strategy(self):
-        # use_cuda, use_reduce, share_parameter_between_cards
+        # use_cuda, use_reduce
         self.check_batchnorm_fc_convergence(True, True)
         self.check_batchnorm_fc_convergence(False, True)
-        self.check_batchnorm_fc_convergence(False, True, True)
 
 
 if __name__ == '__main__':

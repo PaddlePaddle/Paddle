@@ -35,8 +35,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   feed_dict=None,
                                   seed=None,
                                   use_parallel_executor=True,
-                                  use_reduce=False,
-                                  share_parameter_between_cards=False):
+                                  use_reduce=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -70,14 +69,9 @@ class TestParallelExecutorBase(unittest.TestCase):
             exec_strategy.allow_op_delay = allow_op_delay
 
             build_strategy = fluid.BuildStrategy()
-            build_strategy.share_parameter_between_cards = share_parameter_between_cards
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.debug_graphviz_path = "./graph.dot"
-            if share_parameter_between_cards:
-                assert use_reduce and not use_cuda, \
-                    "If share_parameter_between_cards is True, reduce_strategy " \
-                    "must be Reduce and use_cuda must be false."
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(

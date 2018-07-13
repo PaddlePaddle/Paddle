@@ -45,7 +45,7 @@ class ParallelExecutorPrivate {
 #endif
   bool own_local_scope_;
   bool use_cuda_;
-  bool share_parameter_between_cards_;
+  bool use_all_reduce_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -63,25 +63,12 @@ ParallelExecutor::ParallelExecutor(
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
-
-  member_->share_parameter_between_cards_ =
-      build_strategy.share_parameter_between_cards_;
-
+  member_->use_all_reduce_ =
+      build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
   if (build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
     PADDLE_ENFORCE(places.size() > 1,
                    "If you set build_strategy.reduce with 'Reduce',"
                    "the number of places must be greater than 1.");
-  }
-
-  if (build_strategy.share_parameter_between_cards_) {
-    PADDLE_ENFORCE(
-        !member_->use_cuda_,
-        "Currently, ParallelExecutor doesn't support share parameters "
-        "between GPU.");
-    PADDLE_ENFORCE(
-        build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kReduce,
-        "If you set share_parameter_between_cards with true, "
-        "build_strategy.reduce must be 'Reduce'");
   }
 
   // Step 1. Bcast the params to devs.
@@ -226,12 +213,12 @@ void ParallelExecutor::BCastParamsToGPUs(
       for (size_t i = 1; i < member_->places_.size(); ++i) {
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-        if (member_->share_parameter_between_cards_) {
-          t->ShareDataWith(main_tensor);
-        } else {
+        if (member_->use_all_reduce_ || member_->use_cuda_) {
           t->Resize(dims);
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
+        } else {
+          t->ShareDataWith(main_tensor);
         }
       }
     }
