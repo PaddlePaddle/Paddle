@@ -100,10 +100,11 @@ def main():
         train_data_thread.join()
 
         test_data_thread = pipe_reader_to_queue(
-            paddle.batch(mnist.train(), 32), test_queue)
+            paddle.batch(mnist.test(), 32), test_queue)
         try:
             while True:
-                print numpy.array(tester.run(fetch_list=[test_loss.name]))
+                print 'test loss', numpy.array(
+                    tester.run(fetch_list=[test_loss.name]))
         except fluid.core.EOFException:
             print 'End of testing'
             test_reader.reset()
