@@ -121,7 +121,7 @@ class DistributeTranspilerConfig(object):
     """
 
     slice_var_up = True
-    split_method = RoundRobin
+    split_method = None
     min_block_size = 8192
 
 
@@ -163,11 +163,15 @@ class DistributeTranspiler(object):
 
     def __init__(self, config=None):
         if config is not None:
-            assert (config.split_method.__bases__[0] == PSDispatcher)
-            assert (config.min_block_size >= 8192)
             self.config = config
         else:
             self.config = DistributeTranspilerConfig()
+
+        if self.config.split_method is None:
+            self.config.split_method = RoundRobin
+
+        assert (self.config.min_block_size >= 8192)
+        assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
     def transpile(self,
                   trainer_id,
