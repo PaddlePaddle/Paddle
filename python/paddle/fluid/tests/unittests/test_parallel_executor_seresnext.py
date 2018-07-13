@@ -135,15 +135,18 @@ def SE_ResNeXt50Small(batch_size=2, use_feed=False):
 
 
 class TestResnet(TestParallelExecutorBase):
-    def check_resnet_convergence_with_learning_rate_decay(
-            self, balance_parameter_opt_between_cards, use_cuda=True, iter=20):
+    def check_resnet_convergence_with_learning_rate_decay(self,
+                                                          use_cuda=True,
+                                                          use_reduce=False,
+                                                          iter=20):
+
         os.environ['CPU_NUM'] = str(4)
 
         def _cosine_decay(learning_rate, step_each_epoch, epochs=120):
             """
             Applies cosine decay to the learning rate.
-             lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
-             """
+            lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
+            """
             global_step = _decay_step_counter()
 
             with init_on_cpu():
@@ -169,20 +172,18 @@ class TestResnet(TestParallelExecutorBase):
             iter=iter,
             batch_size=batch_size,
             use_cuda=use_cuda,
-            balance_parameter_opt_between_cards=balance_parameter_opt_between_cards,
+            use_reduce=use_reduce,
             optimizer=_optimizer)
 
     def test_resnet_with_learning_rate_decay(self):
+        self.check_resnet_convergence_with_learning_rate_decay(True, False)
         self.check_resnet_convergence_with_learning_rate_decay(
-            False, use_cuda=True)
-        self.check_resnet_convergence_with_learning_rate_decay(
-            False, use_cuda=False, iter=5)
+            False, False, iter=5)
 
     def test_resnet_with_new_strategy_with_learning_rate_decay(self):
+        self.check_resnet_convergence_with_learning_rate_decay(True, True)
         self.check_resnet_convergence_with_learning_rate_decay(
-            True, use_cuda=True)
-        self.check_resnet_convergence_with_learning_rate_decay(
-            True, use_cuda=False, iter=5)
+            False, True, iter=5)
 
 
 if __name__ == '__main__':
