@@ -447,7 +447,12 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def py_reader(capacity, shapes, dtypes, lod_levels=None, name=None):
+def py_reader(capacity,
+              shapes,
+              dtypes,
+              lod_levels=None,
+              name=None,
+              use_double_buffer=True):
     """
     Create a reader and blocking queue for data feeding in Python
     
@@ -460,6 +465,7 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None, name=None):
     using `close()` method when unused.
 
     Args:
+       use_double_buffer(bool): Whether use double buffer or not.
        capacity(int): The maximum capacity of the BlockingQueue.
        shapes(list|tuple): List of tuples which declaring data shapes.
        dtypes(list|tuple): List of strs which declaring data type.
@@ -509,9 +515,11 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None, name=None):
     if name is None:
         queue_name = unique_name('lod_tensor_blocking_queue')
         reader_name = unique_name('create_py_reader')
+        double_buffer_name = unique_name('double_buffer')
     else:
         queue_name = "_".join([name, "queue"])
         reader_name = "_".join([name, "reader"])
+        double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
     feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
@@ -534,7 +542,10 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None, name=None):
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
                                       startup_var)
 
-    return monkey_patch_reader_methods(main_prog_var), feed_queue
+    reader = monkey_patch_reader_methods(main_prog_var)
+    if use_double_buffer:
+        reader = double_buffer(reader, name=double_buffer_name)
+    return reader, feed_queue
 
 
 def open_files(filenames,

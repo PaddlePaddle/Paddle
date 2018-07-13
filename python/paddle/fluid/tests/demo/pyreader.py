@@ -26,7 +26,7 @@ def network(is_train):
         shapes=((-1, 784), (-1, 1)),
         dtypes=('float32', 'int64'),
         name="train_reader" if is_train else "test_reader")
-    img, label = fluid.layers.read_file(fluid.layers.double_buffer(reader))
+    img, label = fluid.layers.read_file(reader)
 
     hidden = img
 
@@ -100,7 +100,7 @@ def main():
                     trainer.run(fetch_list=[loss.name]))
         except fluid.core.EOFException:
             print 'End of epoch', epoch_id
-            train_reader.reset()
+            # train_reader.reset()
         train_data_thread.join()
 
         test_data_thread = pipe_reader_to_queue(
@@ -111,10 +111,12 @@ def main():
                     tester.run(fetch_list=[test_loss.name]))
         except fluid.core.EOFException:
             print 'End of testing'
-            test_reader.reset()
+            # test_reader.reset()
 
         test_data_thread.join()
         break
+    del trainer
+    del tester
 
 
 if __name__ == '__main__':
