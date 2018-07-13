@@ -36,8 +36,6 @@ class MultiFileReader : public framework::ReaderBase {
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
-  ~MultiFileReader() { EndScheduler(); }
-
  private:
   void ShutdownImpl() override { EndScheduler(); }
 
