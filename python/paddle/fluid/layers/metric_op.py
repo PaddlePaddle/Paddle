@@ -76,7 +76,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
     return acc_out
 
 
-def auc(input, label, curve='ROC', num_thresholds=200, k=1):
+def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
     """
     **Area Under the Curve (AUC) Layer**
 
