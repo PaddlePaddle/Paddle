@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid as fluid
-import paddle.dataset.mnist as mnist
-import paddle
-import paddle.v2
-import threading
 import numpy
+
+import paddle
+import paddle.dataset.mnist as mnist
+import paddle.fluid as fluid
+import paddle.v2
 
 
 def network(is_train):
-    reader, queue = fluid.layers.py_reader(
+    reader = fluid.layers.py_reader(
         capacity=10,
         shapes=((-1, 784), (-1, 1)),
         dtypes=('float32', 'int64'),
@@ -37,32 +37,7 @@ def network(is_train):
 
     prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
     loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    return fluid.layers.mean(loss), queue, reader
-
-
-def pipe_reader_to_queue(reader_creator, queue):
-    with fluid.program_guard(fluid.Program(), fluid.Program()):
-        feeder = fluid.DataFeeder(
-            feed_list=[
-                fluid.layers.data(
-                    name='img', dtype='float32', shape=[784]),
-                fluid.layers.data(
-                    name='label', dtype='int64', shape=[1])
-            ],
-            place=fluid.CPUPlace())
-
-    def __thread_main__():
-        for data in feeder.decorate_reader(
-                reader_creator, multi_devices=False)():
-            tmp = fluid.core.LoDTensorArray()
-            tmp.append(data['img'])
-            tmp.append(data['label'])
-            queue.push(tmp)
-        queue.close()
-
-    th = threading.Thread(target=__thread_main__)
-    th.start()
-    return th
+    return fluid.layers.mean(loss), reader
 
 
 def main():
@@ -71,7 +46,7 @@ def main():
 
     with fluid.program_guard(train_prog, startup_prog):
         with fluid.unique_name.guard():
-            loss, train_queue, train_reader = network(True)
+            loss, train_reader = network(True)
             adam = fluid.optimizer.Adam(learning_rate=0.01)
             adam.minimize(loss)
 
@@ -79,7 +54,7 @@ def main():
     test_startup = fluid.Program()
     with fluid.program_guard(test_prog, test_startup):
         with fluid.unique_name.guard():
-            test_loss, test_queue, test_reader = network(False)
+            test_loss, test_reader = network(False)
 
     fluid.Executor(fluid.CUDAPlace(0)).run(startup_prog)
     fluid.Executor(fluid.CUDAPlace(0)).run(test_startup)
@@ -90,10 +65,13 @@ def main():
     tester = fluid.ParallelExecutor(
         use_cuda=True, share_vars_from=trainer, main_program=test_prog)
 
+    train_reader.decorate_paddle_reader(
+        paddle.v2.reader.shuffle(
+            paddle.batch(mnist.train(), 256), buf_size=8192))
+
+    test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 256))
+
     for epoch_id in xrange(10):
-        train_data_thread = pipe_reader_to_queue(
-            paddle.batch(paddle.v2.reader.firstn(mnist.train(), 32), 64),
-            train_queue)
         try:
             while True:
                 print 'train_loss', numpy.array(
@@ -101,10 +79,7 @@ def main():
         except fluid.core.EOFException:
             print 'End of epoch', epoch_id
             train_reader.reset()
-        train_data_thread.join()
 
-        test_data_thread = pipe_reader_to_queue(
-            paddle.batch(mnist.test(), 32), test_queue)
         try:
             while True:
                 print 'test loss', numpy.array(
@@ -112,11 +87,6 @@ def main():
         except fluid.core.EOFException:
             print 'End of testing'
             test_reader.reset()
-
-        test_data_thread.join()
-        break
-    del trainer
-    del tester
 
 
 if __name__ == '__main__':
