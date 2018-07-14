@@ -67,11 +67,12 @@ def main():
 
     train_reader.decorate_paddle_reader(
         paddle.v2.reader.shuffle(
-            paddle.batch(mnist.train(), 256), buf_size=8192))
+            paddle.batch(mnist.train(), 512), buf_size=8192))
 
-    test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 256))
+    test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
 
     for epoch_id in xrange(10):
+        train_reader.start()
         try:
             while True:
                 print 'train_loss', numpy.array(
@@ -80,6 +81,7 @@ def main():
             print 'End of epoch', epoch_id
             train_reader.reset()
 
+        test_reader.start()
         try:
             while True:
                 print 'test loss', numpy.array(
