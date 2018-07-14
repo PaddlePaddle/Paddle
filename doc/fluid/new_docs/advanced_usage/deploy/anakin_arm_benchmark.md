@@ -25,27 +25,189 @@
 
 ### <span id = '11'> mobilenetv1 </span>
 
-   |platform | Anakin (1) | Anakin (2) | Anakin (4) | ncnn (1) | ncnn (2) | ncnn (4) | TFlite (1) | TFlite (2) | TFlite (4)| 
-   |:---: | :---: | :---: | :---:| :---:| :---:| :---:| :---:| :---:| :---:|
-   |麒麟960|107.7ms|61.1ms|38.2ms|152.8ms|85.2ms|51.9ms|152.6ms|nan|nan|
-   |高通835|105.7ms|63.1ms|~~46.8ms~~|152.7ms|87.0ms|~~92.7ms~~|146.9ms|nan|nan|
-   |高通653|120.3ms|64.2ms|46.6ms|202.5ms|117.6ms|84.8ms|158.6ms|nan|nan| 
+<p align="center">
+    <table>
+        <thead>
+            <tr>
+                <th>platform</th>
+                <th>Anakin (1)</th>
+                <th>Anakin (2)</th>
+                <th>Anakin (4)</th>
+                <th>ncnn (1)</th>
+                <th>ncnn (2)</th>
+                <th>ncnn (4)</th>
+                <th>TFlite (1)</th>
+                <th>TFlite (2)</th>
+                <th>TFlite (4)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>麒麟960</td>
+                <td>107.7ms</td>
+                <td>61.1ms</td>
+                <td>38.2ms</td>
+                <td>152.8ms</td>
+                <td>85.2ms</td>
+                <td>51.9ms</td>
+                <td>152.6ms</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+            <tr>
+                <td>高通835</td>
+                <td>105.7ms</td>
+                <td>63.1ms</td>
+                <td>
+                    <del>46.8ms</del>
+                </td>
+                <td>152.7ms</td>
+                <td>87.0ms</td>
+                <td>
+                    <del>92.7ms</del>
+                </td>
+                <td>146.9ms</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+            <tr>
+                <td>高通653</td>
+                <td>120.3ms</td>
+                <td>64.2ms</td>
+                <td>46.6ms</td>
+                <td>202.5ms</td>
+                <td>117.6ms</td>
+                <td>84.8ms</td>
+                <td>158.6ms</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+        </tbody>
+    </table>
+</p>
+
 
 ### <span id = '22'> mobilenetv2 </span>
 
-   |platform | Anakin (1) | Anakin (2) | Anakin (4) | ncnn (1) | ncnn (2) | ncnn (4) | TFlite (1) | TFlite (2) | TFlite (4)| 
-   |:---: | :---: | :---: | :---:| :---:| :---:| :---:| :---:| :---:| :---:|
-   |麒麟960|93.1ms|53.9ms|34.8ms|144.4ms|84.3ms|55.3ms|100.6ms|nan|nan|
-   |高通835|93.0ms|55.6ms|41.1ms|139.1ms|88.4ms|58.1ms|95.2ms|nan|nan|
-   |高通653|106.6ms|64.2ms|48.0ms|199.9ms|125.1ms|98.9ms|108.5ms|nan|nan|
+<p align="center">
+    <table>
+        <thead>
+            <tr>
+                <th>platform</th>
+                <th>Anakin (1)</th>
+                <th>Anakin (2)</th>
+                <th>Anakin (4)</th>
+                <th>ncnn (1)</th>
+                <th>ncnn (2)</th>
+                <th>ncnn (4)</th>
+                <th>TFlite (1)</th>
+                <th>TFlite (2)</th>
+                <th>TFlite (4)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>麒麟960</td>
+                <td>93.1ms</td>
+                <td>53.9ms</td>
+                <td>34.8ms</td>
+                <td>144.4ms</td>
+                <td>84.3ms</td>
+                <td>55.3ms</td>
+                <td>100.6ms</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+            <tr>
+                <td>高通835</td>
+                <td>93.0ms</td>
+                <td>55.6ms</td>
+                <td>41.1ms</td>
+                <td>139.1ms</td>
+                <td>88.4ms</td>
+                <td>58.1ms</td>
+                <td>95.2ms</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+            <tr>
+                <td>高通653</td>
+                <td>106.6ms</td>
+                <td>64.2ms</td>
+                <td>48.0ms</td>
+                <td>199.9ms</td>
+                <td>125.1ms</td>
+                <td>98.9ms</td>
+                <td>108.5ms</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+        </tbody>
+    </table>
+</p>
 
 ### <span id = '33'> mobilenet-ssd </span>
 
-   |platform | Anakin (1) | Anakin (2) | Anakin (4) | ncnn (1) | ncnn (2) | ncnn (4) | TFlite (1) | TFlite (2) | TFlite (4)| 
-   |:---: | :---: | :---: | :---:| :---:| :---:| :---:| :---:| :---:| :---:|
-   |麒麟960|213.9ms|120.5ms|74.5ms|307.9ms|166.5ms|104.2ms|nan|nan|nan|
-   |高通835|213.0ms|125.7ms|~~98.4ms~~|292.9ms|177.9ms|~~167.8ms~~|nan|nan|nan|
-   |高通653|236.0ms|129.6ms|96.0ms|377.7ms|228.9ms|165.0ms|nan|nan|nan
+<p align="center">
+    <table>
+        <thead>
+            <tr>
+                <th>platform</th>
+                <th>Anakin (1)</th>
+                <th>Anakin (2)</th>
+                <th>Anakin (4)</th>
+                <th>ncnn (1)</th>
+                <th>ncnn (2)</th>
+                <th>ncnn (4)</th>
+                <th>TFlite (1)</th>
+                <th>TFlite (2)</th>
+                <th>TFlite (4)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>麒麟960</td>
+                <td>213.9ms</td>
+                <td>120.5ms</td>
+                <td>74.5ms</td>
+                <td>307.9ms</td>
+                <td>166.5ms</td>
+                <td>104.2ms</td>
+                <td>nan</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+            <tr>
+                <td>高通835</td>
+                <td>213.0ms</td>
+                <td>125.7ms</td>
+                <td>
+                    <del>98.4ms</del>
+                </td>
+                <td>292.9ms</td>
+                <td>177.9ms</td>
+                <td>
+                    <del>167.8ms</del>
+                </td>
+                <td>nan</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+            <tr>
+                <td>高通653</td>
+                <td>236.0ms</td>
+                <td>129.6ms</td>
+                <td>96.0ms</td>
+                <td>377.7ms</td>
+                <td>228.9ms</td>
+                <td>165.0ms</td>
+                <td>nan</td>
+                <td>nan</td>
+                <td>nan</td>
+            </tr>
+        </tbody>
+    </table>
+</p>
 
 ## How to run those Benchmark models?
 
