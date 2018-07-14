@@ -21,6 +21,7 @@ from ..layer_helper import LayerHelper
 from ..executor import global_scope
 from layer_function_generator import generate_layer_fn, templatedoc
 import sys
+import multiprocessing
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
@@ -549,10 +550,9 @@ def open_files(filenames,
        shapes(list): List of tuples which declaring data shapes.
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
-       thread_num(None): Deprecated argument. It will be set by open_files
-            automatically.
-       buffer_size(None): Deprecated argument. It will be set by open_files
-            automatically.
+       thread_num(None): The number of thread to read files.
+            Default: min(len(filenames), cpu_number).
+       buffer_size(None): The buffer size of reader. Default: 3 * thread_num
        pass_num(int): Number of passes to run.
        is_test(bool|None): Whether `open_files` used for testing or not. If it
             is used for testing, the order of data generated is same as the file
@@ -574,14 +574,15 @@ def open_files(filenames,
          # Via the reader, we can use 'read_file' layer to get data:
          image, label = fluid.layers.io.read_file(reader)
     """
-    if thread_num is not None:
-        print >> sys.stderr, "thread_num parameter of open_files is " \
-                             "deprecated. It will be ignored and set " \
-                             "automatically by open_files "
-    if buffer_size is not None:
-        print >> sys.stderr, "buffer_size parameter of open_files is " \
-                             "deprecated. It will be ignored and set " \
-                             "automatically by open_files "
+    if thread_num is None:
+        thread_num = min(len(filenames), multiprocessing.cpu_count())
+    else:
+        thread_num = int(thread_num)
+
+    if buffer_size is None:
+        buffer_size = 3 * thread_num
+    else:
+        buffer_size = int(buffer_size)
 
     if isinstance(filenames, basestring):
         filenames = [filenames]
@@ -600,7 +601,9 @@ def open_files(filenames,
         'shape_concat': shape_concat,
         'lod_levels': lod_levels,
         'ranks': ranks,
-        'file_names': filenames
+        'file_names': filenames,
+        'thread_num': thread_num,
+        'buffer_size': buffer_size
     }
     if is_test is not None:
         attrs['is_test'] = is_test
