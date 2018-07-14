@@ -155,7 +155,7 @@ class TestDataBalance(unittest.TestCase):
                 main_program=main_prog,
                 build_strategy=build_strategy)
 
-            if (parallel_exe.device_count > self.batch_size):
+            if parallel_exe.device_count > self.batch_size:
                 print("WARNING: Unittest TestDataBalance skipped. \
                     For the result is not correct when device count \
                     is larger than batch size.")
