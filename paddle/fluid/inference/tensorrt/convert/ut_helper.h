@@ -43,6 +43,19 @@ float random(float low, float high) {
   return dist(mt);
 }
 
+void AssignTensor(framework::LoDTensor* tensor, const platform::Place& place,
+                  const platform::DeviceContext& ctx,
+                  const std::vector<float>& tdata) {
+  auto dims = tensor->dims();
+  size_t num_elements = analysis::AccuDims(dims, dims.size());
+  PADDLE_ENFORCE_GT(num_elements, 0);
+  auto* data = tensor->mutable_data<float>(place);
+
+  for (size_t i = 0; i < num_elements; i++) {
+    *(data + i) = tdata[i];
+  }
+}
+
 void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
                      const platform::DeviceContext& ctx) {
   auto dims = tensor->dims();
