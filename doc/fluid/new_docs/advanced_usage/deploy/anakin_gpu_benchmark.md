@@ -33,134 +33,506 @@ We tested them on single-GPU with single-thread.
 
 - Latency (`ms`) of different batch
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 8.8690 | 8.2815 |
-| 2 | 15.5344 | 13.9116 |
-| 4 | 26.6000 | 21.8747 |
-| 8 | 49.8279 | 40.4076 |
-| 32 | 188.6270 | 163.7660 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>8.8690</td>
+        <td>8.2815</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>15.5344</td>
+        <td>13.9116</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>26.6000</td>
+        <td>21.8747</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>49.8279</td>
+        <td>40.4076</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>188.6270</td>
+        <td>163.7660</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 - GPU Memory Used (`MB`)
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 963 | 997 |
-| 2 | 965 | 1039 |
-| 4 | 991 | 1115 |
-| 8 | 1067 | 1269 |
-| 32 | 1715 | 2193 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>963</td>
+        <td>997</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>965</td>
+        <td>1039</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>991</td>
+        <td>1115</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>1067</td>
+        <td>1269</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>1715</td>
+        <td>2193</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 
 ### <span id = '2'>Yolo </span>
 
 - Latency (`ms`) of different batch
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 16.4596| 15.2124 |
-| 2 | 26.6347| 25.0442 |
-| 4 | 43.3695| 43.5017 |
-| 8 | 80.9139 | 80.9880 |
-| 32 | 293.8080| 310.8810 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>16.4596</td>
+        <td>15.2124</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>26.6347</td>
+        <td>25.0442</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>43.3695</td>
+        <td>43.5017</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>80.9139</td>
+        <td>80.9880</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>293.8080</td>
+        <td>310.8810</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
+
 
 - GPU Memory Used (`MB`)
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 1569 | 1775 |
-| 2 | 1649 | 1815 |
-| 4 | 1709 | 1887 |
-| 8 | 1731 | 2031 |
-| 32 | 2253 | 2907 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>1569</td>
+        <td>1775</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>1649</td>
+        <td>1815</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>1709</td>
+        <td>1887</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>1731</td>
+        <td>2031</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>2253</td>
+        <td>2907</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 ### <span id = '3'> Resnet50 </span>
 
 - Latency (`ms`) of different batch
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 4.2459   |  4.1061 |
-| 2 |  6.2627  |  6.5159 |
-| 4 | 10.1277  | 11.3327 |
-| 8 | 17.8209  | 20.6680 |
-| 32 | 65.8582 | 77.8858 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>4.2459</td>
+        <td>4.1061</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>6.2627</td>
+        <td>6.5159</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>10.1277</td>
+        <td>11.3327</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>17.8209</td>
+        <td>20.6680</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>65.8582</td>
+        <td>77.8858</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 - GPU Memory Used (`MB`)
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 531  | 503 |
-| 2 | 543  | 517 |
-| 4 | 583 | 541 |
-| 8 | 611 | 589 |
-| 32 |  809 | 879 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>531</td>
+        <td>503</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>543</td>
+        <td>517</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>583</td>
+        <td>541</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>611</td>
+        <td>589</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>809</td>
+        <td>879</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 ### <span id = '4'> Resnet101 </span>
 
 - Latency (`ms`) of different batch
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 7.5562 | 7.0837 |
-| 2 | 11.6023 | 11.4079 |
-| 4 | 18.3650 | 20.0493 |
-| 8 | 32.7632 | 36.0648 |
-| 32 | 123.2550 | 135.4880 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>7.5562</td>
+        <td>7.0837</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>11.6023</td>
+        <td>11.4079</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>18.3650</td>
+        <td>20.0493</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>32.7632</td>
+        <td>36.0648</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>123.2550</td>
+        <td>135.4880</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 - GPU Memory Used (`MB)`
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 701  | 683 |
-| 2 | 713  | 697 |
-| 4 | 793 | 721 |
-| 8 | 819 | 769 |
-| 32 | 1043 | 1059 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>701</td>
+        <td>683</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>713</td>
+        <td>697</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>793</td>
+        <td>721</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>819</td>
+        <td>769</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>1043</td>
+        <td>1059</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 ###  <span id = '5'> MobileNet V1 </span>
 
 - Latency (`ms`) of different batch
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 45.5156  |  1.3947 |
-| 2 |  46.5585  |  2.5483 |
-| 4 | 48.4242  | 4.3404 |
-| 8 |  52.7957 |  8.1513 |
-| 32 | 83.2519 | 31.3178 |
-
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>45.5156</td>
+        <td>1.3947</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>46.5585</td>
+        <td>2.5483</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>48.4242</td>
+        <td>4.3404</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>52.7957</td>
+        <td>8.1513</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>83.2519</td>
+        <td>31.3178</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 - GPU Memory Used (`MB`)
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 329  | 283 |
-| 2 | 345  | 289 |
-| 4 | 371 | 299 |
-| 8 | 393 | 319 |
-| 32 |  531 | 433 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>329</td>
+        <td>283</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>345</td>
+        <td>289</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>371</td>
+        <td>299</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>393</td>
+        <td>319</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>531</td>
+        <td>433</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
+
 
 ###  <span id = '6'> MobileNet V2</span>
 
 - Latency (`ms`) of different batch
 
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 65.6861 | 2.9842 |
-| 2 | 66.6814 | 4.7472 |
-| 4 | 69.7114 | 7.4163 |
-| 8 | 76.1092 | 12.8779 |
-| 32 | 124.9810 | 47.2142 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>65.6861</td>
+        <td>2.9842</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>66.6814</td>
+        <td>4.7472</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>69.7114</td>
+        <td>7.4163</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>76.1092</td>
+        <td>12.8779</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>124.9810</td>
+        <td>47.2142</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 - GPU Memory Used (`MB`)
-
-| BatchSize | TensorRT | Anakin |
-| --- | --- | --- |
-| 1 | 341 | 293 |
-| 2 | 353 | 301 |
-| 4 | 385 | 319 |
-| 8 | 421 | 351 |
-| 32 | 637 | 551 |
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>BatchSize</th>
+        <th>TensorRT</th>
+        <th>Anakin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>341</td>
+        <td>293</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>353</td>
+        <td>301</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td>385</td>
+        <td>319</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td>421</td>
+        <td>351</td>
+      </tr>
+      <tr>
+        <td>32</td>
+        <td>637</td>
+        <td>551</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 ## How to run those Benchmark models?
 
