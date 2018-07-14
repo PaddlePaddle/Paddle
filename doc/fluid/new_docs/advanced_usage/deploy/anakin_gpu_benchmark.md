@@ -326,7 +326,7 @@ We tested them on single-GPU with single-thread.
   </table>
 </p>
 
-- GPU Memory Used (`MB)`
+- GPU Memory Used (`MB`)
 
 <p align="center">
   <table>
@@ -409,6 +409,7 @@ We tested them on single-GPU with single-thread.
     </tbody>
   </table>
 </p>
+
 - GPU Memory Used (`MB`)
 
 <p align="center">
