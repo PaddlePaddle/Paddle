@@ -13,13 +13,15 @@
 # limitations under the License.
 import contextlib
 import multiprocessing
+import threading
 
+from ..data_feeder import DataFeeder
 from control_flow import BlockGuard
 from layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program
+    default_startup_program, program_guard, Program
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
@@ -550,7 +552,71 @@ def py_reader(capacity,
         # py_reader.
         double_buffer_reader.reset = reader.reset
         reader = double_buffer_reader
-    return reader, feed_queue
+
+    # monkey patch py_reader special methods
+    reader.queue = feed_queue
+    current_reset_method = reader.reset
+    reader.thread = None
+    reader.tensor_provider = None
+
+    def start_provide_thread(func):
+        def __provider_thread__():
+            for tensors in func():
+                array = core.LoDTensorArray()
+                for item in tensors:
+                    if not isinstance(item, core.LoDTensor):
+                        tmp = core.LoDTensor()
+                        tmp.set(item, core.CPUPlace())
+                        item = tmp
+
+                    array.append(item)
+
+                feed_queue.push(array)
+            feed_queue.close()
+
+        reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread.start()
+
+    def __set_tensor_provider__(func):
+        reader._tensor_provider = func
+        start_provide_thread(reader._tensor_provider)
+
+    def __set_paddle_reader__(reader):
+        with program_guard(Program(), Program()):
+            feed_list = []
+            counter = 0
+            for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
+                name = str(counter)
+                feed_list.append(
+                    data(
+                        name=name,
+                        dtype=dtype,
+                        shape=shape,
+                        lod_level=lod_level))
+                counter += 1
+
+            feeder = DataFeeder(feed_list=feed_list, place=core.CPUPlace())
+
+        reader = feeder.decorate_reader(reader, multi_devices=False)
+
+        def __tensor_provider__():
+            for data in reader():
+                yield [data[str(idx)] for idx in xrange(counter)]
+
+        __set_tensor_provider__(__tensor_provider__)
+
+    def __reset__():
+        current_reset_method()
+        if reader.thread is not None and reader.tensor_provider is not None:
+            reader.thread.join()
+            # restart provider thread.
+            start_provide_thread(reader.tensor_provider)
+
+    reader.reset = __reset__
+    reader.decorate_tensor_provider = __set_tensor_provider__
+    reader.decorate_paddle_reader = __set_paddle_reader__
+
+    return reader
 
 
 def open_files(filenames,
