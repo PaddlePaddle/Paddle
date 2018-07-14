@@ -35,7 +35,14 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(inference_height, label_height,
                       "Out and Label should have same height.");
 
+    int num_thres = ctx->Attrs().Get<int>("num_thresholds");
+
     ctx->SetOutputDim("AUC", {1});
+    ctx->SetOutputDim("TP", {num_thres});
+    ctx->SetOutputDim("TN", {num_thres});
+    ctx->SetOutputDim("FP", {num_thres});
+    ctx->SetOutputDim("FN", {num_thres});
+
     ctx->ShareLoD("Out", /*->*/ "AUC");
   }
 
@@ -63,10 +70,18 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data."
              "The height is batch size and width is always 1.");
+    AddInput("TP", "True-Positive value.");
+    AddInput("FP", "False-Positive value.");
+    AddInput("TN", "True-Negative value.");
+    AddInput("FN", "False-Negative value.");
     // TODO(typhoonzero): support weight input
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
+    AddOutput("TPOut", "True-Positive value.");
+    AddOutput("FPOut", "False-Positive value.");
+    AddOutput("TNOut", "True-Negative value.");
+    AddOutput("FNOut", "False-Negative value.");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
