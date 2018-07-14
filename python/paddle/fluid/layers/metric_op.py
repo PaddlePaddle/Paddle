@@ -114,18 +114,8 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
             prediction = network(image, is_infer=True)
             auc_out=fluid.layers.auc(input=prediction, label=label)
     """
-
-    warnings.warn(
-        "This interface is not recommended, fluid.layers.auc compute the auc at every minibatch, \
-        but can not aggregate them and get the pass AUC, because pass \
-        auc can not be averaged with weighted from the minibatch auc value. \
-        Please use fluid.metrics.Auc, it can compute the auc value via Python natively, \
-        which can get every minibatch and every pass auc value.", Warning)
     helper = LayerHelper("auc", **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    topk_out, topk_indices = nn.topk(input, k=k)
-    auc_out = helper.create_tmp_variable(dtype="float32")
+    auc_out = helper.create_tmp_variable(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
     tp = helper.create_global_variable(persistable=True)
     tn = helper.create_global_variable(persistable=True)
@@ -139,8 +129,7 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
     helper.append_op(
         type="auc",
         inputs={
-            "Out": [topk_out],
-            "Indices": [topk_indices],
+            "Predict": [input],
             "Label": [label],
             "TP": [tp],
             "TN": [tn],
