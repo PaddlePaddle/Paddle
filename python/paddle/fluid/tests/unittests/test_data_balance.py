@@ -142,8 +142,7 @@ class TestDataBalance(unittest.TestCase):
                 filenames=[self.lod_data_file_name],
                 shapes=[[-1, 3], [-1, 1]],
                 lod_levels=[1, 0],
-                dtypes=['float32', 'int32'],
-                thread_num=1)
+                dtypes=['float32', 'int32'])
             ins, label = fluid.layers.read_file(data_reader)
 
             place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
