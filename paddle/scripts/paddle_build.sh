@@ -327,11 +327,11 @@ function assert_api_not_changed() {
 
     API_CHANGE=`git diff --name-only HEAD^ | grep "paddle/fluid/API.spec"`
     echo "checking API.spec change..."
-    echo "${PR_ID} , ${API_CHANGE}"
-    if [ $API_CHANGE -eq 0 ] && [ "${PR_ID}" != "" ]; then
+    echo "${GIT_PR_ID} , ${API_CHANGE}"
+    if [ $API_CHANGE -eq 0 ] && [ "${GIT_PR_ID}" != "" ]; then
         APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/${PR_ID}/reviews | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2`
-        echo "current pr ${PR_ID} got approvals: ${APPROVALS}"
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "You must have at least 2 approvals for the api change!"
         exit 1
