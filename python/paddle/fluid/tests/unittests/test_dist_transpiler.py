@@ -54,7 +54,7 @@ class TranspilerTest(unittest.TestCase):
 
     def get_trainer(self):
         t = self._transpiler_instance()
-        return t.get_trainer_program()
+        return t.get_trainer_program(), fluid.default_startup_program()
 
     def get_pserver(self, ep):
         t = self._transpiler_instance()
@@ -81,7 +81,21 @@ class TestBasicModel(TranspilerTest):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         pserver2, startup2 = self.get_pserver(self.pserver2_ep)
 
-        trainer = self.get_trainer()
+        trainer, trainer_startup = self.get_trainer()
+
+        # splited var blocks should be in startup program
+        self.assertTrue("fc_w.block0" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_w.block1" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_w" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_b" in trainer_startup.global_block().vars)
+        self.assertTrue("fc_w@GRAD" not in trainer_startup.global_block().vars)
+        self.assertTrue("fc_b@GRAD" not in trainer_startup.global_block().vars)
+
+        self.assertEqual(
+            [op.type for op in trainer_startup.global_block().ops], [
+                'fill_constant', 'fill_constant', 'uniform_random', 'recv',
+                'recv', 'recv', 'fetch_barrier', 'concat'
+            ])
 
         self.assertEqual([op.type for op in trainer.global_block().ops], [
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
@@ -163,7 +177,7 @@ class TestLRDecay(TranspilerTest):
 
     def test_transpiler(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
-        trainer = self.get_trainer()
+        trainer, _ = self.get_trainer()
 
         self.assertEqual(len(pserver.blocks), 4)
         lr_decay_ops = [op.type for op in pserver.blocks[1].ops]
@@ -193,7 +207,7 @@ class TestLRDecayConditional(TranspilerTest):
 
     def test_transpiler(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
-        trainer = self.get_trainer()
+        trainer, _ = self.get_trainer()
 
         serv_op = pserver.blocks[0].ops[0]
         sub_blocks = []
@@ -242,7 +256,7 @@ class TestL2Decay(TranspilerTest):
 
     def test_transpiler(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
-        trainer = self.get_trainer()
+        trainer, _ = self.get_trainer()
 
         self.assertEqual(len(pserver.blocks), 3)
         self.assertEqual([op.type for op in pserver.blocks[1].ops],

@@ -35,6 +35,7 @@ import numpy as np
 
 from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
+from ..initializer import RemoteInitializer
 from ..framework import Program, default_main_program, \
                         default_startup_program, Block, \
                         Variable, Parameter, grad_var_name
@@ -170,6 +171,9 @@ class DistributeTranspiler(object):
             sync_mode (bool): Do sync training or not, default is True.
         """
         assert (split_method.__bases__[0] == PSDispatcher)
+        self.split_method = split_method
+        self.origin_startup_program = default_startup_program().clone()
+        self.startup_program = default_startup_program()
         if program is None:
             program = default_main_program()
         self.origin_program = program
@@ -180,13 +184,13 @@ class DistributeTranspiler(object):
         self.pserver_endpoints = pserver_endpoints
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
-        ps_dispatcher = split_method(self.pserver_endpoints)
+        ps_dispatcher = self.split_method(self.pserver_endpoints)
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
-        # split and create vars, then put splited vars in dicts for later use.
+        # step 1: split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars(slice_var_up)
 
-        # step 3.1: insert send op to send gradient vars to parameter servers
+        # step 2: insert send op to send gradient vars to parameter servers
         ps_dispatcher.reset()
         send_vars = []
 
@@ -242,7 +246,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        # step 3.2: insert recv op to receive parameters from parameter server
+        # step 3: insert recv op to receive parameters from parameter server
         recv_vars = []
         for _, var in enumerate(send_vars):
             recv_vars.append(self.grad_param_mapping[var])
@@ -288,6 +292,8 @@ class DistributeTranspiler(object):
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
+        self._get_trainer_startup_program()
+
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
                                                         pserver_endpoints)
@@ -304,7 +310,84 @@ class DistributeTranspiler(object):
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
+
         return self.origin_program
+
+    def _get_trainer_startup_program(self, program=None):
+        """
+        Get transpiled trainer side startup program.
+
+        Returns:
+            Program: trainer side startup program.
+        """
+        if program is None:
+            program = self.startup_program
+
+        orig_s_prog = program
+
+        # add concat ops to origin parameters in startup program to
+        # let the origin parameters initialized by the spilited parameters
+        send_vars = []
+
+        for orig_varname, splited_vars in self.grad_var_mapping.items():
+            for _, var in enumerate(splited_vars):
+                send_vars.append(var)
+
+        recv_vars = []
+        for _, var in enumerate(send_vars):
+            recv_vars.append(self.grad_param_mapping[var])
+        ps_dispatcher = self.split_method(self.pserver_endpoints)
+        ps_dispatcher.reset()
+        eplist = ps_dispatcher.dispatch(recv_vars)
+
+        splited_param_mapping = {}
+        for varname, splited_var in self.param_var_mapping.iteritems():
+            # Get the eplist of recv vars
+            eps = []
+            for var in splited_var:
+                index = [v.name for v in recv_vars].index(var.name)
+                eps.append(eplist[index])
+
+            splited_var_in_startup_prog = []
+            # create splited_var with remote initializer
+            for var in splited_var:
+                var_in_startup_prog = orig_s_prog.global_block().create_var(
+                    name=var.name,
+                    shape=var.shape,
+                    dtype=var.dtype,
+                    type=var.type,
+                    lod_level=var.lod_level,
+                    persistable=True,
+                    is_data=var.is_data,
+                    initializer=RemoteInitializer(eps))
+
+                # var with remote initializer
+                splited_var_in_startup_prog.append(var_in_startup_prog)
+
+            splited_param_mapping[varname] = splited_var_in_startup_prog
+
+        orig_s_prog.global_block().append_op(
+            type="fetch_barrier",
+            inputs={},
+            outputs={},
+            attrs={
+                "endpoints": self.pserver_endpoints,
+                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            })
+
+        for varname, splited_var in self.param_var_mapping.iteritems():
+            # append concat_op to concat all splited params rather than prepend
+            if len(splited_var) <= 1:
+                continue
+            splited_var_in_startup_prog = splited_param_mapping[varname]
+            orig_param = orig_s_prog.global_block().vars[varname]
+            orig_s_prog.global_block().append_op(
+                type="concat",
+                inputs={"X": splited_var_in_startup_prog},
+                outputs={"Out": [orig_param]},
+                attrs={"axis": 0})
+
+        return orig_s_prog
 
     def get_pserver_program(self, endpoint):
         """
@@ -516,7 +599,7 @@ class DistributeTranspiler(object):
             Program: parameter server side startup program.
         """
         s_prog = Program()
-        orig_s_prog = default_startup_program()
+        orig_s_prog = self.origin_startup_program
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):
@@ -535,17 +618,19 @@ class DistributeTranspiler(object):
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
+
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
-            for key in op.output_names:
-                newname, _ = _get_splited_name_and_shape(op.output(key)[0])
-                if newname:
-                    op_on_pserver = True
-                    new_outputs[key] = created_var_map[newname]
-                elif op.output(key)[0] in pserver_vars:
-                    op_on_pserver = True
-                    new_outputs[key] = pserver_vars[op.output(key)[0]]
+            if op.type not in ["recv", "fetch_barrier", "concat"]:
+                for key in op.output_names:
+                    newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                    if newname:
+                        op_on_pserver = True
+                        new_outputs[key] = created_var_map[newname]
+                    elif op.output(key)[0] in pserver_vars:
+                        op_on_pserver = True
+                        new_outputs[key] = pserver_vars[op.output(key)[0]]
 
             if op_on_pserver:
                 # most startup program ops have no inputs
@@ -971,7 +1056,6 @@ class DistributeTranspiler(object):
                     var_mapping[varname] = \
                         [program.global_block().var(orig_var.name)]
                 continue
-
             var_mapping[varname] = []
             orig_shape = orig_var.shape
             orig_dim1_flatten = 1
