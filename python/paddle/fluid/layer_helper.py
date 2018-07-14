@@ -68,11 +68,11 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        return ParamAttr.to_attr(self.kwargs.get('param_attr', None))
+        return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
 
     @property
     def bias_attr(self):
-        return ParamAttr.to_attr(self.kwargs.get('bias_attr', None))
+        return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
     def multiple_param_attr(self, length):
         param_attr = self.param_attr
@@ -262,11 +262,11 @@ class LayerHelper(object):
         g_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=g_param_shape,
-            **g_param_attr.to_kwargs(with_initializer=False))
+            **g_param_attr._to_kwargs(with_initializer=False))
         v_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=v_param_shape,
-            **v_param_attr.to_kwargs(with_initializer=True))
+            **v_param_attr._to_kwargs(with_initializer=True))
         __norm_except_dim(
             x=v_param,
             out=g_param,
@@ -275,9 +275,9 @@ class LayerHelper(object):
 
         # Add weight normalization to main_program
         g_param = self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=g_param_shape, **g_param_attr.to_kwargs())
+            dtype=dtype, shape=g_param_shape, **g_param_attr._to_kwargs())
         v_param = self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=v_param_shape, **v_param_attr.to_kwargs())
+            dtype=dtype, shape=v_param_shape, **v_param_attr._to_kwargs())
         w_param = __weight_normalize(g_param, v_param, dim=attr.dim)
         return w_param
 
@@ -296,11 +296,11 @@ class LayerHelper(object):
 
         if default_initializer is None and attr.initializer is None:
             if is_bias:
-                attr.set_default_bias_initializer()
+                attr._set_default_bias_initializer()
             else:
-                attr.set_default_param_initializer()
+                attr._set_default_param_initializer()
         else:
-            attr.set_default_initializer(default_initializer)
+            attr._set_default_initializer(default_initializer)
 
         # If weight normalization is set, insert extra parameters and ops.
         # Refer to https://arxiv.org/pdf/1602.07868.pdf
@@ -310,9 +310,9 @@ class LayerHelper(object):
             return param
 
         self.startup_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
+            dtype=dtype, shape=shape, **attr._to_kwargs(with_initializer=True))
         return self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr.to_kwargs())
+            dtype=dtype, shape=shape, **attr._to_kwargs())
 
     def get_parameter(self, name):
         param = self.main_program.global_block().var(name)
