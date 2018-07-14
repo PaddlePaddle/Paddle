@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
-
-from .. import core
-from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program, Program
-from ..unique_name import generate as unique_name
-from control_flow import BlockGuard
-from ..layer_helper import LayerHelper
-from ..executor import global_scope
-from layer_function_generator import generate_layer_fn, templatedoc
-import sys
 import multiprocessing
+
+from control_flow import BlockGuard
+from layer_function_generator import templatedoc
+from .. import core
+from ..executor import global_scope
+from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
+    default_startup_program
+from ..layer_helper import LayerHelper
+from ..unique_name import generate as unique_name
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
@@ -448,7 +448,12 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def py_reader(capacity, shapes, dtypes, lod_levels=None):
+def py_reader(capacity,
+              shapes,
+              dtypes,
+              lod_levels=None,
+              name=None,
+              use_double_buffer=True):
     """
     Create a reader and blocking queue for data feeding in Python
     
@@ -461,10 +466,13 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
     using `close()` method when unused.
 
     Args:
+       use_double_buffer(bool): Whether use double buffer or not.
        capacity(int): The maximum capacity of the BlockingQueue.
-       shapes(list): List of tuples which declaring data shapes.
-       dtypes(list): List of strs which declaring data type. 
-       lod_levels(list): List of ints which declaring data lod_level.
+       shapes(list|tuple): List of tuples which declaring data shapes.
+       dtypes(list|tuple): List of strs which declaring data type.
+       lod_levels(list|tuple): List of ints which declaring data lod_level.
+       name(basestring): The prefix Python queue name and Reader name. None will
+            be generated automatically.
 
     Returns:
        tuple(Variable, BlockingQueue):
@@ -505,15 +513,23 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
     if lod_levels is None:
         lod_levels = [0] * len(shapes)
 
-    queue_name = unique_name('lod_tensor_blocking_queue')
+    if name is None:
+        queue_name = unique_name('lod_tensor_blocking_queue')
+        reader_name = unique_name('create_py_reader')
+        double_buffer_name = unique_name('double_buffer')
+    else:
+        queue_name = "_".join([name, "queue"])
+        reader_name = "_".join([name, "reader"])
+        double_buffer_name = "_".join([name, "double_buffer"])
+
     var = global_scope().var(queue_name)
     feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
 
     startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=unique_name('create_py_reader'))
+    startup_var = startup_blk.create_var(name=reader_name)
     startup_blk.append_op(
         type='create_py_reader',
-        inputs={'blocking_queue': queue_name},
+        inputs={'blocking_queue': [queue_name]},
         outputs={'Out': [startup_var]},
         attrs={
             'shape_concat': shape_concat,
@@ -527,7 +543,10 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
                                       startup_var)
 
-    return monkey_patch_reader_methods(main_prog_var), feed_queue
+    reader = monkey_patch_reader_methods(main_prog_var)
+    if use_double_buffer:
+        reader = double_buffer(reader, name=double_buffer_name)
+    return reader, feed_queue
 
 
 def open_files(filenames,
