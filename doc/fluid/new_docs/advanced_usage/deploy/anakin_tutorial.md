@@ -37,12 +37,34 @@
  `Tensor` 类包含三个`Shape`对象， 分别是`_shape`, `_valid_shape`和 `offset`。 `_shape`为`tensor`真正空间信息，`_valid_shape`表示当前`tensor`使用的空间信息， `_offset`表示当前`tensor`数据指针相对于真正数据空间的信息。 `Tensor`不同维度与分别与数学中的向量、矩阵等相对应如下表所示。
 
 
-Dimentions | Math entity |
- :----: | :----:
-1 | vector
-2 | matrix
-3 | 3-tensor
-n | n-tensor
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Dimentions</th>
+        <th>Math entity</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>1</td>
+        <td>vector</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td>matrix</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td>3-tensor</td>
+      </tr>
+      <tr>
+        <td>n</td>
+        <td>n-tensor</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 #### 声明tensor对象
 
@@ -61,46 +83,190 @@ TargetType是平台类型，如X86，GPU等等，在Anakin内部有相应的标�
 
 1. <span id='target'>TargetType</sapn>
 
- Anakin TargetType | platform
-  :----: | :----:|
-  NV | NVIDIA GPU
-  ARM | ARM
-  AMD | AMD GPU
-  X86 | X86
-  NVHX86 | NVIDIA GPU with Pinned Memory
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Anakin TargetType</th>
+        <th>platform</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>NV</td>
+        <td>NVIDIA GPU</td>
+      </tr>
+      <tr>
+        <td>ARM</td>
+        <td>ARM</td>
+      </tr>
+      <tr>
+        <td>AMD</td>
+        <td>AMD GPU</td>
+      </tr>
+      <tr>
+        <td>X86</td>
+        <td>X86</td>
+      </tr>
+      <tr>
+        <td>NVHX86</td>
+        <td>NVIDIA GPU with Pinned Memory</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 2. <sapn id='datatype'>DataType</span>
 
-Anakin DataType | C++ | Description 
-:---: | :---: | :---: |
-AK_HALF | short | fp16
-AK_FLOAT | float | fp32
-AK_DOUBLE | double | fp64
-AK_INT8 | char | int8
-AK_INT16 | short | int16
-AK_INT32 | int | int32
-AK_INT64 | long | int64
-AK_UINT8 | unsigned char | uint8
-AK_UINT16 | unsigned short | uint8
-AK_UINT32 | unsigned int | uint32
-AK_STRING | std::string | /
-AK_BOOL | bool | /
-AK_SHAPE | / | Anakin Shape 
-AK_TENSOR | / | Anakin Tensor 
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Anakin DataType</th>
+        <th>C++</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>AK_HALF</td>
+        <td>short</td>
+        <td>fp16</td>
+      </tr>
+      <tr>
+        <td>AK_FLOAT</td>
+        <td>float</td>
+        <td>fp32</td>
+      </tr>
+      <tr>
+        <td>AK_DOUBLE</td>
+        <td>double</td>
+        <td>fp64</td>
+      </tr>
+      <tr>
+        <td>AK_INT8</td>
+        <td>char</td>
+        <td>int8</td>
+      </tr>
+      <tr>
+        <td>AK_INT16</td>
+        <td>short</td>
+        <td>int16</td>
+      </tr>
+      <tr>
+        <td>AK_INT32</td>
+        <td>int</td>
+        <td>int32</td>
+      </tr>
+      <tr>
+        <td>AK_INT64</td>
+        <td>long</td>
+        <td>int64</td>
+      </tr>
+      <tr>
+        <td>AK_UINT8</td>
+        <td>unsigned char</td>
+        <td>uint8</td>
+      </tr>
+      <tr>
+        <td>AK_UINT16</td>
+        <td>unsigned short</td>
+        <td>uint8</td>
+      </tr>
+      <tr>
+        <td>AK_UINT32</td>
+        <td>unsigned int</td>
+        <td>uint32</td>
+      </tr>
+      <tr>
+        <td>AK_STRING</td>
+        <td>std::string</td>
+        <td>/</td>
+      </tr>
+      <tr>
+        <td>AK_BOOL</td>
+        <td>bool</td>
+        <td>/</td>
+      </tr>
+      <tr>
+        <td>AK_SHAPE</td>
+        <td>/</td>
+        <td>Anakin Shape</td>
+      </tr>
+      <tr>
+        <td>AK_TENSOR</td>
+        <td>/</td>
+        <td>Anakin Tensor</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 
 3. <span id = 'layout'>LayOutType </span>
 
-Anakin LayOutType ( Tensor LayOut ) | Tensor Dimention | Tensor Support | Op Support
-:---: | :---: | :---: | :---: |
-W | 1-D | YES | NO
-HW | 2-D | YES | NO
-WH | 2-D | YES | NO
-NW | 2-D | YES | YES
-NHW | 3-D | YES |YES
-NCHW ( default ) | 4-D | YES | YES
-NHWC | 4-D | YES | NO
-NCHW_C4 | 5-D | YES | YES
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Anakin LayOutType ( Tensor LayOut )</th>
+        <th>Tensor Dimention</th>
+        <th>Tensor Support</th>
+        <th>Op Support</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>W</td>
+        <td>1-D</td>
+        <td>YES</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>HW</td>
+        <td>2-D</td>
+        <td>YES</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>WH</td>
+        <td>2-D</td>
+        <td>YES</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>NW</td>
+        <td>2-D</td>
+        <td>YES</td>
+        <td>YES</td>
+      </tr>
+      <tr>
+        <td>NHW</td>
+        <td>3-D</td>
+        <td>YES</td>
+        <td>YES</td>
+      </tr>
+      <tr>
+        <td>NCHW ( default )</td>
+        <td>4-D</td>
+        <td>YES</td>
+        <td>YES</td>
+      </tr>
+      <tr>
+        <td>NHWC</td>
+        <td>4-D</td>
+        <td>YES</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>NCHW_C4</td>
+        <td>5-D</td>
+        <td>YES</td>
+        <td>YES</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 
 理论上，Anakin支持申明1维以上的tensor，但是对于Anakin中的Op来说，只支持NW、NHW、NCHW、NCHW_C4这四种LayOut，其中NCHW是默认的LayOutType，NCHW_C4是专门针对于int8这种数据类型的。
