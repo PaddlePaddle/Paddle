@@ -545,7 +545,11 @@ def py_reader(capacity,
 
     reader = monkey_patch_reader_methods(main_prog_var)
     if use_double_buffer:
-        reader = double_buffer(reader, name=double_buffer_name)
+        double_buffer_reader = double_buffer(reader, name=double_buffer_name)
+        # we return a double buffer reader. However, the reset method comes from
+        # py_reader.
+        double_buffer_reader.reset = reader.reset
+        reader = double_buffer_reader
     return reader, feed_queue
 
 
