@@ -633,13 +633,38 @@ class Net{
 
 1. <span id = 'precision'> Precision </span>
 
-Precision | Op support
-:---: | :---:
-Precision::INT4 | NO
-Precision::INT8 | NO
-Precision::FP16 | NO
-Precision::FP32 | YES
-Precision::FP64 | NO
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>Precision</th>
+        <th>Op support</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Precision::INT4</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>Precision::INT8</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>Precision::FP16</td>
+        <td>NO</td>
+      </tr>
+      <tr>
+        <td>Precision::FP32</td>
+        <td>YES</td>
+      </tr>
+      <tr>
+        <td>Precision::FP64</td>
+        <td>NO</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 现在Op的精度只支持FP32， 但在将来我们会支持剩下的Precision.
 
@@ -647,10 +672,29 @@ Precision::FP64 | NO
 
 2. OpRunType
 
-OpRunType | Sync/Aync |Description
-:---: | :---: | :---:
-OpRunType::SYNC | Synchronization | single-stream on GPU
-OpRunType::ASYNC | Asynchronization | multi-stream on GPU
+<p align="center">
+  <table>
+    <thead>
+      <tr>
+        <th>OpRunType</th>
+        <th>Sync/Aync</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>OpRunType::SYNC</td>
+        <td>Synchronization</td>
+        <td>single-stream on GPU</td>
+      </tr>
+      <tr>
+        <td>OpRunType::ASYNC</td>
+        <td>Asynchronization</td>
+        <td>multi-stream on GPU</td>
+      </tr>
+    </tbody>
+  </table>
+</p>
 
 用graph对象创建一个执行器。
 ```c++
