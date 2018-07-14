@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cmath>
+#include <stdexcept>
 #include <thread>  // NOLINT
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/blocking_queue.h"
@@ -77,6 +78,7 @@ class PreemptiveReaderContainer : public IReaderContainer {
   struct FutureItem {
     std::vector<framework::LoDTensor> data_;
     ReaderList::iterator reader_it_;
+    std::exception_ptr exception_;
   };
 
   using FutureList = std::list<std::future<FutureItem>>;
@@ -115,7 +117,15 @@ class PreemptiveReaderContainer : public IReaderContainer {
     if (!pending_.empty()) {
       auto future_it = complete_queue_.Pop();
       FutureItem item = future_it->get();
-      if (item.data_.empty()) {  // reader done.
+      if (item.exception_) {
+        for (auto it = futures_.begin(); it != futures_.end(); ++it) {
+          if (it != future_it) {
+            it->wait();  // Wait all other threads complete.
+          }
+        }
+        std::rethrow_exception(item.exception_);
+
+      } else if (item.data_.empty()) {  // reader done.
         done_.emplace_back(std::move(*item.reader_it_));
         pending_.erase(item.reader_it_);
         futures_.erase(future_it);
@@ -131,8 +141,8 @@ class PreemptiveReaderContainer : public IReaderContainer {
   }
 
  private:
-  void AppendReader(std::unique_ptr<framework::ReaderBase>&& readers) override {
-    pending_.emplace_back();
+  void AppendReader(std::unique_ptr<framework::ReaderBase>&& reader) override {
+    pending_.emplace_back(std::move(reader));
     auto reader_it = pending_.end();
     --reader_it;
 
@@ -147,15 +157,22 @@ class PreemptiveReaderContainer : public IReaderContainer {
                  FutureList::iterator* future_it_ptr) {
     auto& future_it = *future_it_ptr;
     *future_it = pool_.enqueue([reader_it, future_it, this] {
-      FutureItem item;
-      item.reader_it_ = reader_it;
-      (*reader_it)->ReadNext(&item.data_);
-      if (item.data_.empty()) {
-        (*reader_it)->Shutdown();
-        (*reader_it)->Start();
+      try {
+        FutureItem item;
+        item.reader_it_ = reader_it;
+        (*reader_it)->ReadNext(&item.data_);
+        if (item.data_.empty()) {
+          (*reader_it)->Shutdown();
+          (*reader_it)->Start();
+        }
+        complete_queue_.Push(future_it);
+        return item;
+      } catch (...) {
+        FutureItem item;
+        item.exception_ = std::current_exception();
+        complete_queue_.Push(future_it);
+        return item;
       }
-      complete_queue_.Push(future_it);
-      return item;
     });
   }
 
