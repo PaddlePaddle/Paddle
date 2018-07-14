@@ -495,6 +495,7 @@ We tested them on single-GPU with single-thread.
 </p>
 
 - GPU Memory Used (`MB`)
+
 <p align="center">
   <table>
     <thead>
