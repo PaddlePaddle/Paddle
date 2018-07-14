@@ -190,3 +190,7 @@ class TestDataBalance(unittest.TestCase):
     def test_all(self):
         self.main()
         self.main_lod()
+
+
+if __name__ == '__main__':
+    unittest.main()
