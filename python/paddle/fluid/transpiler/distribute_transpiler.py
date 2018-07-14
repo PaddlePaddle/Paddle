@@ -196,8 +196,6 @@ class DistributeTranspiler(object):
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
         grad_var_mapping_items = self.grad_var_mapping.items()
-        if not slice_var_up:
-            np.random.shuffle(grad_var_mapping_items)
 
         for orig_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
