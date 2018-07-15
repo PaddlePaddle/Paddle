@@ -18,7 +18,7 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 
-#include "paddle/fluid/framework/details/ssa_graph.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -132,7 +132,8 @@ ParallelExecutor::ParallelExecutor(
 #endif
   }
   builder_ = builder_factory.Create();
-  std::unique_ptr<Graph> graph = builder_->Apply(ProgramToGraph(main_program));
+  std::unique_ptr<Graph> graph(new Graph(main_program));
+  graph = builder_->Apply(std::move(graph));
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(

@@ -27,6 +27,8 @@ namespace details {
 
 constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 
+// Wraps ir::Node and provide helper utilities.
+// It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
   explicit OpHandleBase(ir::Node *node) : node_(node) {}

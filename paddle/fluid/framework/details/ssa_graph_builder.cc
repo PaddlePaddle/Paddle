@@ -81,9 +81,7 @@ void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
 }
 
 void SSAGraphBuilder::AddOutputToLeafOps(Graph *graph) {
-  GraphOps &all_ops = graph->Get<GraphOps>("ops");
-
-  for (auto &op : all_ops) {
+  for (auto &op : graph->Get<GraphOps>("ops")) {
     if (!op->Outputs().empty()) {
       continue;
     }

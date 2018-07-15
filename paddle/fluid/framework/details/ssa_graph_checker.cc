@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/ssa_graph.h"
-#include <string>
 #include "paddle/fluid/framework/details/ssa_graph_checker.h"
+#include <string>
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
