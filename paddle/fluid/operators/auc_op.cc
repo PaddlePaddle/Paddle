@@ -38,10 +38,10 @@ class AucOp : public framework::OperatorWithKernel {
     int num_thres = ctx->Attrs().Get<int>("num_thresholds");
 
     ctx->SetOutputDim("AUC", {1});
-    ctx->SetOutputDim("TP", {num_thres});
-    ctx->SetOutputDim("TN", {num_thres});
-    ctx->SetOutputDim("FP", {num_thres});
-    ctx->SetOutputDim("FN", {num_thres});
+    ctx->SetOutputDim("TPOut", {num_thres});
+    ctx->SetOutputDim("TNOut", {num_thres});
+    ctx->SetOutputDim("FPOut", {num_thres});
+    ctx->SetOutputDim("FNOut", {num_thres});
 
     ctx->ShareLoD("Out", /*->*/ "AUC");
   }
