@@ -18,7 +18,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/details/ssa_graph.h"
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/var_handle.h"
+
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
 
@@ -29,10 +31,20 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+// all variable in each devices.
+// The outside vector is the device vector. Each element of this vector is a
+// map from variable name to variables. The variables, who have the same name,
+// will have a differsent version. The offset in the
+// `std::vector<std::unique_ptr<VarHandle>>` is the version of varaibles.
 typedef std::vector<
     std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
     GraphVars;
+
+// aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
+
+// all operators. NOTE that even we use a vector here, the operators is
+// unordered.
 typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
 
 class SSAGraphBuilder : public ir::Pass {

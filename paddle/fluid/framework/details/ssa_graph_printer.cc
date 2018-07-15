@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/details/ssa_graph_printer.h"
 #include <string>
-#include "paddle/fluid/framework/details/ssa_graph.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {

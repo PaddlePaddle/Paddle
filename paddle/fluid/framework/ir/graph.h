@@ -29,7 +29,7 @@ namespace framework {
 
 class Graph {
  public:
-  explicit Graph(const ProgramDesc& program) : program_(program) {}
+  explicit Graph(const ProgramDesc& program);
 
   virtual ~Graph() {
     for (auto& attr : attrs_) {
@@ -46,19 +46,12 @@ class Graph {
 
   template <typename AttrType>
   void Set(const std::string& attr_name, AttrType* attr) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
       delete attr;
     };
-  }
-
-  template <typename AttrType>
-  AttrType* Erase(const std::string& attr_name) {
-    AttrType* attr = boost::any_cast<AttrType*>(attrs_[attr_name]);
-    attrs_.erase(attr_name);
-    attr_dels_.erase(attr_name);
-    return attr;
   }
 
   ir::Node* CreateVarNode(VarDesc* var_desc) {
@@ -71,14 +64,14 @@ class Graph {
     return nodes.back().get();
   }
 
-  // TODO(panyx0718): Need to handle CreateOpNode(nullptr).
+  // TODO(paddle-dev): There shouldn't be kNone nodes in the ir::Graph.
+  // node should either be a executable kOperation or a kVariable. kNone
+  // node is a temporary solution.
   ir::Node* CreateEmptyNode(const std::string& name) {
     nodes.emplace_back(new ir::Node(name));
     return nodes.back().get();
   }
 
-  std::vector<ir::Node*> inputs;
-  std::vector<ir::Node*> outputs;
   std::vector<std::unique_ptr<ir::Node>> nodes;
 
  private:
@@ -87,8 +80,6 @@ class Graph {
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
 };
-
-std::unique_ptr<Graph> ProgramToGraph(const ProgramDesc& program);
 
 }  // namespace framework
 }  // namespace paddle

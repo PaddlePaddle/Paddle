@@ -14,17 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
-#include <functional>
-#include <map>
 #include <string>
-#include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
