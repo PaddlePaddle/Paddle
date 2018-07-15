@@ -351,8 +351,7 @@ class Trainer(object):
             t.transpile(
                 self.trainer_id,
                 pservers=pserver_endpoints,
-                trainers=trainers,
-                slice_var_up=False)
+                trainers=trainers)
             if training_role == "PSERVER":
                 if self.checkpoint_cfg:
                     pserver_id = eplist.index(current_endpoint)
