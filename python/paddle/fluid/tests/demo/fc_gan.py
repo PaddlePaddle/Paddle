@@ -116,7 +116,7 @@ def main():
         loss=dg_loss,
         startup_program=startup_program,
         parameter_list=[
-            p.name for p in g_program.global_block()._all_parameters()
+            p.name for p in g_program.global_block().all_parameters()
         ])
     exe = fluid.Executor(fluid.CPUPlace())
     exe.run(startup_program)

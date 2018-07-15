@@ -523,7 +523,7 @@ def prepend_feed_ops(inference_program,
 
     for i, name in enumerate(feed_target_names):
         out = global_block.var(name)
-        global_block.prepend_op(
+        global_block._prepend_op(
             type='feed',
             inputs={'X': [feed_var]},
             outputs={'Out': [out]},
@@ -625,7 +625,7 @@ def save_inference_model(dirname,
     for i, op in enumerate(global_block.ops):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
-            global_block.remove_op(i)
+            global_block._remove_op(i)
     copy_program.desc.flush()
 
     pruned_program = copy_program.prune(targets=target_vars)
@@ -874,7 +874,7 @@ def get_test_program(filelist, program=None, startup_program=None):
     main_block = program.global_block()
     for var in main_block.vars.values():
         if var.type == core.VarDesc.VarType.READER:
-            main_block.rename_var(
+            main_block._rename_var(
                 str(var.name), str(_get_test_reader_name(var.name)))
 
     for op in main_block.ops:
@@ -883,7 +883,7 @@ def get_test_program(filelist, program=None, startup_program=None):
         if op.type == "create_multi_pass_reader":
             test_op.set_attr("pass_num", 1)
 
-    startup_program.sync_with_cpp()
-    program.sync_with_cpp()
+    startup_program._sync_with_cpp()
+    program._sync_with_cpp()
 
     return program
