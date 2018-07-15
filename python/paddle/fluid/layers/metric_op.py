@@ -145,4 +145,4 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
             "FPOut": [fp],
             "FNOut": [fn]
         })
-    return auc_out
+    return auc_out, [tp, tn, fp, fn]
