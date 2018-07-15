@@ -210,7 +210,10 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
   size_t cur_device_id = 0;
   bool is_forwarding = true;
 
-  // TODO(panyx0718): FIXME: nodes should be sorted by "program" order.
+  // NOTE: Currently, passes before SSAGraphBuilder cannot reorder
+  // forward, backward nodes. E.g. you can't append an forward node
+  // at the end of the node list.
+  // TODO(panyx0718): FIXME: Needs to sort by forward->backward order.
   for (auto &node : nodes) {
     if (node->NodeType() != ir::Node::Type::kOperation) continue;
     if (boost::get<int>(
