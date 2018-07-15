@@ -19,31 +19,43 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// NOTE(paddle-dev): This graph contains circle.
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   std::unordered_map<std::string, VarDesc *> all_vars;
   for (auto *var : program.Block(0).AllVars()) {
     all_vars.emplace(var->Name(), var);
   }
 
+  std::map<std::string, ir::Node *> var_nodes;
   for (auto *op : program.Block(0).AllOps()) {
     ir::Node *node = CreateOpNode(op);
 
     for (auto &each_var_name : op->InputArgumentNames()) {
       ir::Node *var = nullptr;
-      if (all_vars.count(each_var_name) != 0) {
+      if (var_nodes.find(each_var_name) != var_nodes.end()) {
+        var = var_nodes.at(each_var_name);
+      } else if (all_vars.count(each_var_name) != 0) {
         var = CreateVarNode(all_vars.at(each_var_name));
+        var_nodes[each_var_name] = var;
       } else {
         // TODO(paddle-dev): Seems some assumption doesn't hold?
         LOG(ERROR) << op->Type()
                    << " input var not in all_var list: " << each_var_name;
         var = CreateEmptyNode(each_var_name);
+        var_nodes[each_var_name] = var;
       }
       node->inputs.push_back(var);
       var->outputs.push_back(node);
     }
 
     for (auto &each_var_name : op->OutputArgumentNames()) {
-      ir::Node *var = CreateVarNode(all_vars.at(each_var_name));
+      ir::Node *var = nullptr;
+      if (var_nodes.find(each_var_name) != var_nodes.end()) {
+        var = var_nodes.at(each_var_name);
+      } else {
+        var = CreateVarNode(all_vars.at(each_var_name));
+        var_nodes[each_var_name] = var;
+      }
       node->outputs.push_back(var);
       var->inputs.push_back(node);
     }
