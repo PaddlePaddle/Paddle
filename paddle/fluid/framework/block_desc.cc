@@ -217,7 +217,7 @@ void BlockDesc::SetForwardBlockID(int32_t forward_block_id) {
   PADDLE_ENFORCE(!desc_->has_forward_block_idx(),
                  "Parent block ID has been set to %d. Cannot set to %d",
                  desc_->forward_block_idx(), forward_block_id);
-  desc_->_set_forward_block_idx(forward_block_id);
+  desc_->set_forward_block_idx(forward_block_id);
 }
 
 BlockDesc *BlockDesc::ForwardBlock() const {
