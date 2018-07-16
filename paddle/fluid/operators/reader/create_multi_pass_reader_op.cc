@@ -36,8 +36,8 @@ class MultiPassReader : public framework::DecoratedReader {
 
  private:
   void StartImpl() override {
+    DecoratedReader::StartImpl();
     pass_count_ = 0;
-    reader_->Start();
   }
 
   int pass_num_;

@@ -52,16 +52,14 @@ class DoubleBufferReader : public framework::DecoratedReader {
 
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
 
-  ~DoubleBufferReader() { EndPrefetcher(); }
-
  private:
   void ShutdownImpl() override {
     EndPrefetcher();
-    reader_->Shutdown();
+    DecoratedReader::ShutdownImpl();
   }
 
   void StartImpl() override {
-    reader_->Start();
+    DecoratedReader::StartImpl();
     StartPrefetcher();
   }
 
