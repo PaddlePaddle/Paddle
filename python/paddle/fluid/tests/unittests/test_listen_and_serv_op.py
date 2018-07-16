@@ -20,7 +20,7 @@ import subprocess
 import time
 import unittest
 from multiprocessing import Process
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def run_pserver(use_cuda, sync_mode, ip, port, trainers, trainer_id):

@@ -17,14 +17,14 @@ import os
 import sys
 import paddle.fluid as fluid
 import importlib
-import cStringIO
+from six.moves import cStringIO
 
 
 def main():
     sys.path.append(os.getcwd())
     some_test_failed = False
     for module_name in sys.argv[1:]:
-        buffer = cStringIO.StringIO()
+        buffer = cStringIO()
         main = fluid.Program()
         startup = fluid.Program()
         scope = fluid.core.Scope()

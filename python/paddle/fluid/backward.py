@@ -16,6 +16,7 @@ from paddle.fluid import framework as framework
 from . import core
 import collections
 import copy
+import six
 from . import unique_name
 
 __all__ = ['append_backward']
@@ -45,9 +46,9 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     op_desc = core.OpDesc()
     op_desc.set_type(op_type)
     for para, args in inputs.items():
-        op_desc.set_input(para, args)
+        op_desc.set_input(para, six.text_type(args))
     for para, args in outputs.items():
-        op_desc.set_output(para, args)
+        op_desc.set_output(para, six.text_type(args))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
@@ -105,7 +106,7 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    pos = name.find(core.grad_var_suffix())
+    pos = name.find(six.b(core.grad_var_suffix()))
     return name[:pos] if pos != -1 else name
 
 
@@ -114,7 +115,7 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    return name + core.grad_var_suffix()
+    return name + six.b(core.grad_var_suffix())
 
 
 def _addup_repetitive_outputs_(op_descs):

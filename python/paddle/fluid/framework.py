@@ -200,10 +200,10 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        self.desc = self.block.desc.find_var(name)
+        self.desc = self.block.desc.find_var(six.b(name))
 
         if self.desc is None:
-            self.desc = self.block.desc.var(name)
+            self.desc = self.block.desc.var(six.b(name))
             is_new_var = True
 
         if is_new_var:
@@ -293,7 +293,7 @@ class Variable(object):
         assert isinstance(throw_on_error, bool) and isinstance(with_details,
                                                                bool)
         protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.VarDesc.FromString(str(protostr))
+        proto = framework_pb2.VarDesc.FromString(six.binary_type(protostr))
         res_str = _debug_string_(proto, throw_on_error)
         if with_details:
             additional_attr = ("error_clip", "stop_gradient")
@@ -372,10 +372,7 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
-        if six.PY2:
-            op_proto = framework_pb2.OpProto.FromString(str(pbstr))
-        else:
-            op_proto = framework_pb2.OpProto.FromString(pbstr)
+        op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
         ret_values.append(op_proto)
     return ret_values
 
@@ -529,10 +526,13 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        if isinstance(arg, str):
-                            in_arg_names.append(arg)
+                        if isinstance(arg, six.binary_type):
+                            in_arg_names.append(arg.decode())
                         else:
-                            in_arg_names.append(arg.name)
+                            if isinstance(arg.name, six.binary_type):
+                                in_arg_names.append(arg.name.decode())
+                            else:
+                                in_arg_names.append(arg.name)
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -560,7 +560,10 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    out_arg_names.append(arg.name)
+                    if isinstance(arg.name, six.binary_type):
+                        out_arg_names.append(arg.name.decode())
+                    else:
+                        out_arg_names.append(arg.name)
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -596,7 +599,7 @@ class Operator(object):
 
         """
         protostr = self.desc.serialize_to_string()
-        proto = framework_pb2.OpDesc.FromString(str(protostr))
+        proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
         return _debug_string_(proto, throw_on_error)
 
     def __str__(self):
@@ -860,7 +863,8 @@ class Block(object):
             res_str += "\n}"
         else:
             protostr = self.desc.serialize_to_string()
-            proto = framework_pb2.BlockDesc.FromString(str(protostr))
+            proto = framework_pb2.BlockDesc.FromString(
+                six.binary_type(protostr))
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
@@ -1389,7 +1393,8 @@ class Program(object):
                 res_str += block.to_string(throw_on_error, with_details)
         else:
             protostr = self.desc.serialize_to_string()
-            proto = framework_pb2.ProgramDesc.FromString(str(protostr))
+            proto = framework_pb2.ProgramDesc.FromString(
+                six.binary_type(protostr))
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
@@ -1578,7 +1583,7 @@ class Program(object):
         and deserialization.
 
         Args:
-            binary_str(str): The binary prootbuf string.
+            binary_str_type(str): The binary prootbuf string.
 
         Returns:
             Program: A deserialized program desc.
