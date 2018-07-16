@@ -331,7 +331,7 @@ function assert_api_not_changed() {
     echo "checking API.spec change..."
     echo "${GIT_PR_ID} , ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/${PR_ID}/reviews | \
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/${GIT_PR_ID}/reviews | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
