@@ -188,7 +188,7 @@ class CheckpointNotifyProcessor : public BaseProcessor {
 
 class GRPCClient : public RPCClient {
  public:
-  GRPCClient() {}
+  GRPCClient() : ok_(true) {}
   virtual ~GRPCClient();
 
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
@@ -221,7 +221,7 @@ class GRPCClient : public RPCClient {
   void AsyncSendEndPass(const std::string& ep,
                         int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void Wait() override;
+  bool Wait() override;
 
   void SendBeginPass() override;
 
@@ -247,6 +247,7 @@ class GRPCClient : public RPCClient {
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
+  bool ok_;
 
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
