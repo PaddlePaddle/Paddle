@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.transpiler.details.program_utils import *
-from paddle.transpiler.details.ufind import *
+from .program_utils import *
+from .ufind import *

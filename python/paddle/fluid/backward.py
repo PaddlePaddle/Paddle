@@ -225,7 +225,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
     return op_descs
 
 
-import proto.framework_pb2 as framework_pb2
+from .proto import framework_pb2
 
 
 def serialize_op_decs(op_desc):
@@ -457,51 +457,51 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     """
     Append backward part to main_program.
 
-    A complete neural network training is made up of forward and backward 
-    propagation. However, when we configure a network, we only need to 
-    specify its forwrd part. The backward part is generated automatically 
+    A complete neural network training is made up of forward and backward
+    propagation. However, when we configure a network, we only need to
+    specify its forwrd part. The backward part is generated automatically
     according to the forward part by this function.
 
-    In most cases, users do not need to invoke this function manually. It 
+    In most cases, users do not need to invoke this function manually. It
     will be automatically invoked by the optimizer's `minimize` function.
 
     Args:
         loss(Variable): The loss variable of the network.
-        parameter_list(list[string]|None): Names of parameters that need 
-                                           to be updated by optimizers. 
-                                           If it is None, all parameters 
+        parameter_list(list[string]|None): Names of parameters that need
+                                           to be updated by optimizers.
+                                           If it is None, all parameters
                                            will be updated.
                                            Default: None
-        no_grad_set(set|None): Variables in the Block 0 whose gradients 
-                               should be ignored. All variables with 
-                               `step_gradient=True` from all blocks will 
+        no_grad_set(set|None): Variables in the Block 0 whose gradients
+                               should be ignored. All variables with
+                               `step_gradient=True` from all blocks will
                                be automatically added into this set.
                                Default: None
-        callbacks(list[callable object]|None): The callbacks are used for 
-                                               doing some custom jobs during 
-                                               backward part building. All 
-                                               callable objects in it will 
-                                               be invoked once each time a 
-                                               new gradient operator is added 
-                                               into the program. The callable 
-                                               object must has two input 
-                                               parameters: 'block' and 'context'. 
-                                               The 'block' is the block which 
-                                               the new gradient operator will 
-                                               be added to. The 'context' is a 
-                                               map, whose keys are gradient 
-                                               variable names and values are 
+        callbacks(list[callable object]|None): The callbacks are used for
+                                               doing some custom jobs during
+                                               backward part building. All
+                                               callable objects in it will
+                                               be invoked once each time a
+                                               new gradient operator is added
+                                               into the program. The callable
+                                               object must has two input
+                                               parameters: 'block' and 'context'.
+                                               The 'block' is the block which
+                                               the new gradient operator will
+                                               be added to. The 'context' is a
+                                               map, whose keys are gradient
+                                               variable names and values are
                                                corresponding original variables.
-                                               In addition to this, the 'context' 
-                                               has another special key-value pair: 
-                                               the key is string '__current_op_desc__' 
-                                               and the value is the op_desc of the 
-                                               gradient operator who has just 
-                                               triggered the callable object. 
+                                               In addition to this, the 'context'
+                                               has another special key-value pair:
+                                               the key is string '__current_op_desc__'
+                                               and the value is the op_desc of the
+                                               gradient operator who has just
+                                               triggered the callable object.
 
     Returns:
-        list[(Variable,Variable)]: Pairs of parameter and its 
-        corresponding gradients. The key is the parameter and the 
+        list[(Variable,Variable)]: Pairs of parameter and its
+        corresponding gradients. The key is the parameter and the
         value is gradient variable.
 
     Raises:

@@ -371,7 +371,10 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
-        op_proto = framework_pb2.OpProto.FromString(str(pbstr))
+        if six.PY2:
+            op_proto = framework_pb2.OpProto.FromString(str(pbstr))
+        else:
+            op_proto = framework_pb2.OpProto.FromString(pbstr)
         ret_values.append(op_proto)
     return ret_values
 

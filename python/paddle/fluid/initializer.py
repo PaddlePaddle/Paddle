@@ -16,7 +16,7 @@ from . import framework
 import numpy as np
 import contextlib
 from .framework import convert_np_dtype_to_dtype_
-from core import VarDesc
+from .core import VarDesc
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
