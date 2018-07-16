@@ -46,5 +46,3 @@ class VersionTest(unittest.TestCase):
             self.assertTrue(re.match(self._rc_regex, fluid_version.rc))
             self.assertTrue(
                 re.match(self._version_regex, fluid_version.full_version))
-
-
