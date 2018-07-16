@@ -45,13 +45,15 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
       CreatePaddlePredictor<TensorRTConfig,
                             PaddleEngineKind::kAutoMixedTensorRT>(config1);
 
-  for (int batch_id = 0; batch_id < 3; batch_id++) {
+  for (int batch_id = 0; batch_id < 1; batch_id++) {
     //# 2. Prepare input.
-    int64_t data[4] = {1, 2, 3, 4};
+    std::vector<int64_t> data(20);
+    for (int i = 0; i < 20; i++) data[i] = i;
 
-    PaddleTensor tensor{.name = "",
-        .shape = std::vector<int>({4, 1}),
-        .data = PaddleBuf(data, sizeof(data)),
+    PaddleTensor tensor{
+        .name = "",
+        .shape = std::vector<int>({10, 1}),
+        .data = PaddleBuf(data.data(), data.size() * sizeof(int64_t)),
         .dtype = PaddleDType::INT64};
 
     // For simplicity, we set all the slots with the same data.
@@ -61,7 +63,7 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
     std::vector<PaddleTensor> outputs0;
     std::vector<PaddleTensor> outputs1;
     CHECK(predictor0->Run(slots, &outputs0));
-    CHECK(predictor1->Run(slots, &outputs1));
+    CHECK(predictor1->Run(slots, &outputs1, 10));
 
     //# 4. Get output.
     ASSERT_EQ(outputs0.size(), 1UL);
@@ -69,13 +71,13 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
 
     const size_t num_elements = outputs0.front().data.length() / sizeof(float);
     const size_t num_elements1 = outputs1.front().data.length() / sizeof(float);
-    ASSERT_EQ(num_elements, num_elements1);
+    EXPECT_EQ(num_elements, num_elements1);
 
     auto *data0 = static_cast<float *>(outputs0.front().data.data());
     auto *data1 = static_cast<float *>(outputs1.front().data.data());
 
     ASSERT_GT(num_elements, 0UL);
-    for (size_t i = 0; i < num_elements; i++) {
+    for (size_t i = 0; i < std::min(num_elements, num_elements1); i++) {
       EXPECT_NEAR(data0[i], data1[i], 1e-3);
     }
   }

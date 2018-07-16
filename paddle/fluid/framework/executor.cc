@@ -338,7 +338,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   for (auto& op : ctx->ops_) {
     VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
-    LOG(INFO) << "Running Op " << op->Type();
     op->Run(*local_scope, place_);
     // NOTE! Please do not delete this line, it's usefull because the debug
     // string before and after op.run are different, after run the output

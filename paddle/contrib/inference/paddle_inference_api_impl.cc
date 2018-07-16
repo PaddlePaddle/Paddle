@@ -108,7 +108,8 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 };
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
-                                std::vector<PaddleTensor> *output_data) {
+                                std::vector<PaddleTensor> *output_data,
+                                int batch_size) {
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();

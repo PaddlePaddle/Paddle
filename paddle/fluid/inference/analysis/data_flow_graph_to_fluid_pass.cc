@@ -22,6 +22,10 @@
 
 namespace paddle {
 namespace inference {
+
+DEFINE_int32(tensorrt_max_batchsize, 300, "TensorRT maximum batch size");
+DEFINE_int32(tensorrt_workspace_size, 2048, "TensorRT workspace size");
+
 namespace analysis {
 
 using framework::proto::ProgramDesc;
@@ -56,23 +60,18 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
       case Node::Type::kFunction: {
         LOG(INFO) << "add function " << node.repr();
         AddFluidOp(&node);
-      }
-        break;
+      } break;
       case Node::Type::kFunctionBlock: {
         LOG(INFO) << "add engine op " << node.repr() << " , "
                   << static_cast<FunctionBlock *>(&node)->subgraph.size();
         AddEngineOp(&node);
-      }
-        break;
-      default:continue;
+      } break;
+      default:
+        continue;
     }
   }
 
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());
-  auto &main_block = argument_->transformed_program_desc->blocks(0);
-  for (int i = 0; i < main_block.ops_size(); i++) {
-    LOG(INFO) << "op: " << main_block.ops(i).type();
-  }
 }
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node *node) {
@@ -108,15 +107,13 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
   }
   desc.SetOutput("Ys", io);
   desc.SetType("tensorrt_engine");
-  auto block0 = block;
-  block0.set_idx(0);
-  block0.set_parent_idx(-1);
+
+  PADDLE_ENFORCE(!block.vars().empty(), "the block has no var-desc");
   // Set attrs
-  SetAttr(desc.Proto(), "subgraph", block0.SerializeAsString());
+  SetAttr(desc.Proto(), "subgraph", block.SerializeAsString());
   SetAttr(desc.Proto(), "engine_uniq_key", "trt-" + std::to_string(counter++));
-  SetAttr(desc.Proto(), "max_batch", 100);  // TODO(Superjomn) add config latter
-  SetAttr(desc.Proto(), "max_workspace",
-          1024);  // TODO(Superjomn) add config latter
+  SetAttr(desc.Proto(), "max_batch", FLAGS_tensorrt_max_batchsize);
+  SetAttr(desc.Proto(), "max_workspace", FLAGS_tensorrt_workspace_size);
   SetAttr(desc.Proto(), "parameters", ExtractParameters(graph.nodes.nodes()));
   node->SetPbMsg(desc.Proto()->SerializeAsString());
 }
@@ -142,12 +139,21 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   auto *block_node = static_cast<FunctionBlock *>(node);
   framework::proto::BlockDesc proto;
   framework::BlockDesc block_desc(nullptr, &proto);
+  block_desc.Proto()->set_parent_idx(-1);
+  block_desc.Proto()->set_idx(0);
+  LOG(INFO) << "origin variable size: "
+            << argument_->origin_program_desc->blocks(0).vars().size();
+  LOG(INFO) << "transformed variable size: "
+            << block_desc.Proto()->vars().size();
   // copy ops.
   for (auto *node : block_node->subgraph) {
     auto *op = block_desc.AppendOp();
     PADDLE_ENFORCE(!node->pb_msg().empty());
     op->Proto()->ParseFromString(node->pb_msg());
   }
+  *block_desc.Proto()->mutable_vars() =
+      argument_->origin_program_desc->blocks(0).vars();
+  PADDLE_ENFORCE(!block_desc.Proto()->vars().empty());
   CreateTrtEngineOp(node, *argument_->main_dfg, *block_desc.Proto());
   auto *main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto *op = main_block->add_ops();

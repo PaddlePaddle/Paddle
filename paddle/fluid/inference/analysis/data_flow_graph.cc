@@ -140,7 +140,7 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator::operator=(
 }
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator
-&GraphTraits<DataFlowGraph>::NodesBFSIterator::operator++() {
+    &GraphTraits<DataFlowGraph>::NodesBFSIterator::operator++() {
   PADDLE_ENFORCE(!queue_.empty());
   auto *cur = queue_.front();
   visited_.insert(cur);
@@ -159,7 +159,7 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
   if (queue_.empty()) return other.queue_.empty();
   if ((!queue_.empty()) && (!other.queue_.empty())) {
     return queue_.front() == other.queue_.front() &&
-        visited_.size() == other.visited_.size();  // here need to check the
+           visited_.size() == other.visited_.size();  // here need to check the
     // equality of queue and
     // visited. Just a light but week implementation.
   }
@@ -189,7 +189,7 @@ Node &GraphTraits<DataFlowGraph>::NodesDFSIterator::operator*() {
 }
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator
-&GraphTraits<DataFlowGraph>::NodesDFSIterator::operator++() {
+    &GraphTraits<DataFlowGraph>::NodesDFSIterator::operator++() {
   if (stack_.empty()) return *this;
   visited_.insert(stack_.top());
   auto *cur = stack_.top();
@@ -231,7 +231,9 @@ GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
   PADDLE_ENFORCE(!source.empty(),
                  "Start points of topological sorting should not be empty!");
   // CHECK all the inputs' in-degree is 0
-  for (auto *node : source) { PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0)); }
+  for (auto *node : source) {
+    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
+  }
 
   std::unordered_set<Node *> visited;
   std::unordered_set<Node *> to_visit{source.begin(), source.end()};
@@ -277,7 +279,7 @@ Node &GraphTraits<DataFlowGraph>::NodesTSIterator::operator*() {
 }
 
 paddle::inference::analysis::GraphTraits<DataFlowGraph>::NodesTSIterator
-&GraphTraits<DataFlowGraph>::NodesTSIterator::operator++() {
+    &GraphTraits<DataFlowGraph>::NodesTSIterator::operator++() {
   if (++cursor_ >= sorted_.size()) {
     sorted_.clear();
     cursor_ = 0;

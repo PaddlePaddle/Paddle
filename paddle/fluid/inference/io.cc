@@ -77,6 +77,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
   for (auto* var : global_block.AllVars()) {
     if (IsPersistable(var)) {
       VLOG(3) << "persistable variable's name: " << var->Name();
+      LOG(INFO) << "load parameter " << var->Name();
 
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->GetShape());

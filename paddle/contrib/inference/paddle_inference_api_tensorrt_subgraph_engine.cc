@@ -16,6 +16,7 @@
 #include "paddle/contrib/inference/paddle_inference_api_impl.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/operators/tensorrt_engine_op.h"
 
 namespace paddle {
 
@@ -75,6 +76,15 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     feed_target_names_ = inference_program_->GetFeedTargetNames();
     fetch_target_names_ = inference_program_->GetFetchTargetNames();
     return true;
+  }
+
+  bool Run(const std::vector<PaddleTensor>& inputs,
+           std::vector<PaddleTensor>* output_data,
+           int batch_size = -1) override {
+    PADDLE_ENFORCE_GT(
+        batch_size, 0, "TensorRT engine needs the argument batch_size set");
+    FLAGS_tensorrt_engine_batch_size = batch_size;
+    return NativePaddlePredictor::Run(inputs, output_data, batch_size);
   }
 
   void OptimizeInferenceProgram() {

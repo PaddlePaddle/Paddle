@@ -83,8 +83,8 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
           out_alias->SetPbDesc(out->pb_desc());
           out_alias->SetPbMsg(out->pb_msg());
           var2id[out_alias->name()] = out_alias->id();  // update a -> a0
-          LOG(INFO) << "loop found in graph, create SSA alias node [" << out_alias->repr() << "] for [" << out->repr()
-                    << "]";
+          LOG(INFO) << "loop found in graph, create SSA alias node ["
+                    << out_alias->repr() << "] for [" << out->repr() << "]";
           out = out_alias;
         }
         out->inlinks.push_back(o);

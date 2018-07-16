@@ -24,6 +24,9 @@
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 
 namespace paddle {
+
+DEFINE_int32(tensorrt_engine_batch_size, 1, "the batch_size of TensorRT");
+
 namespace operators {
 
 using inference::Singleton;
@@ -52,6 +55,10 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
                     "TensorRT' tensor input requires at least 2 dimensions");
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
                     "TensorRT' tensor input requires at most 4 dimensions");
+  LOG(INFO) << "dims: ";
+  for (auto i : shape) {
+    LOG(INFO) << i;
+  }
 
   switch (shape.size()) {
     case 2:
@@ -71,7 +78,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
 template <typename DeviceContext, typename T>
 void TensorRTEngineKernel<DeviceContext, T>::Prepare(
     const framework::ExecutionContext &context) const {
-  VLOG(4) << "Prepare engine";
+  LOG(INFO) << "Prepare engine";
   // Get the ProgramDesc and pass to convert.
   framework::proto::BlockDesc block_desc;
   block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
@@ -90,27 +97,36 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
   engine->InitNetwork();
 
   framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
+  LOG(INFO) << "parsed var size " << block.AllVars().size();
   // Add inputs
-  VLOG(4) << "declare inputs";
+  LOG(INFO) << "declare inputs";
   for (auto &input : context.Inputs("Xs")) {
-    VLOG(4) << "declare input " << input;
+    LOG(INFO) << "declare input " << input;
     auto *var = block.FindVar(input);
+    // TensorRT engine need to create parameters. The parameter's description
+    // should be set in
+    PADDLE_ENFORCE(var, "no variable called %s", input);
     PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
                       "TensorRT engine only takes LoDTensor as input");
     auto shape = var->GetShape();
+    // For the special batch_size placeholder -1, drop it and pass the real
+    // shape of data.
+    if (shape[0] == -1) {
+      shape[0] = FLAGS_tensorrt_engine_batch_size;
+    }
     engine->DeclareInput(
         input, FluidDataType2TRT(
                    var->Proto()->type().lod_tensor().tensor().data_type()),
-        Vec2TRT_Dims(var->GetShape()));
+        Vec2TRT_Dims(shape));
   }
 
   inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
       block_desc, parameters, context.scope(), engine);
 
   // Add outputs
-  VLOG(4) << "declare outputs";
+  LOG(INFO) << "declare outputs";
   for (auto &output : context.Outputs("Ys")) {
-    VLOG(4) << "declare output " << output;
+    LOG(INFO) << "declare output " << output;
     engine->DeclareOutput(output);
   }
 
@@ -150,5 +166,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+// A trick to compile with the needed TensorRT op converter.
+USE_TRT_CONVERTER(mul)
 
 #endif  // PADDLE_WITH_CUDA
