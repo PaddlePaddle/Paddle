@@ -100,13 +100,6 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     //*inference_program_->Proto() = *argument.transformed_program_desc;
     inference_program_.reset(
         new framework::ProgramDesc(*argument.transformed_program_desc));
-
-    // DEBUG
-    LOG(INFO) << "after analysis, infer program: ";
-    auto main_block = inference_program_->Proto()->blocks(0);
-    for (int i = 0; i < main_block.ops_size(); i++) {
-      LOG(INFO) << "op " << main_block.ops(i).type();
-    }
   }
 
  private:

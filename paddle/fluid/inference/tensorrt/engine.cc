@@ -31,7 +31,6 @@ void TensorRTEngine::Build(const DescType &paddle_model) {
 }
 
 void TensorRTEngine::Execute(int batch_size) {
-  LOG(INFO) << "begin execute";
   batch_size_ = batch_size;
   std::vector<void *> buffers;
   for (auto &buf : buffers_) {
@@ -41,10 +40,8 @@ void TensorRTEngine::Execute(int batch_size) {
     buffers.push_back(buf.buffer);
   }
   PADDLE_ENFORCE_NOT_NULL(stream_);
-  LOG(INFO) << "enqueue";
   infer_context_->enqueue(batch_size, buffers.data(), *stream_, nullptr);
   cudaStreamSynchronize(*stream_);
-  LOG(INFO) << "finish execute";
 }
 
 TensorRTEngine::~TensorRTEngine() {
@@ -165,7 +162,7 @@ void TensorRTEngine::GetOutputInGPU(const std::string &name, void *dst,
 
 void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst,
                                     size_t max_size) {
-  LOG(INFO) << "get output in cpu";
+  VLOG(4) << "get output in cpu";
   auto &buf = buffer(name);
 
   // Update needed buffer size.
@@ -174,7 +171,6 @@ void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst,
   buf.size = kDataTypeSize[static_cast<int>(
                  infer_engine_->getBindingDataType(slot_offset))] *
              analysis::AccuDims(dims.d, dims.nbDims);
-  LOG(INFO) << "buf.size " << buf.size;
   PADDLE_ENFORCE_LE(buf.size, buf.max_size);
   // determine data size
   PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");

@@ -55,11 +55,6 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
                     "TensorRT' tensor input requires at least 2 dimensions");
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
                     "TensorRT' tensor input requires at most 4 dimensions");
-  LOG(INFO) << "dims: ";
-  for (auto i : shape) {
-    LOG(INFO) << i;
-  }
-
   switch (shape.size()) {
     case 2:
       return nvinfer1::Dims2(shape[0], shape[1]);
@@ -78,7 +73,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
 template <typename DeviceContext, typename T>
 void TensorRTEngineKernel<DeviceContext, T>::Prepare(
     const framework::ExecutionContext &context) const {
-  LOG(INFO) << "Prepare engine";
+  VLOG(4) << "Prepare engine";
   // Get the ProgramDesc and pass to convert.
   framework::proto::BlockDesc block_desc;
   block_desc.ParseFromString(context.Attr<std::string>("subgraph"));
@@ -97,11 +92,11 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
   engine->InitNetwork();
 
   framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
-  LOG(INFO) << "parsed var size " << block.AllVars().size();
+  VLOG(4) << "parsed var size " << block.AllVars().size();
   // Add inputs
-  LOG(INFO) << "declare inputs";
+  VLOG(4) << "declare inputs";
   for (auto &input : context.Inputs("Xs")) {
-    LOG(INFO) << "declare input " << input;
+    VLOG(4) << "declare input " << input;
     auto *var = block.FindVar(input);
     // TensorRT engine need to create parameters. The parameter's description
     // should be set in
@@ -111,6 +106,8 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
     auto shape = var->GetShape();
     // For the special batch_size placeholder -1, drop it and pass the real
     // shape of data.
+    // TODO(Superjomn) fix this with batch broadcast, or it can't handle
+    // variational batch size.
     if (shape[0] == -1) {
       shape[0] = FLAGS_tensorrt_engine_batch_size;
     }
@@ -124,9 +121,7 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
       block_desc, parameters, context.scope(), engine);
 
   // Add outputs
-  LOG(INFO) << "declare outputs";
   for (auto &output : context.Outputs("Ys")) {
-    LOG(INFO) << "declare output " << output;
     engine->DeclareOutput(output);
   }
 
