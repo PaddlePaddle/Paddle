@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/contrib/inference/paddle_inference_api.h"
+#include "contrib/inference/paddle_inference_api.h"
 
 namespace paddle {
 namespace demo {
