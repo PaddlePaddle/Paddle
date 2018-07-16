@@ -66,7 +66,7 @@ class ParallelExecutor {
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
 
-  void BCastParamsToDevs(const std::unordered_set<std::string> &vars) const;
+  void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
  private:
   ParallelExecutorPrivate *member_;
