@@ -208,7 +208,7 @@ class RequestCheckpointNotify final : public RequestBase {
                                    RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
     request_.reset(new GRPCVariableResponse(request_handler->scope(),
-                                        request_handler->dev_ctx()));
+                                            request_handler->dev_ctx()));
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kCheckpointNotify);
     service_->RequestAsyncUnary(
