@@ -192,10 +192,6 @@ class DistributeTranspiler(object):
                 list.
             trainers (int): number of trainers in the distributed job.
             sync_mode (bool): Do sync training or not, default is True.
-            min_block_size (int): Minimum splitted element number in block.
-                According:https://github.com/PaddlePaddle/Paddle/issues/8638#issuecomment-369912156
-                We can use bandwidth effiently when data size is larger than 2MB.If you 
-                want to change it, please be sure you see the slice_variable function.
         """
         if program is None:
             program = default_main_program()
@@ -204,7 +200,6 @@ class DistributeTranspiler(object):
         self.sync_mode = sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
-        self.min_block_size = min_block_size
         self.pserver_endpoints = pserver_endpoints
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
 
@@ -987,7 +982,6 @@ class DistributeTranspiler(object):
 
         var_mapping = dict()
         for block_str in block_list:
-            print("block_str:", block_str)
             varname, offset, size = block_str.split(":")
             if not block_map.has_key(varname):
                 block_map[varname] = []
