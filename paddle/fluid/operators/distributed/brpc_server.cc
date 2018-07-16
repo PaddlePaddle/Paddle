@@ -13,12 +13,15 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/distributed/brpc_server.h"
+#include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/brpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 
 namespace sendrecv {
 
-typedef std::unordered_map<std::string,
-                           paddle::operators::distributed::RequestHandler*>
+namespace distributed = paddle::operators::distributed;
+
+typedef std::unordered_map<std::string, distributed::RequestHandler*>
     HandlerMap;
 
 class BRPCServiceImpl : public SendRecvService {
@@ -27,17 +30,18 @@ class BRPCServiceImpl : public SendRecvService {
       : request_send_h_(nullptr),
         request_get_h_(nullptr),
         request_prefetch_h_(nullptr) {
-    auto it = rpc_call_map.find(paddle::operators::distributed::kRequestSend);
+    VLOG(3) << "BRPCServiceImpl size: " << rpc_call_map.size();
+    auto it = rpc_call_map.find(distributed::kRequestSend);
     if (it != rpc_call_map.end()) {
       request_send_h_ = it->second;
     }
 
-    it = rpc_call_map.find(paddle::operators::distributed::kRequestSend);
+    it = rpc_call_map.find(distributed::kRequestGet);
     if (it != rpc_call_map.end()) {
       request_get_h_ = it->second;
     }
 
-    it = rpc_call_map.find(paddle::operators::distributed::kRequestPrefetch);
+    it = rpc_call_map.find(distributed::kRequestPrefetch);
     if (it != rpc_call_map.end()) {
       request_prefetch_h_ = it->second;
     }
@@ -51,25 +55,22 @@ class BRPCServiceImpl : public SendRecvService {
     PADDLE_ENFORCE(request_send_h_ != nullptr,
                    "RequestSend handler should be registed first!");
     brpc::ClosureGuard done_guard(done);
-
-    paddle::framework::Scope* local_scope = request_send_h_->scope();
-    paddle::framework::Variable* outvar = nullptr;
-    paddle::framework::Variable* invar = nullptr;
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
 
     std::string varname = request->varname();
+    VLOG(3) << "RequestSend var_name:" << varname;
 
-    if (!request_send_h_->sync_mode()) {
-      local_scope = &request_send_h_->scope()->NewScope();
-      invar = local_scope->Var(varname);
-    } else {
-      invar = local_scope->FindVar(varname);
-    }
+    distributed::BRPCVariableResponse resp(request_send_h_->scope(),
+                                           request_send_h_->dev_ctx(),
+                                           !request_send_h_->sync_mode());
+    PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
+                   "parse iobuf to tensor error!");
 
-    request_send_h_->Handle(varname, local_scope, invar, &outvar);
+    auto scope = resp.GetMutableLocalScope();
+    auto invar = resp.GetVar();
+    paddle::framework::Variable* outvar = nullptr;
 
-    if (!request_send_h_->sync_mode()) {
-      request_send_h_->scope()->DeleteScope(local_scope);
-    }
+    request_send_h_->Handle(varname, scope, invar, &outvar);
   }
 
   void GetVariable(google::protobuf::RpcController* cntl_butil,
@@ -77,7 +78,31 @@ class BRPCServiceImpl : public SendRecvService {
                    google::protobuf::Closure* done) override {
     PADDLE_ENFORCE(request_get_h_ != nullptr,
                    "RequestGet handler should be registed first!");
+
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+
+    std::string varname = request->varname();
+    VLOG(3) << "RequestGet " << varname;
+
+    auto scope = request_get_h_->scope();
+    auto invar = scope->FindVar(varname);
+    paddle::framework::Variable* outvar = nullptr;
+
+    request_get_h_->Handle(varname, scope, invar, &outvar);
+
+    if (outvar) {
+      distributed::SerializeToIOBuf(varname, outvar, *request_get_h_->dev_ctx(),
+                                    response, &cntl->response_attachment(), "",
+                                    false);
+    }
   }
+
+  /*
+  static void HandlePrefetchRequest(distributed::VariableResponse* resp){
+      delete resp;
+  }
+  */
 
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
@@ -85,12 +110,38 @@ class BRPCServiceImpl : public SendRecvService {
                         google::protobuf::Closure* done) override {
     PADDLE_ENFORCE(request_prefetch_h_ != nullptr,
                    "kRequestPrefetch handler should be registed first!");
+
+    brpc::ClosureGuard done_guard(done);
+    brpc::Controller* cntl = static_cast<brpc::Controller*>(cntl_butil);
+
+    // prefetch process...
+    std::string in_var_name = request->varname();
+    std::string out_var_name = request->out_varname();
+    VLOG(3) << "RequestPrefetch, in_var_name: " << in_var_name
+            << ", out_var_name: " << out_var_name;
+
+    distributed::BRPCVariableResponse resp(
+        request_prefetch_h_->scope(), request_prefetch_h_->dev_ctx(), true);
+
+    PADDLE_ENFORCE(resp.Parse(cntl->request_attachment(), *request) == 0,
+                   "parse iobuf to tensor error!");
+
+    auto scope = resp.GetMutableLocalScope();
+    auto invar = scope->FindVar(in_var_name);
+    paddle::framework::Variable* outvar = scope->Var(out_var_name);
+
+    request_prefetch_h_->Handle(in_var_name, scope, invar, &outvar,
+                                out_var_name);
+
+    distributed::SerializeToIOBuf(out_var_name, outvar,
+                                  *request_prefetch_h_->dev_ctx(), response,
+                                  &cntl->response_attachment(), "", true);
   }
 
  private:
-  paddle::operators::distributed::RequestHandler* request_send_h_;
-  paddle::operators::distributed::RequestHandler* request_get_h_;
-  paddle::operators::distributed::RequestHandler* request_prefetch_h_;
+  distributed::RequestHandler* request_send_h_;
+  distributed::RequestHandler* request_get_h_;
+  distributed::RequestHandler* request_prefetch_h_;
 };
 }  // namespace sendrecv
 
@@ -111,6 +162,9 @@ void AsyncBRPCServer::StartServer() {
   }
 
   brpc::ServerOptions options;
+#ifdef PADDLE_WITH_BRPC_RDMA
+  options.use_rdma = true;
+#endif
   options.idle_timeout_sec = idle_timeout_s_;
   options.max_concurrency = max_concurrency_;
   if (server_.Start(bind_address_.c_str(), &options) != 0) {

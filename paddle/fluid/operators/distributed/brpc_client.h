@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
@@ -74,11 +75,61 @@ class BRPCClient : public RPCClient {
   void AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void Wait() override;
+  virtual void AsyncCheckpointNotify(const std::string& ep,
+                                     const std::string& dir,
+                                     int64_t time_out = FLAGS_rpc_deadline) {
+    // FIXME(gongwb): implement it!
+    assert(false);
+  }
+
+  bool Wait() override;
+
+  void AsyncSendBeginPass(const std::string& ep,
+                          int64_t time_out = FLAGS_rpc_deadline) override {
+    assert(false);
+  }
+
+  void AsyncSendEndPass(const std::string& ep,
+                        int64_t time_out = FLAGS_rpc_deadline) override {
+    assert(false);
+  }
+
+  void SendBeginPass() override { assert(false); }
+
+  void SendEndPass() override { assert(false); }
 
  private:
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);
+
+  void AsyncSendComplete(const std::string& ep,
+                         int64_t time_out = FLAGS_rpc_deadline);
+
+  void AsyncSendMessage(const std::string& ep, const std::string& message,
+                        int64_t time_out);
+
+  friend void HandleSendResponse(brpc::Controller* cntl,
+                                 sendrecv::VoidMessage* response,
+                                 VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                 ChannelContextPtr ch_ctx, BRPCClient* cls);
+
+  friend void HandleGetResponse(brpc::Controller* cntl,
+                                sendrecv::VariableMessage* response,
+                                VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                ChannelContextPtr ch_ctx, BRPCClient* cls);
+
+  friend void HandleFetchBarrierResponse(brpc::Controller* cntl,
+                                         sendrecv::VariableMessage* response,
+                                         VarHandle var_h,
+                                         ChannelQueuePtr ch_ptr,
+                                         ChannelContextPtr ch_ctx,
+                                         BRPCClient* cls);
+  void DecreaseReqCount() {
+    req_count_--;
+    if (req_count_.load() <= 0) {
+      sync_cond_.notify_all();
+    }
+  }
 
  private:
   std::unordered_map<std::string, ChannelQueuePtr> channels_;

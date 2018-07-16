@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/distributed/grpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 
