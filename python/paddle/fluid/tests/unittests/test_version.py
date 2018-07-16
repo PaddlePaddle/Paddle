@@ -17,6 +17,7 @@ import re
 
 import paddle.version as fluid_version
 
+
 class VersionTest(unittest.TestCase):
     def setUp(self):
         self._major_regex = "[0-9]+"
@@ -43,6 +44,7 @@ class VersionTest(unittest.TestCase):
             self.assertTrue(re.match(self._minor_regex, fluid_version.minor))
             self.assertTrue(re.match(self._patch_regex, fluid_version.patch))
             self.assertTrue(re.match(self._rc_regex, fluid_version.rc))
-            self.assertTrue(re.match(self._version_regex, fluid_version.full_version))
+            self.assertTrue(
+                re.match(self._version_regex, fluid_version.full_version))
 
 
