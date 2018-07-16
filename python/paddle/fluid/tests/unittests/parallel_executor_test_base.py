@@ -35,7 +35,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   feed_dict=None,
                                   seed=None,
                                   use_parallel_executor=True,
-                                  use_reduce=False):
+                                  use_reduce=False,
+                                  optimizer=fluid.optimizer.Adam):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -57,8 +58,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                 main.random_seed = seed
 
             loss = method(use_feed=feed_dict is not None)
-            adam = fluid.optimizer.Adam()
-            adam.minimize(loss)
+
+            optimizer().minimize(loss)
 
             if memory_opt:
                 fluid.memory_optimize(main)
