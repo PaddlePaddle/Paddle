@@ -56,7 +56,6 @@ template <typename DeviceContext, typename T>
 class TensorRTEngineKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    LOG(INFO) << "TensorRTEngineKernel executing";
     auto engine_name = context.Attr<std::string>("engine_uniq_key");
     if (!Singleton<TRT_EngineManager>::Global().HasEngine(engine_name)) {
       Prepare(context);
@@ -67,16 +66,12 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(FLAGS_tensorrt_engine_batch_size,
                       context.Attr<int>("max_batch"));
 
-    LOG(INFO) << "convert input tensor to engine";
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
       // convert input and copy to TRT engine's buffer
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(
           context.scope(), x);
       if (platform::is_cpu_place(t.place())) {
-        LOG(INFO) << "set input from CPU: " << x;
-        LOG(INFO) << "memory size: " << t.memory_size();
-        LOG(INFO) << "shape: " << t;
         engine->SetInputFromCPU(x, static_cast<const void*>(t.data<void>()),
                                 t.memory_size());
       } else {
@@ -85,9 +80,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       }
     }
     // Execute the engine.
-    LOG(INFO) << "execute";
     PADDLE_ENFORCE_GT(FLAGS_tensorrt_engine_batch_size, 0);
-    LOG(INFO) << "batch_size " << FLAGS_tensorrt_engine_batch_size;
     engine->Execute(FLAGS_tensorrt_engine_batch_size);
     // Convert output tensor from engine to fluid
     for (const auto& y : context.Outputs("Ys")) {
@@ -103,7 +96,8 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
       fluid_t->Resize(framework::make_ddim(ddim));
 
-      LOG(INFO) << "get output: " << y << " " << size * sizeof(float);
+      // TODO(Superjomn) find some way to determine which device to output the
+      // tensor.
       // if (platform::is_cpu_place(fluid_t->place())) {
       // TODO(Superjomn) change this float to dtype size.
       engine->GetOutputInCPU(y,

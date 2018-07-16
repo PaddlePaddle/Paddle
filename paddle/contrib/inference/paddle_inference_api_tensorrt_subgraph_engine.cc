@@ -97,7 +97,6 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     VLOG(5) << "transformed program:\n"
             << argument.transformed_program_desc->SerializeAsString();
     VLOG(5) << "to prepare executor";
-    //*inference_program_->Proto() = *argument.transformed_program_desc;
     inference_program_.reset(
         new framework::ProgramDesc(*argument.transformed_program_desc));
   }

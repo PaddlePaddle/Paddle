@@ -304,7 +304,6 @@ std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
-    LOG(INFO) << "executor creating op " << op_desc->Type();
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
   return ctx;
