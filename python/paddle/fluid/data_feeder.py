@@ -13,7 +13,7 @@
 # limitations under the License.
 
 
-import core
+from . import core
 import numpy
 import os
 import six.moves as six

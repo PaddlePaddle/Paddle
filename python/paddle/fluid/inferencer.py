@@ -14,7 +14,7 @@
 
 import contextlib
 
-import core
+from . import core
 
 from . import executor
 from . import framework

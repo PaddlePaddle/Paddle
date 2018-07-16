@@ -19,7 +19,7 @@ from .framework import Variable, Parameter, default_main_program, default_startu
 from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
-import core
+from . import core
 
 
 class LayerHelper(object):

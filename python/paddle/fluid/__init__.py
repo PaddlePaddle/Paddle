@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+from __future__ import print_function
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *

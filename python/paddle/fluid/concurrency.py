@@ -16,7 +16,7 @@ from .layers.control_flow import BlockGuard, equal
 from .framework import Operator
 from .layer_helper import LayerHelper, unique_name
 from .layers import fill_constant
-import core
+from . import core
 
 __all__ = [
     'Go', 'make_channel', 'channel_send', 'channel_recv', 'channel_close',
