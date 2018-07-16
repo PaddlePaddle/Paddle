@@ -219,7 +219,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
    # 2. 执行如下命令下载最新版本的docker镜像
    sudo docker run --name paddle-test -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
    # 3. 进入docker内执行如下命令编译CPU-Only的二进制安装包
-   mkdir /paddle/build && cd /paddle/build
+   mkdir -p /paddle/build && cd /paddle/build
    cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_TESTING=OFF
    make -j$(nproc)
 
@@ -227,24 +227,22 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
 .. code-block:: bash
 
-   # 1. 获取源码
-   git clone https://github.com/PaddlePaddle/Paddle.git
-   cd Paddle
-   # 2. 配置环境使得docker可以访问宿主机GPU设备
-   export CUDA_SO="$(\ls /usr/lib64/libcuda* | xargs -I{} echo '-v {}:{}') $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
-   export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
-   # 3. 执行如下命令下载支持GPU运行的docker容器
-   sudo docker run ${CUDA_SO} ${DEVICES} --rm --name paddle-test-gpu -v /usr/bin/nvidia-smi:/usr/bin/nvidia-smi -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
-   # 4. 进入docker内执行如下命令编译GPU版本的PaddlePaddle
-   mkdir /paddle/build && cd /paddle/build
-   cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=ON -DWITH_TESTING=OFF
-   make -j$(nproc)
+  # 1. 获取源码 
+  git clone https://github.com/PaddlePaddle/Paddle.git 
+  cd Paddle
+  # 2. 安装nvidia-docker
+  apt-get install nvidia-docker
+  # 3. 执行如下命令下载支持GPU运行的docker容器
+  sudo nvidia-docker run --name paddle-test-gpu -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
+  # 4. 进入docker内执行如下命令编译GPU版本的PaddlePaddle
+  mkdir -p /paddle/build && cd /paddle/build
+  cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=ON -DWITH_TESTING=OFF
+  make -j$(nproc)
 
 **注意事项：**
 
 * 上述有关 :code:`docker` 的命令把当前目录（源码树根目录）映射为 container 里的 :code:`/paddle` 目录。
-
-* 若要运行GPU版本的PaddlePaddle，需要在进入docker后修改 :code:`~/.bashrc` 文件，加入 :code:`export LD_LIBRARY_PATH=/usr/lib64:/usr/local/lib:$LD_LIBRARY_PATH` 语句，并执行 :code:`source ~/.bashrc` 命令。
+* 进入 :code:`docker` 后执行 :code:`cmake` 命令，若是出现 :code:`patchelf not found, please install it.` 错误，则执行 :code:`apt-get install -y patchelf` 命令即可解决问题。
 * 若您在使用Docker编译PaddlePaddle遇到问题时， `这个issue <https://github.com/PaddlePaddle/Paddle/issues/12079>`_ 可能会对您有所帮助。
 
 
