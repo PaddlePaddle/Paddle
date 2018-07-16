@@ -219,7 +219,7 @@ class DistributeTranspiler(object):
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
         grad_var_mapping_items = self.grad_var_mapping.items()
-        if not slice_var_up:
+        if not self.config.slice_var_up:
             random.seed(self.trainer_num)
             random.shuffle(grad_var_mapping_items)
 
