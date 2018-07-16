@@ -17,17 +17,24 @@ import sys
 import json
 
 
-def check_approval(count):
+def check_approval(count, required_reviewers):
     json_buff = ""
     for line in sys.stdin:
         json_buff = "".join([json_buff, line])
     json_resp = json.loads(json_buff)
     approves = 0
+    approved_user_ids = []
     for review in json_resp:
         if review["state"] == "APPROVED":
             approves += 1
+            approved_user_ids.append(review["user"]["id"])
 
-    if approves >= count:
+    # convert to int
+    required_reviewers_int = set()
+    for rr in required_reviewers:
+        required_reviewers_int.add(int(rr))
+
+    if len(set(approved_user_ids) & required_reviewers_int) >= count:
         print("TRUE")
     else:
         print("FALSE")
@@ -35,6 +42,8 @@ def check_approval(count):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1].isdigit():
-        check_approval(int(sys.argv[1]))
+        check_approval(int(sys.argv[1]), sys.argv[2:])
     else:
-        print("Usage: python check_pr_approval.py [count]")
+        print(
+            "Usage: python check_pr_approval.py [count] [required reviewer id] ..."
+        )

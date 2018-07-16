@@ -332,8 +332,8 @@ function assert_api_not_changed() {
     echo "${GIT_PR_ID} , ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
         # TODO: curl -H 'Authorization: token ${TOKEN}'
-        APPROVALS=`curl https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
-        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2`
+        APPROVALS=`curl -H 'Authorization: token ${GITHUB_API_TOKEN}' https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
             echo "You must have at least 2 approvals for the api change!"
