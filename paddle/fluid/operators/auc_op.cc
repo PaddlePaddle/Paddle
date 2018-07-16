@@ -60,13 +60,12 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Predict",
-             "A floating point 2D tensor, values are in the range [0, 1]."
-             "Each row is sorted in descending order. This input should be the"
-             "output of topk."
+             "A floating point 2D tensor with shape [batch_size, 2], values "
+             "are in the range [0, 1]."
              "Typically, this tensor indicates the probability of each label");
     AddInput("Label",
-             "A 2D int tensor indicating the label of the training data."
-             "The height is batch size and width is always 1.");
+             "A 2D int tensor indicating the label of the training data. "
+             "shape: [batch_size, 1]");
     AddInput("TP", "True-Positive value.");
     AddInput("FP", "False-Positive value.");
     AddInput("TN", "True-Negative value.");
