@@ -24,7 +24,20 @@ class TestAucOp(OpTest):
         indices = np.random.randint(0, 2, (128, 2))
         labels = np.random.randint(0, 2, (128, 1))
         num_thresholds = 200
-        self.inputs = {'Out': pred, 'Indices': indices, 'Label': labels}
+        tp = np.zeros((num_thresholds, )).astype("int64")
+        tn = np.zeros((num_thresholds, )).astype("int64")
+        fp = np.zeros((num_thresholds, )).astype("int64")
+        fn = np.zeros((num_thresholds, )).astype("int64")
+
+        self.inputs = {
+            'Out': pred,
+            'Indices': indices,
+            'Label': labels,
+            'TP': tp,
+            'TN': tn,
+            'FP': fp,
+            'FN': fn
+        }
         self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
         # NOTE: sklearn use a different way to generate thresholds
         #       which will cause the result differs slightly:
@@ -71,7 +84,13 @@ class TestAucOp(OpTest):
         y = (tpr[:num_thresholds - 1] + tpr[1:]) / 2.0
         auc_value = np.sum(x * y)
 
-        self.outputs = {'AUC': auc_value}
+        self.outputs = {
+            'AUC': auc_value,
+            'TPOut': tp_list,
+            'FNOut': fn_list,
+            'TNOut': tn_list,
+            'FPOut': fp_list
+        }
 
     def test_check_output(self):
         self.check_output()

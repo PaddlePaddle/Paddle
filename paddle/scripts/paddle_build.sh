@@ -516,6 +516,7 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
+        cmake .. -DWITH_DISTRIBUTE=OFF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
@@ -531,7 +532,7 @@ function test_fluid_inference_lib() {
     ========================================
 EOF
         cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
-        sh run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
 
@@ -577,6 +578,7 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       check_style)
         check_style
