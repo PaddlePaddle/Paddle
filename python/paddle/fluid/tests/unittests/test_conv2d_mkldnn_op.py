@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride
+from .test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride
 
 
 class TestMKLDNN(TestConv2dOp):

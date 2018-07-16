@@ -16,10 +16,10 @@ import contextlib
 from .. import core
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program, Program
 from ..unique_name import generate as unique_name
-from control_flow import BlockGuard
+from .control_flow import BlockGuard
 from ..layer_helper import LayerHelper
 from ..executor import global_scope
-from layer_function_generator import generate_layer_fn, templatedoc
+from .layer_function_generator import generate_layer_fn, templatedoc
 
 __all__ = [
     'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
@@ -66,7 +66,7 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in xrange(len(shape)):
+    for i in range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -576,7 +576,7 @@ def open_files(filenames,
     """
     if buffer_size is None:
         buffer_size = thread_num * 3
-    if isinstance(filenames, basestring):
+    if isinstance(filenames, str):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -830,7 +830,7 @@ class Preprocessor(object):
         source_lod_levels = self.underlying_reader.desc.lod_levels()
         self.source_var_names = [
             unique_name("preprocessor_source")
-            for _ in xrange(len(source_shapes))
+            for _ in range(len(source_shapes))
         ]
         source_vars = []
         for var_name, shape, dtype, lod_level in zip(

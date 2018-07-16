@@ -30,7 +30,7 @@ def get_all_op_protos():
 
 
 def is_str(s):
-    return isinstance(s, str) or isinstance(s, unicode)
+    return isinstance(s, str) or isinstance(s, str)
 
 
 class OpDescCreationMethod(object):
@@ -189,7 +189,7 @@ class OperatorFactory(object):
         return self.get_op_info(t).method(**kwargs)
 
     def types(self):
-        return self.op_methods.keys()
+        return list(self.op_methods.keys())
 
     def get_op_info(self, t):
         if t not in self.op_methods:
@@ -197,13 +197,13 @@ class OperatorFactory(object):
         return self.op_methods.get(t)
 
     def get_op_input_names(self, type):
-        return map(lambda x: x[0], self.get_op_info(type).inputs)
+        return [x[0] for x in self.get_op_info(type).inputs]
 
     def get_op_inputs(self, type):
         return self.get_op_info(type).inputs
 
     def get_op_output_names(self, type):
-        return map(lambda x: x[0], self.get_op_info(type).outputs)
+        return [x[0] for x in self.get_op_info(type).outputs]
 
     def get_op_outputs(self, type):
         return self.get_op_info(type).outputs

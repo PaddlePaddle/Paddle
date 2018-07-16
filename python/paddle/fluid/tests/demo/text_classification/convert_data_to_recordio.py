@@ -33,7 +33,7 @@ def load_vocab(filename):
 # load word dict with paddle inner function
 word_dict = load_vocab(sys.argv[1])
 word_dict["<unk>"] = len(word_dict)
-print "Dict dim = ", len(word_dict)
+print("Dict dim = ", len(word_dict))
 
 # input text data
 data = fluid.layers.data(name="words", shape=[1], dtype="int64", lod_level=1)

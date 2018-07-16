@@ -20,7 +20,7 @@ import itertools
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from op_test import OpTest
+from .op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):
@@ -41,7 +41,7 @@ class BenchmarkSuite(OpTest):
             actual = item_gpu_out
             actual_t = np.array(item_gpu_out)
             var_name = variable if isinstance(variable,
-                                              basestring) else variable.name
+                                              str) else variable.name
             self.assertTrue(
                 np.allclose(
                     actual_t, expect_t, atol=atol),
@@ -53,7 +53,7 @@ class BenchmarkSuite(OpTest):
 
     def _get_input_names(self):
         inputs = []
-        for name, value in self.inputs.iteritems():
+        for name, value in self.inputs.items():
             if isinstance(value, list):
                 inputs.extend([sub_name for sub_name, _ in value])
             inputs.append(name)
@@ -61,7 +61,7 @@ class BenchmarkSuite(OpTest):
 
     def _get_output_names(self):
         outputs = []
-        for var_name, var in self.outputs.iteritems():
+        for var_name, var in self.outputs.items():
             if isinstance(var, list):
                 for sub_var_name, sub_var in var:
                     outputs.append(sub_var_name)
@@ -89,8 +89,8 @@ class BenchmarkSuite(OpTest):
         for place in places:
             elapses.append(self.timeit_output_with_place(place, iters))
         for place, elapse in zip(places, elapses):
-            print("One pass of ({2}_op) at {0} cost {1}".format(
-                str(place), elapse, self.op_type))
+            print(("One pass of ({2}_op) at {0} cost {1}".format(
+                str(place), elapse, self.op_type)))
 
     def timeit_grad_with_place(self, place, iters=100):
         inputs_to_check = self._get_input_names()
@@ -109,5 +109,5 @@ class BenchmarkSuite(OpTest):
         for place in places:
             elapses.append(self.timeit_grad_with_place(place, iters))
         for place, elapse in zip(places, elapses):
-            print("One pass of ({2}_grad_op) at {0} cost {1}".format(
-                str(place), elapse, self.op_type))
+            print(("One pass of ({2}_grad_op) at {0} cost {1}".format(
+                str(place), elapse, self.op_type)))

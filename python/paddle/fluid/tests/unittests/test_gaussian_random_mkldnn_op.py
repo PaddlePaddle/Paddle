@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_gaussian_random_op import TestGaussianRandomOp
+from .test_gaussian_random_op import TestGaussianRandomOp
 
 
 class TestMKLDNN(TestGaussianRandomOp):

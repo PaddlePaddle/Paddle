@@ -20,14 +20,14 @@ import time
 
 import core
 
-import data_feeder
-import executor
-import framework
-import io
+from . import data_feeder
+from . import executor
+from . import framework
+from . import io
 # optimizer is same as the parameter of Trainer.__init__. Rename it to opt_module
-import optimizer as opt_module
-import parallel_executor
-from transpiler import distribute_transpiler
+from . import optimizer as opt_module
+from . import parallel_executor
+from .transpiler import distribute_transpiler
 
 __all__ = [
     'Trainer', 'BeginEpochEvent', 'EndEpochEvent', 'BeginStepEvent',
@@ -614,11 +614,11 @@ def build_feed_var_list(program, feed_order):
         if not isinstance(feed_order, dict):
             raise TypeError(
                 "The 'feed_order' should be either None, list or dict.")
-        if not sorted(feed_order.values()) == range(len(feed_order)):
+        if not sorted(feed_order.values()) == list(range(len(feed_order))):
             raise ValueError(
                 "The values of 'feed_order' should be a permutation of [0, len(feed_order))"
             )
-        sorted_pair_list = sorted(feed_order.items(), key=lambda item: item[1])
+        sorted_pair_list = sorted(list(feed_order.items()), key=lambda item: item[1])
         feed_var_list = [
             program.global_block().var(pair[0]) for pair in sorted_pair_list
         ]
@@ -1036,7 +1036,7 @@ def _save_trainer_args(dirname, trainer_id, trainer_args):
 
     cur_dir = _get_trainer_dir(dirname, trainer_id)
 
-    for name, value in trainer_args.iteritems():
+    for name, value in trainer_args.items():
         args_file = os.path.join(cur_dir, name)
         with open(args_file, 'w') as f:
             f.write(str(value))
@@ -1168,10 +1168,10 @@ def _scroll_delete(dirname, max_num_checkpoints=3):
         serial_num = _get_dir_serial(serial)
         serial_map[serial_num] = serial
 
-    if len(serial_map.keys()) <= max_num_checkpoints:
+    if len(list(serial_map.keys())) <= max_num_checkpoints:
         return
 
-    serials = serial_map.keys()
+    serials = list(serial_map.keys())
     serials.sort(reverse=True)
     serials = serials[max_num_checkpoints:]
     for serial in serials:

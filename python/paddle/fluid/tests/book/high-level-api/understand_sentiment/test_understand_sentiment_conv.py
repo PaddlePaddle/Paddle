@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
+
 
 import paddle
 import paddle.fluid as fluid
@@ -98,7 +98,7 @@ def train(use_cuda, train_program, params_dirname):
                     sys.exit("got NaN loss, training failed.")
         elif isinstance(event, fluid.EndStepEvent):
             print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(np.array, event.metrics)))
+                event.step, event.epoch, list(map(np.array, event.metrics))))
             if event.step == 1:  # Run 2 iterations to speed CI
                 trainer.save_params(params_dirname)
                 trainer.stop()

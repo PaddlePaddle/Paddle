@@ -25,6 +25,7 @@ import unittest
 from multiprocessing import Process
 import os
 import signal
+from functools import reduce
 
 SEED = 1
 DTYPE = "float32"
@@ -172,12 +173,12 @@ class TestDistMnist(unittest.TestCase):
         exe.run(fluid.default_startup_program())
 
         feed_var_list = [
-            var for var in trainer_prog.global_block().vars.itervalues()
+            var for var in trainer_prog.global_block().vars.values()
             if var.is_data
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        for pass_id in xrange(10):
+        for pass_id in range(10):
             for batch_id, data in enumerate(train_reader()):
                 exe.run(trainer_prog, feed=feeder.feed(data))
 
@@ -198,10 +199,10 @@ class TestDistMnist(unittest.TestCase):
                              ) > 0.8:  # Smaller value to increase CI speed
                         return
                     else:
-                        print(
+                        print((
                             'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
                             format(pass_id, batch_id + 1,
-                                   float(avg_loss_val), float(acc_val)))
+                                   float(avg_loss_val), float(acc_val))))
                         if math.isnan(float(avg_loss_val)):
                             assert ("got Nan loss, training failed.")
 

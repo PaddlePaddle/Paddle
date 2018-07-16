@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from parallel_executor_test_base import TestParallelExecutorBase
+from .parallel_executor_test_base import TestParallelExecutorBase
 import paddle.fluid as fluid
 import numpy as np
 import paddle
@@ -38,7 +38,7 @@ def simple_fc_net(use_feed):
         reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
     hidden = img
-    for _ in xrange(4):
+    for _ in range(4):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
@@ -67,7 +67,7 @@ def fc_with_batchnorm(use_feed):
         img, label = fluid.layers.read_file(reader)
 
     hidden = img
-    for _ in xrange(1):
+    for _ in range(1):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
@@ -145,9 +145,9 @@ class TestMNIST(TestParallelExecutorBase):
             use_reduce=use_reduce)
 
         for p_f in parallel_first_loss:
-            self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
+            self.assertAlmostEqual(p_f, single_first_loss[0], delta=1e-6)
         for p_l in parallel_last_loss:
-            self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
+            self.assertAlmostEqual(p_l, single_last_loss[0], delta=1e-6)
 
     def test_simple_fc_parallel_accuracy(self):
         self.check_simple_fc_parallel_accuracy(True)

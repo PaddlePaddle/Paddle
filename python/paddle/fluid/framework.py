@@ -21,15 +21,15 @@ import numpy as np
 import proto.framework_pb2 as framework_pb2
 try:
     from . import core
-except ImportError, e:
+except ImportError as e:
     raise ImportError(
         """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
     directory. The original error is: \n""" + e.message)
-except Exception, e:
+except Exception as e:
     raise e
-import unique_name
+from . import unique_name
 
 __all__ = [
     'Block',
@@ -525,7 +525,7 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        if isinstance(arg, basestring):
+                        if isinstance(arg, str):
                             in_arg_names.append(arg)
                         else:
                             in_arg_names.append(arg.name)
@@ -847,7 +847,7 @@ class Block(object):
             re_add_indent = re.compile(r"\n(.)")
             res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
                 self.idx, self.parent_idx)
-            for var in self.vars.itervalues():
+            for var in self.vars.values():
                 res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
                     r"\n    \1", var.to_string(throw_on_error, with_details))
             for op in self.ops:
@@ -900,7 +900,7 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        if not isinstance(name, basestring):
+        if not isinstance(name, str):
             raise TypeError(
                 "var require string as parameter, but get %s instead." %
                 (type(name)))
@@ -954,7 +954,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in self.vars.iteritems()
+        return (item[1] for item in self.vars.items()
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
@@ -1115,7 +1115,7 @@ class Block(object):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
         # sync variables removed from c++ end
-        for var in self.vars.keys():
+        for var in list(self.vars.keys()):
             if not self.desc.find_var(var):
                 self.vars.pop(var)
 
@@ -1483,7 +1483,7 @@ class Program(object):
         else:
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.blocks = [Block(p, i) for i in range(self.desc.num_blocks())]
             p.sync_with_cpp()
 
         p.copy_param_info_from(self)
@@ -1535,7 +1535,7 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
-        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
 
@@ -1555,13 +1555,13 @@ class Program(object):
         # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
-        for i in xrange(res.desc.num_blocks()):
+        for i in range(res.desc.num_blocks()):
             block = res.desc.block(i)
-            for j in xrange(block.op_size()):
+            for j in range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op.set_attr('is_test', True)
-        res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
+        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
         res.sync_with_cpp()
         return res
 
@@ -1581,7 +1581,7 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
-        p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
         p.sync_with_cpp()
         return p
 
@@ -1720,7 +1720,7 @@ class Program(object):
         if len(self.blocks) != len(other.blocks):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
-        for var in other.global_block().vars.itervalues():
+        for var in other.global_block().vars.values():
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
 
@@ -1732,7 +1732,7 @@ class Program(object):
             iterable: The generator will yield every variable in this program.
         """
         for each_block in self.blocks:
-            for each_var in each_block.vars.itervalues():
+            for each_var in each_block.vars.values():
                 yield each_var
 
 

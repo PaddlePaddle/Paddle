@@ -162,7 +162,7 @@ def save_vars(executor,
         save_vars(
             executor,
             dirname=dirname,
-            vars=filter(predicate, main_program.list_vars()),
+            vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
         save_program = Program()
@@ -368,7 +368,7 @@ def load_vars(executor,
         load_vars(
             executor,
             dirname=dirname,
-            vars=filter(predicate, main_program.list_vars()),
+            vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
         load_prog = Program()
@@ -598,12 +598,12 @@ def save_inference_model(dirname,
             # "./infer_model". 
 
     """
-    if isinstance(feeded_var_names, basestring):
+    if isinstance(feeded_var_names, str):
         feeded_var_names = [feeded_var_names]
     else:
         if len(feeded_var_names) > 0:
             if not (bool(feeded_var_names) and all(
-                    isinstance(name, basestring) for name in feeded_var_names)):
+                    isinstance(name, str) for name in feeded_var_names)):
                 raise ValueError("'feed_var_names' should be a list of str.")
 
     if isinstance(target_vars, Variable):
@@ -872,7 +872,7 @@ def get_test_program(filelist, program=None, startup_program=None):
     # 3. rename reader vars in inference program to different name
     #    to avoid read from train data.
     main_block = program.global_block()
-    for var in main_block.vars.values():
+    for var in list(main_block.vars.values()):
         if var.type == core.VarDesc.VarType.READER:
             main_block.rename_var(
                 str(var.name), str(_get_test_reader_name(var.name)))

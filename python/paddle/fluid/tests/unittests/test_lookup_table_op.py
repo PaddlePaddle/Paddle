@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from .op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
@@ -40,7 +40,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         ids = np.squeeze(self.inputs['Ids'])
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
-        self.attrs = {'padding_idx': long(padding_idx)}
+        self.attrs = {'padding_idx': int(padding_idx)}
         self.check_output()
 
     def test_check_grad(self):

@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_sum_op import TestSumOp
+from .test_sum_op import TestSumOp
 
 
 class TestMKLDNN(TestSumOp):

@@ -14,7 +14,7 @@
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import op_test
+from . import op_test
 import numpy
 import unittest
 import paddle.fluid.framework as framework

@@ -24,7 +24,7 @@ def simple_fc_net():
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
-    for _ in xrange(4):
+    for _ in range(4):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
@@ -70,7 +70,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 share_vars_from=train_exe,
                 build_strategy=build_strategy)
 
-            for i in xrange(5):
+            for i in range(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)

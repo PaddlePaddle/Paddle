@@ -28,7 +28,7 @@ def deprecated(since, instead, extra_message=""):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            print >> sys.stderr, err_msg
+            print(err_msg, file=sys.stderr)
             return func(*args, **kwargs)
 
         wrapper.__doc__ += "\n    "

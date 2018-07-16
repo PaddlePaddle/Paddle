@@ -183,7 +183,7 @@ class TestBlockDesc(unittest.TestCase):
         op2 = block.append_op()
         op0 = block.prepend_op()
         all_ops = []
-        for idx in xrange(0, block.op_size()):
+        for idx in range(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
 
@@ -205,7 +205,7 @@ class TestBlockDesc(unittest.TestCase):
         program.sync_with_cpp()
 
         all_ops = []
-        for idx in xrange(0, block.op_size()):
+        for idx in range(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op2])
 

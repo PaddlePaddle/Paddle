@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from .op_test import OpTest
 
 
 class TestSquaredL2DistanceOp_f0(OpTest):

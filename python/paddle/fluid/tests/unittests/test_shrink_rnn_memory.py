@@ -45,7 +45,7 @@ class TestShrinkRNNMemoryBase(unittest.TestCase):
 
     def sum_lodtensor(self, tensor):
         sum_res = 0.0
-        for i in xrange(np.product(tensor.shape())):
+        for i in range(np.product(tensor.shape())):
             sum_res += tensor._get_float_element(i)
         return sum_res
 

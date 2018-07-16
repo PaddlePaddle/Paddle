@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from layers.control_flow import BlockGuard, equal
+from .layers.control_flow import BlockGuard, equal
 from .framework import Operator
-from layer_helper import LayerHelper, unique_name
-from layers import fill_constant
+from .layer_helper import LayerHelper, unique_name
+from .layers import fill_constant
 import core
 
 __all__ = [

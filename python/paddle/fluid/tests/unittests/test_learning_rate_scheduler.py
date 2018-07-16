@@ -149,7 +149,7 @@ class TestLearningRateDecay(unittest.TestCase):
         ]
 
         for py_decay_fn, fluid_decay_fn, kwargs in decay_fns:
-            print("decay_fn=" + py_decay_fn.__name__ + " kwargs=" + str(kwargs))
+            print(("decay_fn=" + py_decay_fn.__name__ + " kwargs=" + str(kwargs)))
             main_program = framework.Program()
             startup_program = framework.Program()
             with framework.program_guard(main_program, startup_program):
