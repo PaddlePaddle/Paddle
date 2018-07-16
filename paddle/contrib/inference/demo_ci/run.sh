@@ -44,15 +44,18 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_GPU=$TEST_GPU_CPU \
     -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
-  for use_gpu in $use_gpu_list; do
-    ./simple_on_word2vec \
-      --dirname=${PADDLE_ROOT}/build/python/paddle/fluid/tests/book/word2vec.inference.model \
-      --use_gpu=$use_gpu
-    if [ $? -ne 0 ]; then
-      echo "simple_on_word2vec demo runs fail."
-      exit 1
-    fi
-  done
+  word2vec_model=${PADDLE_ROOT}'/build/python/paddle/fluid/tests/book/word2vec.inference.model'
+  if [ -d $word2vec_model ]; then
+    for use_gpu in $use_gpu_list; do
+      ./simple_on_word2vec \
+        --dirname=$word2vec_model \
+        --use_gpu=$use_gpu
+      if [ $? -ne 0 ]; then
+        echo "simple_on_word2vec demo runs fail."
+        exit 1
+      fi
+    done
+  fi
   # ---------vis_demo---------
   rm -rf *
   cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
