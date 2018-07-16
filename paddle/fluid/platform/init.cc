@@ -69,10 +69,10 @@ void InitP2P(std::vector<int> devices) {
 #endif
 }
 
-void InitDevices(bool init_p2p) {
+#ifdef PADDLE_WITH_CUDA
+static void GetCUDAPlacesAndInitP2P(bool init_p2p) {
   /*Init all available devices by default */
   std::vector<int> devices;
-#ifdef PADDLE_WITH_CUDA
   try {
     int count = platform::GetCUDADeviceCount();
     for (int i = 0; i < count; ++i) {
@@ -81,26 +81,17 @@ void InitDevices(bool init_p2p) {
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
-#else
-  LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
-#endif
-  InitDevices(init_p2p, devices);
+  return GetCUDAPlacesAndInitP2P(init_p2p, devices);
 }
-
-void InitDevices(bool init_p2p, const std::vector<int> devices) {
+static std::vector<platform::Place> GetCUDAPlacesAndInitP2P(
+    bool init_p2p, const std::vector<int> &devices) {
   std::vector<platform::Place> places;
   int count = 0;
-#ifdef PADDLE_WITH_CUDA
   try {
     count = platform::GetCUDADeviceCount();
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
-#else
-  LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
-#endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
     if (devices[i] >= count || devices[i] < 0) {
@@ -112,11 +103,35 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   if (init_p2p) {
     InitP2P(devices);
   }
-  places.emplace_back(platform::CPUPlace());
-  platform::DeviceContextPool::Init(places);
+  return places;
+}
+#endif
+
+static std::vector<platform::Place> GetCPUPlaces() {
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(1);
 #endif
+  return {platform::CPUPlace()};
+}
+
+void InitDevices(bool init_p2p) {
+  auto places = GetCPUPlaces();
+#ifdef PADDLE_WITH_CUDA
+  for (auto &p : GetCUDAPlacesAndInitP2P(init_p2p)) {
+    places.emplace_back(p);
+  }
+#endif
+  platform::DeviceContextPool::Init(places);
+}
+
+void InitDevices(bool init_p2p, const std::vector<int> &devices) {
+  auto places = GetCPUPlaces();
+#ifdef PADDLE_WITH_CUDA
+  for (auto &p : GetCUDAPlacesAndInitP2P(init_p2p, devices)) {
+    places.emplace_back(p);
+  }
+#endif
+  platform::DeviceContextPool::Init(places);
 }
 
 void InitGLOG(const std::string &prog_name) {

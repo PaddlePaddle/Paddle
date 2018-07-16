@@ -24,11 +24,11 @@ namespace framework {
 
 void InitGflags(std::vector<std::string> argv);
 
-void InitGLOG(const std::string &prog_name);
+void InitGLOG(const std::string& prog_name);
 
 void InitDevices(bool init_p2p);
 
-void InitDevices(bool init_p2p, const std::vector<int> devices);
+void InitDevices(bool init_p2p, const std::vector<int>& devices);
 
 }  // namespace framework
 }  // namespace paddle

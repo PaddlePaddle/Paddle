@@ -17,6 +17,7 @@ limitations under the License. */
 #include <atomic>
 #include <condition_variable>  // NOLINT
 #include <deque>
+#include <mutex>  // NOLINT
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/platform/enforce.h"
 
