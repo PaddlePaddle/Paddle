@@ -885,7 +885,7 @@ class Block(object):
     def idx(self):
         return self.desc.id
 
-    def _var(self, name):
+    def var(self, name):
         """
         Get a Variable by name from this block.
 
