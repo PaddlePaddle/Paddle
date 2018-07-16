@@ -327,8 +327,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // Save reorderd weights. Currently only for inference as it lowers
     // performance for training.
     if (are_weights_reordered && is_test) {
-      std::memcpy(to_void_cast(filter_data), weights_memory_p->get_data_handle(),
-                  filter->memory_size());
+      std::memcpy(to_void_cast(filter_data),
+                  weights_memory_p->get_data_handle(), filter->memory_size());
       filter->set_format(GetMKLDNNFormat(*weights_memory_p));
     }
   }
