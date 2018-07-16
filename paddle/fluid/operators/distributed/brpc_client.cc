@@ -253,9 +253,13 @@ void BRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   req_count_++;
 }
 
-void BRPCClient::Wait() {
-  std::unique_lock<std::mutex> lk(sync_mutex_);
-  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+bool BRPCClient::Wait() {
+  {
+    std::unique_lock<std::mutex> lk(sync_mutex_);
+    sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+  }
+
+  return true;
 }
 
 ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {

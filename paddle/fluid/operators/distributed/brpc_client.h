@@ -82,7 +82,7 @@ class BRPCClient : public RPCClient {
     assert(false);
   }
 
-  void Wait() override;
+  bool Wait() override;
 
   void AsyncSendBeginPass(const std::string& ep,
                           int64_t time_out = FLAGS_rpc_deadline) override {

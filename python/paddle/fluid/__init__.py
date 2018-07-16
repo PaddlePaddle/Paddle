@@ -121,8 +121,8 @@ def __bootstrap__():
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'rdma_conn_timeout_ms', 'brpc_channel_num',
-        'rdma_cq_num', 'rdma_use_polling', 'rdma_use_inplace',
-        'usercode_in_pthread', 'rdma_cq_offset', 'rdma_bind_cpu'
+        'usercode_in_pthread', 'rdma_memory_pool_initial_size_mb',
+        'rdma_memory_pool_max_regions'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
