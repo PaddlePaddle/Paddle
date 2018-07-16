@@ -53,7 +53,7 @@ class PrefetchOp : public framework::OperatorBase {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    rpc_client->Wait();
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 
