@@ -96,8 +96,8 @@ def __bootstrap__():
         None
     """
     import sys
-    import core
     import os
+    from . import core
 
     in_test = 'unittest' in sys.modules
 

@@ -15,6 +15,7 @@
 import collections
 import contextlib
 import re
+import six
 
 import numpy as np
 
