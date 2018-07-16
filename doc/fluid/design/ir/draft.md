@@ -43,17 +43,26 @@ a variable that is input or output of operation.
 
 ```Node```s are connected to other ```Node```s via inputs and outputs.
 
+Other properties (maybe device placement information) can be added
+to ```Node``` in the future if it's a
+common requirement of many other ```Pass```es. Otherwise, it should live
+in a ```Node``` wrapper class that is private to some ```Pass``` or be
+a local member of a ```Pass```.
+
 #### Graph
 
-```Graph``` contains a list of ```Node```s.
+```Graph``` contains a list of ```Node```s, which are connected to
+each other via inputs and outputs.
 
 TODO: Better definitions for the graph.
 
 ```Graph``` can also contain ```Attribute```s. ```Attribute```s
 can be ``any`` thing. For example, it can be a list of "wraper"
 nodes. The ```wrapper``` nodes compose ```Node```s and provide
-helper method for execution. ```Attribute``` can also contain
-other things that describe some properties of the ```Graph```.
+helper method for execution or transformation. ```Attribute```
+can also contain other things that describe some properties of
+the ```Graph``` or ```Graph``` nodes. ```Attribute``` can be passed
+across ```Pass```. However, it should be used with care.
 
 #### Pass
 
@@ -70,12 +79,11 @@ modeling logic to a ```Graph``` that can be run efficiently while
 maintaining the original modeling logic.
 
 
-### Workflow
-
+### Optimize Process
 
 * Program is first converted to Graph.
 * Graph goes through a series of Pass
 * Graph is transformed from raw model logic to a
 form that is efficient to execute.
 
-Graph->Pass1->Graph->Pass2->Graph->Pass3->Executor
+Program->ProgramToGraph->Graph->Pass1->Graph->Pass2->Graph->Pass3->Executor
