@@ -274,13 +274,14 @@ class TestSimpleMul(SeedFixedTestCase):
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-        out, w_g, i_g = list(map(numpy.array,
-                            exe.run(feed=py_rnn.to_feed(cpu),
-                                    fetch_list=[
-                                        out, self.PARAM_NAME + "@GRAD",
-                                        self.DATA_NAME + "@GRAD"
-                                    ],
-                                    return_numpy=False)))
+        out, w_g, i_g = list(
+            map(numpy.array,
+                exe.run(feed=py_rnn.to_feed(cpu),
+                        fetch_list=[
+                            out, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
+                            "@GRAD"
+                        ],
+                        return_numpy=False)))
         out_by_python = py_rnn.exe()[self.OUT_NAME]
         self.assertTrue(numpy.allclose(out, out_by_python))
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
@@ -351,13 +352,14 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         feed = py_rnn.to_feed(cpu)
-        last_np, w_g, i_g = list(map(numpy.array,
-                                exe.run(feed=feed,
-                                        fetch_list=[
-                                            last, self.PARAM_NAME + "@GRAD",
-                                            self.DATA_NAME + "@GRAD"
-                                        ],
-                                        return_numpy=False)))
+        last_np, w_g, i_g = list(
+            map(numpy.array,
+                exe.run(feed=feed,
+                        fetch_list=[
+                            last, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
+                            "@GRAD"
+                        ],
+                        return_numpy=False)))
         last_by_py, = list(py_rnn.exe().values())
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
         self.assertTrue(numpy.allclose(last_np, last_by_py))

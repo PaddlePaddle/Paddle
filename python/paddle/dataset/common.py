@@ -104,7 +104,9 @@ def download(url, module_name, md5sum, save_name=None):
 
 
 def fetch_all():
-    for module_name in [x for x in dir(paddle.dataset) if not x.startswith("__")]:
+    for module_name in [
+            x for x in dir(paddle.dataset) if not x.startswith("__")
+    ]:
         if "fetch" in dir(
                 importlib.import_module("paddle.dataset.%s" % module_name)):
             getattr(
@@ -113,7 +115,9 @@ def fetch_all():
 
 
 def fetch_all_recordio(path):
-    for module_name in [x for x in dir(paddle.dataset) if not x.startswith("__")]:
+    for module_name in [
+            x for x in dir(paddle.dataset) if not x.startswith("__")
+    ]:
         if "convert" in dir(
                 importlib.import_module("paddle.dataset.%s" % module_name)) and \
                 not module_name == "common":

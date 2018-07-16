@@ -198,14 +198,19 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
         out_arg_names = op_desc.output_arg_names()
         if len(out_arg_names) == 0 or _all_in_set_(out_arg_names, no_grad_set):
             return True
-        if _all_in_set_(
-                [name for name in op_desc.input_arg_names() if name.find(core.grad_var_suffix()) != -1], no_grad_set):
+        if _all_in_set_([
+                name for name in op_desc.input_arg_names()
+                if name.find(core.grad_var_suffix()) != -1
+        ], no_grad_set):
             no_grad_set.update(out_arg_names)
             return True
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
-    op_descs = [op_desc for op_desc in op_descs if not _op_can_be_removed_(op_desc, no_grad_set)]
+    op_descs = [
+        op_desc for op_desc in op_descs
+        if not _op_can_be_removed_(op_desc, no_grad_set)
+    ]
     # Insert fill_zeros_like_op
     to_insert = []
     for idx, op_desc in enumerate(op_descs):
@@ -242,7 +247,10 @@ def _callback_lookup_(op):
     if op.type == 'parallel_do' and op.attr('use_nccl'):
         all_vars = op.block.vars
         param_names = set(op.input('parameters'))
-        param_names = [name for name in param_names if all_vars[name].stop_gradient is False]
+        param_names = [
+            name for name in param_names
+            if all_vars[name].stop_gradient is False
+        ]
         param_grad_names = [n + "@GRAD" for n in param_names]
 
         class ParallelDoCallBack(object):

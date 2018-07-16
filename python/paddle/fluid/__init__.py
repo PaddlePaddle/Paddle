@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from __future__ import print_function
 # import all class inside framework into fluid module
 from . import framework
@@ -49,7 +48,7 @@ from core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace
 from .transpiler import DistributeTranspiler, InferenceTranspiler, \
     memory_optimize, release_memory
 from .concurrency import (Go, make_channel, channel_send, channel_recv,
-                         channel_close, Select)
+                          channel_close, Select)
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
 from . import profiler

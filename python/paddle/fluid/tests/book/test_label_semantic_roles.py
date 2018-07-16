@@ -191,8 +191,8 @@ def train(use_cuda, save_dirname=None, is_local=True):
                 if batch_id % 10 == 0:
                     print(("avg_cost:" + str(cost)))
                     if batch_id != 0:
-                        print(("second per batch: " + str((time.time(
-                        ) - start_time) / batch_id)))
+                        print(("second per batch: " + str(
+                            (time.time() - start_time) / batch_id)))
                     # Set the threshold low to speed up the CI test
                     if float(cost) < 60.0:
                         if save_dirname is not None:

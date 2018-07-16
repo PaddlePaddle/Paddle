@@ -206,7 +206,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
                                fetch_list=[avg_cost])
                 avg_cost_val = np.array(outs[0])
                 print(('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
-                      " avg_cost=" + str(avg_cost_val)))
+                       " avg_cost=" + str(avg_cost_val)))
                 if batch_id > 3:
                     break
                 batch_id += 1

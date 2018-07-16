@@ -80,8 +80,9 @@ class TestArrayReadWrite(unittest.TestCase):
 
         append_backward(total_sum_scaled)
 
-        g_vars = list(map(default_main_program().global_block().var,
-                     [each_x.name + "@GRAD" for each_x in x]))
+        g_vars = list(
+            map(default_main_program().global_block().var,
+                [each_x.name + "@GRAD" for each_x in x]))
         g_out = [
             item.sum()
             for item in exe.run(

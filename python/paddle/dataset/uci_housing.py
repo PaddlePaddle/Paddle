@@ -49,7 +49,10 @@ def feature_range(maximums, minimums):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     feature_num = len(maximums)
-    ax.bar(list(range(feature_num)), maximums - minimums, color='r', align='center')
+    ax.bar(list(range(feature_num)),
+           maximums - minimums,
+           color='r',
+           align='center')
     ax.set_title('feature scale')
     plt.xticks(list(range(feature_num)), feature_names)
     plt.xlim([-1, feature_num])

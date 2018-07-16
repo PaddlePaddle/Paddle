@@ -81,7 +81,9 @@ class TestGRUOp(OpTest):
         batch_hidden = self.outputs['BatchHidden']
         hidden = self.outputs['Hidden']
         idx_in_seq_list = self.idx_in_seq_list
-        h_p = self.inputs['H0'][self.sorted_seqs] if 'H0' in self.inputs else np.zeros((len(idx_in_seq_list[0]), self.frame_size))
+        h_p = self.inputs['H0'][
+            self.sorted_seqs] if 'H0' in self.inputs else np.zeros(
+                (len(idx_in_seq_list[0]), self.frame_size))
         num_batch = len(idx_in_seq_list)
         end_idx = 0
         for batch_idx in range(num_batch):

@@ -617,7 +617,8 @@ def build_feed_var_list(program, feed_order):
             raise ValueError(
                 "The values of 'feed_order' should be a permutation of [0, len(feed_order))"
             )
-        sorted_pair_list = sorted(list(feed_order.items()), key=lambda item: item[1])
+        sorted_pair_list = sorted(
+            list(feed_order.items()), key=lambda item: item[1])
         feed_var_list = [
             program.global_block().var(pair[0]) for pair in sorted_pair_list
         ]

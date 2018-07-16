@@ -138,7 +138,8 @@ class TestChunkEvalOp(OpTest):
         infer.fill(self.num_chunk_types * self.num_tag_types)
         label = np.copy(infer)
         starts = np.random.choice(
-            list(range(1, self.batch_size)), self.num_sequences - 1,
+            list(range(1, self.batch_size)),
+            self.num_sequences - 1,
             replace=False).tolist()
         starts.extend([0, self.batch_size])
         starts = sorted(starts)

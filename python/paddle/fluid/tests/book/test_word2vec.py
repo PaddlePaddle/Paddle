@@ -85,9 +85,11 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
-                list(map(pd.read_input, [
-                    first_word, second_word, third_word, forth_word, next_word
-                ])))
+                list(
+                    map(pd.read_input, [
+                        first_word, second_word, third_word, forth_word,
+                        next_word
+                    ])))
             pd.write_output(avg_cost)
 
         avg_cost = fluid.layers.mean(pd())

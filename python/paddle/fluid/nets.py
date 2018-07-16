@@ -488,10 +488,11 @@ def scaled_dot_product_attention(queries,
         trans_x = layers.transpose(x, perm=[0, 2, 1, 3])
         return layers.reshape(
             x=trans_x,
-            shape=list(map(int, [
-                trans_x.shape[0], trans_x.shape[1],
-                trans_x.shape[2] * trans_x.shape[3]
-            ])))
+            shape=list(
+                map(int, [
+                    trans_x.shape[0], trans_x.shape[1], trans_x.shape[2] *
+                    trans_x.shape[3]
+                ])))
 
     q, k, v = __compute_qkv(queries, keys, values, num_heads)
 

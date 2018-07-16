@@ -28,8 +28,6 @@ Steps to transpile pserver:
 5. add listen_and_serv op
 """
 
-
-
 import math
 import random
 import numpy as np

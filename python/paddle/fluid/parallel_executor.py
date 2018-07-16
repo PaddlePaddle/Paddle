@@ -143,8 +143,10 @@ class ParallelExecutor(object):
         ) if share_vars_from else []
 
         self.persistable_vars = [
-            v.name
-            for v in [var for var in main.list_vars() if var.persistable and var.type != core.VarDesc.VarType.RAW]
+            v.name for v in [
+                var for var in main.list_vars()
+                if var.persistable and var.type != core.VarDesc.VarType.RAW
+            ]
         ]
 
         self.executor = core.ParallelExecutor(
@@ -225,7 +227,9 @@ class ParallelExecutor(object):
         """
         if feed is None and feed_dict is not None:
             feed = feed_dict
-            print("`feed_dict` is deprecated. Please use `feed=`", file=sys.stderr)
+            print(
+                "`feed_dict` is deprecated. Please use `feed=`",
+                file=sys.stderr)
 
         if isinstance(feed, dict):
             feed_tensor_dict = dict()

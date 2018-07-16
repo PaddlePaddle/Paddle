@@ -122,9 +122,10 @@ def main():
 
     fetch_var_list = [var.name for var in train_args['log']]
     for i in range(sys.maxsize):
-        result = list(map(numpy.array,
-                     train_exe.run(fetch_list=fetch_var_list
-                                   if i % 1000 == 0 else [])))
+        result = list(
+            map(numpy.array,
+                train_exe.run(fetch_list=fetch_var_list
+                              if i % 1000 == 0 else [])))
         if len(result) != 0:
             print('Train: ', result)
 
@@ -135,8 +136,9 @@ def main():
             acc = []
             try:
                 while True:
-                    loss_np, acc_np = list(map(
-                        numpy.array, test_exe.run(fetch_list=fetch_var_list)))
+                    loss_np, acc_np = list(
+                        map(numpy.array,
+                            test_exe.run(fetch_list=fetch_var_list)))
                     loss.append(loss_np[0])
                     acc.append(acc_np[0])
             except:

@@ -461,6 +461,6 @@ class OpTest(unittest.TestCase):
                 use_cuda=use_cuda, loss_name=loss.name, main_program=program)
         else:
             executor = Executor(place)
-        return list(map(np.array,
-                   executor.run(prog, feed_dict, fetch_list,
-                                return_numpy=False)))
+        return list(
+            map(np.array,
+                executor.run(prog, feed_dict, fetch_list, return_numpy=False)))

@@ -80,7 +80,8 @@ def sort_files():
     files_list = list()
     neg_file_list = movie_reviews.fileids('neg')
     pos_file_list = movie_reviews.fileids('pos')
-    files_list = list(chain.from_iterable(list(zip(neg_file_list, pos_file_list))))
+    files_list = list(
+        chain.from_iterable(list(zip(neg_file_list, pos_file_list))))
     return files_list
 
 
