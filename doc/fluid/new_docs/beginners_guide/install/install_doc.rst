@@ -233,7 +233,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
   # 2. 安装nvidia-docker
   apt-get install nvidia-docker
   # 3. 执行如下命令下载支持GPU运行的docker容器
-  sudo nvidia-docker run --name paddle-test-gpu -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
+  nvidia-docker run --name paddle-test-gpu -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
   # 4. 进入docker内执行如下命令编译GPU版本的PaddlePaddle
   mkdir -p /paddle/build && cd /paddle/build
   cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=ON -DWITH_TESTING=OFF
