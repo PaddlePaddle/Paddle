@@ -15,6 +15,7 @@
 #pragma once
 
 #include <list>
+#include <queue>
 #include <vector>
 #include "ThreadPool.h"
 #include "paddle/fluid/framework/reader.h"
@@ -36,7 +37,7 @@ class BufferedReader : public framework::DecoratedReader {
  private:
   void AppendFutureToBatchSize();
 
-  void AppendFuture();
+  void AppendFuture(size_t i);
 
  protected:
   void ShutdownImpl() override;
@@ -47,7 +48,10 @@ class BufferedReader : public framework::DecoratedReader {
   ThreadPool thread_pool_;
   platform::Place place_;
   const size_t buffer_size_;
-  std::list<VecFuture> buffer_;
+
+  std::queue<std::future<size_t>> position_;
+  std::vector<TensorVec> cpu_buffer_;
+  std::vector<TensorVec> gpu_buffer_;
 };
 
 }  // namespace reader

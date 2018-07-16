@@ -18,10 +18,7 @@
 namespace paddle {
 namespace operators {
 namespace reader {
-BufferedReader::~BufferedReader() {
-  reader_->Shutdown();
-  buffer_.clear();
-}
+BufferedReader::~BufferedReader() { reader_->Shutdown(); }
 BufferedReader::BufferedReader(
     const std::shared_ptr<framework::ReaderBase> &reader,
     const platform::Place &place, size_t buffer_size)
@@ -29,43 +26,60 @@ BufferedReader::BufferedReader(
       thread_pool_(1),
       place_(place),
       buffer_size_(buffer_size) {
+  cpu_buffer_.resize(buffer_size);
+  gpu_buffer_.resize(buffer_size);
   AppendFutureToBatchSize();
 }
 void BufferedReader::AppendFutureToBatchSize() {
-  while (buffer_.size() < buffer_size_) {
-    AppendFuture();
+  PADDLE_ENFORCE_EQ(position_.size(), 0U);
+  for (size_t i = 0; i < buffer_size_; ++i) {
+    AppendFuture(i);
   }
 }
-void BufferedReader::AppendFuture() {
-  buffer_.emplace_back(thread_pool_.enqueue([this] {
-    TensorVec cpu_buffer;
-    reader_->ReadNext(&cpu_buffer);
-    if (platform::is_gpu_place(place_)) {
-      TensorVec gpu_buffer;
+void BufferedReader::AppendFuture(size_t i) {
+  position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
+    TensorVec &cpu = cpu_buffer_[i];
+    reader_->ReadNext(&cpu);
 
-      for (size_t i = 0; i < cpu_buffer.size(); ++i) {
-        gpu_buffer.emplace_back();
-        framework::TensorCopySync(cpu_buffer[i], place_, &gpu_buffer.back());
-      }
-
-      cpu_buffer = gpu_buffer;
+    if (cpu.empty()) {
+      return -1UL;
     }
-    return cpu_buffer;
+
+    if (platform::is_gpu_place(place_)) {
+      TensorVec &gpu = gpu_buffer_[i];
+      gpu.resize(cpu.size());
+      for (size_t i = 0; i < cpu.size(); ++i) {
+        framework::TensorCopySync(cpu[i], place_, &gpu[i]);
+      }
+    }
+    return i;
   }));
 }
 void BufferedReader::ShutdownImpl() {
   reader_->Shutdown();
-  buffer_.clear();
+  while (!position_.empty()) {
+    position_.pop();
+  }
 }
 void BufferedReader::StartImpl() {
   reader_->Start();
   AppendFutureToBatchSize();
 }
 void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
-  PADDLE_ENFORCE_EQ(buffer_.size(), buffer_size_);
-  *out = buffer_.front().get();
-  buffer_.pop_front();
-  AppendFuture();
+  if (position_.empty()) {
+    out->clear();
+    return;
+  }
+  size_t i = position_.front().get();
+  position_.pop();
+
+  if (i == -1UL) {
+    ReadNextImpl(out);
+    return;
+  }
+
+  *out = platform::is_gpu_place(place_) ? gpu_buffer_[i] : cpu_buffer_[i];
+  AppendFuture(i);
 }
 
 }  // namespace reader
