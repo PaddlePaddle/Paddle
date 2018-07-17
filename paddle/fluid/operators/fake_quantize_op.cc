@@ -40,12 +40,20 @@ class FakeQuantizeOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE(ctx->HasOutput("OutScales"),
                      "OutScales(Out) of FakeQuantizeOp should not be null");
       ctx->SetOutputDim("OutScales", ctx->GetInputDim("InScales"));
-      PADDLE_ENFORCE_EQ(ctx->Inputs("InScales")[0],
-                        ctx->Outputs("OutScales")[0],
-                        "Mean and MeanOut should share the same memory");
+      // PADDLE_ENFORCE_EQ(ctx->Inputs("InScales")[0],
+      //                   ctx->Outputs("OutScales")[0],
+      //                  "Mean and MeanOut should share the same memory");
     }
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+        ctx.device_context());
   }
 };
 

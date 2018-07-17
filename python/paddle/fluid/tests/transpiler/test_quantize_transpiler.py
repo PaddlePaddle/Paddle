@@ -121,7 +121,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
         main = fluid.Program()
         startup = fluid.Program()
         with fluid.program_guard(main, startup):
-            loss = residual_block(1)
+            loss = residual_block(2)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
             f = open("raw_program", 'w+')

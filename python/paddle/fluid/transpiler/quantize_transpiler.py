@@ -55,7 +55,8 @@ class QuantizeTranspiler(object):
                   is_inference=False,
                   weight_bits=8,
                   activation_bits=8,
-                  quantize_type='abs_max',
+                  weight_quantize_type='abs_max',
+                  activation_quantize_type='abs_max',
                   window_size=1000,
                   quant_delay=0):
 
@@ -64,7 +65,9 @@ class QuantizeTranspiler(object):
         self.activation_bits = activation_bits
         self.quant_delay = quant_delay
 
-        self.quantize_type = quantize_type
+        self.weight_quantize_type = weight_quantize_type
+        self.activation_quantize_type = activation_quantize_type
+
         self.window_size = window_size
 
         self.helper = LayerHelper(self.__class__.__name__)
@@ -101,8 +104,11 @@ class QuantizeTranspiler(object):
                     var = block.var(name)
                     quant_bits = self.weight_bits if var.name in params \
                                  else self.activation_bits
+                    quant_type = self.weight_quantize_type if var.name \
+                        in params else self.activation_quantize_type
+
                     quant_var, scale_var = self._insert_quant_op(
-                        block, idx, var, quant_bits)
+                        block, idx, var, quant_bits, quant_type)
                     dequant_var = self._insert_dequant_op(
                         block, idx + 1, quant_var, scale_var, quant_bits)
                     dequanted_vars[block_id][name] = dequant_var
@@ -133,7 +139,7 @@ class QuantizeTranspiler(object):
                 if op.type in grad_op_types:
                     _transpile_backward(block, op)
 
-    def _insert_quant_op(self, block, idx, var, quant_bits):
+    def _insert_quant_op(self, block, idx, var, quant_bits, quant_type):
         """
         TODO(qingqing): add comments
         """
@@ -155,7 +161,7 @@ class QuantizeTranspiler(object):
         scales = self.helper.create_global_variable(
             name=unique_name.generate('scales'),
             persistable=True,
-            dtype=var.type,
+            dtype=var.dtype,
             shape=[self.window_size])
         self.helper.set_variable_initializer(
             scales, initializer=Constant(value=0))
@@ -182,7 +188,7 @@ class QuantizeTranspiler(object):
             'OutCurrentIter': iter
         }
         attrs = {
-            'quantize_type': self.quantize_type,
+            'quantize_type': quant_type,
             'window_size': self.window_size,
             'bit_length': quant_bits,
             'is_test': self.is_inference
