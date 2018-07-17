@@ -48,8 +48,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::graph::Graph<anakin::NV,
-                       anakin::saber::AK_FLOAT,
+  anakin::graph::Graph<anakin::NV, anakin::saber::AK_FLOAT,
                        anakin::Precision::FP32>
       graph_;
   anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>

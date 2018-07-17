@@ -77,8 +77,8 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     ctx_ = executor_->Prepare(*inference_program_, 0);
 
     VLOG(5) << "to create variables";
-    executor_->CreateVariables(
-        *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
+    executor_->CreateVariables(*inference_program_,
+                               sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
     // Get the feed_target_names and fetch_target_names
     feed_target_names_ = inference_program_->GetFeedTargetNames();
@@ -98,8 +98,7 @@ CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
-        config.fraction_of_gpu_memory,
-        0.f,
+        config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     std::vector<std::string> flags;
