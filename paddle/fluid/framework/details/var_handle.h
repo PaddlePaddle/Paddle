@@ -56,7 +56,8 @@ struct VarHandleBase {
 
   void RemoveOutput(OpHandleBase* out, ir::Node* node) {
     pending_ops_.erase(out);
-    std::remove(node_->outputs.begin(), node_->outputs.end(), node);
+    node_->outputs.erase(
+        std::remove(node_->outputs.begin(), node_->outputs.end(), node));
   }
 
   void ClearGeneratedOp() {
