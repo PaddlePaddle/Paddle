@@ -19,7 +19,6 @@ limitations under the License. */
 #include <thread>  // NOLINT
 
 #include "paddle/fluid/framework/data_type.h"
-#include "paddle/fluid/operators/distributed/brpc_rdma_pool.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/variable_response.h"
 
@@ -30,12 +29,6 @@ namespace distributed {
 using VarMsg = sendrecv::VariableMessage;
 
 void* GetVarPayLoad(const std::string varname, int64_t size) {
-#ifdef PADDLE_WITH_BRPC_RDMA
-  void* data = RdmaMemPool::Instance().Find(varname, size);
-  if (data) {
-    return data;
-  }
-#endif
   platform::CUDAPinnedPlace cuda_pinned;
   return memory::Alloc(cuda_pinned, size);
 }
