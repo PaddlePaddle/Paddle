@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/contrib/inference/paddle_inference_api_impl.h"
+#include "paddle/fluid/inference/api/api_impl.h"
 
 namespace paddle {
 namespace {
@@ -105,7 +105,7 @@ NativePaddlePredictor::~NativePaddlePredictor() {
     PADDLE_ENFORCE_NOT_NULL(scope_, "Should have parent scope!");
     scope_->DeleteScope(sub_scope_);
   }
-};
+}
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data) {
