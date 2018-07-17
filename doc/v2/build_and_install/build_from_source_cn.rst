@@ -43,7 +43,8 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
 
 - 上述命令把当前目录（源码树根目录）映射为 container 里的 :code:`/paddle` 目录。
 
-- 如果您使用的是 manylinux 的镜像进行编译, 那么您需要通过环境变量 :code:`PYTHON_ABI` 来指定一个 `Python ABI <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1#build-paddlepaddle-for-the-different-python-abis>`__.
+- 如果您使用的是 manylinux 的镜像进行编译, 那么您需要通过环境变量 :code:`PYTHON_ABI` 来指定一个 `Python ABI <https://www.python.org/dev/peps/pep-0425/#id8>`__.
+PaddlePaddle目前支持的 Python ABI 有 :code:`cp27-cp27u` 和 :code:`cp27-cp27mu`.
 
 编译完成后会在build/python/dist目录下生成输出的whl包，可以选在在当前机器安装也可以拷贝到目标机器安装：
 

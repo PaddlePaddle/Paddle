@@ -45,8 +45,10 @@ NOTE:
 - The above command try to mount the current working directory (root directory of source code)
 into :code:`/paddle` directory inside docker container.
 
-- You need to pass in the required environment variable :code:`PYTHON_ABI` to specify a `Python ABI <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1#build-paddlepaddle-for-the-different-python-abis>`__
-if you are using the manylinux Docker image.
+- You need to pass in the required environment variable :code:`PYTHON_ABI` to specify a `Python ABI <https://www.python.org/dev/peps/pep-0425/#id8>`__.
+Currently PaddlePaddle supported Python ABIs include :code:`cp27-cp27m` and :code:`cp27-cp27mu` .
+
+if you are using the manylinux Docker image. We support ``
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local
