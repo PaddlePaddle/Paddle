@@ -21,8 +21,7 @@
 namespace paddle {
 namespace demo {
 
-static void split(const std::string& str,
-                  char sep,
+static void split(const std::string& str, char sep,
                   std::vector<std::string>* pieces) {
   pieces->clear();
   if (str.empty()) {
