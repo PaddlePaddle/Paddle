@@ -73,7 +73,7 @@ class SSAGraphBuilder : public ir::Pass {
   // Add an output variable (each_var_name, place, place_offset) to op_handle,
   // which belongs to graph
   static void CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
-                             ir::Node *node, const platform::Place &place,
+                             ir::Node *new_node, const platform::Place &place,
                              size_t place_offset);
 
   static void AddOutputToLeafOps(Graph *graph);

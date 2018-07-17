@@ -67,8 +67,8 @@ class Graph {
   // TODO(paddle-dev): There shouldn't be kNone nodes in the ir::Graph.
   // node should either be a executable kOperation or a kVariable. kNone
   // node is a temporary solution.
-  ir::Node* CreateEmptyNode(const std::string& name) {
-    nodes.emplace_back(new ir::Node(name));
+  ir::Node* CreateEmptyNode(const std::string& name, ir::Node::Type type) {
+    nodes.emplace_back(new ir::Node(name, type));
     return nodes.back().get();
   }
 
