@@ -329,8 +329,6 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    # curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/PaddlePaddle/FluidAPISpec/master/API.spec} \
-    #     > origin.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
@@ -340,7 +338,7 @@ function assert_api_not_changed() {
     echo "${GIT_PR_ID} , ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
         # TODO: curl -H 'Authorization: token ${TOKEN}'
-        APPROVALS=`curl -H 'Authorization: token ${GITHUB_API_TOKEN}' https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
