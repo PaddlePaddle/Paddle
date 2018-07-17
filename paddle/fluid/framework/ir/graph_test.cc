@@ -76,6 +76,7 @@ TEST(GraphTest, Basic) {
   op->SetType("sum");
   op->SetInput("X", {"test_a", "test_b", "test_c"});
   op->SetOutput("Out", {"test_out"});
+  op->SetAttr("op_role", 1);
 
   prog.MutableBlock(0)->Var("test_a")->SetType(proto::VarType::SELECTED_ROWS);
   prog.MutableBlock(0)->Var("test_b")->SetType(proto::VarType::SELECTED_ROWS);

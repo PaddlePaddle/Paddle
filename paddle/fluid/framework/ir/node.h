@@ -50,6 +50,7 @@ class Node {
     PADDLE_ENFORCE(type_ == Type::kVariable);
     return var_desc_;
   }
+
   OpDesc* Op() {
     PADDLE_ENFORCE(type_ == Type::kOperation);
     return op_desc_;
