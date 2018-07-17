@@ -177,7 +177,7 @@ class ControlFlowGraph(object):
                 in_diff)
             if can_optimize:
                 index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
-                delete_op = block_desc.insert_op(index)
+                delete_op = block_desc._insert_op(index)
                 delete_op.set_type("delete_var")
                 delete_op.set_input("X", can_optimize)
                 if is_forward:
