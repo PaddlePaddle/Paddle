@@ -82,7 +82,7 @@ def error_clip_callback(block, context):
     op_desc = block.desc.op(block.desc.op_size() - 1)
     for grad_n in filter(lambda n: grad_to_var.has_key(n),
                          op_desc.output_arg_names()):
-        fwd_var = block.var_recursive(grad_to_var[grad_n])
+        fwd_var = block._var_recursive(grad_to_var[grad_n])
         error_clip = getattr(fwd_var, "error_clip", None)
         if not (error_clip is None or isinstance(error_clip,
                                                  BaseErrorClipAttr)):
@@ -324,10 +324,12 @@ def set_gradient_clip(clip, param_list=None, program=None):
         param.gradient_clip_attr = copy.deepcopy(clip)
 
 
-def append_gradient_clip_ops(param_grad):
+def append_gradient_clip_ops(param_grads):
     context = dict()
-    for p, g in param_grad:
-        with p.block.program.optimized_guard(p):
+    for p, g in param_grads:
+        if g is None:
+            continue
+        with p.block.program.optimized_guard([p, g]):
             clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
             if clip_attr is None:
                 clip_attr = NullGradientClipAttr()
@@ -339,8 +341,10 @@ def append_gradient_clip_ops(param_grad):
             clip_attr._process_context(context=context, param=p, grad=g)
 
     res = []
-    for p, g in param_grad:
-        with p.block.program.optimized_guard(p):
+    for p, g in param_grads:
+        if g is None:
+            continue
+        with p.block.program.optimized_guard([p, g]):
             res.append(clip_attr._create_operators(param=p, grad=g))
 
     return res

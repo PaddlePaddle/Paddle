@@ -104,7 +104,3 @@ if (WITH_ANAKIN) # only needed in CI
         target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
      endif(WITH_TESTING)
 endif()
-
-if(WITH_TESTING)
-    add_subdirectory(demo)
-endif()
