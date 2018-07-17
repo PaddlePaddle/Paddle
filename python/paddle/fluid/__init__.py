@@ -56,7 +56,6 @@ import unique_name
 import recordio_writer
 import parallel_executor
 from parallel_executor import *
-
 from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
