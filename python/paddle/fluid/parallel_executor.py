@@ -152,7 +152,7 @@ class ParallelExecutor(object):
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                p.name for p in main.global_block().iter_parameters()
+                p.name for p in main.global_block()._iter_parameters()
                 if not p.stop_gradient
             ]),
             set(self.persistable_vars), main.desc, loss_name
