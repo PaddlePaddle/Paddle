@@ -104,7 +104,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevs(bcast_vars);
+    BCastParamsToDevices(bcast_vars);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -140,7 +140,7 @@ ParallelExecutor::ParallelExecutor(
       member_->places_, std::move(member_->executor_)));
 }
 
-void ParallelExecutor::BCastParamsToDevs(
+void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
   // the initializing bcast, all vars would be bcast from device(0),
   // otherwise
@@ -218,7 +218,10 @@ void ParallelExecutor::BCastParamsToDevs(
 
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-        if (member_->use_all_reduce_ || member_->use_cuda_) {
+
+        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        if (member_->use_all_reduce_ || member_->use_cuda_ ||
+            var == "@LR_DECAY_COUNTER@") {
           t->Resize(dims);
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
