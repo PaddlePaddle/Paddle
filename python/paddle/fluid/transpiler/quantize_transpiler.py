@@ -91,7 +91,7 @@ class QuantizeTranspiler(object):
         ]
         grad_op_types = ['%s_grad' % (type) for type in _QUANTIZABLE_OP_TYPES]
 
-        params = [p.name for p in program.global_block().iter_parameters()]
+        params = [p.name for p in program.global_block()._iter_parameters()]
 
         def _transpile_forward(block, op):
             idx = block.ops.index(op)
@@ -194,7 +194,7 @@ class QuantizeTranspiler(object):
             'is_test': self.is_inference
         }
 
-        quant_op = block.insert_op(
+        quant_op = block._insert_op(
             idx, type='fake_quantize', attrs=attrs, inputs=ins, outputs=outs)
         return quant_var, scale
 
@@ -208,7 +208,7 @@ class QuantizeTranspiler(object):
             shape=var.shape,
             dtype=var.dtype)
         # insert fake_dequantize_op
-        dequant_op = block.insert_op(
+        dequant_op = block._insert_op(
             idx,
             type="fake_dequantize_max_abs",
             attrs={'num_bits': quant_bits},
