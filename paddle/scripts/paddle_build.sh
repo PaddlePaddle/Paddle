@@ -78,6 +78,12 @@ function cmake_gen() {
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+        elif [ "$1" == "cp35-cp35m" ]; then
+            export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
+            export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
+            export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
         fi
     fi
 
@@ -108,6 +114,7 @@ function cmake_gen() {
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
+        -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -136,7 +143,8 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
+        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON} \
+        -DPY_VERSION=${PY_VERSION:-2.7}
 }
 
 function abort(){
@@ -311,6 +319,20 @@ EOF
         fi
     fi
 }
+
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/PaddlePaddle/FluidAPISpec/master/API.spec} \
+        > origin.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py origin.spec new.spec
+    deactivate
+}
+
 
 function single_test() {
     TEST_NAME=$1
@@ -494,10 +516,23 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
+        cmake .. -DWITH_DISTRIBUTE=OFF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
-        mv fluid_install_dir fluid
+        cp -r fluid_install_dir fluid
         tar -cf fluid.tgz fluid
+      fi
+}
+
+function test_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+        cat <<EOF
+    ========================================
+    Testing fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
 
@@ -543,6 +578,7 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       check_style)
         check_style
@@ -550,9 +586,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       *)
         print_usage

@@ -60,12 +60,19 @@ class RPCClient {
                                      const std::string& dir,
                                      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  // SendComplete tells all the server that current trainer have no more data
-  // to train, so that the pserver can reduce it's barrier count, and continue
-  // to train with other trainers.
-  virtual void SendComplete() = 0;
+  virtual void AsyncSendBeginPass(const std::string& ep,
+                                  int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual void Wait() = 0;
+  virtual void AsyncSendEndPass(const std::string& ep,
+                                int64_t time_out = FLAGS_rpc_deadline) = 0;
+
+  // BeginePass/EndPass tells all the pserver that start/end a pass, so that
+  // the pserver can increase/reduce it's barrier count, and continue to train
+  // with other trainers.
+  virtual void SendBeginPass() = 0;
+  virtual void SendEndPass() = 0;
+
+  virtual bool Wait() = 0;
 
   template <typename T>
   static RPCClient* GetInstance() {

@@ -313,7 +313,7 @@ class Executor(object):
         if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
-                global_block.prepend_op(
+                global_block._prepend_op(
                     type='feed',
                     inputs={'X': [feed_var]},
                     outputs={'Out': [out]},
@@ -351,6 +351,12 @@ class Executor(object):
             for i in xrange(len(fetch_list))
         ]
         return outs
+
+    def begin_pass(self):
+        self.executor.begin_pass()
+
+    def end_pass(self):
+        self.executor.end_pass()
 
     def run(self,
             program=None,

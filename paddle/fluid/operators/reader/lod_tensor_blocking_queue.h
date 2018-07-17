@@ -58,12 +58,15 @@ class LoDTensorBlockingQueue {
 
   inline size_t Size() const { return queue_.Size(); }
 
-  inline void Close() { return queue_.Close(); }
+  inline void ReOpen() { queue_.ReOpen(); }
+
+  inline void Close() { queue_.Close(); }
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
  private:
-  void CheckDims(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
+  void CheckDims(
+      const std::vector<framework::LoDTensor>& lod_tensor_vec) const {
     PADDLE_ENFORCE(dims_.size() == lod_tensor_vec.size(),
                    "Expect input size is %d but found %s", dims_.size(),
                    lod_tensor_vec.size());

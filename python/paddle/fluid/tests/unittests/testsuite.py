@@ -72,7 +72,7 @@ def set_input(scope, op, inputs, place):
             if isinstance(var, tuple):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
-            tensor.set_dims(var.shape)
+            tensor._set_dims(var.shape)
             tensor.set(np_value_to_fluid_value(var), place)
         elif isinstance(var, float):
             scope.find_var(var_name).set_float(var)

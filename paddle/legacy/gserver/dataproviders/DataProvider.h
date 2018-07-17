@@ -29,13 +29,13 @@ limitations under the License. */
 #include "paddle/legacy/math/SparseMatrix.h"
 #include "paddle/legacy/math/Vector.h"
 #include "paddle/legacy/parameter/Argument.h"
-#include "paddle/utils/ClassRegistrar.h"
-#include "paddle/utils/Common.h"
-#include "paddle/utils/Locks.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Queue.h"
-#include "paddle/utils/ThreadLocal.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/ClassRegistrar.h"
+#include "paddle/legacy/utils/Common.h"
+#include "paddle/legacy/utils/Locks.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Queue.h"
+#include "paddle/legacy/utils/ThreadLocal.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 /**

@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 #include "NeuralNetwork.h"
 #include "hl_gpu.h"
-#include "paddle/utils/CustomStackTrace.h"
-#include "paddle/utils/Logging.h"
-#include "paddle/utils/Stat.h"
+#include "paddle/legacy/utils/CustomStackTrace.h"
+#include "paddle/legacy/utils/Logging.h"
+#include "paddle/legacy/utils/Stat.h"
 
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/legacy/gserver/layers/MKLDNNLayer.h"

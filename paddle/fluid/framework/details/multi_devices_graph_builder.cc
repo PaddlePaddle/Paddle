@@ -59,6 +59,11 @@ MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
     grad_names_.insert(GradVarName(p));
   }
   balance_vars_.resize(places_.size(), 0);
+  if (strategy_.enable_data_balance_ && places_.size() == 1) {
+    LOG(WARNING) << "It is no need to enable data balance when there is only "
+                    "one place. enable_data_balance is set to False.";
+    strategy_.enable_data_balance_ = false;
+  }
 }
 
 void MultiDevSSAGraphBuilder::CreateOpHandleIOs(SSAGraph *result,
@@ -271,13 +276,22 @@ std::unique_ptr<SSAGraph> MultiDevSSAGraphBuilder::Build(
     }
   }
 
-  // Insert BCast Ops
-  for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
-    auto &to_bcast_set = bcast_var_name_set[dev_id];
-    for (auto &bcast_name : to_bcast_set) {
-      CreateBroadcastOp(&result, bcast_name, dev_id);
+  bool use_gpu = false;
+#ifdef PADDLE_WITH_CUDA
+  use_gpu = nccl_ctxs_ != nullptr;
+#endif
+
+  if (use_gpu ||
+      strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+    // Insert BCast Ops
+    for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
+      auto &to_bcast_set = bcast_var_name_set[dev_id];
+      for (auto &bcast_name : to_bcast_set) {
+        CreateBroadcastOp(&result, bcast_name, dev_id);
+      }
     }
   }
+
   /*
     Dependency graph has been constructed. However, there are still data
     hazards need to be handled.
@@ -407,14 +421,19 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(const OpDesc &op) const {
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
-
-  for (auto &varname : op.InputArgumentNames()) {
-    int dev_id = GetVarDeviceID(varname);
-    if (dev_id != -1) {
-      return dev_id;
-    }
+  int op_role = boost::get<int>(
+      op.GetAttr(framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
+  if (op_role != static_cast<int>(framework::OpRole::kOptimize)) {
+    return -1;
   }
-  return -1;
+  auto param_grad = boost::get<std::vector<std::string>>(
+      op.GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+
+  PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
+  int dev_id = GetVarDeviceID(param_grad[1]);
+  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.[%s, %s]", op.Type(),
+                    param_grad[0]);
+  return dev_id;
 }
 
 int MultiDevSSAGraphBuilder::GetVarDeviceID(const std::string &varname) const {

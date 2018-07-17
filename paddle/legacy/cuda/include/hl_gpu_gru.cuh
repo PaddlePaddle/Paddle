@@ -18,7 +18,7 @@ limitations under the License. */
 
 #ifdef __NVCC__
 
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 /*
  * threads(framePerBlock, batchPerBlock)

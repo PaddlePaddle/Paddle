@@ -15,6 +15,7 @@
 #pragma once
 
 #include <deque>
+#include <list>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -57,7 +58,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
   std::mutex exception_mu_;
-  std::unique_ptr<platform::EnforceNotMet> exception_;
+  std::unique_ptr<std::exception> exception_;
   std::atomic<int> running_ops_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,
@@ -77,6 +78,8 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
 
  private:
   ExecutionStrategy strategy_;
+  // use std::list because clear(), push_back, and for_each are O(1)
+  std::list<std::future<void>> run_op_futures_;
 };
 
 }  // namespace details

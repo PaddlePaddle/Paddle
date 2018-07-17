@@ -17,8 +17,8 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include "hl_cuda_cudnn.ph"
 #include "hl_thread.ph"
-#include "paddle/utils/DynamicLoader.h"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/DynamicLoader.h"
+#include "paddle/legacy/utils/Logging.h"
 
 DEFINE_int32(cudnn_conv_workspace_limit_in_mb,
              4096,

@@ -18,7 +18,7 @@ limitations under the License. */
 #include "hl_cuda.ph"
 #include "hl_matrix_base.cuh"
 #include "hl_thread.ph"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 /**
  * @brief   matrix row operator.

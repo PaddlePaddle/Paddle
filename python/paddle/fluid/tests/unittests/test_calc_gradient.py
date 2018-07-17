@@ -16,8 +16,6 @@ import unittest
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
-import paddle.fluid.framework as framework
-import paddle.fluid.optimizer as optimizer
 from paddle.fluid.backward import calc_gradient
 
 

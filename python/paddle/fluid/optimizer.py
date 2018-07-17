@@ -30,10 +30,11 @@ from contextlib import contextmanager
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
-    'MixedSGD', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
-    'AdamOptimizer', 'AdamaxOptimizer', 'DecayedAdagradOptimizer',
-    'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta', 'ModelAverage',
-    'Optimizer', 'RMSPropOptimizer', 'MixedPrecisionSGDOptimizer'
+    'MixedSGD'
+    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
+    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
+    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'RMSPropOptimizer',
+    'MixedPrecisionSGDOptimizer'
 ]
 
 
@@ -72,7 +73,7 @@ class Optimizer(object):
         self._LARS_weight_decay = LARS_weight_decay
 
     def _create_global_learning_rate(self):
-        lr = self.global_learning_rate()
+        lr = self._global_learning_rate()
 
         if isinstance(lr, framework.Variable):
             return
@@ -91,7 +92,7 @@ class Optimizer(object):
             dtype='float32' if self._dtype == None else self._dtype,
             persistable=True)
 
-    def global_learning_rate(self, program=None):
+    def _global_learning_rate(self, program=None):
         """
         get global decayed learning rate
         :return:
@@ -115,9 +116,9 @@ class Optimizer(object):
             return param_lr
         else:
             if param_lr == 1.0:
-                return self.global_learning_rate()
+                return self._global_learning_rate()
             else:
-                return self.global_learning_rate() * param_lr
+                return self._global_learning_rate() * param_lr
 
     def _create_accumulators(self, block, parameters):
         """Create all accumulators needed by the parameters
@@ -128,7 +129,7 @@ class Optimizer(object):
         """
         pass
 
-    def _finish_update(self, block):
+    def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
            before completing an optimization step
 
@@ -137,7 +138,7 @@ class Optimizer(object):
             parameters: list of parameter variables for the optimizer
 
         Returns:
-            list of finish ops or None
+            None
         """
         pass
 
@@ -190,10 +191,10 @@ class Optimizer(object):
                             format(name, param.name))
         return self._accumulators[name][param.name]
 
-    def create_optimization_pass(self,
-                                 parameters_and_grads,
-                                 loss,
-                                 startup_program=None):
+    def _create_optimization_pass(self,
+                                  parameters_and_grads,
+                                  loss,
+                                  startup_program=None):
         """Add optimization operators to update gradients to variables.
 
         Args:
@@ -230,25 +231,26 @@ class Optimizer(object):
             self._create_global_learning_rate()
             if self._LARS_weight_decay > 0.0:
                 layers.append_LARS(parameters_and_grads,
-                                   self.global_learning_rate(),
+                                   self._global_learning_rate(),
                                    self._LARS_weight_decay)
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
                 with param_and_grad[0].block.program.optimized_guard(
-                        param_and_grad[0]):
-                    if param_and_grad[0].trainable is True and param_and_grad[
-                            1] is not None:
+                        param_and_grad):
+                    if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
 
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block)
+            self._finish_update(loss.block, parameters_and_grads)
 
             end = len(global_block.ops)
-            return global_block.slice_ops(start, end)
+            return global_block._slice_ops(start, end)
 
     def minimize(self,
                  loss,
@@ -271,8 +273,8 @@ class Optimizer(object):
         params_grads = append_regularization_ops(params_grads,
                                                  self.regularization)
 
-        optimize_ops = self.create_optimization_pass(params_grads, loss,
-                                                     startup_program)
+        optimize_ops = self._create_optimization_pass(params_grads, loss,
+                                                      startup_program)
         return optimize_ops, params_grads
 
 
@@ -502,6 +504,8 @@ class AdamOptimizer(Optimizer):
     """
     _moment1_acc_str = "moment1"
     _moment2_acc_str = "moment2"
+    _beta1_pow_acc_str = "beta1_pow_acc"
+    _beta2_pow_acc_str = "beta2_pow_acc"
 
     def __init__(self,
                  learning_rate=0.001,
@@ -523,32 +527,22 @@ class AdamOptimizer(Optimizer):
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
 
-        main_block = block.program.global_block()
-        # Create beta1 and beta2 power tensors
-        beta_shape = [1]
-        self._beta1_pow_acc = self.helper.create_global_variable(
-            name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32' if self._dtype == None else self._dtype,
-            shape=beta_shape,
-            lod_level=0,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            self._beta1_pow_acc, initializer=Constant(self._beta1))
-
-        self._beta2_pow_acc = self.helper.create_global_variable(
-            name=unique_name.generate('beta2_pow_acc'),
-            dtype='float32' if self._dtype == None else self._dtype,
-            shape=beta_shape,
-            lod_level=0,
-            persistable=True)
-
-        self.helper.set_variable_initializer(
-            self._beta2_pow_acc, initializer=Constant(self._beta2))
-
         # Create accumulator tensors for first and second moments
         for p in parameters:
             self._add_accumulator(self._moment1_acc_str, p)
             self._add_accumulator(self._moment2_acc_str, p)
+            self._add_accumulator(
+                name=self._beta1_pow_acc_str,
+                param=p,
+                dtype='float32',
+                fill_value=self._beta1,
+                shape=[1])
+            self._add_accumulator(
+                name=self._beta2_pow_acc_str,
+                param=p,
+                dtype='float32',
+                fill_value=self._beta2,
+                shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -557,6 +551,11 @@ class AdamOptimizer(Optimizer):
                                         param_and_grad[0])
         moment2 = self._get_accumulator(self._moment2_acc_str,
                                         param_and_grad[0])
+        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                              param_and_grad[0])
+        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                              param_and_grad[0])
+
         # create the adam optimize op
         adam_op = block.append_op(
             type=self.type,
@@ -566,8 +565,8 @@ class AdamOptimizer(Optimizer):
                 "LearningRate": self._create_param_lr(param_and_grad),
                 "Moment1": moment1,
                 "Moment2": moment2,
-                "Beta1Pow": self._beta1_pow_acc,
-                "Beta2Pow": self._beta2_pow_acc
+                "Beta1Pow": beta1_pow_acc,
+                "Beta2Pow": beta2_pow_acc
             },
             outputs={
                 "ParamOut": param_and_grad[0],
@@ -582,24 +581,30 @@ class AdamOptimizer(Optimizer):
 
         return adam_op
 
-    def _finish_update(self, block):
+    def _finish_update(self, block, param_and_grads):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        scale_beta1 = main_block.append_op(
-            type="scale",
-            inputs={"X": self._beta1_pow_acc},
-            outputs={"Out": self._beta1_pow_acc},
-            attrs={"scale": self._beta1})
+        for param, grad in param_and_grads:
+            if grad is None:
+                continue
+            with param.block.program.optimized_guard([param, grad]):
+                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                                      param)
+                beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                                      param)
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta1_pow_acc},
+                    outputs={"Out": beta1_pow_acc},
+                    attrs={"scale": self._beta1})
 
-        scale_beta2 = main_block.append_op(
-            type="scale",
-            inputs={"X": self._beta2_pow_acc},
-            outputs={"Out": self._beta2_pow_acc},
-            attrs={"scale": self._beta2})
-
-        return [scale_beta1, scale_beta2]
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta2_pow_acc},
+                    outputs={"Out": beta2_pow_acc},
+                    attrs={"scale": self._beta2})
 
 
 class AdamaxOptimizer(Optimizer):
@@ -642,6 +647,7 @@ class AdamaxOptimizer(Optimizer):
     """
     _moment_acc_str = "moment"
     _inf_norm_acc_str = "inf_norm"
+    _beta1_pow_acc_str = "beta1_pow_acc"
 
     def __init__(self,
                  learning_rate=0.001,
@@ -661,21 +667,16 @@ class AdamaxOptimizer(Optimizer):
         self._epsilon = epsilon
 
     def _create_accumulators(self, block, parameters):
-        # Create beta1 power accumulator tensor
-        beta_shape = [1]
-        self._beta1_pow_acc = self.helper.create_global_variable(
-            name=unique_name.generate('beta1_pow_acc'),
-            dtype='float32' if self._dtype == None else self._dtype,
-            shape=beta_shape,
-            lod_level=0,
-            persistable=True)
-        self.helper.set_variable_initializer(
-            self._beta1_pow_acc, initializer=Constant(self._beta1))
-
         # Create accumulator tensors for first moment and infinity norm
         for p in parameters:
             self._add_accumulator(self._moment_acc_str, p)
             self._add_accumulator(self._inf_norm_acc_str, p)
+            self._add_accumulator(
+                name=self._beta1_pow_acc_str,
+                param=p,
+                dtype='float32',
+                fill_value=self._beta1,
+                shape=[1])
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
@@ -683,6 +684,8 @@ class AdamaxOptimizer(Optimizer):
         moment = self._get_accumulator(self._moment_acc_str, param_and_grad[0])
         inf_norm = self._get_accumulator(self._inf_norm_acc_str,
                                          param_and_grad[0])
+        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                              param_and_grad[0])
         # create the adamax optimize op
         adamax_op = block.append_op(
             type=self.type,
@@ -692,7 +695,7 @@ class AdamaxOptimizer(Optimizer):
                 "LearningRate": self._create_param_lr(param_and_grad),
                 "Moment": moment,
                 "InfNorm": inf_norm,
-                "Beta1Pow": self._beta1_pow_acc
+                "Beta1Pow": beta1_pow_acc
             },
             outputs={
                 "ParamOut": param_and_grad[0],
@@ -707,18 +710,22 @@ class AdamaxOptimizer(Optimizer):
 
         return adamax_op
 
-    def _finish_update(self, block):
+    def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        scale_beta1 = main_block.append_op(
-            type="scale",
-            inputs={"X": self._beta1_pow_acc},
-            outputs={"Out": self._beta1_pow_acc},
-            attrs={"scale": self._beta1})
-
-        return [scale_beta1]
+        for param, grad in parameters_and_grads:
+            if grad is None:
+                continue
+            with param.block.program.optimized_guard([param, grad]):
+                beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                                      param)
+                main_block.append_op(
+                    type="scale",
+                    inputs={"X": beta1_pow_acc},
+                    outputs={"Out": beta1_pow_acc},
+                    attrs={"scale": self._beta1})
 
 
 class DecayedAdagradOptimizer(Optimizer):
@@ -1153,7 +1160,10 @@ class ModelAverage(Optimizer):
                 self.params_grads.append((param, grad))
 
         for param, grad in self.params_grads:
-            self._append_average_accumulate_op(param)
+            if grad is None:
+                continue
+            with param.block.program.optimized_guard([param, grad]):
+                self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
         block = self.apply_program.global_block()

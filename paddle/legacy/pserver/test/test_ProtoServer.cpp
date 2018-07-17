@@ -17,8 +17,8 @@ limitations under the License. */
 #include "ParameterService.pb.h"
 #include "paddle/legacy/math/Vector.h"
 #include "paddle/legacy/pserver/ProtoServer.h"
-#include "paddle/utils/Stat.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Stat.h"
+#include "paddle/legacy/utils/Util.h"
 
 DEFINE_string(server_addr, "127.0.0.1", "Server address");
 DEFINE_int64(dim, 50000000, "Data size");
