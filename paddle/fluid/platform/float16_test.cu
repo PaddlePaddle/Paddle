@@ -241,6 +241,43 @@ TEST(float16, lod_tensor_on_gpu) {
   }
 }
 
+template <typename T>
+struct Functor {
+  bool operator()(const T& val) {
+    return std::type_index(typeid(T)) ==
+           std::type_index(typeid(platform::float16));
+  }
+};
+
+TEST(float16, typeid) {
+  // the framework heavily used typeid hash
+  Functor<float16> functor;
+  float16 a = float16(.0f);
+  Functor<int> functor2;
+  int b(0);
+
+  // compile time assert
+  PADDLE_ASSERT(functor(a) == true);
+  PADDLE_ASSERT(functor2(b) == false);
+}
+
+// GPU test
+TEST(float16, isinf) {
+  float16 a;
+  a.x = 0x7c00;
+  float16 b = float16(INFINITY);
+  EXPECT_EQ(std::isinf(a), true);
+  EXPECT_EQ(std::isinf(b), true);
+}
+
+TEST(float16, isnan) {
+  float16 a;
+  a.x = 0x7fff;
+  float16 b = float16(NAN);
+  EXPECT_EQ(std::isnan(a), true);
+  EXPECT_EQ(std::isnan(b), true);
+}
+
 }  // namespace platform
 }  // namespace paddle
 #endif  // PADDLE_CUDA_FP16
