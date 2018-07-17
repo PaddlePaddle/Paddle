@@ -81,6 +81,10 @@ enum class PoolingMode {
   kMaximumDeterministic,
 };
 
+enum class SamplerType {
+  CUDNN_SAMPLER_BILINEAR,
+};
+
 #if CUDNN_VERSION < 6000
 #pragma message "CUDNN version under 6.0 is supported at best effort."
 #pragma message "We strongly encourage you to move to 6.0 and above."
@@ -340,6 +344,27 @@ class ScopedPoolingDescriptor {
  private:
   cudnnPoolingDescriptor_t desc_;
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
+};
+
+class ScopedSpatialTransformerDescriptor {
+ public:
+  ScopedSpatialTransformerDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnCreateSpatialTransformerDescriptor(&desc_));
+  }
+  ~ScopedSpatialTransformerDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnDestroySpatialTransformerDescriptor(desc_));
+  }
+
+  template <typename T>
+  inline cudnnSpatialTransformerDescriptor_t descriptor(
+      cudnnSamplerType_t samplerType, const int nbDims, const int dimA[]) {
+    PADDLE_ENFORCE(dynload::cudnnSetSpatialTransformerNdDescriptor(
+        desc_, samplerType, CudnnDataType<T>::type, nbDims, dimA));
+  }
+
+ private:
+  cudnnSpatialTransformerDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedSpatialTransformerDescriptor);
 };
 
 inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
