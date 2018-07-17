@@ -18,6 +18,45 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
+
+namespace paddle {
+namespace platform {
+
+#ifdef PADDLE_CUDA_FP16
+// NOTE(dzhwinter): cuda do not have atomicCAS for half.
+// Just use the half address as a unsigned value address and
+// do the atomicCAS. According to the value store at high 16 bits
+// or low 16 bits, then do a different sum and CAS.
+// Given most warp-threads will failed on the atomicCAS, so this
+// implemented should be avoided in high concurrency. It's will be
+// slower than the way convert value into 32bits and do a full atomicCAS.
+CUDA_ATOMIC_WRAPPER(Add, float16) {
+  unsigned int* address_as_ui =
+      (unsigned int*)(reinterpret_cast<char*>(address) -
+                      ((size_t)address & 0x2));
+  unsigned int old = *address_as_ui;
+  unsigned int sum;
+  unsigned int newval;
+  unsigned int assumed;
+
+  do {
+    assumed = old;
+    sum = static_cast<unsigned>(val) + (size_t)address & 0x2
+              ? (unsigned)(old >> 16)
+              : (unsigned)(old & 0xffff);
+    newval = (size_t)address & 0x2 ? (old & 0xffff) | (sum << 16)
+                                   : (old & 0xffff0000) | sum;
+    old = atomicCAS(address_as_ui, assumed, newval);
+  } while (assumed != old);
+
+  auto ret = (size_t)address & 0x2 ? old & 0xffffu : old >> 16;
+  return static_cast<float16>(ret);
+}
+
+#endif
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace operators {
@@ -76,6 +115,7 @@ struct SelectedRowsAdd<platform::CUDADeviceContext, T> {
 
 template struct SelectedRowsAdd<platform::CUDADeviceContext, float>;
 template struct SelectedRowsAdd<platform::CUDADeviceContext, double>;
+template struct SelectedRowsAdd<platform::CUDADeviceContext, platform::float16>;
 
 namespace {
 template <typename T, int block_size>
@@ -120,7 +160,7 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
     auto* out_data = output->data<T>();
 
     SetConstant<platform::CUDADeviceContext, T> functor;
-    functor(context, output, 0.0);
+    functor(context, output, static_cast<T>(0));
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
@@ -138,6 +178,8 @@ struct SelectedRowsAddTensor<platform::CUDADeviceContext, T> {
 
 template struct SelectedRowsAddTensor<platform::CUDADeviceContext, float>;
 template struct SelectedRowsAddTensor<platform::CUDADeviceContext, double>;
+template struct SelectedRowsAddTensor<platform::CUDADeviceContext,
+                                      platform::float16>;
 
 template <typename T>
 struct SelectedRowsAddTo<platform::CUDADeviceContext, T> {
@@ -177,6 +219,8 @@ template struct SelectedRowsAddTo<platform::CUDADeviceContext, float>;
 template struct SelectedRowsAddTo<platform::CUDADeviceContext, double>;
 template struct SelectedRowsAddTo<platform::CUDADeviceContext, int>;
 template struct SelectedRowsAddTo<platform::CUDADeviceContext, int64_t>;
+template struct SelectedRowsAddTo<platform::CUDADeviceContext,
+                                  platform::float16>;
 
 namespace {
 template <typename T, int block_size>
@@ -229,6 +273,8 @@ template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, float>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, double>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int>;
 template struct SelectedRowsAddToTensor<platform::CUDADeviceContext, int64_t>;
+template struct SelectedRowsAddToTensor<platform::CUDADeviceContext,
+                                        platform::float16>;
 
 namespace scatter {
 
@@ -276,7 +322,7 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         context.GetPlace());
 
     math::SetConstant<platform::CUDADeviceContext, T> constant_functor;
-    constant_functor(context, out.mutable_value(), 0.0);
+    constant_functor(context, out.mutable_value(), static_cast<T>(0));
 
     auto* out_data = out.mutable_value()->data<T>();
     auto* input_data = input.value().data<T>();
@@ -300,6 +346,7 @@ template struct MergeAdd<platform::CUDADeviceContext, float>;
 template struct MergeAdd<platform::CUDADeviceContext, double>;
 template struct MergeAdd<platform::CUDADeviceContext, int>;
 template struct MergeAdd<platform::CUDADeviceContext, int64_t>;
+template struct MergeAdd<platform::CUDADeviceContext, platform::float16>;
 
 template <typename T, int block_size>
 __global__ void UpdateToTensorKernel(const T* selected_rows,

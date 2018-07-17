@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -52,8 +53,17 @@ class FillConstantOp : public framework::OperatorBase {
     }
 
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
-    auto &dev_ctx = *pool.Get(dev_place);
-    math::set_constant(dev_ctx, &out, value);
+    if (platform::is_gpu_place(dev_place) && !force_cpu &&
+        data_type == framework::proto::VarType::FP16) {
+      auto &dev_ctx =
+          *static_cast<platform::CUDADeviceContext *>(pool.Get(dev_place));
+      math::SetConstant<platform::CUDADeviceContext, platform::float16>
+          constant_functor;
+      constant_functor(dev_ctx, &out, static_cast<platform::float16>(value));
+    } else {
+      auto &dev_ctx = *pool.Get(dev_place);
+      math::set_constant(dev_ctx, &out, value);
+    }
   }
 };
 
