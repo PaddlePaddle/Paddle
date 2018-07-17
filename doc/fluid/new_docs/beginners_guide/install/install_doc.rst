@@ -110,67 +110,16 @@ paddlepaddle-gpu==0.11.0            使用CUDA 7.5和cuDNN 5编译的0.11.0版�
 
 .. _install_windows:
 
-在windows安装PaddlePaddle
+在Windows安装PaddlePaddle
 ------------------------------
+Windows系统需要通过Docker来使用PaddleaPaddle。Docker是一个虚拟容器，使用Docker可以简化复杂的环境配置工作。
 
-若您的系统为windows，您可以通过Docker来使用PaddlePaddle。
+我们提供了 `PaddlePaddle_Windows快速安装包 <http://paddle-windows.bj.bcebos.com/PaddlePaddle-windows.zip>`_，
+它能够帮助您安装Docker和PaddlePaddle。
 
-推荐您下载 `PaddlePaddle快速安装包 <http://paddle-windows.bj.bcebos.com/PaddlePaddle-windows.zip>`_，
-该安装包能够帮助您判断、安装适合的Docker，并引导您在Docker中使用PaddlePaddle。
+* 安装包支持的系统：Windows7，Windows8的所有版本，Windows10的专业版、企业版。
 
-注意事项：
-
-* 系统要求：windows7, windows8和 windows10(windows10-家庭版不适用)。
-
-* 下载安装包后，请您右键start.bat,选择“以管理员身份运行”。
-
-* PaddlePaddle不支持在windows使用GPU。
-
-* 请确认您的机器已在BIOS中开启虚拟化功能。
-
-Docker安装完成后，请您执行下面的步骤：
-
-请您右键选择”以管理员身份运行“，来启动Docker客户端
-
-我们为您提供了Ubuntu 16和CentOS 7两种镜像，您可以选择其一
-
-获取0.14.0版Docker image（Ubuntu 16）
-
-.. code-block:: bash
-
-   docker pull paddlepaddle/paddle:0.14.0-ubuntu16-cpu
-
-获取0.14.0版Docker image (CentOS 7)
-
-.. code-block:: bash
-
-   docker pull paddlepaddle/paddle:0.14.0-centos7-cpu
-
-然后执行以下命令：
-
-获取Image ID
-
-.. code-block:: bash
-
-   docker images
-
-启动Docker
-
-.. code-block:: bash
-
-   docker run -d it -t imageid /bin/bash
-
-获取Docker Container
-
-.. code-block:: bash
-
-   docker ps -a
-
-进入Container
-
-.. code-block:: bash
-
-   docker attach container
+* 如果您希望使用GPU提升训练速度，请使用Linux系统安装，Windows系统暂不支持。
    
 .. _install_mac:
 
