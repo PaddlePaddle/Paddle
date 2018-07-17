@@ -461,6 +461,8 @@ class DistributeTranspiler(object):
             per_opt_block = pserver_program.create_block(pre_block_idx)
             optimize_blocks.append(per_opt_block)
             # append grad merging ops before clip and weight decay
+            # cases may like: 
+            # L2Decay op -> clip op -> optimize
             for _, op in enumerate(self.optimize_ops):
                 # find the origin @GRAD var before clipping
                 grad_varname_for_block = __op_have_grad_input__(op)
@@ -468,6 +470,7 @@ class DistributeTranspiler(object):
                     merged_var = self._append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, endpoint,
                         grad_to_block_id, self.origin_program)
+                    break  # append optimize op once then append other ops.
             for _, op in enumerate(self.optimize_ops):
                 # optimizer is connected to itself
                 if ufind.is_connected(op, opt_op) and op not in global_ops:
