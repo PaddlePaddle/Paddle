@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestSplitOp(OpTest):
@@ -26,7 +26,7 @@ class TestSplitOp(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
         self.outputs = {'Out': [('out%d' % i, out[i]) \
-            for i in range(len(out))]}
+            for i in xrange(len(out))]}
 
     def _set_op_type(self):
         self.op_type = "split"

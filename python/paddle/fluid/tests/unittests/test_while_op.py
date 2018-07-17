@@ -66,7 +66,7 @@ class TestWhileOp(unittest.TestCase):
         exe = Executor(cpu)
         d = []
 
-        for i in range(3):
+        for i in xrange(3):
             d.append(numpy.random.random(size=[10]).astype('float32'))
 
         outs = exe.run(feed={'d0': d[0],

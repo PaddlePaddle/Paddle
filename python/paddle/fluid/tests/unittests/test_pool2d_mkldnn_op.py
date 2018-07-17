@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from .test_pool2d_op import TestPool2d_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
+from test_pool2d_op import TestPool2d_Op, TestCase1, TestCase2, TestCase3, TestCase4, TestCase5
 
 
 class TestMKLDNNCase1(TestPool2d_Op):

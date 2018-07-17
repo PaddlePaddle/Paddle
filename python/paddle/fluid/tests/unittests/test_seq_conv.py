@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import random
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestSeqProject(OpTest):
@@ -26,9 +26,9 @@ class TestSeqProject(OpTest):
         if self.context_length == 1 \
                 and self.context_start == 0 \
                 and self.padding_trainable:
-            print("If context_start is 0 " \
+            print "If context_start is 0 " \
                   "and context_length is 1," \
-                  " padding_trainable should be false.")
+                  " padding_trainable should be false."
             return
 
         # one level, batch size
@@ -212,7 +212,7 @@ class TestSeqProjectCase2(TestSeqProject):
         self.context_stride = 1
 
         self.input_size = [self.input_row, 23]
-        idx = list(range(self.input_size[0]))
+        idx = range(self.input_size[0])
         del idx[0]
         offset_lod = [[0] + np.sort(random.sample(idx, 8)).tolist() +
                       [self.input_size[0]]]

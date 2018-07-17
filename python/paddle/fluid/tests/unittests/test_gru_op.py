@@ -15,8 +15,8 @@
 import unittest
 import numpy as np
 import math
-from .op_test import OpTest
-from .test_lstm_op import identity, sigmoid, tanh, relu
+from op_test import OpTest
+from test_lstm_op import identity, sigmoid, tanh, relu
 
 
 class TestGRUOp(OpTest):
@@ -38,7 +38,7 @@ class TestGRUOp(OpTest):
         for i in range(len(seq_lens)):
             seq_starts.append(seq_starts[-1] + seq_lens[i])
         sorted_seqs = sorted(
-            list(range(len(seq_lens))), lambda x, y: seq_lens[y] - seq_lens[x])
+            range(len(seq_lens)), lambda x, y: seq_lens[y] - seq_lens[x])
         num_batch = seq_lens[sorted_seqs[0]]
         for batch_idx in range(num_batch):
             idx_in_seq = []
@@ -74,16 +74,15 @@ class TestGRUOp(OpTest):
     def gru(self):
         input, lod = self.inputs['Input']
         w = self.inputs['Weight']
-        b = self.inputs['Bias'] if 'Bias' in self.inputs else np.zeros(
+        b = self.inputs['Bias'] if self.inputs.has_key('Bias') else np.zeros(
             (1, self.frame_size * 3))
         batch_gate = self.outputs['BatchGate']
         batch_reset_hidden_prev = self.outputs['BatchResetHiddenPrev']
         batch_hidden = self.outputs['BatchHidden']
         hidden = self.outputs['Hidden']
         idx_in_seq_list = self.idx_in_seq_list
-        h_p = self.inputs['H0'][
-            self.sorted_seqs] if 'H0' in self.inputs else np.zeros(
-                (len(idx_in_seq_list[0]), self.frame_size))
+        h_p = self.inputs['H0'][self.sorted_seqs] if self.inputs.has_key(
+            'H0') else np.zeros((len(idx_in_seq_list[0]), self.frame_size))
         num_batch = len(idx_in_seq_list)
         end_idx = 0
         for batch_idx in range(num_batch):

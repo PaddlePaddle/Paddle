@@ -180,7 +180,7 @@ def train(word_dict,
                 cost_val, acc_val = exe.run(main_program,
                                             feed=feeder.feed(data),
                                             fetch_list=[cost, acc_out])
-                print("cost=" + str(cost_val) + " acc=" + str(acc_val))
+                print(("cost=" + str(cost_val) + " acc=" + str(acc_val)))
                 if cost_val < 0.4 and acc_val > 0.8:
                     if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, ["words"],
@@ -261,10 +261,10 @@ def infer(word_dict, use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: tensor_words},
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].recursive_sequence_lengths())
+        print((results[0].recursive_sequence_lengths()))
         np_data = np.array(results[0])
-        print("Inference Shape: ", np_data.shape)
-        print("Inference results: ", np_data)
+        print(("Inference Shape: ", np_data.shape))
+        print(("Inference results: ", np_data))
 
 
 def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):

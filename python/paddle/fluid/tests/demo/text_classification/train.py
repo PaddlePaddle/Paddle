@@ -127,7 +127,7 @@ def main():
                 train_exe.run(fetch_list=fetch_var_list
                               if i % 1000 == 0 else [])))
         if len(result) != 0:
-            print('Train: ', result)
+            print(('Train: ', result))
 
         if i % 1000 == 0:
             test_exe = fluid.ParallelExecutor(
@@ -143,7 +143,7 @@ def main():
                     acc.append(acc_np[0])
             except:
                 test_args['file'].reset()
-                print('TEST: ', numpy.mean(loss), numpy.mean(acc))
+                print(('TEST: ', numpy.mean(loss), numpy.mean(acc)))
 
 
 if __name__ == '__main__':

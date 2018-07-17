@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-from . import transformer_model
+import transformer_model
 import numpy as np
-from .parallel_executor_test_base import TestParallelExecutorBase
+from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import paddle
 import paddle.dataset.wmt16 as wmt16

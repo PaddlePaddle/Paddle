@@ -13,7 +13,7 @@
 #limitations under the License.
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def get_output_shape(attrs, in_shape, img_real_size):

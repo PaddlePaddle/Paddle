@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-import io
 import functools
 import warnings
 import string
 
+from six.moves import cStringIO
 from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable
 from ..layer_helper import LayerHelper
@@ -70,7 +70,7 @@ def _generate_doc_string_(op_proto):
     if not isinstance(op_proto, framework_pb2.OpProto):
         raise TypeError("OpProto should be `framework_pb2.OpProto`")
 
-    buf = io.StringIO()
+    buf = cStringIO()
     buf.write(escape_math(op_proto.comment))
     buf.write('\nArgs:\n')
     for each_input in op_proto.inputs:

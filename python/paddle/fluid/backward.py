@@ -45,9 +45,9 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     """
     op_desc = core.OpDesc()
     op_desc.set_type(op_type)
-    for para, args in inputs.items():
+    for para, args in list(inputs.items()):
         op_desc.set_input(para, six.text_type(args))
-    for para, args in outputs.items():
+    for para, args in list(outputs.items()):
         op_desc.set_output(para, six.text_type(args))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
@@ -55,7 +55,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
-    for name, val in attrs.items():
+    for name, val in list(attrs.items()):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
         else:
@@ -175,7 +175,7 @@ def _addup_repetitive_outputs_(op_descs):
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
 
-    for var_name, inputs in renamed_vars.items():
+    for var_name, inputs in list(renamed_vars.items()):
         if len(inputs) > 1:
             pending_sum_ops.append(
                 (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
@@ -221,7 +221,7 @@ def _remove_no_grad_branch_(op_descs, no_grad_set):
                     "X": [_strip_grad_suffix_(arg)]
                 }, {"Out": [arg]}, {}), idx))
 
-    list(map(lambda p: op_descs.insert(p[1], p[0]), reversed(to_insert)))
+    list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
 
     return op_descs
 
@@ -433,7 +433,7 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
                 op_desc.rename_output(name, new_name)
                 var_map[name] = new_name
 
-    for g, ng in var_map.items():
+    for g, ng in list(var_map.items()):
         if g in grad_to_var:
             grad_to_var[ng] = grad_to_var[g]
             grad_to_var.pop(g)
@@ -445,7 +445,7 @@ def _get_stop_gradients_(program):
     for block in program.blocks:
         assert isinstance(block, framework.Block)
         block_no_grad_set = set()
-        for var in block.vars.values():
+        for var in list(block.vars.values()):
             assert isinstance(var, framework.Variable)
             if var.stop_gradient:
                 block_no_grad_set.add(_append_grad_suffix_(var.name))

@@ -17,7 +17,6 @@ import numpy as np
 from operator import mul
 import paddle.fluid.core as core
 import paddle.fluid as fluid
-from functools import reduce
 
 np.random.random(123)
 

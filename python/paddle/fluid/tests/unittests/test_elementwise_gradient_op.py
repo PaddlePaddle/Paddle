@@ -26,7 +26,7 @@ class TestElementWiseAddOp(unittest.TestCase):
         def test_with_place(place):
             out_grad = np.random.random_sample(self.x.shape).astype(np.float32)
             x_grad = out_grad
-            sum_axis = list(range(0, len(self.x.shape)))
+            sum_axis = range(0, len(self.x.shape))
             del sum_axis[self.axis]
             y_grad = np.sum(out_grad, axis=tuple(sum_axis))
 

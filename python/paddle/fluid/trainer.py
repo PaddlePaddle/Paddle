@@ -1036,7 +1036,7 @@ def _save_trainer_args(dirname, trainer_id, trainer_args):
 
     cur_dir = _get_trainer_dir(dirname, trainer_id)
 
-    for name, value in trainer_args.items():
+    for name, value in list(trainer_args.items()):
         args_file = os.path.join(cur_dir, name)
         with open(args_file, 'w') as f:
             f.write(str(value))

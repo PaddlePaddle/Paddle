@@ -854,7 +854,7 @@ class Block(object):
             re_add_indent = re.compile(r"\n(.)")
             res_str = "blocks {\n  idx: %d\n  parent_idx: %d" % (
                 self.idx, self.parent_idx)
-            for var in self.vars.values():
+            for var in list(self.vars.values()):
                 res_str += "\n  vars {\n    %s  }" % re_add_indent.sub(
                     r"\n    \1", var.to_string(throw_on_error, with_details))
             for op in self.ops:
@@ -908,7 +908,7 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        if not isinstance(name, str):
+        if not isinstance(name, six.text_type):
             raise TypeError(
                 "var require string as parameter, but get %s instead." %
                 (type(name)))
@@ -962,7 +962,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in self.vars.items()
+        return (item[1] for item in list(self.vars.items())
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
@@ -1729,7 +1729,7 @@ class Program(object):
         if len(self.blocks) != len(other.blocks):
             raise ValueError("copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
-        for var in other.global_block().vars.values():
+        for var in list(other.global_block().vars.values()):
             if var.is_data:
                 self.global_block().var(var.name).is_data = True
 
@@ -1741,7 +1741,7 @@ class Program(object):
             iterable: The generator will yield every variable in this program.
         """
         for each_block in self.blocks:
-            for each_var in each_block.vars.values():
+            for each_var in list(each_block.vars.values()):
                 yield each_var
 
 

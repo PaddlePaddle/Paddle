@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import paddle.fluid.core as core
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def rpn_target_assign(iou, rpn_batch_size_per_im, rpn_positive_overlap,

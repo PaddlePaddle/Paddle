@@ -203,12 +203,12 @@ class RecurrentOpTest1(unittest.TestCase):
                     num_grad[idx], ana_grad[idx], rtol=0.1).all())
 
     def check_forward(self):
-        print('test recurrent op forward')
+        print 'test recurrent op forward'
         pd_output = self.forward()
         py_output = self.py_rnn.forward()
-        print('pd_output', pd_output)
-        print()
-        print('py_output', py_output)
+        print 'pd_output', pd_output
+        print
+        print 'py_output', py_output
         self.assertEqual(pd_output.shape, py_output.shape)
         self.assertTrue(np.isclose(pd_output, py_output, rtol=0.1).all())
 
@@ -445,7 +445,7 @@ class RecurrentOpNoMemBootTest(RecurrentOpTest1):
         self.py_rnn = RecurrentOpNoMemBootTest.PySimpleRNN4(self.input_shape,
                                                             self.output_shape)
         self.output = layers.mean(self.create_rnn_op(), **self.p_info)
-        print(self.main_program)
+        print self.main_program
 
     def create_rnn_op(self):
         x = layers.data(

@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def max_pool3D_forward_naive(x,
@@ -38,13 +38,13 @@ def max_pool3D_forward_naive(x,
              ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
                                                    paddings[2]) / strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
-    for k in range(D_out):
+    for k in xrange(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
         d_end = np.min((k * strides[0] + ksize[0] - paddings[0], D))
-        for i in range(H_out):
+        for i in xrange(H_out):
             h_start = np.max((i * strides[0] - paddings[0], 0))
             h_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-            for j in range(W_out):
+            for j in xrange(W_out):
                 w_start = np.max((j * strides[1] - paddings[1], 0))
                 w_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
                 x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]
@@ -72,13 +72,13 @@ def avg_pool3D_forward_naive(x,
              ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
                                                    paddings[2]) / strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
-    for k in range(D_out):
+    for k in xrange(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
         d_end = np.min((k * strides[0] + ksize[0] - paddings[0], D))
-        for i in range(H_out):
+        for i in xrange(H_out):
             h_start = np.max((i * strides[0] - paddings[0], 0))
             h_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
-            for j in range(W_out):
+            for j in xrange(W_out):
                 w_start = np.max((j * strides[1] - paddings[1], 0))
                 w_end = np.min((j * strides[1] + ksize[1] - paddings[1], W))
                 x_masked = x[:, :, d_start:d_end, h_start:h_end, w_start:w_end]

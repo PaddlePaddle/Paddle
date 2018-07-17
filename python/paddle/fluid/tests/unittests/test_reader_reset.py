@@ -21,7 +21,7 @@ import unittest
 class TestReaderReset(unittest.TestCase):
     def prepare_data(self):
         def fake_data_generator():
-            for n in range(self.total_ins_num):
+            for n in xrange(self.total_ins_num):
                 yield np.ones(self.ins_shape) * n, n
 
         # Prepare data

@@ -95,7 +95,7 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
         for use_cuda in [False, True]:
             for use_parallel_executor in [False, True]:
                 for use_double_buffer in [False, True]:
-                    print(('Test Parameters:'), end=' ')
+                    print('Test Parameters:'),
                     print({
                         'use_cuda': use_cuda,
                         'use_parallel_executor': use_parallel_executor,

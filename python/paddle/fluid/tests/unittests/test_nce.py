@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,
@@ -66,7 +66,7 @@ class TestNCE(OpTest):
         self.attrs = {
             'num_total_classes': num_classes,
             'num_neg_samples': num_neg_samples,
-            'custom_neg_classes': list(range(num_neg_samples))
+            'custom_neg_classes': range(num_neg_samples)
         }
         self.inputs = {
             'Input': input,

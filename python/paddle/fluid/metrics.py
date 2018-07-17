@@ -79,9 +79,10 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in self.__dict__.items() if not attr.startswith("_")
+            for attr, value in list(self.__dict__.items())
+            if not attr.startswith("_")
         }
-        for attr, value in states.items():
+        for attr, value in list(states.items()):
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
@@ -104,7 +105,8 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in self.__dict__.items() if not attr.startswith("_")
+            for attr, value in list(self.__dict__.items())
+            if not attr.startswith("_")
         }
         config = {}
         config.update({"name": self._name, "states": copy.deepcopy(states)})

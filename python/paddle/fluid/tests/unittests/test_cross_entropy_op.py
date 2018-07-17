@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest, randomize_probability
+from op_test import OpTest, randomize_probability
 
 
 class TestCrossEntropyOp1(OpTest):

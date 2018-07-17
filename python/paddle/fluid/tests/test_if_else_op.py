@@ -81,7 +81,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])
-                print(outs[0])
+                print((outs[0]))
                 if outs[0] < 1.0:
                     return
         self.assertFalse(True)
@@ -136,7 +136,7 @@ class TestMNISTIfElseOp(unittest.TestCase):
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])
-                print(outs[0])
+                print((outs[0]))
                 if outs[0] < 1.0:
                     return
         self.assertFalse(True)

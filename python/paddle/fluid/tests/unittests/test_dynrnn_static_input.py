@@ -67,7 +67,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
     def _lodtensor_to_ndarray(self, lod_tensor):
         dims = lod_tensor.shape()
         ndarray = np.zeros(shape=dims).astype('float32')
-        for i in range(np.product(dims)):
+        for i in xrange(np.product(dims)):
             ndarray.ravel()[i] = lod_tensor._get_float_element(i)
         return ndarray, lod_tensor.recursive_sequence_lengths()
 
@@ -114,7 +114,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
                 shape=[1], dtype='int64', value=0)
             step_idx.stop_gradient = True
 
-            for i in range(self._max_sequence_len):
+            for i in xrange(self._max_sequence_len):
                 step_out = fluid.layers.array_read(static_input_out_array,
                                                    step_idx)
                 step_out.stop_gradient = True
@@ -140,27 +140,27 @@ class TestDyRnnStaticInput(unittest.TestCase):
         static_lod = self.static_input_tensor.recursive_sequence_lengths()
         static_sliced = []
         cur_offset = 0
-        for i in range(len(static_lod[0])):
+        for i in xrange(len(static_lod[0])):
             static_sliced.append(self.static_input_data[cur_offset:(
                 cur_offset + static_lod[0][i])])
             cur_offset += static_lod[0][i]
         static_seq_len = static_lod[0]
         static_reordered = []
-        for i in range(len(x_sorted_indices)):
+        for i in xrange(len(x_sorted_indices)):
             static_reordered.extend(static_sliced[x_sorted_indices[i]].tolist())
         static_seq_len_reordered = [
             static_seq_len[x_sorted_indices[i]]
-            for i in range(len(x_sorted_indices))
+            for i in xrange(len(x_sorted_indices))
         ]
 
         static_step_outs = []
         static_step_lods = []
 
-        for i in range(self._max_sequence_len):
+        for i in xrange(self._max_sequence_len):
             end = len(x_seq_len) - bisect.bisect_left(x_seq_len_sorted, i + 1)
             lod = []
             total_len = 0
-            for i in range(end):
+            for i in xrange(end):
                 lod.append(static_seq_len_reordered[i])
                 total_len += lod[-1]
             static_step_lods.append([lod])
@@ -174,7 +174,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
         static_step_outs = self.build_graph(only_forward=True)
         self.exe.run(framework.default_startup_program())
         expected_outs, expected_lods = self.get_expected_static_step_outs()
-        for i in range(self._max_sequence_len):
+        for i in xrange(self._max_sequence_len):
             step_out, lod = self.fetch_value(static_step_outs[i])
             self.assertTrue(np.allclose(step_out, expected_outs[i]))
             self.assertTrue(np.allclose(lod, expected_lods[i]))
@@ -189,7 +189,7 @@ class TestDyRnnStaticInput(unittest.TestCase):
         numeric_gradients = np.zeros(shape=static_input_shape).astype('float32')
         # calculate numeric gradients
         tensor_size = np.product(static_input_shape)
-        for i in range(tensor_size):
+        for i in xrange(tensor_size):
             origin = self.static_input_tensor._get_float_element(i)
             x_pos = origin + self._delta
             self.static_input_tensor._set_float_element(i, x_pos)

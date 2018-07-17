@@ -131,7 +131,7 @@ class TestDynRNN(unittest.TestCase):
         loss_0 = exe.run(main_program,
                          feed=feeder.feed(data),
                          fetch_list=[loss])[0]
-        for _ in range(100):
+        for _ in xrange(100):
             val = exe.run(main_program,
                           feed=feeder.feed(data),
                           fetch_list=[loss])[0]

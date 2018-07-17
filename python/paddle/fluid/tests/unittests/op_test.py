@@ -25,15 +25,14 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from .testsuite import create_op, set_input, append_input_output, append_loss_ops
-from functools import reduce
+from testsuite import create_op, set_input, append_input_output, append_loss_ops
 
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
         0.1, 1.0, size=(batch_size, class_num)).astype(dtype)
     prob_sum = prob.sum(axis=1)
-    for i in range(len(prob)):
+    for i in xrange(len(prob)):
         prob[i] /= prob_sum[i]
     return prob
 
@@ -87,7 +86,7 @@ def get_numeric_gradient(place,
 
     # we only compute gradient of one element each time.
     # we use a for loop to compute the gradient of every element.
-    for i in range(tensor_size):
+    for i in xrange(tensor_size):
         if in_place:
             set_input(scope, op, inputs, place)
 
@@ -140,7 +139,7 @@ class OpTest(unittest.TestCase):
             assert isinstance(
                 numpy_dict,
                 dict), "self.inputs, self.outputs must be numpy_dict"
-            for var_name, var_value in numpy_dict.items():
+            for var_name, var_value in numpy_dict.iteritems():
                 if isinstance(var_value, (np.ndarray, np.generic)):
                     self.try_call_once(var_value.dtype)
                 elif isinstance(var_value, (list, tuple)):
@@ -198,7 +197,7 @@ class OpTest(unittest.TestCase):
 
     def _get_io_vars(self, block, numpy_inputs):
         inputs = {}
-        for name, value in numpy_inputs.items():
+        for name, value in numpy_inputs.iteritems():
             if isinstance(value, list):
                 var_list = [
                     block.var(sub_name) for sub_name, sub_value in value
@@ -241,7 +240,7 @@ class OpTest(unittest.TestCase):
         # if the fetch_list is customized by user, we use it directly.
         # if not, fill the fetch_list by the user configured outputs in test.
         if len(fetch_list) == 0:
-            for var_name, var in outputs.items():
+            for var_name, var in outputs.iteritems():
                 if isinstance(var, list):
                     for v in var:
                         fetch_list.append(v)
@@ -253,7 +252,7 @@ class OpTest(unittest.TestCase):
                 fetch_list.append(str(out_name))
         # fetch_list = map(block.var, fetch_list)
         if not isinstance(fetch_list[0], Variable):
-            fetch_list = list(map(block.var, fetch_list))
+            fetch_list = map(block.var, fetch_list)
         outs = executor.run(program,
                             feed=feed_map,
                             fetch_list=fetch_list,
@@ -335,7 +334,7 @@ class OpTest(unittest.TestCase):
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
                           max_relative_error, msg_prefix):
 
-        for a, b, name in zip(numeric_grads, analytic_grads, names):
+        for a, b, name in itertools.izip(numeric_grads, analytic_grads, names):
             abs_a = np.abs(a)
             abs_a[abs_a < 1e-3] = 1
 
@@ -461,6 +460,6 @@ class OpTest(unittest.TestCase):
                 use_cuda=use_cuda, loss_name=loss.name, main_program=program)
         else:
             executor = Executor(place)
-        return list(
-            map(np.array,
-                executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
+        return map(np.array,
+                   executor.run(prog, feed_dict, fetch_list,
+                                return_numpy=False))

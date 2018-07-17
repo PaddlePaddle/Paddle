@@ -21,7 +21,7 @@ import numpy as np
 class TestDataBalance(unittest.TestCase):
     def prepare_data(self):
         def fake_data_generator():
-            for n in range(self.total_ins_num):
+            for n in xrange(self.total_ins_num):
                 yield np.ones((3, 4)) * n, n
 
         # Prepare data
@@ -41,7 +41,7 @@ class TestDataBalance(unittest.TestCase):
 
     def prepare_lod_data(self):
         def fake_data_generator():
-            for n in range(1, self.total_ins_num + 1):
+            for n in xrange(1, self.total_ins_num + 1):
                 d1 = (np.ones((n, 3)) * n).astype('float32')
                 d2 = (np.array(n).reshape((1, 1))).astype('int32')
                 yield d1, d2
@@ -58,9 +58,9 @@ class TestDataBalance(unittest.TestCase):
                             (0, 1))
                     ]
                     lod = [0]
-                    for _ in range(self.batch_size):
+                    for _ in xrange(self.batch_size):
                         try:
-                            ins = next(generator)
+                            ins = generator.next()
                         except StopIteration:
                             eof = True
                             break

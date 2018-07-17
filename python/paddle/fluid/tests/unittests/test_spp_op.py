@@ -14,9 +14,9 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
-from .test_pool2d_op import max_pool2D_forward_naive
-from .test_pool2d_op import avg_pool2D_forward_naive
+from op_test import OpTest
+from test_pool2d_op import max_pool2D_forward_naive
+from test_pool2d_op import avg_pool2D_forward_naive
 
 
 class TestSppOp(OpTest):
@@ -26,7 +26,7 @@ class TestSppOp(OpTest):
         input = np.random.random(self.shape).astype("float32")
         nsize, csize, hsize, wsize = input.shape
         out_level_flatten = []
-        for i in range(self.pyramid_height):
+        for i in xrange(self.pyramid_height):
             bins = np.power(2, i)
             kernel_size = [0, 0]
             padding = [0, 0]

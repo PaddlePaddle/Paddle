@@ -51,7 +51,7 @@ class TestDebugger(unittest.TestCase):
             outputs={"Out": mul_out},
             attrs={"x_num_col_dims": 1})
 
-        print((debugger.pprint_program_codes(p)))
+        print(debugger.pprint_program_codes(p))
 
         debugger.draw_block_graphviz(p.block(0), path="./test.dot")
 

@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestAccuracyOp(OpTest):
@@ -26,7 +26,7 @@ class TestAccuracyOp(OpTest):
         label = np.random.randint(0, 2, (n, 1))
         self.inputs = {'Out': infer, 'Indices': indices, "Label": label}
         num_correct = 0
-        for rowid in range(n):
+        for rowid in xrange(n):
             for ele in indices[rowid]:
                 if ele == label[rowid]:
                     num_correct += 1

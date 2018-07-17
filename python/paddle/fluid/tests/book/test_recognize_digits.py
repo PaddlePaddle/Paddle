@@ -141,10 +141,10 @@ def train(nn_type,
                                 params_filename=params_filename)
                         return
                     else:
-                        print(
+                        print((
                             'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
                             format(pass_id, batch_id + 1,
-                                   float(avg_loss_val), float(acc_val)))
+                                   float(avg_loss_val), float(acc_val))))
                         if math.isnan(float(avg_loss_val)):
                             sys.exit("got NaN loss, training failed.")
         raise AssertionError("Loss of recognize digits is too large")
@@ -205,7 +205,7 @@ def infer(use_cuda,
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
-        print("infer results: ", results[0])
+        print(("infer results: ", results[0]))
 
 
 def main(use_cuda, parallel, nn_type, combine):
