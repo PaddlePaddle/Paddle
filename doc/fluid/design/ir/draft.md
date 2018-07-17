@@ -86,4 +86,4 @@ maintaining the original modeling logic.
 * Graph is transformed from raw model logic to a
 form that is efficient to execute.
 
-Program->ProgramToGraph->Graph->Pass1->Graph->Pass2->Graph->Pass3->Executor
+Program->ProgramToGraph->Graph->Pass1->Graph->Pass2->Graph->Pass3->Graph->Executor
