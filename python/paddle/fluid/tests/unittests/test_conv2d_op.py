@@ -83,10 +83,7 @@ class TestConv2dOp(OpTest):
         output = conv2d_forward_naive(input, filter, self.groups,
                                       conv2d_param).astype(self.dtype)
 
-        self.inputs = {
-            'Input': OpTest.np_dtype_to_fluid_dtype(input),
-            'Filter': OpTest.np_dtype_to_fluid_dtype(filter)
-        }
+        self.inputs = {'Input': input, 'Filter': filter}
         self.attrs = {
             'strides': self.stride,
             'paddings': self.pad,

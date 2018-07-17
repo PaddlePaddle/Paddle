@@ -915,6 +915,14 @@ struct is_unsigned<paddle::platform::float16> {
   static const bool value = false;
 };
 
+inline bool isnan(const paddle::platform::float16& a) {
+  return paddle::platform::isnan(a);
+}
+
+inline bool isinf(const paddle::platform::float16& a) {
+  return paddle::platform::isinf(a);
+}
+
 template <>
 struct numeric_limits<paddle::platform::float16> {
   static const bool is_specialized = true;

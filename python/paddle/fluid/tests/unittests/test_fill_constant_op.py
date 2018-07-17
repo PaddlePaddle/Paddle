@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.framework as framework
 
 
 class TestFillConstantOp1(OpTest):
@@ -43,6 +44,25 @@ class TestFillConstantOp2(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestFP16FillConstantOp(OpTest):
+    def setUp(self):
+        '''Test fill_constant op with specified value
+        '''
+        self.op_type = "fill_constant"
+        self.dtype = np.float16
+
+        self.inputs = {}
+        self.attrs = {
+            'shape': [123, 92],
+            'value': 3.8,
+            'dtype': framework.convert_np_dtype_to_dtype_(self.dtype)
+        }
+        self.outputs = {'Out': np.full((123, 92), 3.8).astype(self.dtype)}
+
+    def test_check_output(self):
+        self.check_output(atol=1e-2)
 
 
 if __name__ == "__main__":

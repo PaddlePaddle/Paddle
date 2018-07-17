@@ -788,7 +788,7 @@ class TestSquare(OpTest):
         self.dtype = np.float32
         self.init_dtype()
 
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        x = np.random.uniform(-0.1, 1, [11, 17]).astype(self.dtype)
         out = np.square(x)
 
         self.inputs = {'X': x}

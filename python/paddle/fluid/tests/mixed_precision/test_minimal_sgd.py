@@ -17,27 +17,26 @@ import paddle.fluid as fluid
 import paddle
 import paddle.fluid.profiler as profiler
 
-DATA_TYPE = np.float16
-BATCH_SIZE = 32
+DATA_TYPE = np.float32
+BATCH_SIZE = 5
 fluid.default_startup_program().random_seed = 100
 np.random.seed(100)
 
 x = fluid.layers.data(name='x', shape=[1, 28, 28], dtype=DATA_TYPE)
 y = fluid.layers.data(name='y', shape=[1], dtype=DATA_TYPE)
-y_predict = fluid.layers.fc(input=x, size=1, act='relu')
+fc = fluid.layers.fc(input=x, size=10, act='relu')
+y_predict = fluid.layers.fc(input=fc, size=1, act='relu')
 cost = fluid.layers.square_error_cost(input=y_predict, label=y)
 avg_cost = fluid.layers.mean(cost)
-opt = fluid.optimizer.MixedSGD(scale_factor=128.0, learning_rate=0.001)
-# opt = fluid.optimizer.SGD(learning_rate=0.001)
+# opt = fluid.optimizer.MixedSGD(
+#     scale_factor=128.0, learning_rate=0.001)
+opt = fluid.optimizer.SGD(learning_rate=0.001)
 opt = opt.minimize(avg_cost)
 
 place = fluid.CUDAPlace(0)
-exe = fluid.Executor(place, log_level=0)
+exe = fluid.Executor(place, log_level=10)
 
-train_reader = paddle.batch(
-    paddle.reader.shuffle(
-        paddle.dataset.mnist.train(), buf_size=8192),
-    batch_size=BATCH_SIZE)
+train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=BATCH_SIZE)
 
 exe.run(fluid.default_startup_program())
 for pass_id in range(10):
@@ -57,3 +56,5 @@ for pass_id in range(10):
                                  'y': y_data},
                            fetch_list=[avg_cost])
             print("pass {0}, batch {1}, loss {2}".format(pass_id, i, outs[0]))
+            if i == 1:
+                exit(0)

@@ -650,3 +650,9 @@ def load_combine(out, file_path):
         inputs={},
         output={"Out": out},
         args={"file_path": file_path})
+
+
+def is_inf(x):
+    """
+    Test if any of x contains a infinity number
+    """

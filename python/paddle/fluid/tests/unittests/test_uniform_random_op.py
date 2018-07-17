@@ -17,12 +17,18 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
+import paddle.fluid.framework as framework
 
 
-def output_hist(out):
+def output_hist(out, dtype):
     hist, _ = np.histogram(out, range=(-5, 10))
-    hist = hist.astype("float32")
-    hist /= float(out.size)
+    if dtype == np.float16:
+        hist = hist.astype(np.float32)
+        hist /= float(out.size)
+        hist = hist.astype(np.float16)
+    else:
+        hist = hist.astype(dtype)
+        hist /= float(out.size)
     prob = 0.1 * np.ones((10))
     return hist, prob
 
@@ -30,26 +36,46 @@ def output_hist(out):
 class TestUniformRandomOp(OpTest):
     def setUp(self):
         self.op_type = "uniform_random"
+        self.dtype = np.float32
+        self.shape = [1000, 784]
+        self.init_dtype()
+
         self.inputs = {}
         self.attrs = {
-            "shape": [1000, 784],
+            "shape": self.shape,
             "min": -5.0,
             "max": 10.0,
-            "seed": 10
+            "seed": 10,
+            "dtype": framework.convert_np_dtype_to_dtype_(self.dtype)
         }
-        self.outputs = {"Out": np.zeros((1000, 784)).astype("float32")}
+        self.outputs = {"Out": np.zeros(self.shape).astype(self.dtype)}
+
+    def init_dtype(self):
+        pass
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
 
     def verify_output(self, outs):
-        hist, prob = output_hist(np.array(outs[0]))
+        hist, prob = output_hist(np.array(outs[0]), self.dtype)
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
 
 
+class TestFP16UniformRandomOp(TestUniformRandomOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
+    def setUp(self):
+        self.dtype = np.float32
+        self.init_dtype()
+
+    def init_dtype(self):
+        pass
+
     def get_places(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -70,13 +96,18 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
             shape=[4, 784],
             min=-5.0,
             max=10.0,
-            seed=10)
+            seed=10, )
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [4, 784])
-        hist, prob = output_hist(np.array(out.get_tensor()))
+        hist, prob = output_hist(np.array(out.get_tensor()), self.dtype)
         self.assertTrue(
             np.allclose(
                 hist, prob, rtol=0, atol=0.01), "hist: " + str(hist))
+
+
+class TestFP16UniformRandomOpSelectedRows(TestUniformRandomOpSelectedRows):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == "__main__":
