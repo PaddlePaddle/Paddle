@@ -46,7 +46,7 @@ from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
 from transpiler import DistributeTranspiler, InferenceTranspiler, \
-    memory_optimize, release_memory
+    memory_optimize, release_memory, DistributeTranspilerConfig
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
 from lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -56,6 +56,7 @@ import unique_name
 import recordio_writer
 import parallel_executor
 from parallel_executor import *
+from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
@@ -138,5 +139,5 @@ def __bootstrap__():
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
-layers.monkey_patch_variable()
+monkey_patch_variable()
 __bootstrap__()

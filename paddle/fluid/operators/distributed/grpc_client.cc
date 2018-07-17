@@ -281,9 +281,10 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req_count_++;
 }
 
-void GRPCClient::Wait() {
+bool GRPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
-  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+  sync_cond_.wait(lk, [this] { return (req_count_ == 0 || ok_ == false); });
+  return ok_;
 }
 
 void GRPCClient::Proceed() {
@@ -297,6 +298,14 @@ void GRPCClient::Proceed() {
     if (c->status_.ok()) {
       VLOG(3) << c->var_h_.String() << " process";
       c->Process();
+    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+      LOG(ERROR) << c->var_h_.String()
+                 << " meets grpc error:" << c->status_.error_message();
+      {
+        std::lock_guard<std::mutex> lk(sync_mutex_);
+        ok_ = false;
+      }
+      sync_cond_.notify_all();
     } else {
       LOG(FATAL) << c->var_h_.String()
                  << " meets grpc error:" << c->status_.error_message();
