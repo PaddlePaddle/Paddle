@@ -4367,7 +4367,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         helper.set_variable_initializer(
             counter, initializer=Constant(
                 value=begin - 1, force_cpu=True))
-        helper.main_program.global_block().prepend_op(
+        helper.main_program.global_block()._prepend_op(
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
