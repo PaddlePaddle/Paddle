@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detection/poly_util.h"
-// #include "paddle/fluid/operators/detection/poly_util.cc"
 
 namespace paddle {
 namespace operators {
