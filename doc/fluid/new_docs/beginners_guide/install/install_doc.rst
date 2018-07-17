@@ -154,8 +154,7 @@ Windows系统需要通过Docker来使用PaddleaPaddle。Docker是一个虚拟容
 编译方法
 """""""""""""
 
-PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安装编译依赖的步骤，可选的不同编译环境Docker镜像
-可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ 找到。
+PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安装编译依赖的步骤，可选的不同编译环境Docker镜像可以在 `这里 <https://hub.docker.com/r/paddlepaddle/paddle_manylinux_devel/tags/>`_ 找到。
 
 
 **I. 编译CPU-Only版本的PaddlePaddle，需要执行：**
@@ -166,7 +165,7 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
    git clone https://github.com/PaddlePaddle/Paddle.git
    cd Paddle
    # 2. 执行如下命令下载最新版本的docker镜像
-   sudo docker run --name paddle-test -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
+   docker run --name paddle-test -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash
    # 3. 进入docker内执行如下命令编译CPU-Only的二进制安装包
    mkdir -p /paddle/build && cd /paddle/build
    cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_TESTING=OFF
