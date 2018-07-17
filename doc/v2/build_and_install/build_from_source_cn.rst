@@ -39,7 +39,11 @@ PaddlePaddle需要使用Docker环境完成编译，这样可以免去单独安�
    # 4. 或者也可以使用为上述可选步骤构建的镜像（必须先执行第2步）
    docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
-注：上述命令把当前目录（源码树根目录）映射为 container 里的 :code:`/paddle` 目录。
+注：
+
+- 上述命令把当前目录（源码树根目录）映射为 container 里的 :code:`/paddle` 目录。
+
+- 如果您使用的是 manylinux 的镜像进行编译, 那么您需要通过环境变量 :code:`PYTHON_ABI` 来指定一个 `Python ABI <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1#build-paddlepaddle-for-the-different-python-abis>`__.
 
 编译完成后会在build/python/dist目录下生成输出的whl包，可以选在在当前机器安装也可以拷贝到目标机器安装：
 

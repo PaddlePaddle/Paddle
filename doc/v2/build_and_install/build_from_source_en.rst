@@ -40,8 +40,13 @@ If you don't wish to use docker，you need to install several compile dependenci
    # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
    docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
-NOTE: The above command try to mount the current working directory (root directory of source code)
+NOTE: 
+
+- The above command try to mount the current working directory (root directory of source code)
 into :code:`/paddle` directory inside docker container.
+
+- You need to pass in the required environment variable :code:`PYTHON_ABI` to specify a `Python ABI <https://github.com/PaddlePaddle/Paddle/tree/develop/tools/manylinux1#build-paddlepaddle-for-the-different-python-abis>`__
+if you are using the manylinux Docker image.
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local
