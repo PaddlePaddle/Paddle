@@ -328,7 +328,7 @@ def _append_backward_ops_(block,
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block()
-            grad_sub_block.set_forward_block_idx(sub_block.idx)
+            grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
             if cb is not None:
                 if callbacks is None:
@@ -571,7 +571,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
 
     program.current_block_idx = current_block_idx
-    program.sync_with_cpp()
+    program._sync_with_cpp()
     # FIXME(zcd): prevent loss.grad optimized by mem_opt.
     loss.block.var(_append_grad_suffix_(loss.name)).persistable = True
 
@@ -744,7 +744,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
-    prog.sync_with_cpp()
+    prog._sync_with_cpp()
 
     grad_vars = []
     for input_var in inputs:

@@ -730,8 +730,10 @@ class While(object):
         parent_block.append_op(
             type='while',
             inputs={
-                'X':
-                [parent_block.var_recursive(x_name) for x_name in x_name_list],
+                'X': [
+                    parent_block._var_recursive(x_name)
+                    for x_name in x_name_list
+                ],
                 'Condition': [self.cond_var]
             },
             outputs={'Out': out_vars,
@@ -1259,7 +1261,7 @@ class ConditionalBlock(object):
         input_set = set([ipt.name for ipt in self.inputs])
 
         param_list = [
-            parent_block.var_recursive(each_name) for each_name in params
+            parent_block._var_recursive(each_name) for each_name in params
             if each_name not in input_set
         ]
 
