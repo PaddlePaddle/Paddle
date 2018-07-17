@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
 import unittest
 import os
 import sys
@@ -37,8 +38,11 @@ def main():
                     res = unittest.TextTestRunner(stream=buffer).run(tests)
                     if not res.wasSuccessful():
                         some_test_failed = True
-                        print >> sys.stderr, module_name, 'failed\n', buffer.getvalue(
-                        )
+                        print(
+                            module_name,
+                            'failed\n',
+                            buffer.getvalue(),
+                            file=sys.stderr)
 
     if some_test_failed:
         exit(1)

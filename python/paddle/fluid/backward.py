@@ -46,9 +46,17 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     op_desc = core.OpDesc()
     op_desc.set_type(op_type)
     for para, args in list(inputs.items()):
-        op_desc.set_input(para, six.text_type(args))
+        op_desc.set_input(
+            para,
+            list(
+                map(lambda arg: arg.decode() if isinstance(arg, six.binary_type) else arg,
+                    args)))
     for para, args in list(outputs.items()):
-        op_desc.set_output(para, six.text_type(args))
+        op_desc.set_output(
+            para,
+            list(
+                map(lambda arg: arg.decode() if isinstance(arg, six.binary_type) else arg,
+                    args)))
 
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
@@ -106,6 +114,8 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
+    if isinstance(name, six.text_type):
+        name = name.encode()
     pos = name.find(six.b(core.grad_var_suffix()))
     return name[:pos] if pos != -1 else name
 
@@ -115,6 +125,8 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
+    if isinstance(name, six.text_type):
+        name = name.encode()
     return name + six.b(core.grad_var_suffix())
 
 

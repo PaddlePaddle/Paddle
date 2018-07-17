@@ -89,7 +89,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     else:
-        raise ValueError("Not supported numpy dtype " + str(dtype))
+        raise ValueError("Not supported numpy dtype " + six.binary_type(dtype))
 
 
 def dtype_is_floating(dtype):
@@ -200,10 +200,11 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        self.desc = self.block.desc.find_var(six.b(name))
+        name = name if isinstance(name, six.binary_type) else name.encode()
+        self.desc = self.block.desc.find_var(name)
 
         if self.desc is None:
-            self.desc = self.block.desc.var(six.b(name))
+            self.desc = self.block.desc.var(name)
             is_new_var = True
 
         if is_new_var:
@@ -298,8 +299,8 @@ class Variable(object):
         if with_details:
             additional_attr = ("error_clip", "stop_gradient")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         str(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (
+                    attr_name, six.binary_type(getattr(self, attr_name)))
         return res_str
 
     __repr__ = __str__
@@ -475,7 +476,6 @@ class Operator(object):
                  inputs=None,
                  outputs=None,
                  attrs=None):
-
         self.block = block
         self.desc = desc
         self.attrs = attrs
@@ -526,13 +526,15 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        if isinstance(arg, six.binary_type):
+                        if issubclass(arg.__class__, six.string_types):
+                            in_arg_names.append(arg)
+                        elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            if isinstance(arg.name, six.binary_type):
-                                in_arg_names.append(arg.name.decode())
-                            else:
+                            if issubclass(arg.name.__class__, six.string_types):
                                 in_arg_names.append(arg.name)
+                            elif isinstance(arg.name, six.binary_type):
+                                in_arg_names.append(arg.name.decode())
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -547,8 +549,9 @@ class Operator(object):
             if not given == need:
                 raise ValueError(("Incorrect setting for output(s) of "
                                   "operator \"%s\". Need: [%s] Given: [%s]") %
-                                 (type, ", ".join(str(e) for e in need),
-                                  ", ".join(str(e) for e in given)))
+                                 (type,
+                                  ", ".join(six.binary_type(e) for e in need),
+                                  ", ".join(six.binary_type(e) for e in given)))
 
             for out_proto in proto.outputs:
                 out_args = outputs[out_proto.name]
@@ -560,10 +563,12 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    if isinstance(arg.name, six.binary_type):
+                    if issubclass(arg.name.__class__, six.string_types):
+                        out_arg_names.append(arg.name)
+                    elif isinstance(arg.name, six.binary_type):
                         out_arg_names.append(arg.name.decode())
                     else:
-                        out_arg_names.append(arg.name)
+                        out_arg_names.append(six.u(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -908,10 +913,13 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        if not isinstance(name, six.text_type):
-            raise TypeError(
-                "var require string as parameter, but get %s instead." %
-                (type(name)))
+        if not issubclass(name.__class__, six.string_types):
+            if not isinstance(name, six.binary_type):
+                raise TypeError(
+                    "var require string as parameter, but get %s instead." %
+                    (type(name)))
+            else:
+                name = name.decode()
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
@@ -1618,7 +1626,7 @@ class Program(object):
         self._seed = seed
 
     def __repr__(self):
-        return str(self)
+        return self.__str__()
 
     def global_block(self):
         """
@@ -1815,8 +1823,8 @@ class Parameter(Variable):
             additional_attr = ("trainable", "optimize_attr", "regularizer",
                                "gradient_clip_attr", "do_model_average")
             for attr_name in additional_attr:
-                res_str += "%s: %s\n" % (attr_name,
-                                         str(getattr(self, attr_name)))
+                res_str += "%s: %s\n" % (
+                    attr_name, six.binary_type(getattr(self, attr_name)))
         else:
             res_str = Variable.to_string(self, throw_on_error, False)
         return res_str
