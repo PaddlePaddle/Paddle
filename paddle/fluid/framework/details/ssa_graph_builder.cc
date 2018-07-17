@@ -37,6 +37,17 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
             continue;
           }
 
+          bool has_dep = false;
+          for (auto read_out : read_op->Outputs()) {
+            for (auto write_in : write_op->Inputs()) {
+              if (read_out == write_in) {
+                has_dep = true;
+                break;
+              }
+            }
+          }
+          if (has_dep) continue;
+
           auto *dep_var = new DummyVarHandle(
               graph->CreateEmptyNode("dummy", ir::Node::Type::kVariable));
           read_op->AddOutput(dep_var);

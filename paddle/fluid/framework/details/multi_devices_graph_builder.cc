@@ -221,15 +221,15 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
   // forward, backward nodes. E.g. you can't append an forward node
   // at the end of the node list.
   // TODO(panyx0718): FIXME: Needs to sort by forward->backward order.
-  for (auto &node : nodes) {
-    if (node->NodeType() != ir::Node::Type::kOperation) continue;
+  for (ir::Node *node : TopologySortOperationFromInToOut(nodes)) {
+    VLOG(3) << "apply node: " << node->Name() << reinterpret_cast<void *>(node);
     if (boost::get<int>(
             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
         static_cast<int>(OpRole::kRPC)) {
-      CreateRPCOp(&result, node.get());
-    } else if (IsDistTrainOp(node.get(), send_vars, recv_vars)) {
-      CreateDistTrainOp(&result, node.get());
-    } else if (IsScaleLossOp(node.get())) {
+      CreateRPCOp(&result, node);
+    } else if (IsDistTrainOp(node, send_vars, recv_vars)) {
+      CreateDistTrainOp(&result, node);
+    } else if (IsScaleLossOp(node)) {
       // user can customize loss@grad if not use_default_grad_scale_
       if (strategy_.gradient_scale_ !=
           BuildStrategy::GradientScaleStrategy::kCustomized) {
@@ -240,10 +240,11 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
       // It also assumes backward op will always follow the forward op in
       // the block.
       is_forwarding = false;
+      LOG(ERROR) << "forward flipping!!!!!!!";
     } else {
-      int op_dev_id = GetOpDeviceID(node.get());
+      int op_dev_id = GetOpDeviceID(node);
       if (op_dev_id != -1) {  // This op only runs on one specific device.
-        CreateComputationalOp(&result, node.get(), op_dev_id);
+        CreateComputationalOp(&result, node, op_dev_id);
         for (ir::Node *n : node->outputs) {
           var_name_on_devices_.emplace(n->Name(), op_dev_id);
         }
@@ -252,13 +253,11 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
         // gradients.
         if (node->Op()->Type() == "read" && strategy_.enable_data_balance_) {
           node->Op()->SetAttr("throw_eof_exp", false);
-          CreateComputationalOps(&result, node.get(), places_.size());
-          // TODO(paddle-dev): builder shouldn't depend on the out logic of
-          // a specific op.
+          CreateComputationalOps(&result, node, places_.size());
           const auto &data_var_names = node->Op()->Output("Out");
           InsertDataBalanceOp(&result, data_var_names);
         } else {
-          CreateComputationalOps(&result, node.get(), places_.size());
+          CreateComputationalOps(&result, node, places_.size());
         }
 
         if (!is_forwarding && places_.size() > 1) {
@@ -479,8 +478,8 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
 
   PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
   int dev_id = GetVarDeviceID(param_grad[1]);
-  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.[%s, %s]",
-                    node->Op()->Type(), param_grad[0]);
+  PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.[%s, %s, %s]",
+                    node->Op()->Type(), param_grad[0], param_grad[1]);
   return dev_id;
 }
 
