@@ -259,8 +259,11 @@ class OpenFilesOpMaker : public FileReaderMakerBase {
       An OpenFilesOp creates a MultiFileReader, which is able to
       read data multi-threaded from multiple files.
     )DOC");
-    AddAttr<int>("thread_num", "Number of thread to read files.");
-    AddAttr<int>("buffer_size", "The reading buffer of these files.");
+    AddAttr<int>("thread_num",
+                 "The maximal concurrent prefetch thread number. Used only "
+                 "when is_test = False");
+    AddAttr<int>("buffer_size", "The reading buffer of these files.")
+        .GreaterThan(0);
   }
 };
 
