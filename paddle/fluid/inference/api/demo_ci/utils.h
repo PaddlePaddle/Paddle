@@ -13,10 +13,10 @@
 // limitations under the License.
 
 #pragma once
+#include <algorithm>
 #include <string>
 #include <vector>
-
-#include "contrib/inference/paddle_inference_api.h"
+#include "paddle/fluid/inference/api.h"
 
 namespace paddle {
 namespace demo {

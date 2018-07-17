@@ -64,7 +64,7 @@ for WITH_STATIC_LIB in ON OFF; do
     -DWITH_GPU=$TEST_GPU_CPU \
     -DWITH_STATIC_LIB=$WITH_STATIC_LIB
   make -j
-  for use_gpu in false; do
+  for use_gpu in $use_gpu_list; do
     for vis_demo_name in $vis_demo_list; do 
       ./vis_demo \
         --modeldir=../data/$vis_demo_name/model \
