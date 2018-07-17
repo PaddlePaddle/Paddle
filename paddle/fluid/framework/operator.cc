@@ -69,6 +69,21 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+  if (var->IsType<LoDTensor>()) {
+    return DataTypeToString(ToDataType(var->Get<LoDTensor>().type()));
+  } else if (var->IsType<SelectedRows>()) {
+    return DataTypeToString(
+        ToDataType(var->Get<SelectedRows>().value().type()));
+  } else {
+    return "";
+  }
+}
+
 static int GetRowSize(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -172,6 +187,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
         if (row_size >= 0) {
           ss << "[row_size=" << row_size << "]";
         }
+        std::string dtype = GetDtype(*scope, input.second[i]);
+        ss << ":" << dtype;
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }

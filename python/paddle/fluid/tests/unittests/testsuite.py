@@ -114,13 +114,14 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
-        # NOTE(dzhwinter): unwilling type hacking.
+        # NOTE(dzhwinter): type hacking
         # numpy float16 is binded to paddle::platform::float16
-        # in tensor_py.h via the help of uint16 data type since
+        # in tensor_py.h via the help of uint16 datatype. Because
         # the internal memory representation of float16 is
-        # uint16_t in paddle and np.uint16 in numpy, which are
-        # themselves binded together by pybind. So in the testcase,
-        # we feed data use uint16, but the dtype is float16 in fact.
+        # actually uint16_t in paddle. So we use np.uint16 in numpy for
+        # raw memory, it can pass through the pybind. So in the testcase,
+        # we feed data use data.view(uint16), but the dtype is float16 in fact.
+        # The data.view(uint16) means do not cast the data type, but process data as the uint16
         if dtype == np.uint16:
             dtype = np.float16
         return block.create_var(
