@@ -16,7 +16,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include "paddle/contrib/inference/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/api.h"
 
 DEFINE_string(model, "", "Directory of the inference model.");
 

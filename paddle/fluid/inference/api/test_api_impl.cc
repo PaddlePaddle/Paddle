@@ -15,10 +15,10 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gflags/gflags.h"
-#include "paddle/contrib/inference/paddle_inference_api_impl.h"
+#include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
