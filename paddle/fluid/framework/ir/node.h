@@ -26,12 +26,9 @@ namespace ir {
 
 class Node {
  public:
-  enum class Type { kNone, kOperation, kVariable };
-  explicit Node(const std::string& name)
-      : name_(name),
-        var_desc_(nullptr),
-        op_desc_(nullptr),
-        type_(Type::kNone) {}
+  enum class Type { kOperation, kVariable };
+  explicit Node(const std::string& name, Type type)
+      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),

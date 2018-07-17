@@ -41,7 +41,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
         // TODO(paddle-dev): Seems some assumption doesn't hold?
         LOG(ERROR) << op->Type()
                    << " input var not in all_var list: " << each_var_name;
-        var = CreateEmptyNode(each_var_name);
+        var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
         var_nodes[each_var_name] = var;
       }
       node->inputs.push_back(var);
