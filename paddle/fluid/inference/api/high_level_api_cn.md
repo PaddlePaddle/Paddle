@@ -83,5 +83,5 @@ CHECK(predictor->Run(slots, &outputs));
 
 ## 详细代码参考
 
-- [inference demos](./demo)
-- [复杂单线程/多线程例子](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/contrib/inference/test_paddle_inference_api_impl.cc)
+- [inference demos](./demo_ci)
+- [复杂单线程/多线程例子](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/fluid/inference/api/test_api_impl.cc)
