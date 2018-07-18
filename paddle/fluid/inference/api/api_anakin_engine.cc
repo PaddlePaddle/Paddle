@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/contrib/inference/paddle_inference_api_anakin_engine.h"
+#include "paddle/fluid/inference/api/api_anakin_engine.h"
 #include <cuda.h>
+#include <vector>
 
 namespace paddle {
 
@@ -48,8 +49,7 @@ bool PaddleInferenceAnakinPredictor::Run(
     }
     auto d_tensor_in_p = executor_.get_in(input.name);
     float *d_data_p = d_tensor_in_p->mutable_data();
-    if (cudaMemcpy(d_data_p,
-                   static_cast<float *>(input.data.data()),
+    if (cudaMemcpy(d_data_p, static_cast<float *>(input.data.data()),
                    d_tensor_in_p->valid_size() * sizeof(float),
                    cudaMemcpyHostToDevice) != 0) {
       LOG(ERROR) << "copy data from CPU to GPU error";
@@ -71,8 +71,7 @@ bool PaddleInferenceAnakinPredictor::Run(
       output.data.Resize(tensor->valid_size() * sizeof(float));
     }
     // Copy data from GPU -> CPU
-    if (cudaMemcpy(output.data.data(),
-                   tensor->mutable_data(),
+    if (cudaMemcpy(output.data.data(), tensor->mutable_data(),
                    tensor->valid_size() * sizeof(float),
                    cudaMemcpyDeviceToHost) != 0) {
       LOG(ERROR) << "copy data from GPU to CPU error";
@@ -107,13 +106,12 @@ std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
 
 // A factory to help create difference predictor.
 template <>
-std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
-    const AnakinConfig &config) {
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    AnakinConfig, PaddleEngineKind::kAnakin>(const AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
   std::unique_ptr<PaddlePredictor> x(
       new PaddleInferenceAnakinPredictor(config));
   return x;
-};
+}
 
 }  // namespace paddle

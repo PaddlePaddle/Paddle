@@ -21,7 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/contrib/inference/paddle_inference_api_impl.h"
+#include "paddle/fluid/inference/api/api_impl.h"
 
 namespace paddle {
 namespace {
@@ -77,8 +77,8 @@ bool NativePaddlePredictor::Init(
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
-    inference_program_ = paddle::inference::Load(
-        executor_.get(), scope_.get(), config_.model_dir);
+    inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
+                                                 config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
@@ -91,8 +91,8 @@ bool NativePaddlePredictor::Init(
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);
-  executor_->CreateVariables(
-      *inference_program_, sub_scope_ ? sub_scope_ : scope_.get(), 0);
+  executor_->CreateVariables(*inference_program_,
+                             sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
   // Get the feed_target_names and fetch_target_names
   feed_target_names_ = inference_program_->GetFeedTargetNames();
@@ -105,7 +105,7 @@ NativePaddlePredictor::~NativePaddlePredictor() {
     PADDLE_ENFORCE_NOT_NULL(scope_, "Should have parent scope!");
     scope_->DeleteScope(sub_scope_);
   }
-};
+}
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
@@ -135,10 +135,8 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   // if share variables, we need not create variables
   VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(
-      ctx_.get(),
-      sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
-      &feed_targets,
-      &fetch_targets,
+      ctx_.get(), sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
+      &feed_targets, &fetch_targets,
       false /* don't create variable eatch time */);
   VLOG(4) << "Finish prepared context";
   if (!GetFetch(fetchs, output_data)) {
@@ -182,8 +180,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     }
 
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr),
-                inputs[i].data.data(),
+    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                 inputs[i].data.length());
     feeds->push_back(input);
   }
@@ -233,8 +230,7 @@ bool NativePaddlePredictor::GetFetch(
         size_t start = lod[0][j - 1] * common_dim;
         size_t end = lod[0][j] * common_dim;
         if (end > start) {
-          std::copy(output_ptr + start,
-                    output_ptr + end,
+          std::copy(output_ptr + start, output_ptr + end,
                     data.begin() + (j - 1) * max_dim * common_dim);
         }
       }
@@ -258,15 +254,13 @@ bool NativePaddlePredictor::GetFetch(
 }
 
 template <>
-std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
-    const NativeConfig &config) {
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
-        config.fraction_of_gpu_memory,
-        0.f,
+        config.fraction_of_gpu_memory, 0.f,
         "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
     std::vector<std::string> flags;
