@@ -15,10 +15,10 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
-#include <thread>
+#include <thread>  // NOLINT
 
 #include "gflags/gflags.h"
-#include "paddle/contrib/inference/paddle_inference_api_impl.h"
+#include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -121,8 +121,8 @@ void MainImageClassification(bool use_gpu) {
   // which should be in the range [0.0, 1.0].
   feed_target_shapes[0][0] = batch_size;
   framework::DDim input_dims = framework::make_ddim(feed_target_shapes[0]);
-  SetupTensor<float>(
-      &input, input_dims, static_cast<float>(0), static_cast<float>(1));
+  SetupTensor<float>(&input, input_dims, static_cast<float>(0),
+                     static_cast<float>(1));
   std::vector<framework::LoDTensor*> cpu_feeds;
   cpu_feeds.push_back(&input);
 
