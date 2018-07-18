@@ -59,7 +59,7 @@ def encoder():
 
 def decoder_state_cell(context):
     h = InitState(init=context, need_reorder=True)
-    state_cell = StateCell(inputs={'x': None}, states={'h': h})
+    state_cell = StateCell(inputs={'x': None}, states={'h': h}, out_state='h')
 
     @state_cell.state_updater
     def updater(state_cell):
@@ -110,7 +110,7 @@ def decoder_decode(state_cell):
         init_scores=init_scores,
         target_dict_dim=target_dict_dim,
         word_dim=word_dim,
-        init_var_dict={},
+        input_var_dict={},
         topk_size=topk_size,
         sparse_emb=IS_SPARSE,
         max_len=max_length,

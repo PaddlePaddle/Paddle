@@ -177,14 +177,14 @@ class StateCell(object):
           hidden_state = InitState(init=encoder_out, need_reorder=True)
           state_cell = StateCell(
               inputs={'current_word': None},
-              states={'h': hidden_state})
+              states={'h': hidden_state},
+              out_state='h')
     """
 
-    def __init__(self, inputs, states, name=None):
+    def __init__(self, inputs, states, out_state, name=None):
         self._helper = LayerHelper('state_cell', name=name)
         self._cur_states = {}
         self._state_names = []
-        self._states_holder = {}
         for state_name, state in states.items():
             if not isinstance(state, InitState):
                 raise ValueError('state must be an InitState object.')
@@ -196,6 +196,7 @@ class StateCell(object):
         self._states_holder = {}
         self._switched_decoder = False
         self._state_updater = None
+        self._out_state = out_state
 
     def _enter_decoder(self, decoder_obj):
         if self._in_decoder == True or self._cur_decoder_obj is not None:
@@ -358,6 +359,15 @@ class StateCell(object):
                                  'switch_decoder been invoked.')
             decoder_state[id(self._cur_decoder_obj)].update_state(
                 self._cur_states[state_name])
+
+    def out_state(self):
+        """
+        Get the output state variable. This must be called after update_states.
+
+        Returns:
+            The output variable of the RNN cell.
+        """
+        return self._cur_states[self._out_state]
 
 
 class TrainingDecoder(object):
@@ -554,7 +564,7 @@ class BeamSearchDecoder(object):
                  init_scores,
                  target_dict_dim,
                  word_dim,
-                 init_var_dict={},
+                 input_var_dict={},
                  topk_size=50,
                  sparse_emb=True,
                  max_len=100,
@@ -590,7 +600,7 @@ class BeamSearchDecoder(object):
         self._topk_size = topk_size
         self._sparse_emb = sparse_emb
         self._word_dim = word_dim
-        self._init_var_dict = init_var_dict
+        self._input_var_dict = input_var_dict
 
     @contextlib.contextmanager
     def block(self):
@@ -653,7 +663,7 @@ class BeamSearchDecoder(object):
             feed_dict = {}
             update_dict = {}
 
-            for init_var_name, init_var in self._init_var_dict.items():
+            for init_var_name, init_var in self._input_var_dict.items():
                 if init_var_name not in self.state_cell._inputs:
                     raise ValueError('Variable ' + init_var_name +
                                      ' not found in StateCell!\n')
@@ -673,10 +683,9 @@ class BeamSearchDecoder(object):
             for i, input_name in enumerate(self._state_cell._inputs):
                 if input_name not in feed_dict:
                     feed_dict[input_name] = prev_ids_embedding
-                break
 
             self.state_cell.compute_state(inputs=feed_dict)
-            current_state = self.state_cell.get_state('h')
+            current_state = self.state_cell.out_state()
             current_state_with_lod = layers.lod_reset(
                 x=current_state, y=prev_scores)
             scores = layers.fc(input=current_state_with_lod,
