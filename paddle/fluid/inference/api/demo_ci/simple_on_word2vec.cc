@@ -19,8 +19,8 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <memory>
-#include <thread>
-#include "contrib/inference/paddle_inference_api.h"
+#include <thread>  //NOLINT
+#include "paddle/fluid/inference/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -63,8 +63,8 @@ void Main(bool use_gpu) {
     PADDLE_ENFORCE(outputs.size(), 1UL);
     // Check the output buffer size and result of each tid.
     PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
-    float result[5] = {
-        0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
+    float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
+                       0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
@@ -107,8 +107,8 @@ void MainThreads(int num_threads, bool use_gpu) {
         PADDLE_ENFORCE(outputs.size(), 1UL);
         // Check the output buffer size and result of each tid.
         PADDLE_ENFORCE(outputs.front().data.length(), 33168UL);
-        float result[5] = {
-            0.00129761, 0.00151112, 0.000423564, 0.00108815, 0.000932706};
+        float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
+                           0.000932706};
         const size_t num_elements =
             outputs.front().data.length() / sizeof(float);
         // The outputs' buffers are in CPU memory.
