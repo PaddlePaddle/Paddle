@@ -12,16 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 try:
-    from version import full_version as __version__
-    from version import commit as __git_commit__
+    from paddle.version import full_version as __version__
+    from paddle.version import commit as __git_commit__
 
 except ImportError:
     import sys
-    sys.stderr.write('''Warning with import paddle: you should not 
+    sys.stderr.write('''Warning with import paddle: you should not
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
-import reader
-import dataset
-import batch
+import paddle.reader
+import paddle.dataset
+import paddle.batch
 batch = batch.batch

@@ -85,6 +85,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'hsigmoid',
     'beam_search',
     'row_conv',
     'multiplex',
@@ -3871,6 +3872,74 @@ def nce(input,
     return cost / (num_neg_samples + 1)
 
 
+def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
+    """
+    The hierarchical sigmoid operator is used to accelerate the training
+    process of language model. This operator organizes the classes into a 
+    complete binary tree, each leaf node represents a class(a word) and each
+    internal node acts as a binary classifier. For each word there's a unique
+    path from root to it's leaf node, hsigmoid calculate the cost for each
+    internal node on the path, and sum them to get a total cost. hsigmoid can
+    achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    represents the size of word dict.
+
+    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+    
+    Args:
+        input (Variable): The input tensor variable with shape 
+            :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
+            and :math:`D` is the feature size.
+        label (Variable): The tensor variable contains labels of training data.
+            It's a tensor with shape is :math:`[N \\times 1]`.
+        num_classes: (int), The number of classes, must not be less than 2.
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter
+             attribute for learnable parameters/weights of this layer.
+        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter 
+             attribute for the bias of this layer. If it is set to False, no
+             bias will be applied.
+
+    Returns:
+        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
+    """
+
+    helper = LayerHelper('hierarchical_sigmoid', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    pre_out = helper.create_tmp_variable(dtype)
+    dim = input.shape[1]
+    if num_classes < 2:
+        raise ValueError("num_classes must not be less than 2.")
+    weights = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[num_classes - 1, dim],
+        is_bias=False,
+        dtype=input.dtype)
+    inputs = {"X": input, "W": weights, "Label": label}
+    if helper.bias_attr:
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=[1, num_classes - 1],
+            is_bias=True,
+            dtype=input.dtype)
+        inputs['Bias'] = bias
+    helper.append_op(
+        type="hierarchical_sigmoid",
+        inputs=inputs,
+        outputs={"Out": out,
+                 "PreOut": pre_out},
+        attrs={"num_classes": num_classes})
+    return out
+
+
 def transpose(x, perm, name=None):
     """
     Permute the dimensions of `input` according to `perm`.
@@ -4298,7 +4367,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         helper.set_variable_initializer(
             counter, initializer=Constant(
                 value=begin - 1, force_cpu=True))
-        helper.main_program.global_block().prepend_op(
+        helper.main_program.global_block()._prepend_op(
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
