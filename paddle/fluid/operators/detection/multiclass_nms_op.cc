@@ -153,6 +153,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t num_boxes = bbox.dims()[0];
     // 4: [xmin ymin xmax ymax]
     // 8: [x1 y1 x2 y2 x3 y3 x4 y4]
+    // 32: [x1 y1 x2 y2 ...  x16 y16]
     int64_t box_size = bbox.dims()[1];
 
     std::vector<T> scores_data(num_boxes);
@@ -171,11 +172,13 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
         if (keep) {
           const int kept_idx = (*selected_indices)[k];
           T overlap = T(0.);
+          // 4: [xmin ymin xmax ymax]
           if (box_size == 4) {
             overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
                                         bbox_data + kept_idx * box_size, true);
           }
-          if (box_size == 8) {
+          // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 32: [x1 y1 x2 y2 ...  x16 y16]
+          if (box_size == 8 || box_size == 32) {
             overlap =
                 PolyIoU<T>(bbox_data + idx * box_size,
                            bbox_data + kept_idx * box_size, box_size, true);
