@@ -27,6 +27,10 @@ import os
 import sys
 import signal
 
+# Fix seed for test
+fluid.default_startup_program().random_seed = 1
+fluid.default_main_program().random_seed = 1
+
 train_parameters = {
     "input_size": [3, 224, 224],
     "input_mean": [0.485, 0.456, 0.406],
@@ -121,14 +125,9 @@ class SE_ResNeXt():
 
         pool = fluid.layers.pool2d(
             input=conv, pool_size=7, pool_type='avg', global_pooling=True)
-        drop = fluid.layers.dropout(x=pool, dropout_prob=0.5)
+        drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
-        out = fluid.layers.fc(input=drop,
-                              size=class_dim,
-                              act='softmax',
-                              param_attr=fluid.param_attr.ParamAttr(
-                                  initializer=fluid.initializer.Uniform(-stdv,
-                                                                        stdv)))
+        out = fluid.layers.fc(input=drop, size=class_dim, act='softmax')
         return out
 
     def shortcut(self, input, ch_out, stride):
@@ -185,26 +184,21 @@ class SE_ResNeXt():
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
         squeeze = fluid.layers.fc(input=pool,
                                   size=num_channels / reduction_ratio,
-                                  act='relu',
-                                  param_attr=fluid.param_attr.ParamAttr(
-                                      initializer=fluid.initializer.Uniform(
-                                          -stdv, stdv)))
+                                  act='relu')
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
         excitation = fluid.layers.fc(input=squeeze,
                                      size=num_channels,
-                                     act='sigmoid',
-                                     param_attr=fluid.param_attr.ParamAttr(
-                                         initializer=fluid.initializer.Uniform(
-                                             -stdv, stdv)))
+                                     act='sigmoid')
         scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
         return scale
 
 
 def get_model(batch_size):
     # Input data
-    image = fluid.layers.data(
-        name='image', shape=train_parameters["input_size"], dtype='float32')
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    image = fluid.layers.fill_constant(
+        shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
+    label = fluid.layers.fill_constant(
+        shape=[batch_size, 1], dtype='int64', value=0.0)
 
     # Train program
     model = SE_ResNeXt(layers=50)
@@ -220,7 +214,6 @@ def get_model(batch_size):
 
     # Optimization
     total_images = 6149  # flowers
-    # batch_size = 256
     epochs = [30, 60, 90]
     step = int(total_images / batch_size + 1)
 
@@ -234,13 +227,14 @@ def get_model(batch_size):
             boundaries=bd, values=lr),
         momentum=0.9,
         regularization=fluid.regularizer.L2Decay(1e-4))
+    optimizer.minimize(avg_cost)
 
     # Reader
     train_reader = paddle.batch(
         paddle.dataset.flowers.train(), batch_size=batch_size)
     test_reader = paddle.batch(
         paddle.dataset.flowers.test(), batch_size=batch_size)
-    optimizer.minimize(avg_cost)
+
     return test_program, avg_cost, train_reader, test_reader, acc_top1, out
 
 
@@ -267,7 +261,6 @@ class DistSeResneXt2x2:
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
-
         exe.run(pserver_prog)
 
     def _wait_ps_ready(self, pid):
@@ -284,13 +277,19 @@ class DistSeResneXt2x2:
             except os.error:
                 retry_times -= 1
 
-    def run_trainer(self, place, endpoints, trainer_id, trainers):
+    def run_trainer(self, place, endpoints, trainer_id, trainers, is_dist=True):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = get_model(
             batch_size=20)
-        t = get_transpiler(trainer_id,
-                           fluid.default_main_program(), endpoints, trainers)
+        if is_dist:
+            t = get_transpiler(trainer_id,
+                               fluid.default_main_program(), endpoints,
+                               trainers)
+            trainer_prog = t.get_trainer_program()
+        else:
+            trainer_prog = fluid.default_main_program()
 
-        trainer_prog = t.get_trainer_program()
+        startup_exe = fluid.Executor(place)
+        startup_exe.run(fluid.default_startup_program())
 
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
@@ -308,40 +307,45 @@ class DistSeResneXt2x2:
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        for pass_id in xrange(10):
-            for batch_id, data in enumerate(train_reader()):
-                loss, = exe.run(feed=feeder.feed(data),
-                                fetch_list=[avg_cost.name])
-                print(loss)
+        reader_generator = train_reader()
+        first_loss, = exe.run(fetch_list=[avg_cost.name])
+        print(first_loss)
+        for i in xrange(5):
+            loss, = exe.run(fetch_list=[avg_cost.name])
+        last_loss, = exe.run(fetch_list=[avg_cost.name])
+        print(last_loss)
 
 
 def main(role="pserver",
          endpoints="127.0.0.1:9123",
          trainer_id=0,
          current_endpoint="127.0.0.1:9123",
-         trainers=1):
+         trainers=1,
+         is_dist=True):
     model = DistSeResneXt2x2()
     if role == "pserver":
         model.run_pserver(endpoints, trainers, current_endpoint, trainer_id)
     else:
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-        model.run_trainer(p, endpoints, trainer_id, trainers)
+        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 6:
+    if len(sys.argv) != 7:
         print(
-            "Usage: python dist_se_resnext.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers]"
+            "Usage: python dist_se_resnext.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist]"
         )
     role = sys.argv[1]
     endpoints = sys.argv[2]
     trainer_id = int(sys.argv[3])
     current_endpoint = sys.argv[4]
     trainers = int(sys.argv[5])
+    is_dist = True if sys.argv[6] == "TRUE" else False
     main(
         role=role,
         endpoints=endpoints,
         trainer_id=trainer_id,
         current_endpoint=current_endpoint,
-        trainers=trainers)
+        trainers=trainers,
+        is_dist=is_dist)
