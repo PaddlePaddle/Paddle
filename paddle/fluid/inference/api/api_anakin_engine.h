@@ -19,7 +19,8 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/contrib/inference/paddle_inference_api.h"
+#include <vector>
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 // from anakin
 #include "framework/core/net/net.h"
@@ -31,7 +32,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
   PaddleInferenceAnakinPredictor() {}
 
-  PaddleInferenceAnakinPredictor(const AnakinConfig& config);
+  explicit PaddleInferenceAnakinPredictor(const AnakinConfig& config);
 
   // NOTE Unlike the native engine, the buffers of anakin engine's output_data
   // should be allocated first.
@@ -48,8 +49,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::graph::Graph<anakin::NV,
-                       anakin::saber::AK_FLOAT,
+  anakin::graph::Graph<anakin::NV, anakin::saber::AK_FLOAT,
                        anakin::Precision::FP32>
       graph_;
   anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
