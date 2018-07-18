@@ -64,18 +64,7 @@ void RPCServer::IncreaseBatchBarrier(const std::string rpc_name) {
   }
 }
 
-void RPCServer::BeginPass() {
-  VLOG(4) << "RPCServer begin increase pass barrier";
-  {
-    std::unique_lock<std::mutex> lock(mutex_);
-    client_num_++;
-    VLOG(4) << "increase client_num to: " << client_num_;
-  }
-  barrier_cond_.notify_all();
-}
-
-void RPCServer::EndPass() {
-  VLOG(4) << "RPCServer begin increase pass barrier";
+void RPCServer::Complete() {
   {
     std::unique_lock<std::mutex> lock(mutex_);
     client_num_--;
@@ -83,8 +72,17 @@ void RPCServer::EndPass() {
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
       barrier_counter_[kRequestGet]--;
     }
+    if (client_num_ == 0) {
+      exit_flag_ = true;
+      VLOG(1) << "No activate Trainer instance, PServer will exit...";
+    }
   }
   barrier_cond_.notify_all();
+}
+
+int RPCServer::GetClientNum() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  return client_num_;
 }
 
 void RPCServer::ResetBarrierCounter() {

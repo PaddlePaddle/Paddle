@@ -46,16 +46,10 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
 #ifdef PADDLE_WITH_DISTRIBUTE
-void Executor::BeginPass() {
+void Executor::Complete() {
   ::paddle::operators::distributed::RPCClient::GetInstance<
       ::paddle::operators::distributed::GRPCClient>()
-      ->SendBeginPass();
-}
-
-void Executor::EndPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
-      ->SendEndPass();
+      ->SendComplete();
 }
 #endif
 
