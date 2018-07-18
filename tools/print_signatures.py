@@ -64,4 +64,4 @@ def visit_all_module(mod):
 visit_all_module(importlib.import_module(sys.argv[1]))
 
 for name in member_dict:
-    print name, member_dict[name]
+    print(name, member_dict[name])

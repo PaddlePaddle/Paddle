@@ -124,7 +124,7 @@ class Timeline(object):
         return cur_pid
 
     def _allocate_pids(self):
-        for k, profile_pb in self._profile_dict.iteritems():
+        for k, profile_pb in self._profile_dict.items():
             for event in profile_pb.events:
                 if event.type == profiler_pb2.Event.CPU:
                     if (k, event.device_id, "CPU") not in self._devices:
@@ -140,7 +140,7 @@ class Timeline(object):
                                                     (k, event.device_id), pid)
 
     def _allocate_events(self):
-        for k, profile_pb in self._profile_dict.iteritems():
+        for k, profile_pb in self._profile_dict.items():
             for event in profile_pb.events:
                 if event.type == profiler_pb2.Event.CPU:
                     type = "CPU"

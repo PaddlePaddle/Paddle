@@ -12,11 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 # import all class inside framework into fluid module
 from . import framework
 from .framework import *
 # import all class inside executor into fluid module
+from . import executor
+from .executor import *
+
+from . import trainer
+from .trainer import Trainer
+from .trainer import BeginEpochEvent
+from .trainer import EndEpochEvent
+from .trainer import BeginStepEvent
+from .trainer import EndStepEvent
+from .trainer import CheckpointConfig
+
+from . import inferencer
+from .inferencer import Inferencer
+
 from . import io
 from . import evaluator
 from . import initializer
