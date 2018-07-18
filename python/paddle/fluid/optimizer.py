@@ -240,7 +240,7 @@ class Optimizer(object):
             self._finish_update(loss.block, parameters_and_grads)
 
             end = len(global_block.ops)
-            return global_block.slice_ops(start, end)
+            return global_block._slice_ops(start, end)
 
     def minimize(self,
                  loss,
@@ -1180,16 +1180,16 @@ class ModelAverage(Optimizer):
                 self._add_average_restore_op(block, param_grad)
 
     def _add_average_apply_op(self, block, param_grad):
-        param = block.clone_variable(param_grad[0])
-        grad = block.clone_variable(param_grad[1])
-        sum_1 = block.clone_variable(self._get_accumulator('sum_1', param))
-        sum_2 = block.clone_variable(self._get_accumulator('sum_2', param))
-        sum_3 = block.clone_variable(self._get_accumulator('sum_3', param))
-        num_accumulates = block.clone_variable(
+        param = block._clone_variable(param_grad[0])
+        grad = block._clone_variable(param_grad[1])
+        sum_1 = block._clone_variable(self._get_accumulator('sum_1', param))
+        sum_2 = block._clone_variable(self._get_accumulator('sum_2', param))
+        sum_3 = block._clone_variable(self._get_accumulator('sum_3', param))
+        num_accumulates = block._clone_variable(
             self._get_accumulator('num_accumulates', param))
-        old_num_accumulates = block.clone_variable(
+        old_num_accumulates = block._clone_variable(
             self._get_accumulator('old_num_accumulates', param))
-        num_updates = block.clone_variable(
+        num_updates = block._clone_variable(
             self._get_accumulator('num_updates', param))
         # backup param value to grad
         layers.assign(input=param, output=grad)
@@ -1203,8 +1203,8 @@ class ModelAverage(Optimizer):
         layers.elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):
-        param = block.clone_variable(param_grad[0])
-        grad = block.clone_variable(param_grad[1])
+        param = block._clone_variable(param_grad[0])
+        grad = block._clone_variable(param_grad[1])
         layers.assign(input=grad, output=param)
 
     def _append_average_accumulate_op(self, param):

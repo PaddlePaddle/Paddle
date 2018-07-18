@@ -20,7 +20,7 @@ def delete_ops(block, ops):
         [block.remove_op(start) for _ in range(end - start + 1)]
     except Exception as e:
         raise e
-    block.program.sync_with_cpp()
+    block.program._sync_with_cpp()
 
 
 def find_op_by_input_arg(block, arg_name):

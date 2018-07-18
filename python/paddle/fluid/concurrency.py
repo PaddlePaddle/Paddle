@@ -69,8 +69,10 @@ class Go(BlockGuard):
         parent_block.append_op(
             type='go',
             inputs={
-                'X':
-                [parent_block.var_recursive(x_name) for x_name in x_name_list]
+                'X': [
+                    parent_block._var_recursive(x_name)
+                    for x_name in x_name_list
+                ]
             },
             outputs={},
             attrs={'sub_block': go_block})
@@ -259,7 +261,7 @@ class Select(BlockGuard):
             if var_name in intermediate
         ]
 
-        X = [select_block.var_recursive(x_name) for x_name in params]
+        X = [select_block._var_recursive(x_name) for x_name in params]
 
         # Needs to be used by `equal` inside the cases block.
         X.append(self.case_to_execute)

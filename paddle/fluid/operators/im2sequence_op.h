@@ -109,12 +109,13 @@ class Im2SequenceKernel : public framework::OpKernel<T> {
       }
       out->set_lod(lod);
     } else {
-      out->mutable_data<T>(ctx.GetPlace());
       int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
                                            paddings[2], strides[0]);
       int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
                                           paddings[3], strides[1]);
-
+      out->mutable_data<T>({batch_size * output_height * output_width,
+                            img_channels * kernels[0] * kernels[1]},
+                           ctx.GetPlace());
       const std::vector<int> dilations({1, 1});
       auto out_dims = out->dims();
       out->Resize({batch_size, out->numel() / batch_size});

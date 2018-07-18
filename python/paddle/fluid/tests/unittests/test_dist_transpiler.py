@@ -304,10 +304,50 @@ class TestL2Decay(TranspilerTest):
         # TODO(typhoonzero): test clipping and L2Decay ops are removed from trainer
 
 
-    # FIXME(typhoonzero): need to add test for async case:
-    # see https://github.com/PaddlePaddle/Paddle/issues/11691
-class TestAsyncSGD(TranspilerTest):
-    pass
+class TestL2DecayWithPiecewise(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=fluid.ParamAttr(name='fc_b'))
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        base_lr = 1.0
+        bd = [1, 10, 20, 30]
+        lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+        sgd_optimizer = fluid.optimizer.Momentum(
+            learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr),
+            momentum=0.9,
+            regularization=fluid.regularizer.L2Decay(1e-4))
+        sgd_optimizer.minimize(avg_cost)
+        return
+
+    def test_transpiler(self):
+        pserver, startup = self.get_pserver(self.pserver1_ep)
+        trainer = self.get_trainer()
+
+        self.assertEqual(len(pserver.blocks), 9)
+        self.assertEqual([op.type for op in pserver.blocks[1].ops], [
+            "increment", "cast", "fill_constant", "fill_constant", "less_than",
+            "logical_not", "conditional_block", "fill_constant",
+            "fill_constant", "less_than", "logical_not", "logical_and",
+            "logical_and", "conditional_block", "fill_constant",
+            "fill_constant", "less_than", "logical_not", "logical_and",
+            "logical_and", "conditional_block", "fill_constant",
+            "fill_constant", "less_than", "logical_not", "logical_and",
+            "logical_and", "conditional_block", "fill_constant",
+            "conditional_block"
+        ])
+        self.assertEqual(
+            [op.type for op in pserver.blocks[7].ops],
+            ["sum", "scale", "scale", "elementwise_add", "momentum"])
+        self.assertEqual(
+            [op.type for op in pserver.blocks[8].ops],
+            ["sum", "scale", "scale", "elementwise_add", "momentum"])
 
 
 if __name__ == "__main__":
