@@ -27,19 +27,17 @@ class PyReader : public framework::FileReader {
     queue_ = queue;
   }
 
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+  void ReadNext(std::vector<framework::LoDTensor>* out) override {
     bool success;
     *out = queue_->Pop(&success);
     if (!success) out->clear();
   }
 
+  void Shutdown() override { queue_->Close(); }
+
+  void Start() override { queue_->ReOpen(); }
+
  private:
-  void ShutdownImpl() override { /* TODO */
-  }
-
-  void StartImpl() override { /* TODO */
-  }
-
   std::shared_ptr<LoDTensorBlockingQueue> queue_;
 };
 
