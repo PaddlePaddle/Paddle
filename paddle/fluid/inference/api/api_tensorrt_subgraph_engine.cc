@@ -81,8 +81,8 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   bool Run(const std::vector<PaddleTensor>& inputs,
            std::vector<PaddleTensor>* output_data,
            int batch_size = -1) override {
-    PADDLE_ENFORCE_GT(
-        batch_size, 0, "TensorRT engine needs the argument batch_size set");
+    PADDLE_ENFORCE_GT(batch_size, 0,
+                      "TensorRT engine needs the argument batch_size set");
     FLAGS_tensorrt_engine_batch_size = batch_size;
     return NativePaddlePredictor::Run(inputs, output_data, batch_size);
   }
