@@ -167,7 +167,13 @@ class StateCell(object):
             RNN step.
         states (dict): A feeding dict of {name(str) : InitState object}. It
             specifies the names of hidden states and their initialized state.
+        out_state (str): A string that specifies the name of hidden state that
+            will be used to compute the score in beam search process.
         name (str): The name of the RNN cell. Default None.
+
+    Raises:
+        `ValueError`: If the initial state is not an instance of InitState, or
+            the out_state is not in the dict of states.
 
     Returns:
         StateCell: The initialized StateCell object.
@@ -197,6 +203,8 @@ class StateCell(object):
         self._switched_decoder = False
         self._state_updater = None
         self._out_state = out_state
+        if self._out_state not in self._cur_states:
+            raise ValueError('out_state must be one state in states')
 
     def _enter_decoder(self, decoder_obj):
         if self._in_decoder == True or self._cur_decoder_obj is not None:
@@ -522,9 +530,9 @@ class BeamSearchDecoder(object):
         init_scores (Variable): The associated score of each id.
         target_dict_dim (int): Size of dictionary.
         word_dim (int): Word embedding dimension.
-        init_var_dict (dict): A feeding dict to feed the required variables to
-            the state cell. It will be used by state_cell 's compute method.
-            Default empty.
+        input_var_dict (dict): A feeding dict to feed the required input
+            variables to the state cell. It will be used by state_cell 's
+            compute method. Default empty.
         topk_size (int): The topk size used for beam search. Default 50.
         max_len (int): The maximum allowed length of the generated sentence.
             Default 100.
