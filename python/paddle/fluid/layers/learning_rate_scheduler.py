@@ -277,28 +277,28 @@ def piecewise_decay(boundaries, values):
 
     global_step = _decay_step_counter()
 
-    with init_on_cpu():
-        lr = tensor.create_global_var(
-            shape=[1],
-            value=0.0,
-            dtype='float32',
-            persistable=True,
-            name="learning_rate")
+    lr = tensor.create_global_var(
+        shape=[1],
+        value=0.0,
+        dtype='float32',
+        persistable=True,
+        name="learning_rate")
 
-        with control_flow.Switch() as switch:
-            for i in range(len(boundaries)):
-                boundary_val = tensor.fill_constant(
-                    shape=[1], dtype='float32', value=float(boundaries[i]))
-                value_var = tensor.fill_constant(
-                    shape=[1], dtype='float32', value=float(values[i]))
-                with switch.case(global_step < boundary_val):
-                    tensor.assign(value_var, lr)
-            last_value_var = tensor.fill_constant(
+    with control_flow.Switch() as switch:
+        for i in range(len(boundaries)):
+            boundary_val = tensor.fill_constant(
                 shape=[1],
                 dtype='float32',
-                value=float(values[len(values) - 1]))
-            with switch.default():
-                tensor.assign(last_value_var, lr)
+                value=float(boundaries[i]),
+                force_cpu=True)
+            value_var = tensor.fill_constant(
+                shape=[1], dtype='float32', value=float(values[i]))
+            with switch.case(global_step < boundary_val):
+                tensor.assign(value_var, lr)
+        last_value_var = tensor.fill_constant(
+            shape=[1], dtype='float32', value=float(values[len(values) - 1]))
+        with switch.default():
+            tensor.assign(last_value_var, lr)
 
     return lr
 
@@ -333,9 +333,9 @@ def append_LARS(params_grads, learning_rate, weight_decay):
         grad_norm = ops.sqrt(nn.reduce_sum(input=ops.square(grad)))
         if type(param_lr) == float and param_lr == 1.0:
             decayed_lr = learning_rate * param_norm \
-                         / _balanced_weight(param_norm, grad_norm)
+                / _balanced_weight(param_norm, grad_norm)
         else:
             decayed_lr = learning_rate * param_lr * param_norm \
-                         / _balanced_weight(param_norm, grad_norm)
+                / _balanced_weight(param_norm, grad_norm)
         # set back param local learning rate
         param.optimize_attr['learning_rate'] = decayed_lr
