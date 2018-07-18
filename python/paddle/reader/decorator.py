@@ -20,7 +20,7 @@ __all__ = [
 from threading import Thread
 import subprocess
 
-from Queue import Queue
+from six.moves.queue import Queue
 import itertools
 import random
 import zlib

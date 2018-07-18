@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
 import decorators
 import unittest
 
@@ -20,7 +21,7 @@ import unittest
 class TestGetPlaces(unittest.TestCase):
     @decorators.prog_scope()
     def test_get_places(self):
-        places = fluid.layers.get_places()
+        places = get_places()
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         exe.run(fluid.default_main_program())

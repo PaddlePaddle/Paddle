@@ -22,9 +22,9 @@ from ..executor import global_scope
 from layer_function_generator import generate_layer_fn, templatedoc
 
 __all__ = [
-    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
-    'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'Preprocessor', 'load'
+    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
+    'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
+    'load'
 ]
 
 
@@ -445,6 +445,88 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
+def py_reader(capacity, shapes, dtypes, lod_levels=None):
+    """
+    Create a reader and blocking queue for data feeding in Python
+    
+    This layer returns a Reader Variable and a BlockingQueue.
+    The BlockingQueue provides `push()` method to push a `LoDTensorArray` 
+    object into the queue in Python side. In C++ side, the Reader 
+    Variable would invoke `pop()` method of the queue to retrieve the 
+    feeding data. The process of feeding data in Python side and fetching 
+    data in C++ side can run in parallel. The BlockingQueue should be closed 
+    using `close()` method when unused.
+
+    Args:
+       capacity(int): The maximum capacity of the BlockingQueue.
+       shapes(list): List of tuples which declaring data shapes.
+       dtypes(list): List of strs which declaring data type. 
+       lod_levels(list): List of ints which declaring data lod_level.
+
+    Returns:
+       tuple(Variable, BlockingQueue):
+       A Reader Variable from which we can get feeding data.
+       
+       A BlockingQueue object for data feeding.
+
+    Examples:
+
+        .. code-block:: python
+
+            reader, queue = fluid.layers.py_reader(
+                                             capacity=10,
+                                             shapes=[[-1,3,224,224], [-1,1]],
+                                             dtypes=['float32', 'int64'])
+            # Via the reader, we can use 'read_file' layer to get data:
+            image, label = fluid.layers.read_file(reader)
+            
+            # Via the blocking queue, we can feed data using threads
+            def feed_data(queue, feed_images, feed_labels):
+                for feed_image, feed_label in zip(feed_images, feed_labels):
+                    data = core.LoDTensorArray()
+                    data.append(feed_image)
+                    data.append(feed_label)
+                    queue.push(data)
+            
+            thread = threading.Thread(target=feed_data, args=(queue, feed_images, feed_labels))
+            thread.start()
+    """
+    dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
+    shape_concat = []
+    ranks = []
+
+    for shape in shapes:
+        shape_concat.extend(shape)
+        ranks.append(len(shape))
+
+    if lod_levels is None:
+        lod_levels = [0] * len(shapes)
+
+    queue_name = unique_name('lod_tensor_blocking_queue')
+    var = global_scope().var(queue_name)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+
+    startup_blk = default_startup_program().current_block()
+    startup_var = startup_blk.create_var(name=unique_name('create_py_reader'))
+    startup_blk.append_op(
+        type='create_py_reader',
+        inputs={'blocking_queue': queue_name},
+        outputs={'Out': [startup_var]},
+        attrs={
+            'shape_concat': shape_concat,
+            'lod_levels': lod_levels,
+            'ranks': ranks
+        })
+
+    startup_var.desc.set_dtypes(dtypes)
+    startup_var.persistable = True
+
+    main_prog_var = _copy_reader_var_(default_main_program().current_block(),
+                                      startup_var)
+
+    return monkey_patch_reader_methods(main_prog_var), feed_queue
+
+
 def open_files(filenames,
                shapes,
                lod_levels,
@@ -719,7 +801,7 @@ class Preprocessor(object):
         self.sink_var_names = None
         self.status = Preprocessor.BEFORE_SUB_BLOCK
 
-    def is_completed(self):
+    def _is_completed(self):
         return self.sub_block and self.source_var_names and self.sink_var_names
 
     @contextlib.contextmanager
@@ -729,7 +811,7 @@ class Preprocessor(object):
         yield
         self.main_prog.rollback()
         self.status = Preprocessor.AFTER_SUB_BLOCK
-        if not self.is_completed():
+        if not self._is_completed():
             raise RuntimeError(
                 "The definition of preprocessor is incompleted! "
                 "Please make sure that you have set input and output "
