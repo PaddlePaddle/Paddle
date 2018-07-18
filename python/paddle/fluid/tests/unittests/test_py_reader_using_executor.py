@@ -56,7 +56,8 @@ def simple_fc_net(in_size,
         capacity=queue_capacity,
         shapes=[[-1, in_size], [-1, 1]],
         lod_levels=[0, 0],
-        dtypes=['float32', 'int64'])
+        dtypes=['float32', 'int64'],
+        use_double_buffer=False)
     feed_queue = reader.queue
     reader = fluid.layers.batch(reader, batch_size=batch_size)
     if use_double_buffer:
