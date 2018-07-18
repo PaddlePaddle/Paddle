@@ -15,7 +15,7 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <gtest/gtest.h>
-#include "paddle/fluid/inference/api/api.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle {
 
