@@ -24,11 +24,6 @@ TEST_F(DFG_Tester, analysis_without_tensorrt) {
   FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = false;
   Analyzer analyser;
   analyser.Run(&argument);
-
-  LOG(INFO) << "original program desc\n"
-            << argument.origin_program_desc->DebugString();
-  LOG(INFO) << "transformed program desc\n"
-            << argument.transformed_program_desc->DebugString();
 }
 
 TEST_F(DFG_Tester, analysis_with_tensorrt) {
