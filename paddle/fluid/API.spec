@@ -82,6 +82,8 @@ paddle.fluid.InferenceTranspiler.transpile ArgSpec(args=['self', 'program', 'pla
 paddle.fluid.memory_optimize ArgSpec(args=['input_program', 'skip_opt_set', 'print_log', 'level'], varargs=None, keywords=None, defaults=(None, False, 0))
 paddle.fluid.release_memory ArgSpec(args=['input_program', 'skip_opt_set'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.DistributeTranspilerConfig.__init__ 
+paddle.fluid.QuantizeTranspiler.__init__ 
+paddle.fluid.QuantizeTranspiler.transpile ArgSpec(args=['self', 'program', 'is_inference', 'weight_bits', 'activation_bits', 'weight_quantize_type', 'activation_quantize_type', 'window_size', 'quant_delay'], varargs=None, keywords=None, defaults=(False, 8, 8, 'abs_max', 'abs_max', 1000, 0))
 paddle.fluid.ParallelExecutor.__init__ ArgSpec(args=['self', 'use_cuda', 'loss_name', 'main_program', 'share_vars_from', 'exec_strategy', 'build_strategy', 'num_trainers', 'trainer_id'], varargs=None, keywords='kwargs', defaults=(None, None, None, None, None, 1, 0))
 paddle.fluid.ParallelExecutor.bcast_params ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.ParallelExecutor.run ArgSpec(args=['self', 'fetch_list', 'feed', 'feed_dict', 'return_numpy'], varargs=None, keywords=None, defaults=(None, None, True))
@@ -369,6 +371,8 @@ paddle.fluid.transpiler.RoundRobin.__init__ ArgSpec(args=['self', 'pserver_endpo
 paddle.fluid.transpiler.RoundRobin.dispatch ArgSpec(args=['self', 'varlist'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.transpiler.RoundRobin.reset ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.transpiler.DistributeTranspilerConfig.__init__ 
+paddle.fluid.transpiler.QuantizeTranspiler.__init__ 
+paddle.fluid.transpiler.QuantizeTranspiler.transpile ArgSpec(args=['self', 'program', 'is_inference', 'weight_bits', 'activation_bits', 'weight_quantize_type', 'activation_quantize_type', 'window_size', 'quant_delay'], varargs=None, keywords=None, defaults=(False, 8, 8, 'abs_max', 'abs_max', 1000, 0))
 paddle.fluid.nets.simple_img_conv_pool ArgSpec(args=['input', 'num_filters', 'filter_size', 'pool_size', 'pool_stride', 'pool_padding', 'pool_type', 'global_pooling', 'conv_stride', 'conv_padding', 'conv_dilation', 'conv_groups', 'param_attr', 'bias_attr', 'act', 'use_cudnn', 'use_mkldnn'], varargs=None, keywords=None, defaults=(0, 'max', False, 1, 0, 1, 1, None, None, None, True, False))
 paddle.fluid.nets.sequence_conv_pool ArgSpec(args=['input', 'num_filters', 'filter_size', 'param_attr', 'act', 'pool_type'], varargs=None, keywords=None, defaults=(None, 'sigmoid', 'max'))
 paddle.fluid.nets.glu ArgSpec(args=['input', 'dim'], varargs=None, keywords=None, defaults=(-1,))
