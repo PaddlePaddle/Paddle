@@ -53,8 +53,8 @@ class BufferedReader : public framework::DecoratedReader {
 
   // The buffer for reading data.
   // NOTE: the simplest way to implement buffered reader is do not use any
-  // buffer, just async read and create futures as buffer size. However, to
-  // malloc Tensor every time is extremely slow. Here we store all data in
+  // buffer, just read async and create futures as buffer size. However, to
+  // malloc tensors every time is extremely slow. Here we store all data in
   // buffers and prevent alloc every time.
   std::vector<TensorVec> cpu_buffer_;
   std::vector<TensorVec> gpu_buffer_;

@@ -134,7 +134,7 @@ class PreemptiveReaderContainer : public IReaderContainer {
       } else {
         *out = item.data_;
         // continue read async
-        AsyncRead(item.reader_it_, &future_it);
+        ReadAsync(item.reader_it_, &future_it);
       }
     } else {
       out->clear();
@@ -151,10 +151,10 @@ class PreemptiveReaderContainer : public IReaderContainer {
     auto future_it = futures_.end();
     --future_it;
 
-    AsyncRead(reader_it, &future_it);
+    ReadAsync(reader_it, &future_it);
   }
 
-  void AsyncRead(const ReaderList::iterator& reader_it,
+  void ReadAsync(const ReaderList::iterator& reader_it,
                  FutureList::iterator* future_it_ptr) {
     auto& future_it = *future_it_ptr;
     *future_it = pool_.enqueue([reader_it, future_it, this] {
