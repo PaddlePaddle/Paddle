@@ -339,4 +339,9 @@ if __name__ == "__main__":
     trainer_id = int(sys.argv[3])
     current_endpoint = sys.argv[4]
     trainers = int(sys.argv[5])
-    main()
+    main(
+        role=role,
+        endpoints=endpoints,
+        trainer_id=trainer_id,
+        current_endpoint=current_endpoint,
+        trainers=trainers)

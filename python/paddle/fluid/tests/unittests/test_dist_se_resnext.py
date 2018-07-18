@@ -37,8 +37,12 @@ class TestDistSeResneXt2x2(unittest.TestCase):
         ps1_cmd = "%s dist_se_resnext.py pserver %s 0 %s %d" % \
             (self._python_interp, self._ps_endpoints, ps1_ep, self._trainers)
 
-        ps0_proc = subprocess.Popen(ps0_cmd.split(" "), stdout=subprocess.PIPE)
-        ps1_proc = subprocess.Popen(ps1_cmd.split(" "), stdout=subprocess.PIPE)
+        self.ps0_log = open("ps0.log", "w")
+        self.ps1_log = open("ps1.log", "w")
+        ps0_proc = subprocess.Popen(
+            ps0_cmd.split(" "), stdout=self.ps0_log, stderr=self.ps0_log)
+        ps1_proc = subprocess.Popen(
+            ps1_cmd.split(" "), stdout=self.ps1_log, stderr=self.ps1_log)
         return ps0_proc, ps1_proc
 
     def _wait_ps_ready(self, pid):
@@ -64,28 +68,39 @@ class TestDistSeResneXt2x2(unittest.TestCase):
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         tr0_cmd = "%s dist_se_resnext.py trainer %s 0 %s %d" % \
-            (self._ps_endpoints, ps0_ep, self._trainers)
-        tr1_cmd = "%s dist_se_resnext.py pserver %s 1 %s %d" % \
+            (self._python_interp, self._ps_endpoints, ps0_ep, self._trainers)
+        tr1_cmd = "%s dist_se_resnext.py trainer %s 1 %s %d" % \
             (self._python_interp, self._ps_endpoints, ps1_ep, self._trainers)
 
+        required_envs = {
+            "PATH": os.getenv("PATH"),
+            "PYTHONPATH": os.getenv("PYTHONPATH"),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH")
+        }
+
+        self.tr0_log = open("tr0.log", "w")
+        self.tr1_log = open("tr1.log", "w")
         tr0_proc = subprocess.Popen(
             tr0_cmd.split(" "),
-            stdout=subprocess.PIPE,
-            env={"CUDA_VISIBLE_DEVICES": "0,1"})
+            stdout=self.tr0_log,
+            env={"CUDA_VISIBLE_DEVICES": "0,1"}.update(required_envs))
         tr1_proc = subprocess.Popen(
             tr1_cmd.split(" "),
-            stdout=subprocess.PIPE,
-            env={"CUDA_VISIBLE_DEVICES": "2,3"})
+            stdout=self.tr1_log,
+            env={"CUDA_VISIBLE_DEVICES": "2,3"}.update(required_envs))
         print("trainer proc started")
 
-        tr0_out = tr0_proc.stdout.read()
+        tr0_proc.wait()
+        tr1_proc.wait()
+        # tr0_out = tr0_proc.stdout.read()
         # check tr0_out
 
         ps0.terminate()
         ps1.terminate()
-
-        # os.kill(ps0.pid, signal.SIGTERM)
-        # os.kill(ps1.pid, signal.SIGTERM)
+        self.ps0_log.close()
+        self.ps1_log.close()
+        self.tr0_log.close()
+        self.tr1_log.close()
 
 
 if __name__ == "__main__":
