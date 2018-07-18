@@ -22,8 +22,7 @@ from ..executor import global_scope
 from layer_function_generator import generate_layer_fn, templatedoc
 
 __all__ = [
-    'data', 'BlockGuardServ', 'ListenAndServ', 'Send', 'Recv',
-    'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
+    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
     'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
     'load'
 ]
@@ -802,7 +801,7 @@ class Preprocessor(object):
         self.sink_var_names = None
         self.status = Preprocessor.BEFORE_SUB_BLOCK
 
-    def is_completed(self):
+    def _is_completed(self):
         return self.sub_block and self.source_var_names and self.sink_var_names
 
     @contextlib.contextmanager
@@ -812,7 +811,7 @@ class Preprocessor(object):
         yield
         self.main_prog.rollback()
         self.status = Preprocessor.AFTER_SUB_BLOCK
-        if not self.is_completed():
+        if not self._is_completed():
             raise RuntimeError(
                 "The definition of preprocessor is incompleted! "
                 "Please make sure that you have set input and output "
