@@ -918,8 +918,6 @@ class Block(object):
                 raise TypeError(
                     "var require string as parameter, but get %s instead." %
                     (type(name)))
-            else:
-                name = name.decode()
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
