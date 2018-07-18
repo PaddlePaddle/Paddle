@@ -17,24 +17,11 @@ from __future__ import print_function
 from . import framework
 from .framework import *
 # import all class inside executor into fluid module
-from . import executor
-from .executor import *
-
-from . import trainer
-from .trainer import Trainer
-from .trainer import BeginEpochEvent
-from .trainer import EndEpochEvent
-from .trainer import BeginStepEvent
-from .trainer import EndStepEvent
-from .trainer import CheckpointConfig
-
-from . import inferencer
-from .inferencer import Inferencer
-
 from . import io
 from . import evaluator
 from . import initializer
 from . import layers
+from . import contrib
 from . import nets
 from . import optimizer
 from . import backward
@@ -66,6 +53,7 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
               'io',
               'initializer',
               'layers',
+              'contrib',
               'transpiler',
               'nets',
               'optimizer',
