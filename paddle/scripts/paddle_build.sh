@@ -333,7 +333,7 @@ function assert_api_not_changed() {
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 
-    API_CHANGE=`git diff --name-only HEAD^ | grep "paddle/fluid/API.spec" | true`
+    API_CHANGE=`git diff --name-only HEAD^ | grep "paddle/fluid/API.spec" || true`
     echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
         # TODO: curl -H 'Authorization: token ${TOKEN}'
