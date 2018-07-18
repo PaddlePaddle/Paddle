@@ -17,7 +17,8 @@ def git_commit():
         git_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
     except:
         git_commit = 'Unknown'
-    return git_commit
+    git_commit = git_commit.decode()
+    return str(git_commit)
 
 def _get_version_detail(idx):
     assert idx < 3, "vesion info consists of %(major)d.%(minor)d.%(patch)d, \
@@ -42,12 +43,13 @@ def get_patch():
 
 def is_taged():
     try:
-        cmd = ['git', 'describe', '--exact-match', '--tags']
+        cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
         git_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE).communicate()[0].strip()
+        git_tag = git_tag.decode()
     except:
         return False
 
-    if git_tag.replace('v', '') == '@PADDLE_VERSION@':
+    if str(git_tag).replace('v', '') == '@PADDLE_VERSION@':
         return True
     else:
         return False
@@ -67,13 +69,13 @@ with_mkl        = '%(with_mkl)s'
 
 def show():
     if istaged:
-        print 'full_version:', full_version
-        print 'major:', major
-        print 'minor:', minor
-        print 'patch:', patch
-        print 'rc:', rc
+        print('full_version:', full_version)
+        print('major:', major)
+        print('minor:', minor)
+        print('patch:', patch)
+        print('rc:', rc)
     else:
-        print 'commit:', commit
+        print('commit:', commit)
 
 def mkl():
     return with_mkl
@@ -181,6 +183,14 @@ else:
     command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/core.so"
 if os.system(command) != 0:
     raise Exception("patch core.so failed, command: %s" % command)
+if '${WITH_FLUID_ONLY}'== 'OFF':
+    # change rpath of _swig_paddle.so.
+    if "@APPLE@" == "1":
+        command = "install_name_tool -id \"@loader_path/../paddle/libs/\" ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle.so"
+    else:
+        command = "patchelf --set-rpath '$ORIGIN/../paddle/libs/' ${PADDLE_BINARY_DIR}/python/py_paddle/_swig_paddle.so"
+    if os.system(command) != 0:
+        raise Exception("patch _swig_paddle.so failed, command: %s" % command)
 
 setup(name='${PACKAGE_NAME}',
       version='${PADDLE_VERSION}',

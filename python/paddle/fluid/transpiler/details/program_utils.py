@@ -17,10 +17,10 @@ def delete_ops(block, ops):
     try:
         start = list(block.ops).index(ops[0])
         end = list(block.ops).index(ops[-1])
-        [block.remove_op(start) for _ in xrange(end - start + 1)]
+        [block._remove_op(start) for _ in xrange(end - start + 1)]
     except Exception, e:
         raise e
-    block.program.sync_with_cpp()
+    block.program._sync_with_cpp()
 
 
 def find_op_by_input_arg(block, arg_name):
