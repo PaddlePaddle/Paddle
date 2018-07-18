@@ -20,7 +20,7 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/inference/api/api.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 // from anakin
 #include "framework/core/net/net.h"

@@ -20,7 +20,7 @@ limitations under the License. */
 #include <glog/logging.h>
 #include <memory>
 #include <thread>  //NOLINT
-#include "paddle/fluid/inference/api.h"
+#include "paddle/fluid/inference/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
 
 DEFINE_string(dirname, "", "Directory of the inference model.");

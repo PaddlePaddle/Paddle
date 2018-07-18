@@ -149,8 +149,10 @@ if (WITH_ANAKIN AND WITH_GPU)
 endif()
 
 copy(inference_api_lib DEPS paddle_inference_api paddle_inference_api_shared
-  SRCS ${src_dir}/${module}/api.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libpaddle_inference_api*
-  DSTS ${dst_dir}/inference ${dst_dir}/inference
+  SRCS ${src_dir}/${module}/paddle_inference_api.h 
+       ${src_dir}/${module}/demo_ci
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libpaddle_inference_api*
+  DSTS ${dst_dir}/inference ${dst_dir}/inference ${dst_dir}/inference
 )
 list(APPEND inference_deps inference_api_lib)
 

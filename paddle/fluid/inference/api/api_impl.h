@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/inference/api/api.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
