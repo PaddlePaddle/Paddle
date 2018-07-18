@@ -282,7 +282,3 @@ if(WITH_DOC)
     find_python_module(recommonmark REQUIRED)
     add_subdirectory(doc)
 endif()
-
-if (WITH_CONTRIB)
-    add_subdirectory(paddle/contrib)
-endif()
