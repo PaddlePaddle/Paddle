@@ -21,83 +21,93 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void AffineGridOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("Theta"),
-                 "Input(Theta) of AffineGridOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Size"),
-                 "Input(Size) of AffineGridOp should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Output"),
-                 "Output(Output) of AffineGridOp should not be null.");
+using Tensor = framework::Tensor;
 
-  auto theta_dims = ctx->GetInputDim("Theta");
-  auto size_dims = ctx->GetInputDim("Size");
+class AffineGridOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Theta"),
+                   "Input(Theta) of AffineGridOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Size"),
+                   "Input(Size) of AffineGridOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Output"),
+                   "Output(Output) of AffineGridOp should not be null.");
+    auto theta_dims = ctx->GetInputDim("Theta");
+    auto size_dims = ctx->GetInputDim("Size");
+    PADDLE_ENFORCE(theta_dims.size() == 3,
+                   "AffineGrid's Input(Theta) should be 3-D tensor.");
+    PADDLE_ENFORCE(size_dims.size() == 1,
+                   "AffineGrid's Input(Size) should be 1-D tensor.");
+    PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] should be 2.");
+    PADDLE_ENFORCE(theta_dims[2] == 3, "Input(theta) dims[2] should be 3.");
+    // N * H * W * 2
+    ctx->SetOutputDim(
+        "Output",
+        framework::make_ddim({theta_dims[0], size_dims[2], size_dims[3], 2}));
+    ctx->ShareLoD("Theta", "Output");
+  }
 
-  PADDLE_ENFORCE(theta_dims.size() == 3,
-                 "AffineGrid's Input(Theta) should be 3-D tensor.");
-  PADDLE_ENFORCE(size_dims.size() == 1,
-                 "AffineGrid's Input(Size) should be 1-D tensor.");
-  PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] should be 2.");
-  PADDLE_ENFORCE(theta_dims[2] == 3, "Input(theta) dims[2] should be 3.");
-
-  // N * H * W * 2
-  ctx->SetOutputDim("Output", framework::make_ddim({theta_dims[0], size_dims[2],
-                                                    size_dims[3], 2}));
-  ctx->ShareLoD("Theta", "Output");
-}
-
-framework::OpKernelType AffineGridOp::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-  framework::DataLayout layout = framework::StringToDataLayout("NCHW");
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library{framework::LibraryType::kPlain};
+    framework::DataLayout layout = framework::StringToDataLayout("NCHW");
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    library = framework::LibraryType::kCUDNN;
-  }
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library = framework::LibraryType::kCUDNN;
+    }
 #endif
-  auto data_type = framework::ToDataType(ctx.Input<Tensor>("Size")->type());
-  PADDLE_ENFORCE_EQ(input_data_type, filter_data_type,
-                    "input and filter data type should be consistent");
-  return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
-}
-
-void AffineGrid2DOpMaker::Make() {
-  AddInput("Theta", "(Tensor) Input batch of affine matrices (N×2×3).");
-  AddInput("Size", "(Tensor) the target output image size (N×C×H×W).");
-  AddOutput("Output", "(Tensor) output Tensor of size (N×H×W×2).");
-  AddComment(R"DOC(
-)DOC");
-}
-
-void AffineGridOpGrad::InferShape(framework::InferShapeContext* ctx) const {
-  auto in_dims = ctx->GetInputDim("Input");
-  auto filter_dims = ctx->GetInputDim("Filter");
-  if (ctx->HasOutput(framework::GradVarName("Input"))) {
-    ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
+    auto data_type = framework::ToDataType(ctx.Input<Tensor>("Size")->type());
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
-  if (ctx->HasOutput(framework::GradVarName("Filter"))) {
-    ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
-  }
-}
+};
 
-framework::OpKernelType AffineGridOpGrad::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
-  framework::LibraryType library_{framework::LibraryType::kPlain};
-  std::string data_format = ctx.Attr<std::string>("data_format");
-  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("Theta", "(Tensor) Input batch of affine matrices (N×2×3).");
+    AddInput("Size", "(Tensor) the target output image size (N×C×H×W).");
+    AddOutput("Output", "(Tensor) output Tensor of size (N×H×W×2).");
+    AddComment(R"DOC(
+    )DOC");
+  }
+};
+
+class AffineGridOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    auto in_dims = ctx->GetInputDim("Input");
+    auto filter_dims = ctx->GetInputDim("Filter");
+    if (ctx->HasOutput(framework::GradVarName("Input"))) {
+      ctx->SetOutputDim(framework::GradVarName("Input"), in_dims);
+    }
+    if (ctx->HasOutput(framework::GradVarName("Filter"))) {
+      ctx->SetOutputDim(framework::GradVarName("Filter"), filter_dims);
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    framework::LibraryType library_{framework::LibraryType::kPlain};
+    std::string data_format = ctx.Attr<std::string>("data_format");
+    framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
 #ifdef PADDLE_WITH_CUDA
-  if (platform::CanCUDNNBeUsed(ctx)) {
-    library_ = framework::LibraryType::kCUDNN;
-  }
+    if (platform::CanCUDNNBeUsed(ctx)) {
+      library_ = framework::LibraryType::kCUDNN;
+    }
 #endif
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<Tensor>("Size")->type()), ctx.GetPlace(),
-      layout_, library_);
-}
-
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Size")->type()),
+        ctx.GetPlace(), layout_, library_);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(affine_grid, ops::AffineGridOp, ops::AffineGrid2DOpMaker,
+REGISTER_OPERATOR(affine_grid, ops::AffineGridOp, ops::AffineGridOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);

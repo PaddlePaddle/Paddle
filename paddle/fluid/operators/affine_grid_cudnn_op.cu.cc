@@ -37,12 +37,11 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
     const T* size_data = size->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
     ScopedSpatialTransformerDescriptor st_desc;
-    cudnnSpatialTransformerDescriptor_t cudnn_st_desc = st_desc.descriptor<T>(
-        SamplerType.CUDNN_SAMPLER_BILINEAR, 4,
-        {size_data[0], size_data[1], size_data[2], size_data[3]});
+    cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
+        st_desc.descriptor<T>(CUDNN_SAMPLER_BILINEAR, 4, size_data);
 
     PADDLE_ENFORCE(platform::dynload::cudnnSpatialTfGridGeneratorForward(
-        handle, st_desc, theta_data, output_data));
+        handle, cudnn_st_desc, theta_data, output_data));
   }
 };
 
@@ -52,20 +51,21 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                    "It must use CUDAPlace.");
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto handle = dev_ctx.cudnn_handle();
     auto* size = ctx.Input<Tensor>("Size");
     const T* size_data = size->data<T>();
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
     ScopedSpatialTransformerDescriptor st_desc;
-    cudnnSpatialTransformerDescriptor_t cudnn_st_desc = st_desc.descriptor<T>(
-        SamplerType.CUDNN_SAMPLER_BILINEAR, 4,
-        {size_data[0], size_data[1], size_data[2], size_data[3]});
+    cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
+        st_desc.descriptor<T>(CUDNN_SAMPLER_BILINEAR, 4, size_data);
 
     const T* output_grad_data = output_grad->data<T>();
     T* theta_grad_data = theta_grad->mutable_data<T>(ctx.GetPlace());
 
     PADDLE_ENFORCE(platform::dynload::cudnnSpatialTfGridGeneratorBackward(
-        handle, stDesc, output_grad_data, theta_grad_data));
+        handle, cudnn_st_desc, output_grad_data, theta_grad_data));
   }
 };
 
@@ -74,8 +74,6 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
 
 namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridOpKernel<int>,
-                   paddle::operators::CUDNNAffineGridOpKernel<int64_t>);
+                   paddle::operators::CUDNNAffineGridOpKernel<int>);
 REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridGradOpKernel<int>,
-                   paddle::operators::CUDNNAffineGridGradOpKernel<int64_t>);
+                   paddle::operators::CUDNNAffineGridGradOpKernel<int>);
