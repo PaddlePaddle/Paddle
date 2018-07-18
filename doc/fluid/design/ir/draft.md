@@ -9,7 +9,7 @@ Usually, the ```gap``` is bridged by
 
 * A serious transformations with defined order.
 
-* The transformations usually invovle
+* These transformations usually involve
 ```insert, delete, clustering, split, dependency analysis```.
 
 * Has a simple way to verify and debug each transformation.
