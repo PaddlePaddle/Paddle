@@ -545,7 +545,7 @@ function test_fluid_inference_lib() {
     Testing fluid inference library ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
+        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
         ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
