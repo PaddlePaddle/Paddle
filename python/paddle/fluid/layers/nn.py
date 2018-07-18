@@ -5286,17 +5286,17 @@ def crop(x, shape=None, offsets=None, name=None):
 
 def rank_loss(label, left, right, name=None):
     """
-    **RankLoss layer for RankNet**
+    **Rank loss layer for RankNet**
 
-    (http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf).
-    RankNet is a pairwise ranking model with
-    one training sample consisting of a pair of doc A and B, and the label P
-    indicating that A is ranked higher than B or not:
+    RankNet(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
+    is a pairwise ranking model with one training sample consisting of a pair
+    of doc A and B, and the label P indicating that A is ranked higher than B
+    or not:
     
     P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
     the input pair.
     
-    The RankLoss layer takes three inputs: Left (o_i), Right (o_j) and Label
+    This layer takes three inputs: left (o_i), right (o_j) and label
     (P_{i,j}), which represent the output score of RankNet for the two docs and
     the label respectively, and yields the rank loss C_{i,j} using the following
     equation:
