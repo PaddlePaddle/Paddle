@@ -66,6 +66,7 @@ bool NativePaddlePredictor::Init(
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
+    PADDLE_ENFORCE_NOT_NULL(sub_scope_, "create sub scope fail");
   } else {
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
@@ -102,7 +103,6 @@ bool NativePaddlePredictor::Init(
 
 NativePaddlePredictor::~NativePaddlePredictor() {
   if (sub_scope_) {
-    PADDLE_ENFORCE_NOT_NULL(scope_, "Should have parent scope!");
     scope_->DeleteScope(sub_scope_);
   }
 }
