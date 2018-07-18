@@ -209,8 +209,23 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
                        &beta, C, &ldc);
   } else {
 #endif
-    CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B,
-                   ldb, beta, C, ldc);
+
+#ifdef PADDLE_MKL_SPLIT_GEMM
+    constexpr int bs = 2;
+    if (M % bs == 0 && transA == CblasNoTrans && transB == CblasNoTrans) {
+      for (int off = 0; off < M; off += bs) {
+        CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, off, N, K,
+                       alpha, A + off * lda, lda, B, ldb, beta, C + off * ldb,
+                       ldc);
+      }
+    } else {
+#endif
+      CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B,
+                     ldb, beta, C, ldc);
+#ifdef PADDLE_MKL_SPLIT_GEMM
+    }
+#endif
+
 #ifdef PADDLE_WITH_LIBXSMM
   }
 #endif
