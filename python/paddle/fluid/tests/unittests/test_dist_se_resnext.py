@@ -28,7 +28,7 @@ class TestDistSeResneXt2x2(unittest.TestCase):
         self._trainers = 2
         self._pservers = 2
         self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
-        self._python_interp = "/opt/python/cp27-cp27mu/bin/python"
+        self._python_interp = "python"
 
     def start_pserver(self):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
