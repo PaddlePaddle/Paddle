@@ -66,6 +66,12 @@ option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
+option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
+
+# PY_VERSION
+if(NOT PY_VERSION)
+  set(PY_VERSION 2.7)
+endif()
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -146,6 +152,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -230,6 +237,10 @@ endif(WITH_AMD_GPU)
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
+endif()
+
+if(WITH_LIBXSMM)
+    list(APPEND EXTERNAL_LIBS ${LIBXSMM_LIBS})
 endif()
 
 if(WITH_MKLDNN)

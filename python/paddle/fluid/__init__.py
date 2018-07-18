@@ -44,9 +44,9 @@ import metrics
 import transpiler
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
+from core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
 from transpiler import DistributeTranspiler, InferenceTranspiler, \
-    memory_optimize, release_memory
+    memory_optimize, release_memory, DistributeTranspilerConfig
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)
 from lod_tensor import create_lod_tensor, create_random_int_lodtensor
@@ -56,6 +56,7 @@ import unique_name
 import recordio_writer
 import parallel_executor
 from parallel_executor import *
+from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
@@ -65,13 +66,14 @@ __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
               'io',
               'initializer',
               'layers',
-              'transpiler'
+              'transpiler',
               'nets',
               'optimizer',
               'learning_rate_decay',
               'backward',
               'regularizer',
               'LoDTensor',
+              'LoDTensorArray',
               'CPUPlace',
               'CUDAPlace',
               'CUDAPinnedPlace',
@@ -121,6 +123,9 @@ def __bootstrap__():
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem'
     ]
+    if core.is_compiled_with_dist():
+        read_env_flags.append('rpc_deadline')
+
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
@@ -134,5 +139,5 @@ def __bootstrap__():
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
-layers.monkey_patch_variable()
+monkey_patch_variable()
 __bootstrap__()
