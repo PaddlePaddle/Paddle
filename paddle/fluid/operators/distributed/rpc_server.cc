@@ -72,10 +72,6 @@ void RPCServer::Complete() {
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
       barrier_counter_[kRequestGet]--;
     }
-    if (client_num_ == 0) {
-      exit_flag_ = true;
-      VLOG(1) << "No activate Trainer instance, PServer will exit...";
-    }
   }
   barrier_cond_.notify_all();
 }
