@@ -240,7 +240,7 @@ class Optimizer(object):
             self._finish_update(loss.block)
 
             end = len(global_block.ops)
-            return global_block.slice_ops(start, end)
+            return global_block._slice_ops(start, end)
 
     def minimize(self,
                  loss,
