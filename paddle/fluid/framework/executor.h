@@ -44,13 +44,11 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
   /*
-   * Sending signal to pserver to mark current trainer completed.
+   * Close this Executor.
+   * Calling this method will send complete messages to all pserver instances.
    */
   void Close();
-
-#endif
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
