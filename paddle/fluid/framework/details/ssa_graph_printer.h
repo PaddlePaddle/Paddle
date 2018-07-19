@@ -21,16 +21,16 @@
 namespace paddle {
 namespace framework {
 namespace details {
-struct SSAGraph;
+
 class SSAGraphPrinter {
  public:
   virtual ~SSAGraphPrinter() {}
-  virtual void Print(const SSAGraph& graph, std::ostream& sout) const = 0;
+  virtual void Print(const Graph& graph, std::ostream& sout) const = 0;
 };
 
 class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
  public:
-  void Print(const SSAGraph& graph, std::ostream& sout) const override;
+  void Print(const Graph& graph, std::ostream& sout) const override;
 };
 
 class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
@@ -50,10 +50,10 @@ class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
         stream_ptr_(std::move(sout)),
         stream_ref_(*stream_ptr_) {}
 
-  std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override {
-    auto graph = builder_->Build(program);
-    printer_->Print(*graph, stream_ref_);
-    return graph;
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const override {
+    auto new_graph = builder_->Apply(std::move(graph));
+    printer_->Print(*new_graph, stream_ref_);
+    return std::move(new_graph);
   }
 
   int GetVarDeviceID(const std::string& var_name) const override {
