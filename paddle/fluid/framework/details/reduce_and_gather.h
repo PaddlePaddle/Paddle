@@ -35,6 +35,7 @@ struct ReduceLoDTensor {
     PADDLE_ENFORCE(!src_tensors_.empty());
     auto &t0 = *src_tensors_[0];
     PADDLE_ENFORCE_NE(t0.numel(), 0);
+
     dst_tensor_.Resize(t0.dims());
     T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
 
