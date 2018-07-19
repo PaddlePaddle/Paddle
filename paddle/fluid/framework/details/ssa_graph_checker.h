@@ -21,7 +21,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-struct SSAGraph;
 
 class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
  public:
@@ -29,17 +28,17 @@ class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
       std::unique_ptr<SSAGraphBuilder>&& builder)
       : builder_(std::move(builder)) {}
 
-  std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override {
-    auto graph = builder_->Build(program);
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
-    return graph;
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const override {
+    auto new_graph = builder_->Apply(std::move(graph));
+    PADDLE_ENFORCE(IsValidGraph(new_graph.get()));
+    return std::move(new_graph);
   }
 
   int GetVarDeviceID(const std::string& var_name) const override {
     return builder_->GetVarDeviceID(var_name);
   }
 
-  bool IsValidGraph(const SSAGraph* graph) const;
+  bool IsValidGraph(const Graph* graph) const;
 
  private:
   std::unique_ptr<SSAGraphBuilder> builder_;
