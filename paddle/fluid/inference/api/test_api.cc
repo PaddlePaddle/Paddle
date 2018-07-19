@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/contrib/inference/paddle_inference_api.h"
-
 #include <glog/logging.h>
 #include <gtest/gtest.h>
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle {
 

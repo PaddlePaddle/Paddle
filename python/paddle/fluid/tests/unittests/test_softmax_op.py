@@ -63,11 +63,15 @@ class TestSoftmaxOp(OpTest):
             self.check_grad(["X"], "Out", max_relative_error=0.01)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSoftmaxCUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
         self.use_cudnn = True
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSoftmaxFP16Op(TestSoftmaxOp):
     def init_kernel_type(self):
         self.dtype = np.float16
@@ -79,6 +83,8 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
                 self.check_output_with_place(place, atol=1e-3)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
     def init_kernel_type(self):
         self.use_cudnn = True

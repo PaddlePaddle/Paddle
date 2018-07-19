@@ -18,10 +18,11 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-RPCOpHandle::RPCOpHandle(const framework::OpDesc &op_desc,
+RPCOpHandle::RPCOpHandle(ir::Node *node, const framework::OpDesc &op_desc,
                          const Scope *local_scope, const std::string &name,
                          const platform::Place &place)
-    : op_(framework::OpRegistry::CreateOp(op_desc)),
+    : OpHandleBase(node),
+      op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
       name_(name),
       place_(place) {}
@@ -35,8 +36,8 @@ void RPCOpHandle::RunImpl() {
     if (in->DebugString() == "dummy") {  // HACK
       continue;
     }
-    if (in->generated_op_) {
-      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[p]);
+    if (in->GeneratedOp()) {
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[p]);
     }
   }
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
