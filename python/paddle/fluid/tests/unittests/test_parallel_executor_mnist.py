@@ -108,8 +108,8 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_network_convergence(simple_fc_net, use_cuda=use_cuda)
         self.check_network_convergence(
             simple_fc_net, use_cuda=use_cuda, allow_op_delay=True)
-
-        img = np.zeros(shape=[32, 784], dtype='float32')
+        np.random.seed(5)
+        img = np.random.random(size=[32, 784])
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             simple_fc_net,
@@ -131,7 +131,9 @@ class TestMNIST(TestParallelExecutorBase):
     def check_simple_fc_parallel_accuracy(self, use_cuda, use_reduce=False):
         if use_cuda and not core.is_compiled_with_cuda():
             return
-        img = np.zeros(shape=[32, 784], dtype='float32')
+
+        np.random.seed(5)
+        img = np.random.random(size=[32, 784])
         label = np.ones(shape=[32, 1], dtype='int64')
         single_first_loss, single_last_loss = self.check_network_convergence(
             method=simple_fc_net,
@@ -167,7 +169,8 @@ class TestMNIST(TestParallelExecutorBase):
         if use_cuda and not core.is_compiled_with_cuda():
             return
         self.check_network_convergence(fc_with_batchnorm, use_cuda=use_cuda)
-        img = np.zeros(shape=[32, 784], dtype='float32')
+        np.random.seed(5)
+        img = np.random.random(size=[32, 784])
         label = np.ones(shape=[32, 1], dtype='int64')
         self.check_network_convergence(
             fc_with_batchnorm,
