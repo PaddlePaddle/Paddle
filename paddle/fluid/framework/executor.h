@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {

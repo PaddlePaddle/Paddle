@@ -410,7 +410,6 @@ void Executor::RunPreparedContext(
 }
 
 void Executor::EnableMKLDNN(const ProgramDesc& program) {
-#ifdef PADDLE_WITH_MKLDNN
   VLOG(3) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
@@ -420,10 +419,6 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
-#else
-  LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
-#endif
 }
 
 }  // namespace framework

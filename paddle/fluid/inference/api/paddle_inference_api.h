@@ -44,8 +44,10 @@ class PaddleBuf {
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  PaddleBuf(size_t length)
-      : data_(new char[length]), length_(length), memory_owned_(true) {}
+  PaddleBuf(size_t length)  // NOLINT
+      : data_(new char[length]),
+        length_(length),
+        memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
   // Reset to external memory.
@@ -116,6 +118,8 @@ class PaddlePredictor {
 struct NativeConfig : public PaddlePredictor::Config {
   // GPU related fields.
   bool use_gpu{false};
+  // MKLDNN related fields.
+  bool use_mkldnn{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
 
