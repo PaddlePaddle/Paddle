@@ -148,6 +148,13 @@ class TestIfElse(unittest.TestCase):
         self.cond_value = 0.5
         self.data = np.random.rand(25, 1).astype(np.float32)
 
+    def numpy_cal(self):
+        s1 = self.data[np.where(self.data < self.cond_value)]
+        res = np.sum(np.exp(s1))
+        s2 = self.data[np.where(self.data >= self.cond_value)]
+        res += np.sum(np.tanh(s2))
+        return res
+
     def compare_ifelse_op_and_numpy(self, place):
         self.set_test_case()
 
@@ -161,10 +168,12 @@ class TestIfElse(unittest.TestCase):
             ie = layers.IfElse(ifcond)
             with ie.true_block():
                 true_target = ie.input(src)
+                true_target = fluid.layers.exp(true_target)
                 ie.output(true_target)
 
             with ie.false_block():
                 false_target = ie.input(src)
+                false_target = fluid.layers.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
             out = layers.reduce_sum(if_out)
@@ -175,7 +184,8 @@ class TestIfElse(unittest.TestCase):
             o1, = exe.run(fluid.default_main_program(),
                           feed={'data': self.data},
                           fetch_list=[out])
-            o2 = np.sum(self.data)
+            o2 = self.numpy_cal()
+
             self.assertTrue(
                 np.allclose(
                     o1, o2, atol=1e-8),

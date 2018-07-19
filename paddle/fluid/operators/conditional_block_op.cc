@@ -31,7 +31,7 @@ class ConditionalOp : public framework::OperatorBase {
   std::vector<const framework::LoDTensor *> InputTensors(
       const framework::Scope &scope) const {
     std::vector<const framework::LoDTensor *> retv;
-    auto xs = Inputs("X");
+    auto xs = Inputs("Params");
     retv.resize(xs.size(), nullptr);
     std::transform(
         xs.begin(), xs.end(), retv.begin(),
