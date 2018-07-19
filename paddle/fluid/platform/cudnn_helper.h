@@ -372,10 +372,14 @@ class ScopedSpatialTransformerDescriptor {
   }
 
   template <typename T>
-  inline cudnnSpatialTransformerDescriptor_t descriptor(
-      cudnnSamplerType_t samplerType, const int nbDims, const int dimA[]) {
+  inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
+                                                        const int dimA[]) {
+    LOG(ERROR) << "desc_: " << desc_;
+    LOG(ERROR) << "nbDims: " << nbDims;
+    LOG(ERROR) << "dimA: " << dimA;
+    LOG(ERROR) << "CudnnDataType<T>::type: " << CudnnDataType<T>::type;
     PADDLE_ENFORCE(dynload::cudnnSetSpatialTransformerNdDescriptor(
-        desc_, samplerType, CudnnDataType<T>::type, nbDims, dimA));
+        desc_, CUDNN_SAMPLER_BILINEAR, CUDNN_DATA_FLOAT, nbDims, dimA));
     return desc_;
   }
 

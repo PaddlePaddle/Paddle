@@ -30,15 +30,22 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
                    "It must use CUDAPlace.");
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
+    LOG(ERROR) << "-----CUDNNAffineGridOpKernel-----";
     auto* theta = ctx.Input<Tensor>("Theta");
     auto* size = ctx.Input<Tensor>("Size");
     auto* output = ctx.Output<Tensor>("Output");
     const T* theta_data = theta->data<T>();
-    const T* size_data = size->data<T>();
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+    //    const T* size_data = size->data<T>();
+
+    Tensor h_sizes;
+    framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+    const int* h_size_data = h_sizes.data<int>();
+
+    T* output_data = output->mutable_data<T>(
+        {h_size_data[0], h_size_data[2], h_size_data[3], 2}, ctx.GetPlace());
     ScopedSpatialTransformerDescriptor st_desc;
     cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
-        st_desc.descriptor<T>(CUDNN_SAMPLER_BILINEAR, 4, size_data);
+        st_desc.descriptor<T>(4, h_size_data);
 
     PADDLE_ENFORCE(platform::dynload::cudnnSpatialTfGridGeneratorForward(
         handle, cudnn_st_desc, theta_data, output_data));
@@ -54,12 +61,15 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* size = ctx.Input<Tensor>("Size");
-    const T* size_data = size->data<T>();
+    //    const T* size_data = size->data<T>();
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
+    Tensor h_sizes;
+    framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+    const int* h_size_data = h_sizes.data<int>();
     ScopedSpatialTransformerDescriptor st_desc;
     cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
-        st_desc.descriptor<T>(CUDNN_SAMPLER_BILINEAR, 4, size_data);
+        st_desc.descriptor<T>(4, h_size_data);
 
     const T* output_grad_data = output_grad->data<T>();
     T* theta_grad_data = theta_grad->mutable_data<T>(ctx.GetPlace());
@@ -74,6 +84,6 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
 
 namespace plat = paddle::platform;
 REGISTER_OP_KERNEL(affine_grid, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridOpKernel<int>);
+                   paddle::operators::CUDNNAffineGridOpKernel<float>);
 REGISTER_OP_KERNEL(affine_grid_grad, CUDNN, plat::CUDAPlace,
-                   paddle::operators::CUDNNAffineGridGradOpKernel<int>);
+                   paddle::operators::CUDNNAffineGridGradOpKernel<float>);
