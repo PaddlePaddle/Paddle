@@ -21,6 +21,7 @@ namespace framework {
 
 // NOTE(paddle-dev): This graph contains circle.
 Graph::Graph(const ProgramDesc &program) : program_(program) {
+  VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
   for (auto *var : program.Block(0).AllVars()) {
     all_vars.emplace(var->Name(), var);
