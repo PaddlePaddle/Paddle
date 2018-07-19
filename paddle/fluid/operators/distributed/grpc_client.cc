@@ -36,11 +36,15 @@ void GRPCClient::InitEventLoop() {
 }
 
 void GRPCClient::SendComplete() {
-  for (auto& it : channels_) {
-    VLOG(3) << "send complete message to " << it.first;
-    this->AsyncSendComplete(it.first);
+  std::unique_lock<std::mutex> lk(completed_mutex_);
+  if (!completed_) {
+    for (auto& it : channels_) {
+      VLOG(3) << "send complete message to " << it.first;
+      this->AsyncSendComplete(it.first);
+    }
+    PADDLE_ENFORCE(this->Wait(), "internal grpc error");
+    completed_ = true;
   }
-  this->Wait();
 }
 
 GRPCClient::~GRPCClient() {

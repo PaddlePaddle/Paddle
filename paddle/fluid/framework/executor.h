@@ -48,7 +48,7 @@ class Executor {
   /*
    * Sending signal to pserver to mark current trainer completed.
    */
-  void Complete();
+  void Close();
 
 #endif
 
