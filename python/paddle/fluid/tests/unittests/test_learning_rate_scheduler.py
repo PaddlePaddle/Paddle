@@ -91,20 +91,21 @@ class TestLearningRateDecay(unittest.TestCase):
 
     def check_decay_with_place(self, place, python_decay_fn, fluid_decay_fn,
                                kwargs):
+        main_prog = fluid.Program()
+        startup_prog = fluid.Program()
 
-        decayed_lr = fluid_decay_fn(**kwargs)
+        with fluid.program_guard(main_prog, startup_prog):
+            decayed_lr = fluid_decay_fn(**kwargs)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
 
-        exe.run(fluid.default_startup_program())
+        exe.run(startup_prog)
 
         fluid.memory_optimize(fluid.default_main_program())
 
         for step in range(10):
-            lr_val, = exe.run(fluid.default_main_program(),
-                              feed={},
-                              fetch_list=[decayed_lr])
+            lr_val, = exe.run(main_prog, feed={}, fetch_list=[decayed_lr])
             python_decayed_lr = python_decay_fn(
                 global_step=float(step), **kwargs)
             self.assertAlmostEqual(
