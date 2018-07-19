@@ -15,6 +15,7 @@
 import paddle.dataset.flowers as flowers
 import math
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import unittest
 import numpy as np
 import paddle
@@ -92,7 +93,8 @@ class TestFetchOp(unittest.TestCase):
             train_inputs.append(tst_reader_iter.next())
 
         os.environ['CPU_NUM'] = str(4)
-        self.parallel_exe(train_inputs, seed=1, use_cuda=True)
+        if core.is_compiled_with_cuda():
+            self.parallel_exe(train_inputs, seed=1, use_cuda=True)
         self.parallel_exe(train_inputs, seed=1, use_cuda=False)
 
 
@@ -137,7 +139,8 @@ class TestFeedParallel(unittest.TestCase):
 
     def test_feed_op(self):
         os.environ['CPU_NUM'] = str(4)
-        self.parallel_exe(use_cuda=True, seed=1)
+        if core.is_compiled_with_cuda():
+            self.parallel_exe(use_cuda=True, seed=1)
         self.parallel_exe(use_cuda=False, seed=1)
 
 
