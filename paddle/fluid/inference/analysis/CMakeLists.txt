@@ -19,10 +19,14 @@ function (inference_analysis_test TARGET)
         set(multiValueArgs SRCS)
         cmake_parse_arguments(analysis_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
+        set(mem_opt "")
+        if(WITH_GPU)
+            set(mem_opt "--fraction_of_gpu_memory_to_use=0.5")
+        endif()
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
                 DEPS analysis
-                ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model --fraction_of_gpu_memory_to_use=0.5)
+                ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
 endfunction(inference_analysis_test)
