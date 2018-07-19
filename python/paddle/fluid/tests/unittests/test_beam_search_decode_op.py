@@ -100,6 +100,8 @@ class TestBeamSearchDecodeOp(unittest.TestCase):
             np.array_equal(np.array(sentence_scores), expected_data))
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestBeamSearchDecodeOpGPU(TestBeamSearchDecodeOp):
     def setUp(self):
         self.scope = core.Scope()
