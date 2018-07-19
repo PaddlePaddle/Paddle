@@ -27,13 +27,13 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
 
   //# 1. Create PaddlePredictor with a config.
   NativeConfig config0;
-  config0.model_dir = FLAGS_dirname;
+  config0.model_dir = FLAGS_dirname + "word2vec.inference.model";
   config0.use_gpu = true;
   config0.fraction_of_gpu_memory = 0.3;
   config0.device = 0;
 
   TensorRTConfig config1;
-  config1.model_dir = FLAGS_dirname;
+  config1.model_dir = FLAGS_dirname + "word2vec.inference.model";
   config1.use_gpu = true;
   config1.fraction_of_gpu_memory = 0.3;
   config1.device = 0;

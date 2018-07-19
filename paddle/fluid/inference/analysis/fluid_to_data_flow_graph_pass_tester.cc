@@ -26,7 +26,7 @@ TEST_F(DFG_Tester, Init) {
   pass.Initialize(&argument);
   pass.Run(argument.main_dfg.get());
   // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(argument.main_dfg->nodes.size(), 37UL);
+  ASSERT_EQ(argument.main_dfg->nodes.size(), 38UL);
   pass.Finalize();
   ASSERT_FALSE(argument.main_dfg->DotString().empty());
   EXPECT_FALSE(argument.main_dfg->inputs.empty());
