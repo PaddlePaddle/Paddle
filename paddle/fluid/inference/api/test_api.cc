@@ -35,7 +35,8 @@ class DemoPredictor : public PaddlePredictor {
     LOG(INFO) << "I get other_config " << config.other_config;
   }
   bool Run(const std::vector<PaddleTensor> &inputs,
-           std::vector<PaddleTensor> *output_data, int batch_size = 0) override {
+           std::vector<PaddleTensor> *output_data,
+           int batch_size = 0) override {
     LOG(INFO) << "Run";
     return false;
   }
@@ -45,7 +46,7 @@ class DemoPredictor : public PaddlePredictor {
   ~DemoPredictor() override {}
 };
 
-template<>
+template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<DemoConfig>(
     const DemoConfig &config) {
   std::unique_ptr<PaddlePredictor> x(new DemoPredictor(config));
