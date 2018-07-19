@@ -16,6 +16,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
+import paddle.fluid.core as core
 from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import math
@@ -139,6 +140,9 @@ class TestResnet(TestParallelExecutorBase):
                                                           use_cuda=True,
                                                           use_reduce=False,
                                                           iter=20):
+
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
 
         os.environ['CPU_NUM'] = str(4)
 
