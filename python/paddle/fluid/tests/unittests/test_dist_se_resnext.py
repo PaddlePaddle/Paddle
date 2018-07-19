@@ -57,6 +57,7 @@ class TestDistSeResneXt2x2(unittest.TestCase):
                 retry_times -= 1
 
     def test_with_place(self):
+        # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
             "PYTHONPATH": os.getenv("PYTHONPATH"),
@@ -84,8 +85,8 @@ class TestDistSeResneXt2x2(unittest.TestCase):
         tr1_cmd = "%s dist_se_resnext.py trainer %s 1 %s %d TRUE" % \
             (self._python_interp, self._ps_endpoints, ps1_ep, self._trainers)
 
-        env0 = {"CUDA_VISIBLE_DEVICES": "0,1"}
-        env1 = {"CUDA_VISIBLE_DEVICES": "2,3"}
+        env0 = {"CUDA_VISIBLE_DEVICES": "0"}
+        env1 = {"CUDA_VISIBLE_DEVICES": "1"}
         env0.update(required_envs)
         env1.update(required_envs)
         FNULL = open(os.devnull, 'w')
