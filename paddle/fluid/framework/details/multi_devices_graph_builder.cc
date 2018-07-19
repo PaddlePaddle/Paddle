@@ -333,7 +333,7 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
-  return std::move(graph);
+  return graph;
 }
 
 bool MultiDevSSAGraphBuilder::IsSparseGradient(const std::string &og) const {
