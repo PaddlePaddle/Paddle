@@ -22,6 +22,7 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
+namespace ir {
 /*
 namespace {
 void SortHelper(
@@ -41,7 +42,7 @@ void SortHelper(
   ret->push_back(node);
 }
 
-std::vector<ir::Node*> TopologySort(
+std::vector<ir::Node*> TopologySortOperations(
     const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list) {
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
@@ -156,7 +157,7 @@ bool HasCircle(const std::map<ir::Node *, std::unordered_set<ir::Node *>>
   return false;
 }
 
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildAdjList(
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const std::vector<ir::Node*> &nodes) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
 
@@ -178,17 +179,17 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildAdjList(
   return adj_list;
 }
 
-std::vector<ir::Node *> TopologySortOperationFromInToOut(
+std::vector<ir::Node *> TopologySortOperationsOperationFromInToOut(
     const std::vector<std::unique_ptr<ir::Node>> &nodes) {
   std::vector<ir::Node*> tmp;
   for (auto& n : nodes) {
     tmp.push_back(n.get());
   }
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
-BuildAdjList(tmp);
+BuildOperationAdjList(tmp);
 
   PADDLE_ENFORCE(!HasCircle(adj_list));
-  std::vector<ir::Node*> ret = TopologySort(adj_list);
+  std::vector<ir::Node*> ret = TopologySortOperations(adj_list);
 
   ir::Node *last_backward = nullptr;
   std::vector<ir::Node *> optimize_ops;
@@ -235,5 +236,6 @@ BuildAdjList(tmp);
   return ret;
 }*/
 
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

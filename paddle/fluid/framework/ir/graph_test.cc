@@ -93,7 +93,7 @@ TEST(GraphTest, Basic) {
   ASSERT_EQ(proto::VarType::LOD_TENSOR,
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
-  std::unique_ptr<Graph> g(new Graph(prog));
+  std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
   ASSERT_EQ(g->nodes[0]->Name(), "sum");
   ASSERT_EQ(g->nodes[0]->inputs[0]->Name(), "test_a");
   ASSERT_EQ(g->nodes[0]->inputs[1]->Name(), "test_b");

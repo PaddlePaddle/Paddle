@@ -26,9 +26,9 @@ namespace framework {
 namespace ir {
 bool HasCircle(const Graph &graph);
 
-std::vector<ir::Node *> TopologySort(const Graph &graph);
+std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildAdjList(
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);
 }  // namespace ir
 }  // namespace framework
