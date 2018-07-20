@@ -30,7 +30,13 @@ import paddle.fluid.profiler as profiler
 from recordio_converter import imagenet_train, imagenet_test
 
 
-def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
+def conv_bn_layer(input,
+                  ch_out,
+                  filter_size,
+                  stride,
+                  padding,
+                  act='relu',
+                  is_train=True):
     conv1 = fluid.layers.conv2d(
         input=input,
         filter_size=filter_size,
@@ -39,29 +45,31 @@ def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
         padding=padding,
         act=None,
         bias_attr=False)
-    return fluid.layers.batch_norm(input=conv1, act=act)
+    return fluid.layers.batch_norm(input=conv1, act=act, is_test=not is_train)
 
 
-def shortcut(input, ch_out, stride):
+def shortcut(input, ch_out, stride, is_train=True):
     ch_in = input.shape[1]  # if args.data_format == 'NCHW' else input.shape[-1]
     if ch_in != ch_out:
-        return conv_bn_layer(input, ch_out, 1, stride, 0, None)
+        return conv_bn_layer(
+            input, ch_out, 1, stride, 0, None, is_train=is_train)
     else:
         return input
 
 
-def basicblock(input, ch_out, stride):
-    short = shortcut(input, ch_out, stride)
-    conv1 = conv_bn_layer(input, ch_out, 3, stride, 1)
-    conv2 = conv_bn_layer(conv1, ch_out, 3, 1, 1, act=None)
+def basicblock(input, ch_out, stride, is_train=True):
+    short = shortcut(input, ch_out, stride, is_train=is_train)
+    conv1 = conv_bn_layer(input, ch_out, 3, stride, 1, is_train=is_train)
+    conv2 = conv_bn_layer(conv1, ch_out, 3, 1, 1, act=None, is_train=is_train)
     return fluid.layers.elementwise_add(x=short, y=conv2, act='relu')
 
 
-def bottleneck(input, ch_out, stride):
-    short = shortcut(input, ch_out * 4, stride)
-    conv1 = conv_bn_layer(input, ch_out, 1, stride, 0)
-    conv2 = conv_bn_layer(conv1, ch_out, 3, 1, 1)
-    conv3 = conv_bn_layer(conv2, ch_out * 4, 1, 1, 0, act=None)
+def bottleneck(input, ch_out, stride, is_train=True):
+    short = shortcut(input, ch_out * 4, stride, is_train=is_train)
+    conv1 = conv_bn_layer(input, ch_out, 1, stride, 0, is_train=is_train)
+    conv2 = conv_bn_layer(conv1, ch_out, 3, 1, 1, is_train=is_train)
+    conv3 = conv_bn_layer(
+        conv2, ch_out * 4, 1, 1, 0, act=None, is_train=is_train)
     return fluid.layers.elementwise_add(x=short, y=conv3, act='relu')
 
 
@@ -72,7 +80,11 @@ def layer_warp(block_func, input, ch_out, count, stride):
     return res_out
 
 
-def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
+def resnet_imagenet(input,
+                    class_dim,
+                    depth=50,
+                    data_format='NCHW',
+                    is_train=True):
 
     cfg = {
         18: ([2, 2, 2, 1], basicblock),
@@ -115,8 +127,9 @@ def resnet_cifar10(input, class_dim, depth=32, data_format='NCHW'):
     return out
 
 
-def get_model(args):
+def _model_reader_dshape_classdim(args, is_train):
     model = resnet_cifar10
+    reader = None
     if args.data_set == "cifar10":
         class_dim = 10
         if args.data_format == 'NCHW':
@@ -124,8 +137,10 @@ def get_model(args):
         else:
             dshape = [32, 32, 3]
         model = resnet_cifar10
-        train_reader = paddle.dataset.cifar.train10()
-        test_reader = paddle.dataset.cifar.test10()
+        if is_train:
+            reader = paddle.dataset.cifar.train10()
+        else:
+            reader = paddle.dataset.cifar.test10()
     elif args.data_set == "flowers":
         class_dim = 102
         if args.data_format == 'NCHW':
@@ -133,8 +148,10 @@ def get_model(args):
         else:
             dshape = [224, 224, 3]
         model = resnet_imagenet
-        train_reader = paddle.dataset.flowers.train()
-        test_reader = paddle.dataset.flowers.test()
+        if is_train:
+            reader = paddle.dataset.flowers.train()
+        else:
+            reader = paddle.dataset.flowers.test()
     elif args.data_set == "imagenet":
         class_dim = 1000
         if args.data_format == 'NCHW':
@@ -146,91 +163,105 @@ def get_model(args):
             raise Exception(
                 "Must specify --data_path when training with imagenet")
         if not args.use_reader_op:
-            train_reader = imagenet_train(args.data_path)
-            test_reader = imagenet_test(args.test_data_path)
+            if is_train:
+                reader = imagenet_train(args.data_path)
+            else:
+                reader = imagenet_test(args.test_data_path)
+    return model, reader, dshape, class_dim
 
-    if args.use_reader_op:
-        trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-        trainer_count = int(os.getenv("PADDLE_TRAINERS", "1"))
-        filelist_all = [
-            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
-        ]
-        filelist_all.sort()
-        file_node_list = []
+
+def get_model(args, is_train, main_prog, startup_prog):
+    model, reader, dshape, class_dim = _model_reader_dshape_classdim(args,
+                                                                     is_train)
+
+    # config readers
+    if not args.use_reader_op:
+        batched_reader = paddle.batch(
+            reader if args.no_random else paddle.reader.shuffle(
+                reader, buf_size=5120),
+            batch_size=args.batch_size * args.gpus,
+            drop_last=True)
+    else:
+        batched_reader = None
+
+    # prepare file list for current node
+    data_file_handle = None
+    trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+    trainer_count = int(os.getenv("PADDLE_TRAINERS", "1"))
+    current_data_path = args.data_path if is_train == True else args.test_data_path
+    filelist_all = [
+        os.path.join(current_data_path, f)
+        for f in os.listdir(current_data_path)
+    ]
+    filelist_all.sort()
+    file_node_list = []
+    if is_train:
         for idx, f in enumerate(filelist_all):
             if idx % trainer_count == trainer_id:
                 file_node_list.append(f)
-
-        data_file = fluid.layers.open_files(
-            filenames=file_node_list,
-            shapes=[[-1] + dshape, (-1, 1)],
-            lod_levels=[0, 0],
-            dtypes=["float32", "int64"],
-            thread_num=args.gpus,
-            pass_num=args.pass_num)
-        data_file = fluid.layers.double_buffer(
-            fluid.layers.batch(
-                data_file, batch_size=args.batch_size))
-        input, label = fluid.layers.read_file(data_file)
     else:
-        input = fluid.layers.data(name='data', shape=dshape, dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        file_node_list = filelist_all
 
-    if args.device == 'CPU' and args.cpus > 1:
-        places = fluid.layers.get_places(args.cpus)
-        pd = fluid.layers.ParallelDo(places)
-        with pd.do():
-            predict = model(pd.read_input(input), class_dim)
-            label = pd.read_input(label)
+    with fluid.program_guard(main_prog, startup_prog):
+        if args.use_reader_op:
+            data_file_handle = fluid.layers.open_files(
+                filenames=file_node_list,
+                shapes=[[-1] + dshape, (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"],
+                thread_num=1,
+                pass_num=1)
+            data_file = fluid.layers.double_buffer(
+                fluid.layers.batch(
+                    data_file_handle, batch_size=args.batch_size))
+        with fluid.unique_name.guard():
+            if args.use_reader_op:
+                input, label = fluid.layers.read_file(data_file)
+            else:
+                input = fluid.layers.data(
+                    name='data', shape=dshape, dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+
+            predict = model(input, class_dim, is_train=is_train)
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)
-            batch_acc = fluid.layers.accuracy(input=predict, label=label)
+            # NOTE: in distributed NCCL2 training, avg_cost = avg_cost / trainers
+            if args.update_method == "nccl2":
+                avg_cost = avg_cost / trainer_count
 
-            pd.write_output(avg_cost)
-            pd.write_output(batch_acc)
+            batch_acc1 = fluid.layers.accuracy(input=predict, label=label, k=1)
+            batch_acc5 = fluid.layers.accuracy(input=predict, label=label, k=5)
 
-        avg_cost, batch_acc = pd()
-        avg_cost = fluid.layers.mean(avg_cost)
-        batch_acc = fluid.layers.mean(batch_acc)
-    else:
-        predict = model(input, class_dim)
-        cost = fluid.layers.cross_entropy(input=predict, label=label)
-        avg_cost = fluid.layers.mean(x=cost)
-        batch_acc = fluid.layers.accuracy(input=predict, label=label)
+            # configure optimize
+            optimizer = None
+            if is_train:
+                if args.use_lars:
+                    lars_decay = 1.0
+                else:
+                    lars_decay = 0.0
 
-    # ============= test program ==============
-    inference_program = fluid.default_main_program().clone()
-    with fluid.program_guard(inference_program):
-        inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc])
-        if args.use_reader_op:
-            test_file_list = [
-                os.path.join(args.test_data_path, f)
-                for f in os.listdir(args.test_data_path)
-            ]
+                optimizer = fluid.optimizer.Momentum(
+                    learning_rate=0.1 * 32,
+                    momentum=0.9,
+                    LARS_weight_decay=lars_decay)
 
-            inference_program = fluid.io.get_test_program(
-                test_file_list, program=inference_program)
+                total_images = 1281167
 
-    if args.use_lars:
-        lars_decay = 1.0
-    else:
-        lars_decay = 0.0  # disable
-    optimizer = fluid.optimizer.Momentum(
-        learning_rate=1.0, momentum=0.9, LARS_weight_decay=lars_decay)
+                step = int(total_images / args.batch_size + 1)
+                epochs = [30, 60, 90]
+                bd = [step * e for e in epochs]
+                base_lr = args.learning_rate
+                lr = []
+                lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+                optimizer = fluid.optimizer.Momentum(
+                    learning_rate=fluid.layers.piecewise_decay(
+                        boundaries=bd, values=lr),
+                    momentum=0.9,
+                    regularization=fluid.regularizer.L2Decay(1e-4))
+                optimizer.minimize(avg_cost)
 
-    if not args.use_reader_op:
-        batched_train_reader = paddle.batch(
-            train_reader if args.no_random else paddle.reader.shuffle(
-                train_reader, buf_size=5120),
-            batch_size=args.batch_size * args.gpus,
-            drop_last=True)
-        batched_test_reader = paddle.batch(
-            test_reader, batch_size=args.batch_size, drop_last=True)
-    else:
-        batched_train_reader = None
-        batched_test_reader = None
+                if args.memory_optimize:
+                    fluid.memory_optimize(main_prog)
 
-
-    return avg_cost, inference_program, optimizer, batched_train_reader,\
-                   batched_test_reader, batch_acc
+    return avg_cost, optimizer, batch_acc1, batch_acc5, batched_reader, data_file_handle
