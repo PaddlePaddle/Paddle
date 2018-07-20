@@ -24,6 +24,9 @@
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 
 namespace paddle {
+
+DEFINE_int32(tensorrt_engine_batch_size, 1, "the batch_size of TensorRT");
+
 namespace operators {
 
 using inference::Singleton;
@@ -52,7 +55,6 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
                     "TensorRT' tensor input requires at least 2 dimensions");
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
                     "TensorRT' tensor input requires at most 4 dimensions");
-
   switch (shape.size()) {
     case 2:
       return nvinfer1::Dims2(shape[0], shape[1]);
@@ -90,27 +92,36 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
   engine->InitNetwork();
 
   framework::BlockDesc block(nullptr /*programdesc*/, &block_desc);
+  VLOG(4) << "parsed var size " << block.AllVars().size();
   // Add inputs
   VLOG(4) << "declare inputs";
   for (auto &input : context.Inputs("Xs")) {
     VLOG(4) << "declare input " << input;
     auto *var = block.FindVar(input);
+    // TensorRT engine need to create parameters. The parameter's description
+    // should be set in
+    PADDLE_ENFORCE(var, "no variable called %s", input);
     PADDLE_ENFORCE_EQ(var->GetType(), FluidDT::VarType_Type_LOD_TENSOR,
                       "TensorRT engine only takes LoDTensor as input");
     auto shape = var->GetShape();
+    // For the special batch_size placeholder -1, drop it and pass the real
+    // shape of data.
+    // TODO(Superjomn) fix this with batch broadcast, or it can't handle
+    // variational batch size.
+    if (shape[0] == -1) {
+      shape[0] = FLAGS_tensorrt_engine_batch_size;
+    }
     engine->DeclareInput(
         input, FluidDataType2TRT(
                    var->Proto()->type().lod_tensor().tensor().data_type()),
-        Vec2TRT_Dims(var->GetShape()));
+        Vec2TRT_Dims(shape));
   }
 
   inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
       block_desc, parameters, context.scope(), engine);
 
   // Add outputs
-  VLOG(4) << "declare outputs";
   for (auto &output : context.Outputs("Ys")) {
-    VLOG(4) << "declare output " << output;
     engine->DeclareOutput(output);
   }
 
@@ -150,5 +161,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int64_t>);
+
+// A trick to compile with the needed TensorRT op converter.
+USE_TRT_CONVERTER(mul)
 
 #endif  // PADDLE_WITH_CUDA
