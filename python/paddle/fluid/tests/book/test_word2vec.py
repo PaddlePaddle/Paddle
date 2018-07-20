@@ -245,7 +245,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if use_cuda and is_sparse:
+    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server
