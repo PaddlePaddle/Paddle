@@ -76,6 +76,7 @@ class BaseTestCase(OpTest):
                 'dropout_prob': float(self.dropout_prob),
                 'use_cudnn': True
             }
+            print(self.attrs)
 
             self.place = fluid.CUDAPlace(0)
 

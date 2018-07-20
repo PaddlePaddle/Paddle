@@ -109,14 +109,6 @@ class CUDNNDropoutKernel : public framework::OpKernel<T> {
         framework::TensorCopySync(*x, context.GetPlace(), y);
         CUDNN_ENFORCE(platform::dynload::cudnnScaleTensor(handle, x_desc,
                                                           y_data, &alpha));
-        /*
-        auto X = EigenMatrix<T>::Reshape(*x, 1);
-        auto Y = EigenMatrix<T>::Reshape(*y, 1);
-        auto& place =
-            *context.template device_context<platform::CUDADeviceContext>()
-                 .eigen_device();
-        Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
-        */
       } else {
         CUDNN_ENFORCE(platform::dynload::cudnnScaleTensor(handle, x_desc,
                                                           y_data, &alpha));
