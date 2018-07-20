@@ -81,7 +81,8 @@ def dist_transpile(trainer_id, args):
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
     config = fluid.DistributeTranspilerConfig()
-    config.slice_var_up = not arg.no_split_var
+    config.slice_var_up = not args.no_split_var
+    config.min_block_size = 1048576
     t = distribute_transpiler.DistributeTranspiler(config=config)
 
     t.transpile(
