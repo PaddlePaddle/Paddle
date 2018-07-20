@@ -78,8 +78,5 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
 };
 
-std::vector<ir::Node*> TopologySortOperationFromInToOut(
-    const std::vector<std::unique_ptr<ir::Node>>& nodes);
-
 }  // namespace framework
 }  // namespace paddle
