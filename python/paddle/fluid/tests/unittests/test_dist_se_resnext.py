@@ -62,7 +62,7 @@ class TestDistSeResneXt2x2(unittest.TestCase):
             "PATH": os.getenv("PATH"),
             "PYTHONPATH": os.getenv("PYTHONPATH"),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH"),
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.85"
+            "FLAGS_fraction_of_gpu_memory_to_use": "0.15"
         }
         # Run local to get a base line
         env_local = {"CUDA_VISIBLE_DEVICES": "0"}

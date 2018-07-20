@@ -37,7 +37,6 @@ train_parameters = {
     "input_std": [0.229, 0.224, 0.225],
     "learning_strategy": {
         "name": "piecewise_decay",
-        "batch_size": 256,
         "epochs": [30, 60, 90],
         "steps": [0.1, 0.01, 0.001, 0.0001]
     }
@@ -251,7 +250,7 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 class DistSeResneXt2x2:
     def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
                     trainer_id):
-        get_model(batch_size=20)
+        get_model(batch_size=2)
         t = get_transpiler(trainer_id,
                            fluid.default_main_program(), pserver_endpoints,
                            trainers)
