@@ -15,7 +15,7 @@ limitations under the License. */
 #include <limits>
 #include <string>
 
-#include "paddle/fluid/operators/distributed/grpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc_server.h"
 
 using ::grpc::ServerAsyncResponseWriter;

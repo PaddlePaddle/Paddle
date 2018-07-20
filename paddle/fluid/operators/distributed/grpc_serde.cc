@@ -22,7 +22,7 @@ limitations under the License. */
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/distributed/grpc_bytebuffer_stream.h"
-#include "paddle/fluid/operators/distributed/grpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/proto_encoder_helper.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"

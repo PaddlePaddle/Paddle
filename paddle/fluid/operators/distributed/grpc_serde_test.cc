@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/detail/macros.h"
-#include "paddle/fluid/operators/distributed/grpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/operators/math/math_function.h"
