@@ -23,39 +23,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-/*
-namespace {
-void SortHelper(
-    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list,
-    ir::Node *node, std::unordered_set<ir::Node *> *visited,
-    std::vector<ir::Node *> *ret) {
-  visited->insert(node);
-
-  for (auto adj : adj_list.at(node)) {
-    if (visited->find(adj) == visited->end()) {
-      SortHelper(adj_list, adj, visited, ret);
-    }
-  }
-
-  VLOG(3) << "topology sort insert: " << node->Name()
-          << reinterpret_cast<void *>(node) << " input " << node->inputs.size();
-  ret->push_back(node);
-}
-
-std::vector<ir::Node*> TopologySortOperations(
-    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list) {
-  std::unordered_set<ir::Node *> visited;
-  std::vector<ir::Node *> ret;
-
-  for (auto adj : adj_list) {
-    if (visited.find(adj.first) == visited.end()) {
-      SortHelper(adj_list, adj.first, &visited, &ret);
-    }
-  }
-  return ret;
-}
-}  // namespace
-*/
 
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   VLOG(3) << "block in program:" << program_.Size();
@@ -93,6 +60,13 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       var->inputs.push_back(node);
     }
   }
+  /**
+   * We only handle write after read(WAR), since it should not have a write
+   * after write in program. If there are write after write operators, we need
+   * prune them.
+   *
+   * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
+   */
   for (auto &var : var_nodes) {
     auto &versions = var.second;
     if (versions.size() <= 1) continue;
@@ -121,121 +95,6 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
     }
   }
 }
-
-/*
-bool HasCircleHelper(ir::Node* node,
-                     const std::map<ir::Node *, std::unordered_set<ir::Node *>>
-&adj_list,
-                     std::unordered_set<ir::Node*>* visited,
-                     std::unordered_set<ir::Node*>* in_trace) {
-  if (visited->find(node) == visited->end()) {
-    visited->insert(node);
-    in_trace->insert(node);
-
-    for (ir::Node *in : adj_list.at(node)) {
-      if (visited->find(in) == visited->end() &&
-          HasCircleHelper(in, adj_list, visited, in_trace)) {
-        return true;
-      } else if (in_trace->find(in) != in_trace->end()) {
-        return true;
-      }
-    }
-  }
-  in_trace->erase(node);
-  return false;
-}
-
-bool HasCircle(const std::map<ir::Node *, std::unordered_set<ir::Node *>>
-&adj_list) {
-  std::unordered_set<ir::Node*> visited;
-  std::unordered_set<ir::Node*> in_trace;
-  for (auto& adj : adj_list) {
-    if (HasCircleHelper(adj.first, adj_list, &visited, &in_trace)) {
-      return true;
-    }
-  }
-  return false;
-}
-
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
-    const std::vector<ir::Node*> &nodes) {
-  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
-
-  for (auto &n : nodes) {
-    if (n->NodeType() != ir::Node::Type::kOperation) continue;
-    if (adj_list.find(n) == adj_list.end()) {
-      adj_list[n] = std::unordered_set<ir::Node *>();
-    }
-    for (auto &var : n->inputs) {
-      for (auto &adj_n : var->inputs) {
-        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
-        adj_list[n].insert(adj_n);
-        LOG(ERROR) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                   << " -> " << n->Name() << reinterpret_cast<void *>(n)
-                   << "  via " << var->Name() << reinterpret_cast<void *>(var);
-      }
-    }
-  }
-  return adj_list;
-}
-
-std::vector<ir::Node *> TopologySortOperationsOperationFromInToOut(
-    const std::vector<std::unique_ptr<ir::Node>> &nodes) {
-  std::vector<ir::Node*> tmp;
-  for (auto& n : nodes) {
-    tmp.push_back(n.get());
-  }
-  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
-BuildOperationAdjList(tmp);
-
-  PADDLE_ENFORCE(!HasCircle(adj_list));
-  std::vector<ir::Node*> ret = TopologySortOperations(adj_list);
-
-  ir::Node *last_backward = nullptr;
-  std::vector<ir::Node *> optimize_ops;
-  for (ir::Node* n : ret) {
-    if (boost::get<int>(
-        n->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-        static_cast<int>(OpRole::kBackward)) {
-      last_backward = n;
-    } else if (boost::get<int>(
-        n->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-        static_cast<int>(OpRole::kOptimize)) {
-      optimize_ops.push_back(n);
-    }
-  }
-
-  if (last_backward) {
-    for (ir::Node *opt_node : optimize_ops) {
-      ir::Node *dep_var = CreateEmptyNode(ir::Node::kControlDepVarName,
-                                          ir::Node::Type::kVariable);
-      last_backward->outputs.push_back(dep_var);
-      dep_var->inputs.push_back(last_backward);
-      opt_node->inputs.push_back(dep_var);
-      dep_var->outputs.push_back(opt_node);
-      VLOG(3) << "appending connect: " << last_backward->Name()
-              << reinterpret_cast<void *>(last_backward) << "->"
-              << opt_node->Name() << reinterpret_cast<void *>(opt_node);
-    }
-  }
-
-  PADDLE_ENFORCE(!HasCircle(adj_list));
-  for (ir::Node *n : ret) {
-    std::unordered_set<ir::Node *> dummy;
-    n->inputs.erase(
-        std::remove_if(n->inputs.begin(), n->inputs.end(),
-                       [n](ir::Node *t) {
-                         return t->Name() == ir::Node::kControlDepVarName; }),
-        n->inputs.end());
-    n->outputs.erase(
-        std::remove_if(n->outputs.begin(), n->outputs.end(),
-                       [n](ir::Node *t) {
-                         return t->Name() == ir::Node::kControlDepVarName; }),
-        n->outputs.end());
-  }
-  return ret;
-}*/
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

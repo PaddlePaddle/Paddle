@@ -216,21 +216,6 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
 
   sorted_ret.insert(sorted_ret.begin() + last_backward, optimize_ops.begin(),
                     optimize_ops.end());
-
-  for (ir::Node *n : sorted_ret) {
-    n->inputs.erase(std::remove_if(n->inputs.begin(), n->inputs.end(),
-                                   [n](ir::Node *t) {
-                                     return t->Name() ==
-                                            ir::Node::kControlDepVarName;
-                                   }),
-                    n->inputs.end());
-    n->outputs.erase(std::remove_if(n->outputs.begin(), n->outputs.end(),
-                                    [n](ir::Node *t) {
-                                      return t->Name() ==
-                                             ir::Node::kControlDepVarName;
-                                    }),
-                     n->outputs.end());
-  }
   return sorted_ret;
 }
 
@@ -364,12 +349,6 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
       }
     }
   }
-
-  /*
-    Dependency graph has been constructed. However, there are still data
-    hazards need to be handled.
-   */
-  PolishGraphToSupportDataHazards(&result);
 
   /*
    * Only variables should be the leaves of graph.
