@@ -18,6 +18,7 @@ import paddle.fluid.core as core
 from paddle.fluid.framework import default_startup_program, default_main_program
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.layers.control_flow import ConditionalBlock
 import numpy
 
 
@@ -25,7 +26,7 @@ class ConditionalBlock(unittest.TestCase):
     def test_forward(self):
         data = layers.data(name='X', shape=[1], dtype='float32')
         data.stop_gradient = False
-        cond = layers.ConditionalBlock(inputs=[data])
+        cond = ConditionalBlock(inputs=[data])
         out = layers.create_tensor(dtype='float32')
         with cond.block():
             hidden = layers.fc(input=data, size=10)

@@ -19,6 +19,10 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.optimizer import MomentumOptimizer
 import paddle.fluid.core as core
 import paddle.fluid as fluid
+from paddle.fluid.layers.control_flow import split_lod_tensor
+from paddle.fluid.layers.control_flow import merge_lod_tensor
+from paddle.fluid.layers.control_flow import ConditionalBlock
+
 import unittest
 import numpy as np
 
@@ -34,11 +38,10 @@ class TestMNISTIfElseOp(unittest.TestCase):
 
             limit = layers.fill_constant(shape=[1], dtype='int64', value=5)
             cond = layers.less_than(x=label, y=limit)
-            true_image, false_image = layers.split_lod_tensor(
-                input=image, mask=cond)
+            true_image, false_image = split_lod_tensor(input=image, mask=cond)
 
             true_out = layers.create_tensor(dtype='float32')
-            true_cond = layers.ConditionalBlock([cond])
+            true_cond = ConditionalBlock([cond])
 
             with true_cond.block():
                 hidden = layers.fc(input=true_image, size=100, act='tanh')
@@ -46,14 +49,14 @@ class TestMNISTIfElseOp(unittest.TestCase):
                 layers.assign(input=prob, output=true_out)
 
             false_out = layers.create_tensor(dtype='float32')
-            false_cond = layers.ConditionalBlock([cond])
+            false_cond = ConditionalBlock([cond])
 
             with false_cond.block():
                 hidden = layers.fc(input=false_image, size=200, act='tanh')
                 prob = layers.fc(input=hidden, size=10, act='softmax')
                 layers.assign(input=prob, output=false_out)
 
-            prob = layers.merge_lod_tensor(
+            prob = merge_lod_tensor(
                 in_true=true_out, in_false=false_out, mask=cond, x=image)
             loss = layers.cross_entropy(input=prob, label=label)
             avg_loss = layers.mean(loss)
