@@ -5320,7 +5320,7 @@ def rank_loss(label, left, right, name=None):
         list: The value of rank loss.
 
     Raises:
-        ValueError: any of label, left, and right is not a variable.
+        ValueError: Any of label, left, and right is not a variable.
 
     Examples:
 
