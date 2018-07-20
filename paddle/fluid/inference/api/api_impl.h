@@ -38,7 +38,8 @@ class NativePaddlePredictor : public PaddlePredictor {
   bool Init(std::shared_ptr<framework::Scope> parent_scope);
 
   bool Run(const std::vector<PaddleTensor> &inputs,
-           std::vector<PaddleTensor> *output_data) override;
+           std::vector<PaddleTensor> *output_data,
+           int batch_size = -1) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 

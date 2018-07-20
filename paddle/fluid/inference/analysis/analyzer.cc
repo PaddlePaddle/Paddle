@@ -22,14 +22,15 @@
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
 
 namespace paddle {
-namespace inference {
-namespace analysis {
 
 DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
             "Enable subgraph to TensorRT engine for acceleration");
 
 DEFINE_string(inference_analysis_graphviz_log_root, "./",
               "Graphviz debuger for data flow graphs.");
+
+namespace inference {
+namespace analysis {
 
 class DfgPassManagerImpl final : public DfgPassManager {
  public:

@@ -23,9 +23,6 @@ from ops import logical_and, logical_not, logical_or
 import numpy
 
 __all__ = [
-    'BlockGuard',
-    'BlockGuardWithCompletion',
-    'WhileGuard',
     'While',
     'Switch',
     'increment',

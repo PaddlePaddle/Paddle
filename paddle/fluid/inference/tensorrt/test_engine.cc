@@ -103,6 +103,10 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
 
   LOG(INFO) << "to get output";
   float y_cpu[2] = {-1., -1.};
+  auto dims = engine_->GetITensor("y")->getDimensions();
+  ASSERT_EQ(dims.nbDims, 3);
+  ASSERT_EQ(dims.d[0], 2);
+  ASSERT_EQ(dims.d[1], 1);
   engine_->GetOutputInCPU("y", &y_cpu[0], sizeof(float) * 2);
   ASSERT_EQ(y_cpu[0], 4.5);
   ASSERT_EQ(y_cpu[1], 14.5);
