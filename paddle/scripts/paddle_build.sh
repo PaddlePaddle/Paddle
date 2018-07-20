@@ -599,11 +599,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
+        assert_api_not_changed
         ;;
       *)
         print_usage
