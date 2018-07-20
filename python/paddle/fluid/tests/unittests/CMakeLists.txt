@@ -45,7 +45,6 @@ py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=$
 if(WITH_DISTRIBUTE)
     py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
-    set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 180)
     set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 180)
 endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)

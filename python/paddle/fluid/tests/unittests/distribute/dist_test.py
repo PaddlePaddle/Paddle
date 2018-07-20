@@ -26,11 +26,15 @@ JOB_ROLE_MASTER = "MASTER"
 JOB_ROLE_TRAINER = "TRAINER"
 JOB_ROLE_PSERVERS = "PSERVER"
 
+# detect cuda device count automatically
+CUDA_DEVICE_CNT = 2
+
 
 class FluidDistTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.entry = ""
+        cls.place = None
 
     def _wait_ps_ready(self, pid):
         retry_times = 5
@@ -84,6 +88,8 @@ class FluidDistTest(unittest.TestCase):
                 p_env["PADDLE_TRAINING_ROLE"] = "TRAINER"
                 p_env["PADDLE_TRAINER_ID"] = str(i)
                 p_env["PADDLE_TRAINERS"] = str(trainers)
+                p_env["CUDA_VISIBLE_DEVICES"] = str(trainers % CUDA_DEVICE_CNT)
+                p_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.15"
                 p_list.append(subprocess.Popen(self.entry.split(), env=p_env))
 
             job_failed = False

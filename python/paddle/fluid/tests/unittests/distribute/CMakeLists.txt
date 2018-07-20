@@ -1,1 +1,2 @@
 py_test_modules(test_dist_mnist MODULES test_dist_mnist SERIAL)
+set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 180)
