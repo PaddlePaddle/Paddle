@@ -30,6 +30,7 @@ from dist_test import FluidDistTest
 
 SEED = 1
 DTYPE = "float32"
+paddle.dataset.common.DATA_HOME = "/paddle/workspaces/dataset"
 paddle.dataset.mnist.fetch()
 
 
@@ -107,14 +108,22 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 
 
 class TestDistMnist(FluidDistTest):
-    def test_dist_job(self):
-        self.launch_job()
+    def setUp(self):
+        self.place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        self.entry = "python test_dist_mnist.py"
+
+    def test_job(self):
+        self.launch_job(2, 2)
 
     def start_pserver(self):
+        ps_endpoints = os.getenv("PADDLE_PSERVER_ENDPOINTS")
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
+        current_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
+
         get_model(batch_size=20)
         t = get_transpiler(0,
-                           fluid.default_main_program(), pserver_endpoints,
-                           trainers)
+                           fluid.default_main_program(), ps_endpoints, trainers)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
 
@@ -126,8 +135,8 @@ class TestDistMnist(FluidDistTest):
 
     def start_trainer(self):
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
-        ps_endpoints = os.getenv("PADDLE_PS_ENDPOINTS")
-        trainers = int(os.getenv("PADDLE_TRAINER_ID"))
+        ps_endpoints = os.getenv("PADDLE_PSERVER_ENDPOINTS")
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
 
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = get_model(
             batch_size=20)
@@ -136,7 +145,7 @@ class TestDistMnist(FluidDistTest):
 
         trainer_prog = t.get_trainer_program()
 
-        exe = fluid.Executor(place)
+        exe = fluid.Executor(self.place)
         exe.run(fluid.default_startup_program())
 
         feed_var_list = [
@@ -144,7 +153,7 @@ class TestDistMnist(FluidDistTest):
             if var.is_data
         ]
 
-        feeder = fluid.DataFeeder(feed_var_list, place)
+        feeder = fluid.DataFeeder(feed_var_list, self.place)
         for pass_id in xrange(10):
             for batch_id, data in enumerate(train_reader()):
                 exe.run(trainer_prog, feed=feeder.feed(data))
@@ -167,8 +176,8 @@ class TestDistMnist(FluidDistTest):
                         return
                     else:
                         print(
-                            'PassID {0:1}, BatchID {1:04}, Test Loss {2:2.2}, Acc {3:2.2}'.
-                            format(pass_id, batch_id + 1,
+                            'TRAINER_ID: {0} PassID {1}, BatchID {2}, Test Loss {3:2.2}, Acc {4:2.2}'.
+                            format(trainer_id, pass_id, batch_id + 1,
                                    float(avg_loss_val), float(acc_val)))
                         if math.isnan(float(avg_loss_val)):
                             assert ("got Nan loss, training failed.")

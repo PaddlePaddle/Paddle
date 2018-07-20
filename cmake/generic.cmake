@@ -653,3 +653,19 @@ function(brpc_library TARGET_NAME)
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
+
+function(py_test_modules TARGET_NAME)
+  if(WITH_TESTING)
+    set(options SERIAL)
+    set(oneValueArgs "")
+    set(multiValueArgs MODULES DEPS ENVS)
+    cmake_parse_arguments(py_test_modules "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+    add_test(NAME ${TARGET_NAME}
+             COMMAND env PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_modules_ENVS}
+             ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
+             WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+    if (py_test_modules_SERIAL)
+        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+    endif()
+  endif()
+endfunction()

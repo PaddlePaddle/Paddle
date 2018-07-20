@@ -1,0 +1,1 @@
+py_test_modules(test_dist_mnist MODULES test_dist_mnist SERIAL)
