@@ -57,15 +57,6 @@ class SSAGraphBuilder : public ir::Pass {
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
  protected:
-  /**
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
-   *
-   * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
-   */
-  static void PolishGraphToSupportDataHazards(ir::Graph *graph);
-
   static VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph, ir::Node *node,
                                                const platform::Place &place,
                                                size_t place_offset);
