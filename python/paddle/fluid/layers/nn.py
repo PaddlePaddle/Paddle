@@ -5289,17 +5289,17 @@ def rank_loss(label, left, right, name=None):
     **Rank loss layer for RankNet**
 
     RankNet(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
-    is a pairwise ranking model with one training sample consisting of a pair
-    of doc A and B, and the label P indicating that A is ranked higher than B
+    is a pairwise ranking model with a training sample consisting of a pair
+    of documents, A and B. Label P indicates whether A is ranked higher than B
     or not:
+ 
+    P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
+    about the rank of the input pair.
     
-    P = {0, 1} or {0, 0.5, 1}, where 0.5 means no information about the rank of
-    the input pair.
-    
-    This layer takes three inputs: left (o_i), right (o_j) and label
-    (P_{i,j}), which represent the output score of RankNet for the two docs and
-    the label respectively, and yields the rank loss C_{i,j} using the following
-    equation:
+    Rank loss layer takes three inputs: left (o_i), right (o_j) and
+    label (P_{i,j}). The inputs respectively represent RankNet's output scores
+    for documents A and B and the value of label P. The following equation
+    computes rank loss C_{i,j} from the inputs:
     
     $$
       C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
@@ -5307,20 +5307,20 @@ def rank_loss(label, left, right, name=None):
       \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
     $$
     
-    This layer can take batch inputs with size batch_size (batch_size >= 1).
-    
+    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).   
+ 
     Args:
-        label (Variable): The label indicating A ranked higher than B or not.
-        left (Variable): The output of RankNet for doc A.
-        right (Variable): The output of RankNet for doc B.
+        label (Variable): Indicats whether A ranked higher than B or not.
+        left (Variable): RankNet's output score for doc A.
+        right (Variable): RankNet's output score for doc B.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
     Returns:
-        list: The output loss of RankLoss layer.
+        list: The value of rank loss.
 
     Raises:
-        ValueError: If label or left or right is not a Variable.
+        ValueError: any of label, left, and right is not a variable.
 
     Examples:
 
