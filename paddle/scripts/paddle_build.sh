@@ -19,6 +19,8 @@
 #                   Utils
 #=================================================
 
+set -ex
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -37,6 +39,7 @@ function print_usage() {
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
+    ${BLUE}assert_api_not_changed${NONE}: check api compability
     "
 }
 
@@ -326,11 +329,23 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    curl ${PADDLE_API_SPEC_URL:-https://raw.githubusercontent.com/PaddlePaddle/FluidAPISpec/master/API.spec} \
-        > origin.spec
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
-    python ${PADDLE_ROOT}/tools/diff_api.py origin.spec new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
+
+    # Use git diff --name-only HEAD^ may not get file changes for update commits in one PR
+    API_CHANGE=`echo $CHANGED_FILES | grep "paddle/fluid/API.spec" || true`
+    echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+    if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+        # TODO: curl -H 'Authorization: token ${TOKEN}'
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have at least 2 approvals for the api change!"
+        exit 1
+        fi
+    fi
 }
 
 
@@ -531,13 +546,12 @@ function test_fluid_inference_lib() {
     Testing fluid inference library ...
     ========================================
 EOF
-        cd ${PADDLE_ROOT}/paddle/contrib/inference/demo_ci
+        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
         ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
       fi
 }
 
 function main() {
-    set -e
     local CMD=$1
     init
     case $CMD in
@@ -586,11 +600,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
+        assert_api_not_changed
         ;;
       *)
         print_usage
