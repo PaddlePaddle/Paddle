@@ -632,6 +632,7 @@ class Net{
 
 
 1. <span id = 'precision'> Precision </span>
+
 <p align="center">
   <table>
     <thead>
