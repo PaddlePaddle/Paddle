@@ -12,12 +12,24 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#pragma once
+
+#include <map>
+#include <memory>
+#include <vector>
+
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-const char Node::kControlDepVarName[] = "__control_var";
+bool HasCircle(const Graph &graph);
+
+std::vector<ir::Node *> TopologySort(const Graph &graph);
+
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildAdjList(
+    const Graph &graph);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

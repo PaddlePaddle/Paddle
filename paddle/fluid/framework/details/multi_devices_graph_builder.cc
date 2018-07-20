@@ -25,6 +25,7 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/scope.h"
@@ -186,9 +187,55 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
   return dev_id;
 }
 
+// Topology sort the graph nodes from inputs to outputs.
+// Since SSAGraphBuilder depends on forward/backward nodes to assign devices
+// to parameter/gradients before optimizer ops, topo sort is insufficient. (
+// some optimizer ops might not depend on any nodes), we manually move all
+// optimizer nodes after last backward nodes.
+std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const Graph &graph) {
+  std::vector<ir::Node *> ret = ir::TopologySort(graph);
+  size_t last_backward = 0;
+  std::vector<ir::Node *> optimize_ops;
+  std::vector<ir::Node *> sorted_ret;
+  for (size_t i = 0; i < ret.size(); ++i) {
+    if (boost::get<int>(
+            ret[i]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+        static_cast<int>(OpRole::kBackward)) {
+      sorted_ret.push_back(ret[i]);
+      last_backward = sorted_ret.size();
+    } else if (boost::get<int>(ret[i]->Op()->GetAttr(
+                   OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+               static_cast<int>(OpRole::kOptimize)) {
+      optimize_ops.push_back(ret[i]);
+    } else {
+      sorted_ret.push_back(ret[i]);
+    }
+  }
+
+  sorted_ret.insert(sorted_ret.begin() + last_backward, optimize_ops.begin(),
+                    optimize_ops.end());
+
+  for (ir::Node *n : sorted_ret) {
+    n->inputs.erase(std::remove_if(n->inputs.begin(), n->inputs.end(),
+                                   [n](ir::Node *t) {
+                                     return t->Name() ==
+                                            ir::Node::kControlDepVarName;
+                                   }),
+                    n->inputs.end());
+    n->outputs.erase(std::remove_if(n->outputs.begin(), n->outputs.end(),
+                                    [n](ir::Node *t) {
+                                      return t->Name() ==
+                                             ir::Node::kControlDepVarName;
+                                    }),
+                     n->outputs.end());
+  }
+  return sorted_ret;
+}
+
 std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
     std::unique_ptr<Graph> graph) const {
   // Rebuild the graph structure.
+  std::vector<ir::Node *> sorted_ops = SortOpsAndDelayOptimizeOp(*graph);
   auto nodes = std::move(graph->nodes);
   graph->nodes.clear();
 
@@ -217,12 +264,7 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
   size_t cur_device_id = 0;
   bool is_forwarding = true;
 
-  // NOTE: Currently, passes before SSAGraphBuilder cannot reorder
-  // forward, backward nodes. E.g. you can't append an forward node
-  // at the end of the node list.
-  // TODO(panyx0718): FIXME: Needs to sort by forward->backward order.
-  for (ir::Node *node : TopologySortOperationFromInToOut(nodes)) {
-    VLOG(3) << "apply node: " << node->Name() << reinterpret_cast<void *>(node);
+  for (ir::Node *node : sorted_ops) {
     if (boost::get<int>(
             node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
         static_cast<int>(OpRole::kRPC)) {
@@ -240,7 +282,6 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
       // It also assumes backward op will always follow the forward op in
       // the block.
       is_forwarding = false;
-      LOG(ERROR) << "forward flipping!!!!!!!";
     } else {
       int op_dev_id = GetOpDeviceID(node);
       if (op_dev_id != -1) {  // This op only runs on one specific device.
