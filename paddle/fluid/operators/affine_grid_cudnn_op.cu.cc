@@ -30,7 +30,6 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
                    "It must use CUDAPlace.");
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    LOG(ERROR) << "-----CUDNNAffineGridOpKernel-----";
     auto* theta = ctx.Input<Tensor>("Theta");
     auto* size = ctx.Input<Tensor>("Size");
     auto* output = ctx.Output<Tensor>("Output");

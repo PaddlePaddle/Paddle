@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
+#include "paddle/fluid/operators/affine_grid_op.h"
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -22,6 +23,19 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+
+template <typename T>
+struct Linspace<paddle::platform::CPUDeviceContext, T>{
+    framework::Tensor operator()(T start, T end, int count, const framework::ExecutionContext& ctx) {
+        Tensor numbers;
+        T* number_data = numbers.mutable_data<T>({count}, platform::CPUPlace());
+        T slice =  (end - start) / (T)(count-1);
+        for (int i=0; i<count; ++i) {
+            number_data[i] = start + (T)i * slice;
+        }
+        return numbers;
+    }
+};
 
 class AffineGridOp : public framework::OperatorWithKernel {
  public:
@@ -129,3 +143,8 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(affine_grid, ops::AffineGridOp, ops::AffineGridOpMaker,
                   ops::AffineGridGradMaker);
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
+
+REGISTER_OP_CPU_KERNEL(
+    affine_grid, ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(
+    affine_grid_grad, ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>);

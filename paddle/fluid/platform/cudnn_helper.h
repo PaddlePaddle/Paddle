@@ -172,22 +172,6 @@ class CudnnDataType<double> {
   }
 };
 
-template <>
-class CudnnDataType<int> {
- public:
-  static const cudnnDataType_t type = CUDNN_DATA_INT32;
-  using ScalingParamType = const int;
-  using BatchNormParamType = int;
-  static ScalingParamType* kOne() {
-    static ScalingParamType v = 1;
-    return &v;
-  }
-  static ScalingParamType* kZero() {
-    static ScalingParamType v = 0;
-    return &v;
-  }
-};
-
 inline cudnnTensorFormat_t GetCudnnTensorFormat(
     const DataLayout& order) {  // Not use
   switch (order) {
@@ -374,12 +358,8 @@ class ScopedSpatialTransformerDescriptor {
   template <typename T>
   inline cudnnSpatialTransformerDescriptor_t descriptor(const int nbDims,
                                                         const int dimA[]) {
-    LOG(ERROR) << "desc_: " << desc_;
-    LOG(ERROR) << "nbDims: " << nbDims;
-    LOG(ERROR) << "dimA: " << dimA;
-    LOG(ERROR) << "CudnnDataType<T>::type: " << CudnnDataType<T>::type;
     PADDLE_ENFORCE(dynload::cudnnSetSpatialTransformerNdDescriptor(
-        desc_, CUDNN_SAMPLER_BILINEAR, CUDNN_DATA_FLOAT, nbDims, dimA));
+        desc_, CUDNN_SAMPLER_BILINEAR, CudnnDataType<T>::type, nbDims, dimA));
     return desc_;
   }
 
