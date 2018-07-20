@@ -26,13 +26,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
+namespace ir {
 class Graph {
  public:
-  explicit Graph(const ProgramDesc& program);
+  explicit Graph(const ProgramDesc &program);
 
   virtual ~Graph() {
-    for (auto& attr : attrs_) {
+    for (auto &attr : attrs_) {
       attr_dels_[attr.first]();
     }
     attrs_.clear();
@@ -40,12 +40,12 @@ class Graph {
   }
 
   template <typename AttrType>
-  AttrType& Get(const std::string& attr_name) const {
-    return *boost::any_cast<AttrType*>(attrs_.at(attr_name));
+  AttrType &Get(const std::string &attr_name) const {
+    return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
   }
 
   template <typename AttrType>
-  void Set(const std::string& attr_name, AttrType* attr) {
+  void Set(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
@@ -54,17 +54,17 @@ class Graph {
     };
   }
 
-  ir::Node* CreateVarNode(VarDesc* var_desc) {
+  ir::Node *CreateVarNode(VarDesc *var_desc) {
     nodes.emplace_back(new ir::Node(var_desc));
     return nodes.back().get();
   }
 
-  ir::Node* CreateOpNode(OpDesc* op_desc) {
+  ir::Node *CreateOpNode(OpDesc *op_desc) {
     nodes.emplace_back(new ir::Node(op_desc));
     return nodes.back().get();
   }
 
-  ir::Node* CreateEmptyNode(const std::string& name, ir::Node::Type type) {
+  ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
     nodes.emplace_back(new ir::Node(name, type));
     return nodes.back().get();
   }
@@ -73,10 +73,10 @@ class Graph {
 
  private:
   // NOTE: program_ shouldn't be exposed to user.
-  const ProgramDesc& program_;
+  const ProgramDesc &program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
 };
-
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

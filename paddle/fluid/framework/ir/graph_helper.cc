@@ -64,7 +64,7 @@ bool HasCircleHelper(
 
 bool HasCircle(const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
-      BuildAdjList(graph);
+      BuildOperationAdjList(graph);
 
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
@@ -76,9 +76,9 @@ bool HasCircle(const Graph &graph) {
   return false;
 }
 
-std::vector<ir::Node *> TopologySort(const Graph &graph) {
+std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
-      BuildAdjList(graph);
+      BuildOperationAdjList(graph);
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {
@@ -89,7 +89,7 @@ std::vector<ir::Node *> TopologySort(const Graph &graph) {
   return ret;
 }
 
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildAdjList(
+std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
 

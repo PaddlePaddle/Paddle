@@ -64,19 +64,19 @@ class SSAGraphBuilder : public ir::Pass {
    *
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
-  static void PolishGraphToSupportDataHazards(Graph *graph);
+  static void PolishGraphToSupportDataHazards(ir::Graph *graph);
 
-  static VarHandle *CreateOrGetLatestVarHandle(Graph *graph, ir::Node *node,
+  static VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph, ir::Node *node,
                                                const platform::Place &place,
                                                size_t place_offset);
 
   // Add an output variable (each_var_name, place, place_offset) to op_handle,
   // which belongs to graph
-  static void CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
+  static void CreateOpOutput(ir::Graph *graph, OpHandleBase *op_handle,
                              ir::Node *new_node, const platform::Place &place,
                              size_t place_offset);
 
-  static void AddOutputToLeafOps(Graph *graph);
+  static void AddOutputToLeafOps(ir::Graph *graph);
 };
 }  // namespace details
 }  // namespace framework
