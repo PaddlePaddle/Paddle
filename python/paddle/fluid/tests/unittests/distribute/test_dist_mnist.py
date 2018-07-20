@@ -30,7 +30,6 @@ from dist_test import FluidDistTest
 
 SEED = 1
 DTYPE = "float32"
-paddle.dataset.common.DATA_HOME = "/paddle/workspaces/dataset"
 paddle.dataset.mnist.fetch()
 
 
@@ -94,7 +93,7 @@ def get_model(batch_size):
     test_reader = paddle.batch(
         paddle.dataset.mnist.test(), batch_size=batch_size)
     opt.minimize(avg_cost)
-    return inference_program, avg_cost, train_reader, test_reader, batch_acc, predict
+    return inference_program, avg_cost, train_reader, test_reader, batch_acc
 
 
 def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
@@ -138,7 +137,7 @@ class TestDistMnist(FluidDistTest):
         ps_endpoints = os.getenv("PADDLE_PSERVER_ENDPOINTS")
         trainers = int(os.getenv("PADDLE_TRAINERS"))
 
-        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = get_model(
+        test_program, avg_cost, train_reader, test_reader, batch_acc = get_model(
             batch_size=20)
         t = get_transpiler(trainer_id,
                            fluid.default_main_program(), ps_endpoints, trainers)
