@@ -154,6 +154,18 @@ class BaseTestCase(OpTest):
                     self.dropout_prob, actual_dropout_ratio))
         return mask1
 
+    def validate_and_return_mask(self, x, y):
+        self.assertEqual(x.shape, y.shape)
+        mask = (abs(x - y) <= self.num_tol)
+        dropout_num = x.size - mask.sum()
+        actual_dropout_ratio = float(dropout_num) / x.size
+        self.assertTrue(
+            abs(actual_dropout_ratio - self.dropout_prob) <=
+            self.dropout_prob_tol,
+            "Set dropout_prob={} but actual is {}".format(self.dropout_prob,
+                                                          actual_dropout_ratio))
+        return mask
+
 
 if __name__ == '__main__':
     unittest.main()

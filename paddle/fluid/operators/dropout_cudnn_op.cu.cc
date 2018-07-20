@@ -40,6 +40,7 @@ template <typename T>
 class CUDNNDropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    std::cerr << "Computing..." << std::endl;
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
 
@@ -109,14 +110,6 @@ class CUDNNDropoutKernel : public framework::OpKernel<T> {
         framework::TensorCopySync(*x, context.GetPlace(), y);
         CUDNN_ENFORCE(platform::dynload::cudnnScaleTensor(handle, x_desc,
                                                           y_data, &alpha));
-        /*
-        auto X = EigenMatrix<T>::Reshape(*x, 1);
-        auto Y = EigenMatrix<T>::Reshape(*y, 1);
-        auto& place =
-            *context.template device_context<platform::CUDADeviceContext>()
-                 .eigen_device();
-        Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
-        */
       } else {
         CUDNN_ENFORCE(platform::dynload::cudnnScaleTensor(handle, x_desc,
                                                           y_data, &alpha));
@@ -130,6 +123,8 @@ template <typename T>
 class CUDNNDropoutGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    std::cerr << "Computing grad..." << std::endl;
+
     PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
                    "GradOp is only callable when is_test is false");
 
