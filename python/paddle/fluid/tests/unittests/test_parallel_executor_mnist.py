@@ -33,9 +33,7 @@ def simple_fc_net(use_feed):
             filenames=[MNIST_RECORDIO_FILE],
             shapes=[[-1, 784], [-1, 1]],
             lod_levels=[0, 0],
-            dtypes=['float32', 'int64'],
-            thread_num=1,
-            for_parallel=True)
+            dtypes=['float32', 'int64'])
         reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
     hidden = img
@@ -61,9 +59,7 @@ def fc_with_batchnorm(use_feed):
             filenames=[MNIST_RECORDIO_FILE],
             shapes=[[-1, 784], [-1, 1]],
             lod_levels=[0, 0],
-            dtypes=['float32', 'int64'],
-            thread_num=1,
-            for_parallel=True)
+            dtypes=['float32', 'int64'])
         reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
 
