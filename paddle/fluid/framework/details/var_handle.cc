@@ -26,7 +26,7 @@ std::string VarHandle::DebugString() const {
   return ss.str();
 }
 
-std::string DummyVarHandle::DebugString() const { return "dummy"; }
+std::string DummyVarHandle::DebugString() const { return node_->Name(); }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
