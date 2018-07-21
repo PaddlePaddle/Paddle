@@ -14,15 +14,15 @@
 
 #include "paddle/fluid/framework/details/ssa_graph_printer.h"
 #include <string>
-#include "paddle/fluid/framework/details/ssa_graph.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 template <typename Callback>
-static inline void IterAllVar(const SSAGraph &graph, Callback callback) {
-  for (auto &each : graph.vars_) {
+static inline void IterAllVar(const Graph &graph, Callback callback) {
+  for (auto &each : graph.Get<GraphVars>("vars")) {
     for (auto &pair1 : each) {
       for (auto &pair2 : pair1.second) {
         callback(*pair2);
@@ -30,12 +30,12 @@ static inline void IterAllVar(const SSAGraph &graph, Callback callback) {
     }
   }
 
-  for (auto &var : graph.dep_vars_) {
+  for (auto &var : graph.Get<GraphDepVars>("dep_vars")) {
     callback(*var);
   }
 }
 
-void GraphvizSSAGraphPrinter::Print(const SSAGraph &graph,
+void GraphvizSSAGraphPrinter::Print(const Graph &graph,
                                     std::ostream &sout) const {
   size_t var_id = 0;
   std::unordered_map<const VarHandleBase *, size_t> vars;
@@ -61,7 +61,7 @@ void GraphvizSSAGraphPrinter::Print(const SSAGraph &graph,
   });
 
   size_t op_id = 0;
-  for (auto &op : graph.ops_) {
+  for (auto &op : graph.Get<GraphOps>("ops")) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;
