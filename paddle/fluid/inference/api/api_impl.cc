@@ -66,6 +66,7 @@ bool NativePaddlePredictor::Init(
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
+    PADDLE_ENFORCE_NOT_NULL(sub_scope_, "create sub scope fail");
   } else {
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
@@ -102,13 +103,13 @@ bool NativePaddlePredictor::Init(
 
 NativePaddlePredictor::~NativePaddlePredictor() {
   if (sub_scope_) {
-    PADDLE_ENFORCE_NOT_NULL(scope_, "Should have parent scope!");
     scope_->DeleteScope(sub_scope_);
   }
 }
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
-                                std::vector<PaddleTensor> *output_data) {
+                                std::vector<PaddleTensor> *output_data,
+                                int batch_size) {
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();

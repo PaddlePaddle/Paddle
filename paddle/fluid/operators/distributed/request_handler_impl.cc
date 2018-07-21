@@ -53,7 +53,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "sync: recv batch barrier message";
+    VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
@@ -64,8 +64,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
     VLOG(3) << "sync: processing received var: " << varname;
 
     if (invar == nullptr) {
-      LOG(ERROR) << "sync: Can not find server side var: " << varname;
-      PADDLE_THROW("sync: Can not find server side var");
+      LOG(FATAL) << "sync: Can not find server side var: " << varname;
       return false;
     }
     if (invar->IsType<framework::SelectedRows>()) {
