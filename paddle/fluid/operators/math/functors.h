@@ -26,40 +26,34 @@ namespace math {
 
 // AddFunctor
 template <typename T>
-struct AddFunctor : public Functor {
+struct AddFunctor {
   // out = x + y;
-  inline HOSTDEVICE T operator()(const T *x, const T *y) const {
-    return *x + *y;
-  }
+  inline HOSTDEVICE T operator()(const T x, const T y) const { return x + y; }
 };
 
 template <typename T>
-struct AddGradFunctor : public Functor {
-  inline HOSTDEVICE T operator()(const T *x, const T *y, const T *out,
-                                 const T *dout) const {
-    return *dout;
+struct AddGradFunctor {
+  inline HOSTDEVICE T operator()(const T x, const T y, const T dout) const {
+    return dout;
   }
 };
 
 // ScaleFunctor
 template <typename T>
-struct ScaleFunctor : public Functor {
+struct ScaleFunctor {
   explicit ScaleFunctor(const T coeff) : coeff_(coeff) {}
 
-  inline HOSTDEVICE T operator()(const T *ele) const { return (*ele) * coeff_; }
+  inline HOSTDEVICE T operator()(const T ele) const { return ele * coeff_; }
 
  private:
   T coeff_;
 };
 
 template <typename T>
-struct ScaleGradFunctor : public Functor {
+struct ScaleGradFunctor {
   explicit ScaleGradFunctor(T coeff) : coeff_(coeff) {}
 
-  // out = dout * scale;
-  inline HOSTDEVICE T operator()(const T *x, const T *out) const {
-    return coeff_;
-  }
+  inline HOSTDEVICE T operator()(const T x) const { return coeff_; }
 
  private:
   T coeff_;
@@ -67,141 +61,145 @@ struct ScaleGradFunctor : public Functor {
 
 // ReluFunctor
 template <typename T>
-struct ReluFunctor : public Functor {
-  inline HOSTDEVICE T operator()(const T *x) const {
-    T ele = *x;
-    return ele * (ele > 0);
-  }
+struct ReluFunctor {
+  inline HOSTDEVICE T operator()(const T x) const { return x * (x > 0); }
 };
 
 template <typename T>
-struct ReluGradFunctor : public Functor {
-  inline HOSTDEVICE T operator()(const T *x, const T *out,
-                                 const T *dout) const {
-    return (*dout) * ((*x) > 0);
-  }
-};
-
-// AddFunctor
-template <typename T, typename Functor1, typename Functor2>
-struct BinaryCompoundFunctor : public Functor {
-  BinaryCompoundFunctor(const T *x, const T *y, const Functor1 &fun1,
-                        const Functor2 &fun2, const int64_t len, T *out)
-      : x_(x), y_(y), fun1_(fun1), fun2_(fun2), len_(len), out_(out) {}
-
-  inline HOSTDEVICE void operator()(int64_t i) const {
-    out_[i] = fun2_(x_ + i, fun1_(y_ + i));
-  }
-
- private:
-  const T *x_;
-  const T *y_;
-  const Functor1 &fun1_;
-  const Functor2 &fun2_;
-  const int64_t len_;
-  T *out_;
+struct ReluGradFunctor {
+  inline HOSTDEVICE T operator()(const T x) const { return x > 0 ? 1 : 0; }
 };
 
 // for example: z = x + scale * y
-template <typename T, typename Functor1, typename Functor2, typename Functor3>
-struct BinaryCompoundGradFunctor : public Functor {
-  BinaryCompoundGradFunctor(const T *x, const T *y, const T *out, const T *dout,
-                            const int64_t len, const Functor1 &fun1,
-                            const Functor2 &fun2, const Functor3 &fun3, T *dx,
-                            T *dy)
-      : x_(x),
-        y_(y),
-        out_(out),
-        dout_(dout),
-        len_(len),
-        fun1_(fun1),
-        fun2_(fun2),
-        dx_(dx),
-        dy_(dy) {}
+// fun1: t = scale * y
+// fun2: z = x + t
+template <typename T, typename UnaryFun, typename BinaryFun>
+struct BinaryCompoundFunctor {
+  BinaryCompoundFunctor(const UnaryFun &unary_fun, const BinaryFun &binary_fun)
+      : unary_fun_(unary_fun), binary_fun_(binary_fun) {}
 
-  template <typename T>
-  inline HOSTDEVICE void operator()(int64_t i) const {
-    auto y = fun2_(y_ + i);
-    if (dx_) {
-      dx_[i] = dout_[i] * fun1_(x_ + i, y);
-    }
-    if (dy_) {
-      dy_[i] = dout_[i] * fun1_(y, x + i) * fun3_(y);
-    }
+  inline HOSTDEVICE T operator()(const T &x, const T &y) const {
+    return binary_fun_(x, unary_fun_(y));
   }
 
  private:
-  const T *x_;
-  const T *y_;
-  const T *out_;
-  const T *dout_;
-  const int64_t len_;
-  std::unique_ptr<Functor> fun1_;
-  std::unique_ptr<Functor> fun2_;
-  std::unique_ptr<Functor> fun3_;
-  T *dx_;
-  T *dy_;
+  const UnaryFun unary_fun_;
+  const BinaryFun binary_fun_;
+};
+
+// for example: z = x + scale * y
+// fun1: z = (x + t)'
+// fun2: t = scale * y
+template <typename T, typename DBinaryFun, typename UnaryFun>
+struct BinaryCompoundGradDxFunctor {
+  BinaryCompoundGradFunctor(const DBinaryFun &d_binary_fun,
+                            const UnaryFun &unary_fun)
+      : d_binary_fun_(d_binary_fun), unary_fun_(unary_fun) {}
+
+  template <typename T>
+  inline HOSTDEVICE T operator()(const T &x, const T &y, const T &dout) const {
+    return dout * d_binary_fun_(x, unary_fun_(y));
+  }
+
+ private:
+  const DBinaryFun d_binary_fun_;
+  const UnaryFun unary_fun_;
+};
+
+// for example: z = x + scale * y
+// fun1: z = (x + t)'
+// fun2: t = scale * y
+// fun3: t = (scale * x)'
+template <typename T, typename DBinaryFun, typename UnaryFun,
+          typename DUnaryFun>
+struct BinaryCompoundGradDyFunctor {
+  BinaryCompoundGradFunctor(const DBinaryFun &d_binary_fun,
+                            const UnaryFun &unary_fun,
+                            const DUnaryFun &d_unary_fun)
+      : d_binary_fun_(d_binary_fun),
+        unary_fun_(unary_fun),
+        d_unary_fun_(d_unary_fun) {}
+
+  template <typename T>
+  inline HOSTDEVICE T operator()(const T &x, const T &y, const T &dout) const {
+    return dout * d_binary_fun_(unary_fun_(y), x) * d_unary_fun_(y);
+  }
+
+ private:
+  const DBinaryFun d_binary_fun_;
+  const UnaryFun unary_fun_;
+  const DUnaryFun d_unary_fun_;
 };
 
 // for example: z = scale * (x + y)
-template <typename T, typename Functor1, typename Functor2>
-struct UnaryCompoundFunctor : public Functor {
-  UnaryCompoundFunctor(const T *x, const T *y, const Functor1 &fun1,
-                       const Functor2 &fun2, const int64_t len, T *out)
-      : x_(x), y_(y), fun1_(fun1), fun2_(fun2), len_(len), out_(out) {}
+// fun1: t = scale * x
+// fun2: t = x + y
+template <typename T, typename UnaryFun, typename BinaryFun>
+struct UnaryCompoundFunctor {
+  UnaryCompoundFunctor(const UnaryFun &unary_fun, const BinaryFun &binary_fun)
+      : unary_fun_(unary_fun), binary_fun_(binary_fun) {}
 
-  inline HOSTDEVICE void operator()(int64_t i) const {
-    out_[i] = fun2_(fun1_(x_ + i, y_ + i));
+  inline HOSTDEVICE T operator()(const T &x, const T &y) const {
+    return unary_fun_(binary_fun_(x, y));
   }
 
  private:
-  const T *x_;
-  const T *y_;
-  const Functor1 &fun1_;
-  const Functor1 &fun2_;
-  const int64_t len_;
-  T *out_;
+  const UnaryFun unary_fun_;
+  const BinaryFun binary_fun_;
 };
 
-template <typename T, typename Functor1, typename Functor2, typename Functor3>
-struct UnaryCompoundGradFunctor : public Functor {
-  UnaryCompoundGradFunctor(const T *x, const T *y, const T *out, const T *dout,
-                           const int64_t len, const Functor1 &fun1,
-                           const Functor2 &fun2, const Functor3 &fun3, T *dx,
-                           T *dy)
-      : x_(x),
-        y_(y),
-        out_(out),
-        dout_(dout),
-        len_(len),
-        fun1_(fun1),
-        fun2_(fun2),
-        fun3_(fun3),
-        dx_(dx),
-        dy_(dy) {}
+// for example: z = scale * (x + y)
+// fun1: t = (scale * x)'
+// fun2: t = x + y
+// fun3: t = (x + y)'
+template <typename T, typename DUnaryFun, typename BinaryFun,
+          typename DBinaryFun>
+struct UnaryCompoundGradDxFunctor : public Functor {
+  UnaryCompoundGradDxFunctor(const DUnaryFun &d_unary_fun,
+                             const BinaryFun &binary_fun,
+                             const DBinaryFun &d_binary_fun)
+      : d_unary_fun_(d_unary_fun),
+        binary_fun_(binary_fun),
+        d_binary_fun_(d_binary_fun) {}
 
   template <typename T>
-  inline HOSTDEVICE void operator()(int64_t i) const {
-    auto base = dout_[i] * fun1_(fun2_(x_ + i, y_ + i), out + i);
-    if (dx_) {
-      dx_[i] = base * fun3_(x_ + i, y_ + i);
-    }
-    if (dy_) {
-      dy_[i] = base * fun3_(y_ + i, x_ + i);
-    }
+  inline HOSTDEVICE void operator()(const T &x, const T &y,
+                                    const T &dout) const {
+    auto base = dout * d_unary_fun_(binary_fun_(x, y));
+    return base * d_binary_fun_(x, y);
   }
 
  private:
-  const T *x_;
-  const T *y_;
-  const T *out_;
-  const T *dout_;
-  const int64_t len_;
-  const Functor1 &fun1_;
-  const Functor2 &fun2_;
-  const Functor3 &fun3_;
-  T *dx_;
-  T *dy_;
+  const DUnaryFun d_unary_fun_;
+  const BinaryFun binary_fun_;
+  const DBinaryFun d_binary_fun_;
+};
+
+// for example: z = scale * (x + y)
+// fun1: t = (scale * x)'
+// fun2: t = x + y
+// fun3: t = (x + y)'
+template <typename T, typename DUnaryFun, typename BinaryFun,
+          typename DBinaryFun>
+struct UnaryCompoundGradDyFunctor : public Functor {
+  UnaryCompoundGradDyFunctor(const DUnaryFun &d_unary_fun,
+                             const BinaryFun &binary_fun,
+                             const DBinaryFun &d_binary_fun)
+      : d_unary_fun_(d_unary_fun),
+        binary_fun_(binary_fun),
+        d_binary_fun_(d_binary_fun) {}
+
+  template <typename T>
+  inline HOSTDEVICE void operator()(const T &x, const T &y,
+                                    const T &dout) const {
+    auto base = dout * d_unary_fun_(binary_fun_(x, y));
+    return base * d_binary_fun_(y, x);
+  }
+
+ private:
+  const Functor1 d_unary_fun_;
+  const BinaryFun binary_fun_;
+  const DBinaryFun d_binary_fun_;
 };
 
 //------------

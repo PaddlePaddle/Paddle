@@ -84,17 +84,15 @@ class FusedOperatorsKernel : public framework::OpKernel<T> {
     if (mode == 1) {
       T scale = 0.1;
       math::BinaryCompoundFunctor<T, math::AddFunctor<T>, math::ScaleFunctor<T>>
-          binary_compound_functor(
-              in_x->data<T>(), in_y->data<T>(), math::AddFunctor<T>(),
-              math::ScaleFunctor<T>(scale), numel, out_data_ptr);
+          binary_compound_functor(math::AddFunctor<T>(),
+                                  math::ScaleFunctor<T>(scale));
 
       for_range(binary_compound_functor);
     } else {
       T scale = 0.1;
       math::UnaryCompoundFunctor<T, math::ScaleFunctor<T>, math::AddFunctor<T>>
-          unary_compound_functor(in_x->data<T>(), in_y->data<T>(),
-                                 math::ScaleFunctor<T>(scale),
-                                 math::AddFunctor<T>(), numel, out_data_ptr);
+          unary_compound_functor(math::ScaleFunctor<T>(scale),
+                                 math::AddFunctor<T>());
 
       for_range(unary_compound_functor);
     }
@@ -133,9 +131,6 @@ class FusedOperatorsGradKernel : public framework::OpKernel<T> {
     Tensor *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    auto x_grad_data_ptr = x_grad->mutable_data<T>(ctx.GetPlace());
-    auto y_grad_data_ptr = y_grad->mutable_data<T>(ctx.GetPlace());
-
     std::vector<std::string> functors =
         ctx.Attr<std::vector<std::string>>("functor_list");
 
@@ -150,28 +145,49 @@ class FusedOperatorsGradKernel : public framework::OpKernel<T> {
 
     if (mode == 1) {
       T scale = 0.1;
-      math::UnaryCompoundGradFunctor<T, math::ScaleGradFunctor<T>,
-                                     math::AddFunctor<T>,
-                                     math::AddGradFunctor<T>>
-          unary_compound_functor(
-              in_x->data<T>(), in_y->data<T>(), in_out->data<T>(),
-              in_out_grad->data<T>(), numel, math::ScaleGradFunctor<T>(scale),
-              math::AddFunctor<T>(), math::AddGradFunctor<T>(), x_grad_data_ptr,
-              y_grad_data_ptr);
+      if (x_grad) {
+        auto x_grad_data_ptr = x_grad->mutable_data<T>(ctx.GetPlace());
+        math::UnaryCompoundGradDxFunctor<T, math::ScaleGradFunctor<T>,
+                                         math::AddFunctor<T>,
+                                         math::AddGradFunctor<T>>
+            unary_compound_functor(math::ScaleGradFunctor<T>(scale),
+                                   math::AddFunctor<T>(),
+                                   math::AddGradFunctor<T>());
 
-      for_range(unary_compound_functor);
+        for_range(unary_compound_functor);
+      }
+
+      if (y_grad) {
+        auto y_grad_data_ptr = y_grad->mutable_data<T>(ctx.GetPlace());
+        math::UnaryCompoundGradDyFunctor<T, math::ScaleGradFunctor<T>,
+                                         math::AddFunctor<T>,
+                                         math::AddGradFunctor<T>>
+            unary_compound_functor(math::ScaleGradFunctor<T>(scale),
+                                   math::AddFunctor<T>(),
+                                   math::AddGradFunctor<T>());
+
+        for_range(unary_compound_functor);
+      }
+
     } else {
       T scale = 0.1;
-      math::BinaryCompoundGradFunctor<T, math::AddFunctor<T>,
-                                      math::ScaleFunctor<T>,
-                                      math::ScaleGradFunctor<T>>
-          binary_compound_functor(
-              in_x->data<T>(), in_y->data<T>(), in_out->data<T>(),
-              in_out_grad->data<T>(), numel, math::AddFunctor<T>(),
-              math::ScaleFunctor<T>(scale), math::ScaleGradFunctor<T>(scale),
-              x_grad_data_ptr, y_grad_data_ptr);
+      if (x_grad) {
+        math::BinaryCompoundGradDxFunctor<T, math::AddGradFunctor<T>,
+                                          math::ScaleFunctor<T>>
+            binary_compound_functor(math::AddGradFunctor<T>(),
+                                    math::ScaleFunctor<T>(scale));
+        for_range(binary_compound_functor);
+      }
+      if (y_grad) {
+        math::BinaryCompoundGradDyFunctor<T, math::AddGradFunctor<T>,
+                                          math::ScaleFunctor<T>,
+                                          math::ScaleGradFunctor<T>>
+            binary_compound_functor(math::AddGradFunctor<T>(),
+                                    math::ScaleFunctor<T>(scale),
+                                    math::ScaleGradFunctor<T>(scale));
 
-      for_range(binary_compound_functor);
+        for_range(binary_compound_functor);
+      }
     }
   }
 
