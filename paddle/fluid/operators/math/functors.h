@@ -26,121 +26,179 @@ namespace math {
 
 struct Functor {};
 
+template <typename T>
 struct IdentityFunctor : public Functor {
+  IdentityFunctor(T *data, int64_t len) : data_(data), len_(len) {}
+
   // y = x;
-  template <typename T>
+  inline HOSTDEVICE T operator()(int64_t i) const { return data_[i]; }
+
+ private:
+  T *data_;
+  int64_t len_;
+};
+
+// AddFunctor
+template <typename T>
+struct AddFunctor : public Functor {
+  AddFunctor(const T *x, const T *y, const int64_t len)
+      : x_(x), y_(y), len_(len) {}
+
+  // out = x + y;
+  inline HOSTDEVICE T operator()(int64_t i) const { return x_[i] + y_[i]; }
+
+ private:
+  const T *x_;
+  const T *y_;
+  const int64_t len_;
+  //  T* out_;
+};
+
+template <typename T>
+struct AddGradFunctor : public Functor {
+  AddGradFunctor(const T *x, const T *y, const T *out, const T *dout,
+                 int64_t len)
+      : x_(x), y_(y), out_(out), dout_(dout), len_(len) {}
+
+  // dx = dout; dy = dout;
+  inline HOSTDEVICE T operator()(int64_t i) const { return dout_[i]; }
+
+ private:
+  const T *x_;
+  const T *y_;
+  const T *out_;
+  const T *dout_;
+  const int64_t len_;
+};
+
+// ScaleFunctor
+template <typename T>
+struct ScaleFunctor : public Functor {
+  explicit ScaleFunctor(const T coeff) : coeff_(coeff) {}
+
+  // out = scale * x;
   inline HOSTDEVICE T operator()(T ele) const {
-    return ele;
+    return ele * static_cast<T>(coeff_);
+  }
+
+ private:
+  T coeff_;
+};
+
+template <typename T>
+struct ScaleGradFunctor : public Functor {
+  explicit ScaleGradFunctor(T coeff) : coeff_(coeff) {}
+
+  // out = dout * scale;
+  inline HOSTDEVICE T operator()(const T dout) const { return coeff_ * dout; }
+
+ private:
+  T coeff_;
+};
+
+// ReluFunctor
+template <typename T>
+struct ReluFunctor : public Functor {
+  // out = max(x, 0);
+  inline HOSTDEVICE T operator()(const T x) const { return x * (x > 0); }
+};
+
+template <typename T>
+struct ReluGradFunctor : public Functor {
+  // out = dout * scale;
+  inline HOSTDEVICE T operator()(T x, T out, T dout) const {
+    return dout * (x > 0);
   }
 };
 
 // AddFunctor
-struct AddFunctor : public Functor {
-  explicit AddFunctor(Functor* fun) : func_tail1_(fun) {}
-  explicit AddFunctor(Functor* fun1, Functor* fun2)
-      : func_tail1_(fun1), func_tail2_(fun2) {}
+template <typename T>
+struct BinaryCompoundFunctor : public Functor {
+  BinaryCompoundFunctor(const T *x, Functor *fun, const int64_t len, T *out)
+      : x_(x), fun_(fun), len_(len), out_(out) {}
 
-  // out = f(x + y);
-  template <typename T>
-  inline HOSTDEVICE T operator()(T a, T b) const {
-    return (*func_tail1_)(a + b);
-  }
-
-  // out = f2(f1(x, y) + z);
-  template <typename T>
-  inline HOSTDEVICE T operator()(T a, T b, T c) const {
-    return (*func_tail2_)((*func_tail1_)(a + b), c);
+  // out = x + y;
+  inline HOSTDEVICE void operator()(int64_t i) const {
+    out_[i] = fun2_(data_[i], fun1_(i));
   }
 
  private:
-  std::unique_ptr<Functor> func_tail1_;
-  std::unique_ptr<Functor> func_tail2_;
+  const T *x_;
+  std::unique_ptr<Functor> fun1_;
+  std::unique_ptr<Functor> fun2_;
+  const int64_t len_;
+  T *out_;
 };
 
-struct AddGradFunctor : public Functor {
-  explicit AddGradFunctor(Functor* fun) : func_tail1_(fun) {}
-  explicit AddGradFunctor(Functor* fun1, Functor* fun2)
-      : func_tail1_(fun1), func_tail2_(fun2) {}
+struct BinaryCompoundGradFunctor : public Functor {
+  BinaryCompoundGradFunctor(T *dx, T *dy, const T *out, const T *dout,
+                            const int64_t len, Functor *fun)
+      : dx_(dx), dy_(dy), out_(out), dout_(dout), len_(len), fun_(fun) {}
 
-  // dx = dout * f'(x, y); dy = dout * f'(x, y);
+  // dx = dout; dy = dout;
   template <typename T>
-  inline HOSTDEVICE T operator()(T a, T b, T out, T dout) const {
-    return (*func_tail1_)(a, b, out, dout);
-  }
-
-  // dx = dout * f2'(f1(x, y), z) * f1'(x, y);
-  // dy = dout * f2'(f1(x, y), z) * f1'(x, y);
-  // dz = dout * f2'(f1(x, y), z);
-  template <typename T>
-  inline HOSTDEVICE T operator()(T a, T b, T c, T out, T dout) const {
-    // TODO(zcd): analysis the backward.
-    return (*func_tail1_)(dout);
-  }
-
-  std::unique_ptr<Functor> func_tail1_;
-  std::unique_ptr<Functor> func_tail2_;
-};
-
-// ScaleFunctor
-struct ScaleFunctor : public Functor {
-  explicit ScaleFunctor(int64_t coeff, Functor* fun)
-      : coeff_(coeff), func_tail_(fun) {}
-
-  // out = scale * x;
-  template <typename T>
-  inline HOSTDEVICE T operator()(T ele) const {
-    return (*func_tail_)(ele * static_cast<T>(coeff_));
+  inline HOSTDEVICE void operator()(int64_t i) const {
+    if (dx_) {
+      dx_[i] = dout_[i] * fun2_(i);
+    }
+    if (dy_) {
+      dy_[i] = dout_[i] * fun2_(i) * fun1_(i);
+    }
   }
 
  private:
-  int64_t coeff_;
-  std::unique_ptr<Functor> func_tail_;
+  T *dx_;
+  T *dy_;
+  const T *out_;
+  const T *dout_;
+  const int64_t len_;
+  std::unique_ptr<Functor> fun1_;
+  std::unique_ptr<Functor> fun2_;
 };
 
-struct ScaleGradFunctor : public Functor {
-  explicit ScaleGradFunctor(int64_t coeff, Functor* fun)
-      : coeff_(coeff), func_tail_(fun) {}
+// AddFunctor
+// z = f2(x, f1(y) )
+template <typename T>
+struct UnaryCompoundFunctor : public Functor {
+  UnaryCompoundFunctor(const T *x, Functor *fun, const int64_t len, T *out)
+      : x_(x), fun_(fun), len_(len), out_(out) {}
 
-  // out = dout * scale;
-  template <typename T>
-  inline HOSTDEVICE T operator()(T a) const {
-    return (*func_tail_)(a)*coeff_;
+  // out = x + y;
+  inline HOSTDEVICE void operator()(int64_t i) const {
+    out_[i] = fun2_(x_[i], fun1_(i));
   }
 
  private:
-  int64_t coeff_;
-  std::unique_ptr<Functor> func_tail_;
+  const T *x_;
+  std::unique_ptr<Functor> fun_;
+  const int64_t len_;
+  T *out_;
 };
 
-// ReluFunctor
-struct ReluFunctor : public Functor {
-  explicit ReluFunctor(int64_t coeff, Functor* fun)
-      : coeff_(coeff), func_tail_(fun) {}
+struct UnaryCompoundGradFunctor : public Functor {
+  UnaryCompoundGradFunctor(T *dx, T *dy, const T *out, const T *dout,
+                           const int64_t len, Functor *fun)
+      : dx_(dx), dy_(dy), out_(out), dout_(dout), len_(len), fun_(fun) {}
 
-  // out = scale * x;
+  // dx = dout; dy = dout;
   template <typename T>
-  inline HOSTDEVICE T operator()(T ele) const {
-    return (*func_tail_)(ele * static_cast<T>(coeff_));
+  inline HOSTDEVICE void operator()(int64_t i) const {
+    if (dx_) {
+      dx_[i] = dout_[i] * fun2_(i);
+    }
+    if (dy_) {
+      dy_[i] = dout_[i] * fun2_(i) * fun1_(i);
+    }
   }
 
  private:
-  int64_t coeff_;
-  std::unique_ptr<Functor> func_tail_;
-};
-
-struct ReluGradFunctor : public Functor {
-  explicit ReluGradFunctor(int64_t coeff, Functor* fun)
-      : coeff_(coeff), func_tail_(fun) {}
-
-  // out = dout * scale;
-  template <typename T>
-  inline HOSTDEVICE T operator()(T a) const {
-    return (*func_tail_)(a)*coeff_;
-  }
-
- private:
-  int64_t coeff_;
-  std::unique_ptr<Functor> func_tail_;
+  T *dx_;
+  T *dy_;
+  const T *out_;
+  const T *dout_;
+  const int64_t len_;
+  std::unique_ptr<Functor> fun1_;
+  std::unique_ptr<Functor> fun2_;
 };
 
 //------------
@@ -155,9 +213,9 @@ struct ReluGradFunctor : public Functor {
  *    pre=2*3, n=4*5, post=1
  *    x.shape(6, 20, 1) * y.shape(1, 20, 1).broadcast(6, 20, 1)
  */
-inline void get_mid_dims(const framework::DDim& x_dims,
-                         const framework::DDim& y_dims, const int axis,
-                         int* pre, int* n, int* post) {
+inline void get_mid_dims(const framework::DDim &x_dims,
+                         const framework::DDim &y_dims, const int axis,
+                         int *pre, int *n, int *post) {
   *pre = 1;
   *n = 1;
   *post = 1;
@@ -176,7 +234,7 @@ inline void get_mid_dims(const framework::DDim& x_dims,
   }
 }
 
-inline void trim_trailing_singular_dims(framework::DDim* dims) {
+inline void trim_trailing_singular_dims(framework::DDim *dims) {
   // Remove trailing dimensions of size 1 for y
   auto actual_dims_size = dims->size();
   for (; actual_dims_size != 0; --actual_dims_size) {
@@ -191,15 +249,16 @@ inline void trim_trailing_singular_dims(framework::DDim* dims) {
 
 template <typename T, typename DeviceContext>
 class EleRowwiseTransformIterator;
+
 template <typename T, typename DeviceContext>
 class EleMidWiseTransformIterator;
 
 template <typename T>
 class EleRowwiseTransformIterator<T, platform::CPUDeviceContext> {
  public:
-  EleRowwiseTransformIterator(const T* ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
+  EleRowwiseTransformIterator(const T *ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
 
-  EleRowwiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
+  EleRowwiseTransformIterator<T, platform::CPUDeviceContext> &operator++() {
     ++i_;
     if (UNLIKELY(i_ == n_)) {
       i_ = 0;
@@ -208,21 +267,21 @@ class EleRowwiseTransformIterator<T, platform::CPUDeviceContext> {
   }
 
   bool operator==(
-      const EleRowwiseTransformIterator<T, platform::CPUDeviceContext>& rhs)
+      const EleRowwiseTransformIterator<T, platform::CPUDeviceContext> &rhs)
       const {
     return (ptr_ + i_) == &(*rhs);
   }
 
   bool operator!=(
-      const EleRowwiseTransformIterator<T, platform::CPUDeviceContext>& rhs)
+      const EleRowwiseTransformIterator<T, platform::CPUDeviceContext> &rhs)
       const {
     return (ptr_ + i_) != &(*rhs);
   }
 
-  const T& operator*() { return ptr_[i_]; }
+  const T &operator*() { return ptr_[i_]; }
 
  private:
-  const T* ptr_;
+  const T *ptr_;
   int i_;
   int64_t n_;
 };
@@ -230,10 +289,10 @@ class EleRowwiseTransformIterator<T, platform::CPUDeviceContext> {
 template <typename T>
 class EleMidWiseTransformIterator<T, platform::CPUDeviceContext> {
  public:
-  EleMidWiseTransformIterator(const T* ptr, int n, int post)
+  EleMidWiseTransformIterator(const T *ptr, int n, int post)
       : ptr_(ptr), i_(0), j_(0), n_(n), post_(post) {}
 
-  EleMidWiseTransformIterator<T, platform::CPUDeviceContext>& operator++() {
+  EleMidWiseTransformIterator<T, platform::CPUDeviceContext> &operator++() {
     ++j_;
     if (UNLIKELY(j_ == post_)) {
       ++i_;
@@ -246,21 +305,21 @@ class EleMidWiseTransformIterator<T, platform::CPUDeviceContext> {
   }
 
   bool operator==(
-      const EleMidWiseTransformIterator<T, platform::CPUDeviceContext>& rhs)
+      const EleMidWiseTransformIterator<T, platform::CPUDeviceContext> &rhs)
       const {
     return (ptr_ + i_) == &(*rhs);
   }
 
   bool operator!=(
-      const EleMidWiseTransformIterator<T, platform::CPUDeviceContext>& rhs)
+      const EleMidWiseTransformIterator<T, platform::CPUDeviceContext> &rhs)
       const {
     return (ptr_ + i_) != &(*rhs);
   }
 
-  const T& operator*() { return ptr_[i_]; }
+  const T &operator*() { return ptr_[i_]; }
 
  private:
-  const T* ptr_;
+  const T *ptr_;
   int64_t i_;
   int64_t j_;
   int64_t n_;
@@ -272,18 +331,18 @@ template <typename T>
 class EleRowwiseTransformIterator<T, platform::CUDADeviceContext>
     : public thrust::iterator_adaptor<
           EleRowwiseTransformIterator<T, platform::CUDADeviceContext>,
-          const T*> {
+          const T *> {
  public:
   typedef thrust::iterator_adaptor<
-      EleRowwiseTransformIterator<T, platform::CUDADeviceContext>, const T*>
+      EleRowwiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
       super_t;
-  HOSTDEVICE EleRowwiseTransformIterator(const T* x, int n)
+  HOSTDEVICE EleRowwiseTransformIterator(const T *x, int n)
       : super_t(x), begin_(x), n_(n) {}
   friend class thrust::iterator_core_access;
 
  private:
   unsigned int n_;
-  const T* begin_;
+  const T *begin_;
   HOSTDEVICE typename super_t::reference dereference() const {
     return *(begin_ + (this->base() - begin_) % n_);
   }
@@ -293,19 +352,19 @@ template <typename T>
 class EleMidWiseTransformIterator<T, platform::CUDADeviceContext>
     : public thrust::iterator_adaptor<
           EleMidWiseTransformIterator<T, platform::CUDADeviceContext>,
-          const T*> {
+          const T *> {
  public:
   typedef thrust::iterator_adaptor<
-      EleMidWiseTransformIterator<T, platform::CUDADeviceContext>, const T*>
+      EleMidWiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
       super_t;
-  HOSTDEVICE EleMidWiseTransformIterator(const T* x, int n, int post)
+  HOSTDEVICE EleMidWiseTransformIterator(const T *x, int n, int post)
       : super_t(x), begin_(x), n_(n), post_(post) {}
   friend class thrust::iterator_core_access;
 
  private:
   unsigned int post_;
   unsigned int n_;
-  const T* begin_;
+  const T *begin_;
   HOSTDEVICE typename super_t::reference dereference() const {
     return *(begin_ + (((this->base() - begin_) / post_) % n_));
   }
@@ -316,8 +375,8 @@ template <typename Functor, typename T, typename DeviceContext,
           typename OutType = T>
 class TransformFunctor {
  public:
-  TransformFunctor(const framework::Tensor* x, const framework::Tensor* y,
-                   framework::Tensor* z, const DeviceContext& ctx, Functor func)
+  TransformFunctor(const framework::Tensor *x, const framework::Tensor *y,
+                   framework::Tensor *z, const DeviceContext &ctx, Functor func)
       : x_(x->data<T>()),
         y_(y->data<T>()),
         z_(z->mutable_data<OutType>(ctx.GetPlace())),
@@ -344,20 +403,20 @@ class TransformFunctor {
   }
 
  private:
-  const T* x_;
-  const T* y_;
-  OutType* z_;
+  const T *x_;
+  const T *y_;
+  OutType *z_;
   int64_t nx_;
-  const DeviceContext& ctx_;
+  const DeviceContext &ctx_;
   Functor func_;
 };
 
 template <typename T, typename DX_OP, typename DY_OP>
 struct ElemwiseGradNoBroadcast {
-  const T* x_;
-  const T* y_;
-  const T* out_;
-  const T* dout_;
+  const T *x_;
+  const T *y_;
+  const T *out_;
+  const T *dout_;
 
   HOSTDEVICE void operator()(size_t i) {
     if (dx_ != nullptr) {
@@ -370,14 +429,14 @@ struct ElemwiseGradNoBroadcast {
 
   DX_OP dx_op_;
   DY_OP dy_op_;
-  T* dx_;
-  T* dy_;
+  T *dx_;
+  T *dy_;
 };
 
 template <typename T, typename DX_OP, typename DY_OP>
-static void ElemwiseGradBroadcast1CPU(const T* x, const T* y, const T* out,
-                                      const T* dout, int h, int w, DX_OP dx_op,
-                                      DY_OP dy_op, T* dx, T* dy) {
+static void ElemwiseGradBroadcast1CPU(const T *x, const T *y, const T *out,
+                                      const T *dout, int h, int w, DX_OP dx_op,
+                                      DY_OP dy_op, T *dx, T *dy) {
   for (int i = 0; i < h; ++i) {
     for (int j = 0; j < w; ++j) {
       int x_offset = i * w + j;
@@ -399,8 +458,8 @@ static void ElemwiseGradBroadcast1CPU(const T* x, const T* y, const T* out,
 #ifdef __NVCC__
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void ElemwiseGradBroadcast1CUDAKernel(
-    const T* x, const T* y, const T* out, const T* dout, int h, int w,
-    DX_OP dx_op, DY_OP dy_op, T* dx, T* dy) {
+    const T *x, const T *y, const T *out, const T *dout, int h, int w,
+    DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   int j = blockIdx.x;
   int i = threadIdx.x;
   int tid = threadIdx.x;
@@ -427,10 +486,10 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
 }
 
 template <typename T, typename DX_OP, typename DY_OP>
-static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T* x,
-                                       const T* y, const T* out, const T* dout,
+static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T *x,
+                                       const T *y, const T *out, const T *dout,
                                        int h, int w, DX_OP dx_op, DY_OP dy_op,
-                                       T* dx, T* dy) {
+                                       T *dx, T *dy) {
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
   int gird_size = w;
   ElemwiseGradBroadcast1CUDAKernel<<<gird_size, block_size, 0, stream>>>(
@@ -440,9 +499,9 @@ static void ElemwiseGradBroadcast1CUDA(cudaStream_t stream, const T* x,
 #endif
 
 template <typename T, typename DX_OP, typename DY_OP>
-static void ElemwiseGradBroadcast2CPU(const T* x, const T* y, const T* out,
-                                      const T* dout, int pre, int n, int post,
-                                      DX_OP dx_op, DY_OP dy_op, T* dx, T* dy) {
+static void ElemwiseGradBroadcast2CPU(const T *x, const T *y, const T *out,
+                                      const T *dout, int pre, int n, int post,
+                                      DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   for (int i = 0; i < pre; ++i) {
     for (int j = 0; j < n; ++j) {
       for (int k = 0; k < post; ++k) {
@@ -467,8 +526,8 @@ static void ElemwiseGradBroadcast2CPU(const T* x, const T* y, const T* out,
 #ifdef __NVCC__
 template <typename T, typename DX_OP, typename DY_OP>
 static __global__ void ElemwiseGradBroadcast2CUDAKernel(
-    const T* x, const T* y, const T* out, const T* dout, int pre, int n,
-    int post, DX_OP dx_op, DY_OP dy_op, T* dx, T* dy) {
+    const T *x, const T *y, const T *out, const T *dout, int pre, int n,
+    int post, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   int tid = threadIdx.x;
   int j = blockIdx.x;
 
@@ -504,10 +563,10 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
 }
 
 template <typename T, typename DX_OP, typename DY_OP>
-static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T* x,
-                                       const T* y, const T* out, const T* dout,
+static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T *x,
+                                       const T *y, const T *out, const T *dout,
                                        int pre, int n, int post, DX_OP dx_op,
-                                       DY_OP dy_op, T* dx, T* dy) {
+                                       DY_OP dy_op, T *dx, T *dy) {
   int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, pre * post);
   int gird_size = n;
   ElemwiseGradBroadcast2CUDAKernel<<<gird_size, block_size, 0, stream>>>(
@@ -517,11 +576,11 @@ static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T* x,
 #endif
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
-void ElemwiseGradCompute(const framework::ExecutionContext& ctx,
-                         const framework::Tensor& x, const framework::Tensor& y,
-                         const framework::Tensor& out,
-                         const framework::Tensor& dout, int axis,
-                         framework::Tensor* dx, framework::Tensor* dy,
+void ElemwiseGradCompute(const framework::ExecutionContext &ctx,
+                         const framework::Tensor &x, const framework::Tensor &y,
+                         const framework::Tensor &out,
+                         const framework::Tensor &dout, int axis,
+                         framework::Tensor *dx, framework::Tensor *dy,
                          DX_OP dx_op, DY_OP dy_op) {
   if (x.dims() == y.dims()) {
     size_t N = static_cast<size_t>(framework::product(x.dims()));
@@ -582,10 +641,10 @@ void ElemwiseGradCompute(const framework::ExecutionContext& ctx,
 
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
-void ElementwiseComputeEx(const framework::ExecutionContext& ctx,
-                          const framework::Tensor* x,
-                          const framework::Tensor* y, int axis, Functor func,
-                          framework::Tensor* z) {
+void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+                          const framework::Tensor *x,
+                          const framework::Tensor *y, int axis, Functor func,
+                          framework::Tensor *z) {
   TransformFunctor<Functor, T, DeviceContext, OutType> functor(
       x, y, z, ctx.template device_context<DeviceContext>(), func);
 
