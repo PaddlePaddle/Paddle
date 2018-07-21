@@ -39,7 +39,7 @@ bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
 
 bool PaddleInferenceAnakinPredictor::Run(
     const std::vector<PaddleTensor> &inputs,
-    std::vector<PaddleTensor> *output_data) {
+    std::vector<PaddleTensor> *output_data, int batch_size) {
   for (const auto &input : inputs) {
     if (input.dtype != PaddleDType::FLOAT32) {
       LOG(ERROR) << "Only support float type inputs. " << input.name

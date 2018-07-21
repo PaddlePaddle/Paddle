@@ -93,6 +93,10 @@ class OpConverter {
   framework::Scope* scope_{nullptr};
 };
 
+}  // namespace tensorrt
+}  // namespace inference
+}  // namespace paddle
+
 #define REGISTER_TRT_OP_CONVERTER(op_type__, Converter__)                      \
   struct trt_##op_type__##_converter : public ::paddle::framework::Registrar { \
     trt_##op_type__##_converter() {                                            \
@@ -111,7 +115,3 @@ class OpConverter {
   extern int TouchConverterRegister_##op_type__();                      \
   static int use_op_converter_trt_##op_type__ __attribute__((unused)) = \
       TouchConverterRegister_##op_type__();
-
-}  // namespace tensorrt
-}  // namespace inference
-}  // namespace paddle
