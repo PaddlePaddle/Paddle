@@ -2302,16 +2302,17 @@ def conv2d_transpose(input,
 
         .. math::
 
-           H_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
-           W_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
+           H_{out} \in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} \in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). This
-            parameter only works when filter_size is None.
+            tuple, it must contain two integers, (image_H, image_W).
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
@@ -2389,7 +2390,13 @@ def conv2d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
-
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, list) or isinstance(output_size, int):
+        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    else:
+        raise ValueError("output_size should be list or int")
+    padding = utils.convert_to_list(padding, 2, 'padding')
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters / groups] + filter_size
     img_filter = helper.create_parameter(
@@ -2402,6 +2409,7 @@ def conv2d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
         attrs={
+            'output_size': output_size,
             'strides': stride,
             'paddings': padding,
             'dilations': dilation,
@@ -2667,15 +2675,15 @@ def beam_search(pre_ids,
 
     Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
-    
-    This layer does the search in beams for one time step. Specifically, it 
+
+    This layer does the search in beams for one time step. Specifically, it
     selects the top-K candidate word ids of current step from :attr:`ids`
     according to their :attr:`scores` for all source sentences, where K is
     :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
     computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
     the output of beam_search at previous step, they are needed for special use
     to handle ended candidate translations.
- 
+
     Note that the :attr:`scores` passed in should be accumulated scores, and
     length penalty should be done with extra operators before calculating the
     accumulated scores if needed, also suggest finding top-K before it and
@@ -3876,7 +3884,7 @@ def nce(input,
 def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
     """
     The hierarchical sigmoid operator is used to accelerate the training
-    process of language model. This operator organizes the classes into a 
+    process of language model. This operator organizes the classes into a
     complete binary tree, each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
@@ -3886,9 +3894,9 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
 
     Refer to `Hierarchical Probabilistic Neural Network Language Model
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
-    
+
     Args:
-        input (Variable): The input tensor variable with shape 
+        input (Variable): The input tensor variable with shape
             :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
@@ -3896,7 +3904,7 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
         num_classes: (int), The number of classes, must not be less than 2.
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter
              attribute for learnable parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter 
+        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter
              attribute for the bias of this layer. If it is set to False, no
              bias will be applied.
 
