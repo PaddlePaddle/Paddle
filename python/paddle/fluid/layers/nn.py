@@ -166,7 +166,8 @@ def fc(input,
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
             parameters/weights of this layer.
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
-            of this layer. If it is set to None, no bias will be added to the output units.
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
         use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
