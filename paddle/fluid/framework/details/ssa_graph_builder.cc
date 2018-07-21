@@ -17,6 +17,36 @@
 namespace paddle {
 namespace framework {
 namespace details {
+void SSAGraphBuilder::PolishGraphToSupportDataHazards(ir::Graph *graph) {
+  for (auto &var_map : graph->Get<GraphVars>("vars")) {
+    for (auto &name_pair : var_map) {
+      if (name_pair.second.size() <= 1) {
+        continue;
+      }
+      auto it_new = name_pair.second.rbegin();
+      auto it_old = name_pair.second.rbegin();
+      ++it_old;
+      for (; it_old != name_pair.second.rend(); it_new = it_old, ++it_old) {
+        OpHandleBase *write_op = (*it_new)->GeneratedOp();
+        const auto &read_ops = (*it_old)->PendingOps();
+
+        for (auto *read_op : read_ops) {
+          // Manually add a dependency var from read_op to write_op;
+          if (read_op == write_op) {
+            // Read Write is the same op.
+            continue;
+          }
+
+          auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+          read_op->AddOutput(dep_var);
+          write_op->AddInput(dep_var);
+          graph->Get<GraphDepVars>("dep_vars").emplace(dep_var);
+        }
+      }
+    }
+  }
+}
+
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
     ir::Graph *graph, ir::Node *node, const platform::Place &place,
     size_t place_offset) {
@@ -56,8 +86,7 @@ void SSAGraphBuilder::AddOutputToLeafOps(ir::Graph *graph) {
     if (!op->Outputs().empty()) {
       continue;
     }
-    auto *dummy_leaf = new DummyVarHandle(
-        graph->CreateEmptyNode("dummy", ir::Node::Type::kVariable));
+    auto *dummy_leaf = new DummyVarHandle(graph->CreateControlDepVar());
     graph->Get<GraphDepVars>("dep_vars").emplace(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }

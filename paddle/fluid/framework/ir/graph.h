@@ -27,6 +27,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
@@ -54,28 +55,58 @@ class Graph {
     };
   }
 
+  const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
+
   ir::Node *CreateVarNode(VarDesc *var_desc) {
-    nodes.emplace_back(new ir::Node(var_desc));
-    return nodes.back().get();
+    return AddNode(new ir::Node(var_desc));
   }
 
   ir::Node *CreateOpNode(OpDesc *op_desc) {
-    nodes.emplace_back(new ir::Node(op_desc));
-    return nodes.back().get();
+    return AddNode(new ir::Node(op_desc));
+  }
+
+  ir::Node *CreateControlDepVar() {
+    // TODO(panyx0718): control var name should be unique.
+    const std::string name = string::Sprintf(
+        "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
+    return AddNode(new ir::Node(name, ir::Node::Type::kVariable));
   }
 
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
-    nodes.emplace_back(new ir::Node(name, type));
-    return nodes.back().get();
+    return AddNode(new ir::Node(name, type));
   }
 
-  std::vector<std::unique_ptr<ir::Node>> nodes;
+  std::vector<std::unique_ptr<ir::Node>> ReleaseNodes() {
+    std::vector<std::unique_ptr<ir::Node>> ret;
+    for (auto &n : nodes_) {
+      ret.emplace_back(n.second.release());
+    }
+    nodes_.clear();
+    node_set_.clear();
+    return ret;
+  }
 
  private:
+  // This method takes ownership of `node`.
+  ir::Node *AddNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
+    nodes_[node].reset(node);
+    node_set_.insert(node);
+    return node;
+  }
+
+  void RemoveNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
+    node_set_.erase(node);
+    nodes_.erase(node);
+  }
+
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc &program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
+  std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
+  std::unordered_set<ir::Node *> node_set_;
 };
 }  // namespace ir
 }  // namespace framework

@@ -94,20 +94,21 @@ TEST(GraphTest, Basic) {
             prog.MutableBlock(0)->Var("test_out")->GetType());
 
   std::unique_ptr<ir::Graph> g(new ir::Graph(prog));
-  ASSERT_EQ(g->nodes[0]->Name(), "sum");
-  ASSERT_EQ(g->nodes[0]->inputs[0]->Name(), "test_a");
-  ASSERT_EQ(g->nodes[0]->inputs[1]->Name(), "test_b");
-  ASSERT_EQ(g->nodes[0]->inputs[2]->Name(), "test_c");
-  ASSERT_EQ(g->nodes[0]->outputs[0]->Name(), "test_out");
-  ASSERT_EQ(g->nodes[1]->Name(), "test_a");
-  ASSERT_EQ(g->nodes[1]->outputs[0]->Name(), "sum");
-  ASSERT_EQ(g->nodes[2]->Name(), "test_b");
-  ASSERT_EQ(g->nodes[2]->outputs[0]->Name(), "sum");
-  ASSERT_EQ(g->nodes[3]->Name(), "test_c");
-  ASSERT_EQ(g->nodes[3]->outputs[0]->Name(), "sum");
-  ASSERT_EQ(g->nodes[4]->Name(), "test_out");
-  ASSERT_EQ(g->nodes[4]->inputs[0]->Name(), "sum");
-  ASSERT_EQ(g->nodes.size(), 5);
+  std::vector<ir::Node *> nodes(g->Nodes().begin(), g->Nodes().end());
+  ASSERT_EQ(nodes[0]->Name(), "sum");
+  ASSERT_EQ(nodes[0]->inputs[0]->Name(), "test_a");
+  ASSERT_EQ(nodes[0]->inputs[1]->Name(), "test_b");
+  ASSERT_EQ(nodes[0]->inputs[2]->Name(), "test_c");
+  ASSERT_EQ(nodes[0]->outputs[0]->Name(), "test_out");
+  ASSERT_EQ(nodes[1]->Name(), "test_a");
+  ASSERT_EQ(nodes[1]->outputs[0]->Name(), "sum");
+  ASSERT_EQ(nodes[2]->Name(), "test_b");
+  ASSERT_EQ(nodes[2]->outputs[0]->Name(), "sum");
+  ASSERT_EQ(nodes[3]->Name(), "test_c");
+  ASSERT_EQ(nodes[3]->outputs[0]->Name(), "sum");
+  ASSERT_EQ(nodes[4]->Name(), "test_out");
+  ASSERT_EQ(nodes[4]->inputs[0]->Name(), "sum");
+  ASSERT_EQ(nodes.size(), 5);
 }
 }  // namespace framework
 }  // namespace paddle

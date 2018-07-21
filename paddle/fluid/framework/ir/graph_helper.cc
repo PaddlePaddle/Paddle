@@ -33,9 +33,8 @@ void SortHelper(
     }
   }
 
-  LOG(ERROR) << "topology sort insert: " << node->Name()
-             << reinterpret_cast<void *>(node) << " input "
-             << node->inputs.size();
+  VLOG(3) << "topology sort insert: " << node->Name()
+          << reinterpret_cast<void *>(node) << " input " << node->inputs.size();
   ret->push_back(node);
 }
 
@@ -93,18 +92,18 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list;
 
-  for (auto &n : graph.nodes) {
+  for (auto &n : graph.Nodes()) {
     if (n->NodeType() != ir::Node::Type::kOperation) continue;
-    if (adj_list.find(n.get()) == adj_list.end()) {
-      adj_list[n.get()] = std::unordered_set<ir::Node *>();
+    if (adj_list.find(n) == adj_list.end()) {
+      adj_list[n] = std::unordered_set<ir::Node *>();
     }
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
         PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
-        adj_list[n.get()].insert(adj_n);
-        LOG(ERROR) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
-                   << " -> " << n->Name() << reinterpret_cast<void *>(n.get())
-                   << "  via " << var->Name() << reinterpret_cast<void *>(var);
+        adj_list[n].insert(adj_n);
+        VLOG(3) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+                << " -> " << n->Name() << reinterpret_cast<void *>(n)
+                << "  via " << var->Name() << reinterpret_cast<void *>(var);
       }
     }
   }

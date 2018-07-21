@@ -76,10 +76,10 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
                      const std::vector<std::string> &recv_vars) const;
 
   std::vector<std::string> FindDistTrainSendVars(
-      const std::vector<std::unique_ptr<ir::Node>> &nodes) const;
+      const std::vector<ir::Node *> &nodes) const;
 
   std::vector<std::string> FindDistTrainRecvVars(
-      const std::vector<std::unique_ptr<ir::Node>> &nodes) const;
+      const std::vector<ir::Node *> &nodes) const;
 
   void ConnectOp(ir::Graph *result, OpHandleBase *op,
                  const std::string &prev_op_name) const;

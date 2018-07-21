@@ -33,7 +33,8 @@ void RPCOpHandle::RunImpl() {
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
     // FIXME(Yancey1989): need a better solution instead of use DebugString()
-    if (in->DebugString() == "dummy") {  // HACK
+    if (in->Node()->Name().find(ir::Node::kControlDepVarName) !=
+        std::string::npos) {  // HACK
       continue;
     }
     if (in->GeneratedOp()) {
