@@ -82,7 +82,7 @@ inference_api_test(test_api_impl
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
-        DEPS paddle_inference_api analysis tensorrt_engine paddle_fluid_api)
+        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
 
 inference_api_test(test_api_tensorrt_subgraph_engine ARGS test_word2vec)
 endif()
