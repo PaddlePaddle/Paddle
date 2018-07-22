@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
@@ -33,8 +34,7 @@ void RPCOpHandle::RunImpl() {
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
     // FIXME(Yancey1989): need a better solution instead of use DebugString()
-    if (in->Node()->Name().find(ir::Node::kControlDepVarName) !=
-        std::string::npos) {  // HACK
+    if (ir::IsControlDepVar(*in->Node())) {  // HACK
       continue;
     }
     if (in->GeneratedOp()) {

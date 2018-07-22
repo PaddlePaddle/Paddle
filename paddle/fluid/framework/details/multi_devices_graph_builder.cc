@@ -170,6 +170,7 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
     const std::vector<std::string> &var_names) const {
   int64_t numel_sum = 0;
   for (auto var_name : var_names) {
+    if (all_vars_.find(var_name) == all_vars_.end()) continue;
     auto var_desc = all_vars_.at(var_name);
     PADDLE_ENFORCE_NOT_NULL(var_desc);
     auto dim = framework::make_ddim(var_desc->GetShape());
@@ -271,6 +272,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
       // user can customize loss@grad if not use_default_grad_scale_
       if (strategy_.gradient_scale_ !=
           BuildStrategy::GradientScaleStrategy::kCustomized) {
+        // TODO(paddle-dev): Why is there no input for this op_handle?
         CreateScaleLossGradOp(&result);
       }
       // This assumes the backward generating code will ensure IsScaleLossOp
@@ -288,6 +290,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
       } else {
         // This op runs on all devices, and its output may have parameter's
         // gradients.
+        // TODO(paddle-dev): Why is so special about "read" op?
         if (node->Op()->Type() == "read" && strategy_.enable_data_balance_) {
           node->Op()->SetAttr("throw_eof_exp", false);
           CreateComputationalOps(&result, node, places_.size());
@@ -363,6 +366,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
    * Only variables should be the leaves of graph.
    */
   AddOutputToLeafOps(&result);
+  PADDLE_ENFORCE(!ir::HasCircle(result));
   return graph;
 }
 
@@ -620,6 +624,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
 
   if (node->Op()->Type() == "split_byref" ||
       node->Op()->Type() == "split_selected_rows") {
+    // TODO(paddle-dev): getting the first var is not safe.
     op_dev_id = GetVarDeviceID(input_var_names[0]);
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
       op_dev_id = GetAppropriateDeviceID(input_var_names);
@@ -657,7 +662,10 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
                                           ir::Node *node) const {
   int op_dev_id = -1;
   if (node->Op()->Type() == "send") {
+    // TODO(paddle-dev): getting the first var is not safe.
     op_dev_id = GetVarDeviceID(node->inputs[0]->Name());
+    PADDLE_ENFORCE(!ir::IsControlDepVar(*node->inputs[0]),
+                   "This hack no longer holds, please fix.");
     // the variable name which contains .block means it was splited by
     // split_byref op
     // so that we can balance the variable blocks to all the pserver

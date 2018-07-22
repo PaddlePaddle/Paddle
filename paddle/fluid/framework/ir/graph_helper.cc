@@ -59,12 +59,9 @@ bool HasCircleHelper(
   in_trace->erase(node);
   return false;
 }
-}  // namespace
 
-bool HasCircle(const Graph &graph) {
-  std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
-      BuildOperationAdjList(graph);
-
+bool HasCircleInternal(
+    const std::map<ir::Node *, std::unordered_set<ir::Node *>> &adj_list) {
   std::unordered_set<ir::Node *> visited;
   std::unordered_set<ir::Node *> in_trace;
   for (auto &adj : adj_list) {
@@ -74,10 +71,16 @@ bool HasCircle(const Graph &graph) {
   }
   return false;
 }
+}  // namespace
+
+bool HasCircle(const Graph &graph) {
+  return HasCircleInternal(BuildOperationAdjList(graph));
+}
 
 std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
   std::map<ir::Node *, std::unordered_set<ir::Node *>> adj_list =
       BuildOperationAdjList(graph);
+  PADDLE_ENFORCE(!HasCircleInternal(adj_list));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
   for (auto adj : adj_list) {

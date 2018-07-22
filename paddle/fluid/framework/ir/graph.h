@@ -57,25 +57,34 @@ class Graph {
 
   const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
 
+  // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     return AddNode(new ir::Node(var_desc));
   }
 
+  // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     return AddNode(new ir::Node(op_desc));
   }
 
+  // Create a control dependency var that connects 2 operations. The
+  // var doesn't hold any data. Other than that, it's no different from
+  // other var, considering dependency analysis.
   ir::Node *CreateControlDepVar() {
-    // TODO(panyx0718): control var name should be unique.
+    // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
     return AddNode(new ir::Node(name, ir::Node::Type::kVariable));
   }
 
+  // A more free style way of creating a graph node. Mostly use for test
+  // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
     return AddNode(new ir::Node(name, type));
   }
 
+  // Clear all node information of the graph and return the ownership of the
+  // nodes.
   std::vector<std::unique_ptr<ir::Node>> ReleaseNodes() {
     std::vector<std::unique_ptr<ir::Node>> ret;
     for (auto &n : nodes_) {
@@ -108,6 +117,8 @@ class Graph {
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
 };
+
+bool IsControlDepVar(const ir::Node &var);
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

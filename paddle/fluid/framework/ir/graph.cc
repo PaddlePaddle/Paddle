@@ -107,6 +107,10 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
     }
   }
 }
+
+bool IsControlDepVar(const ir::Node &var) {
+  return var.Name().find(ir::Node::kControlDepVarName) != std::string::npos;
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
