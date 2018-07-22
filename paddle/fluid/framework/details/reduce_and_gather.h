@@ -35,14 +35,16 @@ struct ReduceLoDTensor {
     PADDLE_ENFORCE(!src_tensors_.empty());
     auto &t0 = *src_tensors_[0];
     PADDLE_ENFORCE_NE(t0.numel(), 0);
+
     dst_tensor_.Resize(t0.dims());
     T *dst = dst_tensor_.mutable_data<T>(platform::CPUPlace());
-    if (dst != t0.data<T>()) {
-      std::copy(t0.data<T>(), t0.data<T>() + t0.numel(), dst);
-    }
 
-    for (size_t i = 1; i < src_tensors_.size(); ++i) {
+    for (size_t i = 0; i < src_tensors_.size(); ++i) {
       auto &t = *src_tensors_[i];
+      if (dst == t.data<T>()) {
+        continue;
+      }
+
       PADDLE_ENFORCE_EQ(t.dims(), t0.dims());
       PADDLE_ENFORCE_EQ(t.type(), t0.type());
       std::transform(t.data<T>(), t.data<T>() + t.numel(), dst, dst,

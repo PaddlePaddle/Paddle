@@ -57,4 +57,4 @@ By specifying the engine kind and config, one can get a specific implementation.
 ## Reference
 
 - [paddle_inference_api.h](./paddle_inference_api.h)
-- [some demos](./demo)
+- [some demos](./demo_ci)
