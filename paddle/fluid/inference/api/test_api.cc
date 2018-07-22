@@ -35,7 +35,8 @@ class DemoPredictor : public PaddlePredictor {
     LOG(INFO) << "I get other_config " << config.other_config;
   }
   bool Run(const std::vector<PaddleTensor> &inputs,
-           std::vector<PaddleTensor> *output_data) override {
+           std::vector<PaddleTensor> *output_data,
+           int batch_size = 0) override {
     LOG(INFO) << "Run";
     return false;
   }
