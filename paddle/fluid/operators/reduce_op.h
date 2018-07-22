@@ -88,35 +88,6 @@ class ReduceGradKernel : public framework::OpKernel<T> {
     auto* output = context.Output<Tensor>(framework::GradVarName("X"));
     output->mutable_data<T>(context.GetPlace());
 
-    if (context.GetPlace().type() == typeid(platform::CPUPlace)) {
-      const auto* input2_d = input2->data<T>();
-      auto* output_d = output->data<T>();
-
-      // CPU reduce_all_grad
-      if (reduce_all) {
-        PADDLE_ENFORCE(input2->dims().size() == 1 && input2->dims()[0] == 1,
-                       "output should be a scalar");
-        for (int64_t i = 0; i < framework::product(input0->dims()); ++i) {
-          output_d[i] = input2_d[0];
-        }
-        return;
-      }
-
-      if (input0->dims().size() == 2 && dims.size() == 1) {
-        auto& input_dim = input0->dims();
-        for (int64_t i = 0; i < input_dim[0]; ++i) {
-          for (int64_t j = 0; j < input_dim[1]; ++j) {
-            if (dims[0] == 0) {
-              output_d[i * input_dim[1] + j] = input2_d[j];
-            } else {
-              output_d[i * input_dim[1] + j] = input2_d[i];
-            }
-          }
-        }
-        return;
-      }
-    }
-
     if (reduce_all) {
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::From(*input1);

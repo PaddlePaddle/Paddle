@@ -115,14 +115,56 @@ class Test2DReduce1(Test1DReduce):
         self.op_type = "reduce_sum"
         self.attrs = {'dim': [1]}
         self.inputs = {'X': np.random.random((20, 10)).astype("float64")}
-        self.outputs = {'Out': self.inputs['X'].sum(axis=1)}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+
+
+class Test3DReduce0(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.attrs = {'dim': [1]}
+        self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+
+
+class Test3DReduce1(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.attrs = {'dim': [2]}
+        self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+
+
+class Test3DReduce2(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.attrs = {'dim': [-2]}
+        self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
+
+
+class Test3DReduce3(Test1DReduce):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.attrs = {'dim': [1, 2]}
+        self.inputs = {'X': np.random.random((5, 6, 7)).astype("float64")}
+        self.outputs = {
+            'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']))
+        }
 
 
 class TestKeepDimReduce(Test1DReduce):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((5, 6, 10)).astype("float64")}
-        self.attrs = {'dim': [-2], 'keep_dim': True}
+        self.attrs = {'dim': [1], 'keep_dim': True}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
                                         keepdims=self.attrs['keep_dim'])
