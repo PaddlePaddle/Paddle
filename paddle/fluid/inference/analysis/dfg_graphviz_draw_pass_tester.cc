@@ -40,7 +40,7 @@ TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
     no++;
   }
   // DFG is sensitive to ProgramDesc, be careful to change the existing models.
-  ASSERT_EQ(no, 82);
+  ASSERT_EQ(no, 83);
 }
 
 }  // namespace analysis
