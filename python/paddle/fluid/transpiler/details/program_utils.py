@@ -17,7 +17,7 @@ def delete_ops(block, ops):
     try:
         start = list(block.ops).index(ops[0])
         end = list(block.ops).index(ops[-1])
-        [block.remove_op(start) for _ in range(end - start + 1)]
+        [block._remove_op(start) for _ in range(end - start + 1)]
     except Exception as e:
         raise e
     block.program._sync_with_cpp()
