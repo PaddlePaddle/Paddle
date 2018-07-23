@@ -26,9 +26,6 @@ from functools import reduce
 __all__ = [
     'split_lod_tensor',
     'merge_lod_tensor',
-    'BlockGuard',
-    'BlockGuardWithCompletion',
-    'WhileGuard',
     'While',
     'Switch',
     'lod_rank_table',

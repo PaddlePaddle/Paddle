@@ -248,15 +248,11 @@ PYBIND11_PLUGIN(core) {
 #endif
            })
       .def("rows", [](SelectedRows &self) {
-#ifndef PADDLE_WITH_CUDA
-        return self.rows();
-#else
-         auto rows = self.rows();
-         std::vector<int64_t> new_rows;
-         new_rows.reserve(rows.size());
-         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
-         return new_rows;
-#endif
+        auto rows = self.rows();
+        std::vector<int64_t> new_rows;
+        new_rows.reserve(rows.size());
+        std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
+        return new_rows;
       });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.

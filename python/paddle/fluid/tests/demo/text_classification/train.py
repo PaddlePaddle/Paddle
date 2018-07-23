@@ -41,16 +41,14 @@ def network_cfg(is_train, pass_num=100):
             pass_num=pass_num,
             shapes=[[-1, 1], [-1, 1]],
             lod_levels=[1, 0],
-            dtypes=['int64', 'int64'],
-            thread_num=1)
+            dtypes=['int64', 'int64'])
 
         test_file_obj = fluid.layers.open_files(
             filenames=TEST_FILES,
             pass_num=1,
             shapes=[[-1, 1], [-1, 1]],
             lod_levels=[1, 0],
-            dtypes=['int64', 'int64'],
-            thread_num=1)
+            dtypes=['int64', 'int64'])
 
         if is_train:
             file_obj = fluid.layers.shuffle(train_file_obj, buffer_size=1000)

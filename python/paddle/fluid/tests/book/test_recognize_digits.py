@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle.fluid.core as core
 import math
 import os
 import sys
@@ -256,6 +257,8 @@ def inject_test_method(use_cuda, parallel, nn_type, combine):
 
 def inject_all_tests():
     for use_cuda in (False, True):
+        if use_cuda and not core.is_compiled_with_cuda():
+            continue
         for parallel in (False, True):
             for nn_type in ('mlp', 'conv'):
                 inject_test_method(use_cuda, parallel, nn_type, True)

@@ -14,6 +14,7 @@
 
 import argparse
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle
 import sys
 import numpy
@@ -136,4 +137,4 @@ def main(use_cuda):
 
 if __name__ == '__main__':
     # for use_cuda in (False, True):
-    main(use_cuda=True)
+    main(use_cuda=core.is_compiled_with_cuda())

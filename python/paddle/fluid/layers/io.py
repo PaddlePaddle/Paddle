@@ -12,14 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+import multiprocessing
+import threading
 
-from .. import core
-from ..framework import convert_np_dtype_to_dtype_, default_main_program, default_startup_program, Program
-from ..unique_name import generate as unique_name
+from ..data_feeder import DataFeeder
 from .control_flow import BlockGuard
-from ..layer_helper import LayerHelper
+from .layer_function_generator import templatedoc
+from .. import core
 from ..executor import global_scope
-from .layer_function_generator import generate_layer_fn, templatedoc
+from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
+    default_startup_program, program_guard, Program
+from ..layer_helper import LayerHelper
+from ..unique_name import generate as unique_name
 
 __all__ = [
     'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
@@ -383,9 +387,9 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     Create a uniform random data generator
 
     This layer returns a Reader Variable.
-    Instead of opening a file and reading data from it, this 
-    Reader Variable generates float uniform random data by itself. 
-    It can be used as a dummy reader to test a network without 
+    Instead of opening a file and reading data from it, this
+    Reader Variable generates float uniform random data by itself.
+    It can be used as a dummy reader to test a network without
     opening a real file.
 
     Args:
@@ -445,28 +449,36 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     return monkey_patch_reader_methods(main_prog_var)
 
 
-def py_reader(capacity, shapes, dtypes, lod_levels=None):
+def py_reader(capacity,
+              shapes,
+              dtypes,
+              lod_levels=None,
+              name=None,
+              use_double_buffer=True):
     """
     Create a reader and blocking queue for data feeding in Python
-    
+
     This layer returns a Reader Variable and a BlockingQueue.
-    The BlockingQueue provides `push()` method to push a `LoDTensorArray` 
-    object into the queue in Python side. In C++ side, the Reader 
-    Variable would invoke `pop()` method of the queue to retrieve the 
-    feeding data. The process of feeding data in Python side and fetching 
-    data in C++ side can run in parallel. The BlockingQueue should be closed 
+    The BlockingQueue provides `push()` method to push a `LoDTensorArray`
+    object into the queue in Python side. In C++ side, the Reader
+    Variable would invoke `pop()` method of the queue to retrieve the
+    feeding data. The process of feeding data in Python side and fetching
+    data in C++ side can run in parallel. The BlockingQueue should be closed
     using `close()` method when unused.
 
     Args:
+       use_double_buffer(bool): Whether use double buffer or not.
        capacity(int): The maximum capacity of the BlockingQueue.
-       shapes(list): List of tuples which declaring data shapes.
-       dtypes(list): List of strs which declaring data type. 
-       lod_levels(list): List of ints which declaring data lod_level.
+       shapes(list|tuple): List of tuples which declaring data shapes.
+       dtypes(list|tuple): List of strs which declaring data type.
+       lod_levels(list|tuple): List of ints which declaring data lod_level.
+       name(basestring): The prefix Python queue name and Reader name. None will
+            be generated automatically.
 
     Returns:
        tuple(Variable, BlockingQueue):
        A Reader Variable from which we can get feeding data.
-       
+
        A BlockingQueue object for data feeding.
 
     Examples:
@@ -479,7 +491,7 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
                                              dtypes=['float32', 'int64'])
             # Via the reader, we can use 'read_file' layer to get data:
             image, label = fluid.layers.read_file(reader)
-            
+
             # Via the blocking queue, we can feed data using threads
             def feed_data(queue, feed_images, feed_labels):
                 for feed_image, feed_label in zip(feed_images, feed_labels):
@@ -487,7 +499,7 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
                     data.append(feed_image)
                     data.append(feed_label)
                     queue.push(data)
-            
+
             thread = threading.Thread(target=feed_data, args=(queue, feed_images, feed_labels))
             thread.start()
     """
@@ -502,15 +514,23 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
     if lod_levels is None:
         lod_levels = [0] * len(shapes)
 
-    queue_name = unique_name('lod_tensor_blocking_queue')
+    if name is None:
+        queue_name = unique_name('lod_tensor_blocking_queue')
+        reader_name = unique_name('create_py_reader')
+        double_buffer_name = unique_name('double_buffer')
+    else:
+        queue_name = "_".join([name, "queue"])
+        reader_name = "_".join([name, "reader"])
+        double_buffer_name = "_".join([name, "double_buffer"])
+
     var = global_scope().var(queue_name)
     feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
 
     startup_blk = default_startup_program().current_block()
-    startup_var = startup_blk.create_var(name=unique_name('create_py_reader'))
+    startup_var = startup_blk.create_var(name=reader_name)
     startup_blk.append_op(
         type='create_py_reader',
-        inputs={'blocking_queue': queue_name},
+        inputs={'blocking_queue': [queue_name]},
         outputs={'Out': [startup_var]},
         attrs={
             'shape_concat': shape_concat,
@@ -524,37 +544,117 @@ def py_reader(capacity, shapes, dtypes, lod_levels=None):
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
                                       startup_var)
 
-    return monkey_patch_reader_methods(main_prog_var), feed_queue
+    reader = monkey_patch_reader_methods(main_prog_var)
+    if use_double_buffer:
+        double_buffer_reader = double_buffer(reader, name=double_buffer_name)
+        # we return a double buffer reader. However, the reset method comes from
+        # py_reader.
+        double_buffer_reader.reset = reader.reset
+        reader = double_buffer_reader
+
+    # monkey patch py_reader special methods
+    reader.queue = feed_queue
+    current_reset_method = reader.reset
+    reader.thread = None
+    reader.tensor_provider = None
+    reader.exited = False
+
+    def start_provide_thread(func):
+        def __provider_thread__():
+            for tensors in func():
+                array = core.LoDTensorArray()
+                for item in tensors:
+                    if not isinstance(item, core.LoDTensor):
+                        tmp = core.LoDTensor()
+                        tmp.set(item, core.CPUPlace())
+                        item = tmp
+
+                    array.append(item)
+
+                if reader.exited:
+                    break
+                feed_queue.push(array)
+                if reader.exited:
+                    break
+            feed_queue.close()
+
+        reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread.daemon = True
+        reader.thread.start()
+
+    def __set_tensor_provider__(func):
+        reader.tensor_provider = func
+
+    def __set_paddle_reader__(paddle_reader):
+        with program_guard(Program(), Program()):
+            feed_list = []
+            counter = 0
+            for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
+                name = str(counter)
+                feed_list.append(
+                    data(
+                        name=name,
+                        dtype=dtype,
+                        shape=shape,
+                        lod_level=lod_level))
+                counter += 1
+
+            feeder = DataFeeder(feed_list=feed_list, place=core.CPUPlace())
+            paddle_reader = feeder.decorate_reader(
+                paddle_reader, multi_devices=False)
+
+        def __tensor_provider__():
+            for slots in paddle_reader():
+                yield [slots[str(idx)] for idx in xrange(counter)]
+
+        __set_tensor_provider__(__tensor_provider__)
+
+    def __reset__():
+        current_reset_method()
+        if reader.thread is not None and reader.tensor_provider is not None:
+            reader.exited = True
+            reader.thread.join()
+            reader.exited = False
+
+    def __start__():
+        start_provide_thread(reader.tensor_provider)
+
+    reader.reset = __reset__
+    reader.decorate_tensor_provider = __set_tensor_provider__
+    reader.decorate_paddle_reader = __set_paddle_reader__
+    reader.start = __start__
+
+    return reader
 
 
 def open_files(filenames,
                shapes,
                lod_levels,
                dtypes,
-               thread_num=1,
+               thread_num=None,
                buffer_size=None,
                pass_num=1,
-               for_parallel=True):
+               is_test=None):
     """
     Open files
 
-    This layer takes a list of files to read from and returns a Reader Variable. 
-    Via the Reader Variable, we can get data from given files. All files must 
-    have name suffixs to indicate their formats, e.g., '*.recordio'. 
+    This layer takes a list of files to read from and returns a Reader Variable.
+    Via the Reader Variable, we can get data from given files. All files must
+    have name suffixs to indicate their formats, e.g., '*.recordio'.
 
     Args:
        filenames(list): The list of file names.
        shapes(list): List of tuples which declaring data shapes.
        lod_levels(list): List of ints which declaring data lod_level.
        dtypes(list): List of strs which declaring data type.
-       thread_num(int): The maximal concurrent prefetch thread number.
-       buffer_size(int|None): The size of prefetch buffer. If it is setted None, 
-            buffer size will be thread_num * 3.
-            Default: None
+       thread_num(None): The number of thread to read files.
+            Default: min(len(filenames), cpu_number).
+       buffer_size(None): The buffer size of reader. Default: 3 * thread_num
        pass_num(int): Number of passes to run.
-       for_parallel(Bool): Set it as True if you are going to run 
-            subsequent operators in parallel.
-            Default: True
+       is_test(bool|None): Whether `open_files` used for testing or not. If it
+            is used for testing, the order of data generated is same as the file
+            order. Otherwise, it is not guaranteed the order of data is same
+            between every epoch. [Default: False].
 
     Returns:
        Variable: A Reader Variable via which we can get file data.
@@ -566,16 +666,22 @@ def open_files(filenames,
                                                      './data2.recordio'],
                                              shapes=[(3,224,224), (1)],
                                              lod_levels=[0, 0],
-                                             dtypes=['float32', 'int64'],
-                                             thread_num=2,
-                                             buffer_size=2)
+                                             dtypes=['float32', 'int64'])
 
          # Via the reader, we can use 'read_file' layer to get data:
          image, label = fluid.layers.io.read_file(reader)
     """
+    if thread_num is None:
+        thread_num = min(len(filenames), multiprocessing.cpu_count())
+    else:
+        thread_num = int(thread_num)
+
     if buffer_size is None:
-        buffer_size = thread_num * 3
-    if isinstance(filenames, str):
+        buffer_size = 3 * thread_num
+    else:
+        buffer_size = int(buffer_size)
+
+    if isinstance(filenames, basestring):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -588,17 +694,18 @@ def open_files(filenames,
     multi_file_reader_name = unique_name('multi_file_reader')
     startup_blk = default_startup_program().current_block()
     startup_reader = startup_blk.create_var(name=multi_file_reader_name)
+    attrs = {
+        'shape_concat': shape_concat,
+        'lod_levels': lod_levels,
+        'ranks': ranks,
+        'file_names': filenames,
+        'thread_num': thread_num,
+        'buffer_size': buffer_size
+    }
+    if is_test is not None:
+        attrs['is_test'] = is_test
     startup_blk.append_op(
-        type='open_files',
-        outputs={'Out': [startup_reader]},
-        attrs={
-            'shape_concat': shape_concat,
-            'lod_levels': lod_levels,
-            'ranks': ranks,
-            'file_names': filenames,
-            'thread_num': thread_num,
-            'buffer_size': buffer_size
-        })
+        type='open_files', outputs={'Out': [startup_reader]}, attrs=attrs)
 
     startup_reader.desc.set_dtypes(dtypes)
     startup_reader.persistable = True
@@ -649,9 +756,9 @@ def shuffle(reader, buffer_size):
 
 def batch(reader, batch_size):
     """
-    This layer is a reader decorator. It takes a reader and adds 
-    'batching' decoration on it. When reading with the result 
-    decorated reader, output data will be automatically organized 
+    This layer is a reader decorator. It takes a reader and adds
+    'batching' decoration on it. When reading with the result
+    decorated reader, output data will be automatically organized
     to the form of batches.
 
     Args:
@@ -676,11 +783,11 @@ def batch(reader, batch_size):
             # If we read data with the raw_reader:
             #     data = fluid.layers.read_file(raw_reader)
             # We can only get data instance by instance.
-            # 
+            #
             # However, if we read data with the batch_reader:
             #     data = fluid.layers.read_file(batch_reader)
-            # Each 5 adjacent instances will be automatically combined together 
-            # to become a batch. So what we get('data') is a batch data instead 
+            # Each 5 adjacent instances will be automatically combined together
+            # to become a batch. So what we get('data') is a batch data instead
             # of an instance.
     """
     return __create_unshared_decorated_reader__(
@@ -727,8 +834,8 @@ def read_file(reader):
     """
     Execute the given reader and get data via it.
 
-    A reader is also a Variable. It can be a raw reader generated by 
-    `fluid.layers.open_files()` or a decorated one generated by 
+    A reader is also a Variable. It can be a raw reader generated by
+    `fluid.layers.open_files()` or a decorated one generated by
     `fluid.layers.double_buffer()` and so on.
 
     Args:

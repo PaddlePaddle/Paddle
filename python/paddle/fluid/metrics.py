@@ -591,7 +591,7 @@ class Auc(MetricBase):
                       for i in range(self._num_thresholds - 2)]
         thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
 
-        # caculate TP, FN, TN, FP count
+        # calculate TP, FN, TN, FP count
         for idx_thresh, thresh in enumerate(thresholds):
             tp, fn, tn, fp = 0, 0, 0, 0
             for i, lbl in enumerate(labels):
