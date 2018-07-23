@@ -457,7 +457,7 @@ def py_reader(capacity,
               use_double_buffer=True):
     """
     Create a reader and blocking queue for data feeding in Python
-    
+
     This layer returns a Reader Variable and a BlockingQueue.
     The BlockingQueue provides `push()` method to push a `LoDTensorArray` 
     object into the queue in Python side. In C++ side, the Reader 
@@ -478,7 +478,7 @@ def py_reader(capacity,
     Returns:
        tuple(Variable, BlockingQueue):
        A Reader Variable from which we can get feeding data.
-       
+
        A BlockingQueue object for data feeding.
 
     Examples:
@@ -491,7 +491,7 @@ def py_reader(capacity,
                                              dtypes=['float32', 'int64'])
             # Via the reader, we can use 'read_file' layer to get data:
             image, label = fluid.layers.read_file(reader)
-            
+
             # Via the blocking queue, we can feed data using threads
             def feed_data(queue, feed_images, feed_labels):
                 for feed_image, feed_label in zip(feed_images, feed_labels):
@@ -499,7 +499,7 @@ def py_reader(capacity,
                     data.append(feed_image)
                     data.append(feed_label)
                     queue.push(data)
-            
+
             thread = threading.Thread(target=feed_data, args=(queue, feed_images, feed_labels))
             thread.start()
     """
@@ -579,6 +579,7 @@ def py_reader(capacity,
             feed_queue.close()
 
         reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread.daemon = True
         reader.thread.start()
 
     def __set_tensor_provider__(func):
