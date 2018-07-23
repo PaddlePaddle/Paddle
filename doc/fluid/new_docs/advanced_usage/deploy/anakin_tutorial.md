@@ -10,7 +10,7 @@
 
 ## <span id = 'principle'> Anakin的工作原理</span> ###
 
-![Anakin_principle](pics/anakin_fm_ch.png)
+![Anakin_principle](../pics/anakin_fm_ch.png)
 
 用Anakin来进行前向计算主要分为三个步骤：
 
