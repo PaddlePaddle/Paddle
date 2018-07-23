@@ -263,7 +263,7 @@ return tmp
 2. 然后连接3组残差模块即下面配置3组 `layer_warp` ，每组采用图 10 左边残差模块组成。
 3. 最后对网络做均值池化并返回该层。
 
-注意：除过第一层卷积层和最后一层全连接层之外，要求三组 `layer_warp` 总的含参层数能够被6整除，即 `resnet_cifar10` 的 depth 要满足 `$(depth - 2) % 6 == 0$` 。
+注意：除过第一层卷积层和最后一层全连接层之外，要求三组 `layer_warp` 总的含参层数能够被6整除，即 `resnet_cifar10` 的 depth 要满足 $(depth - 2) % 6 == 0$ 。
 
 ```python
 def resnet_cifar10(ipt, depth=32):
