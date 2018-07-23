@@ -57,6 +57,12 @@ class SSAGraphBuilder : public ir::Pass {
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
  protected:
+  /*
+    Dependency graph has been constructed. However, there are still data
+    hazards need to be handled.
+  */
+  static void PolishGraphToSupportDataHazards(ir::Graph *graph);
+
   static VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph, ir::Node *node,
                                                const platform::Place &place,
                                                size_t place_offset);

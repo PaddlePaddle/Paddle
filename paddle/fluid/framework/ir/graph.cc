@@ -98,6 +98,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
           }
         }
         if (has_dep) continue;
+
         ir::Node *dep_var = CreateControlDepVar();
         read_op->outputs.push_back(dep_var);
         dep_var->inputs.push_back(read_op);
