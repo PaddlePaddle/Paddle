@@ -21,6 +21,7 @@ from threading import Thread
 import subprocess
 
 from six.moves.queue import Queue
+#  from six.moves import zip_longest
 import itertools
 import random
 import zlib
@@ -151,7 +152,7 @@ def compose(*readers, **kwargs):
             for outputs in zip(*rs):
                 yield sum(list(map(make_tuple, outputs)), ())
         else:
-            for outputs in itertools.zip_longest(*rs):
+            for outputs in zip_longest(*rs):
                 for o in outputs:
                     if o is None:
                         # None will be not be present if compose is aligned

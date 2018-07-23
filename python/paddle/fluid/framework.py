@@ -964,7 +964,7 @@ class Block(object):
         raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
-        return list(self._iter_parameters())
+        return list(self.iter_parameters())
 
     def iter_parameters(self):
         return (item[1] for item in list(self.vars.items())
@@ -1200,7 +1200,7 @@ class Block(object):
         if not isinstance(other, Block):
             raise TypeError(
                 "_copy_param_info_from should be invoked with Block")
-        for p in other._iter_parameters():
+        for p in other.iter_parameters():
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
             if v is None:

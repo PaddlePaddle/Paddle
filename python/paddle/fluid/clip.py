@@ -81,7 +81,7 @@ def error_clip_callback(block, context):
     grad_to_var = context
     op_desc = block.desc.op(block.desc.op_size() - 1)
     for grad_n in [n for n in op_desc.output_arg_names() if n in grad_to_var]:
-        fwd_var = block.var_recursive(grad_to_var[grad_n])
+        fwd_var = block._var_recursive(grad_to_var[grad_n])
         error_clip = getattr(fwd_var, "error_clip", None)
         if not (error_clip is None or isinstance(error_clip,
                                                  BaseErrorClipAttr)):
