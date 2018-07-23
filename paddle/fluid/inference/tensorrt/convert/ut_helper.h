@@ -39,7 +39,7 @@ namespace tensorrt {
 float random(float low, float high) {
   static std::random_device rd;
   static std::mt19937 mt(rd());
-  std::uniform_real_distribution<double> dist(1.0, 10.0);
+  std::uniform_real_distribution<double> dist(low, high);
   return dist(mt);
 }
 
@@ -49,6 +49,7 @@ void RandomizeTensor(framework::LoDTensor* tensor, const platform::Place& place,
   size_t num_elements = analysis::AccuDims(dims, dims.size());
   PADDLE_ENFORCE_GT(num_elements, 0);
   auto* data = tensor->mutable_data<float>(place);
+
   for (size_t i = 0; i < num_elements; i++) {
     *(data + i) = random(0., 1.);
   }
@@ -68,7 +69,7 @@ class TRTConvertValidation {
                        int workspace_size = 1 << 10)
       : parameters_(parameters), scope_(scope) {
     // create engine.
-    engine_.reset(new TensorRTEngine(10, 1 << 10, &stream_));
+    engine_.reset(new TensorRTEngine(batch_size, workspace_size, &stream_));
     engine_->InitNetwork();
 
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
@@ -142,8 +143,7 @@ class TRTConvertValidation {
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
       std::vector<float> trt_out(output_space_size);
-      engine_->GetOutputInCPU(output, &trt_out[0],
-                              output_space_size * sizeof(float));
+      engine_->GetOutputInCPU(output, &trt_out[0]);
       cudaStreamSynchronize(*engine_->stream());
 
       auto* var = scope_.FindVar(output);
