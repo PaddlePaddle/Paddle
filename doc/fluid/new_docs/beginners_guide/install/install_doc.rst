@@ -57,7 +57,7 @@ paddlepaddle-gpu==0.11.0            使用CUDA 7.5和cuDNN 5编译的0.11.0版�
 您可以在 `Release History <https://pypi.org/project/paddlepaddle-gpu/#history>`_
 中找到paddlepaddle-gpu的各个发行版本。
 
-如果需要获取并安装最新的（开发分支）PaddlePaddle，可以从我们的 `CI系统 <https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview>`_ 中下载最新的whl安装包和c-api开发包并安装。如需登录，请点击“Log in as guest”。
+如果需要获取并安装最新的PaddlePaddle开发分支，可以从我们的 `CI系统 <https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview>`_ 中下载最新的whl安装包和c-api开发包并安装。如需登录，请点击“Log in as guest”。
 
 .. _FAQ:
 
