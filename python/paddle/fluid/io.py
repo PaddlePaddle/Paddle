@@ -599,12 +599,13 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, str):
+    if isinstance(feeded_var_names, six.text_type):
         feeded_var_names = [feeded_var_names]
     else:
         if len(feeded_var_names) > 0:
             if not (bool(feeded_var_names) and all(
-                    isinstance(name, str) for name in feeded_var_names)):
+                    isinstance(name, six.text_type)
+                    for name in feeded_var_names)):
                 import sys
                 print([type(name) for name in feeded_var_names])
                 sys.stdout.flush()
