@@ -53,13 +53,14 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
                     "TensorRT' tensor input requires at most 4 dimensions");
 
+  // We should delete the batch size here.
   switch (shape.size()) {
     case 2:
-      return nvinfer1::Dims2(shape[0], shape[1]);
+      return nvinfer1::Dims2(1, shape[1]);
     case 3:
-      return nvinfer1::Dims3(shape[0], shape[1], shape[2]);
+      return nvinfer1::Dims3(1, shape[1], shape[2]);
     case 4:
-      return nvinfer1::Dims4(shape[0], shape[1], shape[2], shape[3]);
+      return nvinfer1::Dims4(1, shape[1], shape[2], shape[3]);
     default:
       return nvinfer1::Dims();
   }
