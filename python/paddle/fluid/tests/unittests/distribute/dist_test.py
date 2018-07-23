@@ -71,7 +71,8 @@ class FluidDistTest(unittest.TestCase):
         ])
 
         if role == JOB_ROLE_MASTER:
-            p_list = []
+            p_trainers = []
+            p_pservers = []
 
             for i in xrange(pservers):
                 p_env = os.environ
@@ -80,7 +81,7 @@ class FluidDistTest(unittest.TestCase):
                 p_env["PADDLE_CURRENT_ENDPOINT"] = ps_endpoints.split(",")[i]
                 p_env["PADDLE_TRAINERS"] = str(trainers)
                 p = subprocess.Popen(self.entry.split(), env=p_env)
-                p_list.append(p)
+                p_pservers.append(p)
                 self._wait_ps_ready(p.pid)
 
             for i in xrange(trainers):
@@ -90,31 +91,27 @@ class FluidDistTest(unittest.TestCase):
                 p_env["PADDLE_TRAINERS"] = str(trainers)
                 p_env["CUDA_VISIBLE_DEVICES"] = str(trainers % CUDA_DEVICE_CNT)
                 p_env["FLAGS_fraction_of_gpu_memory_to_use"] = "0.15"
-                p_list.append(subprocess.Popen(self.entry.split(), env=p_env))
+                p = subprocess.Popen(self.entry.split(), env=p_env)
+                p_trainers.append(p)
 
             job_failed = False
-            exit_flag = False
-            while not exit_flag:
-                # get all the sub process' retcode
-                polls = [p.poll() for p in p_list if p.poll() is not None]
-                if len(polls) == 0:
-                    # all processes are running
-                    time.sleep(1)
-                else:
-                    if all(v == 0 for v in polls):
-                        exit_flag = True
-                    else:
-                        exit_flag = True
-                        job_failed = True
+            for p in p_trainers:
+                ret = p.wait()
+                if ret != 0:
+                    job_failed = True
+                    break
 
-            # kill all the sub process
-            [os.kill(p.pid, signal.SIGTERM) for p in p_list if p.poll() == None]
+            # kill all trainer and pserver processes
+            [
+                os.kill(p.pid, signal.SIGTERM) for p in p_pservers + p_trainers
+                if p.poll() == None
+            ]
 
             if job_failed:
                 raise AssertionError(
                     "sub process error, distributed training job failed.")
 
-            [p.wait() for p in p_list]
+            [p.wait() for p in p_trainers + p_pservers if p.poll() == None]
 
         elif role == JOB_ROLE_PSERVERS:
             self.start_pserver()
