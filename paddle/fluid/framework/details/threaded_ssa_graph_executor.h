@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
@@ -39,7 +40,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<SSAGraph> &&graph);
+                           std::unique_ptr<Graph> &&graph);
 
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
@@ -52,7 +53,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
 
  private:
-  std::unique_ptr<SSAGraph> graph_;
+  std::unique_ptr<Graph> graph_;
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
@@ -71,6 +72,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void InsertFetchOps(
       const std::vector<std::string> &fetch_tensors,
       std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+      std::vector<std::unique_ptr<ir::Node>> *temp_nodes,
       std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
       std::unordered_set<VarHandleBase *> *pending_vars,
