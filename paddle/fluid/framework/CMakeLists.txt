@@ -1,4 +1,5 @@
 add_subdirectory(details)
+add_subdirectory(ir)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -93,7 +94,7 @@ else()
 endif()
 
 
-cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor)
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor graph)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

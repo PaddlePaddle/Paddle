@@ -191,12 +191,16 @@ class TestWithDilation(TestConv2dTransposeOp):
 
 
 # ------------ test_cudnn ------------
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNN(TestConv2dTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNWithPad(TestWithPad):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -212,6 +216,8 @@ class TestCUDNNWithPad(TestWithPad):
         self.op_type = "conv2d_transpose"
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNWithStride(TestWithStride):
     def init_test_case(self):
         self.pad = [1, 1]
@@ -227,6 +233,8 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv2d_transpose"
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNWithGroups(TestWithGroups):
     def init_test_case(self):
         self.pad = [1, 1]
