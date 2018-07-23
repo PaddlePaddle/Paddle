@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/functors.h"
 
 namespace math = paddle::operators::math;
@@ -52,25 +51,6 @@ class FusedOperatorsOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override;
 };
 
-static bool IsUnaryCompound(const std::vector<std::string> &functors) {
-  std::unordered_set<std::string> unary_fun = {"scale", "relu"};
-  std::unordered_set<std::string> binary_fun = {"add", "sub"};
-
-  std::string unary_fun_str;
-  bool unary_compound = false;
-  if (binary_fun.count(functors[0])) {
-    unary_fun_str = functors[1];
-  } else if (binary_fun.count(functors[1])) {
-    unary_fun_str = functors[0];
-    unary_compound = true;
-  } else {
-    PADDLE_THROW("functor list is invalid.");
-  }
-  size_t pos = unary_fun_str.find(",");
-  PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str.substr(0, pos)), 1);
-  return unary_compound;
-}
-
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
@@ -81,77 +61,10 @@ class FusedOperatorsKernel : public framework::OpKernel<T> {
     const Tensor *in_y = ctx.Input<Tensor>("Y");
     Tensor *output = ctx.Output<Tensor>("Out");
 
-    int axis = ctx.Attr<int>("axis");
     std::vector<std::string> functors =
         ctx.Attr<std::vector<std::string>>("functor_list");
 
-    bool unary_compound = IsUnaryCompound(functors);
-    T scale;
-
-    auto unary_fun_str = unary_compound ? functors[0] : functors[1];
-
-    size_t pos = unary_fun_str.find(",");
-
-    auto unary_fun_name = unary_fun_str.substr(0, pos);
-
-    // TODO(zcd): The following code can be refined
-    // unary function is scale
-    if (unary_fun_name == "scale") {
-      std::string scale_str =
-          unary_fun_str.substr(pos + 1, unary_fun_str.size());
-      try {
-        scale = std::stof(scale_str);
-      } catch (...) {
-        PADDLE_THROW("%s cannot convert to float.", scale_str);
-      }
-
-      if (unary_compound) {
-        using UnaryCompoundFunctor =
-            math::UnaryCompoundFunctor<T, math::ScaleFunctor<T>,
-                                       math::AddFunctor<T>>;
-
-        ElementwiseComputeEx<UnaryCompoundFunctor, DeviceContext, T>(
-            ctx, in_x, in_y, axis,
-            UnaryCompoundFunctor(math::ScaleFunctor<T>(scale),
-                                 math::AddFunctor<T>()),
-            output);
-
-      } else {
-        using BinaryCompoundFunctor =
-            math::BinaryCompoundFunctor<T, math::AddFunctor<T>,
-                                        math::ScaleFunctor<T>>;
-
-        ElementwiseComputeEx<BinaryCompoundFunctor, DeviceContext, T>(
-            ctx, in_x, in_y, axis,
-            BinaryCompoundFunctor(math::AddFunctor<T>(),
-                                  math::ScaleFunctor<T>(scale)),
-            output);
-      }
-    } else if (unary_fun_name == "relu") {
-      if (unary_compound) {
-        using UnaryCompoundFunctor =
-            math::UnaryCompoundFunctor<T, math::ReluFunctor<T>,
-                                       math::AddFunctor<T>>;
-
-        ElementwiseComputeEx<UnaryCompoundFunctor, DeviceContext, T>(
-            ctx, in_x, in_y, axis,
-            UnaryCompoundFunctor(math::ReluFunctor<T>(), math::AddFunctor<T>()),
-            output);
-
-      } else {
-        using BinaryCompoundFunctor =
-            math::BinaryCompoundFunctor<T, math::AddFunctor<T>,
-                                        math::ReluFunctor<T>>;
-
-        ElementwiseComputeEx<BinaryCompoundFunctor, DeviceContext, T>(
-            ctx, in_x, in_y, axis,
-            BinaryCompoundFunctor(math::AddFunctor<T>(),
-                                  math::ReluFunctor<T>()),
-            output);
-      }
-    } else {
-      PADDLE_THROW("%s has not been implemented.", unary_fun_name);
-    }
+    math::RunFunctors<DeviceContext, T>(ctx, functors, in_x, in_y, output);
   }
 };
 
@@ -168,112 +81,13 @@ class FusedOperatorsGradKernel : public framework::OpKernel<T> {
     Tensor *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    int axis = ctx.Attr<int>("axis");
     std::vector<std::string> functors =
         ctx.Attr<std::vector<std::string>>("functor_list");
 
     PADDLE_ENFORCE_EQ(functors.size(), 2);
 
-    int64_t numel = in_x->numel();
-    platform::ForRange<DeviceContext> for_range(
-        ctx.template device_context<DeviceContext>(),
-        static_cast<size_t>(numel));
-
-    bool unary_compound = IsUnaryCompound(functors);
-    T scale;
-
-    auto unary_fun_str = unary_compound ? functors[0] : functors[1];
-    size_t pos = unary_fun_str.find(",");
-    auto unary_fun_name = unary_fun_str.substr(0, pos);
-
-    // TODO(zcd): The following code can be refined
-    if (unary_fun_name == "scale") {
-      std::string scale_str =
-          unary_fun_str.substr(pos + 1, unary_fun_str.size());
-      try {
-        scale = std::stof(scale_str);
-      } catch (...) {
-        PADDLE_THROW("%s cannot convert to float.", scale_str);
-      }
-
-      if (unary_compound) {
-        using UnaryCompoundDxFunctor =
-            math::UnaryCompoundGradDxFunctor<T, math::ScaleGradFunctor<T>,
-                                             math::AddFunctor<T>,
-                                             math::AddGradFunctor<T>>;
-        using UnaryCompoundDyFunctor =
-            math::UnaryCompoundGradDyFunctor<T, math::ScaleGradFunctor<T>,
-                                             math::AddFunctor<T>,
-                                             math::AddGradFunctor<T>>;
-
-        ElemwiseGradCompute<DeviceContext, T, UnaryCompoundDxFunctor,
-                            UnaryCompoundDyFunctor>(
-            ctx, *in_x, *in_y, *in_out, *in_out_grad, axis, x_grad, y_grad,
-            UnaryCompoundDxFunctor(math::ScaleGradFunctor<T>(scale),
-                                   math::AddFunctor<T>(),
-                                   math::AddGradFunctor<T>()),
-            UnaryCompoundDyFunctor(math::ScaleGradFunctor<T>(scale),
-                                   math::AddFunctor<T>(),
-                                   math::AddGradFunctor<T>()));
-      } else {
-        using BinaryCompoundDxFunctor =
-            math::BinaryCompoundGradDxFunctor<T, math::AddGradFunctor<T>,
-                                              math::ScaleFunctor<T>>;
-        using BinaryCompoundDyFunctor =
-            math::BinaryCompoundGradDyFunctor<T, math::AddGradFunctor<T>,
-                                              math::ScaleFunctor<T>,
-                                              math::ScaleGradFunctor<T>>;
-
-        ElemwiseGradCompute<DeviceContext, T, BinaryCompoundDxFunctor,
-                            BinaryCompoundDyFunctor>(
-            ctx, *in_x, *in_y, *in_out, *in_out_grad, axis, x_grad, y_grad,
-            BinaryCompoundDxFunctor(math::AddGradFunctor<T>(),
-                                    math::ScaleFunctor<T>(scale)),
-            BinaryCompoundDyFunctor(math::AddGradFunctor<T>(),
-                                    math::ScaleFunctor<T>(scale),
-                                    math::ScaleGradFunctor<T>(scale)));
-      }
-    } else if (unary_fun_name == "relu") {
-      if (unary_compound) {
-        using UnaryCompoundDxFunctor =
-            math::UnaryCompoundGradDxFunctor<T, math::ReluGradFunctor<T>,
-                                             math::AddFunctor<T>,
-                                             math::AddGradFunctor<T>>;
-        using UnaryCompoundDyFunctor =
-            math::UnaryCompoundGradDyFunctor<T, math::ReluGradFunctor<T>,
-                                             math::AddFunctor<T>,
-                                             math::AddGradFunctor<T>>;
-
-        ElemwiseGradCompute<DeviceContext, T, UnaryCompoundDxFunctor,
-                            UnaryCompoundDyFunctor>(
-            ctx, *in_x, *in_y, *in_out, *in_out_grad, axis, x_grad, y_grad,
-            UnaryCompoundDxFunctor(math::ReluGradFunctor<T>(),
-                                   math::AddFunctor<T>(),
-                                   math::AddGradFunctor<T>()),
-            UnaryCompoundDyFunctor(math::ReluGradFunctor<T>(),
-                                   math::AddFunctor<T>(),
-                                   math::AddGradFunctor<T>()));
-      } else {
-        using BinaryCompoundDxFunctor =
-            math::BinaryCompoundGradDxFunctor<T, math::AddGradFunctor<T>,
-                                              math::ReluFunctor<T>>;
-        using BinaryCompoundDyFunctor =
-            math::BinaryCompoundGradDyFunctor<T, math::AddGradFunctor<T>,
-                                              math::ReluFunctor<T>,
-                                              math::ReluGradFunctor<T>>;
-
-        ElemwiseGradCompute<DeviceContext, T, BinaryCompoundDxFunctor,
-                            BinaryCompoundDyFunctor>(
-            ctx, *in_x, *in_y, *in_out, *in_out_grad, axis, x_grad, y_grad,
-            BinaryCompoundDxFunctor(math::AddGradFunctor<T>(),
-                                    math::ReluFunctor<T>()),
-            BinaryCompoundDyFunctor(math::AddGradFunctor<T>(),
-                                    math::ReluFunctor<T>(),
-                                    math::ReluGradFunctor<T>()));
-      }
-    } else {
-      PADDLE_THROW("%s has not been implemented.", unary_fun_name);
-    }
+    math::RunGradFunctors<DeviceContext, T>(ctx, functors, in_x, in_y, in_out,
+                                            in_out_grad, x_grad, y_grad);
   }
 };
 
