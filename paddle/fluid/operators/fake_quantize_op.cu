@@ -208,11 +208,12 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
     T scale = T(1);
     int window_size = context.Attr<int>("window_size");
     T bin_cnt = (T)((1 << (context.Attr<int>("bit_length") - 1)) - 1);
+
+    auto& gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
     if (quantize_type == std::string("abs_max")) {
       auto* saving_scale = context.Output<framework::Tensor>("OutMovingScale");
       scale = (T)FindAbsMaxGpu(device_ctx, in->data<float>(), in->numel());
 
-      auto& gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
       memory::Copy(gpu_place, saving_scale->mutable_data<T>(gpu_place),
                    platform::CPUPlace(), &scale, sizeof(T),
                    device_ctx.stream());
@@ -229,7 +230,8 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
       auto* moving_scale = const_cast<framework::Tensor*>(
           context.Input<framework::Tensor>("InMovingScale"));
       if (is_test) {
-        scale = moving_scale->mutable_data<T>(platform::CPUPlace())[0];
+        memory::Copy(platform::CPUPlace(), &scale, gpu_place,
+                     moving_scale->data<T>(), sizeof(T), device_ctx.stream());
       } else {
         auto* it = const_cast<framework::Tensor*>(
             context.Input<framework::Tensor>("InCurrentIter"));
@@ -248,7 +250,8 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
       auto* moving_scale = const_cast<framework::Tensor*>(
           context.Input<framework::Tensor>("InMovingScale"));
       if (is_test) {
-        scale = moving_scale->mutable_data<T>(platform::CPUPlace())[0];
+        memory::Copy(platform::CPUPlace(), &scale, gpu_place,
+                     moving_scale->data<T>(), sizeof(T), device_ctx.stream());
       } else {
         scale = (T)FindAbsMaxGpu(device_ctx, in->data<float>(), in->numel());
         auto* saving_scale =

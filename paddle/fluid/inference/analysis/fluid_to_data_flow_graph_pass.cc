@@ -28,7 +28,6 @@ bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
   PADDLE_ENFORCE(argument);
   if (!argument->main_dfg) {
-    LOG(INFO) << "Init DFG";
     argument->main_dfg.reset(new DataFlowGraph);
   }
   desc_ = argument->origin_program_desc.get();
@@ -51,6 +50,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     v->SetPbMsg(var.SerializeAsString());
     var2id[var.name()] = v->id();
   }
+
   for (int i = 0; i < main_block.ops_size(); i++) {
     const auto &op = main_block.ops(i);
     auto *o = graph->nodes.Create(Node::Type::kFunction);
@@ -62,19 +62,31 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     o->SetPbMsg(op.SerializeAsString());
 
     // set inputs and outputs
-    // TODO(Superjomn) make sure the InputNames is the real variable name.
+    std::unordered_set<Node *> inlinks;
     for (int j = 0; j < op.inputs_size(); j++) {
       auto &in_var = op.inputs(j);
       for (int k = 0; k < in_var.arguments_size(); k++) {
         auto *in = graph->nodes.GetMutable(var2id.at(in_var.arguments(k)));
         in->outlinks.push_back(o);
         o->inlinks.push_back(in);
+        inlinks.insert(in);
       }
     }
     for (int j = 0; j < op.outputs_size(); j++) {
       auto &out_var = op.outputs(j);
       for (int k = 0; k < out_var.arguments_size(); k++) {
         auto *out = graph->nodes.GetMutable(var2id[out_var.arguments(k)]);
+        if (inlinks.count(out)) {
+          // Loop found, for example, a = op(a), use SSA, change to a1 = op(a).
+          auto *out_alias = graph->nodes.Create(Node::Type::kValue);
+          out_alias->SetName(out->name());
+          out_alias->SetPbDesc(out->pb_desc());
+          out_alias->SetPbMsg(out->pb_msg());
+          var2id[out_alias->name()] = out_alias->id();  // update a -> a0
+          LOG(INFO) << "loop found in graph, create SSA alias node ["
+                    << out_alias->repr() << "] for [" << out->repr() << "]";
+          out = out_alias;
+        }
         out->inlinks.push_back(o);
         o->outlinks.push_back(out);
       }
