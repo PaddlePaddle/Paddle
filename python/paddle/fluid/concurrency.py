@@ -125,7 +125,7 @@ class SelectCase(object):
         self.channel = channel
 
     def __enter__(self):
-        self.block = self.main_program.create_block()
+        self.block = self.main_program._create_block()
 
     def construct_op(self):
         main_program = self.helper.main_program
@@ -186,7 +186,7 @@ class SelectCase(object):
                                 if self.value else '')
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.main_program.rollback()
+        self.main_program._rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True

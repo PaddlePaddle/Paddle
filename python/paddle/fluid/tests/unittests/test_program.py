@@ -27,25 +27,25 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(-1, b.parent_idx)
         self.assertEqual(0, b.idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(2, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        main_program.rollback()
+        main_program._rollback()
 
         b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
 
-        b = main_program.create_block()
+        b = main_program._create_block()
         self.assertEqual(3, b.idx)
         self.assertEqual(1, b.parent_idx)
 
-        main_program.rollback()
+        main_program._rollback()
         b = main_program.current_block()
         self.assertEqual(1, b.idx)
         self.assertEqual(0, b.parent_idx)
