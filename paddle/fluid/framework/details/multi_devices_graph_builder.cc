@@ -196,38 +196,46 @@ size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
 std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
   std::vector<ir::Node *> ret = ir::TopologySortOperations(graph);
   size_t last_backward = 0;
-  std::vector<ir::Node *> optimize_ops;
-  std::vector<ir::Node *> sorted_ret;
   for (size_t i = 0; i < ret.size(); ++i) {
     if (boost::get<int>(
             ret[i]->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName())) ==
         static_cast<int>(OpRole::kBackward)) {
+      last_backward = i;
+    }
+  }
+
+  std::vector<ir::Node *> optimize_ops;
+  std::vector<ir::Node *> sorted_ret;
+  for (size_t i = 0; i < ret.size(); ++i) {
+    if (i < last_backward) {
+      if (boost::get<int>(ret[i]->Op()->GetAttr(
+              OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+          static_cast<int>(OpRole::kOptimize)) {
+        optimize_ops.push_back(ret[i]);
+      } else {
+        sorted_ret.push_back(ret[i]);
+      }
+    } else if (i == last_backward) {
       sorted_ret.push_back(ret[i]);
-      last_backward = sorted_ret.size();
-    } else if (boost::get<int>(ret[i]->Op()->GetAttr(
-                   OpProtoAndCheckerMaker::OpRoleAttrName())) ==
-               static_cast<int>(OpRole::kOptimize)) {
-      optimize_ops.push_back(ret[i]);
+      // Verify that no operations before optimize ops depends on optimize ops.
+      std::unordered_set<ir::Node *> optimize_set(optimize_ops.begin(),
+                                                  optimize_ops.end());
+      for (ir::Node *n : sorted_ret) {
+        for (ir::Node *in : n->inputs) {
+          for (ir::Node *pre_n : in->inputs) {
+            PADDLE_ENFORCE(optimize_set.find(pre_n) == optimize_set.end(),
+                           "optimize operations cannot be depended by forward "
+                           "or backward node %s -> %s",
+                           pre_n->Name(), n->Name());
+          }
+        }
+      }
+      sorted_ret.insert(sorted_ret.end(), optimize_ops.begin(),
+                        optimize_ops.end());
     } else {
       sorted_ret.push_back(ret[i]);
     }
   }
-
-  // Verify that no operations before optimize ops depends on optimize ops.
-  std::unordered_set<ir::Node *> optimize_set(optimize_ops.begin(),
-                                              optimize_ops.end());
-  for (size_t i = 0; i < last_backward; ++i) {
-    for (ir::Node *in : sorted_ret[i]->inputs) {
-      for (ir::Node *pre_n : in->inputs) {
-        PADDLE_ENFORCE(optimize_set.find(pre_n) == optimize_set.end(),
-                       "optimize operations cannot be depended by forward "
-                       "or backward node %s -> %s",
-                       pre_n->Name(), sorted_ret[i]->Name());
-      }
-    }
-  }
-  sorted_ret.insert(sorted_ret.begin() + last_backward, optimize_ops.begin(),
-                    optimize_ops.end());
   return sorted_ret;
 }
 
@@ -239,7 +247,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
   ir::Graph &result = *graph;
 
   for (auto &node : nodes) {
-    if (node->NodeType() == ir::Node::Type::kVariable) {
+    if (node->NodeType() == ir::Node::Type::kVariable && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
     }
   }
@@ -361,6 +369,11 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
       }
     }
   }
+  /*
+  Dependency graph has been constructed. However, there are still data
+  hazards need to be handled.
+ */
+  PolishGraphToSupportDataHazards(&result);
 
   /*
    * Only variables should be the leaves of graph.
