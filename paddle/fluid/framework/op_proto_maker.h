@@ -27,6 +27,7 @@ enum class OpRole {
   kBackward = 0x0001,
   kOptimize = 0x0002,
   kRPC = 0x0003,
+  kLRDecay = 0x0004,  // lr decay operators
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and

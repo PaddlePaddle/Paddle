@@ -1345,6 +1345,15 @@ class Program(object):
         self._op_role_var = []
         self._current_role = OpRole.Forward
 
+    @contextlib.contextmanager
+    def pre_optimize_guard(self):
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.PreOptimize
+        self._op_role_var = []
+        yield
+        self._op_role_var = []
+        self._current_role = OpRole.Forward
+
     def __str__(self):
         """
         Get the protobuf debug string of this Program.
