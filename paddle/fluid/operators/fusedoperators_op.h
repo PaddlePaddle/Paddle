@@ -93,6 +93,8 @@ class FusedOperatorsKernel : public framework::OpKernel<T> {
     size_t pos = unary_fun_str.find(",");
 
     auto unary_fun_name = unary_fun_str.substr(0, pos);
+
+    // TODO(zcd): The following code can be refined
     // unary function is scale
     if (unary_fun_name == "scale") {
       std::string scale_str =
@@ -184,6 +186,7 @@ class FusedOperatorsGradKernel : public framework::OpKernel<T> {
     size_t pos = unary_fun_str.find(",");
     auto unary_fun_name = unary_fun_str.substr(0, pos);
 
+    // TODO(zcd): The following code can be refined
     if (unary_fun_name == "scale") {
       std::string scale_str =
           unary_fun_str.substr(pos + 1, unary_fun_str.size());

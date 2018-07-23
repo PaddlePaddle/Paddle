@@ -56,10 +56,14 @@ void FusedOperatorsMaker::Make() {
   AddComment(R"DOC(
 FusedOperators Operator.
 
-for example,
+Currently only supports fusing element wise functor and activation functor
 
-add;scale,k
-div;relu
+    z = f1(x, f2(y))
+    z = f1(f2(x, y))
+
+for example:
+  functor_list(f1, f2) can be ['add', 'scale,k'] or ['add', 'relu']
+
 
 )DOC");
 }
