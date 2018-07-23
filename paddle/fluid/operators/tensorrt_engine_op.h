@@ -95,16 +95,14 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto* fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
       fluid_t->Resize(framework::make_ddim(ddim));
-      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
+
       if (platform::is_cpu_place(fluid_t->place())) {
         // TODO(Superjomn) change this float to dtype size.
         engine->GetOutputInCPU(
-            y, fluid_t->mutable_data<float>(platform::CPUPlace()),
-            size * sizeof(float));
+            y, fluid_t->mutable_data<float>(platform::CPUPlace()));
       } else {
         engine->GetOutputInGPU(
-            y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
-            size * sizeof(float));
+            y, fluid_t->mutable_data<float>(platform::CUDAPlace()));
       }
     }
 
