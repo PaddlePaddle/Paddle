@@ -1499,7 +1499,7 @@ class Program(object):
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [Block(p, i) for i in range(self.desc.num_blocks())]
-            p.sync_with_cpp()
+            p._sync_with_cpp()
 
         p._copy_param_info_from(self)
         p.copy_data_info_from(self)
@@ -1551,7 +1551,7 @@ class Program(object):
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
         res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
-        res.sync_with_cpp()
+        res._sync_with_cpp()
         return res
 
     def inference_optimize(self):
@@ -1577,7 +1577,7 @@ class Program(object):
                 if op.has_attr('is_test'):
                     op.set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
-        res.sync_with_cpp()
+        res._sync_with_cpp()
         return res
 
     @staticmethod
@@ -1597,7 +1597,7 @@ class Program(object):
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
         p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
-        p.sync_with_cpp()
+        p._sync_with_cpp()
         return p
 
     @property
