@@ -27,7 +27,8 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
-from recordio_converter import imagenet_train, imagenet_test
+# from recordio_converter import imagenet_train, imagenet_test
+from imagenet_reader import train, val
 
 
 def conv_bn_layer(input,
@@ -164,9 +165,11 @@ def _model_reader_dshape_classdim(args, is_train):
                 "Must specify --data_path when training with imagenet")
         if not args.use_reader_op:
             if is_train:
-                reader = imagenet_train(args.data_path)
+                # reader = imagenet_train(args.data_path)
+                reader = train()
             else:
-                reader = imagenet_test(args.test_data_path)
+                # reader = imagenet_test(args.test_data_path)
+                reader = val()
     return model, reader, dshape, class_dim
 
 

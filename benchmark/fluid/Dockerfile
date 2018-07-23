@@ -11,6 +11,9 @@ RUN ln -s /usr/lib/x86_64-linux-gnu/libcudnn.so.7 /usr/lib/libcudnn.so && ln -s 
 # Add "ENV http_proxy=http://ip:port" if your download is slow, and don't forget to unset it at runtime.
 # exmaple: unset http_proxy && unset https_proxy && python fluid_benchmark.py ...
 
+ENV http_proxy=http://172.19.32.197:9988/
+ENV https_proxy=http://172.19.32.197:9988/
+
 RUN pip install -U pip
 RUN pip install -U kubernetes paddlepaddle
 
@@ -27,5 +30,8 @@ ADD *.whl /
 RUN pip install /*.whl && rm -f /*.whl 
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
-ADD fluid_benchmark.py recordio_converter.py args.py recordio_converter.py run.sh run_fluid_benchmark.sh /workspace/
+ADD fluid_benchmark.py recordio_converter.py args.py recordio_converter.py run.sh run_fluid_benchmark.sh imagenet_reader.py /workspace/
 ADD models/ /workspace/models/
+
+ENV http_proxy=
+ENV https_proxy=

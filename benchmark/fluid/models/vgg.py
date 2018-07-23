@@ -52,7 +52,7 @@ def vgg16_bn_drop(input):
     return fc2
 
 
-def get_model(args):
+def get_model(args, is_train, main_prog, startup_prog):
     if args.data_set == "cifar10":
         classdim = 10
         if args.data_format == 'NCHW':
@@ -65,57 +65,56 @@ def get_model(args):
             data_shape = [3, 224, 224]
         else:
             data_shape = [224, 224, 3]
+    filelist = [
+        os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
+    ]
+    with fluid.program_guard(main_prog, startup_prog):
+        if args.use_reader_op:
+            data_file_handle = fluid.layers.open_files(
+                filenames=filelist,
+                shapes=[[-1] + data_shape, (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"],
+                thread_num=1,
+                pass_num=1)
+            data_file = fluid.layers.double_buffer(
+                fluid.layers.batch(
+                    data_file_handle, batch_size=args.batch_size))
+        with fluid.unique_name.guard():
+            if args.use_reader_op:
+                input, label = fluid.layers.read_file(data_file)
+            else:
+                input = fluid.layers.data(
+                    name='data', shape=data_shape, dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
+            # Train program
+            net = vgg16_bn_drop(images)
+            predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
 
-    if args.use_reader_op:
-        filelist = [
-            os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
-        ]
-        data_file = fluid.layers.open_files(
-            filenames=filelist,
-            shapes=[[-1] + data_shape, (-1, 1)],
-            lod_levels=[0, 0],
-            dtypes=["float32", "int64"],
-            thread_num=args.gpus,
-            pass_num=args.pass_num)
-        data_file = fluid.layers.double_buffer(
-            fluid.layers.batch(
-                data_file, batch_size=args.batch_size))
-        images, label = fluid.layers.read_file(data_file)
-    else:
-        images = fluid.layers.data(
-            name='data', shape=data_shape, dtype='float32')
-        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-
-    # Train program
-    net = vgg16_bn_drop(images)
-    predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
-
-    # Evaluator
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(
-        input=predict, label=label, total=batch_size_tensor)
-
-    # inference program
-    inference_program = fluid.default_main_program().clone()
-    with fluid.program_guard(inference_program):
-        inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc, batch_size_tensor])
-
-    # Optimization
-    optimizer = fluid.optimizer.Adam(learning_rate=args.learning_rate)
+            # Evaluator
+            batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+            batch_acc = fluid.layers.accuracy(
+                input=predict, label=label, total=batch_size_tensor)
+            # Optimization
+            if is_train:
+                optimizer = fluid.optimizer.Adam(
+                    learning_rate=args.learning_rate)
+                optimizer.minimize(avg_cost)
 
     # data reader
-    train_reader = paddle.batch(
-        paddle.reader.shuffle(
-            paddle.dataset.cifar.train10()
-            if args.data_set == 'cifar10' else paddle.dataset.flowers.train(),
-            buf_size=5120),
-        batch_size=args.batch_size * args.gpus)
-    test_reader = paddle.batch(
-        paddle.dataset.cifar.test10()
-        if args.data_set == 'cifar10' else paddle.dataset.flowers.test(),
-        batch_size=args.batch_size)
+    if is_train:
+        reader = paddle.dataset.cifar.train10() \
+            if args.data_set == 'cifar10' else paddle.dataset.flowers.train()
+    else:
+        reader = paddle.dataset.cifar.test10() \
+            if args.data_set == 'cifar10' else paddle.dataset.flowers.test()
 
-    return avg_cost, inference_program, optimizer, train_reader, test_reader, batch_acc
+    batched_reader = paddle.batch(
+        paddle.reader.shuffle(
+            reader, buf_size=5120),
+        batch_size=args.batch_size * args.gpus)
+
+    return avg_cost, optimizer, batch_acc, None, batched_reader, data_file_handle

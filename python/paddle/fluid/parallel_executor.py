@@ -70,6 +70,7 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
+                 scope=None,
                  **kwargs):
         if len(kwargs) != 0:
             err_msg = ""
@@ -128,7 +129,8 @@ class ParallelExecutor(object):
 
         main = main_program
         main = main if main else framework.default_main_program()
-        scope = executor.global_scope()
+        if scope == None:
+            scope = executor.global_scope()
         # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
         # train program, call self.bcast_param() at the end of each mini-batch.
         self.is_dist = True if "recv" in [

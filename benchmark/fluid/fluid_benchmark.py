@@ -28,7 +28,7 @@ import paddle.fluid.transpiler.distribute_transpiler as distribute_transpiler
 from args import *
 
 
-def append_nccl2_prepare(trainer_id):
+def append_nccl2_prepare(trainer_id, startup_prog):
     if trainer_id >= 0:
         # append gen_nccl_id at the end of startup program
         trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
@@ -41,11 +41,11 @@ def append_nccl2_prepare(trainer_id):
         current_endpoint = os.getenv("PADDLE_CURRENT_IP") + ":" + port
         worker_endpoints.remove(current_endpoint)
 
-        nccl_id_var = fluid.default_startup_program().global_block().create_var(
+        nccl_id_var = startup_prog.global_block().create_var(
             name="NCCLID",
             persistable=True,
             type=fluid.core.VarDesc.VarType.RAW)
-        fluid.default_startup_program().global_block().append_op(
+        startup_prog.global_block().append_op(
             type="gen_nccl_id",
             inputs={},
             outputs={"NCCLID": nccl_id_var},
@@ -105,10 +105,10 @@ def dist_transpile(trainer_id, args):
 def test_parallel(exe, test_args, args, test_prog, feeder):
     accuracy_evaluator = fluid.metrics.Accuracy()
     accuracy_evaluator5 = fluid.metrics.Accuracy()
+    to_fetch = [v.name for v in test_args[2:4]]
     if args.use_reader_op:
         while True:
             try:
-                to_fetch = [v.name for v in test_args[2:4]]
                 acc1, acc5 = exe.run(fetch_list=to_fetch)
                 accuracy_evaluator.update(
                     value=np.array(acc1), weight=args.batch_size)
@@ -118,10 +118,9 @@ def test_parallel(exe, test_args, args, test_prog, feeder):
                 break
     else:
         for batch_id, data in enumerate(test_args[4]()):
-            acc1, acc5 = exe.run(test_prog,
-                                 feed=feeder.feed(data),
-                                 fetch_list=test_args[2:4])
+            acc1, acc5 = exe.run(feed=feeder.feed(data), fetch_list=to_fetch)
             accuracy_evaluator.update(value=np.array(acc1), weight=len(data))
+            accuracy_evaluator5.update(value=np.array(acc5), weight=len(data))
 
     return accuracy_evaluator.eval(), accuracy_evaluator5.eval()
 
@@ -177,7 +176,9 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         True,
         test_loss.name,
         main_program=test_prog,
-        share_vars_from=exe, )
+        share_vars_from=exe,
+        scope=fluid.Scope(
+        ))  # HACK: use an empty scope to avoid test exe using NCCLID
 
     for pass_id in range(args.pass_num):
         num_samples = 0
@@ -226,6 +227,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         print_train_time(start_time, time.time(), num_samples)
         if args.use_reader_op:
             train_args[5].reset()  # reset reader handle
+        else:
+            del reader_generator
 
         if not args.no_test and test_args[2]:
             test_feeder = None
@@ -322,7 +325,9 @@ def main():
     all_args.extend([train_prog, test_prog, startup_prog])
 
     if args.update_method == "nccl2":
-        nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare(trainer_id)
+        nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare(
+            trainer_id, startup_prog)
+        print("configured for nccl2: ", num_trainers, trainer_id)
     if args.gpus == 1:
         # NOTE: parallel executor use profiler interanlly
         if args.use_nvprof and args.device == 'GPU':
@@ -334,6 +339,7 @@ def main():
         if args.device == "CPU":
             raise Exception("Only support GPU perf with parallel exe")
         all_args.extend([nccl_id_var, num_trainers, trainer_id])
+        print("starting dist parallel mode...")
         train_parallel(*all_args)
 
 
