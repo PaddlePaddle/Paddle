@@ -14,7 +14,7 @@
 
 from collections import defaultdict
 from .. import core
-from ..framework import Program, default_main_program, Parameter, Variable
+from ..framework import Program, default_main_program, Parameter
 from ..backward import _rename_arg_
 
 dtype_to_size = {
