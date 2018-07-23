@@ -78,7 +78,7 @@ class LoDTensor2BatchFunctor {
     auto lods = lod_tensor.lod();
     PADDLE_ENFORCE_EQ(lods.size(), 1UL, "Only support one level sequence now.");
 
-    auto lod = lods[0];
+    const auto& lod = lods[0];
 
     std::vector<SeqInfo> seq_info;
     for (size_t seq_id = 0; seq_id < lod.size() - 1; ++seq_id) {
