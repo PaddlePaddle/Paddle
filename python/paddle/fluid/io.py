@@ -66,7 +66,8 @@ def is_persistable(var):
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-            var.desc.type() == core.VarDesc.VarType.FETCH_LIST:
+            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+            var.desc.type() == core.VarDesc.VarType.READER:
         return False
     return var.persistable
 

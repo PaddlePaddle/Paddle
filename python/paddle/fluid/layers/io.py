@@ -456,11 +456,11 @@ def py_reader(capacity,
               name=None,
               use_double_buffer=True):
     """
-    Create a python reader for data feeding in Python
+    Create a Python reader for data feeding in Python
 
     This layer returns a Reader Variable.
-    The Reader provides :code:`decorate_paddle_reader` and
-    :code:`decorate_tensor_provider` to set a Python generator as the data
+    The Reader provides :code:`decorate_paddle_reader()` and
+    :code:`decorate_tensor_provider()` to set a Python generator as the data
     source in Python side. When :code:`Executor::Run()` is invoked in C++
     side, the data from the generator would be read automatically. Unlike
     :code:`DataFeeder.feed()`, the data reading process and
@@ -561,12 +561,14 @@ def py_reader(capacity,
         >>> test_exe = fluid.ParallelExecutor(use_cuda=True,
         >>>                 loss_name=test_loss.name, main_program=test_main_prog)
         >>> for epoch_id in range(10):
+        >>>     train_reader.start()
         >>>     try:
         >>>         while True:
         >>>             train_exe.run(fetch_list=[train_loss.name])
         >>>     except fluid.core.EOFException:
         >>>         train_reader.reset()
         >>>
+        >>>     test_reader.start()
         >>>     try:
         >>>         while True:
         >>>             test_exe.run(fetch_list=[test_loss.name])
