@@ -29,9 +29,9 @@ class ConditionalOp : public framework::OperatorBase {
 
  protected:
   std::vector<const framework::LoDTensor *> InputTensors(
-      const framework::Scope &scope) const {
+      const framework::Scope &scope, const std::string &in_name) const {
     std::vector<const framework::LoDTensor *> retv;
-    auto xs = Inputs("Params");
+    auto xs = Inputs(in_name);
     retv.resize(xs.size(), nullptr);
     std::transform(
         xs.begin(), xs.end(), retv.begin(),
@@ -81,12 +81,18 @@ class ConditionalBlockOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto xs = InputTensors(scope);
-
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
+      // When is_scalar_condition is True, the conditional variable is a scalar,
+      // whether need to execute the operators in sub-block depends on the
+      // conditional variable (X).
+      auto xs = InputTensors(scope, "X");
       need_run = ScalarCondition(xs);
     } else {
+      // When is_scalar_condition is False, the conditional variable maybe a
+      // vector or tensor, whether need to execute the operators in sub-block
+      // depends on the input variables (Params).
+      auto xs = InputTensors(scope, "Params");
       need_run = std::all_of(
           xs.begin(), xs.end(),
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
@@ -114,7 +120,8 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
              "The conditional variable of this operator. If X is empty, the "
              "whole sub-block will not be executed.")
         .AsDuplicable();
-    AddInput("Params", "The input variables of the sub-block.").AsDuplicable();
+    AddInput("Params", "The input variables of the sub-block are list of.")
+        .AsDuplicable();
     AddOutput("Out", "The output variables of the sub-block.").AsDuplicable();
     AddOutput("Scope",
               "(std::vector<Scope*>) The step scope of conditional block. To "
@@ -123,13 +130,18 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<framework::BlockDesc *>(
         "sub_block", "The step block of conditional block operator");
     AddAttr<bool>("is_scalar_condition",
-                  "the input X is used as scalar "
-                  "condition")
+                  "The conditional variable (X) is used as scalar "
+                  "condition.")
         .SetDefault(false);
     AddComment(R"DOC(Conditional block operator
 
-Run the sub-block if X is not empty. Params is the other inputs and Out is the
-outputs of the sub-block.
+If `is_scalar_condition` is True, the conditional variable (X) is a scalar,
+run the operators in sub-block if X is True.
+
+If `is_scalar_condition` is False, the conditional variable (X) is a vector or
+tensor, run the operators in sub-block if all of input variables are not empty.
+
+
 )DOC");
   }
 };
@@ -145,12 +157,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto xs = this->InputTensors(scope);
-
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
+      auto xs = this->InputTensors(scope, "X");
       need_run = ScalarCondition(xs);
     } else {
+      auto xs = this->InputTensors(scope, "Params");
       need_run = std::all_of(
           xs.begin(), xs.end(),
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
