@@ -16,6 +16,7 @@ import os
 import errno
 import time
 import shutil
+import six
 
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
