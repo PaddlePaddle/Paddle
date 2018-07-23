@@ -104,10 +104,10 @@ class TensorRTEngine : public EngineBase {
   // Return the output's GPU memory address without copy.
   void* GetOutputInGPU(const std::string& name);
   // Copy data into dst inside the GPU device.
-  void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
+  void GetOutputInGPU(const std::string& name, void* dst);
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.
-  void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
+  void GetOutputInCPU(const std::string& name, void* dst);
   // Fill an ITensor into map itensor_map_.
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
@@ -115,10 +115,14 @@ class TensorRTEngine : public EngineBase {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
+  void SetRuntimeBatch(size_t batch_size);
+  int GetRuntimeBatch();
 
  private:
   // the max batch size
   int max_batch_;
+  // the runtime batch size
+  static int runtime_batch_;
   // the max memory size the engine uses
   int max_workspace_;
   cudaStream_t* stream_;
