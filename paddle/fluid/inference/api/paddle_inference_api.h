@@ -67,8 +67,8 @@ struct PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
-  // TODO(Superjomn) for LoD support, add a vector<vector<int>> field if needed.
-  PaddleBuf data;  // blob of data.
+  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
+  PaddleBuf data;                        // blob of data.
   PaddleDType dtype;
 };
 

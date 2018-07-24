@@ -182,6 +182,16 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                 inputs[i].data.length());
+
+    // TODO(Superjomn) Low performance, need optimization for heavy LoD.
+    framework::LoD lod;
+    for (auto &level : inputs[i].lod) {
+      lod.emplace_back(level);
+    }
+    if (!inputs[i].lod.empty()) {
+      input.set_lod(lod);
+    }
+
     feeds->push_back(input);
   }
   return true;
@@ -254,8 +264,9 @@ bool NativePaddlePredictor::GetFetch(
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kNative>(const NativeConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+    const NativeConfig &config) {
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
