@@ -60,7 +60,7 @@ TEST(inference, anakin) {
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
 
   float* data_o = static_cast<float*>(outputs[0].data.data());
-  for (size_t j = 0; j < output.data.length(); ++j) {
+  for (size_t j = 0; j < outputs[0].data.length(); ++j) {
     LOG(INFO) << "output[" << j << "]: " << data_o[j];
   }
 }

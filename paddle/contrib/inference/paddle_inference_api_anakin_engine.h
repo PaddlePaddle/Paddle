@@ -19,6 +19,8 @@ limitations under the License. */
 
 #pragma once
 
+
+#include "framework/graph/graph.h"
 #include "framework/core/net/net.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
 #include "saber/core/shape.h"
