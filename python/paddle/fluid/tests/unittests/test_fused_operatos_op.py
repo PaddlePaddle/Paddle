@@ -41,6 +41,7 @@ class TestElementwiseAddOp(OpTest):
         self.init_dtype()
         self.init_input()
         self.init_output()
+        self.init_attr()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
@@ -55,9 +56,12 @@ class TestElementwiseAddOp(OpTest):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
+            'scale': self.scale,
+            'functor_list': "scale,add"
         }
 
     def init_dtype(self):
@@ -89,10 +93,6 @@ class TestFusedOperatorsOp_scalar(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_scalar2(TestElementwiseAddOp):
@@ -103,10 +103,6 @@ class TestFusedOperatorsOp_scalar2(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_Vector(TestElementwiseAddOp):
@@ -117,10 +113,6 @@ class TestFusedOperatorsOp_Vector(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_broadcast_0(TestElementwiseAddOp):
@@ -134,10 +126,6 @@ class TestFusedOperatorsOp_broadcast_0(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(2, 1, 1)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_broadcast_1(TestElementwiseAddOp):
@@ -151,10 +139,6 @@ class TestFusedOperatorsOp_broadcast_1(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(1, 3, 1)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_broadcast_2(TestElementwiseAddOp):
@@ -165,10 +149,6 @@ class TestFusedOperatorsOp_broadcast_2(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(1, 1, 4)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_broadcast_3(TestElementwiseAddOp):
@@ -182,10 +162,6 @@ class TestFusedOperatorsOp_broadcast_3(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(1, 3, 4, 1)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_broadcast_4(TestElementwiseAddOp):
@@ -199,10 +175,6 @@ class TestFusedOperatorsOp_broadcast_4(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(2, 1, 1, 1)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_rowwise_add_0(TestElementwiseAddOp):
@@ -216,10 +188,6 @@ class TestFusedOperatorsOp_rowwise_add_0(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(1, 3, 4)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_rowwise_add_1(TestElementwiseAddOp):
@@ -233,10 +201,6 @@ class TestFusedOperatorsOp_rowwise_add_1(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y.reshape(1, 1)) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 class TestFusedOperatorsOp_channelwise_add(TestElementwiseAddOp):
@@ -250,10 +214,6 @@ class TestFusedOperatorsOp_channelwise_add(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = (self.x + self.y) * self.scale
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["scale," + str(self.scale), "add"]
-        }
 
 
 # add + scale
@@ -275,9 +235,12 @@ class TestFusedOperatorsOp_f_add_scale(TestElementwiseAddOp):
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -285,9 +248,12 @@ class TestFusedOperatorsOp_scalar_f_add_scale(TestFusedOperatorsOp_scalar):
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -295,9 +261,12 @@ class TestFusedOperatorsOp_scalar2_f_add_scale(TestFusedOperatorsOp_scalar2):
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -305,9 +274,12 @@ class TestFusedOperatorsOp_Vector_f_add_scale(TestFusedOperatorsOp_Vector):
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -319,9 +291,12 @@ class TestFusedOperatorsOp_broadcast_0_f_add_scale(
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y.reshape(2, 1, 1) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -333,9 +308,12 @@ class TestFusedOperatorsOp_broadcast_1_f_add_scale(
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y.reshape(1, 3, 1) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -344,9 +322,12 @@ class TestFusedOperatorsOp_broadcast_2_f_add_scale(
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y.reshape(1, 1, 4) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -358,9 +339,12 @@ class TestFusedOperatorsOp_broadcast_3_f_add_scale(
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y.reshape(1, 3, 4, 1) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -372,9 +356,12 @@ class TestFusedOperatorsOp_broadcast_4_f_add_scale(
     def init_output(self):
         self.scale = 0.2
         self.out = self.x + self.y.reshape(2, 1, 1, 1) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -386,9 +373,12 @@ class TestFusedOperatorsOp_rowwise_add_0_f_add_scale(
     def init_output(self):
         self.scale = 0.1
         self.out = self.x + self.y.reshape(1, 3, 4) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -400,9 +390,12 @@ class TestFusedOperatorsOp_rowwise_add_1_f_add_scale(
     def init_output(self):
         self.scale = 0.2
         self.out = self.x + self.y.reshape(1, 1) * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -414,9 +407,12 @@ class TestFusedOperatorsOp_channelwise_add_f_add_scale(
     def init_output(self):
         self.scale = 0.2
         self.out = self.x + self.y * self.scale
+
+    def init_attr(self):
         self.attrs = {
             'axis': self.axis,
-            'functor_list': ["add", "scale," + str(self.scale)]
+            'scale': self.scale,
+            'functor_list': "add,scale"
         }
 
 
@@ -444,28 +440,36 @@ class TestFusedOperatorsOp_f_add_relu(TestElementwiseAddOp):
         # we should avoid this
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y, 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_scalar_f_add_relu(TestFusedOperatorsOp_scalar):
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y, 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_scalar2_f_add_relu(TestFusedOperatorsOp_scalar2):
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y, 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_Vector_f_add_relu(TestFusedOperatorsOp_Vector):
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y, 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_broadcast_0_f_add_relu(
@@ -476,7 +480,9 @@ class TestFusedOperatorsOp_broadcast_0_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(2, 1, 1), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_broadcast_1_f_add_relu(
@@ -487,7 +493,9 @@ class TestFusedOperatorsOp_broadcast_1_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(1, 3, 1), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_broadcast_2_f_add_relu(
@@ -495,7 +503,9 @@ class TestFusedOperatorsOp_broadcast_2_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(1, 1, 4), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_broadcast_3_f_add_relu(
@@ -506,7 +516,9 @@ class TestFusedOperatorsOp_broadcast_3_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(1, 3, 4, 1), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_broadcast_4_f_add_relu(
@@ -517,7 +529,9 @@ class TestFusedOperatorsOp_broadcast_4_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(2, 1, 1, 1), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_rowwise_add_0_f_add_relu(
@@ -528,7 +542,9 @@ class TestFusedOperatorsOp_rowwise_add_0_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(1, 3, 4), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_rowwise_add_1_f_add_relu(
@@ -539,7 +555,9 @@ class TestFusedOperatorsOp_rowwise_add_1_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y.reshape(1, 1), 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 class TestFusedOperatorsOp_channelwise_add_f_add_relu(
@@ -550,7 +568,9 @@ class TestFusedOperatorsOp_channelwise_add_f_add_relu(
     def init_output(self):
         self.y[np.abs(self.y) < 0.005] = 0.02
         self.out = self.x + np.maximum(self.y, 0)
-        self.attrs = {'axis': self.axis, 'functor_list': ["add", "relu"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "add,relu"}
 
 
 # relu + add
@@ -578,7 +598,9 @@ class TestFusedOperatorsOp_f_relu_add(TestElementwiseAddOp):
         self.out = self.x + self.y
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_scalar_f_relu_add(TestFusedOperatorsOp_scalar):
@@ -586,7 +608,9 @@ class TestFusedOperatorsOp_scalar_f_relu_add(TestFusedOperatorsOp_scalar):
         self.out = self.x + self.y
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_scalar2_f_relu_add(TestFusedOperatorsOp_scalar2):
@@ -594,7 +618,9 @@ class TestFusedOperatorsOp_scalar2_f_relu_add(TestFusedOperatorsOp_scalar2):
         self.out = self.x + self.y
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_Vector_f_relu_add(TestFusedOperatorsOp_Vector):
@@ -602,7 +628,9 @@ class TestFusedOperatorsOp_Vector_f_relu_add(TestFusedOperatorsOp_Vector):
         self.out = self.x + self.y
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_broadcast_0_f_relu_add(
@@ -614,7 +642,9 @@ class TestFusedOperatorsOp_broadcast_0_f_relu_add(
         self.out = self.x + self.y.reshape(2, 1, 1)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_broadcast_1_f_relu_add(
@@ -626,7 +656,9 @@ class TestFusedOperatorsOp_broadcast_1_f_relu_add(
         self.out = self.x + self.y.reshape(1, 3, 1)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_broadcast_2_f_relu_add(
@@ -635,7 +667,9 @@ class TestFusedOperatorsOp_broadcast_2_f_relu_add(
         self.out = self.x + self.y.reshape(1, 1, 4)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_broadcast_3_f_relu_add(
@@ -647,7 +681,9 @@ class TestFusedOperatorsOp_broadcast_3_f_relu_add(
         self.out = self.x + self.y.reshape(1, 3, 4, 1)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_broadcast_4_f_relu_add(
@@ -659,7 +695,9 @@ class TestFusedOperatorsOp_broadcast_4_f_relu_add(
         self.out = self.x + self.y.reshape(2, 1, 1, 1)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_rowwise_add_0_f_relu_add(
@@ -671,7 +709,9 @@ class TestFusedOperatorsOp_rowwise_add_0_f_relu_add(
         self.out = self.x + self.y.reshape(1, 3, 4)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_rowwise_add_1_f_relu_add(
@@ -683,7 +723,9 @@ class TestFusedOperatorsOp_rowwise_add_1_f_relu_add(
         self.out = self.x + self.y.reshape(1, 1)
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 class TestFusedOperatorsOp_channelwise_add_f_relu_add(
@@ -695,7 +737,9 @@ class TestFusedOperatorsOp_channelwise_add_f_relu_add(
         self.out = self.x + self.y
         self.out = np.maximum(self.out, 0)
         self.out[np.abs(self.out) < 0.005] = 0.02
-        self.attrs = {'axis': self.axis, 'functor_list': ["relu", "add"]}
+
+    def init_attr(self):
+        self.attrs = {'axis': self.axis, 'functor_list': "relu,add"}
 
 
 if __name__ == '__main__':

@@ -61,8 +61,7 @@ class FusedOperatorsKernel : public framework::OpKernel<T> {
     const Tensor *in_y = ctx.Input<Tensor>("Y");
     Tensor *output = ctx.Output<Tensor>("Out");
 
-    std::vector<std::string> functors =
-        ctx.Attr<std::vector<std::string>>("functor_list");
+    std::string functors = ctx.Attr<std::string>("functor_list");
 
     math::RunFunctors<DeviceContext, T>(ctx, functors, in_x, in_y, output);
   }
@@ -81,10 +80,7 @@ class FusedOperatorsGradKernel : public framework::OpKernel<T> {
     Tensor *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    std::vector<std::string> functors =
-        ctx.Attr<std::vector<std::string>>("functor_list");
-
-    PADDLE_ENFORCE_EQ(functors.size(), 2);
+    std::string functors = ctx.Attr<std::string>("functor_list");
 
     math::RunGradFunctors<DeviceContext, T>(ctx, functors, in_x, in_y, in_out,
                                             in_out_grad, x_grad, y_grad);

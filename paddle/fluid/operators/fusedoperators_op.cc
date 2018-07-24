@@ -50,19 +50,26 @@ void FusedOperatorsMaker::Make() {
   AddInput("X", "(vector<Tensor>)");
   AddInput("Y", "(vector<Tensor>)");
   AddOutput("Out", "vector<Tensor>");
-  AddAttr<int>("axis", "").SetDefault(-1);
-  AddAttr<std::vector<std::string>>("functor_list", "");
+  AddAttr<int>("axis",
+               "axis is used by elementwise_op, the default value is -1.")
+      .SetDefault(-1);
+  AddAttr<float>("scale",
+                 "scale is used by scale_op, the default value is 0.0.")
+      .SetDefault(0.0);
+
+  AddAttr<std::string>("functor_list", "The functors that should be fused.");
 
   AddComment(R"DOC(
 FusedOperators Operator.
 
-Currently only supports fusing element wise functor and activation functor
+At present, FusedOperators supports only two combinations of two
+types(elementwise_op and activation_op) of Op.
 
     z = f1(x, f2(y))
     z = f1(f2(x, y))
 
 for example:
-  functor_list(f1, f2) can be ['add', 'scale,k'] or ['add', 'relu']
+  functor_list(f1, f2) can be represented as 'add,scale' or 'add,relu'.
 
 
 )DOC");
