@@ -46,7 +46,7 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     v_out = v * mu + g;
     if (use_nesterov) {
-      p_out = p - (g - v_out * mu) * lr[0];
+      p_out = p - (g + v_out * mu) * lr[0];
     } else {
       p_out = p - lr[0] * v_out;
     }

@@ -23,8 +23,7 @@
 #include <grpc++/impl/codegen/stub_options.h>
 #include <grpc++/impl/codegen/sync_stream.h>
 #include <grpc++/support/byte_buffer.h>
-#include "paddle/fluid/operators/distributed/variable_response.h"
-
+#include "paddle/fluid/operators/distributed/grpc_variable_response.h"
 #include "paddle/fluid/platform/profiler.h"
 
 // NOTE: This method was originally created by tensorflow
@@ -42,17 +41,18 @@ class ServerContext;
 // Support parsing/unparsing of tensorflow::VariableResponse.
 // Wire-format is identical to RecvVariableResponse.
 template <>
-class SerializationTraits<paddle::operators::distributed::VariableResponse> {
+class SerializationTraits<
+    paddle::operators::distributed::GRPCVariableResponse> {
  public:
   static Status Serialize(
-      const paddle::operators::distributed::VariableResponse& msg,
+      const paddle::operators::distributed::GRPCVariableResponse& msg,
       grpc_byte_buffer** bp, bool* own_buffer) {
     PADDLE_ENFORCE(false, "SerializationTraits::Serialize not implemented!");
     return Status();
   }
   static Status Deserialize(
       grpc_byte_buffer* buffer,
-      paddle::operators::distributed::VariableResponse* msg,
+      paddle::operators::distributed::GRPCVariableResponse* msg,
       int max_message_size = INT_MAX) {
     if (buffer == nullptr) {
       return Status(StatusCode::INTERNAL, "No payload");
