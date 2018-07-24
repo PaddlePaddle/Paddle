@@ -23,15 +23,16 @@ while ("${PADDLE_VERSION}" STREQUAL "")
       if (${GIT_BRANCH_NAME} MATCHES "release/${TAG_VERSION_REGEX}")
         # Check the tag is a correct version
         if (${GIT_TAG_NAME} MATCHES "${COMMIT_VERSION_REGEX}")
-          # if no tag was found, set PADDLE_VERSION to latest
-          set(PADDLE_VERSION "latest")
+          # if no tag was found, set PADDLE_VERSION to 0.0.0 to represent latest
+          set(PADDLE_VERSION "0.0.0")
         elseif (${GIT_TAG_NAME} MATCHES "v${TAG_VERSION_REGEX}")
           string(REPLACE "v" "" PADDLE_VERSION ${GIT_TAG_NAME})
         else()  # otherwise, get the previous git tag name.
           set(tmp_version "${GIT_TAG_NAME}~1")
         endif()
-      else() # otherwise, we always set PADDLE_VERSION to latest
-        set(PADDLE_VERSION "latest")
+      else()
+        # otherwise, we always set PADDLE_VERSION to 0.0.0 to represent latest
+        set(PADDLE_VERSION "0.0.0")
       endif()
     else()
       set(PADDLE_VERSION "0.0.0")

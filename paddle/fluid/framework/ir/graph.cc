@@ -40,8 +40,8 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
         var_nodes[each_var_name] = var;
       } else {
         // TODO(paddle-dev): Seems some assumption doesn't hold?
-        LOG(ERROR) << op->Type()
-                   << " input var not in all_var list: " << each_var_name;
+        VLOG(3) << op->Type()
+                << " input var not in all_var list: " << each_var_name;
         var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
         var_nodes[each_var_name] = var;
       }
