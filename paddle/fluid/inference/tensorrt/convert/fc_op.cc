@@ -116,5 +116,4 @@ class FcOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-REGISTER_TRT_OP_CONVERTER(mul, FcOpConverter);
-USE_OP(mul);
+REGISTER_TRT_OP_CONVERTER(fc, FcOpConverter);
