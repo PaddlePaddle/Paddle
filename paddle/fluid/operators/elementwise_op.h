@@ -212,7 +212,8 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
 */
 
 #define REGISTER_ELEMWISE_GRAD_MAKER(kernel_type, op_name)                   \
-  class GradMaker : public paddle::framework::SingleGradOpDescMaker {        \
+  class kernel_type##GradMaker                                               \
+      : public paddle::framework::SingleGradOpDescMaker {                    \
    public:                                                                   \
     using ::paddle::framework::SingleGradOpDescMaker::SingleGradOpDescMaker; \
                                                                              \
@@ -254,6 +255,6 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
   REGISTER_OPERATOR(op_type, ::paddle::operators::ElementwiseOp,       \
                     __ElemwiseOp##op_type##Maker__,                    \
                     ::paddle::operators::ElementwiseOpInferVarType,    \
-                    GradMaker);                                        \
+                    op_type##GradMaker);                               \
   REGISTER_OPERATOR(op_type##_grad,                                    \
                     ::paddle::operators::ElementwiseOpExplicitGrad)

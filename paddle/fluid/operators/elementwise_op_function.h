@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <algorithm>
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
@@ -556,23 +557,23 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext& ctx,
                                  const framework::Tensor& dout, int axis,
                                  framework::Tensor* dx, framework::Tensor* dy,
                                  DX_OP dx_op, DY_OP dy_op) {
-  // dy == nullptr or (dy,dx shape equal)
-  if (dy == nullptr || dout.dims() == dy->dims()) {
+  if (dy == nullptr) {
     const framework::DDim dx_dims = dout.dims();
-    if (dy == nullptr) {
-      const framework::DDim dy_dims = dout.dims();
-      ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
-          ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
-    } else {
+    auto dy_dims = dx_dims;
+    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+  } else {
+    if (dout.dims() == dy->dims()) {
+      const framework::DDim dx_dims = dout.dims();
       const framework::DDim dy_dims = dy->dims();
       ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
           ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+    } else {  // Y is a scalar
+      auto dx_dims = dout.dims();
+      const framework::DDim dy_dims = dy->dims();
+      ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+          ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
     }
-  } else {  // Y is a scalar
-    auto dx_dims = dout.dims();
-    const framework::DDim dy_dims = dy->dims();
-    ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
-        ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   }
 }
 

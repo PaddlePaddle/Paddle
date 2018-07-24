@@ -156,18 +156,20 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
       in->set_format(out->format());
     };
 
-    if (dx->dims() == dy->dims()) {
-      auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
-      if (dx) {
-        blas.VCOPY(dout->numel(), dout->data<T>(),
-                   dx->mutable_data<T>(ctx.GetPlace()));
-        set_mkldnn_format(dx, dout);
-      }
+    if (dx != nullptr && dy != nullptr && dx->dims() == dy->dims()) {
+      if (dx->dims() == dy->dims()) {
+        auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
+        if (dx) {
+          blas.VCOPY(dout->numel(), dout->data<T>(),
+                     dx->mutable_data<T>(ctx.GetPlace()));
+          set_mkldnn_format(dx, dout);
+        }
 
-      if (dy) {
-        blas.VCOPY(dout->numel(), dout->data<T>(),
-                   dy->mutable_data<T>(ctx.GetPlace()));
-        set_mkldnn_format(dy, dout);
+        if (dy) {
+          blas.VCOPY(dout->numel(), dout->data<T>(),
+                     dy->mutable_data<T>(ctx.GetPlace()));
+          set_mkldnn_format(dy, dout);
+        }
       }
     } else {
       // Execute default kernel when broadcast is needed
