@@ -68,6 +68,8 @@ def get_numeric_gradient(place,
         tensor_to_check_dtype = np.float64
     elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
         tensor_to_check_dtype = np.float16
+        # set delta as np.float16, will automatic convert to float32, float64
+        delta = np.array(delta).astype(np.float16)
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
@@ -106,15 +108,14 @@ def get_numeric_gradient(place,
         # get one input element throw it's index i.
         origin = __get_elem__(tensor_to_check, i)
         # add delta to it, run op and then get the sum of the result tensor.
-        # set delta as np.float16, will automatic convert to float32, flaot64
-        x_pos = origin + np.array(delta).astype(np.float16)
+        x_pos = origin + delta
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
         if in_place:
             set_input(scope, op, inputs, place)
 
-        x_neg = origin - np.array(delta).astype(np.float16)
+        x_neg = origin - delta
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
