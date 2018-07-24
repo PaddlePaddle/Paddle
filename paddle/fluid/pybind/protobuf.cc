@@ -308,7 +308,8 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_is_target", &pd::OpDesc::SetIsTarget)
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", &pd::OpDesc::Block,
-           pybind11::return_value_policy::reference);
+           pybind11::return_value_policy::reference)
+      .def("set_user_traceback", &pd::OpDesc::SetUserTraceback);
 }
 
 }  // namespace pybind

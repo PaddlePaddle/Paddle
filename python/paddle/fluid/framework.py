@@ -472,7 +472,8 @@ class Operator(object):
                  type=None,
                  inputs=None,
                  outputs=None,
-                 attrs=None):
+                 attrs=None,
+                 traceback=None):
 
         self.block = block
         self.desc = desc
@@ -574,6 +575,8 @@ class Operator(object):
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
+        if traceback:
+            self.desc.set_user_traceback(traceback)
 
     def has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET

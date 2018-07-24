@@ -235,7 +235,9 @@ void ThreadedSSAGraphExecutor::RunOp(
       }
     } catch (platform::EnforceNotMet ex) {
       std::lock_guard<std::mutex> l(exception_mu_);
-      exception_.reset(new platform::EnforceNotMet(ex));
+      std::string exc_string =
+          string::Sprintf("%s\n%s", op->GetUserTraceback(), ex.err_str_);
+      exception_.reset(new platform::EnforceNotMet(ex, exc_string.c_str(), 0));
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
     }

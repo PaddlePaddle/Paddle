@@ -135,6 +135,9 @@ class OpDesc {
 
   void SetBlock(BlockDesc *block) { this->block_ = block; }
 
+  void SetUserTraceback(const std::string &tb) { user_traceback_ = tb; }
+  const std::string GetUserTraceback() const { return user_traceback_; }
+
  private:
   template <typename MapType>
   static std::vector<typename MapType::key_type> MapKeys(const MapType &map) {
@@ -153,6 +156,9 @@ class OpDesc {
   // output arg name => output variable names
   VariableNameMap outputs_;
   AttributeMap attrs_;
+
+  // traceback info stores only at runtime
+  std::string user_traceback_;
 
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.

@@ -87,6 +87,14 @@ class OpHandleBase {
 
   ir::Node *Node() { return node_; }
 
+  const std::string GetUserTraceback() const {
+    if (node_->Op()) {
+      return node_->Op()->GetUserTraceback();
+    } else {
+      return "";
+    }
+  }
+
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
 
@@ -99,6 +107,8 @@ class OpHandleBase {
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
   std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
+
+  std::string user_traceback_;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

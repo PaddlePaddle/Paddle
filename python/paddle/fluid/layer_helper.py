@@ -14,6 +14,7 @@
 
 import copy
 import itertools
+import traceback
 
 from framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 import unique_name
@@ -29,6 +30,8 @@ class LayerHelper(object):
         name = self.kwargs.get('name', None)
         if name is None:
             self.kwargs['name'] = unique_name.generate(self.layer_type)
+        # traceback debug info for all layer API
+        kwargs['traceback'] = traceback.format_stack()
 
     @property
     def name(self):
