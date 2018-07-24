@@ -600,17 +600,27 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.text_type):
+    if isinstance(feeded_var_names, six.binary_type):
         feeded_var_names = [feeded_var_names]
+    elif isinstance(feeded_var_names, six.text_type):
+        feeded_var_names = [feeded_var_names.encode()]
     else:
         if len(feeded_var_names) > 0:
             if not (bool(feeded_var_names) and all(
-                    isinstance(name, six.text_type)
+                    isinstance(name, six.binary_type)
                     for name in feeded_var_names)):
-                import sys
-                print([type(name) for name in feeded_var_names])
-                sys.stdout.flush()
-                raise ValueError("'feed_var_names' should be a list of str.")
+                if not (all(
+                        isinstance(name, six.text_type)
+                        for name in feeded_var_names)):
+                    import sys
+                    print([type(name) for name in feeded_var_names])
+                    sys.stdout.flush()
+                    raise ValueError(
+                        "'feed_var_names' should be a list of str.")
+                else:
+                    feeded_var_names = [
+                        name.encode() for name in feeded_var_names
+                    ]
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
