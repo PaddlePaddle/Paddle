@@ -56,13 +56,12 @@ class TestDistSeResneXt2x2(unittest.TestCase):
             except os.error:
                 retry_times -= 1
 
-    def non_test_with_place(self):
+    def test_with_place(self):
         # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
             "PYTHONPATH": os.getenv("PYTHONPATH"),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH"),
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.15"
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH")
         }
         # Run local to get a base line
         env_local = {"CUDA_VISIBLE_DEVICES": "0"}
