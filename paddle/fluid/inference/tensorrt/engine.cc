@@ -1,7 +1,7 @@
 /* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License.
 You may obtain a copy of the License at
 
 http://www.apache.org/licenses/LICENSE-2.0
@@ -149,7 +149,8 @@ void *TensorRTEngine::GetOutputInGPU(const std::string &name) {
   return buffer(name).buffer;
 }
 
-void TensorRTEngine::GetOutputInGPU(const std::string &name, void *dst) {
+void TensorRTEngine::GetOutputInGPU(const std::string &name, void *dst,
+                                    size_t max_size) {
   // determine data size
   auto *output = TensorRTEngine::GetITensor(name);
   nvinfer1::Dims dims = output->getDimensions();
@@ -161,6 +162,7 @@ void TensorRTEngine::GetOutputInGPU(const std::string &name, void *dst) {
   PADDLE_ENFORCE(it != buffer_sizes_.end());
   PADDLE_ENFORCE_GT(it->second, 0);
   PADDLE_ENFORCE_LE(dst_size, it->second);
+  PADDLE_ENFORCE_GE(max_size, dst_size);
   auto &buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
   PADDLE_ENFORCE_EQ(cudaMemcpyAsync(dst, buf.buffer, dst_size,
@@ -168,7 +170,8 @@ void TensorRTEngine::GetOutputInGPU(const std::string &name, void *dst) {
                     0);
 }
 
-void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst) {
+void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst,
+                                    size_t max_size) {
   // determine data size
 
   auto *output = TensorRTEngine::GetITensor(name);
@@ -180,6 +183,7 @@ void TensorRTEngine::GetOutputInCPU(const std::string &name, void *dst) {
   PADDLE_ENFORCE(it != buffer_sizes_.end());
   PADDLE_ENFORCE_GT(it->second, 0);
   PADDLE_ENFORCE_LE(dst_size, it->second);
+  PADDLE_ENFORCE_GE(max_size, dst_size);
   auto &buf = buffer(name);
   PADDLE_ENFORCE_NOT_NULL(buf.buffer, "buffer should be allocated before");
   PADDLE_ENFORCE_EQ(0, cudaMemcpyAsync(dst, buf.buffer, dst_size,

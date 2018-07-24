@@ -100,8 +100,11 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       // tensor.
       // if (platform::is_cpu_place(fluid_t->place())) {
       // TODO(Superjomn) change this float to dtype size.
-      engine->GetOutputInCPU(
-          y, fluid_t->mutable_data<float>(platform::CPUPlace()));
+      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims) *
+                  FLAGS_tensorrt_engine_batch_size;
+      engine->GetOutputInCPU(y,
+                             fluid_t->mutable_data<float>(platform::CPUPlace()),
+                             size * sizeof(float));
       //} else {
       // engine->GetOutputInGPU(
       // y, fluid_t->mutable_data<float>(platform::CUDAPlace()),

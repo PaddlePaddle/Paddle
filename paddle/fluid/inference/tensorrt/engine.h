@@ -106,10 +106,10 @@ class TensorRTEngine : public EngineBase {
   // Return the output's GPU memory address without copy.
   void* GetOutputInGPU(const std::string& name);
   // Copy data into dst inside the GPU device.
-  void GetOutputInGPU(const std::string& name, void* dst);
+  void GetOutputInGPU(const std::string& name, void* dst, size_t max_size);
   // LOW EFFICENCY! Get output to CPU, this will trigger a memory copy from GPU
   // to CPU.
-  void GetOutputInCPU(const std::string& name, void* dst);
+  void GetOutputInCPU(const std::string& name, void* dst, size_t max_size);
   // Fill an ITensor into map itensor_map_.
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
