@@ -36,12 +36,17 @@ If you don't wish to use docker，you need to install several compile dependenci
    # 2. Optional: build development docker image from source
    docker build -t paddle:dev .
    # 3. Run the following command to build a CPU-Only binaries
-   docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh build
+   docker run -it -v $PWD:/paddle -w /paddle -e "PYTHON_ABI=cp27-cp27mu" -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddlepaddle/paddle_manylinux_devel:cuda8.0_cudnn5 ./paddle/scripts/paddle_build.sh build
    # 4. Or, use your built Docker image to build PaddlePaddle (must run step 2)
    docker run -it -v $PWD:/paddle -w /paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" paddle:dev ./paddle/scripts/paddle_build.sh build
 
-NOTE: The above command try to mount the current working directory (root directory of source code)
+NOTE: 
+
+- The above command try to mount the current working directory (root directory of source code)
 into :code:`/paddle` directory inside docker container.
+
+- You need to pass in the required environment variable :code:`PYTHON_ABI` to specify a `Python ABI <https://www.python.org/dev/peps/pep-0425/#id8>`__.
+Currently PaddlePaddle supported Python ABIs include :code:`cp27-cp27m` and :code:`cp27-cp27mu` .
 
 When the compile finishes, you can get the output whl package under
 build/python/dist, then you can choose to install the whl on local

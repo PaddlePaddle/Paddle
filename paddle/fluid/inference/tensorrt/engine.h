@@ -57,7 +57,9 @@ class TensorRTEngine : public EngineBase {
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         stream_(stream ? stream : &default_stream_),
-        logger_(logger) {}
+        logger_(logger) {
+    cudaStreamCreate(&default_stream_);
+  }
 
   virtual ~TensorRTEngine();
 
@@ -121,6 +123,9 @@ class TensorRTEngine : public EngineBase {
   int max_batch_;
   // the max memory size the engine uses
   int max_workspace_;
+
+  // batch size of the current data, will be updated each Executation.
+  int batch_size_{-1};
   cudaStream_t* stream_;
   // If stream_ is not set from outside, hold its own stream.
   cudaStream_t default_stream_;

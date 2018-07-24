@@ -72,7 +72,7 @@ class RPCClient {
   virtual void SendBeginPass() = 0;
   virtual void SendEndPass() = 0;
 
-  virtual void Wait() = 0;
+  virtual bool Wait() = 0;
 
   template <typename T>
   static RPCClient* GetInstance() {

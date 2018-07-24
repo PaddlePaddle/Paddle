@@ -66,7 +66,8 @@ def is_persistable(var):
             res = fluid.io.is_persistable(param)
     """
     if var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH or \
-            var.desc.type() == core.VarDesc.VarType.FETCH_LIST:
+            var.desc.type() == core.VarDesc.VarType.FETCH_LIST or \
+            var.desc.type() == core.VarDesc.VarType.READER:
         return False
     return var.persistable
 
@@ -523,7 +524,7 @@ def prepend_feed_ops(inference_program,
 
     for i, name in enumerate(feed_target_names):
         out = global_block.var(name)
-        global_block.prepend_op(
+        global_block._prepend_op(
             type='feed',
             inputs={'X': [feed_var]},
             outputs={'Out': [out]},
@@ -625,7 +626,7 @@ def save_inference_model(dirname,
     for i, op in enumerate(global_block.ops):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
-            global_block.remove_op(i)
+            global_block._remove_op(i)
     copy_program.desc.flush()
 
     pruned_program = copy_program.prune(targets=target_vars)
