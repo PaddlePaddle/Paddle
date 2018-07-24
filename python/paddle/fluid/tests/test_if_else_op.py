@@ -24,7 +24,8 @@ import numpy as np
 
 
 class TestMNISTIfElseOp(unittest.TestCase):
-    def test_raw_api(self):
+    # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379
+    def not_test_raw_api(self):
         prog = Program()
         startup_prog = Program()
         with program_guard(prog, startup_prog):
@@ -86,7 +87,8 @@ class TestMNISTIfElseOp(unittest.TestCase):
                     return
         self.assertFalse(True)
 
-    def test_ifelse(self):
+    # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379
+    def not_test_ifelse(self):
         prog = Program()
         startup_prog = Program()
         with program_guard(prog, startup_prog):
