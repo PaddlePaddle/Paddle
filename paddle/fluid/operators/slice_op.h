@@ -84,5 +84,76 @@ class SliceKernel : public framework::OpKernel<T> {
     out_t.device(place) = in_t.slice(offsets, extents);
   }
 };
+
+template <typename DeviceContext, typename T>
+class SliceGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    size_t rank =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->dims().size();
+    switch (rank) {
+      case 1:
+        SliceCompute<1>(ctx);
+        break;
+      case 2:
+        SliceCompute<2>(ctx);
+        break;
+      case 3:
+        SliceCompute<3>(ctx);
+        break;
+      case 4:
+        SliceCompute<4>(ctx);
+        break;
+      case 5:
+        SliceCompute<5>(ctx);
+        break;
+      case 6:
+        SliceCompute<6>(ctx);
+        break;
+    }
+  }
+
+ private:
+  template <size_t D>
+  void SliceCompute(const framework::ExecutionContext& context) const {
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    auto* d_out = context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_input = context.Output<framework::Tensor>(framework::GradVarName("Input"));
+    d_input->mutable_data<T>(context.GetPlace());
+    auto out_dims = d_out->dims();
+    auto in_dims = d_input->dims();
+    auto axes = context.Attr<std::vector<int>>("axes");
+    auto starts = context.Attr<std::vector<int>>("starts");
+
+    auto offsets = Eigen::array<int, D>();
+    auto extents = Eigen::array<int, D>();
+    for (size_t i = 0; i < D; ++i) {
+      offsets[i] = 0;
+      extents[i] = out_dims[i];
+    }
+    int start;
+    for (size_t i = 0; i < axes.size(); ++i) {
+      start = starts[i];
+      if (start < 0) {
+        start = (start + in_dims[axes[i]]);
+      }
+      start = std::max(start, 0);
+      offsets[axes[i]] = start;
+    }
+    Eigen::array<std::pair<int, int>, D> paddings;
+    for (size_t i = 0; i < paddings.size(); ++i) {
+      paddings[i].first = offsets[i];
+      paddings[i].second = in_dims[i] - out_dims[i];
+    }
+    auto d_in_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *d_input);
+    auto d_out_t =
+        framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *d_out);
+    d_in_t.device(place) = d_out_t.pad(paddings, 0);
+  }
+};
 }  // namespace operators
 }  // namespace paddle

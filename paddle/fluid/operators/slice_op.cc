@@ -87,13 +87,13 @@ Slice Operator.
 
 Produces a slice of the input tensor along multiple axes. Similar to numpy:
 https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html
-Slice uses `axes`, `starts` and `ends` attributes to specify the start and 
+Slice uses `axes`, `starts` and `ends` attributes to specify the start and
 end dimension for each axis in the list of axes, it uses this information
-to slice the input data tensor. If a negative value is passed for any of 
-the start or end indices, it represents number of elements before the end 
+to slice the input data tensor. If a negative value is passed for any of
+the start or end indices, it represents number of elements before the end
 of that dimension. If the value passed to start or end is larger than
-the n (the number of elements in this dimension), it represents n. 
-For slicing to the end of a dimension with unknown size, it is recommended 
+the n (the number of elements in this dimension), it represents n.
+For slicing to the end of a dimension with unknown size, it is recommended
 to pass in INT_MAX. If axes are omitted, they are set to [0, ..., ndim-1].
 Following examples will explain how slice works:
 
@@ -119,15 +119,54 @@ Following examples will explain how slice works:
   }
 };
 
+class SliceOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should not be null");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null");
+    auto x_dims = ctx->GetInputDim("Input");
+    auto x_grad_name = framework::GradVarName("Input");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+    }
+  }
+};
+
+class SliceOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* bind = new framework::OpDesc();
+    bind->SetInput("Input", Input("Input"));
+    bind->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    bind->SetOutput(framework::GradVarName("Input"), InputGrad("Input"));
+    bind->SetAttrMap(Attrs());
+    bind->SetType("slice_grad");
+    return std::unique_ptr<framework::OpDesc>(bind);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  ops::SliceOpGradMaker);
+REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(
+    slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>);
