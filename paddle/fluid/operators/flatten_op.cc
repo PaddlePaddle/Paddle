@@ -117,7 +117,7 @@ Case 1:
   and
     axis = 2
   We get:
-    Out.shape = (3 * 100 * 100, 4)
+    Out.shape = (3 * 100, 4 * 100)
 
 Case 2:
   Given
