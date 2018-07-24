@@ -160,30 +160,26 @@ void testIm2col() {
   delete context;
 }
 
-void testIm2colCPU() {
+void testIm2colCPU(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   paddle::framework::Tensor input;
   paddle::framework::Tensor output;
-  int input_height = 3;
-  int input_width = 4;
-  int filter_size = 2;
-  int ic = 2;
-  std::vector<int> stride({1, 1});  // stride_y, stride_x
-  std::vector<int> padding({0, 0});
+  paddle::framework::Tensor ref_output;
+  std::vector<int> padding({ph, pw});
+  std::vector<int> stride({1, 1});    // stride_y, stride_x
   std::vector<int> dilation({1, 1});  // dilation_y, dilation_x
-  int output_height =
-      (input_height - filter_size + padding[0] * 2) / stride[0] + 1;
-  int output_width =
-      (input_width - filter_size + padding[1] * 2) / stride[1] + 1;
-  float* input_ptr = input.mutable_data<float>({ic, input_height, input_width},
-                                               paddle::platform::CPUPlace());
+  int output_height = (ih - fh + padding[0] * 2) / stride[0] + 1;
+  int output_width = (iw - fw + padding[1] * 2) / stride[1] + 1;
+  float* input_ptr =
+      input.mutable_data<float>({ic, ih, iw}, paddle::platform::CPUPlace());
   for (int i = 0; i < input.numel(); ++i) {
-    input_ptr[i] = static_cast<float>(i);
+    input_ptr[i] = static_cast<float>(i + 1);
   }
 
   paddle::platform::CPUPlace place;
   paddle::platform::CPUDeviceContext context(place);
-  output.mutable_data<float>(
-      {ic, filter_size, filter_size, output_height, output_width}, place);
+  output.mutable_data<float>({ic, fh, fw, output_height, output_width}, place);
+  ref_output.mutable_data<float>({ic, fh, fw, output_height, output_width},
+                                 place);
   paddle::operators::math::Im2ColFunctor<
       paddle::operators::math::ColFormat::kCFO,
       paddle::platform::CPUDeviceContext, float>
@@ -200,7 +196,6 @@ void testIm2colCPU() {
     int filter_width = col->dims()[2];
     int output_height = col->dims()[3];
     int output_width = col->dims()[4];
-
     int channels_col = im_channels * filter_height * filter_width;
 
     const float* im_data = im.data<float>();
@@ -215,7 +210,6 @@ void testIm2colCPU() {
           int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
           int col_idx = (c * output_height + h) * output_width + w;
           int im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
-
           col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
                                im_col_idx < 0 || im_col_idx >= im_width)
                                   ? 0.f
@@ -225,19 +219,9 @@ void testIm2colCPU() {
     }
   };
 
-  paddle::framework::Tensor ref_output;
-  ref_output.mutable_data<float>(
-      {ic, filter_size, filter_size, output_height, output_width}, place);
   ref_im2col(input, dilation, stride, padding, &ref_output);
 
   float* out_cfo_ptr = output.data<float>();
-  for (int i = 0; i < ic * filter_size * filter_size; ++i) {
-    for (int j = 0; j < output_height * output_width; ++j) {
-      std::cout << out_cfo_ptr[i * output_height * output_width + j] << ",";
-    }
-    std::cout << std::endl;
-  }
-
   float* out_ref_ptr = ref_output.data<float>();
   for (int i = 0; i < output.numel(); ++i) {
     EXPECT_EQ(out_cfo_ptr[i], out_ref_ptr[i]);
@@ -246,7 +230,10 @@ void testIm2colCPU() {
 
 TEST(math, im2col) {
   testIm2col<paddle::platform::CPUDeviceContext, paddle::platform::CPUPlace>();
-  testIm2colCPU();
+  testIm2colCPU(/*ic*/ 3, /*ih*/ 5, /*iw*/ 5, /*fh*/ 3, /*fw*/ 2, /*ph*/ 0,
+                /*pw*/ 0);
+  testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 3, /*fw*/ 3, /*ph*/ 1,
+                /*pw*/ 1);
 #ifdef PADDLE_WITH_CUDA
   testIm2col<paddle::platform::CUDADeviceContext,
              paddle::platform::CUDAPlace>();
