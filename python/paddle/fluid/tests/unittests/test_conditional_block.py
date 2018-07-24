@@ -22,7 +22,7 @@ from paddle.fluid.layers.control_flow import ConditionalBlock
 import numpy
 
 
-class ConditionalBlock(unittest.TestCase):
+class ConditionalBlockTest(unittest.TestCase):
     def test_forward(self):
         data = layers.data(name='X', shape=[1], dtype='float32')
         data.stop_gradient = False
