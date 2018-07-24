@@ -71,7 +71,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
 
   LOG(INFO) << "to get output";
   float y_cpu;
-  engine_->GetOutputInCPU("y", &y_cpu);
+  engine_->GetOutputInCPU("y", &y_cpu, 1 * sizeof(float));
 
   LOG(INFO) << "to checkout output";
   ASSERT_EQ(y_cpu, x_v * 2 + 3);
@@ -108,7 +108,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   ASSERT_EQ(dims.nbDims, 3);
   ASSERT_EQ(dims.d[0], 2);
   ASSERT_EQ(dims.d[1], 1);
-  engine_->GetOutputInCPU("y", &y_cpu[0]);
+  engine_->GetOutputInCPU("y", &y_cpu[0], 2 * sizeof(float));
   ASSERT_EQ(y_cpu[0], 4.5);
   ASSERT_EQ(y_cpu[1], 14.5);
 }
@@ -141,7 +141,7 @@ TEST_F(TensorRTEngineTest, test_conv2d_temp) {
 
   LOG(INFO) << "to get output";
   float* y_cpu = new float[18];
-  engine_->GetOutputInCPU("y", &y_cpu[0]);
+  engine_->GetOutputInCPU("y", &y_cpu[0], 18 * sizeof(float));
   ASSERT_EQ(y_cpu[0], 4.0);
   ASSERT_EQ(y_cpu[1], 6.0);
 }
