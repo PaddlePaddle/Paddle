@@ -50,7 +50,7 @@ feeder = fluid.DataFeeder(feed_list=[data, label], place=fluid.CPUPlace())
 BATCH_SIZE = 128
 train_reader = paddle.batch(
     paddle.reader.shuffle(
-        paddle.dataset.imdb.train(word_dict), buf_size=10000),
+        paddle.dataset.imdb.train(word_dict), buf_size=25000),
     batch_size=BATCH_SIZE)
 
 test_reader = paddle.batch(
