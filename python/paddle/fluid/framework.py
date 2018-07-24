@@ -1281,6 +1281,7 @@ class Program(object):
         self._seed = 0
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
+        self._slice_vars_and_atts = []
 
     @property
     def op_role(self):

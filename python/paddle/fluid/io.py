@@ -369,6 +369,7 @@ def load_vars(executor,
         load_vars(
             executor,
             dirname=dirname,
+            main_program=main_program,
             vars=filter(predicate, main_program.list_vars()),
             filename=filename)
     else:
@@ -400,6 +401,10 @@ def load_vars(executor,
                 inputs={},
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
+
+        if main_program._slice_vars_and_atts:
+            _load_slice_up_vars(executor, dirname,
+                                main_program._slice_vars_and_atts)
 
         executor.run(load_prog)
 
@@ -888,3 +893,46 @@ def get_test_program(filelist, program=None, startup_program=None):
     program._sync_with_cpp()
 
     return program
+
+
+def _load_slice_up_vars(executor, dirname, _slice_vars_and_atts):
+    if slice_vars == None or len(slice_vars) == 0:
+        return
+
+    load_prog = Program()
+    load_block = load_prog.global_block()
+
+    for var_tuple in slice_vars:
+        orig_var = var_tuple[0]
+        start = var_tuple[1]
+        slice_var = var_tuple[2]
+        end = start + reduce(lambda x, y: x * y, slice_var.shape)
+
+        clone_orig_var = load_block.create_var(
+            name=orig_var.name,
+            type=orig_var.type,
+            shape=orig_var.shape,
+            dtype=orig_var.dtype,
+            persistable=True)
+
+        clone_slice_var = load_block.create_var(
+            name=slice_var.name,
+            type=slice_var.type,
+            shape=slice_var.shape,
+            dtype=slice_var.dtype,
+            persistable=True)
+
+        load_block.append_op(
+            type='load',
+            inputs={},
+            outputs={'Out': [clone_orig_var]},
+            attrs={'file_path': os.path.join(dirname, clone_orig_var.name)})
+        load_block.append_op(
+            type="slice",
+            inputs={'Input': clone_orig_var},
+            outputs={'Out': clone_slice_var},
+            attrs={'axes': [0],
+                   'starts': [start],
+                   'ends': [end]})
+
+    executor.run(load_prog)

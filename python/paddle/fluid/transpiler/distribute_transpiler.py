@@ -525,6 +525,10 @@ class DistributeTranspiler(object):
             outputs={},
             attrs=attrs)
 
+        # add slice vars
+        slice_vars_and_atts = self._get_slice_vars_and_atts(endpoint)
+        pserver_program._slice_vars_and_atts = slice_vars_and_atts
+
         pserver_program._sync_with_cpp()
         return pserver_program
 
@@ -587,7 +591,34 @@ class DistributeTranspiler(object):
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.attrs)
+
+        # add slice vars
+        slice_vars_and_atts = self._get_slice_vars_and_atts(endpoint)
+        s_prog._slice_vars_and_atts = slice_vars_and_atts
+
         return s_prog
+
+    def _get_slice_vars_and_atts(self, endpoint):
+        slice_vars_and_atts = []
+        block_suffix = ".block"
+        for param in self.param_grad_ep_mapping[endpoint]["params"]:
+
+            suff_idx = param.name.find(block_suffix)
+            if suff_idx <= 0:
+                continue
+
+            orig_var_name = param.name[:suff_idx]
+            block_idx = int(param.name[suff_idx + len(block_suffix):])
+
+            orig_var = self.origin_program.global_block().vars[orig_var_name]
+
+            skip_numel = 0
+            slice_vars = self.param_var_mapping[orig_var_name]
+            for slice_var in slice_vars[:block_idx]:
+                skip_numel += reduce(lambda x, y: x * y, slice_var.shape)
+            slice_vars_and_atts.append([orig_var, skip_numel, param])
+
+        return slice_vars_and_atts
 
     # ====================== private transpiler functions =====================
 
@@ -718,28 +749,6 @@ class DistributeTranspiler(object):
                 }
             }) for ep in self.pserver_endpoints
         ]
-
-    def get_slice_vars_and_atts(self, endpoint):
-        slice_vars_and_atts = []
-        block_suffix = ".block"
-        for param in self.param_grad_ep_mapping[endpoint]["params"]:
-
-            suff_idx = param.name.find(block_suffix)
-            if suff_idx <= 0:
-                continue
-
-            orig_var_name = param.name[:suff_idx]
-            block_idx = int(param.name[suff_idx + len(block_suffix):])
-
-            orig_var = self.origin_program.global_block().vars[orig_var_name]
-
-            skip_numel = 0
-            slice_vars = self.param_var_mapping[orig_var_name]
-            for slice_var in slice_vars[:block_idx]:
-                skip_numel += reduce(lambda x, y: x * y, slice_var.shape)
-            slice_vars_and_atts.append([orig_var, skip_numel, param])
-
-        return slice_vars_and_atts
 
     # transpiler function for dis lookup_table
     def _replace_lookup_table_op_with_prefetch(self, program,
