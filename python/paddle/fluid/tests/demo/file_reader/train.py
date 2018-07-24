@@ -27,9 +27,6 @@ emb_dim = 128
 # hidden dim
 hid_dim = 128
 
-# hidden dim2
-hid_dim2 = 96
-
 # class num
 class_dim = 2
 
@@ -42,13 +39,9 @@ def build_program(is_train):
         filenames=TRAIN_FILES if is_train else TEST_FILES,
         shapes=[[-1, 1], [-1, 1]],
         lod_levels=[1, 0],
-        dtypes=['int64', 'int64'],
-        thread_num=1)
-    if is_train:
-        file_obj = fluid.layers.io.shuffle(file_obj_handle, buffer_size=1000)
-    else:
-        file_obj = file_obj_handle
-    file_obj = fluid.layers.io.double_buffer(file_obj)
+        dtypes=['int64', 'int64'])
+
+    file_obj = fluid.layers.io.double_buffer(file_obj_handle)
 
     with fluid.unique_name.guard():
 
@@ -56,22 +49,24 @@ def build_program(is_train):
 
         emb = fluid.layers.embedding(input=data, size=[DICT_DIM, emb_dim])
 
-        # sequence conv with window size = 3
-        win_size = 3
         conv_3 = fluid.nets.sequence_conv_pool(
             input=emb,
             num_filters=hid_dim,
-            filter_size=win_size,
+            filter_size=3,
             act="tanh",
-            pool_type="max")
+            pool_type="sqrt")
 
-        # fc layer after conv
-        fc_1 = fluid.layers.fc(input=[conv_3], size=hid_dim2)
+        conv_4 = fluid.nets.sequence_conv_pool(
+            input=emb,
+            num_filters=hid_dim,
+            filter_size=4,
+            act="tanh",
+            pool_type="sqrt")
 
-        # probability of each class
-        prediction = fluid.layers.fc(input=[fc_1],
+        prediction = fluid.layers.fc(input=[conv_3, conv_4],
                                      size=class_dim,
                                      act="softmax")
+
         # cross entropy loss
         cost = fluid.layers.cross_entropy(input=prediction, label=label)
 
@@ -117,11 +112,9 @@ def main():
         try:
             batch_id = 0
             while True:
-                result = map(numpy.array,
-                             train_exe.run(fetch_list=fetch_var_list
-                                           if batch_id % 10 == 0 else []))
-                if len(result) != 0:
-                    print 'Train loss: ', result
+                loss, acc = map(numpy.array,
+                                train_exe.run(fetch_list=fetch_var_list))
+                print 'Train epoch', epoch_id, 'batch', batch_id, 'loss:', loss, 'acc:', acc
                 batch_id += 1
         except fluid.core.EOFException:
             print 'End of epoch', epoch_id
@@ -138,7 +131,7 @@ def main():
                 acc.append(acc_np[0])
         except:
             test_args['file'].reset()
-            print 'TEST: ', numpy.mean(loss), numpy.mean(acc)
+            print 'Test loss:', numpy.mean(loss), 'acc:', numpy.mean(acc)
 
 
 if __name__ == '__main__':
