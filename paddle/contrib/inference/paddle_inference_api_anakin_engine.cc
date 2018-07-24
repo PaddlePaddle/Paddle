@@ -17,13 +17,16 @@
 
 namespace paddle {
 
-PaddleInferenceAnakinPredictor::PaddleInferenceAnakinPredictor(
+template<typename Target>
+PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
     const AnakinConfig &config) {
   CHECK(Init(config));
 }
 
-bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
+template<typename Target>
+bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
   if (!(graph_.load(config.model_file))) {
+    LOG(FATAL) << "fail to load graph from " << config.model_file;
     return false;
   }
   graph_.ResetBatchSize("input_0", config.max_batch_size);
@@ -33,15 +36,15 @@ bool PaddleInferenceAnakinPredictor::Init(const AnakinConfig &config) {
   }
   // construct executer
   if (executor_p_ != nullptr) {
-    executor_p_ = new anakin::Net<anakin::NV,
+    executor_p_ = new anakin::Net<Target,
                                   anakin::saber::AK_FLOAT,
                                   anakin::Precision::FP32>(graph_, true);
-    ;
   }
   return true;
 }
 
-bool PaddleInferenceAnakinPredictor::Run(
+template<typename Target>
+bool PaddleInferenceAnakinPredictor<Target>::Run(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data) {
   for (const auto &input : inputs) {
@@ -62,7 +65,7 @@ bool PaddleInferenceAnakinPredictor::Run(
     if (sum > net_shape.count()) {
       graph_.Reshape(input.name, input.shape);
       delete executor_p_;
-      executor_p_ = new anakin::Net<anakin::NV,
+      executor_p_ = new anakin::Net<Target,
                                     anakin::saber::AK_FLOAT,
                                     anakin::Precision::FP32>(graph_, true);
       d_tensor_in_p = executor_p_->get_in(input.name);
@@ -109,19 +112,21 @@ bool PaddleInferenceAnakinPredictor::Run(
   return true;
 }
 
-anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
-    &PaddleInferenceAnakinPredictor::get_executer() {
+template<typename Target>
+anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
+    &PaddleInferenceAnakinPredictor<Target>::get_executer() {
   return *executor_p_;
 }
 
 // the cloned new Predictor of anakin share the same net weights from original
 // Predictor
-std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
+template<typename Target>
+std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor<Target>::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor());
+  std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor<Target>());
   // construct executer from other graph
   auto anakin_predictor_p =
-      dynamic_cast<PaddleInferenceAnakinPredictor *>(cls.get());
+      dynamic_cast<PaddleInferenceAnakinPredictor<Target> *>(cls.get());
   if (!anakin_predictor_p) {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
@@ -131,15 +136,30 @@ std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor::Clone() {
   return std::move(cls);
 }
 
+template class PaddleInferenceAnakinPredictor<anakin::NV>;
+
+template class PaddleInferenceAnakinPredictor<anakin::X86>;
+
 // A factory to help create difference predictor.
 template <>
 std::unique_ptr<PaddlePredictor>
 CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
     const AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
-  std::unique_ptr<PaddlePredictor> x(
-      new PaddleInferenceAnakinPredictor(config));
-  return x;
+  if (config.target_type == AnakinConfig::NVGPU) {
+    VLOG(3) << "Anakin Predictor create on [ NVIDIA GPU ].";
+    std::unique_ptr<PaddlePredictor> x(
+	new PaddleInferenceAnakinPredictor<anakin::NV>(config));
+    return x;
+  } else if (config.target_type == AnakinConfig::X86) {
+    VLOG(3) << "Anakin Predictor create on [ Intel X86 ].";
+    std::unique_ptr<PaddlePredictor> x(
+    	new PaddleInferenceAnakinPredictor<anakin::X86>(config));
+    return x;
+  } else {
+    VLOG(3) << "Anakin Predictor create on unknown platform.";
+    return nullptr;
+  }
 };
 
 }  // namespace paddle
