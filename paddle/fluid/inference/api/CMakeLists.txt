@@ -26,13 +26,13 @@ endif()
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
         set(options "")
-        set(oneValueArgs "")
+        set(oneValueArgs SRC)
         set(multiValueArgs ARGS)
         cmake_parse_arguments(inference_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
         set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
         cc_test(${TARGET_NAME}
-                SRCS ${TARGET_NAME}.cc
+                SRCS ${inference_test_SRC}
                 DEPS "${inference_deps}"
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
         if(inference_test_ARGS)
@@ -73,10 +73,10 @@ if(NOT APPLE)
 endif()
 
 cc_test(test_paddle_inference_api
-        SRCS test_api.cc
+        SRCS api_tester.cc
         DEPS paddle_inference_api)
 
-inference_api_test(test_api_impl
+inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
 
 if(WITH_GPU AND TENSORRT_FOUND)
@@ -84,13 +84,13 @@ cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
         DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
 
-inference_api_test(test_api_tensorrt_subgraph_engine ARGS test_word2vec)
+inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()
 
 if (WITH_ANAKIN) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
-    # compile the libinference_anakin_api.a and compile with anakin.so.
+    # compile the libinference_anakin_api.a and anakin.so.
     nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
     nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
     target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
