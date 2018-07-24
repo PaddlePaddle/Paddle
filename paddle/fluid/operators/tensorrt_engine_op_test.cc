@@ -66,14 +66,14 @@ TEST(TensorRTEngineOp, manual) {
   framework::BlockDesc block_desc(&program, block_);
   LOG(INFO) << "create fc op";
   auto* fc0 = block_desc.AppendOp();
-  fc0->SetType("mul");
+  fc0->SetType("fc");
   fc0->SetInput("X", std::vector<std::string>({"x"}));     // 4 x 1 x 1
   fc0->SetInput("Y", std::vector<std::string>({"y"}));     // 4 x 6
   fc0->SetOutput("Out", std::vector<std::string>({"z"}));  // 6 x 1 x 1
 
   LOG(INFO) << "create fc op";
   auto* fc1 = block_desc.AppendOp();
-  fc1->SetType("mul");
+  fc1->SetType("fc");
   fc1->SetInput("X", std::vector<std::string>({"z"}));
   fc1->SetInput("Y", std::vector<std::string>({"y0"}));     // 6 x 8
   fc1->SetOutput("Out", std::vector<std::string>({"z0"}));  // 8 x 1 x 1
@@ -208,4 +208,4 @@ TEST(TensorRTEngineOp, fc) { Execute(40, 28, 28); }
 }  // namespace operators
 }  // namespace paddle
 
-USE_TRT_CONVERTER(mul)
+USE_TRT_CONVERTER(fc)

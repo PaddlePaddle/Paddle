@@ -50,5 +50,4 @@ class MulOpConverter : public OpConverter {
 }  // namespace paddle
 
 USE_OP(mul);
-// TODO(xingzhaolong): change the name to mul then
-REGISTER_TRT_OP_CONVERTER(mul_temp, MulOpConverter);
+REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);
