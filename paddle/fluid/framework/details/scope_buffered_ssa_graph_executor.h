@@ -17,6 +17,9 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/details/op_handle_base.h"
+#include "paddle/fluid/framework/details/var_handle.h"
+
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 #include "paddle/fluid/framework/scope.h"

@@ -22,6 +22,9 @@ import numpy
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid.layers.io import ListenAndServ
+from paddle.fluid.layers.io import Recv
+from paddle.fluid.layers.io import Send
 
 
 class TestSendOp(unittest.TestCase):
@@ -65,8 +68,7 @@ class TestSendOp(unittest.TestCase):
         main = fluid.Program()
 
         with fluid.program_guard(main):
-            serv = layers.ListenAndServ(
-                "127.0.0.1:0", ["X"], optimizer_mode=False)
+            serv = ListenAndServ("127.0.0.1:0", ["X"], optimizer_mode=False)
             with serv.do():
                 out_var = main.global_block().create_var(
                     name="scale_0.tmp_0",
@@ -99,8 +101,8 @@ class TestSendOp(unittest.TestCase):
                 persistable=False,
                 shape=[32, 32])
             fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
-            layers.Send("127.0.0.1:%d" % port, [x])
-            o = layers.Recv("127.0.0.1:%d" % port, [get_var])
+            Send("127.0.0.1:%d" % port, [x])
+            o = Recv("127.0.0.1:%d" % port, [get_var])
 
         exe = fluid.Executor(place)
         self.dist_out = exe.run(main, fetch_list=o)  # o is a list
