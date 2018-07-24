@@ -137,7 +137,6 @@ std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor<Target>::Clone()
 }
 
 template class PaddleInferenceAnakinPredictor<anakin::NV>;
-
 template class PaddleInferenceAnakinPredictor<anakin::X86>;
 
 // A factory to help create difference predictor.
