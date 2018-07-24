@@ -29,11 +29,12 @@ class FlattenOpInferShape : public framework::InferShapeBase {
                    "Output (Output) of Flatten op should not be null.");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE(axis >= 0, "The axis should be greater than or equal to 0.");
     PADDLE_ENFORCE_LT(axis, in_dims.size(),
                       "The axis should be less than input tensor's rank.");
     auto out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", out_dims);
-    if (x_dims[0] == out_dims[0]) {
+    if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
       ctx->ShareLoD("X", "Out");
