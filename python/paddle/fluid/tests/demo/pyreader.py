@@ -25,7 +25,8 @@ def network(is_train):
         capacity=10,
         shapes=((-1, 784), (-1, 1)),
         dtypes=('float32', 'int64'),
-        name="train_reader" if is_train else "test_reader")
+        name="train_reader" if is_train else "test_reader",
+        use_double_buffer=True)
     img, label = fluid.layers.read_file(reader)
 
     hidden = img
@@ -56,14 +57,16 @@ def main():
         with fluid.unique_name.guard():
             test_loss, test_reader = network(False)
 
-    fluid.Executor(fluid.CUDAPlace(0)).run(startup_prog)
-    fluid.Executor(fluid.CUDAPlace(0)).run(test_startup)
+    use_cuda = fluid.core.is_compiled_with_cuda()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    fluid.Executor(place).run(startup_prog)
+    fluid.Executor(place).run(test_startup)
 
     trainer = fluid.ParallelExecutor(
-        use_cuda=True, loss_name=loss.name, main_program=train_prog)
+        use_cuda=use_cuda, loss_name=loss.name, main_program=train_prog)
 
     tester = fluid.ParallelExecutor(
-        use_cuda=True, share_vars_from=trainer, main_program=test_prog)
+        use_cuda=use_cuda, share_vars_from=trainer, main_program=test_prog)
 
     train_reader.decorate_paddle_reader(
         paddle.v2.reader.shuffle(
