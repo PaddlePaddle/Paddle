@@ -102,10 +102,7 @@ class FluidDistTest(unittest.TestCase):
                     break
 
             # kill all trainer and pserver processes
-            [
-                os.kill(p.pid, signal.SIGTERM) for p in p_pservers + p_trainers
-                if p.poll() == None
-            ]
+            [p.terminate() for p in p_pservers + p_trainers if p.poll() == None]
 
             if job_failed:
                 raise AssertionError(
