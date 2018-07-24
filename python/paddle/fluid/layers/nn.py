@@ -111,6 +111,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'shape',
 ]
 
 
@@ -5318,7 +5319,7 @@ def rank_loss(label, left, right, name=None):
                         will be named automatically.
 
     Returns:
-        list: The value of rank loss.
+        Variable: The value of rank loss.
 
     Raises:
         ValueError: Any of label, left, and right is not a variable.
@@ -5353,4 +5354,38 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def shape(input, name=None):
+    """
+    **Shape layer**
+   
+    Get the shape of input tensor.
+
+    Args:
+        input(Variable): An input tensor.
+    
+    Returns:
+        Variable: Shape of the input tensor.
+    
+    Raises:
+        ValueError: If input is not a Variable.
+
+    Examples:
+        
+        .. code-block:: python
+
+            data = fluid.layers.data(name="data", shape =(3,100,100), dtype="float32")
+            out = fluid.layers.shape(input=data, name="shape")
+    """
+    helper = LayerHelper('shape', **locals())
+
+    if not (isinstance(input, Variable)):
+        raise ValueError("Input should be a Variable")
+
+    out = helper.create_tmp_variable("int64")
+
+    helper.append_op(
+        type='shape', inputs={"Input": input}, outputs={'Out': out})
     return out
