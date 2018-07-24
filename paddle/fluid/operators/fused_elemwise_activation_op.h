@@ -24,7 +24,7 @@ namespace math = paddle::operators::math;
 namespace paddle {
 namespace operators {
 
-class FusedOperatorsOp : public framework::OperatorWithKernel {
+class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -35,12 +35,12 @@ class FusedOperatorsOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override;
 };
 
-class FusedOperatorsMaker : public framework::OpProtoAndCheckerMaker {
+class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
 };
 
-class FusedOperatorsOpGrad : public framework::OperatorWithKernel {
+class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -54,7 +54,7 @@ class FusedOperatorsOpGrad : public framework::OperatorWithKernel {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class FusedOperatorsKernel : public framework::OpKernel<T> {
+class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const Tensor *in_x = ctx.Input<Tensor>("X");
@@ -68,7 +68,7 @@ class FusedOperatorsKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class FusedOperatorsGradKernel : public framework::OpKernel<T> {
+class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     const Tensor *in_x = ctx.Input<Tensor>("X");

@@ -33,7 +33,7 @@ from op_test import OpTest
 
 class TestElementwiseAddOp(OpTest):
     def setUp(self):
-        self.op_type = "fusedoperators"
+        self.op_type = "fused_elemwise_activation"
         self.dtype = np.float32
         self.axis = -1
 

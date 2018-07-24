@@ -83,8 +83,6 @@ struct ReluGradFunctor {
 };
 
 // for example: z = x + scale * y
-// fun1: t = scale * y
-// fun2: z = x + t
 template <typename T, typename BinaryFun, typename UnaryFun>
 struct BinaryCompoundFunctor {
   BinaryCompoundFunctor(const BinaryFun &binary_fun, const UnaryFun &unary_fun)
@@ -100,8 +98,6 @@ struct BinaryCompoundFunctor {
 };
 
 // for example: z = x + scale * y
-// fun1: z = (x + t)'
-// fun2: t = scale * y
 template <typename T, typename DBinaryFun, typename UnaryFun>
 struct BinaryCompoundGradDxFunctor {
   BinaryCompoundGradDxFunctor(const DBinaryFun &d_binary_fun,
@@ -120,9 +116,6 @@ struct BinaryCompoundGradDxFunctor {
 };
 
 // for example: z = x + scale * y
-// fun1: z = (x + t)'
-// fun2: t = scale * y
-// fun3: t = (scale * x)'
 template <typename T, typename DBinaryFun, typename UnaryFun,
           typename DUnaryFun>
 struct BinaryCompoundGradDyFunctor {
@@ -135,8 +128,8 @@ struct BinaryCompoundGradDyFunctor {
 
   inline HOSTDEVICE T operator()(const T x, const T y, const T out,
                                  const T dout) const {
+    // return dout * d_binary_fun_(unary_fun_(y), x, out) * d_unary_fun_(y);
     return dout * d_binary_fun_(unary_fun_(y), x) * d_unary_fun_(y);
-    //    return dout * d_binary_fun_(unary_fun_(y), x, out) * d_unary_fun_(y);
   }
 
  private:
@@ -146,8 +139,6 @@ struct BinaryCompoundGradDyFunctor {
 };
 
 // for example: z = scale * (x + y)
-// fun1: t = scale * x
-// fun2: t = x + y
 template <typename T, typename UnaryFun, typename BinaryFun>
 struct UnaryCompoundFunctor {
   UnaryCompoundFunctor(const UnaryFun &unary_fun, const BinaryFun &binary_fun)
@@ -163,9 +154,6 @@ struct UnaryCompoundFunctor {
 };
 
 // for example: z = scale * (x + y)
-// fun1: t = (scale * x)'
-// fun2: t = x + y
-// fun3: t = (x + y)'
 template <typename T, typename DUnaryFun, typename BinaryFun,
           typename DBinaryFun>
 struct UnaryCompoundGradDxFunctor {
@@ -178,7 +166,7 @@ struct UnaryCompoundGradDxFunctor {
 
   inline HOSTDEVICE T operator()(const T x, const T y, const T out,
                                  const T dout) const {
-    //    auto base = dout * d_unary_fun_(binary_fun_(x, y), out);
+    // auto base = dout * d_unary_fun_(binary_fun_(x, y), out);
     auto base = dout * d_unary_fun_(binary_fun_(x, y));
     return base * d_binary_fun_(x, y);
   }
@@ -190,9 +178,6 @@ struct UnaryCompoundGradDxFunctor {
 };
 
 // for example: z = scale * (x + y)
-// fun1: t = (scale * x)'
-// fun2: t = x + y
-// fun3: t = (x + y)'
 template <typename T, typename DUnaryFun, typename BinaryFun,
           typename DBinaryFun>
 struct UnaryCompoundGradDyFunctor {
@@ -205,7 +190,7 @@ struct UnaryCompoundGradDyFunctor {
 
   inline HOSTDEVICE T operator()(const T x, const T y, const T out,
                                  const T dout) const {
-    //    auto base = dout * d_unary_fun_(binary_fun_(x, y), out);
+    // auto base = dout * d_unary_fun_(binary_fun_(x, y), out);
     auto base = dout * d_unary_fun_(binary_fun_(x, y));
     return base * d_binary_fun_(y, x);
   }
@@ -327,10 +312,7 @@ template <typename DeviceContext, typename T>
 static void RunFunctors(const framework::ExecutionContext &ctx,
                         const std::string &functors, const Tensor *in_x,
                         const Tensor *in_y, Tensor *output) {
-  PADDLE_ENFORCE(ValidCheck(functors));
-
   // TODO(zcd): The following code can be refined.
-  // unary function is scale
   if (functors == "add,scale") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
@@ -362,10 +344,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                             const Tensor *in_y, const Tensor *in_out,
                             const Tensor *in_out_grad, Tensor *x_grad,
                             Tensor *y_grad) {
-  PADDLE_ENFORCE(ValidCheck(functors));
-
   // TODO(zcd): The following code can be refined.
-  // unary function is scale
   if (functors == "add,scale") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
