@@ -156,8 +156,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
         cudnn_output_desc, algo, &workspace_size_in_bytes));
     // It is possible for float16 on Volta GPU to allocate more memory than
     // the limit because the algo is overrided to use tensor core.
-    CUDNN_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
-                     "workspace_size to be allocated exceeds the limit");
+    PADDLE_ENFORCE_LE(workspace_size_in_bytes, workspace_size_limit,
+                      "workspace_size to be allocated exceeds the limit");
 
     // Allocate on GPU memory
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
