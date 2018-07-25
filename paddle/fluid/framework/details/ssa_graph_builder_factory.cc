@@ -22,26 +22,29 @@ namespace paddle {
 namespace framework {
 namespace details {
 std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
-  std::unique_ptr<SSAGraphBuilder> res(
+  std::unique_ptr<SSAGraphBuilder> res(new MultiDevSSAGraphBuilder);
+  res->SetNotOwned<std::vector<platform::Place>>("places", &places_);
+  res->SetNotOwned<std::string>("loss_var_name", &loss_var_name_);
+  res->SetNotOwned<std::unordered_set<std::string>>("params", &param_names_);
+  res->SetNotOwned<std::vector<Scope *>>("local_scopes", &local_scopes_);
+  res->SetNotOwned<BuildStrategy>("strategy", &strategy_);
 #ifdef PADDLE_WITH_CUDA
-      new MultiDevSSAGraphBuilder(places_, loss_var_name_, param_names_,
-                                  local_scopes_, nccl_ctxs_, strategy_)
-#else
-      new MultiDevSSAGraphBuilder(places_, loss_var_name_, param_names_,
-                                  local_scopes_, strategy_)
+  res->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nccl_ctxs_);
 #endif
-          );  // NOLINT
 
   if (!strategy_.debug_graphviz_path_.empty()) {
-    std::unique_ptr<std::ostream> fout(
-        new std::ofstream(strategy_.debug_graphviz_path_));
-    PADDLE_ENFORCE(fout->good());
-    std::unique_ptr<GraphvizSSAGraphPrinter> graphviz_printer(
-        new GraphvizSSAGraphPrinter());
-    res.reset(new SSAGraghBuilderWithPrinter(
-        std::move(fout), std::move(graphviz_printer), std::move(res)));
+    SSAGraphBuilder *previous_pass = res.release();
+    res.reset(new SSAGraghBuilderWithPrinter);
+    res->Set<SSAGraphBuilder>("previous_pass", previous_pass);
+    res->SetNotOwned<std::string>("debug_graphviz_path",
+                                  &strategy_.debug_graphviz_path_);
+    res->Set<GraphvizSSAGraphPrinter>("graph_printer",
+                                      new GraphvizSSAGraphPrinter);
   }
-  res.reset(new SSAGraghBuilderWithChecker(std::move(res)));
+
+  SSAGraphBuilder *previous_pass = res.release();
+  res.reset(new SSAGraghBuilderWithChecker);
+  res->Set<SSAGraphBuilder>("previous_pass", previous_pass);
 
   return res;
 }

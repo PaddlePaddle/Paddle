@@ -132,19 +132,27 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_THROW("Not compiled with CUDA.");
 #endif
   }
-  builder_ = builder_factory.Create();
+
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   if (!build_strategy.debug_graphviz_path_.empty()) {
-    const std::string origin_graph_path = string::Sprintf(
+    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+    const std::string graph_path = string::Sprintf(
         "%s%s", build_strategy.debug_graphviz_path_.c_str(), "_original_graph");
-    graph = ir::GraphVizPass(origin_graph_path).Apply(std::move(graph));
+    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    graph = viz_pass->Apply(std::move(graph));
   }
+
+  builder_ = builder_factory.Create();
   graph = builder_->Apply(std::move(graph));
+
   if (!build_strategy.debug_graphviz_path_.empty()) {
-    const std::string origin_graph_path = string::Sprintf(
+    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+    const std::string graph_path = string::Sprintf(
         "%s%s", build_strategy.debug_graphviz_path_.c_str(), "_before_exec");
-    graph = ir::GraphVizPass(origin_graph_path).Apply(std::move(graph));
+    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    graph = viz_pass->Apply(std::move(graph));
   }
+
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
@@ -297,3 +305,5 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
+
+USE_PASS(graph_viz_pass);

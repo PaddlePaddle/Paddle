@@ -23,7 +23,8 @@ namespace ir {
 
 std::unique_ptr<ir::Graph> GraphVizPass::Apply(
     std::unique_ptr<ir::Graph> graph) const {
-  std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path_));
+  const std::string graph_viz_path = Get<std::string>("graph_viz_path");
+  std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE(fout->good());
   std::ostream& sout = *fout;
 
@@ -61,6 +62,9 @@ std::unique_ptr<ir::Graph> GraphVizPass::Apply(
   sout << "}\n";
   return graph;
 }
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(graph_viz_pass, paddle::framework::ir::GraphVizPass);
