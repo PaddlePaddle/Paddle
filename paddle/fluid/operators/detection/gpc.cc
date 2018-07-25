@@ -682,7 +682,7 @@ static void new_tristrip(polygon_node **tn, edge_node *edge, double x,
 }
 
 static bbox *create_contour_bboxes(gpc_polygon *p) {
-  bbox *box;
+  bbox *box = NULL;
   int c = 0;
   int v = 0;
 
@@ -794,7 +794,7 @@ void gpc_free_polygon(gpc_polygon *p) {
 
 void gpc_read_polygon(FILE *fp, int read_hole_flags, gpc_polygon *p) {
   int c = 0;
-  int v = 0;
+  //  int v = 0;
 
   // fscanf(fp, "%d", &(p->num_contours));
   gpc_malloc<int>(p->hole, p->num_contours * sizeof(int),
