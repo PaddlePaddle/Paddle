@@ -66,10 +66,11 @@ class TRTConvertValidation {
   TRTConvertValidation(int max_batch_size,
                        const std::unordered_set<std::string>& parameters,
                        framework::Scope& scope,  // NOLINT
-                       int workspace_size = 1 << 10, int runtime_batch_size = 1)
+                       int workspace_size = 1 << 10, bool if_add_batch = true)
       : parameters_(parameters),
         scope_(scope),
-        runtime_batch_size_(runtime_batch_size) {
+        if_add_batch_(if_add_batch),
+        max_batch_size_(max_batch_size) {
     // create engine.
     engine_.reset(new TensorRTEngine(max_batch_size, workspace_size, &stream_));
     engine_->InitNetwork();
@@ -102,12 +103,10 @@ class TRTConvertValidation {
     // Init Fluid tensor.
     std::vector<int> dim_vec(dims.d, dims.d + dims.nbDims);
     // There is no batchsize in ITensor's shape, but We should add it to
-    // tensor's
-    // shape of fluid. If the variable is not parameter and the batch size
-    // greater than 0,
-    // add the batchsize to dim_vec.
-    if (is_param != true && runtime_batch_size_ > 0)
-      dim_vec.insert(dim_vec.begin(), runtime_batch_size_);
+    // tensor's shape of fluid. If the variable is not parameter and the
+    // if_add_batch_ flag is true, add the max batchsize to dim_vec.
+    if (is_param != true && if_add_batch_ == true)
+      dim_vec.insert(dim_vec.begin(), max_batch_size_);
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
@@ -141,6 +140,7 @@ class TRTConvertValidation {
 
   void Execute(int batch_size) {
     // Execute Fluid Op
+    PADDLE_ENFORCE_LE(batch_size, max_batch_size_);
     platform::CPUPlace place;
     platform::CPUDeviceContext ctx(place);
     op_->Run(scope_, place);
@@ -159,9 +159,14 @@ class TRTConvertValidation {
       auto* var = scope_.FindVar(output);
       auto tensor = var->GetMutable<framework::LoDTensor>();
       framework::TensorToVector(*tensor, ctx, &fluid_out);
+
+      size_t fluid_out_size = fluid_out.size();
+      if (if_add_batch_ == true) {
+        fluid_out_size = batch_size * (tensor->dims().size() / max_batch_size_);
+      }
       // Compare two output
       ASSERT_FALSE(fluid_out.empty());
-      for (size_t i = 0; i < fluid_out.size(); i++) {
+      for (size_t i = 0; i < fluid_out_size; i++) {
         // Loose the threshold for CI in different machine model.
         EXPECT_LT(std::abs(fluid_out[i] - trt_out[i]), 2e-5);
       }
@@ -177,10 +182,12 @@ class TRTConvertValidation {
   std::unique_ptr<framework::OpDesc> op_desc_;
   const std::unordered_set<std::string>& parameters_;
   framework::Scope& scope_;
-  //  It represents the runtime batchsize when we test.
-  //  If the value greater than 0, we add this to
-  //  the first dimension of tensor's shape of fluid.
-  int runtime_batch_size_;
+  // The ITensor of trt does not cotain the batch size,
+  // bug, in most cases, we need to set batch size for
+  // fluid's tensor shape. This variable indicates
+  // whether to add batch size to tensor shape of fluid.
+  bool if_add_batch_;
+  int max_batch_size_;
 };
 
 }  // namespace tensorrt
