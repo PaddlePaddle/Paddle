@@ -207,7 +207,7 @@ std::unique_ptr<Graph> MultiDevSSAGraphBuilder::Apply(
   result.Set("ops", new GraphOps);
 
   // find send/recv vars so that we can place the distributed training
-  // realted op in the place 0
+  // related op in the place 0
   auto send_vars = FindDistTrainSendVars(nodes);
   auto recv_vars = FindDistTrainRecvVars(nodes);
 
