@@ -153,7 +153,7 @@ class TestMNIST(TestParallelExecutorBase):
         for loss in zip(all_reduce_first_loss, reduce_first_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
+            self.assertAlmostEquals(loss[0], loss[1], delta=1e-4)
 
     def test_simple_fc(self):
         # use_cuda
