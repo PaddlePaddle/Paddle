@@ -38,7 +38,7 @@ from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
 from ..framework import Program, default_main_program, \
                         default_startup_program, Block, \
-                        Variable, Parameter, grad_var_name
+                        Parameter, grad_var_name
 from details import *
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -918,7 +918,8 @@ class DistributeTranspiler(object):
         # create table optimize block in pserver program
         table_opt_op = [
             op for op in self.optimize_ops
-            if op.input("Param")[0] == self.table_name
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
         ][0]
         table_opt_block = pserver_program.create_block(pre_block_idx)
         # only support sgd now
@@ -1075,7 +1076,6 @@ class DistributeTranspiler(object):
         ]
 
     def _clone_var(self, block, var, persistable=True):
-        assert isinstance(var, Variable)
         return block.create_var(
             name=var.name,
             shape=var.shape,

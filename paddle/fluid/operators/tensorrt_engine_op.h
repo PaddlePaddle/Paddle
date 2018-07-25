@@ -93,13 +93,15 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       auto* fluid_v = context.scope().FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto* fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
+
       fluid_t->Resize(framework::make_ddim(ddim));
 
       // TODO(Superjomn) find some way to determine which device to output the
       // tensor.
       // if (platform::is_cpu_place(fluid_t->place())) {
       // TODO(Superjomn) change this float to dtype size.
+      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims) *
+                  FLAGS_tensorrt_engine_batch_size;
       engine->GetOutputInCPU(y,
                              fluid_t->mutable_data<float>(platform::CPUPlace()),
                              size * sizeof(float));

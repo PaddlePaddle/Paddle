@@ -32,7 +32,6 @@ except Exception, e:
 import unique_name
 
 __all__ = [
-    'Variable',
     'Program',
     'Operator',
     'Parameter',
@@ -302,7 +301,7 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def set_desc(self, input):
+    def _set_desc(self, input):
         """
         Set the variable description.
 
@@ -347,7 +346,7 @@ class Variable(object):
     def type(self):
         return self.desc.type()
 
-    def set_error_clip(self, error_clip):
+    def _set_error_clip(self, error_clip):
         """
         Set the error_clip.
 
