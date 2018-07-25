@@ -354,5 +354,36 @@ inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
   return use_cudnn;
 }
 
+class ScopedCTCLossDescriptor {
+ public:
+  ScopedCTCLossDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnCreateCTCLossDescriptor(&desc_));
+  }
+  ~ScopedCTCLossDescriptor() {
+    PADDLE_ENFORCE(dynload::cudnnDestroyPoolingDescriptor(desc_));
+  }
+
+  inline cudnnPoolingDescriptor_t descriptor(const cudnnDataType_t type) {
+    PADDLE_ENFORCE(dynload::cudnnSetCTCLossDescriptor(desc_, type));
+    return desc_;
+  }
+
+ private:
+  cudnnCTCLossDescriptor_t desc_;
+  DISABLE_COPY_AND_ASSIGN(ScopedCTCLossDescriptor);
+};
+
+inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
+  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
+#ifdef PADDLE_WITH_CUDA
+  if (use_cudnn) {
+    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
+  }
+#endif
+  return use_cudnn;
+}
+
 }  // namespace platform
 }  // namespace paddle
