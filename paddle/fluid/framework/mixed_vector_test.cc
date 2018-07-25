@@ -12,18 +12,11 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
-
-#include <cuda_runtime.h>
-
-#endif
-
 #include <memory>
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/mixed_vector.h"
-#include "paddle/fluid/platform/gpu_info.h"
 
 template <typename T>
 using vec = paddle::framework::Vector<T>;
@@ -77,58 +70,3 @@ TEST(mixed_vector, Resize) {
   vec.push_back(0);
   vec.push_back(0);
 }
-
-#ifdef PADDLE_WITH_CUDA
-
-static __global__ void multiply_10(int* ptr) {
-  for (int i = 0; i < 10; ++i) {
-    ptr[i] *= 10;
-  }
-}
-
-cudaStream_t GetCUDAStream(paddle::platform::CUDAPlace place) {
-  return reinterpret_cast<const paddle::platform::CUDADeviceContext*>(
-             paddle::platform::DeviceContextPool::Instance().Get(place))
-      ->stream();
-}
-
-TEST(mixed_vector, GPU_VECTOR) {
-  vec<int> tmp;
-  for (int i = 0; i < 10; ++i) {
-    tmp.push_back(i);
-  }
-  ASSERT_EQ(tmp.size(), 10UL);
-  paddle::platform::CUDAPlace gpu(0);
-
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu)>>>(tmp.MutableData(gpu));
-
-  for (int i = 0; i < 10; ++i) {
-    ASSERT_EQ(tmp[i], i * 10);
-  }
-}
-
-TEST(mixed_vector, MultiGPU) {
-  if (paddle::platform::GetCUDADeviceCount() < 2) {
-    LOG(WARNING) << "Skip mixed_vector.MultiGPU since there are not multiple "
-                    "GPUs in your machine.";
-    return;
-  }
-
-  vec<int> tmp;
-  for (int i = 0; i < 10; ++i) {
-    tmp.push_back(i);
-  }
-  ASSERT_EQ(tmp.size(), 10UL);
-  paddle::platform::CUDAPlace gpu0(0);
-  paddle::platform::SetDeviceId(0);
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu0)>>>(tmp.MutableData(gpu0));
-  paddle::platform::CUDAPlace gpu1(1);
-  auto* gpu1_ptr = tmp.MutableData(gpu1);
-  paddle::platform::SetDeviceId(1);
-  multiply_10<<<1, 1, 0, GetCUDAStream(gpu1)>>>(gpu1_ptr);
-  for (int i = 0; i < 10; ++i) {
-    ASSERT_EQ(tmp[i], i * 100);
-  }
-}
-
-#endif

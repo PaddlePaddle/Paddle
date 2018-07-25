@@ -23,7 +23,7 @@ endif()
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
 if(WITH_GPU)
-  nv_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
+  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
