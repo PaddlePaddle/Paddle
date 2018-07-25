@@ -294,11 +294,7 @@ class DistSeResneXt2x2:
         strategy.num_threads = 1
         strategy.allow_op_delay = False
         exe = fluid.ParallelExecutor(
-            True,
-            loss_name=avg_cost.name,
-            exec_strategy=strategy,
-            num_trainers=trainers,
-            trainer_id=trainer_id)
+            True, loss_name=avg_cost.name, exec_strategy=strategy)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.itervalues()
