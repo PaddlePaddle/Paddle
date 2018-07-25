@@ -779,7 +779,9 @@ class DistributeTranspiler(object):
                         outputs={"Out": prefetch_output_vars},
                         attrs={
                             "epmap": pserver_endpoints,
-                            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                            # FIXME(qiao) temporarily disable this config because prefetch
+                            # is not act as other rpc op, it's more like a forward op
+                            # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                         })
 
                     # insert concat_op
