@@ -37,7 +37,7 @@ TEST(ReluOpConverter, main) {
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
-  validator.Execute(10);
+  validator.Execute(1);
 }
 
 }  // namespace tensorrt
