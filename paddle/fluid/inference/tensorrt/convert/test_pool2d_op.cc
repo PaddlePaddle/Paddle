@@ -23,12 +23,10 @@ namespace tensorrt {
 TEST(Pool2dOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  int runtime_batch = 3;
-  TRTConvertValidation validator(5, parameters, scope, 1 << 15, runtime_batch);
+  TRTConvertValidation validator(5, parameters, scope, 1 << 15);
 
-  // We have already set the runtime batchsize, so the
-  // Dims should not contain the batch size.
-  // The ITensor's Dims of input and output should be C * H * W.
+  // The ITensor's Dims should not contain the batch size.
+  // So, the ITensor's Dims of input and output should be C * H * W.
   validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 4, 4));
   validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 2, 2));
 
@@ -52,7 +50,7 @@ TEST(Pool2dOpConverter, main) {
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
-  validator.Execute(runtime_batch);
+  validator.Execute(3);
 }
 
 }  // namespace tensorrt

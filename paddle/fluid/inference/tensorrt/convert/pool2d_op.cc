@@ -30,6 +30,7 @@ class Pool2dOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
+
     std::string pool_type =
         boost::get<std::string>(op_desc.GetAttr("pooling_type"));
     std::vector<int> ksize =
@@ -45,18 +46,18 @@ class Pool2dOpConverter : public OpConverter {
 
     PADDLE_ENFORCE_EQ(input1->getDimensions().nbDims, 3UL);
 
-    nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kMAX;
+    nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     if (pool_type == "max") {
-      pool_t = nvinfer1::PoolingType::kMAX;
+      nv_pool_type = nvinfer1::PoolingType::kMAX;
     } else if (pool_type == "avg") {
-      pool_t = nvinfer1::PoolingType::kAVERAGE;
+      nv_pool_type = nvinfer1::PoolingType::kAVERAGE;
     } else {
       PADDLE_THROW("TensorRT unsupported pooling type!");
     }
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling,
                                        *const_cast<nvinfer1::ITensor*>(input1),
-                                       pool_t, nv_ksize);
+                                       nv_pool_type, nv_ksize);
     PADDLE_ENFORCE_NOT_NULL(layer, "pool layer could not be created.");
     layer->setStride(nv_strides);
     layer->setPadding(nv_paddings);
