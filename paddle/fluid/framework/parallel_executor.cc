@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -133,7 +134,17 @@ ParallelExecutor::ParallelExecutor(
   }
   builder_ = builder_factory.Create();
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+  if (!build_strategy.debug_graphviz_path_.empty()) {
+    const std::string origin_graph_path = string::Sprintf(
+        "%s%s", build_strategy.debug_graphviz_path_.c_str(), "_original_graph");
+    graph = ir::GraphVizPass(origin_graph_path).Apply(std::move(graph));
+  }
   graph = builder_->Apply(std::move(graph));
+  if (!build_strategy.debug_graphviz_path_.empty()) {
+    const std::string origin_graph_path = string::Sprintf(
+        "%s%s", build_strategy.debug_graphviz_path_.c_str(), "_before_exec");
+    graph = ir::GraphVizPass(origin_graph_path).Apply(std::move(graph));
+  }
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
