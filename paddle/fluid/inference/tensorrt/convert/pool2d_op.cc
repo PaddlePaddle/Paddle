@@ -43,6 +43,8 @@ class Pool2dOpConverter : public OpConverter {
     const nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
     const nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
 
+    PADDLE_ENFORCE_EQ(input1->getDimensions().nbDims, 3UL);
+
     nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kMAX;
     if (pool_type == "max") {
       pool_t = nvinfer1::PoolingType::kMAX;
