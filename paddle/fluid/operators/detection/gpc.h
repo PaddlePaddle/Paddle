@@ -37,6 +37,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+// namespace paddle {
 namespace gpc {
 
 typedef enum {  // Set operation type
@@ -188,9 +189,9 @@ inline void gpc_n_edge(edge_node *d, edge_node *e, int p) {
 }
 
 template <typename T>
-void gpc_malloc(T *&p, int b, char *s) {
+void gpc_malloc(T *p, int b, char *s) {
   if (b > 0) {
-    p = (T *)malloc(b);
+    p = reinterpret_cast<T *>(malloc(b));
 
     if (!p) {
       fprintf(stderr, "gpc malloc failure: %s\n", s);
@@ -201,7 +202,7 @@ void gpc_malloc(T *&p, int b, char *s) {
   }
 }
 template <typename T>
-void gpc_free(T *&p) {
+void gpc_free(T *p) {
   if (p) {
     free(p);
     p = NULL;
@@ -240,6 +241,7 @@ void gpc_free_polygon(gpc_polygon *polygon);
 void gpc_free_tristrip(gpc_tristrip *tristrip);
 
 }  // namespace gpc
+//}  // namespace paddle
 
 #endif  // PADDLE_FLUID_OPERATORS_DETECTION_GPC_H_
 /* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */

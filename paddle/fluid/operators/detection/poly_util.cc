@@ -22,8 +22,8 @@ using gpc::gpc_polygon_clip;
 using gpc::gpc_free_polygon;
 
 template <class T>
-void Array2PointVec(const T*& box, const size_t box_size,
-                    std::vector<Point_<T>>& vec) {
+void Array2PointVec(const T* box, const size_t box_size,
+                    std::vector<Point_<T>> vec) {
   Point_<T> point;
   size_t pts_num = box_size / 2;
   for (size_t i = 0; i < pts_num; i++) {
@@ -34,10 +34,10 @@ void Array2PointVec(const T*& box, const size_t box_size,
 }
 
 template <class T>
-void Array2Poly(const T*& box, const size_t box_size, gpc::gpc_polygon& poly) {
+void Array2Poly(const T* box, const size_t box_size, gpc::gpc_polygon poly) {
   size_t pts_num = box_size / 2;
   poly.num_contours = 1;
-  poly.hole = (int*)malloc(sizeof(int));
+  poly.hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   poly.hole[0] = 0;
   poly.contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
   poly.contour->num_vertices = pts_num;
@@ -50,10 +50,10 @@ void Array2Poly(const T*& box, const size_t box_size, gpc::gpc_polygon& poly) {
 }
 
 template <class T>
-void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon& poly) {
+void PointVec2Poly(const std::vector<Point_<T>> vec, gpc::gpc_polygon poly) {
   int pts_num = vec.size();
   poly.num_contours = 1;
-  poly.hole = (int*)malloc(sizeof(int));
+  poly.hole = reinterpret_cast<int*>(malloc(sizeof(int)));
   poly.hole[0] = 0;
   poly.contour = (gpc::gpc_vertex_list*)malloc(sizeof(gpc::gpc_vertex_list));
   poly.contour->num_vertices = pts_num;
@@ -66,8 +66,8 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec, gpc::gpc_polygon& poly) {
 }
 
 template <class T>
-void Poly2PointVec(const gpc::gpc_vertex_list& contour,
-                   std::vector<Point_<T>>& vec) {
+void Poly2PointVec(const gpc::gpc_vertex_list contour,
+                   std::vector<Point_<T>> vec) {
   int pts_num = contour.num_vertices;
   Point_<T> point;
   for (size_t i = 0; i < pts_num; i++) {
@@ -78,7 +78,7 @@ void Poly2PointVec(const gpc::gpc_vertex_list& contour,
 }
 
 template <class T>
-T GetContourArea(std::vector<Point_<T>>& vec, bool oriented = false) {
+T GetContourArea(std::vector<Point_<T>> vec, bool oriented) {
   int pts_num = vec.size();
   if (pts_num < 3) return T(0.);
   T area = T(0.);
@@ -95,7 +95,7 @@ T PolyArea(const T* box, const size_t box_size, const bool normalized) {
   // if area size <= 0,  return 0.
   std::vector<Point_<T>> vec;
   Array2PointVec<T>(box, box_size, vec);
-  return std::fabs(GetContourArea<T>(vec));
+  return std::fabs(GetContourArea<T>(vec, false));
 }
 
 template <class T>
@@ -116,7 +116,7 @@ T PolyOverlapArea(const T* box1, const T* box2, const size_t box_size,
     Poly2PointVec<T>(respoly.contour[i], resvec);
     // inter_area += std::fabs(cv::contourArea(resvec)) + 0.5f *
     // (cv::arcLength(resvec, true));
-    inter_area += std::fabs(GetContourArea<T>(resvec));
+    inter_area += std::fabs(GetContourArea<T>(resvec, false));
   }
 
   gpc::gpc_free_polygon(&poly1);
