@@ -79,25 +79,22 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
         // plw;
 
         // fill height padding : 0 ~ plh-1, (oh-prh) ~ (oh-1)
-        // TODO(TJ): reuse sizes
+        // TODO(TJ): refine ph*xxx
         assert(plh == prh);  // because stride_h == 1
+        int col_block_fh = filter_width * col_matrix_width;  // fw*oh*ow
+        int col_block_ic = filter_height * col_block_fh;     // fh*fw*oh*ow
         for (int ph = 0; ph < plh; ++ph) {
-          size_t sz = sizeof(T) * output_width * (plh - ph);
-          T* col_start_l = col_data + ph * filter_width * col_matrix_width;
-          T* col_start_r =
-              col_data +
-              (filter_width - ph - 1) * filter_width * col_matrix_width +
-              col_matrix_width - output_width * (plh - ph);
+          int sz = output_width * (plh - ph);
+          size_t copy_sz = sizeof(T) * sz;
+          T* col_start_l = col_data + ph * col_block_fh;
+          T* col_start_r = col_data + (filter_height - ph - 1) * col_block_fh +
+                           col_matrix_width - sz;
           for (int ic = 0; ic < im_channels; ++ic) {
-            T* dst_data_l =
-                col_start_l +
-                ic * filter_width * filter_height * col_matrix_width;
-            T* dst_data_r =
-                col_start_r +
-                ic * filter_width * filter_height * col_matrix_width;
+            T* dst_data_l = col_start_l + ic * col_block_ic;
+            T* dst_data_r = col_start_r + ic * col_block_ic;
             for (int kw = 0; kw < filter_width; ++kw) {
-              std::memset(dst_data_l, 0, sz);
-              std::memset(dst_data_r, 0, sz);
+              std::memset(dst_data_l, 0, copy_sz);
+              std::memset(dst_data_r, 0, copy_sz);
               dst_data_l = dst_data_l + col_matrix_width;
               dst_data_r = dst_data_r + col_matrix_width;
             }
