@@ -30,7 +30,7 @@ random.seed(0)
 DATA_DIM = 224
 
 THREAD = 8
-BUF_SIZE = 20000
+BUF_SIZE = 15000
 
 # DATA_DIR = 'data/ILSVRC2012'
 # TRAIN_LIST = 'data/ILSVRC2012/train_list.txt'
@@ -231,9 +231,9 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         t = Thread(target=target, args=(reader, in_queue))
         t.daemon = True
         t.start()
-        st_thread = Thread(target=status, args=(in_queue, out_queue))
-        st_thread.daemon = True
-        st_thread.start()
+        #st_thread = Thread(target=status, args=(in_queue, out_queue))
+        #st_thread.daemon = True
+        #st_thread.start()
         # start several handle_workers
         target = order_handle_worker if order else handle_worker
         args = (in_queue, out_queue, mapper, out_order) if order else (
@@ -269,15 +269,20 @@ def _reader_creator(file_list,
     def reader():
         with open(file_list) as flist:
             full_lines = [line.strip() for line in flist]
-            trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
-            trainer_count = int(os.getenv("PADDLE_TRAINERS"))
-            per_node_lines = len(full_lines) / trainer_count
-            lines = full_lines[trainer_id * per_node_lines:(trainer_id + 1) *
-                               per_node_lines]
-            print("read images from %d, length: %d, lines length: %d" %
-                  (trainer_id * per_node_lines, per_node_lines, len(lines)))
             if shuffle:
-                random.shuffle(lines)
+                random.shuffle(full_lines)
+            if mode == 'train':
+                trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+                trainer_count = int(os.getenv("PADDLE_TRAINERS"))
+                per_node_lines = len(full_lines) / trainer_count
+                lines = full_lines[trainer_id * per_node_lines:(trainer_id + 1)
+                                   * per_node_lines]
+                print(
+                    "read images from %d, length: %d, lines length: %d, total: %d"
+                    % (trainer_id * per_node_lines, per_node_lines, len(lines),
+                       len(full_lines)))
+            else:
+                lines = full_lines
             for line in lines:
                 if mode == 'train':
                     img_path, label = line.split()

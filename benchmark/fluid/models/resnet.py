@@ -230,8 +230,8 @@ def get_model(args, is_train, main_prog, startup_prog):
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)
             # NOTE: in distributed NCCL2 training, avg_cost = avg_cost / trainers
-            if args.update_method == "nccl2":
-                avg_cost = avg_cost / trainer_count
+            # if args.update_method == "nccl2":
+            #     avg_cost = avg_cost / trainer_count
 
             batch_acc1 = fluid.layers.accuracy(input=predict, label=label, k=1)
             batch_acc5 = fluid.layers.accuracy(input=predict, label=label, k=5)
@@ -244,15 +244,10 @@ def get_model(args, is_train, main_prog, startup_prog):
                 else:
                     lars_decay = 0.0
 
-                optimizer = fluid.optimizer.Momentum(
-                    learning_rate=0.1 * 32,
-                    momentum=0.9,
-                    LARS_weight_decay=lars_decay)
-
-                total_images = 1281167
+                total_images = 1281167 / trainer_count
 
                 step = int(total_images / args.batch_size + 1)
-                epochs = [30, 60, 90]
+                epochs = [40, 80, 100]
                 bd = [step * e for e in epochs]
                 base_lr = args.learning_rate
                 lr = []
@@ -261,7 +256,8 @@ def get_model(args, is_train, main_prog, startup_prog):
                     learning_rate=fluid.layers.piecewise_decay(
                         boundaries=bd, values=lr),
                     momentum=0.9,
-                    regularization=fluid.regularizer.L2Decay(1e-4))
+                    regularization=fluid.regularizer.L2Decay(1e-4),
+                    LARS_weight_decay=lars_decay)
                 optimizer.minimize(avg_cost)
 
                 if args.memory_optimize:

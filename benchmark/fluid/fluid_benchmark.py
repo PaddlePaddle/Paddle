@@ -203,16 +203,17 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
+            fetch_list = [avg_loss.name, train_args[2].name, train_args[3].name]
             if args.use_fake_data or args.use_reader_op:
                 try:
-                    loss, = exe.run([avg_loss.name])
+                    loss, acc1, acc5 = exe.run(fetch_list)
                 except fluid.core.EOFException as eof:
                     break
                 except fluid.core.EnforceNotMet as ex:
                     traceback.print_exc()
                     break
             else:
-                loss, = exe.run([avg_loss.name], feed=feeder.feed(data))
+                loss, acc1, acc5 = exe.run(fetch_list, feed=feeder.feed(data))
             if args.use_reader_op:
                 num_samples += args.batch_size * args.gpus
             else:
@@ -220,8 +221,9 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             iters += 1
             if batch_id % 1 == 0:
-                print("Pass %d, batch %d, loss %s" %
-                      (pass_id, batch_id, np.array(loss)))
+                print("Pass %d, batch %d, loss %s, acc1: %s, acc5: %s" %
+                      (pass_id, batch_id, np.mean(np.array(loss)),
+                       np.mean(np.array(acc1)), np.mean(np.array(acc5))))
             batch_id += 1
 
         print_train_time(start_time, time.time(), num_samples)
@@ -243,7 +245,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             if args.use_reader_op:
                 test_args[5].reset()
             print("Pass: %d, Test Accuracy: %s, %s\n" %
-                  (pass_id, test_acc1, test_acc5))
+                  (pass_id, np.mean(np.array(test_acc1)),
+                   np.mean(np.array(test_acc5))))
 
     print("total train time: ", time.time() - over_all_start)
 
