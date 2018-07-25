@@ -34,30 +34,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
+void MultiDevSSAGraphBuilder::Init() const {
+  loss_var_name_ = Get<std::string>("loss_var_name");
+  places_ = Get<std::vector<platform::Place>>("places");
+  local_scopes_ = Get<std::vector<Scope *>>("local_scopes");
+  strategy_ = Get<BuildStrategy>("strategy");
 #ifdef PADDLE_WITH_CUDA
-MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
-    const std::vector<platform::Place> &places,
-    const std::string &loss_var_name,
-    const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes,
-    platform::NCCLContextMap *nccl_ctxs, const BuildStrategy &strategy)
-    : loss_var_name_(loss_var_name),
-      places_(places),
-      local_scopes_(local_scopes),
-      nccl_ctxs_(nccl_ctxs),
-      strategy_(strategy) {
-#else
-MultiDevSSAGraphBuilder::MultiDevSSAGraphBuilder(
-    const std::vector<platform::Place> &places,
-    const std::string &loss_var_name,
-    const std::unordered_set<std::string> &params,
-    const std::vector<Scope *> &local_scopes, const BuildStrategy &strategy)
-    : loss_var_name_(loss_var_name),
-      places_(places),
-      local_scopes_(local_scopes),
-      strategy_(strategy) {
+  nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
-  for (auto &p : params) {
+
+  for (auto &p : Get<std::unordered_set<std::string>>("params")) {
     grad_names_.insert(GradVarName(p));
   }
   balance_vars_.resize(places_.size(), 0);
@@ -241,6 +227,7 @@ std::vector<ir::Node *> SortOpsAndDelayOptimizeOp(const ir::Graph &graph) {
 
 std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
     std::unique_ptr<ir::Graph> graph) const {
+  Init();
   // Give the topology sort order and rebuild the graph structure.
   std::vector<ir::Node *> sorted_ops = SortOpsAndDelayOptimizeOp(*graph);
   auto nodes = graph->ReleaseNodes();

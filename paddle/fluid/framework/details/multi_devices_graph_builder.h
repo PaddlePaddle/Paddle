@@ -32,20 +32,6 @@ namespace details {
 
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
-#ifdef PADDLE_WITH_CUDA
-  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
-                          const std::string &loss_var_name,
-                          const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes,
-                          platform::NCCLContextMap *nccl_ctxs,
-                          const BuildStrategy &strategy);
-#else
-  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
-                          const std::string &loss_var_name,
-                          const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes,
-                          const BuildStrategy &strategy);
-#endif
   std::unique_ptr<ir::Graph> Apply(
       std::unique_ptr<ir::Graph> graph) const override;
   int GetVarDeviceID(const std::string &varname) const override;
@@ -53,15 +39,16 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  private:
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
                          size_t device_id) const;
+  void Init() const;
 
  private:
-  std::string loss_var_name_;
-  const std::vector<platform::Place> &places_;
-  const std::vector<Scope *> &local_scopes_;
-  std::unordered_set<std::string> grad_names_;
+  mutable std::string loss_var_name_;
+  mutable std::vector<platform::Place> places_;
+  mutable std::vector<Scope *> local_scopes_;
+  mutable std::unordered_set<std::string> grad_names_;
 
 #ifdef PADDLE_WITH_CUDA
-  platform::NCCLContextMap *nccl_ctxs_;
+  mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
 
   bool IsScaleLossOp(ir::Node *node) const;
@@ -113,7 +100,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::vector<std::string> &var_names) const;
 
  private:
-  BuildStrategy strategy_;
+  mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
   mutable std::unordered_map<std::string, int> var_name_on_devices_;
   mutable std::vector<int64_t> balance_vars_;

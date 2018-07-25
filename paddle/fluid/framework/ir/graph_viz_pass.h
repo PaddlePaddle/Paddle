@@ -29,14 +29,8 @@ namespace ir {
 
 class GraphVizPass : public Pass {
  public:
-  explicit GraphVizPass(const std::string& graph_viz_path)
-      : graph_viz_path_(graph_viz_path) {}
-
   std::unique_ptr<ir::Graph> Apply(
       std::unique_ptr<ir::Graph> graph) const override;
-
- private:
-  const std::string graph_viz_path_;
 };
 
 }  // namespace ir

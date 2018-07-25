@@ -15,5 +15,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+namespace ir {
+PassRegistry& PassRegistry::Instance() {
+  static PassRegistry g_pass_info_map;
+  return g_pass_info_map;
+}
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle
