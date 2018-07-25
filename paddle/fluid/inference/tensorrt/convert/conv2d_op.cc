@@ -37,6 +37,7 @@ class Conv2dOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
     auto* weight_data = Y_t->mutable_data<float>(platform::CPUPlace());
 
+    PADDLE_ENFORCE(Y_t->dims().size(), 4UL);
     const int n_output = Y_t->dims()[0];
     const int filter_h = Y_t->dims()[2];
     const int filter_w = Y_t->dims()[3];
