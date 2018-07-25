@@ -30,9 +30,6 @@ class Memory(object):
         assert val.dtype == self.ex.dtype
         self.cur = val
 
-    def ex(self):
-        return self.ex
-
     def next(self):
         self.ex = self.cur
         self.cur = None
@@ -139,16 +136,16 @@ class BaseRNN(object):
         feed_dict = dict()
 
         for iname in self.inputs:
-            lod = [0]
+            lod = []
             np_flatten = []
             for seq_id in xrange(len(self.inputs[iname])):
                 seq_len = len(self.inputs[iname][seq_id])
-                lod.append(lod[-1] + seq_len)
+                lod.append(seq_len)
                 np_flatten.extend(self.inputs[iname][seq_id])
 
             t = fluid.Tensor()
             t.set(numpy.array(np_flatten), place)
-            t.set_lod([lod])
+            t.set_recursive_sequence_lengths([lod])
             feed_dict[iname] = t
 
         for pname in self.params:

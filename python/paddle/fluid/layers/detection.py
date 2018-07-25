@@ -16,19 +16,22 @@ All layers just related to the detection neural network.
 """
 
 from layer_function_generator import generate_layer_fn
-from layer_function_generator import autodoc
+from layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 import tensor
 import nn
 import math
 
 __all__ = [
+    'prior_box',
     'multi_box_head',
     'bipartite_match',
     'target_assign',
     'detection_output',
     'ssd_loss',
     'detection_map',
+    'rpn_target_assign',
+    'anchor_generator',
 ]
 
 __auto__ = [
@@ -40,6 +43,135 @@ __all__ += __auto__
 
 for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+
+def rpn_target_assign(loc,
+                      scores,
+                      anchor_box,
+                      gt_box,
+                      rpn_batch_size_per_im=256,
+                      fg_fraction=0.25,
+                      rpn_positive_overlap=0.7,
+                      rpn_negative_overlap=0.3):
+    """
+    ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
+
+    This layer can be, for given the  Intersection-over-Union (IoU) overlap
+    between anchors and ground truth boxes, to assign classification and
+    regression targets to each each anchor, these target labels are used for
+    train RPN. The classification targets is a binary class label (of being
+    an object or not). Following the paper of Faster-RCNN, the positive labels
+    are two kinds of anchors: (i) the anchor/anchors with the highest IoU
+    overlap with a ground-truth box, or (ii) an anchor that has an IoU overlap
+    higher than rpn_positive_overlap(0.7) with any ground-truth box. Note
+    that a single ground-truth box may assign positive labels to multiple
+    anchors. A non-positive anchor is when its IoU ratio is lower than
+    rpn_negative_overlap (0.3) for all ground-truth boxes. Anchors that are
+    neither positive nor negative do not contribute to the training objective.
+    The regression targets are the encoded ground-truth boxes associated with
+    the positive anchors.
+
+    Args:
+        loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax].
+        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
+            predicted confidence predictions. N is the batch size, C is the
+            class number, M is number of bounding boxes. For each category
+            there are total M scores which corresponding M bounding boxes.
+        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+            each box is represented as [xmin, ymin, xmax, ymax],
+            [xmin, ymin] is the left top coordinate of the anchor box,
+            if the input is image feature map, they are close to the origin
+            of the coordinate system. [xmax, ymax] is the right bottom
+            coordinate of the anchor box.
+        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            bboxes of mini-batch input.
+        rpn_batch_size_per_im(int): Total number of RPN examples per image.
+        fg_fraction(float): Target fraction of RoI minibatch that is labeled
+            foreground (i.e. class > 0), 0-th class is background.
+        rpn_positive_overlap(float): Minimum overlap required between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a positive
+            example.
+        rpn_negative_overlap(float): Maximum overlap allowed between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a negative
+            examples.
+
+    Returns:
+        tuple: 
+               A tuple(predicted_scores, predicted_location, target_label,
+               target_bbox) is returned. The predicted_scores and
+               predicted_location is the predicted result of the RPN.
+               The target_label and target_bbox is the ground truth,
+               respectively. The predicted_location is a 2D Tensor with shape
+               [F, 4], and the shape of target_bbox is same as the shape of
+               the predicted_location, F is the number of the foreground
+               anchors. The predicted_scores is a 2D Tensor with shape
+               [F + B, 1], and the shape of target_label is same as the shape
+               of the predicted_scores, B is the number of the background
+               anchors, the F and B is depends on the input of this operator. 
+
+    Examples:
+        .. code-block:: python
+
+        loc = layers.data(name='location', shape=[2, 80],
+                          append_batch_size=False, dtype='float32')
+        scores = layers.data(name='scores', shape=[2, 40],
+                          append_batch_size=False, dtype='float32')
+        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                          append_batch_size=False, dtype='float32')
+        gt_box = layers.data(name='gt_box', shape=[10, 4],
+                         append_batch_size=False, dtype='float32')
+        loc_pred, score_pred, loc_target, score_target =
+            fluid.layers.detection_output(loc=location,
+                                          scores=scores,
+                                          anchor_box=anchor_box,
+                                          gt_box=gt_box)
+    """
+
+    helper = LayerHelper('rpn_target_assign', **locals())
+    # 1. Compute the regression target bboxes
+    target_bbox = box_coder(
+        prior_box=anchor_box,
+        target_box=gt_box,
+        code_type='encode_center_size',
+        box_normalized=False)
+
+    # 2. Compute overlaps between the prior boxes and the gt boxes overlaps
+    iou = iou_similarity(x=gt_box, y=anchor_box)
+
+    # 3. Assign target label to anchors
+    loc_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    score_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    target_label = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    helper.append_op(
+        type="rpn_target_assign",
+        inputs={'Overlap': iou, },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+        },
+        attrs={
+            'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_positive_overlap': rpn_positive_overlap,
+            'rpn_negative_overlap': rpn_negative_overlap,
+            'fg_fraction': fg_fraction,
+        })
+
+    # 4. Reshape and gather the target entry
+    scores = nn.reshape(x=scores, shape=(-1, 1))
+    loc = nn.reshape(x=loc, shape=(-1, 4))
+    target_label = nn.reshape(x=target_label, shape=(-1, 1))
+    target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
+
+    predicted_scores = nn.gather(scores, score_index)
+    predicted_location = nn.gather(loc, loc_index)
+    target_label = nn.gather(target_label, score_index)
+    target_bbox = nn.gather(target_bbox, loc_index)
+    return predicted_scores, predicted_loc, target_label, target_bbox
 
 
 def detection_output(loc,
@@ -96,7 +228,9 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable: The detection outputs is a LoDTensor with shape [No, 6].
+        Variable: 
+        
+            The detection outputs is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
             instance, the offsets in first dimension are called LoD, the offset
@@ -109,15 +243,15 @@ def detection_output(loc,
     Examples:
         .. code-block:: python
 
-        pb = layers.data(name='prior_box', shape=[10, 4],
+            pb = layers.data(name='prior_box', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
-        pbv = layers.data(name='prior_box_var', shape=[10, 4],
+            pbv = layers.data(name='prior_box_var', shape=[10, 4],
                           append_batch_size=False, dtype='float32')
-        loc = layers.data(name='target_box', shape=[2, 21, 4],
+            loc = layers.data(name='target_box', shape=[2, 21, 4],
                           append_batch_size=False, dtype='float32')
-        scores = layers.data(name='scores', shape=[2, 21, 10],
+            scores = layers.data(name='scores', shape=[2, 21, 10],
                           append_batch_size=False, dtype='float32')
-        nmsed_outs = fluid.layers.detection_output(scores=scores,
+            nmsed_outs = fluid.layers.detection_output(scores=scores,
                                        loc=loc,
                                        prior_box=pb,
                                        prior_box_var=pbv)
@@ -152,7 +286,7 @@ def detection_output(loc,
     return nmsed_outs
 
 
-@autodoc()
+@templatedoc()
 def detection_map(detect_res,
                   label,
                   class_num,
@@ -163,6 +297,47 @@ def detection_map(detect_res,
                   input_states=None,
                   out_states=None,
                   ap_version='integral'):
+    """
+    ${comment}
+
+    Args:
+        detect_res: ${detect_res_comment}
+        label:  ${label_comment}
+        class_num: ${class_num_comment}
+        background_label: ${background_label_comment}
+        overlap_threshold: ${overlap_threshold_comment}
+        evaluate_difficult: ${evaluate_difficult_comment}
+        has_state: ${has_state_comment}
+        input_states: If not None, It contains 3 elements:
+            1. pos_count ${pos_count_comment}.
+            2. true_pos ${true_pos_comment}.
+            3. false_pos ${false_pos_comment}.
+        out_states: If not None, it contains 3 elements.
+            1. accum_pos_count ${accum_pos_count_comment}.
+            2. accum_true_pos ${accum_true_pos_comment}.
+            3. accum_false_pos ${accum_false_pos_comment}.
+        ap_version: ${ap_type_comment}
+
+    Returns:
+        ${map_comment}
+
+
+    Examples:
+          .. code-block:: python
+
+            detect_res = fluid.layers.data(
+                name='detect_res',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+            label = fluid.layers.data(
+                name='label',
+                shape=[10, 6],
+                append_batch_size=False,
+                dtype='float32')
+
+            map_out = fluid.layers.detection_map(detect_res, label, 21)
+    """
     helper = LayerHelper("detection_map", **locals())
 
     def __create_var(type):
@@ -209,53 +384,68 @@ def bipartite_match(dist_matrix,
                     dist_threshold=None,
                     name=None):
     """
-    **Bipartite matchint operator**
-
-    This operator is a greedy bipartite matching algorithm, which is used to
-    obtain the matching with the maximum distance based on the input
+    This operator implements a greedy bipartite matching algorithm, which is
+    used to obtain the matching with the maximum distance based on the input
     distance matrix. For input 2D matrix, the bipartite matching algorithm can
-    find the matched column for each row, also can find the matched row for
-    each column. And this operator only calculate matched indices from column
-    to row. For each instance, the number of matched indices is the number of
-    of columns of the input ditance matrix.
+    find the matched column for each row (matched means the largest distance),
+    also can find the matched row for each column. And this operator only
+    calculate matched indices from column to row. For each instance,
+    the number of matched indices is the column number of the input distance
+    matrix.
 
-    There are two outputs to save matched indices and distance.
-    A simple description, this algothrim matched the best (maximum distance)
+    There are two outputs, matched indices and distance.
+    A simple description, this algorithm matched the best (maximum distance)
     row entity to the column entity and the matched indices are not duplicated
     in each row of ColToRowMatchIndices. If the column entity is not matched
     any row entity, set -1 in ColToRowMatchIndices.
 
-    Please note that the input DistMat can be LoDTensor (with LoD) or Tensor.
+    NOTE: the input DistMat can be LoDTensor (with LoD) or Tensor.
     If LoDTensor with LoD, the height of ColToRowMatchIndices is batch size.
     If Tensor, the height of ColToRowMatchIndices is 1.
+
+    NOTE: This API is a very low level API. It is used by :code:`ssd_loss`
+    layer. Please consider to use :code:`ssd_loss` instead.
 
     Args:
         dist_matrix(Variable): This input is a 2-D LoDTensor with shape
             [K, M]. It is pair-wise distance matrix between the entities
             represented by each row and each column. For example, assumed one
             entity is A with shape [K], another entity is B with shape [M]. The
-            dist_matirx[i][j] is the distance between A[i] and B[j]. The bigger
-            the distance is, the better macthing the pairs are. Please note,
-            This tensor can contain LoD information to represent a batch of
-            inputs. One instance of this batch can contain different numbers of
-            entities.
+            dist_matrix[i][j] is the distance between A[i] and B[j]. The bigger
+            the distance is, the better matching the pairs are.
+
+            NOTE: This tensor can contain LoD information to represent a batch
+            of inputs. One instance of this batch can contain different numbers
+            of entities.
         match_type(string|None): The type of matching method, should be
-           'bipartite' or 'per_prediction', 'bipartite' by defalut.
+           'bipartite' or 'per_prediction'. [default 'bipartite'].
         dist_threshold(float|None): If `match_type` is 'per_prediction',
             this threshold is to determine the extra matching bboxes based
-            on the maximum distance, 0.5 by defalut.
+            on the maximum distance, 0.5 by default.
     Returns:
-        match_indices(Variable): A 2-D Tensor with shape [N, M] in int type.
-            N is the batch size. If match_indices[i][j] is -1, it
-            means B[j] does not match any entity in i-th instance.
-            Otherwise, it means B[j] is matched to row
-            match_indices[i][j] in i-th instance. The row number of
-            i-th instance is saved in match_indices[i][j].
-        match_distance(Variable): A 2-D Tensor with shape [N, M] in float type.
-            N is batch size. If match_indices[i][j] is -1,
-            match_distance[i][j] is also -1.0. Otherwise, assumed
-            match_distance[i][j] = d, and the row offsets of each instance
-            are called LoD. Then match_distance[i][j] = dist_matrix[d+LoD[i]][j].
+        tuple: a tuple with two elements is returned. The first is
+        matched_indices, the second is matched_distance.
+
+        The matched_indices is a 2-D Tensor with shape [N, M] in int type.
+        N is the batch size. If match_indices[i][j] is -1, it
+        means B[j] does not match any entity in i-th instance.
+        Otherwise, it means B[j] is matched to row
+        match_indices[i][j] in i-th instance. The row number of
+        i-th instance is saved in match_indices[i][j].
+
+        The matched_distance is a 2-D Tensor with shape [N, M] in float type
+        . N is batch size. If match_indices[i][j] is -1,
+        match_distance[i][j] is also -1.0. Otherwise, assumed
+        match_distance[i][j] = d, and the row offsets of each instance
+        are called LoD. Then match_distance[i][j] =
+        dist_matrix[d+LoD[i]][j].
+
+    Examples:
+
+        >>> x = fluid.layers.data(name='x', shape=[4], dtype='float32')
+        >>> y = fluid.layers.data(name='y', shape=[4], dtype='float32')
+        >>> iou = fluid.layers.iou_similarity(x=x, y=y)
+        >>> matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
     """
     helper = LayerHelper('bipartite_match', **locals())
     match_indices = helper.create_tmp_variable(dtype='int32')
@@ -280,8 +470,6 @@ def target_assign(input,
                   mismatch_value=None,
                   name=None):
     """
-    **Target assigner operator**
-
     This operator can be, for given the target bounding boxes or labels,
     to assign classification and regression targets to each prediction as well as
     weights to prediction. The weights is used to specify which prediction would
@@ -295,20 +483,24 @@ def target_assign(input,
 
     1. Assigning all outpts based on `match_indices`:
 
-    If id = match_indices[i][j] > 0,
+    .. code-block:: text
 
-        out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
-        out_weight[i][j] = 1.
+        If id = match_indices[i][j] > 0,
 
-    Otherwise,
+            out[i][j][0 : K] = X[lod[i] + id][j % P][0 : K]
+            out_weight[i][j] = 1.
 
-        out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
-        out_weight[i][j] = 0.
+        Otherwise,
+
+            out[j][j][0 : K] = {mismatch_value, mismatch_value, ...}
+            out_weight[i][j] = 0.
 
     2. Assigning out_weight based on `neg_indices` if `neg_indices` is provided:
 
     Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
     for i-th instance and each `id` of neg_indices in this instance:
+    
+    .. code-block:: text
 
         out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
         out_weight[i][id] = 1.0
@@ -325,10 +517,22 @@ def target_assign(input,
        mismatch_value (float32): Fill this value to the mismatched location.
 
     Returns:
-       out (Variable): The output is a 3D Tensor with shape [N, P, K],
-           N and P is the same as they are in `neg_indices`, K is the
-           same as it in input of X. If `match_indices[i][j]`.
-       out_weight (Variable): The weight for output with the shape of [N, P, 1].
+        tuple: 
+               A tuple(out, out_weight) is returned. out is a 3D Tensor with 
+               shape [N, P, K], N and P is the same as they are in 
+               `neg_indices`, K is the same as it in input of X. If 
+               `match_indices[i][j]`. out_weight is the weight for output with 
+               the shape of [N, P, 1].
+
+    Examples:
+
+        .. code-block:: python
+
+            matched_indices, matched_dist = fluid.layers.bipartite_match(iou)
+            gt = layers.data(
+                        name='gt', shape=[1, 1], dtype='int32', lod_level=1)
+            trg, trg_weight = layers.target_assign(
+                            gt, matched_indices, mismatch_value=0)
     """
     helper = LayerHelper('target_assign', **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
@@ -363,7 +567,7 @@ def ssd_loss(location,
              normalize=True,
              sample_size=None):
     """
-    **Multi-box loss layer for object dection algorithm of SSD**
+    **Multi-box loss layer for object detection algorithm of SSD**
 
     This layer is to compute dection loss for SSD given the location offset
     predictions, confidence predictions, prior boxes and ground-truth boudding
@@ -371,21 +575,35 @@ def ssd_loss(location,
     is a weighted sum of the localization loss (or regression loss) and
     confidence loss (or classification loss) by performing the following steps:
 
-    1. Find matched boundding box by bipartite matching algorithm.
+    1. Find matched bounding box by bipartite matching algorithm.
+
       1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
+
       1.2 Compute matched boundding box by bipartite matching algorithm.
+
     2. Compute confidence for mining hard examples
+
       2.1. Get the target label based on matched indices.
+
       2.2. Compute confidence loss.
+
     3. Apply hard example mining to get the negative example indices and update
        the matched indices.
+
     4. Assign classification and regression targets
+
       4.1. Encoded bbox according to the prior boxes.
+
       4.2. Assign regression targets.
+
       4.3. Assign classification targets.
+
     5. Compute the overall objective loss.
+
       5.1 Compute confidence loss.
+
       5.1 Compute localization loss.
+
       5.3 Compute the overall weighted loss.
 
     Args:
@@ -420,39 +638,36 @@ def ssd_loss(location,
         mining_type (str): The hard example mining type, should be 'hard_example'
             or 'max_negative', now only support `max_negative`.
         normalize (bool): Whether to normalize the SSD loss by the total number
-            of output locations, True by defalut.
+            of output locations, True by default.
         sample_size (int): The max sample size of negative box, used only when
             mining_type is 'hard_example'.
 
     Returns:
-        Variable: The weighted sum of the localization loss and confidence loss,
-            with shape [N * Np, 1], N and Np are the same as they are
-            in `location`.
+        The weighted sum of the localization loss and confidence loss, with \
+        shape [N * Np, 1], N and Np are the same as they are in `location`.
 
     Raises:
-        ValueError: If mining_type is 'hard_example', now only support
-            mining type of `max_negative`.
+        ValueError: If mining_type is 'hard_example', now only support mining \
+        type of `max_negative`.
 
     Examples:
-        .. code-block:: python
-
-            pb = layers.data(
-                name='prior_box',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            pbv = layers.data(
-                name='prior_box_var',
-                shape=[10, 4],
-                append_batch_size=False,
-                dtype='float32')
-            loc = layers.data(name='target_box', shape=[10, 4], dtype='float32')
-            scores = layers.data(name='scores', shape=[10, 21], dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32')
-            gt_label = layers.data(
-                name='gt_label', shape=[1], lod_level=1, dtype='float32')
-            loss = layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
+        >>> pb = fluid.layers.data(
+        >>>                   name='prior_box',
+        >>>                   shape=[10, 4],
+        >>>                   append_batch_size=False,
+        >>>                   dtype='float32')
+        >>> pbv = fluid.layers.data(
+        >>>                   name='prior_box_var',
+        >>>                   shape=[10, 4],
+        >>>                   append_batch_size=False,
+        >>>                   dtype='float32')
+        >>> loc = fluid.layers.data(name='target_box', shape=[10, 4], dtype='float32')
+        >>> scores = fluid.layers.data(name='scores', shape=[10, 21], dtype='float32')
+        >>> gt_box = fluid.layers.data(
+        >>>         name='gt_box', shape=[4], lod_level=1, dtype='float32')
+        >>> gt_label = fluid.layers.data(
+        >>>         name='gt_label', shape=[1], lod_level=1, dtype='float32')
+        >>> loss = fluid.layers.ssd_loss(loc, scores, gt_box, gt_label, pb, pbv)
     """
 
     helper = LayerHelper('ssd_loss', **locals())
@@ -564,6 +779,126 @@ def ssd_loss(location,
     return loss
 
 
+def prior_box(input,
+              image,
+              min_sizes,
+              max_sizes=None,
+              aspect_ratios=[1.],
+              variance=[0.1, 0.1, 0.2, 0.2],
+              flip=False,
+              clip=False,
+              steps=[0.0, 0.0],
+              offset=0.5,
+              name=None,
+              min_max_aspect_ratios_order=False):
+    """
+    **Prior Box Operator**
+
+    Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.
+    Each position of the input produce N prior boxes, N is determined by
+    the count of min_sizes, max_sizes and aspect_ratios, The size of the
+    box is in range(min_size, max_size) interval, which is generated in
+    sequence according to the aspect_ratios.
+
+    Args:
+       input(Variable): The Input Variables, the format is NCHW.
+       image(Variable): The input image data of PriorBoxOp,
+            the layout is NCHW.
+       min_sizes(list|tuple|float value): min sizes of generated prior boxes.
+       max_sizes(list|tuple|None): max sizes of generated prior boxes.
+            Default: None.
+       aspect_ratios(list|tuple|float value): the aspect ratios of generated
+            prior boxes. Default: [1.].
+       variance(list|tuple): the variances to be encoded in prior boxes.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       flip(bool): Whether to flip aspect ratios. Default:False.
+       clip(bool): Whether to clip out-of-boundary boxes. Default: False.
+       step(list|turple): Prior boxes step across width and height, If
+            step[0] == 0.0/step[1] == 0.0, the prior boxes step across
+            height/weight of the input will be automatically calculated.
+            Default: [0., 0.]
+       offset(float): Prior boxes center offset. Default: 0.5
+       name(str): Name of the prior box op. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with 
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the final
+            detection results. Default: False.
+
+    Returns:
+        tuple: A tuple with two Variable (boxes, variances)
+
+        boxes: the output prior boxes of PriorBox.
+        The layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input,
+        num_priors is the total
+        box count of each position of input.
+
+        variances: the expanded variances of PriorBox.
+        The layout is [H, W, num_priors, 4].
+        H is the height of input, W is the width of input
+        num_priors is the total
+        box count of each position of input
+
+
+    Examples:
+        .. code-block:: python
+
+            box, var = fluid.layers.prior_box(
+                input=conv1,
+                image=images,
+                min_sizes=[100.],
+                flip=True,
+                clip=True)
+    """
+    helper = LayerHelper("prior_box", **locals())
+    dtype = helper.input_dtype()
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(min_sizes):
+        min_sizes = [min_sizes]
+    if not _is_list_or_tuple_(aspect_ratios):
+        aspect_ratios = [aspect_ratios]
+    if not (_is_list_or_tuple_(steps) and len(steps) == 2):
+        raise ValueError('steps should be a list or tuple ',
+                         'with length 2, (step_width, step_height).')
+
+    min_sizes = list(map(float, min_sizes))
+    aspect_ratios = list(map(float, aspect_ratios))
+    steps = list(map(float, steps))
+
+    attrs = {
+        'min_sizes': min_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'flip': flip,
+        'clip': clip,
+        'step_w': steps[0],
+        'step_h': steps[1],
+        'offset': offset,
+        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
+    }
+    if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
+        if not _is_list_or_tuple_(max_sizes):
+            max_sizes = [max_sizes]
+        attrs['max_sizes'] = max_sizes
+
+    box = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prior_box",
+        inputs={"Input": input,
+                "Image": image},
+        outputs={"Boxes": box,
+                 "Variances": var},
+        attrs=attrs, )
+    box.stop_gradient = True
+    var.stop_gradient = True
+    return box, var
+
+
 def multi_box_head(inputs,
                    image,
                    base_size,
@@ -583,13 +918,12 @@ def multi_box_head(inputs,
                    kernel_size=1,
                    pad=0,
                    stride=1,
-                   name=None):
+                   name=None,
+                   min_max_aspect_ratios_order=False):
     """
-    **Prior_boxes**
-
     Generate prior boxes for SSD(Single Shot MultiBox Detector)
     algorithm. The details of this algorithm, please refer the
-    section 2.2 of SSD paper (SSD: Single Shot MultiBox Detector)
+    section 2.2 of SSD paper `SSD: Single Shot MultiBox Detector
     <https://arxiv.org/abs/1512.02325>`_ .
 
     Args:
@@ -628,26 +962,34 @@ def multi_box_head(inputs,
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
        name(str): Name of the prior box layer. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with 
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the fininal
+            detection results. Default: False.
 
     Returns:
-        mbox_loc(Variable): The predicted boxes' location of the inputs.
-             The layout is [N, H*W*Priors, 4]. where Priors
-             is the number of predicted boxes each position of each input.
-        mbox_conf(Variable): The predicted boxes' confidence of the inputs.
-             The layout is [N, H*W*Priors, C]. where Priors
-             is the number of predicted boxes each position of each input
-             and C is the number of Classes.
-        boxes(Variable): the output prior boxes of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
-             box count of each position of inputs.
-        Variances(Variable): the expanded variances of PriorBox.
-             The layout is [num_priors, 4]. num_priors is the total
-             box count of each position of inputs
+        tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
+
+        mbox_loc: The predicted boxes' location of the inputs. The layout
+        is [N, H*W*Priors, 4]. where Priors is the number of predicted
+        boxes each position of each input.
+
+        mbox_conf: The predicted boxes' confidence of the inputs. The layout
+        is [N, H*W*Priors, C]. where Priors is the number of predicted boxes
+        each position of each input and C is the number of Classes.
+
+        boxes: the output prior boxes of PriorBox. The layout is [num_priors, 4].
+        num_priors is the total box count of each position of inputs.
+
+        variances: the expanded variances of PriorBox. The layout is
+        [num_priors, 4]. num_priors is the total box count of each position of inputs
 
 
     Examples:
         .. code-block:: python
-          mbox_locs, mbox_confs, box, var = layers.multi_box_head(
+
+          mbox_locs, mbox_confs, box, var = fluid.layers.multi_box_head(
             inputs=[conv1, conv2, conv3, conv4, conv5, conv5],
             image=images,
             num_classes=21,
@@ -659,47 +1001,6 @@ def multi_box_head(inputs,
             flip=True,
             clip=True)
     """
-
-    def _prior_box_(input,
-                    image,
-                    min_sizes,
-                    max_sizes,
-                    aspect_ratios,
-                    variance,
-                    flip=False,
-                    clip=False,
-                    step_w=0.0,
-                    step_h=0.0,
-                    offset=0.5,
-                    name=None):
-        helper = LayerHelper("prior_box", **locals())
-        dtype = helper.input_dtype()
-
-        attrs = {
-            'min_sizes': min_sizes,
-            'aspect_ratios': aspect_ratios,
-            'variances': variance,
-            'flip': flip,
-            'clip': clip,
-            'step_w': step_w,
-            'step_h': step_h,
-            'offset': offset
-        }
-        if len(max_sizes) > 0 and max_sizes[0] > 0:
-            attrs['max_sizes'] = max_sizes
-
-        box = helper.create_tmp_variable(dtype)
-        var = helper.create_tmp_variable(dtype)
-        helper.append_op(
-            type="prior_box",
-            inputs={"Input": input,
-                    "Image": image},
-            outputs={"Boxes": box,
-                     "Variances": var},
-            attrs=attrs, )
-        box.stop_gradient = True
-        var.stop_gradient = True
-        return box, var
 
     def _reshape_with_axis_(input, axis=1):
         if not (axis > 0 and axis < len(input.shape)):
@@ -777,11 +1078,11 @@ def multi_box_head(inputs,
             aspect_ratio = aspect_ratios[i]
             if not _is_list_or_tuple_(aspect_ratio):
                 aspect_ratio = [aspect_ratio]
+        step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
-        box, var = _prior_box_(input, image, min_size, max_size, aspect_ratio,
-                               variance, flip, clip, step_w[i]
-                               if step_w else 0.0, step_h[i]
-                               if step_w else 0.0, offset)
+        box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
+                             variance, flip, clip, step, offset, None,
+                             min_max_aspect_ratios_order)
 
         box_results.append(box)
         var_results.append(var)
@@ -841,3 +1142,95 @@ def multi_box_head(inputs,
     box.stop_gradient = True
     var.stop_gradient = True
     return mbox_locs_concat, mbox_confs_concat, box, var
+
+
+def anchor_generator(input,
+                     anchor_sizes=None,
+                     aspect_ratios=None,
+                     variance=[0.1, 0.1, 0.2, 0.2],
+                     stride=None,
+                     offset=0.5,
+                     name=None):
+    """
+    **Anchor generator operator**
+
+    Generate anchors for Faster RCNN algorithm.
+    Each position of the input produce N anchors, N =
+    size(anchor_sizes) * size(aspect_ratios). The order of generated anchors
+    is firstly aspect_ratios loop then anchor_sizes loop.
+
+    Args:
+       input(Variable): The input feature map, the format is NCHW.
+       anchor_sizes(list|tuple|float): The anchor sizes of generated anchors,
+       given in absolute pixels e.g. [64., 128., 256., 512.].
+       For instance, the anchor size of 64 means the area of this anchor equals to 64**2.
+       aspect_ratios(list|tuple|float): The height / width ratios of generated
+            anchors, e.g. [0.5, 1.0, 2.0].
+       variance(list|tuple): The variances to be used in box regression deltas.
+            Default:[0.1, 0.1, 0.2, 0.2].
+       stride(list|turple): The anchors stride across width and height,
+            e.g. [16.0, 16.0]
+       offset(float): Prior boxes center offset. Default: 0.5
+       name(str): Name of the prior box op. Default: None.
+
+    Returns:
+        Anchors(Variable):  The output anchors with a layout of [H, W, num_anchors, 4].
+              H is the height of input, W is the width of input,
+              num_anchors is the box count of each position.
+              Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+        Variances(Variable): The expanded variances of anchors
+              with a layout of [H, W, num_priors, 4].
+              H is the height of input, W is the width of input
+              num_anchors is the box count of each position.
+              Each variance is in (xcenter, ycenter, w, h) format.
+
+
+    Examples:
+
+        .. code-block:: python
+
+            anchor, var = anchor_generator(
+                input=conv1,
+                anchor_sizes=[64, 128, 256, 512],
+                aspect_ratios=[0.5, 1.0, 2.0],
+                variance=[0.1, 0.1, 0.2, 0.2],
+                stride=[16.0, 16.0],
+                offset=0.5)
+    """
+    helper = LayerHelper("anchor_generator", **locals())
+    dtype = helper.input_dtype()
+
+    def _is_list_or_tuple_(data):
+        return (isinstance(data, list) or isinstance(data, tuple))
+
+    if not _is_list_or_tuple_(anchor_sizes):
+        anchor_sizes = [anchor_sizes]
+    if not _is_list_or_tuple_(aspect_ratios):
+        aspect_ratios = [aspect_ratios]
+    if not (_is_list_or_tuple_(stride) and len(stride) == 2):
+        raise ValueError('stride should be a list or tuple ',
+                         'with length 2, (stride_width, stride_height).')
+
+    anchor_sizes = list(map(float, anchor_sizes))
+    aspect_ratios = list(map(float, aspect_ratios))
+    stride = list(map(float, stride))
+
+    attrs = {
+        'anchor_sizes': anchor_sizes,
+        'aspect_ratios': aspect_ratios,
+        'variances': variance,
+        'stride': stride,
+        'offset': offset
+    }
+
+    anchor = helper.create_tmp_variable(dtype)
+    var = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="anchor_generator",
+        inputs={"Input": input},
+        outputs={"Anchors": anchor,
+                 "Variances": var},
+        attrs=attrs, )
+    anchor.stop_gradient = True
+    var.stop_gradient = True
+    return anchor, var

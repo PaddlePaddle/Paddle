@@ -18,28 +18,15 @@
 #include "paddle/fluid/framework/tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include <mkl_cblas.h>
-#include <mkl_lapacke.h>
-#include <mkl_vml_functions.h>
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef PADDLE_WITH_LIBXSMM
+#include <libxsmm.h>
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
-#include <lapacke.h>
-#endif
-
-#ifndef LAPACK_FOUND
-extern "C" {
-#include <cblas.h>  // NOLINT
-int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
-                   int* ipiv);
-int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
-                   int* ipiv);
-int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
-                   const int* ipiv);
-int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
-                   const int* ipiv);
-}
 #endif
 
 namespace paddle {
@@ -126,6 +113,12 @@ class Blas {
   void AXPY(int n, T alpha, const T* x, T* y) const;
 
   template <typename T>
+  void VADD(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VCOPY(int n, const T* x, T* y) const;
+
+  template <typename T>
   void GEMV(bool trans_a, int M, int N, T alpha, const T* A, const T* B, T beta,
             T* C) const;
 
@@ -161,6 +154,16 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void AXPY(ARGS... args) const {
     Base()->template AXPY<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VADD(ARGS... args) const {
+    Base()->template VADD<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VCOPY(ARGS... args) const {
+    Base()->template VCOPY<T>(args...);
   }
 
   template <typename... ARGS>

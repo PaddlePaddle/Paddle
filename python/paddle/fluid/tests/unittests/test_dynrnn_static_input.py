@@ -39,20 +39,20 @@ class TestDyRnnStaticInput(unittest.TestCase):
 
     def prepare_x_tensor(self):
         self.x_tensor_dim = 10
-        lod = [[0, 2, 3, 6]]
-        shape = [lod[0][-1], self.x_tensor_dim]
+        lod = [[2, 1, 3]]
+        shape = [sum(lod[0]), self.x_tensor_dim]
         self.x_tensor_data = np.random.random(shape).astype('float32')
         self.x_tensor = core.LoDTensor()
-        self.x_tensor.set_lod(lod)
+        self.x_tensor.set_recursive_sequence_lengths(lod)
         self.x_tensor.set(self.x_tensor_data, self.place)
 
     def prepare_static_input_tensor(self):
         self.static_input_tensor_dim = 4
-        lod = [[0, 1, 3, 6]]
-        shape = [lod[0][-1], self.static_input_tensor_dim]
+        lod = [[1, 2, 3]]
+        shape = [sum(lod[0]), self.static_input_tensor_dim]
         self.static_input_data = np.random.random(shape).astype('float32')
         self.static_input_tensor = core.LoDTensor()
-        self.static_input_tensor.set_lod(lod)
+        self.static_input_tensor.set_recursive_sequence_lengths(lod)
         self.static_input_tensor.set(self.static_input_data, self.place)
 
     def fetch_value(self, var):
@@ -65,11 +65,11 @@ class TestDyRnnStaticInput(unittest.TestCase):
         return self._lodtensor_to_ndarray(fetch_outs[0])
 
     def _lodtensor_to_ndarray(self, lod_tensor):
-        dims = lod_tensor.get_dims()
+        dims = lod_tensor.shape()
         ndarray = np.zeros(shape=dims).astype('float32')
         for i in xrange(np.product(dims)):
-            ndarray.ravel()[i] = lod_tensor.get_float_element(i)
-        return ndarray, lod_tensor.lod()
+            ndarray.ravel()[i] = lod_tensor._get_float_element(i)
+        return ndarray, lod_tensor.recursive_sequence_lengths()
 
     def build_graph(self, only_forward=False):
         x_tensor = fluid.layers.data(
@@ -131,21 +131,20 @@ class TestDyRnnStaticInput(unittest.TestCase):
             framework.grad_var_name('static_input_tensor'))
         return static_input_grad, loss
 
-    def get_seq_len_from_lod(self, lod):
-        return [lod[0][i + 1] - lod[0][i] for i in xrange(len(lod[0]) - 1)]
-
     def get_expected_static_step_outs(self):
-        x_lod = self.x_tensor.lod()
-        x_seq_len = self.get_seq_len_from_lod(x_lod)
+        x_lod = self.x_tensor.recursive_sequence_lengths()
+        x_seq_len = x_lod[0]
         x_seq_len_sorted = sorted(x_seq_len)
         x_sorted_indices = np.argsort(x_seq_len)[::-1]
 
-        static_lod = self.static_input_tensor.lod()
-        static_sliced = [
-            self.static_input_data[static_lod[0][i]:static_lod[0][i + 1]]
-            for i in xrange(len(static_lod[0]) - 1)
-        ]
-        static_seq_len = self.get_seq_len_from_lod(static_lod)
+        static_lod = self.static_input_tensor.recursive_sequence_lengths()
+        static_sliced = []
+        cur_offset = 0
+        for i in xrange(len(static_lod[0])):
+            static_sliced.append(self.static_input_data[cur_offset:(
+                cur_offset + static_lod[0][i])])
+            cur_offset += static_lod[0][i]
+        static_seq_len = static_lod[0]
         static_reordered = []
         for i in xrange(len(x_sorted_indices)):
             static_reordered.extend(static_sliced[x_sorted_indices[i]].tolist())
@@ -159,11 +158,13 @@ class TestDyRnnStaticInput(unittest.TestCase):
 
         for i in xrange(self._max_sequence_len):
             end = len(x_seq_len) - bisect.bisect_left(x_seq_len_sorted, i + 1)
-            lod = [0]
+            lod = []
+            total_len = 0
             for i in xrange(end):
-                lod.append(static_seq_len_reordered[i] + lod[-1])
+                lod.append(static_seq_len_reordered[i])
+                total_len += lod[-1]
             static_step_lods.append([lod])
-            end = lod[-1]
+            end = total_len
             static_step_outs.append(
                 np.array(static_reordered[:end]).astype('float32'))
 
@@ -184,22 +185,24 @@ class TestDyRnnStaticInput(unittest.TestCase):
 
         actual_gradients, actual_lod = self.fetch_value(static_input_grad)
 
-        static_input_shape = self.static_input_tensor.get_dims()
+        static_input_shape = self.static_input_tensor.shape()
         numeric_gradients = np.zeros(shape=static_input_shape).astype('float32')
         # calculate numeric gradients
         tensor_size = np.product(static_input_shape)
         for i in xrange(tensor_size):
-            origin = self.static_input_tensor.get_float_element(i)
+            origin = self.static_input_tensor._get_float_element(i)
             x_pos = origin + self._delta
-            self.static_input_tensor.set_float_element(i, x_pos)
+            self.static_input_tensor._set_float_element(i, x_pos)
             y_pos = self.fetch_value(loss)[0][0]
             x_neg = origin - self._delta
-            self.static_input_tensor.set_float_element(i, x_neg)
+            self.static_input_tensor._set_float_element(i, x_neg)
             y_neg = self.fetch_value(loss)[0][0]
-            self.static_input_tensor.set_float_element(i, origin)
+            self.static_input_tensor._set_float_element(i, origin)
             numeric_gradients.ravel()[i] = (y_pos - y_neg) / self._delta / 2
         self.assertTrue(np.allclose(actual_gradients, numeric_gradients, 0.001))
-        self.assertTrue(np.allclose(actual_lod, self.static_input_tensor.lod()))
+        self.assertTrue(
+            np.allclose(actual_lod,
+                        self.static_input_tensor.recursive_sequence_lengths()))
 
 
 if __name__ == '__main__':

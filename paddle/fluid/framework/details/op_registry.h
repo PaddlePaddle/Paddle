@@ -96,10 +96,7 @@ struct OpInfoFiller<T, kOpProtoAndCheckerMaker> {
     info->proto_ = new proto::OpProto;
     info->checker_ = new OpAttrChecker();
     T maker;
-    maker.SetProto(info->proto_);
-    maker.SetChecker(info->checker_);
-    maker.Make();
-    maker.Validate();
+    maker(info->proto_, info->checker_);
     info->proto_->set_type(op_type);
     PADDLE_ENFORCE(
         info->proto_->IsInitialized(),

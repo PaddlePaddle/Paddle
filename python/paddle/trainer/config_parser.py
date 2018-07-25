@@ -67,7 +67,7 @@ extension_module_name=[MODULE_NAME], then config_parser will call
 MODULE_NAME.get_config_funcs(g_config)
 MODULE_NAME.get_config_funcs() should return a dictionary of name to functions,
 those functions will be available in the config file.
-See trainer/tests/config_parser_test.py for example
+See legacy/trainer/tests/config_parser_test.py for example
 
 To use this from paddle_trainer, paddle_trainer should be called with
 --config_args=extension_module_name=[MODULE_NAME]

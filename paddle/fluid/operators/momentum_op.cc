@@ -98,7 +98,7 @@ The update equations are as follows:
 $$
 velocity = mu * velocity + gradient \\
 if (use\_nesterov):   \\
-  param = param - gradient * learning\_rate + mu * velocity * learning\_rate \\
+  param = param - (gradient + mu * velocity) * learning\_rate \\
 else:   \\
   param = param - learning\_rate * velocity. \\
 $$

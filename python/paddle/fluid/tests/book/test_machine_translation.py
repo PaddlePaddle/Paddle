@@ -108,7 +108,7 @@ def decoder_decode(context, is_sparse):
         pre_state = pd.array_read(array=state_array, i=counter)
         pre_score = pd.array_read(array=scores_array, i=counter)
 
-        # expand the lod of pre_state to be the same with pre_score
+        # expand the recursive_sequence_lengths of pre_state to be the same with pre_score
         pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
         pre_ids_emb = pd.embedding(
@@ -126,9 +126,19 @@ def decoder_decode(context, is_sparse):
         current_score = pd.fc(input=current_state_with_lod,
                               size=target_dict_dim,
                               act='softmax')
-        topk_scores, topk_indices = pd.topk(current_score, k=50)
+        topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
+        # calculate accumulated scores after topk to reduce computation cost
+        accu_scores = pd.elementwise_add(
+            x=pd.log(topk_scores), y=pd.reshape(
+                pre_score, shape=[-1]), axis=0)
         selected_ids, selected_scores = pd.beam_search(
-            pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
+            pre_ids,
+            pre_score,
+            topk_indices,
+            accu_scores,
+            beam_size,
+            end_id=10,
+            level=0)
 
         pd.increment(x=counter, value=1, in_place=True)
 
@@ -137,36 +147,18 @@ def decoder_decode(context, is_sparse):
         pd.array_write(selected_ids, array=ids_array, i=counter)
         pd.array_write(selected_scores, array=scores_array, i=counter)
 
-        pd.less_than(x=counter, y=array_len, cond=cond)
+        # update the break condition: up to the max length or all candidates of
+        # source sentences have ended.
+        length_cond = pd.less_than(x=counter, y=array_len)
+        finish_cond = pd.logical_not(pd.is_empty(x=selected_ids))
+        pd.logical_and(x=length_cond, y=finish_cond, out=cond)
 
     translation_ids, translation_scores = pd.beam_search_decode(
-        ids=ids_array, scores=scores_array)
+        ids=ids_array, scores=scores_array, beam_size=beam_size, end_id=10)
 
     # return init_ids, init_scores
 
     return translation_ids, translation_scores
-
-
-def set_init_lod(data, lod, place):
-    res = fluid.LoDTensor()
-    res.set(data, place)
-    res.set_lod(lod)
-    return res
-
-
-def to_lodtensor(data, place):
-    seq_lens = [len(seq) for seq in data]
-    cur_len = 0
-    lod = [cur_len]
-    for l in seq_lens:
-        cur_len += l
-        lod.append(cur_len)
-    flattened_data = np.concatenate(data, axis=0).astype("int64")
-    flattened_data = flattened_data.reshape([len(flattened_data), 1])
-    res = fluid.LoDTensor()
-    res.set(flattened_data, place)
-    res.set_lod([lod])
-    return res
 
 
 def train_main(use_cuda, is_sparse, is_local=True):
@@ -192,23 +184,25 @@ def train_main(use_cuda, is_sparse, is_local=True):
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
 
+    feed_order = [
+        'src_word_id', 'target_language_word', 'target_language_next_word'
+    ]
+
     exe = Executor(place)
 
     def train_loop(main_program):
         exe.run(framework.default_startup_program())
 
+        feed_list = [
+            main_program.global_block().var(var_name) for var_name in feed_order
+        ]
+        feeder = fluid.DataFeeder(feed_list, place)
+
         batch_id = 0
         for pass_id in xrange(1):
             for data in train_data():
-                word_data = to_lodtensor(map(lambda x: x[0], data), place)
-                trg_word = to_lodtensor(map(lambda x: x[1], data), place)
-                trg_word_next = to_lodtensor(map(lambda x: x[2], data), place)
                 outs = exe.run(main_program,
-                               feed={
-                                   'src_word_id': word_data,
-                                   'target_language_word': trg_word,
-                                   'target_language_next_word': trg_word_next
-                               },
+                               feed=feeder.feed(data),
                                fetch_list=[avg_cost])
                 avg_cost_val = np.array(outs[0])
                 print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
@@ -220,16 +214,16 @@ def train_main(use_cuda, is_sparse, is_local=True):
     if is_local:
         train_loop(framework.default_main_program())
     else:
-        port = os.getenv("PADDLE_INIT_PORT", "6174")
-        pserver_ips = os.getenv("PADDLE_INIT_PSERVERS")  # ip,ip...
+        port = os.getenv("PADDLE_PSERVER_PORT", "6174")
+        pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
         eplist = []
         for ip in pserver_ips.split(","):
             eplist.append(':'.join([ip, port]))
         pserver_endpoints = ",".join(eplist)  # ip:port,ip:port...
-        trainers = int(os.getenv("TRAINERS"))
+        trainers = int(os.getenv("PADDLE_TRAINERS"))
         current_endpoint = os.getenv("POD_IP") + ":" + port
-        trainer_id = int(os.getenv("PADDLE_INIT_TRAINER_ID"))
-        training_role = os.getenv("TRAINING_ROLE", "TRAINER")
+        trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+        training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         t = fluid.DistributeTranspiler()
         t.transpile(trainer_id, pservers=pserver_endpoints, trainers=trainers)
         if training_role == "PSERVER":
@@ -258,29 +252,37 @@ def decode_main(use_cuda, is_sparse):
         [1. for _ in range(batch_size)], dtype='float32')
     init_ids_data = init_ids_data.reshape((batch_size, 1))
     init_scores_data = init_scores_data.reshape((batch_size, 1))
-    init_lod = [i for i in range(batch_size)] + [batch_size]
-    init_lod = [init_lod, init_lod]
+    init_recursive_seq_lens = [1] * batch_size
+    init_recursive_seq_lens = [init_recursive_seq_lens, init_recursive_seq_lens]
+
+    init_ids = fluid.create_lod_tensor(init_ids_data, init_recursive_seq_lens,
+                                       place)
+    init_scores = fluid.create_lod_tensor(init_scores_data,
+                                          init_recursive_seq_lens, place)
 
     train_data = paddle.batch(
         paddle.reader.shuffle(
             paddle.dataset.wmt14.train(dict_size), buf_size=1000),
         batch_size=batch_size)
-    for _, data in enumerate(train_data()):
-        init_ids = set_init_lod(init_ids_data, init_lod, place)
-        init_scores = set_init_lod(init_scores_data, init_lod, place)
 
-        src_word_data = to_lodtensor(map(lambda x: x[0], data), place)
+    feed_order = ['src_word_id']
+    feed_list = [
+        framework.default_main_program().global_block().var(var_name)
+        for var_name in feed_order
+    ]
+    feeder = fluid.DataFeeder(feed_list, place)
+
+    for data in train_data():
+        feed_dict = feeder.feed(map(lambda x: [x[0]], data))
+        feed_dict['init_ids'] = init_ids
+        feed_dict['init_scores'] = init_scores
 
         result_ids, result_scores = exe.run(
             framework.default_main_program(),
-            feed={
-                'src_word_id': src_word_data,
-                'init_ids': init_ids,
-                'init_scores': init_scores
-            },
+            feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print result_ids.lod()
+        print result_ids.recursive_sequence_lengths()
         break
 
 

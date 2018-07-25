@@ -68,8 +68,14 @@ def reader_creator(image_filename, label_filename, buffer_size):
                 for i in xrange(buffer_size):
                     yield images[i, :], int(labels[i])
         finally:
-            m.terminate()
-            l.terminate()
+            try:
+                m.terminate()
+            except:
+                pass
+            try:
+                l.terminate()
+            except:
+                pass
 
     return reader
 
@@ -111,7 +117,7 @@ def fetch():
     paddle.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)
     paddle.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
     paddle.dataset.common.download(TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5)
-    paddle.dataset.common.download(TEST_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
+    paddle.dataset.common.download(TEST_LABEL_URL, 'mnist', TEST_LABEL_MD5)
 
 
 def convert(path):

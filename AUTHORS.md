@@ -4,6 +4,7 @@
 | backyes | Yan-Fei Wang |
 | baiyfbupt | Yi-Fan Bai |
 | beckett1124 | Bin Qi |
+| ChengduoZH | Cheng-Duo Zhao|
 | chengxiaohua1105 | Xiao-Hua Cheng |
 | cxwangyi, yiwangbaidu, wangkuiyi | Yi Wang |
 | cxysteven | Xing-Yi Cheng |
@@ -21,6 +22,7 @@
 | jczaja | Jacek Czaja |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
+| kexinzhao | Ke-Xin Zhao |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
 | lipeng-unisound | Peng Li |

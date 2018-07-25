@@ -22,6 +22,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(use_mkldnn);
+
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
                  paddle::framework::DDim dims, T lower, T upper) {
@@ -149,7 +151,7 @@ void TestInference(const std::string& dirname,
     state = paddle::platform::ProfilerState::kCPU;
   } else {
 #ifdef PADDLE_WITH_CUDA
-    state = paddle::platform::ProfilerState::kCUDA;
+    state = paddle::platform::ProfilerState::kAll;
     // The default device_id of paddle::platform::CUDAPlace is 0.
     // Users can get the device_id using:
     //   int device_id = place.GetDeviceId();
@@ -172,7 +174,7 @@ void TestInference(const std::string& dirname,
   }
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
-                                    "load_program_profiler.txt");
+                                    "load_program_profiler");
   paddle::platform::ResetProfiler();
 
   // 3. Get the feed_target_names and fetch_target_names
@@ -194,7 +196,10 @@ void TestInference(const std::string& dirname,
     fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
   }
 
-  // 6. Run the inference program
+  // 6. If export Flags_use_mkldnn=True, use mkldnn related ops.
+  if (FLAGS_use_mkldnn) executor.EnableMKLDNN(*inference_program);
+
+  // 7. Run the inference program
   {
     if (!CreateVars) {
       // If users don't want to create and destroy variables every time they
@@ -205,13 +210,14 @@ void TestInference(const std::string& dirname,
 
     // Ignore the profiling results of the first run
     std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
+    bool CreateLocalScope = CreateVars;
     if (PrepareContext) {
       ctx = executor.Prepare(*inference_program, 0);
       executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                  &fetch_targets, CreateVars);
+                                  &fetch_targets, CreateLocalScope, CreateVars);
     } else {
       executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                   CreateVars);
+                   CreateLocalScope, CreateVars);
     }
 
     // Enable the profiler
@@ -227,17 +233,17 @@ void TestInference(const std::string& dirname,
         // Note: if you change the inference_program, you need to call
         // executor.Prepare() again to get a new ExecutorPrepareContext.
         executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                    &fetch_targets, CreateVars);
+                                    &fetch_targets, CreateLocalScope,
+                                    CreateVars);
       } else {
         executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                     CreateVars);
+                     CreateLocalScope, CreateVars);
       }
     }
 
     // Disable the profiler and print the timing information
     paddle::platform::DisableProfiler(
-        paddle::platform::EventSortingKey::kDefault,
-        "run_inference_profiler.txt");
+        paddle::platform::EventSortingKey::kDefault, "run_inference_profiler");
     paddle::platform::ResetProfiler();
   }
 

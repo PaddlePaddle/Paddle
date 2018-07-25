@@ -18,10 +18,7 @@ import collections
 import copy
 import unique_name
 
-__all__ = [
-    'append_backward',
-    'calc_gradient',
-]
+__all__ = ['append_backward']
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -51,6 +48,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
         op_desc.set_input(para, args)
     for para, args in outputs.iteritems():
         op_desc.set_output(para, args)
+
+    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+    if op_role_attr_name not in attrs:
+        attrs[
+            op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
     for name, val in attrs.iteritems():
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
@@ -117,7 +120,8 @@ def _append_grad_suffix_(name):
 def _addup_repetitive_outputs_(op_descs):
     """
     In backward part, an variable may be the output of more than one ops.
-    In this case, the variable should be the accumulation of all the outputs.
+    And one op may yield its multiple outputs to the same variable.
+    In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
     pending_sum_ops = []
@@ -126,37 +130,55 @@ def _addup_repetitive_outputs_(op_descs):
     for idx, op_desc in enumerate(op_descs):
         for var_name in op_desc.input_arg_names():
             if len(renamed_vars[var_name]) > 1:
-                pending_sum_ops.append(
-                    (_create_op_desc_("sum", {"X": renamed_vars[var_name]},
-                                      {"Out": [var_name]}, {}), idx))
+                pending_sum_ops.append((_create_op_desc_(
+                    "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
+                    {"use_mkldnn": False}), idx))
                 renamed_vars[var_name] = [var_name]
-        for var_name in op_desc.output_arg_names():
-            if var_name == core.empty_var_name(
-            ) or var_name in op_desc.input_arg_names():
-                # empty variable or inplace op
-                continue
-            if len(renamed_vars[var_name]) == 0:
-                # it's the first time we get the variable
-                renamed_vars[var_name] = [var_name]
-            else:
-                if len(renamed_vars[var_name]) == 1:
+        for param_idx, param_name in enumerate(op_desc.output_names()):
+            arg_names = op_desc.output(param_name)
+            for arg_idx, var_name in enumerate(arg_names):
+                if var_name == core.empty_var_name(
+                ) or var_name in op_desc.input_arg_names():
+                    # empty variable or inplace op
+                    continue
+                if len(renamed_vars[var_name]) == 0:
+                    # it's the first time we get the variable
+                    renamed_vars[var_name] = [var_name]
+                else:
+                    if len(renamed_vars[var_name]) == 1:
+                        new_name = var_name + "@RENAME@" + \
+                            str(var_rename_count[var_name])
+                        var_rename_count[var_name] += 1
+                        # rename original var_name
+                        renamed_vars[var_name][0] = new_name
+                        _rename_arg_(op_descs, var_name, new_name, 0, idx)
+                        _rename_arg_(pending_sum_ops, var_name, new_name)
+
+                        for p in op_desc.output_names()[:param_idx]:
+                            p_arg_names = op_desc.output(p)
+                            if var_name in p_arg_names:
+                                op_desc.set_output(p, [
+                                    new_name if x == var_name else x
+                                    for x in p_arg_names
+                                ])
+
+                        arg_names = [
+                            new_name if x == var_name else x
+                            for x in arg_names[:arg_idx]
+                        ] + arg_names[arg_idx:]
+
                     new_name = var_name + "@RENAME@" + \
                         str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
-                    # rename original var_name
-                    renamed_vars[var_name][0] = new_name
-                    _rename_arg_(op_descs, var_name, new_name, 0, idx)
-                    _rename_arg_(pending_sum_ops, var_name, new_name)
+                    arg_names[arg_idx] = new_name
+                    op_desc.set_output(param_name, arg_names)
+                    renamed_vars[var_name].append(new_name)
 
-                new_name = var_name + "@RENAME@" + \
-                    str(var_rename_count[var_name])
-                var_rename_count[var_name] += 1
-                op_desc.rename_output(var_name, new_name)
-                renamed_vars[var_name].append(new_name)
     for var_name, inputs in renamed_vars.iteritems():
         if len(inputs) > 1:
-            pending_sum_ops.append((_create_op_desc_(
-                "sum", {"X": inputs}, {"Out": [var_name]}, {}), len(op_descs)))
+            pending_sum_ops.append(
+                (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
+                                  {"use_mkldnn": False}), len(op_descs)))
     # sum_op descs are sorted according to their insert position
     for p in reversed(pending_sum_ops):
         op_descs.insert(p[1], p[0])
@@ -306,7 +328,7 @@ def _append_backward_ops_(block,
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block()
-            grad_sub_block.set_forward_block_idx(sub_block.idx)
+            grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
             if cb is not None:
                 if callbacks is None:
@@ -335,9 +357,12 @@ def _append_backward_ops_(block,
                                             no_grad_dict[block.idx])
 
     # append op_desc in grad_op_descs to target_block
+    op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
+    backward = core.op_proto_and_checker_maker.OpRole.Backward
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
+        new_op_desc.set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
             assert (isinstance(callbacks, list))
@@ -425,20 +450,83 @@ def _get_stop_gradients_(program):
 def append_backward(loss, parameter_list=None, no_grad_set=None,
                     callbacks=None):
     """
-    Append backward part to main_program
+    Append backward part to main_program.
+
+    A complete neural network training is made up of forward and backward 
+    propagation. However, when we configure a network, we only need to 
+    specify its forwrd part. The backward part is generated automatically 
+    according to the forward part by this function.
+
+    In most cases, users do not need to invoke this function manually. It 
+    will be automatically invoked by the optimizer's `minimize` function.
 
     Args:
-        loss(Variable): The variable generated by cost function.
-        parameter_list(list[string]): Parameters that need to be updated by
-            optimizer. If None, it means all parameters need to be updated.
-        no_grad_set(set): Variables that have no gradients in Block 0.
-            All variables with `step_gradient=True` from all blocks will be
-            automatically added.
+        loss(Variable): The loss variable of the network.
+        parameter_list(list[string]|None): Names of parameters that need 
+                                           to be updated by optimizers. 
+                                           If it is None, all parameters 
+                                           will be updated.
+                                           Default: None
+        no_grad_set(set|None): Variables in the Block 0 whose gradients 
+                               should be ignored. All variables with 
+                               `step_gradient=True` from all blocks will 
+                               be automatically added into this set.
+                               Default: None
+        callbacks(list[callable object]|None): The callbacks are used for 
+                                               doing some custom jobs during 
+                                               backward part building. All 
+                                               callable objects in it will 
+                                               be invoked once each time a 
+                                               new gradient operator is added 
+                                               into the program. The callable 
+                                               object must has two input 
+                                               parameters: 'block' and 'context'. 
+                                               The 'block' is the block which 
+                                               the new gradient operator will 
+                                               be added to. The 'context' is a 
+                                               map, whose keys are gradient 
+                                               variable names and values are 
+                                               corresponding original variables.
+                                               In addition to this, the 'context' 
+                                               has another special key-value pair: 
+                                               the key is string '__current_op_desc__' 
+                                               and the value is the op_desc of the 
+                                               gradient operator who has just 
+                                               triggered the callable object. 
 
-    Return:
-        (list[(Variable,Variable)]): list of (parameter, gradient) pair.
+    Returns:
+        list[(Variable,Variable)]: Pairs of parameter and its 
+        corresponding gradients. The key is the parameter and the 
+        value is gradient variable.
+
+    Raises:
+        AssertionError: If `loss` is not an instance of Variable.
+
+    Examples:
+        .. code-block:: python
+
+            # network configuration code
+            # ...
+            avg_loss = fluid.layers.mean(loss)
+            param_grad_list = fluid.backward.append_backward(loss=avg_loss)
     """
     assert isinstance(loss, framework.Variable)
+
+    if loss.op is None:
+        # the loss is from a cloned program. Find loss op manually.
+        for op in reversed(loss.block.ops):
+            assert isinstance(op, framework.Operator)
+            if len(op.output_arg_names) == 1 and op.output_arg_names[
+                    0] == loss.name:
+                loss.op = op
+                break
+        if loss.op is None:
+            raise ValueError("loss.op is None. Should not happend")
+
+    loss.op.set_attr(core.op_proto_and_checker_maker.kOpRoleAttrName(),
+                     int(core.op_proto_and_checker_maker.OpRole.Forward) |
+                     int(core.op_proto_and_checker_maker.OpRole.Loss))
+
     if callbacks is not None:
         isinstance(callbacks, list)
 
@@ -456,12 +544,16 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     current_block_idx = program.current_block_idx
     grad_to_var = dict()
 
-    op_desc = _create_op_desc_("fill_constant", {}, {
-        "Out": [_append_grad_suffix_(loss.name)]
-    }, {"shape": [1],
-        "value": 1.0,
-        "dtype": loss.dtype,
-        "force_cpu": False})
+    op_desc = _create_op_desc_(
+        "fill_constant", {}, {"Out": [_append_grad_suffix_(loss.name)]}, {
+            "shape": [1],
+            "value": 1.0,
+            "dtype": loss.dtype,
+            "force_cpu": False,
+            core.op_proto_and_checker_maker.kOpRoleAttrName():
+            int(core.op_proto_and_checker_maker.OpRole.Backward) |
+            int(core.op_proto_and_checker_maker.OpRole.Loss),
+        })
     root_block.desc.append_op().copy_from(op_desc)
 
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
@@ -479,7 +571,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
 
     program.current_block_idx = current_block_idx
-    program.sync_with_cpp()
+    program._sync_with_cpp()
     # FIXME(zcd): prevent loss.grad optimized by mem_opt.
     loss.block.var(_append_grad_suffix_(loss.name)).persistable = True
 
@@ -505,6 +597,24 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
             params_and_grads.append((param_var, grad_var))
         else:
             params_and_grads.append((param_var, None))
+
+    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+    for p, g in params_and_grads:
+        if g is None:
+            continue
+        for op in reversed(program.global_block().ops):
+            assert isinstance(op, framework.Operator)
+            if g.name in op.output_arg_names:
+                g.op = op
+                break
+
+        if g.op is None:
+            raise ValueError("Unexpected branch")
+        attr_val = [p.name, g.name]
+        if g.op.has_attr(op_role_var_attr_name):
+            attr_val.extend(g.op.attr(op_role_var_attr_name))
+        g.op.set_attr(op_role_var_attr_name, attr_val)
+
     return params_and_grads
 
 
@@ -634,7 +744,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
-    prog.sync_with_cpp()
+    prog._sync_with_cpp()
 
     grad_vars = []
     for input_var in inputs:
