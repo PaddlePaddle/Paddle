@@ -12,6 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifndef POLY_UTIL_CC_
+#define POLY_UTIL_CC_
+
 #include "paddle/fluid/operators/detection/poly_util.h"
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -78,7 +81,7 @@ void Poly2PointVec(const gpc::gpc_vertex_list& contour,
 }
 
 template <class T>
-T GetContourArea(std::vector<Point_<T>>& vec, bool oriented = false) {
+T GetContourArea(std::vector<Point_<T>>& vec) {
   int pts_num = vec.size();
   if (pts_num < 3) return T(0.);
   T area = T(0.);
@@ -127,3 +130,5 @@ T PolyOverlapArea(const T* box1, const T* box2, const size_t box_size,
 
 }  // namespace operators
 }  // namespace paddle
+
+#endif

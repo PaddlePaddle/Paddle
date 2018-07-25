@@ -787,6 +787,7 @@ void gpc_free_polygon(gpc_polygon *p) {
   p->num_contours = 0;
 }
 
+/*
 void gpc_read_polygon(FILE *fp, int read_hole_flags, gpc_polygon *p) {
   int c = 0;
   int v = 0;
@@ -803,7 +804,7 @@ void gpc_read_polygon(FILE *fp, int read_hole_flags, gpc_polygon *p) {
     if (read_hole_flags) {
       fscanf(fp, "%d", &(p->hole[c]));
     } else {
-      p->hole[c] = 0; /* Assume all contours to be external */
+      p->hole[c] = 0; // Assume all contours to be external
     }
 
     gpc_malloc<gpc_vertex>(p->contour[c].vertex,
@@ -834,6 +835,7 @@ void gpc_write_polygon(FILE *fp, int write_hole_flags, gpc_polygon *p) {
     }
   }
 }
+*/
 
 void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   int *extended_hole = NULL;

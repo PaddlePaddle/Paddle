@@ -40,11 +40,14 @@ class MultiClassNMSOp : public framework::OperatorWithKernel {
                       "The rank of Input(BBoxes) must be 3.");
     PADDLE_ENFORCE_EQ(score_dims.size(), 3,
                       "The rank of Input(Scores) must be 3.");
-    PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 32,
+    PADDLE_ENFORCE(box_dims[2] == 4 || box_dims[2] == 8 || box_dims[2] == 16 
+                || box_dims[2] == 24 || box_dims[2] == 32,
                    "The 2nd dimension of Input(BBoxes) must be 4 or 8, "
                    "represents the layout of coordinate "
                    "[xmin, ymin, xmax, ymax] or "
                    "4 points: [x1, y1, x2, y2, x3, y3, x4, y4] or "
+                   "8 points: [xi, yi] i= 1,2,...,8 or "
+                   "12 points: [xi, yi] i= 1,2,...,12 or "
                    "16 points: [xi, yi] i= 1,2,...,16");
     PADDLE_ENFORCE_EQ(box_dims[1], score_dims[2],
                       "The 1st dimensiong of Input(BBoxes) must be equal to "
@@ -153,7 +156,7 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
     int64_t num_boxes = bbox.dims()[0];
     // 4: [xmin ymin xmax ymax]
     // 8: [x1 y1 x2 y2 x3 y3 x4 y4]
-    // 32: [x1 y1 x2 y2 ...  x16 y16]
+    // 16, 24, or 32: [x1 y1 x2 y2 ...  xn yn], n = 8, 12 or 16
     int64_t box_size = bbox.dims()[1];
 
     std::vector<T> scores_data(num_boxes);
@@ -177,8 +180,9 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
             overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
                                         bbox_data + kept_idx * box_size, true);
           }
-          // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 32: [x1 y1 x2 y2 ...  x16 y16]
-          if (box_size == 8 || box_size == 32) {
+          // 8: [x1 y1 x2 y2 x3 y3 x4 y4] or 16, 24, 32
+          if (box_size == 8 || box_size == 16 || box_size == 24 
+                            || box_size == 32) {
             overlap =
                 PolyIoU<T>(bbox_data + idx * box_size,
                            bbox_data + kept_idx * box_size, box_size, true);
@@ -341,7 +345,8 @@ class MultiClassNMSOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("BBoxes",
-             "(Tensor) A 3-D Tensor with shape [N, M, 4 or 8] represents the "
+             "(Tensor) A 3-D Tensor with shape "
+             "[N, M, 4 or 8 16 24 32] represents the "
              "predicted locations of M bounding bboxes, N is the batch size. "
              "Each bounding box has four coordinate values and the layout is "
              "[xmin, ymin, xmax, ymax], when box size equals to 4.");
