@@ -278,7 +278,7 @@ class DistSeResneXt2x2:
 
     def run_trainer(self, place, endpoints, trainer_id, trainers, is_dist=True):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = get_model(
-            batch_size=20)
+            batch_size=2)
         if is_dist:
             t = get_transpiler(trainer_id,
                                fluid.default_main_program(), endpoints,
