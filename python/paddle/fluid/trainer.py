@@ -288,7 +288,7 @@ class Trainer(object):
             _load_persistable_vars(exe, param_path, self.startup_program, False,
                                    [self.lookup_table_name]
                                    if self.lookup_table_name else [])
-            if self.lookup_table_name and self.pserver_id:
+            if self.lookup_table_name and self.pserver_id is not None:
                 _load_lookup_table_vars(exe, param_path, self.startup_program,
                                         self.pserver_id, self.lookup_table_name)
 
