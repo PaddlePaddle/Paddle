@@ -401,12 +401,11 @@ def load_vars(executor,
                 inputs={},
                 outputs={"Out": load_var_list},
                 attrs={'file_path': os.path.join(dirname, filename)})
-
-        if main_program._slice_vars_and_atts:
-            _load_slice_up_vars(executor, dirname,
-                                main_program._slice_vars_and_atts)
-
         executor.run(load_prog)
+
+        # load slice vars on pserver, if have it.
+        _load_slice_up_vars(executor, dirname,
+                            main_program._slice_vars_and_atts)
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
