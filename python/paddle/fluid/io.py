@@ -895,14 +895,14 @@ def get_test_program(filelist, program=None, startup_program=None):
     return program
 
 
-def _load_slice_up_vars(executor, dirname, _slice_vars_and_atts):
-    if slice_vars == None or len(slice_vars) == 0:
+def _load_slice_up_vars(executor, dirname, slice_vars_and_atts):
+    if slice_vars_and_atts == None or len(slice_vars_and_atts) == 0:
         return
 
     load_prog = Program()
     load_block = load_prog.global_block()
 
-    for var_tuple in slice_vars:
+    for var_tuple in slice_vars_and_atts:
         orig_var = var_tuple[0]
         start = var_tuple[1]
         slice_var = var_tuple[2]
