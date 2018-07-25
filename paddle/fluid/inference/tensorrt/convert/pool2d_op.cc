@@ -29,6 +29,8 @@ class Pool2dOpConverter : public OpConverter {
         << "convert a fluid pool2d op to tensorrt pool2d layer without bias";
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
+    PADDLE_ENFORCE_EQ(op_desc.Input("X").size(), 1);
+    PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
 
     std::string pool_type =
