@@ -387,13 +387,13 @@ template <typename T>
 class CPUVector : public std::vector<T, std::allocator<T>> {
  public:
   CPUVector() : std::vector<T>() {}
-  explicit CPUVector(size_t count, const T &value = T())
+  CPUVector(size_t count, const T &value = T())  // NOLINT
       : std::vector<T>(count, value) {}
   CPUVector(std::initializer_list<T> init) : std::vector<T>(init) {}
-  explicit CPUVector(const std::vector<T> &other) : std::vector<T>(other) {}
-  explicit CPUVector(const CPUVector<T> &other) : std::vector<T>(other) {}
+  CPUVector(const std::vector<T> &other) : std::vector<T>(other) {}  // NOLINT
+  CPUVector(const CPUVector<T> &other) : std::vector<T>(other) {}
   CPUVector(CPUVector<T> &&other) : std::vector<T>(std::move(other)) {}
-  explicit CPUVector(std::vector<T> &&other)
+  CPUVector(std::vector<T> &&other)  // NOLINT
       : std::vector<T>(std::move(other)) {}
   CPUVector &operator=(const CPUVector &other) {
     this->assign(other.begin(), other.end());
