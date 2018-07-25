@@ -37,7 +37,8 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   // NOTE Unlike the native engine, the buffers of anakin engine's output_data
   // should be allocated first.
   bool Run(const std::vector<PaddleTensor>& inputs,
-           std::vector<PaddleTensor>* output_data) override;
+           std::vector<PaddleTensor>* output_data,
+           int batch_size = -1) override;
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
