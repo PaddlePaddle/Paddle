@@ -117,10 +117,14 @@ class TensorRTEngine : public EngineBase {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
+  void SetRuntimeBatch(size_t batch_size);
+  int GetRuntimeBatch();
 
  private:
   // the max batch size
   int max_batch_;
+  // the runtime batch size
+  static int runtime_batch_;
   // the max memory size the engine uses
   int max_workspace_;
 
