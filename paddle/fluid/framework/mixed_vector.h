@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <memory>
 #include <vector>
 
 #include "paddle/fluid/framework/tensor.h"
@@ -386,13 +387,14 @@ template <typename T>
 class CPUVector : public std::vector<T, std::allocator<T>> {
  public:
   CPUVector() : std::vector<T>() {}
-  CPUVector(size_t count, const T &value = T())
+  CPUVector(size_t count, const T &value = T())  // NOLINT
       : std::vector<T>(count, value) {}
   CPUVector(std::initializer_list<T> init) : std::vector<T>(init) {}
-  CPUVector(const std::vector<T> &other) : std::vector<T>(other) {}
-  explicit CPUVector(const CPUVector<T> &other) : std::vector<T>(other) {}
+  CPUVector(const std::vector<T> &other) : std::vector<T>(other) {}  // NOLINT
+  CPUVector(const CPUVector<T> &other) : std::vector<T>(other) {}
   CPUVector(CPUVector<T> &&other) : std::vector<T>(std::move(other)) {}
-  CPUVector(std::vector<T> &&other) : std::vector<T>(std::move(other)) {}
+  CPUVector(std::vector<T> &&other)  // NOLINT
+      : std::vector<T>(std::move(other)) {}
   CPUVector &operator=(const CPUVector &other) {
     this->assign(other.begin(), other.end());
     return *this;
@@ -409,8 +411,6 @@ class CPUVector : public std::vector<T, std::allocator<T>> {
     }
     return os;
   }
-
-  void resize(size_t size) { this->resize(size); }
 
   T &operator[](size_t id) { return this->at(id); }
 
