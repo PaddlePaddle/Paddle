@@ -218,12 +218,13 @@ void add_vertex(vertex_node **t, double x, double y);
 
 void gpc_vertex_create(edge_node *e, int p, int s, double x, double y);
 
+/*
 void gpc_read_polygon(FILE *infile_ptr, int read_hole_flags,
                       gpc_polygon *polygon);
 
 void gpc_write_polygon(FILE *outfile_ptr, int write_hole_flags,
                        gpc_polygon *polygon);
-
+*/
 void gpc_add_contour(gpc_polygon *polygon, gpc_vertex_list *contour, int hole);
 
 void gpc_polygon_clip(gpc_op set_operation, gpc_polygon *subject_polygon,

@@ -30,8 +30,8 @@ class Point_ {
   //! default constructor
   // Point_();
   Point_() {}
-  Point_(_Tp _x, _Tp _y);
-  Point_(const Point_& pt);
+  Point_(_Tp _x, _Tp _y) {}
+  Point_(const Point_& pt) {}
   // Point_(const Size_<T>& sz);
   // Point_(const Vec<T, 2>& v);
 
@@ -42,11 +42,11 @@ class Point_ {
   // operator Vec<T, 2>() const;
 
   //! dot product
-  _Tp dot(const Point_& pt) const;
+  //_Tp dot(const Point_& pt) const;
   //! dot product computed in double-precision arithmetics
-  double ddot(const Point_& pt) const;
+  ///double ddot(const Point_& pt) const;
   //! cross-product
-  double cross(const Point_& pt) const;
+  //double cross(const Point_& pt) const;
   //! checks whether the point is inside the specified rectangle
   // bool inside(const Rect_<T>& r) const;
   _Tp x;  //!< x coordinate of the point
@@ -70,7 +70,7 @@ void Poly2PointVec(const gpc::gpc_vertex_list& contour,
                    std::vector<Point_<T>>& vec);
 
 template <class T>
-T GetContourArea(std::vector<Point_<T>>& vec, bool oriented = false);
+T GetContourArea(std::vector<Point_<T>>& vec);
 
 template <class T>
 T PolyArea(const T* box, const size_t box_size, const bool normalized);
@@ -80,5 +80,7 @@ T PolyOverlapArea(const T* box1, const T* box2, const size_t box_size,
                   const bool normalized);
 }  // namespace operators
 }  // namespace paddle
+
+#include "paddle/fluid/operators/detection/poly_util.cc"
 
 #endif  // POLY_UTIL_H_
