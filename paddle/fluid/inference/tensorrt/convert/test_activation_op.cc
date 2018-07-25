@@ -23,7 +23,8 @@ namespace tensorrt {
 TEST(ReluOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  TRTConvertValidation validator(10, parameters, scope, 1000);
+  int runtime_batch = 3;
+  TRTConvertValidation validator(10, parameters, scope, 1000, runtime_batch);
   validator.DeclInputVar("relu-X", nvinfer1::Dims2(10, 6));
   validator.DeclOutputVar("relu-Out", nvinfer1::Dims2(10, 6));
 
@@ -37,7 +38,7 @@ TEST(ReluOpConverter, main) {
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
-  validator.Execute(1);
+  validator.Execute(runtime_batch);
 }
 
 }  // namespace tensorrt

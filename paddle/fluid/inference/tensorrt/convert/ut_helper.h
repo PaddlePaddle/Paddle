@@ -63,13 +63,15 @@ class TRTConvertValidation {
  public:
   TRTConvertValidation() = delete;
 
-  TRTConvertValidation(int batch_size,
+  TRTConvertValidation(int max_batch_size,
                        const std::unordered_set<std::string>& parameters,
                        framework::Scope& scope,  // NOLINT
-                       int workspace_size = 1 << 10)
-      : parameters_(parameters), scope_(scope) {
+                       int workspace_size = 1 << 10, int runtime_batch_size = 1)
+      : parameters_(parameters),
+        scope_(scope),
+        runtime_batch_size_(runtime_batch_size) {
     // create engine.
-    engine_.reset(new TensorRTEngine(batch_size, workspace_size, &stream_));
+    engine_.reset(new TensorRTEngine(max_batch_size, workspace_size, &stream_));
     engine_->InitNetwork();
 
     PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
@@ -84,7 +86,7 @@ class TRTConvertValidation {
 
   // Declare a parameter varaible in the scope.
   void DeclParamVar(const std::string& name, const nvinfer1::Dims& dims) {
-    DeclVar(name, dims);
+    DeclVar(name, dims, true);
   }
 
   void DeclOutputVar(const std::string& name, const nvinfer1::Dims& dims) {
@@ -92,12 +94,20 @@ class TRTConvertValidation {
   }
 
   // Declare a variable in a fluid Scope.
-  void DeclVar(const std::string& name, const nvinfer1::Dims& dims) {
+  void DeclVar(const std::string& name, const nvinfer1::Dims& dims,
+               bool is_param = false) {
     platform::CPUPlace place;
     platform::CPUDeviceContext ctx(place);
 
     // Init Fluid tensor.
     std::vector<int> dim_vec(dims.d, dims.d + dims.nbDims);
+    // There is no batchsize in ITensor's shape, but We should add it to
+    // tensor's
+    // shape of fluid. If the variable is not parameter and the batch size
+    // greater than 0,
+    // add the batchsize to dim_vec.
+    if (is_param != true && runtime_batch_size_ > 0)
+      dim_vec.insert(dim_vec.begin(), runtime_batch_size_);
     auto* x = scope_.Var(name);
     auto* x_tensor = x->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dim_vec));
@@ -167,6 +177,10 @@ class TRTConvertValidation {
   std::unique_ptr<framework::OpDesc> op_desc_;
   const std::unordered_set<std::string>& parameters_;
   framework::Scope& scope_;
+  //  It represents the runtime batchsize when we test.
+  //  If the value greater than 0, we add this to
+  //  the first dimension of tensor's shape of fluid.
+  int runtime_batch_size_;
 };
 
 }  // namespace tensorrt

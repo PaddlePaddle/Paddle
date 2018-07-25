@@ -23,9 +23,14 @@ namespace tensorrt {
 TEST(Pool2dOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  TRTConvertValidation validator(10, parameters, scope, 1000);
-  validator.DeclInputVar("pool2d-X", nvinfer1::Dims4(10, 3, 2, 2));
-  validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims4(10, 3, 1, 1));
+  int runtime_batch = 3;
+  TRTConvertValidation validator(5, parameters, scope, 1 << 15, runtime_batch);
+
+  // We have already set the runtime batchsize, so the
+  // Dims should not contain the batch size.
+  // The ITensor's Dims of input and output should be C * H * W.
+  validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 4, 4));
+  validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 2, 2));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -34,7 +39,7 @@ TEST(Pool2dOpConverter, main) {
   desc.SetOutput("Out", {"pool2d-Out"});
 
   std::vector<int> ksize({2, 2});
-  std::vector<int> strides({1, 1});
+  std::vector<int> strides({2, 2});
   std::vector<int> paddings({0, 0});
   std::string pooling_t = "max";
 
@@ -42,18 +47,12 @@ TEST(Pool2dOpConverter, main) {
   desc.SetAttr("ksize", ksize);
   desc.SetAttr("strides", strides);
   desc.SetAttr("paddings", paddings);
-  // std::string temp = "";
-  // (*desc.Proto()).SerializeToString(&temp);
-
-  // std::cout << temp << std::endl;
-  // std::ofstream f("__temp__", std::ios::out);
-  // f << temp;
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
-  validator.Execute(10);
+  validator.Execute(runtime_batch);
 }
 
 }  // namespace tensorrt

@@ -23,7 +23,8 @@ namespace tensorrt {
 TEST(MulOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  TRTConvertValidation validator(10, parameters, scope, 1000);
+  int runtime_batch = 0;
+  TRTConvertValidation validator(10, parameters, scope, 1000, runtime_batch);
   validator.DeclInputVar("mul-X", nvinfer1::Dims2(10, 6));
   validator.DeclInputVar("mul-Y", nvinfer1::Dims2(6, 10));
   validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(10, 10));
