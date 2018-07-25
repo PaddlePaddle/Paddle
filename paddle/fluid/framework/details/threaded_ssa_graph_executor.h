@@ -40,8 +40,9 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
                            const std::vector<Scope *> &local_scopes,
                            const std::vector<platform::Place> &places,
-                           std::unique_ptr<Graph> &&graph);
+                           std::unique_ptr<ir::Graph> &&graph);
 
+  const ir::Graph &Graph() const { return *graph_; }
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
@@ -53,7 +54,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
              details::OpHandleBase *op);
 
  private:
-  std::unique_ptr<Graph> graph_;
+  std::unique_ptr<ir::Graph> graph_;
   std::unique_ptr<::ThreadPool> pool_;
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;

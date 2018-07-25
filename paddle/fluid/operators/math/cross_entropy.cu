@@ -58,6 +58,8 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& ctx,
                   framework::Tensor* out, const framework::Tensor* prob,
                   const framework::Tensor* labels, bool softLabel) {
+    constexpr T kMaxTolerableValue = static_cast<T>(1e20);
+
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
 
@@ -69,9 +71,19 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
       int block = class_num > 512
                       ? 512
                       : pow(2, static_cast<int>(std::log2(class_num)));
-
+      /*
       SoftCrossEntropyKernel<T><<<batch_size, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, class_num);
+      */
+      auto eigen_prob = framework::EigenMatrix<T>::From(*prob);
+      auto eigen_labels = framework::EigenMatrix<T>::From(*labels);
+      auto eigen_out = framework::EigenMatrix<T>::From(*out);
+      auto mul_ret = -eigen_prob.log()
+                          .cwiseMax(-kMaxTolerableValue)
+                          .cwiseMin(kMaxTolerableValue) *
+                     eigen_labels;
+      eigen_out.device(*ctx.eigen_device()) =
+          mul_ret.sum(Eigen::array<size_t, 1>({{1}}));
     } else {
       const int64_t* label_data = labels->data<int64_t>();
       int block = 512;

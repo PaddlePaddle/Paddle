@@ -32,6 +32,7 @@ template struct SetConstant<platform::CUDADeviceContext, double>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
 template struct SetConstant<platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<platform::CUDADeviceContext, bool>;
+template struct SetConstant<platform::CUDADeviceContext, uint8_t>;
 
 #define DEFINE_GPU_TRANS(RANK)                                          \
   template struct Transpose<platform::CUDADeviceContext, float, RANK>;  \

@@ -192,12 +192,12 @@ if(WITH_DISTRIBUTE)
     
     set(DISTRIBUTE_DEPS "")
     if(WITH_GRPC)
-        set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf)
+        set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf node)
     else()
-        set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib)
+        set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib node)
         if(WITH_BRPC_RDMA)
             find_library(IBVERBS_LIBRARY NAMES ibverbs)
-            ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
+            ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL math/softmax_cudnn.cc)
             SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${IBVERBS_LIBRARY})
 
 
@@ -270,6 +270,9 @@ op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
+op_library(extract_rows_op DEPS memory)
+op_library(flatten_op DEPS reshape_op)
+
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)

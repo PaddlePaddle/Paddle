@@ -119,15 +119,61 @@ Following examples will explain how slice works:
   }
 };
 
+class SliceOpGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Input"),
+                   "Input (Input) of slice_grad op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Input")),
+                   "Output (Input@GRAD) of slice_grad op should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input (Out@GRAD) of slice_grad op should not be null.");
+    ctx->SetOutputDim(framework::GradVarName("Input"),
+                      ctx->GetInputDim("Input"));
+  }
+};
+
+template <typename T>
+struct CPUSliceOpGradFunctor {
+  template <int Rank>
+  void operator()(const platform::CPUDeviceContext &ctx, T *dx, int64_t dx_size,
+                  const framework::Dim<Rank> &dx_strides, const T *dy,
+                  int64_t dy_size, const framework::Dim<Rank> &dy_strides,
+                  int64_t idx_offset) {
+    memset(dx, 0, sizeof(T) * dx_size);
+    for (int64_t i = 0; i < dy_size; ++i) {
+      int64_t dy_idx = i;
+      int64_t dx_idx = 0;
+      for (auto j = 0; j < Rank; ++j) {
+        dx_idx += (dy_idx / dy_strides[j]) * dx_strides[j];
+        dy_idx %= dy_strides[j];
+      }
+      dx_idx += idx_offset;
+      dx[dx_idx] = dy[i];
+    }
+  }
+};
+
+template <typename T>
+using CPUSliceGradKernel =
+    SliceGradKernel<platform::CPUDeviceContext, T, CPUSliceOpGradFunctor<T>>;
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(slice, ops::SliceOp, ops::SliceOpMaker,
-                  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::DefaultGradOpDescMaker<true>);
+
+REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
     slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CPU_KERNEL(slice_grad, ops::CPUSliceGradKernel<float>,
+                       ops::CPUSliceGradKernel<double>);
