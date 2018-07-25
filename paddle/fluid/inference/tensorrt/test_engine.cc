@@ -28,7 +28,7 @@ class TensorRTEngineTest : public ::testing::Test {
  protected:
   void SetUp() override {
     ASSERT_EQ(0, cudaStreamCreate(&stream_));
-    engine_ = new TensorRTEngine(1, 1 << 10, &stream_);
+    engine_ = new TensorRTEngine(10, 1 << 10, &stream_);
     engine_->InitNetwork();
   }
 
@@ -71,7 +71,7 @@ TEST_F(TensorRTEngineTest, add_layer) {
 
   LOG(INFO) << "to get output";
   float y_cpu;
-  engine_->GetOutputInCPU("y", &y_cpu, sizeof(float));
+  engine_->GetOutputInCPU("y", &y_cpu, 1 * sizeof(float));
 
   LOG(INFO) << "to checkout output";
   ASSERT_EQ(y_cpu, x_v * 2 + 3);
@@ -103,9 +103,47 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
 
   LOG(INFO) << "to get output";
   float y_cpu[2] = {-1., -1.};
-  engine_->GetOutputInCPU("y", &y_cpu[0], sizeof(float) * 2);
+
+  auto dims = engine_->GetITensor("y")->getDimensions();
+  ASSERT_EQ(dims.nbDims, 3);
+  ASSERT_EQ(dims.d[0], 2);
+  ASSERT_EQ(dims.d[1], 1);
+  engine_->GetOutputInCPU("y", &y_cpu[0], 2 * sizeof(float));
   ASSERT_EQ(y_cpu[0], 4.5);
   ASSERT_EQ(y_cpu[1], 14.5);
+}
+
+TEST_F(TensorRTEngineTest, test_conv2d_temp) {
+  // Weight in CPU memory.
+  float raw_weight[9] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  float raw_bias[1] = {0};
+
+  TensorRTEngine::Weight weight(nvinfer1::DataType::kFLOAT, raw_weight, 9);
+  TensorRTEngine::Weight bias(nvinfer1::DataType::kFLOAT, raw_bias, 1);
+  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+                                  nvinfer1::Dims3{1, 3, 3});
+  auto* conv_layer =
+      TRT_ENGINE_ADD_LAYER(engine_, Convolution, *x, 1, nvinfer1::DimsHW{3, 3},
+                           weight.get(), bias.get());
+  PADDLE_ENFORCE(conv_layer != nullptr);
+  conv_layer->setStride(nvinfer1::DimsHW{1, 1});
+  conv_layer->setPadding(nvinfer1::DimsHW{1, 1});
+
+  engine_->DeclareOutput(conv_layer, 0, "y");
+  engine_->FreezeNetwork();
+  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
+
+  float x_v[18] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+                   1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
+  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
+                           18 * sizeof(float));
+  engine_->Execute(2);
+
+  LOG(INFO) << "to get output";
+  float* y_cpu = new float[18];
+  engine_->GetOutputInCPU("y", &y_cpu[0], 18 * sizeof(float));
+  ASSERT_EQ(y_cpu[0], 4.0);
+  ASSERT_EQ(y_cpu[1], 6.0);
 }
 
 }  // namespace tensorrt

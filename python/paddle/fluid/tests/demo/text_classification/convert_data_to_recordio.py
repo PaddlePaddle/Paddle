@@ -31,7 +31,10 @@ def load_vocab(filename):
 
 
 # load word dict with paddle inner function
-word_dict = load_vocab(sys.argv[1])
+if len(sys.argv) == 1:
+    word_dict = paddle.dataset.imdb.word_dict()
+else:
+    word_dict = load_vocab(sys.argv[1])
 word_dict["<unk>"] = len(word_dict)
 print "Dict dim = ", len(word_dict)
 

@@ -104,6 +104,8 @@ packages=['paddle',
           'paddle.fluid.proto',
           'paddle.fluid.proto.profiler',
           'paddle.fluid.layers',
+          'paddle.fluid.contrib',
+          'paddle.fluid.contrib.decoder',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']
 
