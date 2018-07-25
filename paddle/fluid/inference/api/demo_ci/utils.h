@@ -15,14 +15,18 @@
 #pragma once
 #include <algorithm>
 #include <string>
+#include <stdlib.h>
+#include <sstream>
 #include <vector>
+#include <paddle/fluid/inference/api/paddle_inference_api.h>
+#include <cstring>
 #include "paddle/fluid/inference/paddle_inference_api.h"
 
 namespace paddle {
 namespace demo {
 
-static void split(const std::string& str, char sep,
-                  std::vector<std::string>* pieces) {
+static void split(const std::string &str, char sep,
+                  std::vector<std::string> *pieces) {
   pieces->clear();
   if (str.empty()) {
     return;
@@ -42,7 +46,7 @@ static void split(const std::string& str, char sep,
 /*
  * Get a summary of a PaddleTensor content.
  */
-static std::string SummaryTensor(const PaddleTensor& tensor) {
+static std::string SummaryTensor(const PaddleTensor &tensor) {
   std::stringstream ss;
   int num_elems = tensor.data.length() / PaddleDtypeSize(tensor.dtype);
 
@@ -50,17 +54,37 @@ static std::string SummaryTensor(const PaddleTensor& tensor) {
   switch (tensor.dtype) {
     case PaddleDType::INT64: {
       for (int i = 0; i < std::min(num_elems, 10); i++) {
-        ss << static_cast<int64_t*>(tensor.data.data())[i] << " ";
+        ss << static_cast<int64_t *>(tensor.data.data())[i] << " ";
       }
       break;
     }
     case PaddleDType::FLOAT32:
       for (int i = 0; i < std::min(num_elems, 10); i++) {
-        ss << static_cast<float*>(tensor.data.data())[i] << " ";
+        ss << static_cast<float *>(tensor.data.data())[i] << " ";
       }
       break;
   }
   return ss.str();
+}
+
+/*
+ * This is a C++ implementation for the python helper function
+ * create_random_int_lodtensor
+ */
+template<typename DType>
+void CreateLodTensor(const std::vector<int> &recursive_seq_lens,
+                     const std::vector<int> &base_shape,
+                      PaddleTensor *output, const std::vector<DType> &data) {
+  assert(output);
+  int idx = 0;
+  output->lod.emplace_back(idx);
+  for (int len : recursive_seq_lens) {
+    idx += len;
+    output->lod.emplace_back(idx);
+  }
+  assert(data.size() == idx);
+  output->data.Resize(data.size()*sizeof(DType));
+  memcpy(output->data.data(), data.data(), data.size()*sizeof(DType));
 }
 
 }  // namespace demo

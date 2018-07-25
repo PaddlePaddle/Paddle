@@ -257,6 +257,10 @@ bool NativePaddlePredictor::GetFetch(
       buffer.Resize(sizeof(float) * data.size());
     }
     std::memcpy(buffer.data(), data.data(), buffer.length());
+    // copy lod
+    for (const auto& level : fetchs[i].lod()) {
+      outputs->at(i).lod.emplace_back(level);
+    }
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }

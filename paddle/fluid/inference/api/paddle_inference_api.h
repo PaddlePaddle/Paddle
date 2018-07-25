@@ -97,9 +97,10 @@ class PaddlePredictor {
   // `inputs`. `inputs` should be available until Run returns. Caller should be
   // responsible for the output tensor's buffer, either allocated or passed from
   // outside.
+  // `batch_size` is only used in TensorRT mode.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
-                   int batch_size = -1) = 0;
+                   int batch_size = -1 /*used in TensorRT mode*/) = 0;
 
   // Clone a predictor that share the model weights, the Cloned predictor should
   // be thread-safe.
