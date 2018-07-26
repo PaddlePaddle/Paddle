@@ -17,7 +17,7 @@ import paddle.fluid.layers.ops as ops
 from paddle.fluid.initializer import init_on_cpu
 from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
 import paddle.fluid.core as core
-from parallel_executor_test_base import TestParallelExecutorBase
+from .parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import math
 import os
@@ -191,9 +191,9 @@ class TestResnet(TestParallelExecutorBase):
             optimizer=_optimizer)
 
         for p_f in parallel_first_loss:
-            self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
+            self.assertAlmostEqual(p_f, single_first_loss[0], delta=1e-6)
         for p_l in parallel_last_loss:
-            self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
+            self.assertAlmostEqual(p_l, single_last_loss[0], delta=1e-6)
 
     def test_seresnext_with_learning_rate_decay(self):
         self.check_resnet_convergence_with_learning_rate_decay(True, False)

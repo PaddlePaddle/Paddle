@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import math
 import sys
-from op_test import OpTest
+from .op_test import OpTest
 
 
 class TestROIPoolOp(OpTest):

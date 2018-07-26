@@ -14,8 +14,8 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
-from test_softmax_op import stable_softmax
+from .op_test import OpTest
+from .test_softmax_op import stable_softmax
 import paddle.fluid.core as core
 
 

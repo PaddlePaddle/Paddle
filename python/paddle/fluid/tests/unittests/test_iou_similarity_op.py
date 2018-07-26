@@ -17,7 +17,7 @@ import numpy as np
 import numpy.random as random
 import sys
 import math
-from op_test import OpTest
+from .op_test import OpTest
 
 
 class TestIOUSimilarityOp(OpTest):

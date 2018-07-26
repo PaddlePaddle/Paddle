@@ -17,9 +17,9 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest
+from .op_test import OpTest
 from paddle.fluid.framework import grad_var_name
-from test_batch_norm_op import TestBatchNormOpInference, TestBatchNormOpTraining, _reference_training, _reference_grad
+from .test_batch_norm_op import TestBatchNormOpInference, TestBatchNormOpTraining, _reference_training, _reference_grad
 
 
 class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):

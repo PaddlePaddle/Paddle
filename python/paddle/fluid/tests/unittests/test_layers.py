@@ -20,7 +20,7 @@ from paddle.fluid.layers.device import get_places
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
-import decorators
+from . import decorators
 
 
 class TestBook(unittest.TestCase):
@@ -279,7 +279,7 @@ class TestBook(unittest.TestCase):
     def test_nce(self):
         window_size = 5
         words = []
-        for i in xrange(window_size):
+        for i in range(window_size):
             words.append(
                 layers.data(
                     name='word_{0}'.format(i), shape=[1], dtype='int64'))
@@ -288,7 +288,7 @@ class TestBook(unittest.TestCase):
         label_word = int(window_size / 2) + 1
 
         embs = []
-        for i in xrange(window_size):
+        for i in range(window_size):
             if i == label_word:
                 continue
 

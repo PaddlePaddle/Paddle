@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 
 import paddle.fluid.core as core
-from op_test import OpTest
+from .op_test import OpTest
 
 
 def conv2dtranspose_forward_naive(input_, filter_, attrs):

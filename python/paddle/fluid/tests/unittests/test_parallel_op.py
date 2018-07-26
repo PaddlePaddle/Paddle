@@ -102,7 +102,7 @@ class BaseParallelForTest(unittest.TestCase):
             Fetched numpy arrays.
 
         """
-        if isinstance(fetch, basestring):
+        if isinstance(fetch, str):
             fetch = [fetch]
         main = fluid.Program()
         startup = fluid.Program()
@@ -124,7 +124,7 @@ class BaseParallelForTest(unittest.TestCase):
                     data = [data]
 
                 with pd.do():
-                    ins = map(pd.read_input, data)
+                    ins = list(map(pd.read_input, data))
                     if len(ins) == 1:
                         ins = ins[0]
                     loss = generator.send(ins)  # patch input

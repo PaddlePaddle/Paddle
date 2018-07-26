@@ -301,7 +301,7 @@ class DistSeResneXt2x2:
             trainer_id=trainer_id)
 
         feed_var_list = [
-            var for var in trainer_prog.global_block().vars.itervalues()
+            var for var in trainer_prog.global_block().vars.values()
             if var.is_data
         ]
 
@@ -309,7 +309,7 @@ class DistSeResneXt2x2:
         reader_generator = train_reader()
         first_loss, = exe.run(fetch_list=[avg_cost.name])
         print(first_loss)
-        for i in xrange(5):
+        for i in range(5):
             loss, = exe.run(fetch_list=[avg_cost.name])
         last_loss, = exe.run(fetch_list=[avg_cost.name])
         print(last_loss)

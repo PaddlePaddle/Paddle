@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import sys
 import math
-from op_test import OpTest
+from .op_test import OpTest
 
 
 def box_coder(target_box, prior_box, prior_box_var, output_box, code_type,
