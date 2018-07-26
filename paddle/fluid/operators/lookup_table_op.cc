@@ -37,7 +37,11 @@ class LookupTableOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ids_dims[1], 1);
 
     ctx->SetOutputDim("Out", {ids_dims[0], table_dims[1]});
-    ctx->ShareLoD("Ids", /*->*/ "Out");
+
+    if (ctx->GetOutputsVarType("Out")[0] ==
+        framework::proto::VarType::LOD_TENSOR) {
+      ctx->ShareLoD("Ids", /*->*/ "Out");
+    }
   }
 
  protected:

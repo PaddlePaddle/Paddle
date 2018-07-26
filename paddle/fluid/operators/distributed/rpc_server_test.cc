@@ -62,17 +62,16 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   out_var->GetMutable<framework::SelectedRows>();
 
   auto ids_var = scope->Var("ids");
-  ids_var->GetMutable<framework::SelectedRows>();
+  ids_var->GetMutable<framework::LoDTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto ids_var = scope->Var("ids")->GetMutable<framework::SelectedRows>();
-  auto rows = ids_var->mutable_rows();
-  for (int64_t i = 0; i < rows_numel; ++i) rows->push_back(i * 2);
-  ids_var->mutable_value()->Resize({rows_numel, 1});
-  ids_var->mutable_value()->mutable_data<float>(*place);
+  auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  int64_t* ids_ptr =
+      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 }
 
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
