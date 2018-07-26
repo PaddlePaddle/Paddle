@@ -75,7 +75,12 @@ can also fuse some `Graph`'s `Node`s.
 class Pass {
  public:
 
-  virtual std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const = 0;
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const {
+    // Some correctness check.
+    auto new_graph = ApplyImpl(std::move(graph));
+    // Some correctness check.
+    return new_graph;
+  }
 
   // Get a reference to the attributed previously set.
   template <typename AttrType>
@@ -89,6 +94,9 @@ class Pass {
   // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr);
+
+ protected:
+  virtual std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const = 0;
 };
 
 // In my_pass.cc

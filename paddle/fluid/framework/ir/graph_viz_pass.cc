@@ -20,10 +20,11 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+static const char kGraphVizPath[] = "graph_viz_path";
 
-std::unique_ptr<ir::Graph> GraphVizPass::Apply(
+std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  const std::string graph_viz_path = Get<std::string>("graph_viz_path");
+  const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE(fout->good());
   std::ostream& sout = *fout;
@@ -67,4 +68,5 @@ std::unique_ptr<ir::Graph> GraphVizPass::Apply(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(graph_viz_pass, paddle::framework::ir::GraphVizPass);
+REGISTER_PASS(graph_viz_pass, paddle::framework::ir::GraphVizPass)
+    .RequirePassAttr(paddle::framework::ir::kGraphVizPath);

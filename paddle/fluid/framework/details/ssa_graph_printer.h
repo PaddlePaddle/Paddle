@@ -36,8 +36,8 @@ class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
 };
 
 class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
- public:
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     std::unique_ptr<std::ostream> fout(
         new std::ofstream(Get<const std::string>("debug_graphviz_path")));

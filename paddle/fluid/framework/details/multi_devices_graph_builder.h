@@ -31,8 +31,8 @@ class Scope;
 namespace details {
 
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
- public:
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
