@@ -111,6 +111,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'flatten',
 ]
 
 
@@ -5353,4 +5354,26 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def flatten(x, axis, name=None):
+    """
+    **flatten layer**
+
+    """
+    helper = LayerHelper('flatten', **locals())
+
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Variable")
+
+    if not (isinstance(axis, int)) or axis >= len(x.shape) or axis < 0:
+        raise ValueError(
+            "The axis should be a int, and in range [0,len(x.shape))")
+
+    out = helper.create_tmp_variable(x.dtype)
+
+    helper.append_op(
+        type='flatten', inputs={"X": x,
+                                "axis": axis}, outputs={'Out': out})
     return out

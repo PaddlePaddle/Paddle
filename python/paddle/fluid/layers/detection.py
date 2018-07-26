@@ -263,9 +263,11 @@ def detection_output(loc,
         target_box=loc,
         code_type='decode_center_size')
     old_shape = scores.shape
-    scores = nn.reshape(x=scores, shape=(-1, old_shape[-1]))
+    act_shape = nn.shape(scores)
+    #scores = nn.reshape(x=scores, shape=(-1, old_shape[-1]))
+    scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=old_shape)
+    scores = nn.reshape(x=scores, shape=old_shape, actual_shape=act_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
