@@ -47,12 +47,12 @@ typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
 // unordered.
 typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
 
+typedef std::unordered_map<std::string, int> ShardedVarDevice;
+
 class SSAGraphBuilder : public ir::Pass {
  public:
   SSAGraphBuilder() {}
   virtual ~SSAGraphBuilder() {}
-
-  virtual int GetVarDeviceID(const std::string &var_name) const = 0;
 
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 

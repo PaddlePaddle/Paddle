@@ -244,6 +244,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
   result.Set("vars", new GraphVars(places_.size()));
   result.Set("dep_vars", new GraphDepVars);
   result.Set("ops", new GraphOps);
+  result.Set("sharded_var_device", new ShardedVarDevice);
 
   // find send/recv vars so that we can place the distributed training
   // realted op in the place 0
@@ -276,11 +277,12 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
       // the block.
       is_forwarding = false;
     } else {
-      int op_dev_id = GetOpDeviceID(node);
+      int op_dev_id = GetOpDeviceID(result, node);
       if (op_dev_id != -1) {  // This op only runs on one specific device.
         CreateComputationalOp(&result, node, op_dev_id);
         for (ir::Node *n : node->outputs) {
-          var_name_on_devices_.emplace(n->Name(), op_dev_id);
+          graph->Get<ShardedVarDevice>("sharded_var_device")
+              .emplace(n->Name(), op_dev_id);
         }
       } else {
         // This op runs on all devices, and its output may have parameter's
@@ -317,7 +319,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
                   case BuildStrategy::ReduceStrategy::kReduce:
                     cur_device_id = GetAppropriateDeviceID({g_name});
                     CreateReduceOp(&result, g_name, cur_device_id);
-                    var_name_on_devices_.emplace(g_name, cur_device_id);
+                    graph->Get<ShardedVarDevice>("sharded_var_device")
+                        .emplace(g_name, cur_device_id);
                     bcast_var_name_set[cur_device_id].emplace(p_name);
                     break;
                   case BuildStrategy::ReduceStrategy::kAllReduce:
@@ -499,7 +502,8 @@ bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
   return is_pg_once;
 }
 
-int MultiDevSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
+int MultiDevSSAGraphBuilder::GetOpDeviceID(const ir::Graph &graph,
+                                           ir::Node *node) const {
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
     return -1;
   }
@@ -512,15 +516,17 @@ int MultiDevSSAGraphBuilder::GetOpDeviceID(ir::Node *node) const {
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
 
   PADDLE_ENFORCE_EQ(param_grad.size(), 2U);
-  int dev_id = GetVarDeviceID(param_grad[1]);
+  int dev_id = GetVarDeviceID(graph, param_grad[1]);
   PADDLE_ENFORCE_NE(dev_id, -1, "dev_id should not be -1.[%s, %s, %s]",
                     node->Op()->Type(), param_grad[0], param_grad[1]);
   return dev_id;
 }
 
-int MultiDevSSAGraphBuilder::GetVarDeviceID(const std::string &varname) const {
-  auto got = var_name_on_devices_.find(varname);
-  return got == var_name_on_devices_.end() ? -1 : got->second;
+int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
+                                            const std::string &varname) const {
+  auto &sharded_var_device = graph.Get<ShardedVarDevice>("sharded_var_device");
+  auto got = sharded_var_device.find(varname);
+  return got == sharded_var_device.end() ? -1 : got->second;
 }
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(ir::Graph *result) const {
@@ -625,20 +631,23 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   if (node->Op()->Type() == "split_byref" ||
       node->Op()->Type() == "split_selected_rows") {
     // TODO(paddle-dev): getting the first var is not safe.
-    op_dev_id = GetVarDeviceID(input_var_names[0]);
+    op_dev_id = GetVarDeviceID(*result, input_var_names[0]);
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
       op_dev_id = GetAppropriateDeviceID(input_var_names);
       for (auto &varname : input_var_names) {
-        var_name_on_devices_.emplace(varname, op_dev_id);
+        result->Get<ShardedVarDevice>("sharded_var_device")
+            .emplace(varname, op_dev_id);
       }
     }
     for (auto &varname : output_var_names) {
-      var_name_on_devices_.emplace(varname, op_dev_id);
+      result->Get<ShardedVarDevice>("sharded_var_device")
+          .emplace(varname, op_dev_id);
     }
   } else if (node->Op()->Type() == "concat") {
-    op_dev_id = GetVarDeviceID(input_var_names[0]);
+    op_dev_id = GetVarDeviceID(*result, input_var_names[0]);
     for (auto &varname : output_var_names) {
-      var_name_on_devices_.emplace(varname, op_dev_id);
+      result->Get<ShardedVarDevice>("sharded_var_device")
+          .emplace(varname, op_dev_id);
     }
   } else {
     PADDLE_ENFORCE(
@@ -663,7 +672,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
   int op_dev_id = -1;
   if (node->Op()->Type() == "send") {
     // TODO(paddle-dev): getting the first var is not safe.
-    op_dev_id = GetVarDeviceID(node->inputs[0]->Name());
+    op_dev_id = GetVarDeviceID(*result, node->inputs[0]->Name());
     PADDLE_ENFORCE(!ir::IsControlDepVar(*node->inputs[0]),
                    "This hack no longer holds, please fix.");
     // the variable name which contains .block means it was splited by
@@ -678,7 +687,8 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
       }
       op_dev_id = GetAppropriateDeviceID(input_var_names);
       for (auto &varname : input_var_names) {
-        var_name_on_devices_.emplace(varname, op_dev_id);
+        result->Get<ShardedVarDevice>("sharded_var_device")
+            .emplace(varname, op_dev_id);
       }
     }
   } else if (node->Op()->Type() == "recv") {
@@ -688,7 +698,8 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
     }
     op_dev_id = GetAppropriateDeviceID(output_var_names);
     for (auto &varname : output_var_names) {
-      var_name_on_devices_.emplace(varname, op_dev_id);
+      result->Get<ShardedVarDevice>("sharded_var_device")
+          .emplace(varname, op_dev_id);
     }
   } else {
     // send_barrier and fetch_barrier op can be scheduled on device 0
@@ -730,3 +741,6 @@ bool MultiDevSSAGraphBuilder::IsScaleLossOp(ir::Node *node) const {
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(multi_device_pass,
+              paddle::framework::details::MultiDevSSAGraphBuilder);

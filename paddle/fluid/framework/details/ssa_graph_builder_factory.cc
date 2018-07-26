@@ -21,8 +21,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
-std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
-  std::unique_ptr<SSAGraphBuilder> res(new MultiDevSSAGraphBuilder);
+std::unique_ptr<ir::Pass> ParallelExecutorPassManager::Create() {
+  std::unique_ptr<ir::Pass> res(new MultiDevSSAGraphBuilder);
   res->SetNotOwned<std::vector<platform::Place>>("places", &places_);
   res->SetNotOwned<std::string>("loss_var_name", &loss_var_name_);
   res->SetNotOwned<std::unordered_set<std::string>>("params", &param_names_);
@@ -33,18 +33,18 @@ std::unique_ptr<SSAGraphBuilder> SSAGraphBuilderFactory::Create() {
 #endif
 
   if (!strategy_.debug_graphviz_path_.empty()) {
-    SSAGraphBuilder *previous_pass = res.release();
+    ir::Pass *previous_pass = res.release();
     res.reset(new SSAGraghBuilderWithPrinter);
-    res->Set<SSAGraphBuilder>("previous_pass", previous_pass);
+    res->Set<ir::Pass>("previous_pass", previous_pass);
     res->SetNotOwned<std::string>("debug_graphviz_path",
                                   &strategy_.debug_graphviz_path_);
     res->Set<GraphvizSSAGraphPrinter>("graph_printer",
                                       new GraphvizSSAGraphPrinter);
   }
 
-  SSAGraphBuilder *previous_pass = res.release();
+  ir::Pass *previous_pass = res.release();
   res.reset(new SSAGraghBuilderWithChecker);
-  res->Set<SSAGraphBuilder>("previous_pass", previous_pass);
+  res->Set<ir::Pass>("previous_pass", previous_pass);
 
   return res;
 }

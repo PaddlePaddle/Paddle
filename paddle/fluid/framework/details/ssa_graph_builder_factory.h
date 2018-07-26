@@ -29,13 +29,13 @@ namespace framework {
 class Scope;
 namespace details {
 
-class SSAGraphBuilderFactory {
+class ParallelExecutorPassManager {
  public:
-  SSAGraphBuilderFactory(const std::vector<platform::Place>& places,
-                         const std::string& loss_var_name,
-                         const std::unordered_set<std::string>& param_names,
-                         const std::vector<Scope*>& local_scopes,
-                         const BuildStrategy& strategy)
+  ParallelExecutorPassManager(
+      const std::vector<platform::Place>& places,
+      const std::string& loss_var_name,
+      const std::unordered_set<std::string>& param_names,
+      const std::vector<Scope*>& local_scopes, const BuildStrategy& strategy)
       : places_(places),
         loss_var_name_(loss_var_name),
         param_names_(param_names),
@@ -52,7 +52,7 @@ class SSAGraphBuilderFactory {
   }
 #endif
 
-  std::unique_ptr<SSAGraphBuilder> Create();
+  std::unique_ptr<ir::Pass> Create();
 
  private:
   std::vector<platform::Place> places_;
