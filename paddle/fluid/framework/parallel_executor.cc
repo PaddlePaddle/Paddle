@@ -26,7 +26,8 @@ limitations under the License. */
 #endif
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
+#include "paddle/fluid/framework/details/ssa_graph_checker.h"
+#include "paddle/fluid/framework/details/ssa_graph_printer.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -43,16 +44,6 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
 #else
     const BuildStrategy &strategy) {
 #endif
-  details::ParallelExecutorPassManager builder_factory(
-      places, loss_var_name, param_names, local_scopes, strategy);
-  if (use_cuda) {
-#ifdef PADDLE_WITH_CUDA
-    builder_factory.SetNCCLContextMap(nccl_ctxs);
-#else
-    PADDLE_THROW("Not compiled with CUDA.");
-#endif
-  }
-
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   if (!strategy.debug_graphviz_path_.empty()) {
     auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
@@ -62,8 +53,37 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
     graph = viz_pass->Apply(std::move(graph));
   }
 
-  auto builder = builder_factory.Create();
-  graph = builder->Apply(std::move(graph));
+  auto multi_device_pass =
+      ir::PassRegistry::Instance().Get("multi_device_pass");
+  multi_device_pass->SetNotOwned<const std::vector<platform::Place>>("places",
+                                                                     &places);
+  multi_device_pass->SetNotOwned<const std::string>("loss_var_name",
+                                                    &loss_var_name);
+  multi_device_pass->SetNotOwned<const std::unordered_set<std::string>>(
+      "params", &param_names);
+  multi_device_pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
+                                                             &local_scopes);
+  multi_device_pass->SetNotOwned<const BuildStrategy>("strategy", &strategy);
+
+#ifdef PADDLE_WITH_CUDA
+  platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+  multi_device_pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
+#endif
+  graph = multi_device_pass->Apply(std::move(graph));
+
+  if (!strategy.debug_graphviz_path_.empty()) {
+    auto multi_device_print_pass =
+        ir::PassRegistry::Instance().Get("multi_device_print_pass");
+    multi_device_print_pass->SetNotOwned<const std::string>(
+        "debug_graphviz_path", &strategy.debug_graphviz_path_);
+    multi_device_print_pass->Set<details::GraphvizSSAGraphPrinter>(
+        "graph_printer", new details::GraphvizSSAGraphPrinter);
+    graph = multi_device_print_pass->Apply(std::move(graph));
+  }
+
+  auto multi_device_check_pass =
+      ir::PassRegistry::Instance().Get("multi_device_check_pass");
+  graph = multi_device_check_pass->Apply(std::move(graph));
 
   if (!strategy.debug_graphviz_path_.empty()) {
     auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");

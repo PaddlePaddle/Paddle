@@ -42,6 +42,7 @@ class Pass {
 
   virtual std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const = 0;
 
+  // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
     PADDLE_ENFORCE(attrs_.find(attr_name) != attrs_.end(),
@@ -49,6 +50,7 @@ class Pass {
     return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
   }
 
+  // Set a pointer to the attribute. Pass takes ownership of the attribute.
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
@@ -59,6 +61,8 @@ class Pass {
     };
   }
 
+  // Set a pointer to the attribute. Pass doesn't take ownership. Caller
+  // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
     PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
@@ -127,6 +131,7 @@ struct PassRegistrar : public Registrar {
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
 
+// Register a new pass that can be applied on the IR.
 #define REGISTER_PASS(pass_type, pass_class)                \
   STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                      \
       __reg_pass__##pass_type,                              \

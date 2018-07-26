@@ -71,6 +71,44 @@ is a `Graph` and its output is also a `Graph`. For example,
 a `Pass` can simply print out the `Graph`. A `Pass`
 can also fuse some `Graph`'s `Node`s.
 
+```cpp
+class Pass {
+ public:
+
+  virtual std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const = 0;
+
+  // Get a reference to the attributed previously set.
+  template <typename AttrType>
+  AttrType &Get(const std::string &attr_name) const;
+
+  // Set a pointer to the attribute. Pass takes ownership of the attribute.
+  template <typename AttrType>
+  void Set(const std::string &attr_name, AttrType *attr) ;
+
+  // Set a pointer to the attribute. Pass doesn't take ownership. Caller
+  // should delete the attribute.
+  template <typename AttrType>
+  void SetNotOwned(const std::string &attr_name, AttrType *attr);
+};
+
+// In my_pass.cc
+class MyPass : public Pass {
+ public:
+  std::unique_ptr<Graph> Apply(std::unique_ptr<Graph> graph) const override {
+    // do something.
+    return graph;
+  }
+}
+REGISTER_PASS(my_pass, MyPass);
+
+
+// To use the pass.
+auto my_pass = ir::PassRegistry::Instance().Get("my_pass");
+graph = my_pass->Apply(std::move(graph));
+// Note: to force link my_pass.cc, in the code:
+USE_PASS(my_pass);
+```
+
 #### Optimize
 
 `Optimize` contains a series of `Pass` with defined order.

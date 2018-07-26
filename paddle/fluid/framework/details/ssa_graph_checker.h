@@ -26,9 +26,8 @@ class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
  public:
   std::unique_ptr<ir::Graph> Apply(
       std::unique_ptr<ir::Graph> graph) const override {
-    auto new_graph = Get<ir::Pass>("previous_pass").Apply(std::move(graph));
-    PADDLE_ENFORCE(IsValidGraph(new_graph.get()));
-    return new_graph;
+    PADDLE_ENFORCE(IsValidGraph(graph.get()));
+    return graph;
   }
 
   bool IsValidGraph(const ir::Graph* graph) const;
