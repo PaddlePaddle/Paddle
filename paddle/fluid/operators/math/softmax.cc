@@ -13,8 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
+#include <vector>
 #include "paddle/fluid/operators/math/softmax_impl.h"
-
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/platform/dynload/cudnn.h"
+#endif
 namespace paddle {
 namespace operators {
 namespace math {
@@ -23,6 +27,77 @@ template class SoftmaxFunctor<platform::CPUDeviceContext, float>;
 template class SoftmaxFunctor<platform::CPUDeviceContext, double>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, float>;
 template class SoftmaxGradFunctor<platform::CPUDeviceContext, double>;
+
+#ifdef PADDLE_WITH_CUDA
+template <typename T>
+using CudnnDataType = platform::CudnnDataType<T>;
+
+template <typename T>
+void SoftmaxCUDNNFunctor<T>::operator()(
+    const platform::CUDADeviceContext& context, const framework::Tensor* X,
+    framework::Tensor* Y) {
+  // ------------------- cudnn descriptors ---------------------
+  platform::ScopedTensorDescriptor xDesc;
+  platform::ScopedTensorDescriptor yDesc;
+  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(X->dims());
+  platform::DataLayout layout = platform::DataLayout::kNCHW;
+  if (cudnn_tensor_dims.size() == 5) {
+    layout = platform::DataLayout::kNCDHW;
+  }
+  // NOTE(*) : cudnn softmax only support >= 4D Tensor,
+  // fill 1 at unused dims
+  if (cudnn_tensor_dims.size() <= 2) {
+    cudnn_tensor_dims.resize(4, 1);
+  }
+  cudnnTensorDescriptor_t cudnn_x_desc =
+      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  cudnnTensorDescriptor_t cudnn_y_desc =
+      xDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
+      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
+      X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
+      Y->mutable_data<T>(context.GetPlace())));
+}
+
+template <typename T>
+void SoftmaxGradCUDNNFunctor<T>::operator()(
+    const platform::CUDADeviceContext& context, const framework::Tensor* Y,
+    const framework::Tensor* YGrad, framework::Tensor* XGrad) {
+  // ------------------- cudnn descriptors ---------------------
+  platform::ScopedTensorDescriptor yDesc;
+  platform::ScopedTensorDescriptor dyDesc;
+  platform::ScopedTensorDescriptor dxDesc;
+  std::vector<int> cudnn_tensor_dims = framework::vectorize2int(Y->dims());
+  platform::DataLayout layout = platform::DataLayout::kNCHW;
+  if (cudnn_tensor_dims.size() == 5) {
+    layout = platform::DataLayout::kNCDHW;
+  }
+  // NOTE(*) : cudnn softmax only support >= 4D Tensor,
+  // fill 1 at unused dims
+  if (cudnn_tensor_dims.size() <= 2) {
+    cudnn_tensor_dims.resize(4, 1);
+  }
+  cudnnTensorDescriptor_t cudnn_y_desc =
+      yDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  cudnnTensorDescriptor_t cudnn_xgrad_desc =
+      dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  cudnnTensorDescriptor_t cudnn_ygrad_desc =
+      dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
+  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
+      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
+      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
+      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
+      XGrad->mutable_data<T>(context.GetPlace())));
+}
+
+template class SoftmaxCUDNNFunctor<platform::float16>;
+template class SoftmaxCUDNNFunctor<float>;
+template class SoftmaxCUDNNFunctor<double>;
+template class SoftmaxGradCUDNNFunctor<float>;
+template class SoftmaxGradCUDNNFunctor<double>;
+#endif
 
 }  // namespace math
 }  // namespace operators

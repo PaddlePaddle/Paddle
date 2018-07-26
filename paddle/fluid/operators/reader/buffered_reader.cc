@@ -84,7 +84,12 @@ void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
     out->clear();
     return;
   }
+  auto beg = std::chrono::high_resolution_clock::now();
   size_t i = position_.front().get();
+  LOG(INFO) << std::chrono::duration_cast<std::chrono::microseconds>(
+                   std::chrono::high_resolution_clock::now() - beg)
+                   .count()
+            << " micro sec.";
   position_.pop();
 
   if (i == -1UL) {

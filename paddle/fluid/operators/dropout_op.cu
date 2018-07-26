@@ -25,8 +25,8 @@ namespace operators {
 
 template <typename T>
 __global__ void RandomGenerator(const size_t n, const int seed,
-                                const float dropout_prob, const T* src,
-                                T* mask_data, T* dst) {
+                                const float dropout_prob, const T *src,
+                                T *mask_data, T *dst) {
   thrust::minstd_rand rng;
   rng.seed(seed);
   thrust::uniform_real_distribution<float> dist(0, 1);
@@ -55,25 +55,57 @@ __global__ void RandomGenerator(const size_t n, const int seed,
   }
 }
 
+template <typename T, unsigned int Limit>
+__global__ static void DropoutIntGenerator(const size_t n, const int seed,
+                                           const unsigned int prob,
+                                           const T *src, T *mask_data, T *dst) {
+  thrust::minstd_rand rng;
+  rng.seed(seed);
+  thrust::uniform_int_distribution<unsigned int> dist(0, Limit - 1U);
+
+  int idx = blockDim.x * blockIdx.x + threadIdx.x;
+  int step_size = 0;
+
+  T mask;
+  T dest;
+  for (; idx < n; idx += blockDim.x * gridDim.x) {
+    T s = src[idx];
+    if (step_size == 0) {
+      rng.discard(idx);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      rng.discard(step_size);
+    }
+    if (dist(rng) < prob) {
+      mask = static_cast<T>(0);
+    } else {
+      mask = static_cast<T>(1);
+    }
+    dest = s * mask;
+    mask_data[idx] = mask;
+    dst[idx] = dest;
+  }
+}
+
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
 // Use std::random and thrust::random(thrust is a std library in CUDA) to
 // implement uniform random.
 template <typename Place, typename T>
 class GPUDropoutKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* y = context.Output<Tensor>("Out");
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *x = context.Input<Tensor>("X");
+    auto *y = context.Output<Tensor>("Out");
     y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
-    auto& place = *context.template device_context<Place>().eigen_device();
+    auto &place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
-      auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+      auto *mask = context.Output<Tensor>("Mask");
+      auto *mask_data = mask->mutable_data<T>(context.GetPlace());
       size_t size = framework::product(mask->dims());
-      auto* x_data = x->data<T>();
-      auto* y_data = y->mutable_data<T>(context.GetPlace());
+      auto *x_data = x->data<T>();
+      auto *y_data = y->mutable_data<T>(context.GetPlace());
 
       std::random_device rnd;
       int seed =
@@ -81,9 +113,20 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
 
       int threads = 512;
       int grid = (x->numel() + threads - 1) / threads;
-      RandomGenerator<
-          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data);
+
+      if (std::abs(static_cast<int>(dropout_prob * 10) / 10.0 - dropout_prob) <
+          1e-3) {
+        // RandInt
+        DropoutIntGenerator<
+            T,
+            10><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+            size, seed, static_cast<unsigned int>(dropout_prob * 10), x_data,
+            mask_data, y_data);
+      } else {
+        RandomGenerator<
+            T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+            size, seed, dropout_prob, x_data, mask_data, y_data);
+      }
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
