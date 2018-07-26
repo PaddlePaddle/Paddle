@@ -57,26 +57,23 @@ class SSAGraphBuilder : public ir::Pass {
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 
  protected:
-  /**
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
-   *
-   * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
-   */
-  static void PolishGraphToSupportDataHazards(Graph *graph);
+  /*
+    Dependency graph has been constructed. However, there are still data
+    hazards need to be handled.
+  */
+  static void PolishGraphToSupportDataHazards(ir::Graph *graph);
 
-  static VarHandle *CreateOrGetLatestVarHandle(Graph *graph, ir::Node *node,
+  static VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph, ir::Node *node,
                                                const platform::Place &place,
                                                size_t place_offset);
 
   // Add an output variable (each_var_name, place, place_offset) to op_handle,
   // which belongs to graph
-  static void CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
+  static void CreateOpOutput(ir::Graph *graph, OpHandleBase *op_handle,
                              ir::Node *new_node, const platform::Place &place,
                              size_t place_offset);
 
-  static void AddOutputToLeafOps(Graph *graph);
+  static void AddOutputToLeafOps(ir::Graph *graph);
 };
 }  // namespace details
 }  // namespace framework

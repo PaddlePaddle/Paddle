@@ -1,16 +1,16 @@
 ## Motivation
 
-There is a ```gap``` between the ```Program``` defined by
-user and the ```Executable``` that can be scheduled
+There is a `gap` between the `Program` defined by
+user and the `Executable` that can be scheduled
 efficiently on heterogeneous hardware, either locally
 or distributedly.
 
-Usually, the ```gap``` is bridged by
+Usually, the `gap` is bridged by
 
 * A serious transformations with defined order.
 
 * These transformations usually involve
-```insert, delete, clustering, split, dependency analysis```.
+`insert, delete, clustering, split, dependency analysis`.
 
 * Has a simple way to verify and debug each transformation.
 
@@ -38,44 +38,44 @@ design below.
 
 #### Node
 
-```Node``` represents an operation that performs some computation or
+`Node` represents an operation that performs some computation or
 a variable that is input or output of operation.
 
-```Node```s are connected to other ```Node```s via inputs and outputs.
+`Node`s are connected to other `Node`s via inputs and outputs.
 
 Other properties (maybe device placement information) can be added
-to ```Node``` in the future if it's a
-common requirement of many other ```Pass```es. Otherwise, it should live
-in a ```Node``` wrapper class that is private to some ```Pass``` or be
-a local member of a ```Pass```.
+to `Node` in the future if it's a
+common requirement of many other `Pass`es. Otherwise, it should live
+in a `Node` wrapper class that is private to some `Pass` or be
+a local member of a `Pass`.
 
 #### Graph
 
-```Graph``` contains a list of ```Node```s, which are connected to
+`Graph` contains a list of `Node`s, which are connected to
 each other via inputs and outputs.
 
 TODO: Better definitions for the graph.
 
-```Graph``` can also contain ```Attribute```s. ```Attribute```s
-can be ``any`` thing. For example, it can be a list of "wraper"
-nodes. The ```wrapper``` nodes compose ```Node```s and provide
-helper method for execution or transformation. ```Attribute```
+`Graph` can also contain `Attribute`s. `Attribute`s
+can be `any` thing. For example, it can be a list of "wraper"
+nodes. The `wrapper` nodes compose `Node`s and provide
+helper method for execution or transformation. `Attribute`
 can also contain other things that describe some properties of
-the ```Graph``` or ```Graph``` nodes. ```Attribute``` can be passed
-across ```Pass```. However, it should be used with care.
+the `Graph` or `Graph` nodes. `Attribute` can be passed
+across `Pass`. However, it should be used with care.
 
 #### Pass
 
-```Pass``` represents a transformation of ```Graph```. Its input
-is a ```Graph``` and its output is also a ```Graph```. For example,
-a ```Pass``` can simply print out the ```Graph```. A ```Pass```
-can also fuse some ```Graph```'s ```Node```s.
+`Pass` represents a transformation of `Graph`. Its input
+is a `Graph` and its output is also a `Graph`. For example,
+a `Pass` can simply print out the `Graph`. A `Pass`
+can also fuse some `Graph`'s `Node`s.
 
 #### Optimize
 
-```Optimize``` contains a series of ```Pass``` with defined order.
-```Optimize``` transforms a ```Graph``` that only contains raw
-modeling logic to a ```Graph``` that can be run efficiently while
+`Optimize` contains a series of `Pass` with defined order.
+`Optimize` transforms a `Graph` that only contains raw
+modeling logic to a `Graph` that can be run efficiently while
 maintaining the original modeling logic.
 
 
