@@ -81,7 +81,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn pool algorithm ---------------------
     auto handle = ctx.cuda_device_context().cudnn_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    PADDLE_ENFORCE(platform::dynload::cudnnPoolingForward(
+    CUDNN_ENFORCE(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
         cudnn_output_desc, output_data));
   }
@@ -91,8 +91,8 @@ template <typename T>
 class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                   "It must use CUDAPlace.");
+    CUDNN_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                  "It must use CUDAPlace.");
 
     const Tensor *input = ctx.Input<Tensor>("X");
     const Tensor *output = ctx.Input<Tensor>("Out");
@@ -154,7 +154,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       T *input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
 
-      PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
+      CUDNN_ENFORCE(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data));
