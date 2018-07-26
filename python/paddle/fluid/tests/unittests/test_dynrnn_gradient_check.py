@@ -30,12 +30,12 @@ class Memory(object):
         assert val.dtype == self.ex.dtype
         self.cur = val
 
-    def __next__(self):
+    def next(self):
         self.ex = self.cur
         self.cur = None
 
     def __next__(self):
-        next(self)
+        self.next()
 
     def reset(self):
         self.ex = numpy.zeros(shape=self.ex.shape, dtype=self.ex.dtype)
