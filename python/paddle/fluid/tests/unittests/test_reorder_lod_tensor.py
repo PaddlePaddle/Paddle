@@ -15,6 +15,7 @@
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
+from paddle.fluid.layers.control_flow import lod_rank_table
 import numpy
 
 
@@ -34,7 +35,7 @@ class TestReorderLoDTensor(unittest.TestCase):
         dat.stop_gradient = False
         rank_dat = fluid.layers.data(
             name=cls.data_desc[1][0], shape=cls.data_desc[1][1])
-        table = fluid.layers.lod_rank_table(rank_dat)
+        table = lod_rank_table(rank_dat)
         new_dat = fluid.layers.reorder_lod_tensor_by_rank(
             x=dat, rank_table=table)
         loss = fluid.layers.reduce_sum(new_dat)
