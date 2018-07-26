@@ -30,19 +30,11 @@ random.seed(0)
 DATA_DIM = 224
 
 THREAD = 8
-BUF_SIZE = 15000
-
-# DATA_DIR = 'data/ILSVRC2012'
-# TRAIN_LIST = 'data/ILSVRC2012/train_list.txt'
-# TEST_LIST = 'data/ILSVRC2012/val_list.txt'
+BUF_SIZE = 50000
 
 DATA_DIR = '/mnt/ImageNet'
 TRAIN_LIST = '/mnt/ImageNet/train.txt'
 TEST_LIST = '/mnt/ImageNet/val.txt'
-
-# DATA_DIR = 'ImageNet'
-# TRAIN_LIST = 'ImageNet/train.txt'
-# TEST_LIST = 'ImageNet/val.txt'
 
 img_mean = np.array([0.485, 0.456, 0.406]).reshape((3, 1, 1))
 img_std = np.array([0.229, 0.224, 0.225]).reshape((3, 1, 1))
@@ -153,114 +145,6 @@ def process_image(sample, mode, color_jitter, rotate):
         return [img]
 
 
-class XmapEndSignal():
-    pass
-
-
-def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
-    """
-    Use multiprocess to map samples from reader by a mapper defined by user.
-    And this function contains a buffered decorator.
-    :param mapper:  a function to map sample.
-    :type mapper: callable
-    :param reader: the data reader to read from
-    :type reader: callable
-    :param process_num: process number to handle original sample
-    :type process_num: int
-    :param buffer_size: max buffer size
-    :type buffer_size: int
-    :param order: keep the order of reader
-    :type order: bool
-    :return: the decarated reader
-    :rtype: callable
-    """
-    end = XmapEndSignal()
-
-    # define a worker to read samples from reader to in_queue
-    def read_worker(reader, in_queue):
-        for i in reader():
-            in_queue.put(i)
-        in_queue.put(end)
-
-    # define a worker to read samples from reader to in_queue with order flag
-    def order_read_worker(reader, in_queue):
-        in_order = 0
-        for i in reader():
-            in_queue.put((in_order, i))
-            in_order += 1
-        in_queue.put(end)
-
-    # define a worker to handle samples from in_queue by mapper
-    # and put mapped samples into out_queue
-    def handle_worker(in_queue, out_queue, mapper):
-        sample = in_queue.get()
-        while not isinstance(sample, XmapEndSignal):
-            r = mapper(sample)
-            out_queue.put(r)
-            sample = in_queue.get()
-        in_queue.put(end)
-        out_queue.put(end)
-
-    # define a worker to handle samples from in_queue by mapper
-    # and put mapped samples into out_queue by order
-    def order_handle_worker(in_queue, out_queue, mapper, out_order):
-        ins = in_queue.get()
-        while not isinstance(ins, XmapEndSignal):
-            order, sample = ins
-            r = mapper(sample)
-            while order != out_order[0]:
-                pass
-            out_queue.put(r)
-            out_order[0] += 1
-            ins = in_queue.get()
-        in_queue.put(end)
-        out_queue.put(end)
-
-    def status(in_queue, out_queue):
-        while True:
-            print('in queue size %d, out size: %d' %
-                  (in_queue.qsize(), out_queue.qsize()))
-            time.sleep(10)
-
-    def xreader():
-        in_queue = Queue(buffer_size)
-        out_queue = Queue(buffer_size)
-        out_order = [0]
-        # start a read worker in a thread
-        target = order_read_worker if order else read_worker
-        t = Thread(target=target, args=(reader, in_queue))
-        t.daemon = True
-        t.start()
-        #st_thread = Thread(target=status, args=(in_queue, out_queue))
-        #st_thread.daemon = True
-        #st_thread.start()
-        # start several handle_workers
-        target = order_handle_worker if order else handle_worker
-        args = (in_queue, out_queue, mapper, out_order) if order else (
-            in_queue, out_queue, mapper)
-        workers = []
-        for i in xrange(process_num):
-            worker = Thread(target=target, args=args)
-            worker.daemon = True
-            workers.append(worker)
-        for w in workers:
-            w.start()
-
-        sample = out_queue.get()
-        while not isinstance(sample, XmapEndSignal):
-            yield sample
-            sample = out_queue.get()
-        finish = 1
-        while finish < process_num:
-            sample = out_queue.get()
-            if isinstance(sample, XmapEndSignal):
-                finish += 1
-            else:
-                yield sample
-
-    return xreader
-
-
 def _reader_creator(file_list,
                     mode,
                     shuffle=False,
@@ -301,7 +185,7 @@ def _reader_creator(file_list,
     mapper = functools.partial(
         process_image, mode=mode, color_jitter=color_jitter, rotate=rotate)
 
-    return xmap_readers(mapper, reader, THREAD, BUF_SIZE)
+    return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
 
 
 def train(file_list=TRAIN_LIST):

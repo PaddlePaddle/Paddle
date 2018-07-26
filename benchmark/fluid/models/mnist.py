@@ -111,4 +111,4 @@ def get_model(args, is_train, main_prog, startup_prog):
         reader = paddle.dataset.mnist.test()
     batched_reader = paddle.batch(
         reader, batch_size=args.batch_size * args.gpus)
-    return avg_cost, opt, batch_acc, None, batched_reader, data_file_handle
+    return avg_cost, opt, [batch_acc], batched_reader, data_file_handle

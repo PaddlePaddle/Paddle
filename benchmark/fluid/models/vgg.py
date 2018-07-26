@@ -25,7 +25,7 @@ import functools
 import os
 
 
-def vgg16_bn_drop(input):
+def vgg16_bn_drop(input, is_train=True):
     def conv_block(input, num_filter, groups, dropouts):
         return fluid.nets.img_conv_group(
             input=input,
@@ -46,7 +46,7 @@ def vgg16_bn_drop(input):
 
     drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
     fc1 = fluid.layers.fc(input=drop, size=512, act=None)
-    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    bn = fluid.layers.batch_norm(input=fc1, act='relu', is_test=not is_train)
     drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
     fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
     return fc2
@@ -82,14 +82,14 @@ def get_model(args, is_train, main_prog, startup_prog):
                     data_file_handle, batch_size=args.batch_size))
         with fluid.unique_name.guard():
             if args.use_reader_op:
-                input, label = fluid.layers.read_file(data_file)
+                images, label = fluid.layers.read_file(data_file)
             else:
-                input = fluid.layers.data(
+                images = fluid.layers.data(
                     name='data', shape=data_shape, dtype='float32')
                 label = fluid.layers.data(
                     name='label', shape=[1], dtype='int64')
             # Train program
-            net = vgg16_bn_drop(images)
+            net = vgg16_bn_drop(images, is_train=is_train)
             predict = fluid.layers.fc(input=net, size=classdim, act='softmax')
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)
@@ -117,4 +117,4 @@ def get_model(args, is_train, main_prog, startup_prog):
             reader, buf_size=5120),
         batch_size=args.batch_size * args.gpus)
 
-    return avg_cost, optimizer, batch_acc, None, batched_reader, data_file_handle
+    return avg_cost, optimizer, [batch_acc], batched_reader, data_file_handle

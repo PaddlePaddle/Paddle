@@ -229,9 +229,6 @@ def get_model(args, is_train, main_prog, startup_prog):
             predict = model(input, class_dim, is_train=is_train)
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)
-            # NOTE: in distributed NCCL2 training, avg_cost = avg_cost / trainers
-            # if args.update_method == "nccl2":
-            #     avg_cost = avg_cost / trainer_count
 
             batch_acc1 = fluid.layers.accuracy(input=predict, label=label, k=1)
             batch_acc5 = fluid.layers.accuracy(input=predict, label=label, k=5)
@@ -263,4 +260,5 @@ def get_model(args, is_train, main_prog, startup_prog):
                 if args.memory_optimize:
                     fluid.memory_optimize(main_prog)
 
-    return avg_cost, optimizer, batch_acc1, batch_acc5, batched_reader, data_file_handle
+    return avg_cost, optimizer, [batch_acc1,
+                                 batch_acc5], batched_reader, data_file_handle

@@ -81,13 +81,14 @@ def dist_transpile(trainer_id, args):
     # the role, should be either PSERVER or TRAINER
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
-    t = distribute_transpiler.DistributeTranspiler()
+    t = distribute_transpiler.DistributeTranspiler(
+        condig=distribute_transpiler.DistributeTranspilerConfig(
+            slice_var_up=not args.no_split_var))
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
-        sync_mode=not args.async_mode,
-        slice_var_up=not args.no_split_var)
+        sync_mode=not args.async_mode)
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
         pserver_startup_program = t.get_startup_program(current_endpoint,
@@ -103,26 +104,27 @@ def dist_transpile(trainer_id, args):
 
 
 def test_parallel(exe, test_args, args, test_prog, feeder):
-    accuracy_evaluator = fluid.metrics.Accuracy()
-    accuracy_evaluator5 = fluid.metrics.Accuracy()
-    to_fetch = [v.name for v in test_args[2:4]]
+    acc_evaluators = []
+    for i in xrange(len(test_args[2])):
+        acc_evaluators.append(fluid.metrics.Accuracy())
+
+    to_fetch = [v.name for v in test_args[2]]
     if args.use_reader_op:
         while True:
             try:
-                acc1, acc5 = exe.run(fetch_list=to_fetch)
-                accuracy_evaluator.update(
-                    value=np.array(acc1), weight=args.batch_size)
-                accuracy_evaluator5.update(
-                    value=np.array(acc5), weight=args.batch_size)
+                acc_rets = exe.run(fetch_list=to_fetch)
+                for i, e in enumerate(acc_evaluators):
+                    e.update(
+                        value=np.array(acc_rets[i]), weight=args.batch_size)
             except fluid.core.EOFException as eof:
                 break
     else:
-        for batch_id, data in enumerate(test_args[4]()):
-            acc1, acc5 = exe.run(feed=feeder.feed(data), fetch_list=to_fetch)
-            accuracy_evaluator.update(value=np.array(acc1), weight=len(data))
-            accuracy_evaluator5.update(value=np.array(acc5), weight=len(data))
+        for batch_id, data in enumerate(test_args[3]()):
+            acc_rets = exe.run(feed=feeder.feed(data), fetch_list=to_fetch)
+            for i, e in enumerate(acc_evaluators):
+                e.update(value=np.array(acc_rets[i]), weight=len(data))
 
-    return accuracy_evaluator.eval(), accuracy_evaluator5.eval()
+    return [e.eval() for e in acc_evaluators]
 
 
 # NOTE: only need to benchmark using parallelexe
@@ -160,9 +162,17 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     startup_exe = fluid.Executor(place)
     startup_exe.run(startup_prog)
     strategy = fluid.ExecutionStrategy()
-    strategy.num_threads = 1
+    strategy.num_threads = args.cpus
     strategy.allow_op_delay = False
     avg_loss = train_args[0]
+
+    if args.update_method == "pserver":
+        # parameter server mode distributed training, merge
+        # gradients on local server, do not initialize
+        # ParallelExecutor with multi server all-reduce mode.
+        num_trainers = 1
+        trainer_id = 0
+
     exe = fluid.ParallelExecutor(
         True,
         avg_loss.name,
@@ -178,14 +188,14 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         main_program=test_prog,
         share_vars_from=exe,
         scope=fluid.Scope(
-        ))  # HACK: use an empty scope to avoid test exe using NCCLID
+        ))  # NOTE: use an empty scope to avoid test exe using NCCLID
 
     for pass_id in range(args.pass_num):
         num_samples = 0
         iters = 0
         start_time = time.time()
         if not args.use_reader_op:
-            reader_generator = train_args[4]()  #train_reader
+            reader_generator = train_args[3]()  #train_reader
         batch_id = 0
         data = None
         while True:
@@ -203,17 +213,20 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             if iters == args.skip_batch_num:
                 start_time = time.time()
                 num_samples = 0
-            fetch_list = [avg_loss.name, train_args[2].name, train_args[3].name]
+            fetch_list = [avg_loss.name]
+            acc_name_list = [v.name for v in train_args[2]]
+            fetch_list.extend(acc_name_list)
+
             if args.use_fake_data or args.use_reader_op:
                 try:
-                    loss, acc1, acc5 = exe.run(fetch_list)
+                    fetch_ret = exe.run(fetch_list)
                 except fluid.core.EOFException as eof:
                     break
                 except fluid.core.EnforceNotMet as ex:
                     traceback.print_exc()
                     break
             else:
-                loss, acc1, acc5 = exe.run(fetch_list, feed=feeder.feed(data))
+                fetch_ret = exe.run(fetch_list, feed=feeder.feed(data))
             if args.use_reader_op:
                 num_samples += args.batch_size * args.gpus
             else:
@@ -221,14 +234,14 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             iters += 1
             if batch_id % 1 == 0:
-                print("Pass %d, batch %d, loss %s, acc1: %s, acc5: %s" %
-                      (pass_id, batch_id, np.mean(np.array(loss)),
-                       np.mean(np.array(acc1)), np.mean(np.array(acc5))))
+                fetched_data = [np.mean(np.array(d)) for d in fetch_ret]
+                print("Pass %d, batch %d, loss %s, accucacys: %s" %
+                      (pass_id, batch_id, fetched_data[0], fetched_data[1:]))
             batch_id += 1
 
         print_train_time(start_time, time.time(), num_samples)
         if args.use_reader_op:
-            train_args[5].reset()  # reset reader handle
+            train_args[4].reset()  # reset reader handle
         else:
             del reader_generator
 
@@ -300,12 +313,6 @@ def main():
     train_args = list(model_def.get_model(args, True, train_prog, startup_prog))
     test_args = list(model_def.get_model(args, False, test_prog, startup_prog))
 
-    # Run optimizer.minimize(avg_loss)
-    # if not args.test_only:
-    #     train_args[1].minimize(train_args[0])
-    # if args.memory_optimize:
-    #     fluid.memory_optimize(fluid.default_main_program())
-
     all_args = [train_args, test_args, args]
 
     if args.update_method == "pserver":
@@ -330,7 +337,6 @@ def main():
     if args.update_method == "nccl2":
         nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare(
             trainer_id, startup_prog)
-        print("configured for nccl2: ", num_trainers, trainer_id)
     if args.gpus == 1:
         # NOTE: parallel executor use profiler interanlly
         if args.use_nvprof and args.device == 'GPU':

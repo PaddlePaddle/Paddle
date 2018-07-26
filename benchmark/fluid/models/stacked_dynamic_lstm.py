@@ -26,7 +26,6 @@ import numpy
 import paddle
 import paddle.dataset.imdb as imdb
 import paddle.fluid as fluid
-import paddle.batch as batch
 import paddle.fluid.profiler as profiler
 
 word_dict = imdb.word_dict()
@@ -43,19 +42,7 @@ def crop_sentence(reader, crop_size):
     return __impl__
 
 
-def get_model(args):
-    if args.use_reader_op:
-        raise Exception(
-            "stacked_dynamic_lstm do not support reader op for now.")
-    lstm_size = 512
-    emb_dim = 512
-    crop_size = 1500
-
-    data = fluid.layers.data(
-        name="words", shape=[1], lod_level=1, dtype='int64')
-    sentence = fluid.layers.embedding(
-        input=data, size=[len(word_dict), emb_dim])
-
+def lstm_net(sentence, lstm_size):
     sentence = fluid.layers.fc(input=sentence, size=lstm_size, act='tanh')
 
     rnn = fluid.layers.DynamicRNN()
@@ -97,31 +84,47 @@ def get_model(args):
 
     last = fluid.layers.sequence_pool(rnn(), 'last')
     logit = fluid.layers.fc(input=last, size=2, act='softmax')
-    loss = fluid.layers.cross_entropy(
-        input=logit,
-        label=fluid.layers.data(
-            name='label', shape=[1], dtype='int64'))
-    loss = fluid.layers.mean(x=loss)
+    return logit
 
-    # add acc
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(input=logit, label=fluid.layers.data(name='label', \
-                shape=[1], dtype='int64'), total=batch_size_tensor)
 
-    inference_program = fluid.default_main_program().clone()
-    with fluid.program_guard(inference_program):
-        inference_program = fluid.io.get_inference_program(
-            target_vars=[batch_acc, batch_size_tensor])
+def get_model(args, is_train, main_prog, startup_prog):
+    if args.use_reader_op:
+        raise Exception(
+            "stacked_dynamic_lstm do not support reader op for now.")
+    lstm_size = 512
+    emb_dim = 512
+    crop_size = 1500
 
-    adam = fluid.optimizer.Adam()
+    with fluid.program_guard(main_prog, startup_prog):
+        with fluid.unique_name.guard():
+            data = fluid.layers.data(
+                name="words", shape=[1], lod_level=1, dtype='int64')
+            sentence = fluid.layers.embedding(
+                input=data, size=[len(word_dict), emb_dim])
+            logit = lstm_net(sentence, lstm_size)
+            loss = fluid.layers.cross_entropy(
+                input=logit,
+                label=fluid.layers.data(
+                    name='label', shape=[1], dtype='int64'))
+            loss = fluid.layers.mean(x=loss)
 
-    train_reader = batch(
+            # add acc
+            batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
+            batch_acc = fluid.layers.accuracy(input=logit, label=fluid.layers.data(name='label', \
+                        shape=[1], dtype='int64'), total=batch_size_tensor)
+
+            if is_train:
+                adam = fluid.optimizer.Adam()
+                adam.minimize(loss)
+
+    if is_train:
+        reader = crop_sentence(imdb.train(word_dict), crop_size)
+    else:
+        reader = crop_sentence(imdb.test(word_dict), crop_size)
+
+    batched_reader = paddle.batch(
         paddle.reader.shuffle(
-            crop_sentence(imdb.train(word_dict), crop_size), buf_size=25000),
+            reader, buf_size=25000),
         batch_size=args.batch_size * args.gpus)
-    test_reader = batch(
-        paddle.reader.shuffle(
-            crop_sentence(imdb.test(word_dict), crop_size), buf_size=25000),
-        batch_size=args.batch_size)
 
-    return loss, inference_program, adam, train_reader, test_reader, batch_acc
+    return loss, adam, [batch_acc], batched_reader, None

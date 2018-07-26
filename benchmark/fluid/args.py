@@ -67,7 +67,7 @@ def parse_args():
         '--cpus',
         type=int,
         default=1,
-        help='If cpus > 1, will use ParallelDo to run, else use Executor.')
+        help='If cpus > 1, will set ParallelExecutor to use multiple threads.')
     parser.add_argument(
         '--data_set',
         type=str,
