@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import math
-from op_test import OpTest
+from .op_test import OpTest
 
 
 class TestSequenceReshape(OpTest):
@@ -35,7 +35,7 @@ class TestSequenceReshape(OpTest):
     def compute_output(self, x, x_lod, dimension):
         x_width = x.shape[1]
         out_lod = [[]]
-        for i in xrange(len(x_lod[0])):
+        for i in range(len(x_lod[0])):
             seq_len = x_lod[0][i]
             offset = (seq_len * x_width) / dimension
             assert int(offset) * dimension == seq_len * x_width

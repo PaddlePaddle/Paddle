@@ -13,7 +13,7 @@
 #limitations under the License.
 import unittest
 import numpy as np
-import test_lstm_op as LstmTest
+from . import test_lstm_op as LstmTest
 
 ACTIVATION = {
     'identity': LstmTest.identity,

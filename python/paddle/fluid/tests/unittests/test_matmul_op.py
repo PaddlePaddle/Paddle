@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from .op_test import OpTest
 
 
 def generate_compatible_shapes(dim_X, dim_Y, transpose_X, transpose_Y):

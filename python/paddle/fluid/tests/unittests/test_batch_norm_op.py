@@ -17,7 +17,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from op_test import OpTest
+from .op_test import OpTest
 from paddle.fluid.framework import grad_var_name
 
 
@@ -415,7 +415,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             self.__assert_close(scale_grad, out[6], "scale_grad")
             self.__assert_close(bias_grad, out[7], "bias_grad")
 
-            print "op test forward passed: ", str(place), data_layout
+            print("op test forward passed: ", str(place), data_layout)
 
         places = [core.CPUPlace()]
 

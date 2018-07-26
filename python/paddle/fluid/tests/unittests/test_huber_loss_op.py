@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from .op_test import OpTest
 
 
 def huber_loss_forward(val, delta):

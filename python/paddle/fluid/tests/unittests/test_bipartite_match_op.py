@@ -13,7 +13,7 @@
 #limitations under the License.
 import unittest
 import numpy as np
-from op_test import OpTest
+from .op_test import OpTest
 
 
 def bipartite_match(distance, match_indices, match_dist):
@@ -48,7 +48,7 @@ def bipartite_match(distance, match_indices, match_dist):
 
 def argmax_match(distance, match_indices, match_dist, threshold):
     r, c = distance.shape
-    for j in xrange(c):
+    for j in range(c):
         if match_indices[j] != -1:
             continue
         col_dist = distance[:, j]

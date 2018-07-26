@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import sys
 import math
-from op_test import OpTest
+from .op_test import OpTest
 
 
 def anchor_generator_in_python(input_feat, anchor_sizes, aspect_ratios,

@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from op_test import OpTest
+from .op_test import OpTest
 
 SIGMOID_THRESHOLD_MIN = -40.0
 SIGMOID_THRESHOLD_MAX = 13.0

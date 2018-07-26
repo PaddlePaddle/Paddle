@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import op_test
+from . import op_test
 import numpy
 import unittest
 
