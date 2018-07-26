@@ -23,9 +23,7 @@ This API is still under active development and may change drastically.
 from .. import core
 from ..framework import Program, Variable
 
-__all__ = ['MemoryInfo']
-
-DEBUG = False
+__all__ = ['memory_usage']
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -38,62 +36,67 @@ dtype_to_size = {
     core.VarDesc.VarType.UINT8: 1,
 }
 
+DEBUG = False
 
-class MemoryInfo(object):
-    def __init__(self, program):
-        if not isinstance(program, Program):
-            raise TypeError(
-                "Calculating Memory Usage requires Program as its Parameter."
-                "But you passed in %s" % (type(prgram)))
-        self._program = program
 
-    def _has_var(self, block, var_name):
-        return block.has_var(str(var_name))
+def memory_usage(program, batch_size):
+    """
+    Get the estimate memory usage of program with input batch size.
 
-    def _find_var(self, block, var_name):
-        return block.var(str(var_name))
+    Args:
+        program(Program): The current Program.
+        batch_size(int): The current input data batch_size.  
+    
+    Returns:
+        min_total_memory(float): the estimate memory usage lower bound.
+        max_total_memory(float): the estimate memory usage upper bound.
+        unit_str(string): the unit of estimate usage result.
+    
+    Examples:
+        
+        >>> import paddle.fluid as fluid
+        >>> lower_usage, upper_usage, unit = fluid.contrib.memory_usage(
+                fluid.default_main_program(), batch_size=10)
+        >>> print "memory usage is about %.3f - %.3f %s" % \
+                (lower_usage, upper_usage, unit)
 
-    def get_memory_usage(self, batch_size, with_details=False):
+    """
 
-        # get the first block of program
-        first_block = self._program.global_block()
+    # Parameters check
+    if not isinstance(program, Program):
+        raise TypeError(
+            "Calculating Memory Usage requires Program as its Parameter."
+            "But you passed in %s" % (type(prgram)))
+    if batch_size <= 0:
+        raise ValueError("The batch size need to be positive.")
 
-        # get the var_name list of first block
-        # TODO(chenweihang): not find the API get block's var list directly
-        total_memory = 0.0
-        for var in self._program.list_vars():
-            if DEBUG:
-                print "All Block's Var: %s" % (var.name)
-            # TODO(chenweihang): why not used program.list_vars() 
-            #                       calculate all variable's memory directly?
-            if self._has_var(first_block, var.name):
-                if DEBUG:
-                    print "First Block's Var: %s" % (var.name)
-                    print "Var's shape: ", var.shape
-                    print "Var's dtype: ", var.dtype
-                data_count = 1
-                for x in var.shape:
-                    if x == -1:
-                        data_count *= batch_size
-                    else:
-                        data_count *= x
-                var_memory = data_count * dtype_to_size[var.dtype]
-                if DEBUG:
-                    print "Var's memory: %d" % (var_memory)
-                total_memory += var_memory
+    # Get the var_name list of first block and calculate
+    total_memory = 0.0
+    for var in program.global_block().vars.itervalues():
+        data_count = 1
+        for x in var.shape:
+            if x == -1:
+                data_count *= batch_size
+            else:
+                data_count *= x
+        var_memory = data_count * dtype_to_size[var.dtype]
+        if DEBUG:
+            print "%s memory usage: %d" % (var.name, var_memory)
+        total_memory += var_memory
+    if DEBUG:
+        print "total memory usage: %.2f" % (total_memory)
 
-        # Convert unit and make result string
-        result_str = "- With current batch size, memory usage is about "
-        unit_str = " B."
+    # Convert appropriate unit
+    unit_str = "B"
+    if total_memory > 1024:
+        total_memory /= 1024
+        unit_str = "KB"
         if total_memory > 1024:
             total_memory /= 1024
-            unit_str = " KB."
-            if total_memory > 1024:
-                total_memory /= 1024
-                unit_str = " MB."
+            unit_str = "MB"
 
-        # Append extra memory consumption (5% - 10%)
-        result_str += str(round(total_memory * 1.05, 3)) + " - " \
-                    + str(round(total_memory * 1.10, 3)) + unit_str
+    # Append extra memory consumption (5% - 10%)
+    min_total_memory = total_memory * 1.05
+    max_total_memory = total_memory * 1.1
 
-        return result_str
+    return min_total_memory, max_total_memory, unit_str
