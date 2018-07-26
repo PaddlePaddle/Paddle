@@ -85,3 +85,6 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(multi_device_check_pass,
+              paddle::framework::details::SSAGraghBuilderWithChecker);

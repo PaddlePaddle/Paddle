@@ -33,6 +33,48 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
+    const ProgramDesc &main_program, const std::vector<platform::Place> &places,
+    const std::string &loss_var_name,
+    const std::unordered_set<std::string> &param_names,
+    const std::vector<Scope *> &local_scopes, const bool use_cuda,
+#ifdef PADDLE_WITH_CUDA
+    const BuildStrategy &strategy, platform::NCCLContextMap *nccl_ctxs) {
+#else
+    const BuildStrategy &strategy) {
+#endif
+  details::ParallelExecutorPassManager builder_factory(
+      places, loss_var_name, param_names, local_scopes, strategy);
+  if (use_cuda) {
+#ifdef PADDLE_WITH_CUDA
+    builder_factory.SetNCCLContextMap(nccl_ctxs);
+#else
+    PADDLE_THROW("Not compiled with CUDA.");
+#endif
+  }
+
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+  if (!strategy.debug_graphviz_path_.empty()) {
+    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+    const std::string graph_path = string::Sprintf(
+        "%s%s", strategy.debug_graphviz_path_.c_str(), "_original_graph");
+    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    graph = viz_pass->Apply(std::move(graph));
+  }
+
+  auto builder = builder_factory.Create();
+  graph = builder->Apply(std::move(graph));
+
+  if (!strategy.debug_graphviz_path_.empty()) {
+    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+    const std::string graph_path = string::Sprintf(
+        "%s%s", strategy.debug_graphviz_path_.c_str(), "_before_exec");
+    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    graph = viz_pass->Apply(std::move(graph));
+  }
+  return graph;
+}
+
 class ParallelExecutorPrivate {
  public:
   explicit ParallelExecutorPrivate(const std::vector<platform::Place> &places)
@@ -120,38 +162,18 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
-  // ncclOp
-  details::SSAGraphBuilderFactory builder_factory(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      build_strategy);
-  if (member_->use_cuda_) {
+// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+// ncclOp
 #ifdef PADDLE_WITH_CUDA
-    builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
+  std::unique_ptr<ir::Graph> graph = ApplyParallelExecutorPass(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_, build_strategy,
+      member_->nccl_ctxs_.get());
 #else
-    PADDLE_THROW("Not compiled with CUDA.");
+  std::unique_ptr<ir::Graph> graph = ApplyParallelExecutorPass(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_, build_strategy);
 #endif
-  }
-
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
-  if (!build_strategy.debug_graphviz_path_.empty()) {
-    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
-    const std::string graph_path = string::Sprintf(
-        "%s%s", build_strategy.debug_graphviz_path_.c_str(), "_original_graph");
-    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
-    graph = viz_pass->Apply(std::move(graph));
-  }
-
-  builder_ = builder_factory.Create();
-  graph = builder_->Apply(std::move(graph));
-
-  if (!build_strategy.debug_graphviz_path_.empty()) {
-    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
-    const std::string graph_path = string::Sprintf(
-        "%s%s", build_strategy.debug_graphviz_path_.c_str(), "_before_exec");
-    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
-    graph = viz_pass->Apply(std::move(graph));
-  }
 
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
@@ -165,11 +187,18 @@ void ParallelExecutor::BCastParamsToDevices(
   // the initializing bcast, all vars would be bcast from device(0),
   // otherwise
   // bcast from the specified device.
-  bool initializing = builder_.get() == nullptr ? true : false;
-
+  bool initializing = member_->executor_ ? false : true;
   for (auto &var : vars) {
-    int var_dev_id =
-        builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
+    int var_dev_id = -1;
+    if (member_->executor_) {
+      auto &sharded_var_device =
+          member_->executor_->Graph().Get<details::ShardedVarDevice>(
+              "sharded_var_device");
+      if (sharded_var_device.find(var) != sharded_var_device.end()) {
+        var_dev_id = sharded_var_device.at(var);
+      }
+    }
+
     if (!initializing && var_dev_id == -1) continue;
 
     framework::Variable *main_var = nullptr;
@@ -307,3 +336,6 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace paddle
 
 USE_PASS(graph_viz_pass);
+USE_PASS(multi_device_pass);
+USE_PASS(multi_device_check_pass);
+USE_PASS(multi_device_print_pass);

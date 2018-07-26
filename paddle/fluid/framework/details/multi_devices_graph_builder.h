@@ -34,7 +34,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  public:
   std::unique_ptr<ir::Graph> Apply(
       std::unique_ptr<ir::Graph> graph) const override;
-  int GetVarDeviceID(const std::string &varname) const override;
 
  private:
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
@@ -50,6 +49,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
 #ifdef PADDLE_WITH_CUDA
   mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
+
+  int GetVarDeviceID(const ir::Graph &graph, const std::string &varname) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -84,7 +85,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
-  int GetOpDeviceID(ir::Node *node) const;
+  int GetOpDeviceID(const ir::Graph &graph, ir::Node *node) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
 
@@ -102,7 +103,6 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  private:
   mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
-  mutable std::unordered_map<std::string, int> var_name_on_devices_;
   mutable std::vector<int64_t> balance_vars_;
 
   void SetCommunicationContext(OpHandleBase *op_handle,
