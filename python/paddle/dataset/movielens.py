@@ -16,7 +16,7 @@ Movielens 1-M dataset.
 
 Movielens 1-M dataset contains 1 million ratings from 6000 users on 4000
 movies, which was collected by GroupLens Research. This module will download
-Movielens 1-M dataset from 
+Movielens 1-M dataset from
 http://files.grouplens.org/datasets/movielens/ml-1m.zip and parse training
 set and test set into paddle reader creators.
 
@@ -243,7 +243,7 @@ def unittest():
     for test_count, _ in enumerate(test()()):
         pass
 
-    print((train_count, test_count))
+    print(train_count, test_count)
 
 
 def fetch():

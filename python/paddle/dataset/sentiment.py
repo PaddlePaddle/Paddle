@@ -47,7 +47,7 @@ def download_data_if_not_yet():
         nltk.download(
             'movie_reviews', download_dir=paddle.dataset.common.DATA_HOME)
         print("Download data set success.....")
-        print(("Path is " + nltk.data.find('corpora/movie_reviews').path))
+        print("Path is " + nltk.data.find('corpora/movie_reviews').path)
 
 
 def get_word_dict():

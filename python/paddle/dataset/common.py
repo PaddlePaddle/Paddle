@@ -74,13 +74,13 @@ def download(url, module_name, md5sum, save_name=None):
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
         if os.path.exists(filename):
-            print(("file md5", md5file(filename), md5sum))
+            print("file md5", md5file(filename), md5sum)
         if retry < retry_limit:
             retry += 1
         else:
             raise RuntimeError("Cannot download {0} within retry limit {1}".
                                format(url, retry_limit))
-        print(("Cache file %s not found, downloading %s" % (filename, url)))
+        print("Cache file %s not found, downloading %s" % (filename, url))
         r = requests.get(url, stream=True)
         total_length = r.headers.get('content-length')
 
@@ -189,7 +189,7 @@ def cluster_files_reader(files_pattern,
         my_file_list = []
         for idx, fn in enumerate(file_list):
             if idx % trainer_count == trainer_id:
-                print(("append file: %s" % fn))
+                print("append file: %s" % fn)
                 my_file_list.append(fn)
         for fn in my_file_list:
             with open(fn, "r") as f:
