@@ -205,8 +205,8 @@ def train_main(use_cuda, is_sparse, is_local=True):
                                feed=feeder.feed(data),
                                fetch_list=[avg_cost])
                 avg_cost_val = np.array(outs[0])
-                print(('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
-                       " avg_cost=" + str(avg_cost_val)))
+                print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
+                      " avg_cost=" + str(avg_cost_val))
                 if batch_id > 3:
                     break
                 batch_id += 1
@@ -282,7 +282,7 @@ def decode_main(use_cuda, is_sparse):
             feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print((result_ids.recursive_sequence_lengths()))
+        print(result_ids.recursive_sequence_lengths())
         break
 
 

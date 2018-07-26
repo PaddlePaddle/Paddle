@@ -158,8 +158,8 @@ def main():
                 dg_loss_np = exe.run(dg_program,
                                      feed={'noise': n},
                                      fetch_list={dg_loss})[0]
-            print(("Pass ID={0}, Batch ID={1}, D-Loss={2}, DG-Loss={3}".format(
-                pass_id, batch_id, d_loss_np, dg_loss_np)))
+            print("Pass ID={0}, Batch ID={1}, D-Loss={2}, DG-Loss={3}".format(
+                pass_id, batch_id, d_loss_np, dg_loss_np))
         # generate image each batch
         fig = plot(generated_img)
         plt.savefig(

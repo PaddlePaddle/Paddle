@@ -91,21 +91,21 @@ def train(use_cuda, train_program, params_dirname):
             avg_cost, acc = trainer.test(
                 reader=test_reader, feed_order=['words', 'label'])
 
-            print(("avg_cost: %s" % avg_cost))
-            print(("acc     : %s" % acc))
+            print("avg_cost: %s" % avg_cost)
+            print("acc     : %s" % acc)
 
             if acc > 0.2:  # Smaller value to increase CI speed
                 trainer.save_params(params_dirname)
                 trainer.stop()
 
             else:
-                print(('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
-                    event.epoch + 1, avg_cost, acc)))
+                print('BatchID {0}, Test Loss {1:0.2}, Acc {2:0.2}'.format(
+                    event.epoch + 1, avg_cost, acc))
                 if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
         elif isinstance(event, fluid.EndStepEvent):
-            print(("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, list(map(np.array, event.metrics)))))
+            print("Step {0}, Epoch {1} Metrics {2}".format(
+                event.step, event.epoch, list(map(np.array, event.metrics))))
             if event.step == 1:  # Run 2 iterations to speed CI
                 trainer.save_params(params_dirname)
                 trainer.stop()
@@ -133,14 +133,14 @@ def infer(use_cuda, inference_program, params_dirname=None):
         place=place)
 
     # Setup input by creating LoDTensor to represent sequence of words.
-    # Here each word is the basic element of the LoDTensor and the shape of 
-    # each word (base_shape) should be [1] since it is simply an index to 
+    # Here each word is the basic element of the LoDTensor and the shape of
+    # each word (base_shape) should be [1] since it is simply an index to
     # look up for the corresponding word vector.
     # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
-    # which has only one level of detail. Then the created LoDTensor will have only 
-    # one higher level structure (sequence of words, or sentence) than the basic 
-    # element (word). Hence the LoDTensor will hold data for three sentences of 
-    # length 3, 4 and 2, respectively. 
+    # which has only one level of detail. Then the created LoDTensor will have only
+    # one higher level structure (sequence of words, or sentence) than the basic
+    # element (word). Hence the LoDTensor will hold data for three sentences of
+    # length 3, 4 and 2, respectively.
     # Note that recursive_sequence_lengths should be a list of lists.
     recursive_seq_lens = [[3, 4, 2]]
     base_shape = [1]
@@ -148,7 +148,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
     tensor_words = fluid.create_random_int_lodtensor(
         recursive_seq_lens, base_shape, place, low=0, high=len(word_dict) - 1)
     results = inferencer.infer({'words': tensor_words})
-    print(("infer results: ", results))
+    print("infer results: ", results)
 
 
 def main(use_cuda):

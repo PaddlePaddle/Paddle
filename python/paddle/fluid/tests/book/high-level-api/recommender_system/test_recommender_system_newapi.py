@@ -180,7 +180,7 @@ def train(use_cuda, train_program, params_dirname):
             # get avg cost
             avg_cost = np.array(avg_cost_set).mean()
 
-            print(("avg_cost: %s" % avg_cost))
+            print("avg_cost: %s" % avg_cost)
 
             if float(avg_cost) < 4:  # Smaller value to increase CI speed
                 trainer.save_params(params_dirname)
@@ -240,7 +240,7 @@ def infer(use_cuda, inference_program, params_dirname):
         },
         return_numpy=False)
 
-    print(("infer results: ", np.array(results[0])))
+    print("infer results: ", np.array(results[0]))
 
 
 def main(use_cuda):
