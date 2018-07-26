@@ -21,7 +21,7 @@ namespace framework {
 namespace details {
 
 template <typename Callback>
-static inline void IterAllVar(const Graph &graph, Callback callback) {
+static inline void IterAllVar(const ir::Graph &graph, Callback callback) {
   for (auto &each : graph.Get<GraphVars>("vars")) {
     for (auto &pair1 : each) {
       for (auto &pair2 : pair1.second) {
@@ -35,7 +35,7 @@ static inline void IterAllVar(const Graph &graph, Callback callback) {
   }
 }
 
-void GraphvizSSAGraphPrinter::Print(const Graph &graph,
+void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
                                     std::ostream &sout) const {
   size_t var_id = 0;
   std::unordered_map<const VarHandleBase *, size_t> vars;
