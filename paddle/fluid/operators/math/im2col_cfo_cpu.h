@@ -108,8 +108,8 @@ inline void im2col_sh1sw1dh1dw1(const framework::Tensor& im,
   int filter_width = col->dims()[2];
   int output_height = col->dims()[3];
   int output_width = col->dims()[4];
-  const int sh = 1;
-  const int sw = 1;
+  constexpr int sh = 1;
+  constexpr int sw = 1;
 
   const T* im_data = im.data<T>();
   T* col_data = col->data<T>();

@@ -208,7 +208,7 @@ void testIm2colCPU(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
 
 void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   PREPARE_IM2COL_CPU;
-  constexpr int repeat = 30;
+  constexpr int repeat = 100;
   auto GetCurrentMs = []() -> double {
     struct timeval time;
     gettimeofday(&time, NULL);
@@ -231,17 +231,39 @@ void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
 }
 
 TEST(math, im2col_cputest) {
-  testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 3, /*fw*/ 3, /*ph*/ 0,
-                /*pw*/ 0);
-  testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 3, /*fw*/ 3, /*ph*/ 1,
-                /*pw*/ 1);
+  // padding_h == padding_w
+  for (int p = 0; p < 4; ++p) {
+    // width == height
+    testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 5, /*fh*/ 4, /*fw*/ 4, /*ph*/ p,
+                  /*pw*/ p);
+    testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 3, /*fw*/ 3, /*ph*/ p,
+                  /*pw*/ p);
+    testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 2, /*fw*/ 2, /*ph*/ p,
+                  /*pw*/ p);
 
-  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 3, /*fw*/ 3, /*ph*/ 1,
-              /*pw*/ 1);
+    // height != width
+    testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 2, /*fw*/ 3, /*ph*/ p,
+                  /*pw*/ p);
+
+    // filter == 1
+    testIm2colCPU(/*ic*/ 3, /*ih*/ 4, /*iw*/ 4, /*fh*/ 1, /*fw*/ 1, /*ph*/ p,
+                  /*pw*/ p);
+    testIm2colCPU(/*ic*/ 3, /*ih*/ 3, /*iw*/ 4, /*fh*/ 1, /*fw*/ 1, /*ph*/ p,
+                  /*pw*/ p);
+  }
+  // padding_h != padding_w
+  testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 2, /*fw*/ 3, /*ph*/ 1,
+                /*pw*/ 2);
+
+  // benchmark
+  LOG(INFO) << "padding == 0";
   benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 3, /*fw*/ 3, /*ph*/ 0,
               /*pw*/ 0);
-  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 5, /*fw*/ 5, /*ph*/ 1,
-              /*pw*/ 1);
   benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 5, /*fw*/ 5, /*ph*/ 0,
               /*pw*/ 0);
+  LOG(INFO) << "padding == 1";
+  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 3, /*fw*/ 3, /*ph*/ 1,
+              /*pw*/ 1);
+  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 5, /*fw*/ 5, /*ph*/ 1,
+              /*pw*/ 1);
 }
