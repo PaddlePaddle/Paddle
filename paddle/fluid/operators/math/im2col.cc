@@ -72,11 +72,11 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
         return;
       } else {
         int plh = padding[0];
-        // int plw = padding[1];
+        int plw = padding[1];
         int prh =
             (output_height - 1) * stride[0] + filter_height - im_height - plh;
-        // int prw =  (output_width - 1) * stride[1] + filter_width - im_width -
-        // plw;
+        int prw =
+            (output_width - 1) * stride[1] + filter_width - im_width - plw;
 
         // fill height padding : 0 ~ plh-1, (oh-prh) ~ (oh-1)
         // TODO(TJ): refine ph*xxx
@@ -97,6 +97,64 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
               std::memset(dst_data_r, 0, copy_sz);
               dst_data_l = dst_data_l + col_matrix_width;
               dst_data_r = dst_data_r + col_matrix_width;
+            }
+          }
+        }
+
+        // fill width padding
+        assert(plw == prw);  // because stride_w == 1
+        if (plw == 1) {
+          auto pad = static_cast<T>(0);  // padding zero
+          for (int ic = 0; ic < im_channels; ++ic) {
+            // TODO(TJ): use add and resue stride
+            T* dst_data_ic = col_data + ic * col_block_ic;
+            for (int kh = 0; kh < filter_height; ++kh) {
+              T* dst_data_kh = dst_data_ic + kh * col_block_fh;
+              for (T* dst_data :
+                   {dst_data_kh, dst_data_kh +
+                                     (filter_width - prw) * col_matrix_width +
+                                     output_width - 1}) {
+                // TODO(TJ): from plh, saving repeated assignment
+                for (int oh = 0; oh < output_height; ++oh) {
+                  *dst_data = pad;
+                  dst_data = dst_data + output_width;
+                }
+              }
+            }
+          }
+        } else {
+          // padding_size > 1
+          for (int ic = 0; ic < im_channels; ++ic) {
+            // TODO(TJ): use add and resue stride
+            T* dst_data_ic =
+                col_data + ic * filter_width * filter_height * col_matrix_width;
+            for (int kh = 0; kh < filter_height; ++kh) {
+              T* dst_data_kh =
+                  dst_data_ic + kh * filter_width * col_matrix_width;
+              for (int kw = 0; kw < plw; ++kw) {
+                // TODO(TJ): reuse array outside this for
+                size_t sz = sizeof(T) * (plw - kw);
+                T* dst_data = dst_data_kh + kw * col_matrix_width;
+                // TODO(TJ): from plh, saving repeated assignment
+                for (int oh = 0; oh < output_height; ++oh) {
+                  std::memset(dst_data, 0, sz);
+                  dst_data = dst_data + output_width;
+                }
+              }
+              // TODO(TJ): use reverse to save cache
+              for (int kw = 0; kw < prw; ++kw) {
+                // TODO(TJ): reuse array outside this for
+                auto num = (prw - kw);
+                size_t sz = sizeof(T) * num;
+                T* dst_data = dst_data_kh +
+                              (filter_width - 1 - kw) * col_matrix_width +
+                              output_width - num;
+                // TODO(TJ): from plh, saving repeated assignment
+                for (int oh = 0; oh < output_height; ++oh) {
+                  std::memset(dst_data, 0, sz);
+                  dst_data = dst_data + output_width;
+                }
+              }
             }
           }
         }
