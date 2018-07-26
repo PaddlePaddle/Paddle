@@ -256,14 +256,11 @@ TEST(math, im2col_cputest) {
                 /*pw*/ 2);
 
   // benchmark
-  LOG(INFO) << "padding == 0";
-  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 3, /*fw*/ 3, /*ph*/ 0,
-              /*pw*/ 0);
-  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 5, /*fw*/ 5, /*ph*/ 0,
-              /*pw*/ 0);
-  LOG(INFO) << "padding == 1";
-  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 3, /*fw*/ 3, /*ph*/ 1,
-              /*pw*/ 1);
-  benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ 5, /*fw*/ 5, /*ph*/ 1,
-              /*pw*/ 1);
+  for (int p : {0, 1, 2}) {
+    for (int k : {3, 5}) {
+      LOG(INFO) << "padding == " << p << ", filter == " << k;
+      benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ k, /*fw*/ k,
+                  /*ph*/ p, /*pw*/ p);
+    }
+  }
 }
