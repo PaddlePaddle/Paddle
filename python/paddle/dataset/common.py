@@ -20,9 +20,8 @@ import shutil
 import sys
 import importlib
 import paddle.dataset
-import pickle
+import six.moves.cPickle as pickle
 import glob
-import pickle as pickle
 
 __all__ = [
     'DATA_HOME',

@@ -17,6 +17,7 @@ from .. import core
 from ..framework import Program, default_main_program, Parameter
 from ..backward import _rename_arg_
 from functools import reduce
+from six.moves import range
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,

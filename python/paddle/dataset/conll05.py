@@ -24,6 +24,7 @@ import tarfile
 import gzip
 import itertools
 import paddle.dataset.common
+from six.moves import zip
 
 __all__ = ['test, get_dict', 'get_embedding', 'convert']
 
