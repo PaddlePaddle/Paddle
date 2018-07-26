@@ -138,24 +138,23 @@ copy(memory_lib
 
 set(inference_deps paddle_fluid_shared paddle_fluid)
 
-if(WITH_CONTRIB)
-    message(STATUS "installing contrib")
-    set(contrib_dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
-    if (WITH_ANAKIN AND WITH_GPU)
-        copy(contrib_anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
-            SRCS
-            ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libinference_anakin_api* # compiled anakin api
-            ${PADDLE_BINARY_DIR}/third_party/install/anakin/*.tar.gz # anakin release
-            DSTS ${contrib_dst_dir}/anakin ${contrib_dst_dir}/anakin)
-        list(APPEND inference_deps contrib_anakin_inference_lib)
-   endif()
-
-  copy(contrib_inference_lib DEPS paddle_inference_api paddle_inference_api_shared
-        SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
-        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api*
-        DSTS ${contrib_dst_dir} ${contrib_dst_dir})
-  list(APPEND inference_deps contrib_inference_lib)
+set(module "inference/api")
+if (WITH_ANAKIN AND WITH_GPU)
+    copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
+        SRCS
+        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
+        ${PADDLE_BINARY_DIR}/third_party/install/anakin/*.tar.gz # anakin release
+        DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
+     list(APPEND inference_deps anakin_inference_lib)
 endif()
+
+copy(inference_api_lib DEPS paddle_inference_api paddle_inference_api_shared
+  SRCS ${src_dir}/${module}/paddle_inference_api.h 
+       ${src_dir}/${module}/demo_ci
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libpaddle_inference_api*
+  DSTS ${dst_dir}/inference ${dst_dir}/inference ${dst_dir}/inference
+)
+list(APPEND inference_deps inference_api_lib)
 
 set(module "inference")
 copy(inference_lib DEPS ${inference_deps}

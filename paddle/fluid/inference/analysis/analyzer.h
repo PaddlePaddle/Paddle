@@ -45,13 +45,14 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 
 namespace paddle {
-namespace inference {
-namespace analysis {
 
 // TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
 // flag if not available.
 DECLARE_bool(inference_analysis_enable_tensorrt_subgraph_engine);
 DECLARE_string(inference_analysis_graphviz_log_root);
+
+namespace inference {
+namespace analysis {
 
 class Analyzer : public OrderedRegistry<PassManager> {
  public:

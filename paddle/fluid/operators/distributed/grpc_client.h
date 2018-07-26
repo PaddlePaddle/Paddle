@@ -38,30 +38,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
+#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 #include "paddle/fluid/operators/distributed/sendrecvop_utils.h"
 #include "paddle/fluid/platform/macros.h"  // for DISABLE_COPY_AND_ASSIGN
 
 namespace paddle {
 namespace operators {
 namespace distributed {
-
-struct VarHandle {
-  // RPC endpoint.
-  std::string ep;
-  const platform::DeviceContext* ctx;
-  const framework::Scope* scope;
-  // Variable name.
-  std::string name;
-  // RPC method name.
-  std::string method;
-
-  std::string String() const {
-    std::ostringstream s;
-    s << method << " name:[" << name << "], ep:[" << ep << "]";
-    return s.str();
-  }
-};
 
 void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
@@ -188,7 +174,7 @@ class CheckpointNotifyProcessor : public BaseProcessor {
 
 class GRPCClient : public RPCClient {
  public:
-  GRPCClient() {}
+  GRPCClient() : ok_(true), completed_(false) {}
   virtual ~GRPCClient();
 
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
@@ -215,17 +201,12 @@ class GRPCClient : public RPCClient {
   void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncSendBeginPass(const std::string& ep,
-                          int64_t time_out = FLAGS_rpc_deadline) override;
+  void AsyncSendComplete(const std::string& ep,
+                         int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncSendEndPass(const std::string& ep,
-                        int64_t time_out = FLAGS_rpc_deadline) override;
+  bool Wait() override;
 
-  void Wait() override;
-
-  void SendBeginPass() override;
-
-  void SendEndPass() override;
+  void SendComplete() override;
 
  protected:
   void InitImpl() override;
@@ -247,10 +228,15 @@ class GRPCClient : public RPCClient {
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
   std::atomic<int64_t> req_count_{0};
+  bool ok_;
 
   // mutex for GetChannel thread safety
   std::mutex chan_mutex_;
   DISABLE_COPY_AND_ASSIGN(GRPCClient);
+
+  // mutex for sending complete message only once
+  std::mutex completed_mutex_;
+  bool completed_;
 };
 
 }  // namespace distributed

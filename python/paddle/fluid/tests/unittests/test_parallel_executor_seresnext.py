@@ -13,8 +13,13 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import paddle.fluid.layers.ops as ops
+from paddle.fluid.initializer import init_on_cpu
+from paddle.fluid.layers.learning_rate_scheduler import _decay_step_counter
+import paddle.fluid.core as core
 from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
+import math
 import os
 
 
@@ -131,27 +136,74 @@ def SE_ResNeXt50Small(batch_size=2, use_feed=False):
 
 
 class TestResnet(TestParallelExecutorBase):
-    def check_resnet_convergence(self, use_cuda, use_reduce=False, iter=20):
+    def check_resnet_convergence_with_learning_rate_decay(self,
+                                                          use_cuda=True,
+                                                          use_reduce=False,
+                                                          iter=20):
+
+        if use_cuda and not core.is_compiled_with_cuda():
+            return
+
         os.environ['CPU_NUM'] = str(4)
 
+        def _cosine_decay(learning_rate, step_each_epoch, epochs=120):
+            """
+            Applies cosine decay to the learning rate.
+            lr = 0.05 * (math.cos(epoch * (math.pi / 120)) + 1)
+            """
+            global_step = _decay_step_counter()
+
+            with init_on_cpu():
+                epoch = ops.floor(global_step / step_each_epoch)
+                decayed_lr = learning_rate * \
+                            (ops.cos(epoch * (math.pi / epochs)) + 1)/2
+            return decayed_lr
+
+        def _optimizer(learning_rate=0.01):
+            optimizer = fluid.optimizer.Momentum(
+                learning_rate=_cosine_decay(
+                    learning_rate=learning_rate, step_each_epoch=2, epochs=1),
+                momentum=0.9,
+                regularization=fluid.regularizer.L2Decay(1e-4))
+            return optimizer
+
         import functools
+
         batch_size = 2
-        self.check_network_convergence(
+
+        single_first_loss, single_last_loss = self.check_network_convergence(
             functools.partial(
                 SE_ResNeXt50Small, batch_size=batch_size),
             iter=iter,
             batch_size=batch_size,
             use_cuda=use_cuda,
-            use_reduce=use_reduce)
+            use_reduce=use_reduce,
+            optimizer=_optimizer,
+            use_parallel_executor=False)
 
-    def test_resnet(self):
-        self.check_resnet_convergence(True)
-        self.check_resnet_convergence(False, iter=5)
+        parallel_first_loss, parallel_last_loss = self.check_network_convergence(
+            functools.partial(
+                SE_ResNeXt50Small, batch_size=batch_size),
+            iter=iter,
+            batch_size=batch_size,
+            use_cuda=use_cuda,
+            use_reduce=use_reduce,
+            optimizer=_optimizer)
 
-    def test_resnet_with_new_strategy(self):
-        # use_cuda, use_reduce
-        self.check_resnet_convergence(True, True)
-        self.check_resnet_convergence(False, True, iter=5)
+        for p_f in parallel_first_loss:
+            self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
+        for p_l in parallel_last_loss:
+            self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
+
+    def test_seresnext_with_learning_rate_decay(self):
+        self.check_resnet_convergence_with_learning_rate_decay(True, False)
+        self.check_resnet_convergence_with_learning_rate_decay(
+            False, False, iter=5)
+
+    def test_seresnext_with_new_strategy_with_learning_rate_decay(self):
+        self.check_resnet_convergence_with_learning_rate_decay(True, True)
+        self.check_resnet_convergence_with_learning_rate_decay(
+            False, True, iter=5)
 
 
 if __name__ == '__main__':

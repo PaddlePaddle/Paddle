@@ -79,10 +79,10 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in self.__dict__.iteritems()
+            for attr, value in list(self.__dict__.items())
             if not attr.startswith("_")
         }
-        for attr, value in states.iteritems():
+        for attr, value in list(states.items()):
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
@@ -105,7 +105,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in self.__dict__.iteritems()
+            for attr, value in list(self.__dict__.items())
             if not attr.startswith("_")
         }
         config = {}
@@ -591,7 +591,7 @@ class Auc(MetricBase):
                       for i in range(self._num_thresholds - 2)]
         thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
 
-        # caculate TP, FN, TN, FP count
+        # calculate TP, FN, TN, FP count
         for idx_thresh, thresh in enumerate(thresholds):
             tp, fn, tn, fp = 0, 0, 0, 0
             for i, lbl in enumerate(labels):

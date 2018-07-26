@@ -18,6 +18,8 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/graph.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -104,7 +106,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToDevs(bcast_vars);
+    BCastParamsToDevices(bcast_vars);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -129,18 +131,17 @@ ParallelExecutor::ParallelExecutor(
     PADDLE_THROW("Not compiled with CUDA.");
 #endif
   }
-
   builder_ = builder_factory.Create();
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+  graph = builder_->Apply(std::move(graph));
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places,
-      builder_->Build(main_program)));
-
+      exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
       member_->places_, std::move(member_->executor_)));
 }
 
-void ParallelExecutor::BCastParamsToDevs(
+void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
   // the initializing bcast, all vars would be bcast from device(0),
   // otherwise
@@ -218,7 +219,10 @@ void ParallelExecutor::BCastParamsToDevs(
 
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-        if (member_->use_all_reduce_ || member_->use_cuda_) {
+
+        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        if (member_->use_all_reduce_ || member_->use_cuda_ ||
+            var == "@LR_DECAY_COUNTER@") {
           t->Resize(dims);
           t->mutable_data(cpu, main_tensor.type());
           paddle::framework::TensorCopy(main_tensor, cpu, t);
