@@ -19,6 +19,7 @@ limitations under the License. */
 
 #pragma once
 
+#define _GLIBCXX_USE_CXX11_ABI 0
 
 #include "framework/graph/graph.h"
 #include "framework/core/net/net.h"
