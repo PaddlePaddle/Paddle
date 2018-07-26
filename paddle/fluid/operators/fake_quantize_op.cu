@@ -164,14 +164,15 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
     T* sl = scale_list->mutable_data<T>(scale_list->place());
     T remove_tmp;
     auto& gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    int list_idx = current_iter % window_size;
     memory::Copy(platform::CPUPlace(), &remove_tmp, gpu_place,
-                 sl + current_iter, sizeof(float), ctx.stream());
-    memory::Copy(gpu_place, sl + current_iter, platform::CPUPlace(), &cur_scale,
+                 sl + list_idx, sizeof(float), ctx.stream());
+    memory::Copy(gpu_place, sl + list_idx, platform::CPUPlace(), &cur_scale,
                  sizeof(T), ctx.stream());
     T max_scale = last_max_scale;
     if (max_scale < cur_scale) {
-      max_scale = cur_scale;
-    } else if (fabs(remove_tmp - max_scale) < 1e-6) {
+        max_scale = cur_scale;
+    }else if (fabs(remove_tmp - max_scale) < 1e-6) {
       int size = (current_iter > window_size) ? window_size : current_iter;
       max_scale = T(FindAbsMaxGpu(ctx, scale_list->data<float>(), size));
     }
@@ -199,6 +200,14 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
           ->mutable_data<int>(
               context.Input<framework::Tensor>("InCurrentIter")->place());
     }
+    if (quantize_type == std::string("moving_average_abs_max")) {
+      context.Output<framework::Tensor>("OutState")
+          ->mutable_data<T>(
+              context.Input<framework::Tensor>("InState")->place());
+      context.Output<framework::Tensor>("OutAccum")
+          ->mutable_data<T>(
+              context.Input<framework::Tensor>("InAccum")->place());
+    }
 
     T scale = T(1);
     int window_size = context.Attr<int>("window_size");
@@ -222,38 +231,54 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
         memory::Copy(platform::CPUPlace(), &scale, gpu_place,
                      moving_scale->data<T>(), sizeof(T), device_ctx.stream());
       } else {
-        auto* it = const_cast<framework::Tensor*>(
+        auto* in_iter = const_cast<framework::Tensor*>(
             context.Input<framework::Tensor>("InCurrentIter"));
-        int last_iter;
-        memory::Copy(platform::CPUPlace(), &last_iter, gpu_place,
-                     it->data<int>(), sizeof(int), device_ctx.stream());
-        T in_max_scale;
-        memory::Copy(platform::CPUPlace(), &in_max_scale, gpu_place,
+        int iter;
+        memory::Copy(platform::CPUPlace(), &iter, gpu_place,
+                     in_iter->data<int>(), sizeof(int), device_ctx.stream());
+        T last_max_scale;
+        memory::Copy(platform::CPUPlace(), &last_max_scale, gpu_place,
                      moving_scale->data<T>(), sizeof(T), device_ctx.stream());
 
         auto* scale_list = context.Output<framework::Tensor>("OutScales");
         scale = (T)FindAbsMaxGpu(device_ctx, in->data<float>(), in->numel());
-        scale = FindRangeAbsMax(device_ctx, scale_list, in_max_scale, scale,
-                                window_size, last_iter);
+        scale = FindRangeAbsMax(device_ctx, scale_list, last_max_scale, scale,
+                                window_size, iter);
 
-        int out_iter = last_iter + 1;
-        auto* iter = context.Output<framework::Tensor>("OutCurrentIter");
-        memory::Copy(gpu_place, iter->mutable_data<int>(gpu_place),
-                     platform::CPUPlace(), &out_iter, sizeof(int),
+        iter = iter + 1;
+        auto* out_iter = context.Output<framework::Tensor>("OutCurrentIter");
+        memory::Copy(gpu_place, out_iter->mutable_data<int>(gpu_place),
+                     platform::CPUPlace(), &iter, sizeof(int),
                      device_ctx.stream());
       }
     } else if (quantize_type == std::string("moving_average_abs_max")) {
-      auto* moving_scale = const_cast<framework::Tensor*>(
-          context.Input<framework::Tensor>("InMovingScale"));
+      auto* in_accum = const_cast<framework::Tensor*>(
+          context.Input<framework::Tensor>("InAccum"));
+      auto* in_state = const_cast<framework::Tensor*>(
+          context.Input<framework::Tensor>("InState"));
+      T accum;
+      memory::Copy(platform::CPUPlace(), &accum, gpu_place,
+                   in_accum->data<T>(), sizeof(T), device_ctx.stream());
+      T state;
+      memory::Copy(platform::CPUPlace(), &state, gpu_place,
+                   in_state->data<T>(), sizeof(T), device_ctx.stream());
       if (is_test) {
-        memory::Copy(platform::CPUPlace(), &scale, gpu_place,
-                     moving_scale->data<T>(), sizeof(T), device_ctx.stream());
+        scale = accum/state;
       } else {
         scale = (T)FindAbsMaxGpu(device_ctx, in->data<float>(), in->numel());
-        T in_scale;
-        memory::Copy(platform::CPUPlace(), &in_scale, gpu_place,
-                     moving_scale->data<T>(), sizeof(T), device_ctx.stream());
-        scale = 0.9 * scale + 0.1 * in_scale;
+        
+        state = 0.9 * state + 1;
+        accum = 0.9 * accum + scale;
+
+        auto* out_state = context.Output<framework::Tensor>("OutState");
+        memory::Copy(gpu_place, out_state->mutable_data<T>(gpu_place),
+                     platform::CPUPlace(), &state, sizeof(T),
+                     device_ctx.stream());
+
+        auto* out_accum = context.Output<framework::Tensor>("OutAccum");
+        memory::Copy(gpu_place, out_accum->mutable_data<T>(gpu_place),
+                     platform::CPUPlace(), &accum, sizeof(T),
+                     device_ctx.stream());
       }
     }
 
