@@ -35,7 +35,7 @@ with fluid.program_guard(main_program=prog):
     avg_cost = fluid.layers.mean(cost)
 
 prog_clip = prog.clone()
-prog_clip.block(0).var(hidden1.name).set_error_clip(
+prog_clip.block(0).var(hidden1.name)._set_error_clip(
     fluid.clip.ErrorClipByValue(
         max=CLIP_MAX, min=CLIP_MIN))
 

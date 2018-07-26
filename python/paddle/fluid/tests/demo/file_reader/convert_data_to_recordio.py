@@ -35,8 +35,8 @@ if len(sys.argv) == 1:
     word_dict = paddle.dataset.imdb.word_dict()
 else:
     word_dict = load_vocab(sys.argv[1])
-word_dict["<unk>"] = len(word_dict)
-print(("Dict dim = ", len(word_dict)))
+    word_dict["<unk>"] = len(word_dict)
+print("Dict dim = ", len(word_dict))
 
 # input text data
 data = fluid.layers.data(name="words", shape=[1], dtype="int64", lod_level=1)
@@ -50,7 +50,7 @@ feeder = fluid.DataFeeder(feed_list=[data, label], place=fluid.CPUPlace())
 BATCH_SIZE = 128
 train_reader = paddle.batch(
     paddle.reader.shuffle(
-        paddle.dataset.imdb.train(word_dict), buf_size=10000),
+        paddle.dataset.imdb.train(word_dict), buf_size=25000),
     batch_size=BATCH_SIZE)
 
 test_reader = paddle.batch(
