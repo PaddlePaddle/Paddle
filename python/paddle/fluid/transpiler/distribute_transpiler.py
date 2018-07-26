@@ -887,7 +887,8 @@ class DistributeTranspiler(object):
         # create table optimize block in pserver program
         table_opt_op = [
             op for op in self.optimize_ops
-            if op.input("Param")[0] == self.table_name
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
         ][0]
         table_opt_block = pserver_program.create_block(pre_block_idx)
         # only support sgd now
