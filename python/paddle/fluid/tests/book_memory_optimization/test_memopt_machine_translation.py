@@ -124,8 +124,8 @@ def main():
                            feed=feeder.feed(data),
                            fetch_list=[avg_cost])
             avg_cost_val = np.array(outs[0])
-            print(('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
-                   " avg_cost=" + str(avg_cost_val)))
+            print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
+                  " avg_cost=" + str(avg_cost_val))
             if batch_id > 2:
                 exit(0)
             if math.isnan(float(avg_cost_val)):

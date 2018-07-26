@@ -169,11 +169,11 @@ def infer(use_cuda, save_dirname=None):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
-        # is simply an index to look up for the corresponding word vector and hence 
-        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths, 
-        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]] 
-        # meaning there is only one level of detail and there is only one sequence of 
+        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
+        # is simply an index to look up for the corresponding word vector and hence
+        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths,
+        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]]
+        # meaning there is only one level of detail and there is only one sequence of
         # one word on this level.
         # Note that recursive_sequence_lengths should be a list of lists.
         recursive_seq_lens = [[1]]
@@ -204,9 +204,9 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print((results[0].recursive_sequence_lengths()))
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
-        print(("Inference Shape: ", np_data.shape))
+        print("Inference Shape: ", np_data.shape)
 
 
 def main(use_cuda, is_sparse, is_parallel):

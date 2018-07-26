@@ -197,7 +197,7 @@ def train(use_cuda, is_sparse, is_local=True):
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
-            print(('pass_id=' + str(event.epoch) + ' batch=' + str(event.step)))
+            print('pass_id=' + str(event.epoch) + ' batch=' + str(event.step))
             if event.step == 10:
                 trainer.stop()
 
@@ -259,7 +259,7 @@ def decode_main(use_cuda, is_sparse):
             feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print((result_ids.recursive_sequence_lengths()))
+        print(result_ids.recursive_sequence_lengths())
         break
 
 

@@ -189,10 +189,10 @@ def train(use_cuda, save_dirname=None, is_local=True):
                 cost = cost[0]
 
                 if batch_id % 10 == 0:
-                    print(("avg_cost:" + str(cost)))
+                    print("avg_cost:" + str(cost))
                     if batch_id != 0:
-                        print(("second per batch: " + str(
-                            (time.time() - start_time) / batch_id)))
+                        print("second per batch: " + str((time.time(
+                        ) - start_time) / batch_id))
                     # Set the threshold low to speed up the CI test
                     if float(cost) < 60.0:
                         if save_dirname is not None:
@@ -248,14 +248,14 @@ def infer(use_cuda, save_dirname=None):
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
         # Setup input by creating LoDTensor to represent sequence of words.
-        # Here each word is the basic element of the LoDTensor and the shape of 
-        # each word (base_shape) should be [1] since it is simply an index to 
+        # Here each word is the basic element of the LoDTensor and the shape of
+        # each word (base_shape) should be [1] since it is simply an index to
         # look up for the corresponding word vector.
         # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
-        # which has only one level of detail. Then the created LoDTensor will have only 
-        # one higher level structure (sequence of words, or sentence) than the basic 
-        # element (word). Hence the LoDTensor will hold data for three sentences of 
-        # length 3, 4 and 2, respectively. 
+        # which has only one level of detail. Then the created LoDTensor will have only
+        # one higher level structure (sequence of words, or sentence) than the basic
+        # element (word). Hence the LoDTensor will hold data for three sentences of
+        # length 3, 4 and 2, respectively.
         # Note that recursive_sequence_lengths should be a list of lists.
         recursive_seq_lens = [[3, 4, 2]]
         base_shape = [1]
@@ -333,9 +333,9 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print((results[0].recursive_sequence_lengths()))
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
-        print(("Inference Shape: ", np_data.shape))
+        print("Inference Shape: ", np_data.shape)
 
 
 def main(use_cuda, is_local=True):

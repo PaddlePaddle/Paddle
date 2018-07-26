@@ -182,8 +182,8 @@ def train(use_cuda, save_dirname=None):
                            fetch_list=[avg_cost])
 
             avg_cost_val = np.array(outs[0])
-            print(('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
-                   " avg_cost=" + str(avg_cost_val)))
+            print('pass_id=' + str(pass_id) + ' batch=' + str(batch_id) +
+                  " avg_cost=" + str(avg_cost_val))
             if math.isnan(float(avg_cost_val[0])):
                 sys.exit("got NaN loss, training failed.")
             if batch_id > 3:
@@ -213,14 +213,14 @@ def infer(use_cuda, save_dirname=None):
          fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
         # Setup input by creating LoDTensor to represent sequence of words.
-        # Here each word is the basic element of the LoDTensor and the shape of 
-        # each word (base_shape) should be [1] since it is simply an index to 
+        # Here each word is the basic element of the LoDTensor and the shape of
+        # each word (base_shape) should be [1] since it is simply an index to
         # look up for the corresponding word vector.
         # Suppose the recursive_sequence_lengths info is set to [[4, 6]],
-        # which has only one level of detail. Then the created LoDTensor will have only 
-        # one higher level structure (sequence of words, or sentence) than the basic 
-        # element (word). Hence the LoDTensor will hold data for two sentences of 
-        # length 4 and 6, respectively. 
+        # which has only one level of detail. Then the created LoDTensor will have only
+        # one higher level structure (sequence of words, or sentence) than the basic
+        # element (word). Hence the LoDTensor will hold data for two sentences of
+        # length 4 and 6, respectively.
         # Note that recursive_sequence_lengths should be a list of lists.
         recursive_seq_lens = [[4, 6]]
         base_shape = [1]
@@ -241,10 +241,10 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print((results[0].recursive_sequence_lengths()))
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
-        print(("Inference shape: ", np_data.shape))
-        print(("Inference results: ", np_data))
+        print("Inference shape: ", np_data.shape)
+        print("Inference results: ", np_data)
 
 
 def main(use_cuda):

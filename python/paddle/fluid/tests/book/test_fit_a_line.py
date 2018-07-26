@@ -124,9 +124,9 @@ def infer(use_cuda, save_dirname=None):
         results = exe.run(inference_program,
                           feed={feed_target_names[0]: numpy.array(test_feat)},
                           fetch_list=fetch_targets)
-        print(("infer shape: ", results[0].shape))
-        print(("infer results: ", results[0]))
-        print(("ground truth: ", test_label))
+        print("infer shape: ", results[0].shape)
+        print("infer results: ", results[0])
+        print("ground truth: ", test_label)
 
 
 def main(use_cuda, is_local=True):

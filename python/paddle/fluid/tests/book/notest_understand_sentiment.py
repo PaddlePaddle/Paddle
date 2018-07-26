@@ -180,7 +180,7 @@ def train(word_dict,
                 cost_val, acc_val = exe.run(main_program,
                                             feed=feeder.feed(data),
                                             fetch_list=[cost, acc_out])
-                print(("cost=" + str(cost_val) + " acc=" + str(acc_val)))
+                print("cost=" + str(cost_val) + " acc=" + str(acc_val))
                 if cost_val < 0.4 and acc_val > 0.8:
                     if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, ["words"],
@@ -235,14 +235,14 @@ def infer(word_dict, use_cuda, save_dirname=None):
         word_dict_len = len(word_dict)
 
         # Setup input by creating LoDTensor to represent sequence of words.
-        # Here each word is the basic element of the LoDTensor and the shape of 
-        # each word (base_shape) should be [1] since it is simply an index to 
+        # Here each word is the basic element of the LoDTensor and the shape of
+        # each word (base_shape) should be [1] since it is simply an index to
         # look up for the corresponding word vector.
         # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
-        # which has only one level of detail. Then the created LoDTensor will have only 
-        # one higher level structure (sequence of words, or sentence) than the basic 
-        # element (word). Hence the LoDTensor will hold data for three sentences of 
-        # length 3, 4 and 2, respectively. 
+        # which has only one level of detail. Then the created LoDTensor will have only
+        # one higher level structure (sequence of words, or sentence) than the basic
+        # element (word). Hence the LoDTensor will hold data for three sentences of
+        # length 3, 4 and 2, respectively.
         # Note that recursive_sequence_lengths should be a list of lists.
         recursive_seq_lens = [[3, 4, 2]]
         base_shape = [1]
@@ -261,10 +261,10 @@ def infer(word_dict, use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: tensor_words},
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print((results[0].recursive_sequence_lengths()))
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
-        print(("Inference Shape: ", np_data.shape))
-        print(("Inference results: ", np_data))
+        print("Inference Shape: ", np_data.shape)
+        print("Inference results: ", np_data)
 
 
 def main(word_dict, net_method, use_cuda, parallel=False, save_dirname=None):
