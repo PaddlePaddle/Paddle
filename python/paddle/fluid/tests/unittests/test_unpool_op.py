@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def unpool2dmax_forward_naive(input, indices, ksize, strides, paddings):

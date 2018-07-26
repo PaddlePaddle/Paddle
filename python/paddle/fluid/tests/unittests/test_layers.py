@@ -20,7 +20,7 @@ from paddle.fluid.layers.device import get_places
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
-from . import decorators
+import decorators
 
 
 class TestBook(unittest.TestCase):

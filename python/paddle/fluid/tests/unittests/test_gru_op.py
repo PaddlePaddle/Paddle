@@ -15,8 +15,8 @@
 import unittest
 import numpy as np
 import math
-from .op_test import OpTest
-from .test_lstm_op import identity, sigmoid, tanh, relu
+from op_test import OpTest
+from test_lstm_op import identity, sigmoid, tanh, relu
 
 
 class TestGRUOp(OpTest):

@@ -17,7 +17,7 @@ import numpy as np
 import sys
 import collections
 import math
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestDetectionMAPOp(OpTest):

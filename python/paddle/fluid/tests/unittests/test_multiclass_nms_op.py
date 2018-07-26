@@ -14,7 +14,7 @@
 import unittest
 import numpy as np
 import copy
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def iou(box_a, box_b):

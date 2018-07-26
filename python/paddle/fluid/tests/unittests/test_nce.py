@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def nce(input, weight, bias, sample_weight, labels, num_classes,

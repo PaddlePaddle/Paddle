@@ -17,7 +17,7 @@ import numpy as np
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 import paddle.fluid as fluid
-from .op_test import OpTest
+from op_test import OpTest
 from paddle.fluid.framework import grad_var_name
 
 

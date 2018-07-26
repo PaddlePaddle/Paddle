@@ -15,7 +15,7 @@
 import unittest
 import numpy as np
 import math
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestSequenceReshape(OpTest):

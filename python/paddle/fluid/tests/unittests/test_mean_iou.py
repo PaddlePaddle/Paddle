@@ -15,7 +15,7 @@
 from __future__ import division
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def compute_mean_iou(predictions, labels, num_classes, in_wrongs, in_corrects,

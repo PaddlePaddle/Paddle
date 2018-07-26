@@ -14,9 +14,9 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
-from .test_pool2d_op import max_pool2D_forward_naive
-from .test_pool2d_op import avg_pool2D_forward_naive
+from op_test import OpTest
+from test_pool2d_op import max_pool2D_forward_naive
+from test_pool2d_op import avg_pool2D_forward_naive
 
 
 class TestSppOp(OpTest):

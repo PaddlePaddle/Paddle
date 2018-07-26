@@ -14,7 +14,7 @@
 
 import numpy as np
 import unittest
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestL1NormOp(OpTest):

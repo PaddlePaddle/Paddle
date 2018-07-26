@@ -15,7 +15,7 @@ import unittest
 
 import paddle.fluid as fluid
 import numpy as np
-from . import decorators
+import decorators
 
 
 class TestRegistry(unittest.TestCase):
