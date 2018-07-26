@@ -91,8 +91,8 @@ template <typename T>
 class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    CUDNN_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
-                  "It must use CUDAPlace.");
+    PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
+                   "It must use CUDAPlace.");
 
     const Tensor *input = ctx.Input<Tensor>("X");
     const Tensor *output = ctx.Input<Tensor>("Out");
