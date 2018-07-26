@@ -28,7 +28,6 @@ Graphics and Image Processing (2008)
 http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
-import pickle
 import itertools
 import functools
 from .common import download
@@ -39,6 +38,8 @@ from paddle.reader import *
 import os
 import numpy as np
 from multiprocessing import cpu_count
+from six.moves import cPickle as pickle
+from six.moves import zip
 __all__ = ['train', 'test', 'valid']
 
 DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'

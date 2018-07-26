@@ -67,7 +67,7 @@ def recordio(paths, buf_size=100):
 
     import recordio as rec
     import paddle.reader.decorator as dec
-    import pickle as pickle
+    import six.moves.cPickle as pickle
 
     def reader():
         if isinstance(paths, str):

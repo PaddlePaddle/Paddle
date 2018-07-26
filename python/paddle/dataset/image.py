@@ -36,7 +36,7 @@ except ImportError:
     cv2 = None
 import os
 import tarfile
-import pickle
+import six.moves.cPickle as pickle
 
 __all__ = [
     "load_image_bytes", "load_image", "resize_short", "to_chw", "center_crop",

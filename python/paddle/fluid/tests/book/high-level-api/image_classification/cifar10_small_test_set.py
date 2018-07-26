@@ -28,11 +28,12 @@ images per class.
 
 """
 
-import pickle
 import itertools
 import numpy
 import paddle.v2.dataset.common
 import tarfile
+from six.moves import cPickle as pickle
+from six.moves import zip
 
 __all__ = ['train10']
 

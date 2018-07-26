@@ -22,6 +22,8 @@ import subprocess
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
+from six.moves import map
+from six.moves import zip
 import itertools
 import random
 import zlib

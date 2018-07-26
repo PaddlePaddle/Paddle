@@ -20,6 +20,7 @@ from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
 from .param_attr import ParamAttr, WeightNormParamAttr
 from . import core
+from six.moves import zip
 
 
 class LayerHelper(object):
