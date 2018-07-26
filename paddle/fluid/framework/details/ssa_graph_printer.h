@@ -39,13 +39,11 @@ class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
  public:
   std::unique_ptr<ir::Graph> Apply(
       std::unique_ptr<ir::Graph> graph) const override {
-    auto new_graph = Get<ir::Pass>("previous_pass").Apply(std::move(graph));
-
     std::unique_ptr<std::ostream> fout(
-        new std::ofstream(Get<std::string>("debug_graphviz_path")));
+        new std::ofstream(Get<const std::string>("debug_graphviz_path")));
     PADDLE_ENFORCE(fout->good());
-    Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*new_graph, *fout);
-    return new_graph;
+    Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
+    return graph;
   }
 };
 

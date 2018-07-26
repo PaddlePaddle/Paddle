@@ -35,15 +35,15 @@ namespace framework {
 namespace details {
 
 void MultiDevSSAGraphBuilder::Init() const {
-  loss_var_name_ = Get<std::string>("loss_var_name");
-  places_ = Get<std::vector<platform::Place>>("places");
-  local_scopes_ = Get<std::vector<Scope *>>("local_scopes");
-  strategy_ = Get<BuildStrategy>("strategy");
+  loss_var_name_ = Get<const std::string>("loss_var_name");
+  places_ = Get<const std::vector<platform::Place>>("places");
+  local_scopes_ = Get<const std::vector<Scope *>>("local_scopes");
+  strategy_ = Get<const BuildStrategy>("strategy");
 #ifdef PADDLE_WITH_CUDA
   nccl_ctxs_ = &Get<platform::NCCLContextMap>("nccl_ctxs");
 #endif
 
-  for (auto &p : Get<std::unordered_set<std::string>>("params")) {
+  for (auto &p : Get<const std::unordered_set<std::string>>("params")) {
     grad_names_.insert(GradVarName(p));
   }
   balance_vars_.resize(places_.size(), 0);
