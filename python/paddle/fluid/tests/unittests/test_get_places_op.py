@@ -14,7 +14,7 @@
 
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
-from . import decorators
+import decorators
 import unittest
 
 

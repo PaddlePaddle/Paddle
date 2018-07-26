@@ -20,7 +20,7 @@ import itertools
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class BenchmarkSuite(OpTest):

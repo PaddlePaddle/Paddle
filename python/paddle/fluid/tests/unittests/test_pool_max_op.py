@@ -14,7 +14,7 @@
 
 import unittest
 import numpy as np
-from .op_test import OpTest
+from op_test import OpTest
 
 
 def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=False):

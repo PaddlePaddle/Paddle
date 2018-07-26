@@ -15,7 +15,7 @@
 import numpy as np
 import unittest
 from numpy import linalg as LA
-from .op_test import OpTest
+from op_test import OpTest
 
 
 class TestL2LossOp(OpTest):

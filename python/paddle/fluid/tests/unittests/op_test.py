@@ -25,7 +25,7 @@ from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from .testsuite import create_op, set_input, append_input_output, append_loss_ops
+from testsuite import create_op, set_input, append_input_output, append_loss_ops
 from functools import reduce
 from six.moves import zip
 

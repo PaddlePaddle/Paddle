@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-from . import decorators
+import decorators
 import paddle.fluid as fluid
 import numpy
 
