@@ -162,7 +162,8 @@ class TRTConvertValidation {
 
       size_t fluid_out_size = fluid_out.size();
       if (if_add_batch_ == true) {
-        fluid_out_size = batch_size * (tensor->dims().size() / max_batch_size_);
+        fluid_out_size =
+            batch_size * (framework::product(tensor->dims()) / max_batch_size_);
       }
       // Compare two output
       ASSERT_FALSE(fluid_out.empty());
