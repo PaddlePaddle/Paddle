@@ -71,7 +71,6 @@ class TestParallelExecutorBase(unittest.TestCase):
             exec_strategy.allow_op_delay = allow_op_delay
 
             build_strategy = fluid.BuildStrategy()
-            build_strategy.debug_graphviz_path = "/tmp/graphviz"
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
 

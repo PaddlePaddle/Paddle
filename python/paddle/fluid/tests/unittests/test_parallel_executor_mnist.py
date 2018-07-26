@@ -152,6 +152,16 @@ class TestMNIST(TestParallelExecutorBase):
             use_cuda=use_cuda,
             use_reduce=use_reduce)
 
+    def test_simple_fc(self):
+        # use_cuda
+        self.check_simple_fc_convergence(True)
+        self.check_simple_fc_convergence(False)
+
+    def test_simple_fc_with_new_strategy(self):
+        # use_cuda, use_reduce
+        self._compare_reduce_and_allreduce(simple_fc_net, True)
+        self._compare_reduce_and_allreduce(simple_fc_net, False)
+
     def check_simple_fc_parallel_accuracy(self, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
             return
@@ -178,6 +188,10 @@ class TestMNIST(TestParallelExecutorBase):
         for p_l in parallel_last_loss:
             self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
 
+    def test_simple_fc_parallel_accuracy(self):
+        self.check_simple_fc_parallel_accuracy(True)
+        self.check_simple_fc_parallel_accuracy(False)
+
     def check_batchnorm_fc_convergence(self, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
             return
@@ -192,31 +206,13 @@ class TestMNIST(TestParallelExecutorBase):
                        "label": label},
             use_cuda=use_cuda)
 
-    def check_batchnorm_fc_convergence_use_reduce(self, use_cuda):
-        if use_cuda and not core.is_compiled_with_cuda():
-            return
-        self.check_network_convergence(
-            fc_with_batchnorm, use_cuda=use_cuda, use_reduce=False)
-        """
-        img, label = self._init_data()
-
-        all_reduce_first_loss, all_reduce_last_loss = self.check_network_convergence(
-            fc_with_batchnorm,
-            feed_dict={"image": img,
-                       "label": label},
-            use_cuda=use_cuda,
-            use_reduce=False)
-        reduce_first_loss, reduce_last_loss = self.check_network_convergence(
-            fc_with_batchnorm,
-            feed_dict={"image": img,
-                       "label": label},
-            use_cuda=use_cuda,
-            use_reduce=True)
-        """
+    def test_batchnorm_fc(self):
+        self.check_batchnorm_fc_convergence(True)
+        self.check_batchnorm_fc_convergence(False)
 
     def test_batchnorm_fc_with_new_strategy(self):
-        self.check_batchnorm_fc_convergence_use_reduce(True)
-        # self.check_batchnorm_fc_convergence_use_reduce(False)
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, True)
+        self._compare_reduce_and_allreduce(fc_with_batchnorm, False)
 
 
 if __name__ == '__main__':
