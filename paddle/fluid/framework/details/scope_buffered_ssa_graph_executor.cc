@@ -63,8 +63,7 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
   }
 
   drop_scope_counter_ += 1;
-  if (!fetch_tensors.empty() ||
-      drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
+  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     drop_scope_counter_ = 0;
     // Wait All computational streams
     for (auto p : places_) {

@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -27,7 +26,7 @@ DECLARE_bool(cudnn_deterministic);
 namespace paddle {
 namespace platform {
 
-inline const char* cudnnGetErrorString(cudnnStatus_t status) {
+inline const char *cudnnGetErrorString(cudnnStatus_t status) {
   switch (status) {
     case CUDNN_STATUS_SUCCESS:
       return "CUDNN_STATUS_SUCCESS";
@@ -62,7 +61,7 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_ENFORCE(condition)                                  \
   do {                                                            \
     cudnnStatus_t status = condition;                             \
-    if (status != CUDNN_STATUS_SUCCESS) {                         \
+    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {               \
       VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
       PADDLE_THROW("cuDNN call failed");                          \
     }                                                             \
@@ -88,7 +87,7 @@ enum class PoolingMode {
 #pragma message \
     "please see https://docs.nvidia.com/deeplearning/sdk/cudnn-release-notes/"
 
-inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode &mode) {
   switch (mode) {
     case PoolingMode::kMaximumDeterministic:
       return CUDNN_POOLING_MAX;
@@ -102,7 +101,7 @@ inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
 }
 #else
 
-inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode& mode) {
+inline cudnnPoolingMode_t GetPoolingMode(const PoolingMode &mode) {
   switch (mode) {
     case PoolingMode::kMaximumDeterministic:
       return CUDNN_POOLING_MAX_DETERMINISTIC;
@@ -126,11 +125,11 @@ class CudnnDataType<float16> {
   // The scaling param type is float for HALF and FLOAT tensors
   using ScalingParamType = const float;
   using BatchNormParamType = float;
-  static ScalingParamType* kOne() {
+  static ScalingParamType *kOne() {
     static ScalingParamType v = 1.0;
     return &v;
   }
-  static ScalingParamType* kZero() {
+  static ScalingParamType *kZero() {
     static ScalingParamType v = 0.0;
     return &v;
   }
@@ -142,11 +141,11 @@ class CudnnDataType<float> {
   static const cudnnDataType_t type = CUDNN_DATA_FLOAT;
   using ScalingParamType = const float;
   using BatchNormParamType = float;
-  static ScalingParamType* kOne() {
+  static ScalingParamType *kOne() {
     static ScalingParamType v = 1.0;
     return &v;
   }
-  static ScalingParamType* kZero() {
+  static ScalingParamType *kZero() {
     static ScalingParamType v = 0.0;
     return &v;
   }
@@ -158,18 +157,18 @@ class CudnnDataType<double> {
   static const cudnnDataType_t type = CUDNN_DATA_DOUBLE;
   using ScalingParamType = const double;
   using BatchNormParamType = double;
-  static ScalingParamType* kOne() {
+  static ScalingParamType *kOne() {
     static ScalingParamType v = 1.0;
     return &v;
   }
-  static ScalingParamType* kZero() {
+  static ScalingParamType *kZero() {
     static ScalingParamType v = 0.0;
     return &v;
   }
 };
 
 inline cudnnTensorFormat_t GetCudnnTensorFormat(
-    const DataLayout& order) {  // Not use
+    const DataLayout &order) {  // Not use
   switch (order) {
     case DataLayout::kNHWC:
       return CUDNN_TENSOR_NHWC;
@@ -194,7 +193,7 @@ class ScopedTensorDescriptor {
 
   inline cudnnTensorDescriptor_t descriptor(const cudnnTensorFormat_t format,
                                             const cudnnDataType_t type,
-                                            const std::vector<int>& dims,
+                                            const std::vector<int> &dims,
                                             const int groups = 1) {
     // the format is not used now, will add later
     std::vector<int> strides(dims.size());
@@ -215,8 +214,8 @@ class ScopedTensorDescriptor {
   }
 
   template <typename T>
-  inline cudnnTensorDescriptor_t descriptor(const DataLayout& order,
-                                            const std::vector<int>& dims,
+  inline cudnnTensorDescriptor_t descriptor(const DataLayout &order,
+                                            const std::vector<int> &dims,
                                             const int groups = 1) {
     return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type, dims,
                       groups);
@@ -238,7 +237,7 @@ class ScopedFilterDescriptor {
 
   inline cudnnFilterDescriptor_t descriptor(const cudnnTensorFormat_t format,
                                             const cudnnDataType_t type,
-                                            const std::vector<int>& kernel,
+                                            const std::vector<int> &kernel,
                                             const int groups = 1) {
     // filter layout: MCHW(MCDHW), where M is the number of
     // output image channels, C is the number of input image channels,
@@ -256,8 +255,8 @@ class ScopedFilterDescriptor {
   }
 
   template <typename T>
-  inline cudnnFilterDescriptor_t descriptor(const DataLayout& order,
-                                            const std::vector<int>& kernel,
+  inline cudnnFilterDescriptor_t descriptor(const DataLayout &order,
+                                            const std::vector<int> &kernel,
                                             const int groups = 1) {
     return descriptor(GetCudnnTensorFormat(order), CudnnDataType<T>::type,
                       kernel, groups);
@@ -278,8 +277,8 @@ class ScopedConvolutionDescriptor {
   }
 
   inline cudnnConvolutionDescriptor_t descriptor(
-      cudnnDataType_t type, const std::vector<int>& pads,
-      const std::vector<int>& strides, const std::vector<int>& dilations) {
+      cudnnDataType_t type, const std::vector<int> &pads,
+      const std::vector<int> &strides, const std::vector<int> &dilations) {
     PADDLE_ENFORCE_EQ(pads.size(), strides.size());
     PADDLE_ENFORCE_EQ(pads.size(), dilations.size());
 
@@ -305,8 +304,8 @@ class ScopedConvolutionDescriptor {
 
   template <typename T>
   inline cudnnConvolutionDescriptor_t descriptor(
-      const std::vector<int>& pads, const std::vector<int>& strides,
-      const std::vector<int>& dilations) {
+      const std::vector<int> &pads, const std::vector<int> &strides,
+      const std::vector<int> &dilations) {
     return descriptor(CudnnDataType<T>::type, pads, strides, dilations);
   }
 
@@ -324,10 +323,10 @@ class ScopedPoolingDescriptor {
     PADDLE_ENFORCE(dynload::cudnnDestroyPoolingDescriptor(desc_));
   }
 
-  inline cudnnPoolingDescriptor_t descriptor(const PoolingMode& mode,
-                                             const std::vector<int>& kernel,
-                                             const std::vector<int>& pads,
-                                             const std::vector<int>& strides) {
+  inline cudnnPoolingDescriptor_t descriptor(const PoolingMode &mode,
+                                             const std::vector<int> &kernel,
+                                             const std::vector<int> &pads,
+                                             const std::vector<int> &strides) {
     PADDLE_ENFORCE_EQ(kernel.size(), pads.size());
     PADDLE_ENFORCE_EQ(kernel.size(), strides.size());
     PADDLE_ENFORCE(dynload::cudnnSetPoolingNdDescriptor(
@@ -342,12 +341,12 @@ class ScopedPoolingDescriptor {
   DISABLE_COPY_AND_ASSIGN(ScopedPoolingDescriptor);
 };
 
-inline bool CanCUDNNBeUsed(const framework::ExecutionContext& ctx) {
+inline bool CanCUDNNBeUsed(const framework::ExecutionContext &ctx) {
   bool use_cudnn = ctx.Attr<bool>("use_cudnn");
   use_cudnn &= paddle::platform::is_gpu_place(ctx.GetPlace());
 #ifdef PADDLE_WITH_CUDA
   if (use_cudnn) {
-    auto& dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
+    auto &dev_ctx = ctx.device_context<platform::CUDADeviceContext>();
     use_cudnn &= dev_ctx.cudnn_handle() != nullptr;
   }
 #endif
