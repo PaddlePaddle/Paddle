@@ -213,7 +213,7 @@ void ParallelExecutor::BCastParamsToDevices(
     if (member_->executor_) {
       auto &sharded_var_device =
           member_->executor_->Graph().Get<details::ShardedVarDevice>(
-              "sharded_var_device");
+              details::kShardedVarDevice);
       if (sharded_var_device.find(var) != sharded_var_device.end()) {
         var_dev_id = sharded_var_device.at(var);
       }

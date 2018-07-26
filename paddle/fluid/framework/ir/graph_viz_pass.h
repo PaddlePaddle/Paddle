@@ -28,8 +28,8 @@ namespace framework {
 namespace ir {
 
 class GraphVizPass : public Pass {
- public:
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
 };
 

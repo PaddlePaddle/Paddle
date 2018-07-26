@@ -23,8 +23,8 @@ namespace framework {
 namespace details {
 
 class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
- public:
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
     PADDLE_ENFORCE(IsValidGraph(graph.get()));
     return graph;

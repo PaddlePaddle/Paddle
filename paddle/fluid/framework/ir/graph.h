@@ -40,10 +40,14 @@ class Graph {
     attr_dels_.clear();
   }
 
+  bool Has(const std::string &attr_name) const {
+    return attrs_.find(attr_name) != attrs_.end();
+  }
+
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
-    PADDLE_ENFORCE(attrs_.find(attr_name) != attrs_.end(),
-                   "%s attr not registered for graph.", attr_name);
+    PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
+                   attr_name);
     return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
   }
 
