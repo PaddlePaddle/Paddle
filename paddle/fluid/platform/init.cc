@@ -23,7 +23,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
-DECLARE_int32(paddle_num_threads);
+DEFINE_int32(paddle_num_threads, 1,
+             "Number of threads for each paddle instance.");
 
 namespace paddle {
 namespace framework {

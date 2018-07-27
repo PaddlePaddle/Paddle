@@ -24,9 +24,6 @@ limitations under the License. */
 #include <cblas.h>
 #endif
 
-DEFINE_int32(paddle_num_threads, 1,
-             "Number of threads for each paddle instance.");
-
 namespace paddle {
 namespace platform {
 
