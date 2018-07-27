@@ -42,7 +42,7 @@ function(inference_api_test TARGET_NAME)
     endif(WITH_TESTING)
 endfunction(inference_api_test)
 
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc)
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
 
 
 cc_test(test_paddle_inference_api
