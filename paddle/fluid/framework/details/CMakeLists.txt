@@ -37,6 +37,8 @@ cc_library(ssa_graph_builder_factory SRCS ssa_graph_builder_factory.cc DEPS mult
 cc_library(ssa_graph_executor SRCS ssa_graph_executor.cc DEPS graph framework_proto)
 cc_library(threaded_ssa_graph_executor SRCS threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
         simple_threadpool device_context)
+cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc DEPS fetch_op_handle ssa_graph_executor scope
+        simple_threadpool device_context)
 
 cc_test(broadcast_op_test SRCS broadcast_op_handle_test.cc DEPS var_handle op_handle_base scope ddim memory
         device_context broadcast_op_handle)

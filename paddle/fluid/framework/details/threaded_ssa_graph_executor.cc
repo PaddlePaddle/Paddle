@@ -34,7 +34,7 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
-  //  auto beg = std::chrono::high_resolution_clock::now();
+  auto beg = std::chrono::high_resolution_clock::now();
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   BlockingQueue<VarHandleBase *> ready_vars;
@@ -86,10 +86,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   run_op_futures_.clear();
   exception_.reset();
 
-  //  std::cerr << "Prepare time " <<
-  //  std::chrono::duration_cast<std::chrono::microseconds>(
-  //      std::chrono::high_resolution_clock::now() - beg).count()
-  //            << " micro secs";
+  std::cerr << "Prepare time "
+            << std::chrono::duration_cast<std::chrono::microseconds>(
+                   std::chrono::high_resolution_clock::now() - beg)
+                   .count()
+            << " micro secs";
 
   // Step 3. Execution
   while (!pending_vars.empty()) {

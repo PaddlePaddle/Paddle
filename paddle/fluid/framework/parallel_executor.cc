@@ -24,9 +24,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
-#include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -134,7 +134,7 @@ ParallelExecutor::ParallelExecutor(
   builder_ = builder_factory.Create();
   std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
   graph = builder_->Apply(std::move(graph));
-  member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+  member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
