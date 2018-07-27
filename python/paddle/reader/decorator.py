@@ -325,14 +325,6 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
             else:
                 yield sample
 
-        assert finish == process_num
-        for w in workers:
-            print('join worker: ', w)
-            print('join worker: ', w.is_alive())
-            w.join()
-            print('join worker: ', w.is_alive())
-        del workers
-
     return xreader
 
 
