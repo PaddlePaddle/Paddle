@@ -68,7 +68,7 @@ class ExtractRowsOp : public framework::OperatorBase {
                    boost::get<platform::CUDAPlace>(in.place()), src_ptr,
                    in_rows.size() * sizeof(int64_t), stream);
 #else
-      PADDLE_THROW("Exceptioin.");
+      PADDLE_THROW("Not compiled with CUDA.");
 #endif
     } else {
       memory::Copy(platform::CPUPlace(), dst_ptr, platform::CPUPlace(),
@@ -88,6 +88,9 @@ class ExtractRowsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     ExtractRows Operator.
 
+The function of extract_rows_op is extracting the rows from the input(X)
+whose type is SelectedRows.
+
     )DOC");
   }
 };
@@ -97,5 +100,4 @@ class ExtractRowsOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(extract_rows, ops::ExtractRowsOp, ops::ExtractRowsOpMaker,
-                  ops::ExtractRowsOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::ExtractRowsOpInferShape);
