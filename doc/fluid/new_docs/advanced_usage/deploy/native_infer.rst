@@ -1,0 +1,108 @@
+Paddle 预测 API
+===============
+
+为了更简单方便的预测部署，Fluid 提供了一套高层 API
+用来隐藏底层不同的优化实现。
+
+`预测库相关代码 <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/contrib/inference>`__
+包括
+
+-  头文件 ``paddle_inference_api.h`` 定义了所有的接口
+-  库文件\ ``libpaddle_fluid.so`` 或 ``libpaddle_fluid.a``
+-  库文件 ``libpaddle_inference_api.so`` 或
+   ``libpaddle_inference_api.a``
+
+编译和依赖可以参考 :ref:`install_or_build_cpp_inference_lib` 。
+
+下面是一些 API 概念的介绍
+
+PaddleTensor
+------------
+
+PaddleTensor 定义了预测最基本的输入输出的数据格式，其定义是
+
+.. code:: cpp
+
+    struct PaddleTensor {
+      std::string name;  // variable name.
+      std::vector<int> shape;
+      PaddleBuf data;  // blob of data.
+      PaddleDType dtype;
+    };
+
+-  ``name`` 用于指定输入数据对应的 模型中variable 的名字
+   （暂时没有用，但会在后续支持任意 target 时启用）
+-  ``shape`` 表示一个 Tensor 的 shape
+-  ``data`` 数据以连续内存的方式存储在\ ``PaddleBuf``
+   中，\ ``PaddleBuf``
+   可以接收外面的数据或者独立\ ``malloc``\ 内存，详细可以参考头文件中相关定义。
+-  ``dtype`` 表示 Tensor 的数据类型
+
+engine
+------
+
+高层 API 底层有多种优化实现，我们称之为 engine，目前有三种 engine
+
+-  原生 engine，由 paddle 原生的 forward operator
+   组成，可以天然支持所有paddle 训练出的模型，
+-  Anakin engine，封装了
+   `Anakin <https://github.com/PaddlePaddle/Anakin>`__
+   ，在某些模型上性能不错，但只能接受自带模型格式，无法支持所有 paddle
+   模型，
+-  TensorRT mixed engine，用子图的方式支持了
+   `TensorRT <https://developer.nvidia.com/tensorrt>`__ ，支持所有paddle
+   模型，并自动切割部分计算子图到 TensorRT 上加速（WIP）
+
+其实现为
+
+.. code:: cpp
+
+    enum class PaddleEngineKind {
+      kNative = 0,       // Use the native Fluid facility.
+      kAnakin,           // Use Anakin for inference.
+      kAutoMixedTensorRT // Automatically mixing TensorRT with the Fluid ops.
+    };
+
+预测部署过程
+------------
+
+总体上分为以下步骤
+
+1. 用合适的配置创建 ``PaddlePredictor``
+2. 创建输入用的 ``PaddleTensor``\ ，传入到 ``PaddlePredictor`` 中
+3. 获取输出的 ``PaddleTensor`` ，将结果取出
+
+下面完整演示一个简单的模型，部分细节代码隐去
+
+.. code:: cpp
+
+    #include "paddle_inference_api.h"
+
+    // 创建一个 config，并修改相关设置
+    paddle::NativeConfig config;
+    config.model_dir = "xxx";
+    config.use_gpu = false;
+    // 创建一个原生的 PaddlePredictor
+    auto predictor =
+          paddle::CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+    // 创建输入 tensor
+    int64_t data[4] = {1, 2, 3, 4};
+    paddle::PaddleTensor tensor{.name = "",
+                                .shape = std::vector<int>({4, 1}),
+                                .data = PaddleBuf(data, sizeof(data)),
+                                .dtype = PaddleDType::INT64};
+    // 创建输出 tensor，输出 tensor 的内存可以复用
+    std::vector<paddle::PaddleTensor> outputs;
+    // 执行预测
+    CHECK(predictor->Run(slots, &outputs));
+    // 获取 outputs ...
+
+编译时，联编 ``libpaddle_fluid.a/.so`` 和
+``libpaddle_inference_api.a/.so`` 便可。
+
+详细代码参考
+------------
+
+-  `inference
+   demos <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/contrib/inference/demo>`__
+-  `复杂单线程/多线程例子 <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/contrib/inference/test_paddle_inference_api_impl.cc>`__

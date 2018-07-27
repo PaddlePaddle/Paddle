@@ -35,6 +35,7 @@ import io
 import evaluator
 import initializer
 import layers
+import contrib
 import nets
 import optimizer
 import backward
@@ -56,36 +57,38 @@ import unique_name
 import recordio_writer
 import parallel_executor
 from parallel_executor import *
+from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
 __all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
-          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-          parallel_executor.__all__ + lod_tensor.__all__ + [
-              'io',
-              'initializer',
-              'layers',
-              'transpiler',
-              'nets',
-              'optimizer',
-              'learning_rate_decay',
-              'backward',
-              'regularizer',
-              'LoDTensor',
-              'LoDTensorArray',
-              'CPUPlace',
-              'CUDAPlace',
-              'CUDAPinnedPlace',
-              'Tensor',
-              'ParamAttr',
-              'WeightNormParamAttr',
-              'DataFeeder',
-              'clip',
-              'profiler',
-              'unique_name',
-              'recordio_writer',
-              'Scope',
-          ]
+    trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    parallel_executor.__all__ + lod_tensor.__all__ + [
+        'io',
+        'initializer',
+        'layers',
+        'contrib',
+        'transpiler',
+        'nets',
+        'optimizer',
+        'learning_rate_decay',
+        'backward',
+        'regularizer',
+        'LoDTensor',
+        'LoDTensorArray',
+        'CPUPlace',
+        'CUDAPlace',
+        'CUDAPinnedPlace',
+        'Tensor',
+        'ParamAttr',
+        'WeightNormParamAttr',
+        'DataFeeder',
+        'clip',
+        'profiler',
+        'unique_name',
+        'recordio_writer',
+        'Scope',
+    ]
 
 
 def __bootstrap__():
@@ -120,7 +123,7 @@ def __bootstrap__():
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
-        'init_allocated_mem'
+        'init_allocated_mem', 'free_idle_memory'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
@@ -138,5 +141,5 @@ def __bootstrap__():
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
-layers.monkey_patch_variable()
+monkey_patch_variable()
 __bootstrap__()

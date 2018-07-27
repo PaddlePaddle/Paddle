@@ -145,14 +145,14 @@ void BindBlockDesc(pybind11::module *m) {
       .def_property_readonly("id", &pd::BlockDesc::ID)
       .def_property_readonly("parent", &pd::BlockDesc::Parent)
       .def("get_forward_block_idx", &pd::BlockDesc::ForwardBlockID)
-      .def("set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
+      .def("_set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
       .def("append_op", &pd::BlockDesc::AppendOp,
            pybind11::return_value_policy::reference)
-      .def("prepend_op", &pd::BlockDesc::PrependOp,
+      .def("_prepend_op", &pd::BlockDesc::PrependOp,
            pybind11::return_value_policy::reference)
-      .def("insert_op", &pd::BlockDesc::InsertOp,
+      .def("_insert_op", &pd::BlockDesc::InsertOp,
            pybind11::return_value_policy::reference)
-      .def("remove_op", &pd::BlockDesc::RemoveOp)
+      .def("_remove_op", &pd::BlockDesc::RemoveOp)
       .def("var",
            [](pd::BlockDesc &self, pybind11::bytes byte_name) {
              std::string name = byte_name;
@@ -165,7 +165,7 @@ void BindBlockDesc(pybind11::module *m) {
              return self.HasVar(name);
            },
            pybind11::return_value_policy::reference)
-      .def("rename_var",
+      .def("_rename_var",
            [](pd::BlockDesc &self, const pybind11::bytes &byte_name,
               const pybind11::bytes &byte_name_new) {
              std::string name = byte_name;
@@ -189,7 +189,7 @@ void BindBlockDesc(pybind11::module *m) {
              return self.FindVarRecursive(name);
            },
            pybind11::return_value_policy::reference)
-      .def("remove_var",
+      .def("_remove_var",
            [](pd::BlockDesc &self, pybind11::bytes byte_name) {
              std::string name = byte_name;
              return self.RemoveVar(name);

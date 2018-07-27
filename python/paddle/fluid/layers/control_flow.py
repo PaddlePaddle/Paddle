@@ -23,28 +23,17 @@ from ops import logical_and, logical_not, logical_or
 import numpy
 
 __all__ = [
-    'split_lod_tensor',
-    'merge_lod_tensor',
-    'BlockGuard',
-    'BlockGuardWithCompletion',
-    'WhileGuard',
     'While',
     'Switch',
-    'lod_rank_table',
-    'max_sequence_len',
-    'lod_tensor_to_array',
-    'array_to_lod_tensor',
     'increment',
     'array_write',
     'create_array',
     'less_than',
     'equal',
     'array_read',
-    'shrink_memory',
     'array_length',
     'IfElse',
     'DynamicRNN',
-    'ConditionalBlock',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
     'ParallelDo',
@@ -730,8 +719,10 @@ class While(object):
         parent_block.append_op(
             type='while',
             inputs={
-                'X':
-                [parent_block.var_recursive(x_name) for x_name in x_name_list],
+                'X': [
+                    parent_block._var_recursive(x_name)
+                    for x_name in x_name_list
+                ],
                 'Condition': [self.cond_var]
             },
             outputs={'Out': out_vars,
@@ -1259,7 +1250,7 @@ class ConditionalBlock(object):
         input_set = set([ipt.name for ipt in self.inputs])
 
         param_list = [
-            parent_block.var_recursive(each_name) for each_name in params
+            parent_block._var_recursive(each_name) for each_name in params
             if each_name not in input_set
         ]
 
@@ -1458,7 +1449,7 @@ class IfElse(object):
         if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
             raise ValueError("input must in true/false blocks")
         if id(x) not in self.input_table:
-            parent_block = self.parent_block()
+            parent_block = self._parent_block()
             out_true = parent_block.create_var(
                 name=unique_name.generate('ifelse_input' + self.helper.name),
                 dtype=x.dtype)
@@ -1484,7 +1475,7 @@ class IfElse(object):
         else:
             return out_false
 
-    def parent_block(self):
+    def _parent_block(self):
         current_block = self.helper.main_program.current_block()
         return self.helper.main_program.block(current_block.parent_idx)
 
@@ -1500,7 +1491,7 @@ class IfElse(object):
 
         out_table = self.output_table[1 if self.status ==
                                       self.IN_IF_ELSE_TRUE_BLOCKS else 0]
-        parent_block = self.parent_block()
+        parent_block = self._parent_block()
         for each_out in outs:
             if not isinstance(each_out, Variable):
                 raise TypeError("Each output should be a variable")
