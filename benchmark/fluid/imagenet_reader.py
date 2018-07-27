@@ -149,7 +149,8 @@ def _reader_creator(file_list,
                     mode,
                     shuffle=False,
                     color_jitter=False,
-                    rotate=False):
+                    rotate=False,
+                    xmap=True):
     def reader():
         with open(file_list) as flist:
             full_lines = [line.strip() for line in flist]
@@ -167,17 +168,18 @@ def _reader_creator(file_list,
                        len(full_lines)))
             else:
                 lines = full_lines
+
             for line in lines:
                 if mode == 'train':
                     img_path, label = line.split()
                     img_path = img_path.replace("JPEG", "jpeg")
                     img_path = os.path.join(DATA_DIR, "train", img_path)
-                    yield img_path, int(label)
+                    yield (img_path, int(label))
                 elif mode == 'val':
                     img_path, label = line.split()
                     img_path = img_path.replace("JPEG", "jpeg")
                     img_path = os.path.join(DATA_DIR, "val", img_path)
-                    yield img_path, int(label)
+                    yield (img_path, int(label))
                 elif mode == 'test':
                     img_path = os.path.join(DATA_DIR, line)
                     yield [img_path]
@@ -185,16 +187,24 @@ def _reader_creator(file_list,
     mapper = functools.partial(
         process_image, mode=mode, color_jitter=color_jitter, rotate=rotate)
 
-    return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
+    if xmap:
+        return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
+    else:
+        return paddle.reader.map_readers(mapper, reader)
 
 
-def train(file_list=TRAIN_LIST):
+def train(file_list=TRAIN_LIST, xmap=True):
     return _reader_creator(
-        file_list, 'train', shuffle=True, color_jitter=False, rotate=False)
+        file_list,
+        'train',
+        shuffle=True,
+        color_jitter=False,
+        rotate=False,
+        xmap=xmap)
 
 
-def val(file_list=TEST_LIST):
-    return _reader_creator(file_list, 'val', shuffle=False)
+def val(file_list=TEST_LIST, xmap=True):
+    return _reader_creator(file_list, 'val', shuffle=False, xmap=xmap)
 
 
 def test(file_list=TEST_LIST):

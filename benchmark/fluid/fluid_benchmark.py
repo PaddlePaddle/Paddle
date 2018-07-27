@@ -110,6 +110,7 @@ def test_parallel(exe, test_args, args, test_prog, feeder):
 
     to_fetch = [v.name for v in test_args[2]]
     if args.use_reader_op:
+        test_args[4].start()
         while True:
             try:
                 acc_rets = exe.run(fetch_list=to_fetch)
@@ -117,6 +118,7 @@ def test_parallel(exe, test_args, args, test_prog, feeder):
                     e.update(
                         value=np.array(acc_rets[i]), weight=args.batch_size)
             except fluid.core.EOFException as eof:
+                test_args[4].reset()
                 break
     else:
         for batch_id, data in enumerate(test_args[3]()):
@@ -198,6 +200,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             reader_generator = train_args[3]()  #train_reader
         batch_id = 0
         data = None
+        if args.use_reader_op:
+            train_args[4].start()
         while True:
             if not args.use_reader_op:
                 data = next(reader_generator, None)
@@ -205,10 +209,11 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                     break
             if iters == args.iterations:
                 break
-            if args.profile and pass_id == 0 and batch_id == 5:
+            if args.profile and batch_id == 5:
                 profiler.start_profiler("All")
-            elif args.profile and pass_id == 0 and batch_id == 10:
-                profiler.stop_profiler("total", "/tmp/profile_%d" % trainer_id)
+            elif args.profile and batch_id == 10:
+                profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
+                                       (trainer_id, pass_id))
 
             if iters == args.skip_batch_num:
                 start_time = time.time()
@@ -253,13 +258,10 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                     if var.is_data
                 ]
                 test_feeder = fluid.DataFeeder(test_feed_var_list, place)
-            test_acc1, test_acc5 = test_parallel(test_exe, test_args, args,
-                                                 test_prog, test_feeder)
-            if args.use_reader_op:
-                test_args[5].reset()
-            print("Pass: %d, Test Accuracy: %s, %s\n" %
-                  (pass_id, np.mean(np.array(test_acc1)),
-                   np.mean(np.array(test_acc5))))
+            test_ret = test_parallel(test_exe, test_args, args, test_prog,
+                                     test_feeder)
+            print("Pass: %d, Test Accuracy: %s\n" %
+                  (pass_id, [np.mean(np.array(v)) for v in test_ret]))
 
     print("total train time: ", time.time() - over_all_start)
 

@@ -165,11 +165,14 @@ def _model_reader_dshape_classdim(args, is_train):
                 "Must specify --data_path when training with imagenet")
         if not args.use_reader_op:
             if is_train:
-                # reader = imagenet_train(args.data_path)
                 reader = train()
             else:
-                # reader = imagenet_test(args.test_data_path)
                 reader = val()
+        else:
+            if is_train:
+                reader = train(xmap=False)
+            else:
+                reader = val(xmap=False)
     return model, reader, dshape, class_dim
 
 
@@ -177,49 +180,18 @@ def get_model(args, is_train, main_prog, startup_prog):
     model, reader, dshape, class_dim = _model_reader_dshape_classdim(args,
                                                                      is_train)
 
-    # config readers
-    if not args.use_reader_op:
-        batched_reader = paddle.batch(
-            reader if args.no_random else paddle.reader.shuffle(
-                reader, buf_size=5120),
-            batch_size=args.batch_size * args.gpus,
-            drop_last=True)
-    else:
-        batched_reader = None
-
-    # prepare file list for current node
-    data_file_handle = None
-    trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
-    trainer_count = int(os.getenv("PADDLE_TRAINERS", "1"))
-    current_data_path = args.data_path if is_train == True else args.test_data_path
-    filelist_all = [
-        os.path.join(current_data_path, f)
-        for f in os.listdir(current_data_path)
-    ]
-    filelist_all.sort()
-    file_node_list = []
-    if is_train:
-        for idx, f in enumerate(filelist_all):
-            if idx % trainer_count == trainer_id:
-                file_node_list.append(f)
-    else:
-        file_node_list = filelist_all
-
+    pyreader = None
+    trainer_count = int(os.getenv("PADDLE_TRAINERS"))
     with fluid.program_guard(main_prog, startup_prog):
-        if args.use_reader_op:
-            data_file_handle = fluid.layers.open_files(
-                filenames=file_node_list,
-                shapes=[[-1] + dshape, (-1, 1)],
-                lod_levels=[0, 0],
-                dtypes=["float32", "int64"],
-                thread_num=1,
-                pass_num=1)
-            data_file = fluid.layers.double_buffer(
-                fluid.layers.batch(
-                    data_file_handle, batch_size=args.batch_size))
         with fluid.unique_name.guard():
             if args.use_reader_op:
-                input, label = fluid.layers.read_file(data_file)
+                pyreader = fluid.layers.py_reader(
+                    capacity=10,
+                    shapes=([-1] + dshape, (-1, 1)),
+                    dtypes=('float32', 'int64'),
+                    name="train_reader" if is_train else "test_reader",
+                    use_double_buffer=True)
+                input, label = fluid.layers.read_file(pyreader)
             else:
                 input = fluid.layers.data(
                     name='data', shape=dshape, dtype='float32')
@@ -260,5 +232,20 @@ def get_model(args, is_train, main_prog, startup_prog):
                 if args.memory_optimize:
                     fluid.memory_optimize(main_prog)
 
+    # config readers
+    if not args.use_reader_op:
+        batched_reader = paddle.batch(
+            reader if args.no_random else paddle.reader.shuffle(
+                reader, buf_size=5120),
+            batch_size=args.batch_size * args.gpus,
+            drop_last=True)
+    else:
+        batched_reader = None
+        pyreader.decorate_paddle_reader(
+            paddle.batch(
+                reader if args.no_random else paddle.reader.shuffle(
+                    reader, buf_size=5120),
+                batch_size=args.batch_size))
+
     return avg_cost, optimizer, [batch_acc1,
-                                 batch_acc5], batched_reader, data_file_handle
+                                 batch_acc5], batched_reader, pyreader
