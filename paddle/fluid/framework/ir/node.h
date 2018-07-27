@@ -27,6 +27,8 @@ namespace ir {
 class Node {
  public:
   enum class Type { kOperation, kVariable };
+  static const char kControlDepVarName[];
+
   explicit Node(const std::string& name, Type type)
       : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
 
@@ -50,6 +52,7 @@ class Node {
     PADDLE_ENFORCE(type_ == Type::kVariable);
     return var_desc_;
   }
+
   OpDesc* Op() {
     PADDLE_ENFORCE(type_ == Type::kOperation);
     return op_desc_;
