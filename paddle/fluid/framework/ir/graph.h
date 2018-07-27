@@ -53,7 +53,8 @@ class Graph {
 
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
+                   attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
