@@ -36,43 +36,13 @@ template <typename T>
 class LookupTableKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    auto *ids_t = context.Input<LoDTensor>("Ids");      // int tensor
+    auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");
-    auto *ids_var = context.InputVar("Ids");
-    Tensor *output_t = context.Output<Tensor>("Out");
+
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
-
-    DDim table_dim;
-
-    if (table_var->IsType<LoDTensor>()) {
-      table_dim = context.Input<LoDTensor>("W")->dims();
-    } else if (table_var->IsType<SelectedRows>()) {
-      auto *table_t = context.Input<SelectedRows>("W");
-      table_dim = table_t->value().dims();
-    } else {
-      PADDLE_THROW(
-          "The parameter W of a LookupTable "
-          "must be either LoDTensor or SelectedRows");
-    }
-
-    int64_t *ids;
-    int64_t ids_numel;
-
-    // The type of Ids(Input) is SelectedRows or LoDTensor, when Ids's type
-    // is LoDTensor, this tensor contains the ids to be looked up in W;
-    // when Ids's type is SelectedRows, the rows of Ids contains the
-    // ids to be looked up in W.
-    if (ids_var->IsType<LoDTensor>()) {
-      auto *ids_t = context.Input<LoDTensor>("Ids");
-      ids = const_cast<int64_t *>(ids_t->data<int64_t>());
-      ids_numel = ids_t->numel();
-    } else if (ids_var->IsType<SelectedRows>()) {
-      auto *ids_t = context.Input<SelectedRows>("Ids");
-      ids = const_cast<int64_t *>(ids_t->rows().data());
-      ids_numel = ids_t->rows().size();
-      output_t->Resize({ids_numel, table_dim[1]});
-    } else {
-      PADDLE_THROW("Unsupported Variable Type of Ids");
-    }
+    int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
+    int64_t ids_numel = ids_t->numel();
 
     if (table_var->IsType<LoDTensor>()) {
       auto *table_t = context.Input<LoDTensor>("W");

@@ -779,7 +779,9 @@ class DistributeTranspiler(object):
                         outputs={"Out": prefetch_output_vars},
                         attrs={
                             "epmap": pserver_endpoints,
-                            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                            # FIXME(qiao) temporarily disable this config because prefetch
+                            # is not act as other rpc op, it's more like a forward op
+                            # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                         })
 
                     # insert concat_op
@@ -887,7 +889,8 @@ class DistributeTranspiler(object):
         # create table optimize block in pserver program
         table_opt_op = [
             op for op in self.optimize_ops
-            if op.input("Param")[0] == self.table_name
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
         ][0]
         table_opt_block = pserver_program.create_block(pre_block_idx)
         # only support sgd now
