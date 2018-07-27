@@ -53,6 +53,9 @@ class TestFlattenOpWithDefaultAxis(TestFlattenOp):
         self.in_shape = (3, 2, 2, 3)
         self.new_shape = (3, 12)
 
+    def init_attrs(self):
+        self.attrs = {}
+
 
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):

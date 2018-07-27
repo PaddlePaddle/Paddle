@@ -43,8 +43,8 @@ class FlattenOpInferShape : public framework::InferShapeBase {
     }
   }
 
-  static std::vector<int> GetOutputShape(const int axis,
-                                         const framework::DDim &in_dims) {
+  static std::vector<int32_t> GetOutputShape(const int axis,
+                                             const framework::DDim &in_dims) {
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
@@ -53,7 +53,7 @@ class FlattenOpInferShape : public framework::InferShapeBase {
         inner *= in_dims[i];
       }
     }
-    std::vector<int> out_shape(2);
+    std::vector<int32_t> out_shape(2);
     out_shape[0] = outer;
     out_shape[1] = inner;
     return out_shape;
