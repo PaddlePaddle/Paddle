@@ -476,6 +476,17 @@ class TestBook(unittest.TestCase):
             out = layers.flatten(x, axis=1, name="flatten")
             self.assertIsNotNone(out)
 
+    def test_shape(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                append_batch_size=False,
+                shape=[4, 4, 3],
+                dtype="float32")
+            out = layers.get_shape(x, name="shape")
+            self.assertIsNotNone(out)
+
 
 if __name__ == '__main__':
     unittest.main()
