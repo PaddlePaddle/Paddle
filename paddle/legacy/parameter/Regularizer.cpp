@@ -13,8 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Regularizer.h"
-#include "paddle/utils/Flags.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Flags.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

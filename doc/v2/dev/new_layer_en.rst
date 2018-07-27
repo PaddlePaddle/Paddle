@@ -339,7 +339,7 @@ If you are creating a new file for the test, such as :code:`paddle/legacy/gserve
 Implement Python Wrapper
 ========================
 
-Implementing Python wrapper allows us to use the added layer in configuration files. All the Python wrappers are in file :code:`python/paddle/trainer/config_parser.py`. An example of the Python wrapper for fully connected layer is listed below. It has the following steps:
+Implementing Python wrapper allows us to use the added layer in configuration files. All the Python wrappers are in file :code:`python/paddle/legacy/trainer/config_parser.py`. An example of the Python wrapper for fully connected layer is listed below. It has the following steps:
 
 - Use :code:`@config_layer('fc')` at the decorator for all the Python wrapper class. :code:`fc` is the identifier of the layer.
 - Implements :code:`__init__` constructor function.

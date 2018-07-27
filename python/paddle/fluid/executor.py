@@ -247,6 +247,7 @@ class Executor(object):
         p.set_place(place)
         self.executor = core.Executor(p)
         self.program_caches = dict()
+        self._closed = False
 
     def as_lodtensor(self, data):
         """
@@ -309,7 +310,7 @@ class Executor(object):
         if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
-                global_block.prepend_op(
+                global_block._prepend_op(
                     type='feed',
                     inputs={'X': [feed_var]},
                     outputs={'Out': [out]},
@@ -347,6 +348,24 @@ class Executor(object):
             for i in xrange(len(fetch_list))
         ]
         return outs
+
+    def close(self):
+        """
+        Close this executor.
+
+        You can no long use this executor after calling this method.
+        For the distributed training, this method would free the resource on PServers related to
+        the current Trainer.
+
+        Example:
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> ...
+            >>> exe.close()
+        """
+        if not self._closed:
+            self.executor.close()
+            self._closed = True
 
     def run(self,
             program=None,
@@ -399,6 +418,10 @@ class Executor(object):
             >>>     feed={'X': x},
             >>>     fetch_list=[loss.name])
         """
+
+        if self._closed:
+            raise RuntimeError("Attempted to use a closed Executor")
+
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):

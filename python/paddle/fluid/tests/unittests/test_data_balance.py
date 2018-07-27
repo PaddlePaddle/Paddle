@@ -103,8 +103,12 @@ class TestDataBalance(unittest.TestCase):
             exe = fluid.Executor(place)
             exe.run(startup_prog)
 
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_data_balance = True
             parallel_exe = fluid.ParallelExecutor(
-                use_cuda=self.use_cuda, main_program=main_prog)
+                use_cuda=self.use_cuda,
+                main_program=main_prog,
+                build_strategy=build_strategy)
 
             if (parallel_exe.device_count > self.batch_size):
                 print("WARNING: Unittest TestDataBalance skipped. \
@@ -118,8 +122,7 @@ class TestDataBalance(unittest.TestCase):
                 try:
                     image_val, label_val = parallel_exe.run(fetch_list,
                                                             return_numpy=True)
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
                 ins_num = image_val.shape[0]
                 broadcasted_label = np.ones(
@@ -139,18 +142,20 @@ class TestDataBalance(unittest.TestCase):
                 filenames=[self.lod_data_file_name],
                 shapes=[[-1, 3], [-1, 1]],
                 lod_levels=[1, 0],
-                dtypes=['float32', 'int32'],
-                thread_num=1)
+                dtypes=['float32', 'int32'])
             ins, label = fluid.layers.read_file(data_reader)
 
             place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
             exe = fluid.Executor(place)
             exe.run(startup_prog)
-
+            build_strategy = fluid.BuildStrategy()
+            build_strategy.enable_data_balance = True
             parallel_exe = fluid.ParallelExecutor(
-                use_cuda=self.use_cuda, main_program=main_prog)
+                use_cuda=self.use_cuda,
+                main_program=main_prog,
+                build_strategy=build_strategy)
 
-            if (parallel_exe.device_count > self.batch_size):
+            if parallel_exe.device_count > self.batch_size:
                 print("WARNING: Unittest TestDataBalance skipped. \
                     For the result is not correct when device count \
                     is larger than batch size.")
@@ -162,8 +167,7 @@ class TestDataBalance(unittest.TestCase):
                 try:
                     ins_tensor, label_tensor = parallel_exe.run(
                         fetch_list, return_numpy=False)
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
 
                 ins_val = np.array(ins_tensor)
@@ -185,3 +189,7 @@ class TestDataBalance(unittest.TestCase):
     def test_all(self):
         self.main()
         self.main_lod()
+
+
+if __name__ == '__main__':
+    unittest.main()

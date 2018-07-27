@@ -18,6 +18,8 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/graph.h"
+
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
@@ -45,6 +47,7 @@ class ParallelExecutorPrivate {
 #endif
   bool own_local_scope_;
   bool use_cuda_;
+  bool use_all_reduce_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -62,6 +65,14 @@ ParallelExecutor::ParallelExecutor(
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
+  member_->use_all_reduce_ =
+      build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
+
+  if (!member_->use_all_reduce_) {
+    PADDLE_ENFORCE(places.size() > 1,
+                   "If you set build_strategy.reduce with 'Reduce',"
+                   "the number of places must be greater than 1.");
+  }
 
   // Step 1. Bcast the params to devs.
   // Create local scopes
@@ -95,7 +106,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToGPUs(bcast_vars);
+    BCastParamsToDevices(bcast_vars);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -117,23 +128,22 @@ ParallelExecutor::ParallelExecutor(
 #ifdef PADDLE_WITH_CUDA
     builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
 #else
-    PADDLE_THROW("Not compiled with CUDA");
+    PADDLE_THROW("Not compiled with CUDA.");
 #endif
   }
-
   builder_ = builder_factory.Create();
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+  graph = builder_->Apply(std::move(graph));
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places,
-      builder_->Build(main_program)));
-
+      exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
       member_->places_, std::move(member_->executor_)));
 }
 
-void ParallelExecutor::BCastParamsToGPUs(
+void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
-  // the the initializing bcast, all vars would be bcast from device(0),
+  // the initializing bcast, all vars would be bcast from device(0),
   // otherwise
   // bcast from the specified device.
   bool initializing = builder_.get() == nullptr ? true : false;
@@ -202,12 +212,23 @@ void ParallelExecutor::BCastParamsToGPUs(
 #endif
     } else {
       platform::CPUPlace cpu;
-      for (size_t i = 1; i < member_->places_.size(); ++i) {
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        if ((initializing && i == 0) ||
+            (!initializing && static_cast<int>(i) == var_dev_id))
+          continue;
+
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-        t->Resize(dims);
-        t->mutable_data(cpu, main_tensor.type());
-        paddle::framework::TensorCopy(main_tensor, cpu, t);
+
+        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        if (member_->use_all_reduce_ || member_->use_cuda_ ||
+            var == "@LR_DECAY_COUNTER@") {
+          t->Resize(dims);
+          t->mutable_data(cpu, main_tensor.type());
+          paddle::framework::TensorCopy(main_tensor, cpu, t);
+        } else {
+          t->ShareDataWith(main_tensor);
+        }
       }
     }
   }

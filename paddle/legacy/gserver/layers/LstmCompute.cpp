@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "LstmCompute.h"
 #include "hl_recurrent_apply.cuh"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 namespace paddle {
 

@@ -38,12 +38,10 @@ class LoDTensorBlockingQueue {
 
  public:
   bool Push(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
-    CheckDims(lod_tensor_vec);
     return queue_.Send(lod_tensor_vec);
   }
 
   bool Push(std::vector<framework::LoDTensor>&& lod_tensor_vec) {
-    CheckDims(lod_tensor_vec);
     return queue_.Send(std::move(lod_tensor_vec));
   }
 
@@ -58,25 +56,13 @@ class LoDTensorBlockingQueue {
 
   inline size_t Size() const { return queue_.Size(); }
 
-  inline void Close() { return queue_.Close(); }
+  inline void ReOpen() { queue_.ReOpen(); }
+
+  inline void Close() { queue_.Close(); }
 
   inline bool IsClosed() const { return queue_.IsClosed(); }
 
  private:
-  void CheckDims(const std::vector<framework::LoDTensor>& lod_tensor_vec) {
-    PADDLE_ENFORCE(dims_.size() == lod_tensor_vec.size(),
-                   "Expect input size is %d but found %s", dims_.size(),
-                   lod_tensor_vec.size());
-    for (size_t i = 0; i < dims_.size(); ++i) {
-      const auto& in_dims = framework::slice_ddim(
-          lod_tensor_vec[i].dims(), 1, lod_tensor_vec[i].dims().size());
-      const auto& expect_dims =
-          framework::slice_ddim(dims_[i], 1, dims_[i].size());
-      PADDLE_ENFORCE(in_dims == expect_dims,
-                     "Dims of the %d-th input tensor do not match", i);
-    }
-  }
-
   BlockingQueue<std::vector<framework::LoDTensor>> queue_;
   std::vector<framework::DDim> dims_;
 };

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <vector>
-#include "paddle/utils/Error.h"
+#include "paddle/legacy/utils/Error.h"
 
 namespace paddle {
 

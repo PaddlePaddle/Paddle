@@ -14,7 +14,7 @@ limitations under the License. */
 
 #pragma once
 
-#include <paddle/utils/PythonUtil.h>
+#include <paddle/legacy/utils/PythonUtil.h>
 #include "DataFormat.pb.h"
 #include "DataProvider.h"
 

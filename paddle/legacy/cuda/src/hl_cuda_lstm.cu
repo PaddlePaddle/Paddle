@@ -16,7 +16,7 @@ limitations under the License. */
 #include "hl_base.h"
 #include "hl_cuda_cublas.h"
 #include "hl_device_functions.cuh"
-#include "paddle/utils/Logging.h"
+#include "paddle/legacy/utils/Logging.h"
 
 typedef hppl::Active<real>::forward t_forward;
 typedef hppl::Active<real>::backward t_backward;

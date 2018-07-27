@@ -210,3 +210,14 @@ TEST(ENFORCE_USER_DEFINED_CLASS, NE) {
   Dims a{{1, 2, 3, 4}}, b{{5, 6, 7, 8}};
   ASSERT_THROW(PADDLE_ENFORCE_EQ(a, b), paddle::platform::EnforceNotMet);
 }
+
+TEST(EOF_EXCEPTION, THROW_EOF) {
+  bool caught_eof = false;
+  try {
+    PADDLE_THROW_EOF();
+  } catch (paddle::platform::EOFException error) {
+    caught_eof = true;
+    EXPECT_TRUE(HasPrefix(StringPiece(error.what()), "There is no next data."));
+  }
+  EXPECT_TRUE(caught_eof);
+}

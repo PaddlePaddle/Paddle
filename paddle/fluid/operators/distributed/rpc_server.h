@@ -43,6 +43,9 @@ class RPCServer {
   bool IsExit() { return exit_flag_.load(); }
 
   int GetSelectedPort() const { return selected_port_; }
+
+  int GetClientNum();
+
   void SavePort() const;
 
   // RegisterRPC, register the rpc method name to a handler
@@ -60,7 +63,9 @@ class RPCServer {
   void SetCond(const std::string& rpc_name);
   void WaitCond(const std::string& rpc_name);
   void IncreaseBatchBarrier(const std::string rpc_name);
-  void DecreaseClientNum();
+
+  void Complete();
+
   void ResetBarrierCounter();
 
  protected:

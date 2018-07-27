@@ -39,7 +39,7 @@ class TestMomentumOp1(OpTest):
 
         velocity_out = mu * velocity + grad
         if use_nesterov:
-            param_out = param - grad * learning_rate + \
+            param_out = param - grad * learning_rate - \
                         velocity_out * mu * learning_rate
         else:
             param_out = param - learning_rate * velocity_out
@@ -75,7 +75,7 @@ class TestMomentumOp2(OpTest):
 
         velocity_out = mu * velocity + grad
         if use_nesterov:
-            param_out = param - grad * learning_rate + \
+            param_out = param - grad * learning_rate - \
                         velocity_out * mu * learning_rate
         else:
             param_out = param - learning_rate * velocity_out

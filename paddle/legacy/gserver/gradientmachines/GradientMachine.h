@@ -24,7 +24,7 @@ limitations under the License. */
 #include "paddle/legacy/math/Matrix.h"
 #include "paddle/legacy/parameter/Parameter.h"
 #include "paddle/legacy/parameter/ParameterUpdaterBase.h"
-#include "paddle/utils/Thread.h"
+#include "paddle/legacy/utils/Thread.h"
 
 #ifndef PADDLE_MOBILE_INFERENCE
 #include "paddle/legacy/gserver/evaluators/Evaluator.h"

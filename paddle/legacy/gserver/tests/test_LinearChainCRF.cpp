@@ -15,7 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <vector>
 #include "paddle/legacy/gserver/layers/LinearChainCRF.h"
-#include "paddle/utils/Util.h"
+#include "paddle/legacy/utils/Util.h"
 
 using namespace paddle;  // NOLINT
 using namespace std;     // NOLINT
