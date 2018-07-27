@@ -1776,3 +1776,11 @@ rank_loss
 ..  autofunction:: paddle.fluid.layers.rank_loss
     :noindex:
 
+.. _api_fluid_layers_flatten:
+
+flatten
+-------
+
+..  autofunction:: paddle.fluid.layers.flatten
+    :noindex:
+

@@ -111,6 +111,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'flatten',
 ]
 
 
@@ -5353,4 +5354,72 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def flatten(x, axis=1, name=None):
+    """
+    **flatten layer**
+    Flattens the input tensor into a 2D matrix.
+
+    Examples:
+    Case 1:
+      Given
+        X.shape = (3, 100, 100, 4)
+      and
+        axis = 2
+      We get:
+        Out.shape = (3 * 100, 4 * 100)
+
+    Case 2:
+      Given
+        X.shape = (3, 100, 100, 4)
+      and
+        axis = 0
+      We get:
+        Out.shape = (1, 3 * 100 * 100 * 4)
+
+    Args:
+        x (Variable): A tensor of rank >= axis.
+        axis (int): Indicate up to which input dimensions (exclusive) should
+                    be flattened to the outer dimension of the output.
+                    The value for axis must be in the range [0, R], where R
+                    is the rank of the input tensor. When axis = 0, the shape
+                    of the output tensor is (1, (d_0 X d_1 ... d_n), where the
+                    shape of the input tensor is (d_0, d_1, ... d_n).
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: A 2D tensor with the contents of the input tensor, with input
+                  dimensions up to axis flattened to the outer dimension of
+                  the output and remaining input dimensions flattened into the
+                  inner dimension of the output.
+
+    Raises:
+        ValueError: If x is not a variable.
+        ValueError: If axis is not in range [0, rank(x)].
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[4, 4, 3], dtype="float32")
+            out = fluid.layers.flatten(x=x, axis=2)
+    """
+    helper = LayerHelper('flatten', **locals())
+
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Variable")
+
+    if not (isinstance(axis, int)) or axis >= len(x.shape) or axis < 0:
+        raise ValueError(
+            "The type of axis should be int, and in range [0, rank(x)]")
+
+    out = helper.create_tmp_variable(x.dtype)
+    helper.append_op(
+        type='flatten',
+        inputs={"X": x},
+        outputs={'Out': out},
+        attrs={"axis": axis})
     return out
