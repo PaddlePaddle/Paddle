@@ -49,6 +49,7 @@ void GRPCClient::SendComplete() {
 }
 
 GRPCClient::~GRPCClient() {
+  stopped_ = true;
   Wait();
   cq_.Shutdown();
   {
@@ -275,7 +276,7 @@ void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
-  while (cq_.Next(&tag, &ok)) {
+  while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
