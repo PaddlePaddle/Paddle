@@ -227,16 +227,9 @@ class ReshapeKernel {
           "sequence_reshape op.");
     }
 
-    bool inplace = ctx.Attr<bool>("inplace");
+    out->mutable_data(ctx.GetPlace(), in->type());
+    framework::TensorCopySync(*in, ctx.GetPlace(), out);
     out->Resize(out_dims);
-    if (!inplace) {
-      out->mutable_data(ctx.GetPlace(), in->type());
-      framework::TensorCopySync(*in, ctx.GetPlace(), out);
-      out->Resize(out_dims);
-    } else {
-      out->ShareDataWith(*in);
-      out->Resize(out_dims);
-    }
   }
 };
 
@@ -247,10 +240,8 @@ class ReshapeGradKernel {
     auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    bool inplace = ctx.Attr<bool>("inplace");
-
-    auto in_dims = d_x->dims();
     framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+    auto in_dims = d_x->dims();
     ctx.device_context().Wait();
     d_x->Resize(in_dims);
   }
