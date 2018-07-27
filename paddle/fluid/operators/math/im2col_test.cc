@@ -227,7 +227,8 @@ void benchIm2col(int ic, int ih, int iw, int fh, int fw, int ph, int pw) {
   auto t3 = GetCurrentMs();
 
   LOG(INFO) << "before: " << (t3 - t2) / repeat
-            << ",after: " << (t2 - t1) / repeat;
+            << ",after: " << (t2 - t1) / repeat
+            << ",boost: " << ((t3 - t2) / (t2 - t1) - 1) * 100 << "%";
 }
 
 TEST(math, im2col_cputest) {
@@ -244,6 +245,10 @@ TEST(math, im2col_cputest) {
     // height != width
     testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 2, /*fw*/ 3, /*ph*/ p,
                   /*pw*/ p);
+    testIm2colCPU(/*ic*/ 2, /*ih*/ 5, /*iw*/ 4, /*fh*/ 1, /*fw*/ 3, /*ph*/ p,
+                  /*pw*/ p);
+    testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 5, /*fh*/ 3, /*fw*/ 1, /*ph*/ p,
+                  /*pw*/ p);
 
     // filter == 1
     testIm2colCPU(/*ic*/ 3, /*ih*/ 4, /*iw*/ 4, /*fh*/ 1, /*fw*/ 1, /*ph*/ p,
@@ -251,13 +256,14 @@ TEST(math, im2col_cputest) {
     testIm2colCPU(/*ic*/ 3, /*ih*/ 3, /*iw*/ 4, /*fh*/ 1, /*fw*/ 1, /*ph*/ p,
                   /*pw*/ p);
   }
+
   // padding_h != padding_w
   testIm2colCPU(/*ic*/ 2, /*ih*/ 4, /*iw*/ 4, /*fh*/ 2, /*fw*/ 3, /*ph*/ 1,
                 /*pw*/ 2);
 
   // benchmark
-  for (int p : {0, 1, 2}) {
-    for (int k : {3, 5}) {
+  for (int p : {0, 1}) {
+    for (int k : {1, 3, 5}) {
       LOG(INFO) << "padding == " << p << ", filter == " << k;
       benchIm2col(/*ic*/ 3, /*ih*/ 224, /*iw*/ 224, /*fh*/ k, /*fw*/ k,
                   /*ph*/ p, /*pw*/ p);

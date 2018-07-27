@@ -40,10 +40,12 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
         dilation[1] == 1) {
       if (padding[0] == 0 && padding[1] == 0) {
         im2col_sh1sw1dh1dw1ph0pw0<T>(im, col);
-      } else {
-        im2col_sh1sw1dh1dw1<T>(im, padding, col);
+        return;
+      } else if (padding[0] == 1 && padding[1] == 1) {
+        im2col_sh1sw1dh1dw1ph1pw1<T>(im, col);
+        return;
       }
-      return;
+      // TODO(TJ): complete padding >=2
     }
     im2col_common<T>(im, dilation, stride, padding, col);
   }
