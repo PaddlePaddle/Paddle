@@ -250,14 +250,9 @@ class ReshapeGradKernel {
     bool inplace = ctx.Attr<bool>("inplace");
 
     auto in_dims = d_x->dims();
-    if (!inplace) {
-      framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
-      ctx.device_context().Wait();
-      d_x->Resize(in_dims);
-    } else {
-      d_x->ShareDataWith(*d_out);
-      d_x->Resize(in_dims);
-    }
+    framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
+    ctx.device_context().Wait();
+    d_x->Resize(in_dims);
   }
 };
 
