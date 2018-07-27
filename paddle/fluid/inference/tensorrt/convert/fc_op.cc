@@ -32,11 +32,11 @@ void Reorder2(nvinfer1::DimsHW shape, const T* idata, nvinfer1::DimsHW istrides,
   for (int h = 0; h < shape.h(); ++h) {
     for (int w = 0; w < shape.w(); ++w) {
       odata[h * ostrides.h() + w * ostrides.w()] =
-          idata[h * ostrides.h() + w * ostrides.w()];
+          idata[h * istrides.h() + w * istrides.w()];
     }
   }
 }
-
+// indata c * k
 // Reorder the data layout from CK to KC.
 void ReorderCKtoKC(TensorRTEngine::Weight& iweights,
                    TensorRTEngine::Weight* oweights) {
@@ -79,9 +79,8 @@ class FcOpConverter : public OpConverter {
 
     framework::LoDTensor tmp;
     tmp.Resize(Y_t->dims());
-    memcpy(tmp.mutable_data<float>(platform::CPUPlace()), Y_t->data<float>(),
-           Y_t->dims()[0] * Y_t->dims()[1]);
-
+    memcpy(tmp.mutable_data<float>(platform::CPUPlace()), weight_data,
+           Y_t->dims()[0] * Y_t->dims()[1] * sizeof(float));
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
                                   Y_t->memory_size() / sizeof(float)};
@@ -93,7 +92,7 @@ class FcOpConverter : public OpConverter {
 
     // The data layout of TRT FC layer's weight is different from fluid's FC,
     // need to reorder the elements.
-    ReorderCKtoKC(tmp_weight, &weight);
+    ReorderCKtoKC(weight, &tmp_weight);
 
     // Currently, the framework can only handle one fluid op -> one TRT layer,
     // but fc fuses `mul` and `bias` (2 fluid ops), so here is a trick, just
@@ -103,7 +102,7 @@ class FcOpConverter : public OpConverter {
 
     auto* layer = TRT_ENGINE_ADD_LAYER(engine_, FullyConnected,
                                        *const_cast<nvinfer1::ITensor*>(X),
-                                       n_output, weight.get(), bias.get());
+                                       n_output, tmp_weight.get(), bias.get());
 
     auto output_name = op_desc.Output("Out").front();
     engine_->SetITensor(output_name, layer->getOutput(0));
@@ -118,4 +117,3 @@ class FcOpConverter : public OpConverter {
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(fc, FcOpConverter);
-USE_OP(mul);

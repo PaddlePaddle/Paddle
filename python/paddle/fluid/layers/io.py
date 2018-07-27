@@ -443,9 +443,6 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
                                       startup_var)
 
-    if for_parallel:
-        main_prog_var = parallel(reader=main_prog_var)
-
     return monkey_patch_reader_methods(main_prog_var)
 
 
