@@ -263,12 +263,10 @@ def detection_output(loc,
         target_box=loc,
         code_type='decode_center_size')
     old_shape = scores.shape
-    act_shape = nn.get_shape(scores)
+    act_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
-    a = nn.get_shape(scores)
     scores = nn.softmax(input=scores)
     scores = nn.reshape(x=scores, shape=old_shape, actual_shape=act_shape)
-    b = nn.get_shape(scores)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
@@ -680,7 +678,8 @@ def ssd_loss(location,
     num, num_prior, num_class = confidence.shape
 
     def __reshape_to_2d(var):
-        return nn.reshape(x=var, shape=[-1, var.shape[-1]])
+        #return nn.reshape(x=var, shape=[-1, var.shape[-1]])
+        return nn.flatten(x=var, shape=[-1, var.shape[-1]])
 
     # 1. Find matched boundding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
