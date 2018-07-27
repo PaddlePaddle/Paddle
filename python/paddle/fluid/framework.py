@@ -1555,7 +1555,12 @@ class Program(object):
 
     def inference_optimize(self):
         """
-        This method will create a new program and change the :code:`is_test`
+        This method will create a new program and do following adjustments on it:
+        1. Remove all reader variables and their creator ops if exist.
+
+        2. Remove the :code:`read_op` if exists.
+
+        3. change the :code:`is_test`
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
 
@@ -1569,6 +1574,22 @@ class Program(object):
         # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
+
+        # remove all readers and the read_op if exist
+        read_op_idx = 0
+        root_block = res.desc.block(0)
+        while True:
+            if read_op_idx >= root_block.op_size() or root_block.op(
+                    read_op_idx).type() == 'read':
+                break
+            read_op_idx += 1
+        if read_op_idx < root_block.op_size():
+            root_block._remove_op(0, read_op_idx + 1)
+        for var in root_block.all_vars():
+            if var.type() == core.VarDesc.VarType.READER:
+                root_block._remove_var(var.name())
+
+        # change all `is_test` attributes to True
         for i in range(res.desc.num_blocks()):
             block = res.desc.block(i)
             for j in range(block.op_size()):
