@@ -23,27 +23,25 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+__device__ int hash_combine(int seed, int idx) {
+  // boost::hash_ combine to make seed more random
+  seed ^= idx + 0x9e3779b9 + ((seed) << 6) + ((seed) >> 2);
+  return seed;
+}
+
 template <typename T>
 __global__ void RandomGenerator(const size_t n, const int seed,
                                 const float dropout_prob, const T *src,
                                 T *mask_data, T *dst) {
   thrust::minstd_rand rng;
-  rng.seed(seed);
-  thrust::uniform_real_distribution<float> dist(0, 1);
-
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
+  rng.seed(hash_combine(seed, idx));
+  thrust::uniform_real_distribution<float> dist(0, 1);
 
   T mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
-    if (step_size == 0) {
-      rng.discard(idx);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      rng.discard(step_size);
-    }
     if (dist(rng) < dropout_prob) {
       mask = static_cast<T>(0);
     } else {
@@ -60,22 +58,14 @@ __global__ static void DropoutIntGenerator(const size_t n, const int seed,
                                            const unsigned int prob,
                                            const T *src, T *mask_data, T *dst) {
   thrust::minstd_rand rng;
-  rng.seed(seed);
-  thrust::uniform_int_distribution<unsigned int> dist(0, Limit - 1U);
-
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
+  rng.seed(hash_combine(seed, idx));
+  thrust::uniform_int_distribution<unsigned int> dist(0, Limit - 1U);
 
   T mask;
   T dest;
   for (; idx < n; idx += blockDim.x * gridDim.x) {
     T s = src[idx];
-    if (step_size == 0) {
-      rng.discard(idx);
-      step_size = blockDim.x * gridDim.x;
-    } else {
-      rng.discard(step_size);
-    }
     if (dist(rng) < prob) {
       mask = static_cast<T>(0);
     } else {
