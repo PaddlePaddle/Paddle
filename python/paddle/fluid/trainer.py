@@ -505,9 +505,15 @@ class Trainer(object):
             accumulated = len(fetch_list) * [0]
             count = 0
             for data in reader():
-                outs = exe.run(program=self.test_program,
-                               feed=feeder.feed(data),
-                               fetch_list=fetch_list)
+                try:
+                    outs = exe.run(program=self.test_program,
+                                   feed=feeder.feed(data),
+                                   fetch_list=fetch_list)
+                except core.EnforceNotMet as ex:
+                    print ex.message
+                except Exception as ex:
+                    print 'Error when executor runs'
+
                 accumulated = [x[0] + x[1][0] for x in zip(accumulated, outs)]
                 count += 1
 
