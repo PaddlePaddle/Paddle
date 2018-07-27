@@ -13,23 +13,27 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
+  PADDLE_ENFORCE(!applied_, "Pass can only Apply() once.");
+  PADDLE_ENFORCE(graph.get(), "graph passed to Pass::Apply() cannot be empty.");
   for (const std::string& attr : required_pass_attrs_) {
     PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),
-                   "Required pass atrribute %s not registered.", attr);
+                   "Required pass atrribute %s not set.", attr);
   }
   for (const std::string& attr : required_graph_attrs_) {
-    PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not exist.",
+    PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
   auto applied_graph = ApplyImpl(std::move(graph));
   // TODO(panyx0718): Add more verifications.
   PADDLE_ENFORCE(!HasCircle(*applied_graph),
                  "Illegal Pass. Generated graph shouldn't has cycle.");
+  applied_ = true;
   return applied_graph;
 }
 

@@ -19,7 +19,6 @@ limitations under the License. */
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/variant.h"
@@ -56,7 +55,8 @@ class Pass {
   // Set a pointer to the attribute. Pass takes ownership of the attribute.
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the pass",
+                   attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
@@ -89,6 +89,7 @@ class Pass {
     required_graph_attrs_.insert(attrs.begin(), attrs.end());
   }
 
+  mutable bool applied_{false};
   std::unordered_set<std::string> required_pass_attrs_;
   std::unordered_set<std::string> required_graph_attrs_;
   std::map<std::string, boost::any> attrs_;
@@ -118,14 +119,15 @@ class PassRegistry {
     return map_.find(pass_type) != map_.end();
   }
 
-  void Insert(const std::string &type, const PassCreator &pass_creator) {
-    PADDLE_ENFORCE(!Has(type), "Pass %s has been registered", type);
-    map_.insert({type, pass_creator});
+  void Insert(const std::string &pass_type, const PassCreator &pass_creator) {
+    PADDLE_ENFORCE(!Has(pass_type), "Pass %s has been registered", pass_type);
+    map_.insert({pass_type, pass_creator});
   }
 
-  std::unique_ptr<Pass> Get(const std::string &type) const {
-    PADDLE_ENFORCE(Has(type), "Pass %s has not been registered", type);
-    return map_.at(type)();
+  std::unique_ptr<Pass> Get(const std::string &pass_type) const {
+    PADDLE_ENFORCE(Has(pass_type), "Pass %s has not been registered",
+                   pass_type);
+    return map_.at(pass_type)();
   }
 
  private:
