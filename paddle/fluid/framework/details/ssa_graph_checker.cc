@@ -20,7 +20,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-bool SSAGraghBuilderWithChecker::IsValidGraph(const Graph *graph) const {
+bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   std::unordered_set<VarHandleBase *> ready_vars;
