@@ -32,8 +32,9 @@ class FlattenOpInferShape : public framework::InferShapeBase {
     PADDLE_ENFORCE(axis >= 0, "The axis should be greater than or equal to 0.");
     PADDLE_ENFORCE_LT(axis, in_dims.size(),
                       "The axis should be less than input tensor's rank.");
-    auto out_dims = GetOutputShape(axis, in_dims);
-    ctx->SetOutputDim("Out", out_dims);
+
+    const auto &out_dims = GetOutputShape(axis, in_dims);
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
       // are the same.
@@ -41,8 +42,8 @@ class FlattenOpInferShape : public framework::InferShapeBase {
     }
   }
 
-  static framework::DDim GetOutputShape(const int axis,
-                                        const framework::DDim &in_dims) {
+  static std::vector<int> GetOutputShape(const int axis,
+                                         const framework::DDim &in_dims) {
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
@@ -51,11 +52,10 @@ class FlattenOpInferShape : public framework::InferShapeBase {
         inner *= in_dims[i];
       }
     }
-    std::vector<int64_t> out_shape(2);
+    std::vector<int> out_shape(2);
     out_shape[0] = outer;
     out_shape[1] = inner;
-
-    return framework::make_ddim(out_shape);
+    return out_shape;
   }
 };
 
@@ -69,11 +69,11 @@ class FlattenOp : public framework::OperatorBase {
     auto &axis = Attr<int>("axis");
     auto in_dims =
         scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
-    auto out_dims = FlattenOpInferShape::GetOutputShape(axis, in_dims);
+    const auto &out_dims = FlattenOpInferShape::GetOutputShape(axis, in_dims);
 
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(out_dims);
-    attrs["inplace"] = Attr<bool>("inplace");
+    attrs["shape"] = out_dims;
+    attrs["inplace"] = false;
     // Invoke Reshape Op
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -87,10 +87,10 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor) A tensor of rank >= axis.");
     AddOutput("Out",
-              "A 2D tensor with the contents of the input tensor,"
-              "with input dimensions up to axis flattened to the outer"
-              "dimension of the output and remaining input dimensions"
-              "flattened into the inner dimension of the output.");
+              "A 2D tensor is reshaped input tensor. The input dimensions"
+              "up to axis are flattened to the outer dimension of the output"
+              "and the remaining input dimensions are flattened into the inner"
+              "dimension of the output.");
     AddAttr<int>("axis",
                  "(int)"
                  "Indicate up to which input dimensions (exclusive) should be"
@@ -100,12 +100,6 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
                  "tensor is (1, (d_0 X d_1 ... d_n), where the shape of the"
                  "input tensor is (d_0, d_1, ... d_n).")
         .SetDefault(1);
-    AddAttr<bool>("inplace",
-                  "(default: false) flatten the source tensor without "
-                  "memory copy. When Attr(inplace) is set true, the output "
-                  "tensor shares memory with Input(X), otherwise, a new output "
-                  "tensor is created, and its data are copied from Input(x).")
-        .SetDefault(false);
     AddComment(R"DOC(
 Flatten Operator
 
@@ -153,7 +147,7 @@ class FlattenGradOp : public framework::OperatorBase {
         scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(in_dims);
-    attrs["inplace"] = Attr<bool>("inplace");
+    attrs["inplace"] = false;
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},

@@ -38,7 +38,7 @@ class TestFlattenOp(OpTest):
         self.new_shape = (3, 20)
 
     def init_attrs(self):
-        self.attrs = {"axis": self.axis, "inplace": False}
+        self.attrs = {"axis": self.axis}
 
 
 class TestFlattenOp(TestFlattenOp):
@@ -53,34 +53,12 @@ class TestFlattenOpWithDefaultAxis(TestFlattenOp):
         self.in_shape = (3, 2, 2, 3)
         self.new_shape = (3, 12)
 
-    def init_attrs(self):
-        self.attrs = {"inplace": False}
-
 
 class TestFlattenOpSixDims(TestFlattenOp):
     def init_test_case(self):
         self.in_shape = (3, 2, 3, 2, 4, 4)
         self.axis = 4
         self.new_shape = (36, 16)
-
-
-class TestFlattenOpInplace(TestFlattenOp):
-    def init_test_case(self):
-        self.in_shape = (3, 2, 2, 3)
-        self.axis = 2
-        self.new_shape = (6, 6)
-
-    def init_attrs(self):
-        self.attrs = {"axis": self.axis, "inplace": True}
-
-
-class TestFlattenOpInplaceWithDefaultAxis(TestFlattenOp):
-    def init_test_case(self):
-        self.in_shape = (3, 2, 2, 3)
-        self.new_shape = (3, 12)
-
-    def init_attrs(self):
-        self.attrs = {"inplace": True}
 
 
 if __name__ == "__main__":
