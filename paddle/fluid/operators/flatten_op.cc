@@ -30,8 +30,9 @@ class FlattenOpInferShape : public framework::InferShapeBase {
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(axis >= 0, "The axis should be greater than or equal to 0.");
-    PADDLE_ENFORCE_LT(axis, in_dims.size(),
-                      "The axis should be less than input tensor's rank.");
+    PADDLE_ENFORCE(
+        axis <= in_dims.size(),
+        "The axis should be less than or equal to input tensor's rank.");
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
