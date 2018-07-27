@@ -238,7 +238,7 @@ class GRPCClient : public RPCClient {
   std::mutex completed_mutex_;
   bool completed_;
 
-  bool stopped_;
+  volatile bool stopped_;
 };
 
 }  // namespace distributed
