@@ -78,7 +78,7 @@ class OpProtoAndCheckerMaker {
   VariableBuilder AddOutput(const std::string &name,
                             const std::string &comment);
 
-  bool Reuse(const std::string &name, const std::string &reused_name);
+  void Reuse(const std::string &name, const std::string &reused_name);
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,
