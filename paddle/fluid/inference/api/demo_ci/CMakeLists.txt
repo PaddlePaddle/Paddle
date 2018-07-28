@@ -36,7 +36,6 @@ link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
-
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 
 if(WITH_MKL)

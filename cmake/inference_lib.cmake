@@ -95,7 +95,7 @@ endif()
 if(WITH_MKLDNN)
   set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/mkldnn")
   copy(mkldnn_lib
-    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_LIB}*
     DSTS ${dst_dir} ${dst_dir}/lib
     DEPS mkldnn
   )
