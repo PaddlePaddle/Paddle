@@ -112,7 +112,6 @@ __all__ = [
     'crop',
     'rank_loss',
     'flatten',
-    'get_shape',
 ]
 
 
@@ -5360,7 +5359,7 @@ def rank_loss(label, left, right, name=None):
 
 def flatten(x, axis=1, name=None):
     """
-    **flatten layer**
+    **Flatten layer**
     Flattens the input tensor into a 2D matrix.
 
     Examples:
@@ -5413,7 +5412,7 @@ def flatten(x, axis=1, name=None):
     if not (isinstance(x, Variable)):
         raise ValueError("The input x should be a Variable")
 
-    if not (isinstance(axis, int)) or axis >= len(x.shape) or axis < 0:
+    if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)

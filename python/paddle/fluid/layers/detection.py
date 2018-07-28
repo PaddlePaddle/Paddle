@@ -18,6 +18,7 @@ All layers just related to the detection neural network.
 from layer_function_generator import generate_layer_fn
 from layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
+import ops
 import tensor
 import nn
 import math
@@ -262,11 +263,11 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    old_shape = scores.shape
-    act_shape = nn.shape(scores)
+    compile_shape = scores.shape
+    run_shape = ops.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=old_shape, actual_shape=act_shape)
+    scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
@@ -678,8 +679,7 @@ def ssd_loss(location,
     num, num_prior, num_class = confidence.shape
 
     def __reshape_to_2d(var):
-        #return nn.reshape(x=var, shape=[-1, var.shape[-1]])
-        return nn.flatten(x=var, shape=[-1, var.shape[-1]])
+        return nn.flatten(x=var, axis=2)
 
     # 1. Find matched boundding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -690,7 +690,10 @@ def ssd_loss(location,
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = nn.reshape(x=gt_label, shape=gt_label.shape + (1, ))
+    gt_label = nn.reshape(
+        x=gt_label, shape=(len(gt_label.shape) - 1) * (0, ) + (
+            -1,
+            1, ))
     gt_label.stop_gradient = True
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
@@ -1005,13 +1008,7 @@ def multi_box_head(inputs,
     """
 
     def _reshape_with_axis_(input, axis=1):
-        if not (axis > 0 and axis < len(input.shape)):
-            raise ValueError("The axis should be smaller than "
-                             "the arity of input and bigger than 0.")
-        new_shape = [
-            -1, reduce(lambda x, y: x * y, input.shape[axis:len(input.shape)])
-        ]
-        out = nn.reshape(x=input, shape=new_shape)
+        out = nn.flatten(x=input, axis=axis)
         return out
 
     def _is_list_or_tuple_(data):
@@ -1101,10 +1098,7 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        new_shape = [
-            mbox_loc.shape[0],
-            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
-        ]
+        new_shape = [0, -1, 4]
         mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
         mbox_locs.append(mbox_loc_flatten)
 
@@ -1117,10 +1111,7 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        new_shape = [
-            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
-            conf_loc.shape[3] / num_classes, num_classes
-        ]
+        new_shape = [0, -1, num_classes]
         conf_loc_flatten = nn.reshape(conf_loc, shape=new_shape)
         mbox_confs.append(conf_loc_flatten)
 
