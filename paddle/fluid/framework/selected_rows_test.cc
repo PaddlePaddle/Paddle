@@ -87,11 +87,9 @@ TEST_F(SelectedRowsTester, SparseTable) {
   framework::Tensor get_value;
   get_value.mutable_data<float>(framework::make_ddim({2, 100}), cpu);
   std::vector<int64_t> keys({non_key, key});
-  auto non_key_pairs = table.Get(keys, &get_value);
+  table.Get(keys, &get_value);
 
   ASSERT_EQ(get_value.data<float>()[100], static_cast<float>(10));
-  ASSERT_EQ(non_key_pairs.size(), static_cast<size_t>(1));
-  ASSERT_EQ(non_key_pairs[0].first, non_key);
 }
 
 }  // namespace framework

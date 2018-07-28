@@ -46,10 +46,6 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto out_var = scope.FindVar(Output("Out"));
     auto w_var = scope.FindVar(Input("W"));
     auto ids_var = scope.FindVar(Input("Ids"));
-    unsigned int seed = static_cast<unsigned int>(Attr<int>("seed"));
-    float min = Attr<float>("min");
-    float max = Attr<float>("max");
-    bool auto_grown_table = Attr<bool>("auto_grown_table");
 
     PADDLE_ENFORCE(out_var->IsType<framework::LoDTensor>(),
                    "The type of Out var should be LodTensor.");
@@ -75,31 +71,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(framework::ToDataType(w_t->value().type()),
                       framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
-    auto non_keys_pair = w_t->Get(keys, out_t);
-    if (!auto_grown_table) {
-      PADDLE_ENFORCE_EQ(non_keys_pair.size(), static_cast<size_t>(0),
-                        "there is some keys does exists in the sparse table.");
-    }
-    auto value_shape = w_t->value().dims();
-    value_shape[0] = 1;
-    for (const auto &it : non_keys_pair) {
-      const auto key = it.first;
-      const auto index = it.second;
-      framework::Tensor value;
-      value.Resize(value_shape);
-      auto data = value.mutable_data<float>(cpu);
-
-      std::minstd_rand engine;
-      engine.seed(seed);
-      std::uniform_real_distribution<float> dist(min, max);
-      int64_t size = value.numel();
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(engine);
-      }
-      w_t->Set(key, value);
-      memory::Copy(cpu, out_t->mutable_data<float>(cpu) + index * value.numel(),
-                   cpu, value.data<float>(), value.numel() * sizeof(float));
-    }
+    w_t->Get(keys, out_t);
   }
 };
 

@@ -120,11 +120,10 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
-std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
-    const std::vector<int64_t>& keys, framework::Tensor* value) const {
+void SelectedRows::Get(const std::vector<int64_t>& keys,
+                       framework::Tensor* value) {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
-  std::vector<std::pair<int64_t, int64_t>> non_keys_pair;
   if (keys.empty()) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
@@ -133,20 +132,20 @@ std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
 
+    std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
     for (size_t i = 0; i < keys.size(); ++i) {
-      int64_t index = Index(keys[i]);
+      int64_t id = keys[i];
+      int64_t index = Index(id);
       if (index == -1) {
-        non_keys_pair.push_back(
-            std::make_pair(keys[i], static_cast<int64_t>(i)));
-      } else {
-        framework::VisitDataType(
-            framework::ToDataType(value_->type()),
-            TensorCopyVisitor(value, i * value_width, *value_.get(),
-                              index * value_width, value_width));
+        rows_.push_back(id);
+        index = rows_.size() - 1;
       }
+      framework::VisitDataType(
+          framework::ToDataType(value_->type()),
+          TensorCopyVisitor(value, i * value_width, *value_.get(),
+                            index * value_width, value_width));
     }
   }
-  return non_keys_pair;
 }
 
 bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
