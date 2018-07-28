@@ -15,5 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
-namespace framework {}  // namespace framework
+namespace framework {
+namespace ir {
+const char Node::kControlDepVarName[] = "__control_var";
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle
