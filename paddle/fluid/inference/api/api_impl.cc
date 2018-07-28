@@ -163,8 +163,14 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
+
+  std::stringstream ss;
+  for (const auto &name : feed_target_names_) {
+    ss << name << " ";
+  }
+  LOG(INFO) << "feeds: " << ss.str();
   if (inputs.size() != feed_target_names_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size, needs " << feed_target_names_.size() << " get " << inputs.size();
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
@@ -189,9 +195,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     for (auto &level : inputs[i].lod) {
       lod.emplace_back(level);
     }
-    if (!inputs[i].lod.empty()) {
-      input.set_lod(lod);
-    }
+    input.set_lod(lod);
+    LOG(INFO) << "set feed lod tensor " << input.lod().size();
 
     feeds->push_back(input);
   }

@@ -43,15 +43,21 @@ class LSTMKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<LoDTensor>("Input");
     auto* weight = ctx.Input<Tensor>("Weight");
     auto* bias = ctx.Input<Tensor>("Bias");
+    PADDLE_ENFORCE_NOT_NULL(input);
+    PADDLE_ENFORCE_NOT_NULL(weight);
+    PADDLE_ENFORCE_NOT_NULL(bias);
 
     auto* hidden_t0 = ctx.Input<Tensor>("H0");
     auto* cell_t0 = ctx.Input<Tensor>("C0");
 
     auto* batch_gate = ctx.Output<LoDTensor>("BatchGate");
+    PADDLE_ENFORCE_NOT_NULL(batch_gate);
     batch_gate->mutable_data<T>(ctx.GetPlace());
     auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
+    PADDLE_ENFORCE_NOT_NULL(hidden_out);
     hidden_out->mutable_data<T>(ctx.GetPlace());
     auto* cell_out = ctx.Output<LoDTensor>("Cell");
+    PADDLE_ENFORCE_NOT_NULL(cell_out);
     cell_out->mutable_data<T>(ctx.GetPlace());
 
     bool is_reverse = ctx.Attr<bool>("is_reverse");
@@ -141,6 +147,7 @@ class LSTMKernel : public framework::OpKernel<T> {
         // according to their length. The initialized hidden state also needs
         // to reorder.
         Tensor ordered_h0;
+        PADDLE_ENFORCE_NOT_NULL(hidden_t0);
         ReorderInitState<DeviceContext, T>(device_ctx, *hidden_t0, order,
                                            &ordered_h0, true);
         blas.MatMul(ordered_h0, false, *weight, false, static_cast<T>(1.0),

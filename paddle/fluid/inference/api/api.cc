@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle {
@@ -40,19 +41,36 @@ PaddleBuf::PaddleBuf(PaddleBuf&& other)
 PaddleBuf::PaddleBuf(const PaddleBuf& other) { *this = other; }
 
 PaddleBuf& PaddleBuf::operator=(const PaddleBuf& other) {
+  if (!other.memory_owned_) {
+    data_ = other.data_;
+    length_ = other.length_;
+    memory_owned_ = other.memory_owned_;
+  } else {
+    Resize(other.length());
+    memcpy(data_, other.data(), other.length());
+    length_ = other.length();
+    memory_owned_ = true;
+  }
+  return *this;
+}
+
+PaddleBuf& PaddleBuf::operator=(PaddleBuf&& other) {
   // only the buffer with external memory can be copied
-  assert(!other.memory_owned_);
   data_ = other.data_;
   length_ = other.length_;
   memory_owned_ = other.memory_owned_;
+  other.data_ = nullptr;
+  other.length_ = 0;
+  other.memory_owned_ = false;
   return *this;
 }
 
 void PaddleBuf::Resize(size_t length) {
   // Only the owned memory can be reset, the external memory can't be changed.
   if (length_ == length) return;
-  assert(memory_owned_);
-  Free();
+  if (memory_owned_) {
+    Free();
+  }
   data_ = new char[length];
   length_ = length;
   memory_owned_ = true;

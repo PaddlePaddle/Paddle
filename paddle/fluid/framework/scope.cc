@@ -126,7 +126,7 @@ Variable* Scope::VarInternal(const std::string& name) {
 
   v = new Variable();
   vars_[name].reset(v);
-  VLOG(3) << "Create variable " << name;
+  VLOG(4) << "Create variable " << name;
   v->name_ = &(vars_.find(name)->first);
   return v;
 }
