@@ -56,7 +56,7 @@ class TestDistSeResneXt2x2(unittest.TestCase):
             except os.error:
                 retry_times -= 1
 
-    def non_test_with_place(self):
+    def no_test_with_place(self):
         # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
