@@ -46,16 +46,26 @@ class Node {
 
   Type NodeType() const { return type_; }
 
+  bool IsVariable() const { return type_ == Type::kVariable; }
+
   std::string Name() const { return name_; }
 
   VarDesc* Var() {
-    PADDLE_ENFORCE(type_ == Type::kVariable);
+    PADDLE_ENFORCE(IsVariable());
     return var_desc_;
   }
 
   OpDesc* Op() {
-    PADDLE_ENFORCE(type_ == Type::kOperation);
+    PADDLE_ENFORCE(!IsVariable());
     return op_desc_;
+  }
+
+  size_t NoDupInputSize() const {
+    std::unordered_set<Node*> res;
+    for (auto* var : inputs) {
+      res.emplace(var);
+    }
+    return res.size();
   }
 
   std::vector<Node*> inputs;

@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/op_fusion_pass.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
@@ -54,6 +55,20 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
         "%s%s", strategy.debug_graphviz_path_.c_str(), "_original_graph");
     viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
     graph = viz_pass->Apply(std::move(graph));
+  }
+
+  // Apply op fusion.
+  if (strategy.op_fuse_) {
+    auto op_fuse_pass = ir::PassRegistry::Instance().Get("op_fusion_pass");
+    graph = op_fuse_pass->Apply(std::move(graph));
+    // Apply a graph viz pass to record a graph.
+    if (!strategy.debug_graphviz_path_.empty()) {
+      auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+      const std::string graph_path = string::Sprintf(
+          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+      graph = viz_pass->Apply(std::move(graph));
+    }
   }
 
   // Convert graph to run on multi-devices.
@@ -353,6 +368,7 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(op_fusion_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_device_pass);
 USE_PASS(multi_device_check_pass);

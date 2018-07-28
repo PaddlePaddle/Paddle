@@ -21,11 +21,11 @@ namespace ir {
 std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
   PADDLE_ENFORCE(!applied_, "Pass can only Apply() once.");
   PADDLE_ENFORCE(graph.get(), "graph passed to Pass::Apply() cannot be empty.");
-  for (const std::string& attr : required_pass_attrs_) {
+  for (const std::string &attr : required_pass_attrs_) {
     PADDLE_ENFORCE(attrs_.find(attr) != attrs_.end(),
                    "Required pass atrribute %s not set.", attr);
   }
-  for (const std::string& attr : required_graph_attrs_) {
+  for (const std::string &attr : required_graph_attrs_) {
     PADDLE_ENFORCE(graph->Has(attr), "Required graph atrribute %s not set.",
                    attr);
   }
@@ -37,7 +37,7 @@ std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
   return applied_graph;
 }
 
-PassRegistry& PassRegistry::Instance() {
+PassRegistry &PassRegistry::Instance() {
   static PassRegistry g_pass_info_map;
   return g_pass_info_map;
 }

@@ -34,6 +34,8 @@ struct BuildStrategy {
 
   std::string debug_graphviz_path_{""};
 
+  bool op_fuse_{false};
+
   bool enable_data_balance_{false};
 };
 
