@@ -174,7 +174,7 @@ class CheckpointNotifyProcessor : public BaseProcessor {
 
 class GRPCClient : public RPCClient {
  public:
-  GRPCClient() : ok_(true), completed_(false) {}
+  GRPCClient() : ok_(true), completed_(false), stopped_(false) {}
   virtual ~GRPCClient();
 
   bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
@@ -237,6 +237,8 @@ class GRPCClient : public RPCClient {
   // mutex for sending complete message only once
   std::mutex completed_mutex_;
   bool completed_;
+
+  volatile bool stopped_;
 };
 
 }  // namespace distributed

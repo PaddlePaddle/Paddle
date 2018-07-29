@@ -270,6 +270,9 @@ op_library(cos_sim_op DEPS cos_sim_functor)
 op_library(parallel_do_op DEPS executor)
 op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
+op_library(extract_rows_op DEPS memory)
+op_library(flatten_op DEPS reshape_op)
+
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)

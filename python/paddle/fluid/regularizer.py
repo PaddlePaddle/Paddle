@@ -142,14 +142,20 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            idx = block.create_var(
+                dtype="int64",
+                shape=param.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
                 type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
+                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
+            block.append_op(
                 type='lookup_table',
                 inputs={'W': param,
-                        'Ids': grad},
+                        'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
             param = decay
@@ -216,14 +222,20 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            idx = block.create_var(
+                dtype="int64",
+                shape=param.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
                 type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
+                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
+            block.append_op(
                 type='lookup_table',
                 inputs={'W': param,
-                        'Ids': grad},
+                        'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
 
