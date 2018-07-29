@@ -105,9 +105,6 @@ class TestConv2dOp(OpTest):
             self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            print "float16 testing"
-            # return
         if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -120,8 +117,6 @@ class TestConv2dOp(OpTest):
                 set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
-        if self.dtype == np.float16:
-            return
         if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -137,8 +132,6 @@ class TestConv2dOp(OpTest):
                 no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
-        if self.dtype == np.float16:
-            return
         if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -250,10 +243,7 @@ class TestFP16CUDNN(TestConv2dOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=2e-2)
+        self.check_output_with_place(place, atol=2e-2)
 
 
 class TestCUDNNWithPad(TestWithPad):

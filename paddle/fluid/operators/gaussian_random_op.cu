@@ -16,6 +16,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/transform.h"
+
+using paddle::platform::float16;
 
 namespace paddle {
 namespace operators {
@@ -37,6 +40,11 @@ struct GaussianGenerator {
   }
 };
 
+template <typename T, typename V>
+struct CastFunctor {
+  HOSTDEVICE V operator()(const T& a) { return static_cast<V>(a); }
+};
+
 template <typename T>
 class GPUGaussianRandomKernel : public framework::OpKernel<T> {
  public:
@@ -52,9 +60,38 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     T std = static_cast<T>(context.Attr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                      thrust::device_ptr<T>(data),
-                      GaussianGenerator<T>(mean, std, seed));
+
+    if (std::type_index(typeid(T)) == std::type_index(typeid(float16))) {
+      framework::Tensor master_copy_tensor;
+      master_copy_tensor.Resize(tensor->dims());
+      float* master_copy_tensor_data =
+          master_copy_tensor.mutable_data<float>(context.GetPlace());
+      thrust::transform(
+          index_sequence_begin, index_sequence_begin + size,
+          thrust::device_ptr<float>(master_copy_tensor_data),
+          GaussianGenerator<float>(static_cast<float>(mean),
+                                   static_cast<float>(std), seed));
+      platform::Transform<platform::CUDADeviceContext> trans;
+      auto* in_begin = master_copy_tensor.data<float>();
+      auto* in_end = in_begin + master_copy_tensor.numel();
+      auto* out_begin = tensor->mutable_data<T>(context.GetPlace());
+      trans(context.template device_context<platform::CUDADeviceContext>(),
+            in_begin, in_end, out_begin, CastFunctor<float, T>());
+    } else {
+      thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                        thrust::device_ptr<T>(data),
+                        GaussianGenerator<T>(mean, std, seed));
+    }
+
+    if (VLOG_IS_ON(5)) {
+      framework::Tensor cpu_tensor;
+      framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+      auto& dev_ctx =
+          *platform::DeviceContextPool::Instance().Get(context.GetPlace());
+      dev_ctx.Wait();
+      auto x = framework::EigenVector<T>::Flatten(cpu_tensor);
+      VLOG(5) << "The gaussian output " << x;
+    }
   }
 };
 

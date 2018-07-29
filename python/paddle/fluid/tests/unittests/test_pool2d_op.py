@@ -120,8 +120,6 @@ class TestPool2d_Op(OpTest):
             self.check_output()
 
     def test_check_grad(self):
-        if self.dtype == np.float16:
-            return
         if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -209,10 +207,7 @@ class TestFP16CUDNNCase1(TestPool2d_Op):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase2(TestCase1):
@@ -226,10 +221,7 @@ class TestFP16CUDNNCase2(TestCase1):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+        self.check_output_with_place(place, atol=1e-3)
 
 
 class TestCUDNNCase3(TestCase2):
@@ -277,10 +269,15 @@ class TestFP16CUDNNCase5(TestCase4):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+            self.check_grad_with_place(
+                place, set(['X']), 'Out', max_relative_error=0.07)
+        elif self.pool_type != "max":
+            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
 
 class TestCUDNNCase6(TestCase5):
@@ -294,10 +291,15 @@ class TestFP16CUDNNCase6(TestCase5):
         self.dtype = np.float16
 
     def test_check_output(self):
-        if core.is_compiled_with_cuda():
+        self.check_output_with_place(place, atol=1e-3)
+
+    def test_check_grad(self):
+        if self.testcudnn() and self.pool_type != "max":
             place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+            self.check_grad_with_place(
+                place, set(['X']), 'Out', max_relative_error=0.07)
+        elif self.pool_type != "max":
+            self.check_grad(set(['X']), 'Out', max_relative_error=0.07)
 
 
 class TestCeilModeCase1(TestCUDNNCase1):

@@ -75,9 +75,8 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     T max = static_cast<T>(context.Attr<float>("max"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    if (out_var->IsType<framework::LoDTensor>() &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
+    if (std::type_index(typeid(T)) ==
+        std::type_index(typeid(platform::float16))) {
       framework::Tensor master_copy_tensor;
       master_copy_tensor.Resize(tensor->dims());
       float* master_copy_tensor_data =
@@ -97,6 +96,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
                         thrust::device_ptr<T>(data),
                         UniformGenerator<T>(min, max, seed));
     }
+
     if (VLOG_IS_ON(5)) {
       framework::Tensor cpu_tensor;
       framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
