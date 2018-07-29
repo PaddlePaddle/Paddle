@@ -276,7 +276,7 @@ class OpTest(unittest.TestCase):
             for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                 fetch_list.append(str(out_name))
         # fetch_list = map(block.var, fetch_list)
-        if not isinstance(fetch_list[0], Variable):
+        if not isinstance(fetch_list[0], fluid.framework.Variable):
             fetch_list = map(block.var, fetch_list)
         outs = executor.run(program,
                             feed=feed_map,
