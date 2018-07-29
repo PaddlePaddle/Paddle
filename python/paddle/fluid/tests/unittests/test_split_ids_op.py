@@ -65,30 +65,21 @@ class TestSpliteIds(unittest.TestCase):
         ]
 
         # expected output selected rows
-        expected_out0_rows = [0, 9]
-        expected_out1_rows = [7, 4]
-        expected_out2_rows = [5]
+        expected_out_rows = [[0, 9], [7, 4], [5]]
 
         op = Operator("split_ids", Ids="X", Out=outs_name)
 
         op.run(scope, place)
 
-        self.assertEqual(outs[0].rows(), expected_out0_rows)
-        self.assertEqual(outs[1].rows(), expected_out1_rows)
-        self.assertEqual(outs[2].rows(), expected_out2_rows)
-
-        self.assertAlmostEqual(0.0, np.array(outs[0].get_tensor())[0, 0])
-        self.assertAlmostEqual(1.0, np.array(outs[0].get_tensor())[0, 1])
-        self.assertAlmostEqual(9.0, np.array(outs[0].get_tensor())[1, 0])
-        self.assertAlmostEqual(10.0, np.array(outs[0].get_tensor())[1, 1])
-
-        self.assertAlmostEqual(7.0, np.array(outs[1].get_tensor())[0, 0])
-        self.assertAlmostEqual(8.0, np.array(outs[1].get_tensor())[0, 1])
-        self.assertAlmostEqual(4.0, np.array(outs[1].get_tensor())[1, 0])
-        self.assertAlmostEqual(5.0, np.array(outs[1].get_tensor())[1, 1])
-
-        self.assertAlmostEqual(5.0, np.array(outs[2].get_tensor())[0, 0])
-        self.assertAlmostEqual(6.0, np.array(outs[2].get_tensor())[0, 1])
+        for i in range(len(outs)):
+            expected_rows = expected_out_rows[i]
+            self.assertEqual(outs[i].rows(), expected_rows)
+            for j in range(len(expected_rows)):
+                row = expected_rows[j]
+                self.assertAlmostEqual(
+                    float(row), np.array(outs[i].get_tensor())[j, 0])
+                self.assertAlmostEqual(
+                    float(row + 1), np.array(outs[i].get_tensor())[j, 1])
 
 
 if __name__ == '__main__':
