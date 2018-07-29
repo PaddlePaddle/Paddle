@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 
 
 class TestSplitIdsOp(OpTest):
@@ -29,6 +31,64 @@ class TestSplitIdsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestSpliteIds(unittest.TestCase):
+    def get_places(self):
+        places = [core.CPUPlace()]
+        return places
+
+    def test_check_output(self):
+        for place in self.get_places():
+            self.check_with_place(place)
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+        rows = [0, 5, 7, 4, 9]
+        height = 20
+        row_numel = 2
+
+        # initialize input variable X
+        x = scope.var('X').get_selected_rows()
+        x.set_rows(rows)
+        x.set_height(height)
+        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        for i in range(len(rows)):
+            for j in range(row_numel):
+                np_array[i, j] = rows[i] + j
+        x_tensor = x.get_tensor()
+        x_tensor.set(np_array, place)
+
+        outs_name = ["out%d" % i for i in xrange(3)]
+        outs = [
+            scope.var(var_name).get_selected_rows() for var_name in outs_name
+        ]
+
+        # expected output selected rows
+        expected_out0_rows = [0, 9]
+        expected_out1_rows = [7, 4]
+        expected_out2_rows = [5]
+
+        op = Operator("split_ids", Ids="X", Out=outs_name)
+
+        op.run(scope, place)
+
+        self.assertEqual(outs[0].rows(), expected_out0_rows)
+        self.assertEqual(outs[1].rows(), expected_out1_rows)
+        self.assertEqual(outs[2].rows(), expected_out2_rows)
+
+        self.assertAlmostEqual(0.0, np.array(outs[0].get_tensor())[0, 0])
+        self.assertAlmostEqual(1.0, np.array(outs[0].get_tensor())[0, 1])
+        self.assertAlmostEqual(9.0, np.array(outs[0].get_tensor())[1, 0])
+        self.assertAlmostEqual(10.0, np.array(outs[0].get_tensor())[1, 1])
+
+        self.assertAlmostEqual(7.0, np.array(outs[1].get_tensor())[0, 0])
+        self.assertAlmostEqual(8.0, np.array(outs[1].get_tensor())[0, 1])
+        self.assertAlmostEqual(4.0, np.array(outs[1].get_tensor())[1, 0])
+        self.assertAlmostEqual(5.0, np.array(outs[1].get_tensor())[1, 1])
+
+        self.assertAlmostEqual(5.0, np.array(outs[2].get_tensor())[0, 0])
+        self.assertAlmostEqual(6.0, np.array(outs[2].get_tensor())[0, 1])
 
 
 if __name__ == '__main__':
