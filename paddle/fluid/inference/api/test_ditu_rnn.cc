@@ -1,13 +1,37 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
+#include <glog/raw_logging.h>
 #include <gtest/gtest.h>
+#include <pthread.h>
+#include <atomic>
 #include <fstream>
 #include <iostream>
 #include <numeric>
+#include <numeric>
+#include <thread>
+
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_helper.h"
 
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(datapath, "", "Path of the dataset.");
+DEFINE_int32(batch_size, 1, "batch size");
+DEFINE_int32(thread_batch_size, 1, "batch size for multi-thread");
+DEFINE_int32(num_threads, 1, "thread number");
 
 using namespace paddle;
 
@@ -80,8 +104,8 @@ void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>
   int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1, [](int a, int b) { return a * b; });
   tensor->data.Resize(sizeof(float) * dim);
   int c = 0;
-  for (const auto& f : data) {
-    for (float v : f) { static_cast<float*>(tensor->data.data())[c++] = v; }
+  for (const auto &f : data) {
+    for (float v : f) { static_cast<float *>(tensor->data.data())[c++] = v; }
   }
 }
 // clang-format on
@@ -104,14 +128,17 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
 
   os << " - shape: " << to_string(tensor.shape) << '\n';
   os << " - lod: ";
-  for (auto& l : tensor.lod) {
+  for (auto &l : tensor.lod) {
     os << to_string(l) << "; ";
   }
   os << "\n";
   os << " - data: ";
 
   // clang-format off
-  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1, [](int a, int b) { return a * b; });  // clang-format on
+  int dim = std::accumulate(tensor.shape.begin(),
+                            tensor.shape.end(),
+                            1,
+                            [](int a, int b) { return a * b; });  // clang-format on
   for (size_t i = 0; i < dim; i++) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
@@ -137,7 +164,6 @@ struct DataRecord {
 
   DataRecord NextBatch() {
     DataRecord data;
-    LOG(INFO) << "link all " << link_step_data_all.size();
     size_t batch_end = batch_iter + batch_size;
 
     // NOTE skip the final batch, if no enough data is provided.
@@ -154,10 +180,6 @@ struct DataRecord {
       data.lod2.emplace_back(0);
       data.lod3.emplace_back(0);
 
-      LOG(INFO) << "size: " << data.link_step_data_all.size();
-      LOG(INFO) << "size: " << data.week_data_all.size();
-      LOG(INFO) << "size: " << data.minute_data_all.size();
-
       CHECK(!data.link_step_data_all.empty()) << "empty";
       CHECK(!data.week_data_all.empty());
       CHECK(!data.minute_data_all.empty());
@@ -168,19 +190,18 @@ struct DataRecord {
         for (const auto &d : data.link_step_data_all[j]) {
           data.rnn_link_data.push_back(d);
         }
-        LOG(INFO) << "push back";
         data.rnn_week_datas.push_back(data.week_data_all[j]);
         data.rnn_minute_datas.push_back(data.minute_data_all[j]);
         // calculate lod
-        data.lod1.push_back(data.lod1.back() + data.link_step_data_all[j].size());
+        data.lod1.push_back(data.lod1.back() +
+                            data.link_step_data_all[j].size());
         data.lod3.push_back(data.lod3.back() + 1);
-        LOG(INFO) << "push back";
         for (size_t i = 1; i < data.link_step_data_all[j].size() + 1; i++) {
-          data.lod2.push_back(data.lod2.back() + data.link_step_data_all[j].size());
+          data.lod2.push_back(data.lod2.back() +
+                              data.link_step_data_all[j].size());
         }
       }
     }
-    LOG(INFO) << "finish one batch";
 
     batch_iter += batch_size;
     return data;
@@ -192,7 +213,7 @@ struct DataRecord {
 
     int num_lines = 0;
     while (std::getline(file, line)) {
-      if (++num_lines > 1) break;
+      num_lines++;
       std::vector<std::string> data;
       split(line, ':', &data);
 
@@ -221,26 +242,9 @@ struct DataRecord {
   }
 };
 
-void Main(int batch_size) {
-  if (FLAGS_modeldir.empty() || FLAGS_datapath.empty()) {
-    LOG(ERROR) << "./cmd --modeldir=path/to/model";
-    exit(1);
-  }
-
-  DataRecord data(FLAGS_datapath, batch_size);
-  LOG(INFO) << "link_step";
-  LOG(INFO) << to_string(data.link_step_data_all);
-  LOG(INFO) << "week_data";
-  LOG(INFO) << to_string(data.week_data_all);
-  LOG(INFO) << "minute_data";
-  LOG(INFO) << to_string(data.minute_data_all);
-
-  std::string modeldir = FLAGS_modeldir;
-  NativeConfig config;
-  config.prog_file = modeldir + "/__model__";
-  config.param_file = modeldir + "/param";
-  config.use_gpu = false;
-  config.device = 0;
+void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
+                   int batch_size) {
+  // DataRecord data(FLAGS_datapath, batch_size);
 
   PaddleTensor lod_attention_tensor, init_zero_tensor, lod_tensor_tensor,
       week_tensor, minute_tensor;
@@ -250,71 +254,127 @@ void Main(int batch_size) {
   week_tensor.name = "week";
   minute_tensor.name = "minute";
 
-  LOG(INFO) << "get one batch";
-  auto one_batch = data.NextBatch();
+  auto one_batch = data->NextBatch();
 
-  LOG(INFO) << "set shape";
   // clang-format off
-  LOG(INFO) << one_batch.rnn_minute_datas.size();
-  LOG(INFO) << one_batch.rnn_minute_datas.front().size();
-  std::vector<int> rnn_link_data_shape({static_cast<int>(one_batch.rnn_link_data.size()), static_cast<int>(one_batch.rnn_link_data.front().size())});
-  LOG(INFO) << "set 1";
-  lod_attention_tensor.shape.assign({1,2}); lod_attention_tensor.lod.assign({one_batch.lod1, one_batch.lod2});
-  LOG(INFO) << "set 1";
-  init_zero_tensor.shape.assign({batch_size, 15}); init_zero_tensor.lod.assign({one_batch.lod3});
-  LOG(INFO) << "set 1";
-  lod_tensor_tensor.shape = rnn_link_data_shape; lod_tensor_tensor.lod.assign({one_batch.lod1});
-  LOG(INFO) << "set 1";
-  week_tensor.shape.assign({(int)one_batch.rnn_week_datas.size(), (int)one_batch.rnn_week_datas.front().size()}); week_tensor.lod.assign({one_batch.lod3});
-  LOG(INFO) << "set 1";
-  minute_tensor.shape.assign({(int)one_batch.rnn_minute_datas.size(), (int)one_batch.rnn_minute_datas.front().size()}); minute_tensor.lod.assign({one_batch.lod3});
+  std::vector<int> rnn_link_data_shape
+      ({static_cast<int>(one_batch.rnn_link_data.size()), static_cast<int>(one_batch.rnn_link_data.front().size())});
+  //LOG(INFO) << "set 1";
+  lod_attention_tensor.shape.assign({1, 2});
+  lod_attention_tensor.lod.assign({one_batch.lod1, one_batch.lod2});
+  //LOG(INFO) << "set 1";
+  init_zero_tensor.shape.assign({batch_size, 15});
+  init_zero_tensor.lod.assign({one_batch.lod3});
+  //LOG(INFO) << "set 1";
+  lod_tensor_tensor.shape = rnn_link_data_shape;
+  lod_tensor_tensor.lod.assign({one_batch.lod1});
+  //LOG(INFO) << "set 1";
+  week_tensor.shape.assign({(int) one_batch.rnn_week_datas.size(), (int) one_batch.rnn_week_datas.front().size()});
+  week_tensor.lod.assign({one_batch.lod3});
+  //LOG(INFO) << "set 1";
+  minute_tensor.shape.assign({(int) one_batch.rnn_minute_datas.size(),
+                              (int) one_batch.rnn_minute_datas.front().size()});
+  minute_tensor.lod.assign({one_batch.lod3});
 
-  LOG(INFO) << "assign data";
   // assign data
-  LOG(INFO) << "assign 0";
   TensorAssignData(&lod_attention_tensor, std::vector<std::vector<float>>({{0, 0}}));
-  LOG(INFO) << "assign 0";
-  std::vector<float> tmp_zeros(batch_size*15, 0.); TensorAssignData(&init_zero_tensor, {tmp_zeros});
-  LOG(INFO) << "assign 0";
+  std::vector<float> tmp_zeros(batch_size * 15, 0.);
+  TensorAssignData(&init_zero_tensor, {tmp_zeros});
   TensorAssignData(&lod_tensor_tensor, one_batch.rnn_link_data);
-  LOG(INFO) << "assign 0";
   TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
-  LOG(INFO) << "assign 0";
   TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
   // clang-format on
 
-  LOG(INFO) << "to set input_slots";
-  std::vector<PaddleTensor> input_slots({
-      lod_tensor_tensor,
-      lod_attention_tensor,
-      init_zero_tensor,
-      init_zero_tensor,
-      week_tensor,
-      minute_tensor
-  });
+  input_slots->assign({lod_tensor_tensor, lod_attention_tensor,
+                       init_zero_tensor, init_zero_tensor, week_tensor,
+                       minute_tensor});
 
-  LOG(INFO) << "set type";
-  for (auto& tensor : input_slots) {
-    tensor.dtype = PaddleDType ::FLOAT32;
-    LOG(INFO) << DescribeTensor(tensor);
+  for (auto &tensor : *input_slots) {
+    tensor.dtype = PaddleDType::FLOAT32;
+    // LOG(INFO) << DescribeTensor(tensor);
   }
+}
 
-  LOG(INFO) << "create predictor";
+void Main1(int batch_size) {
+  NativeConfig config;
+  config.prog_file = FLAGS_modeldir + "/__model__";
+  config.param_file = FLAGS_modeldir + "/param";
+  config.use_gpu = false;
+  config.device = 0;
+
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
-  // { batch begin
+  std::vector<PaddleTensor> input_slots;
+  DataRecord data(FLAGS_datapath, batch_size);
 
-  std::vector<PaddleTensor> outputs;
+  // Run multiple time to cancel the memory malloc or initialization of the
+  // first time.
+  const int times = 10;
+  double whole_time = 0.;
+  PrepareInputs(&input_slots, &data, batch_size);
+  for (int i = 0; i < times; i++) {
+    std::vector<PaddleTensor> outputs;
 
-  LOG(INFO) << "to execute";
-  predictor->Run(input_slots, &outputs);
-  LOG(INFO) << "output.size() " << outputs.size();
-
-  LOG(INFO) << "output";
-  LOG(INFO) << DescribeTensor(outputs.front());
-
-  // } batch end
+    Timer timer;
+    timer.tic();
+    predictor->Run(input_slots, &outputs);
+    whole_time += timer.toc();
+  }
+  LOG(INFO) << "time: " << whole_time / times;
 }
 
-TEST(ditu, main) { Main(1); }
+void MainMultiThread(int batch_size) {
+  std::vector<std::thread> threads;
+
+  double whole_time{0.};
+
+  NativeConfig config;
+  config.prog_file = FLAGS_modeldir + "/__model__";
+  config.param_file = FLAGS_modeldir + "/param";
+  config.use_gpu = false;
+  config.device = 0;
+
+  DataRecord data(FLAGS_datapath, batch_size);
+  std::vector<PaddleTensor> input_slots;
+  PrepareInputs(&input_slots, &data, batch_size);
+
+  for (int i = 0; i < FLAGS_num_threads; i++) {
+    const int times = 10;
+
+    threads.emplace_back([&, i] {
+      auto predictor =
+          CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
+              config);
+
+      std::vector<PaddleTensor> outputs;
+
+      Timer timer;
+      timer.tic();
+      for (int t = 0; t < times; t++) {
+        predictor->Run(input_slots, &outputs);
+      }
+      RAW_LOG_INFO("thread #%d: %f ms", i, timer.toc() / times);
+      whole_time += timer.toc() / times;
+    });
+
+    // Set thread affine
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    CPU_SET(i, &cpuset);
+    int rc = pthread_setaffinity_np(threads[i].native_handle(),
+                                    sizeof(cpu_set_t), &cpuset);
+    CHECK_EQ(rc, 0) << "set thread " << i << " affine failed";
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
+
+  RAW_LOG_INFO("average time: %f", whole_time / FLAGS_num_threads);
+}
+
+TEST(ditu, main) {
+  Main1(FLAGS_batch_size);
+  MainMultiThread(FLAGS_batch_size);
+}

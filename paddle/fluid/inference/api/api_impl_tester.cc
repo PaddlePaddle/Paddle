@@ -75,7 +75,7 @@ void MainWord2Vec(bool use_gpu) {
   paddle_tensor_feeds.push_back(LodTensorToPaddleTensor(&third_word));
   paddle_tensor_feeds.push_back(LodTensorToPaddleTensor(&fourth_word));
 
- std::vector<PaddleTensor> outputs;
+  std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
   ASSERT_EQ(outputs.size(), 1UL);
   size_t len = outputs[0].data.length();
