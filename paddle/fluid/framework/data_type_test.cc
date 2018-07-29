@@ -20,19 +20,21 @@
 TEST(DataType, float16) {
   using paddle::framework::Tensor;
   using paddle::platform::CPUPlace;
-  proto::VarType::Type dtype = proto::VarType::FP16;
+  using paddle::platform::float16;
+  namespace f = paddle::framework;
+  f::proto::VarType::Type dtype = f::proto::VarType::FP16;
 
   Tensor tensor;
   CPUPlace cpu;
-  tensor.mutable_data(cpu, ToTypeIndex(dtype));
+  tensor.mutable_data(cpu, f::ToTypeIndex(dtype));
 
   // test fp16 tensor
   EXPECT_EQ(tensor.type(), std::type_index(typeid(float16)));
 
   // test fp16 size
-  EXPECT_EQ(SizeOfType(ToTypeIndex(dtype)), 2u);
+  EXPECT_EQ(f::SizeOfType(f::ToTypeIndex(dtype)), 2u);
 
   // test debug info
   std::string type = "float16";
-  EXPECT_STREQ(DataTypeToString(dtype).c_str(), type.c_str());
+  EXPECT_STREQ(f::DataTypeToString(dtype).c_str(), type.c_str());
 }

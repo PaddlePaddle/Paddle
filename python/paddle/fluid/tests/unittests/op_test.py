@@ -68,6 +68,8 @@ def get_numeric_gradient(place,
         tensor_to_check_dtype = np.float64
     elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
         tensor_to_check_dtype = np.float16
+        # set delta as np.float16, will automatic convert to float32, float64
+        delta = np.array(delta).astype(np.float16)
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
