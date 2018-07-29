@@ -26,6 +26,13 @@ DEFINE_double(fraction_of_gpu_memory_to_use, 0.92,
 namespace paddle {
 namespace platform {
 
+int GetRuntimeVersion() {
+  int version;
+  PADDLE_ENFORCE(cudaRuntimeGetVersion(&version),
+                 "failed in paddle::platform::cudaRuntimeGetVersion");
+  return version;
+}
+
 int GetCUDADeviceCount() {
   int count;
   PADDLE_ENFORCE(

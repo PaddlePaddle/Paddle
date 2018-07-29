@@ -23,6 +23,9 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+// Get cuda runtime Version
+int GetRuntimeVersion();
+
 //! Get the total number of GPU devices in system.
 int GetCUDADeviceCount();
 

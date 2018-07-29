@@ -510,6 +510,10 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_devices",
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
+  m.def("is_cuda9_cudnn7", []() -> bool {
+    return GetRuntimeVersion() >= 9000 &&
+           platform::dynload::cudnnGetVersion() >= 700;
+  });
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
   m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA

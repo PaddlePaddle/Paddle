@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
@@ -54,8 +56,10 @@ bool EnableFp16(const DeviceContext& dev_ctx,
   } else {
     PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
         cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+    return false;
   }
 #endif
+  // avoid return warning
   return false;
 }
 
@@ -149,7 +153,10 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     if (EnableFp16<T>(dev_ctx, cudnn_conv_desc)) {
-      algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
+      VLOG(10) << "forward call fp16 nonfused cudnn";
+      // the windograd_nonfused will use more memory, but don't need to
+      // align with 128bits for input, x, y, dx, dy.
+      algo = CUDNN_CONVOLUTION_FWD_ALGO_WINOGRAD_NONFUSED;
     } else {
       PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
@@ -170,6 +177,8 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
     // ------------------- cudnn conv forward ---------------------
+    VLOG(10) << "allocate workspace_size " << workspace_size_in_bytes / 1024
+             << "MB";
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
       CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
@@ -296,7 +305,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
       }
       if (EnableFp16<T>(dev_ctx, cudnn_conv_desc)) {
-        data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+        VLOG(10) << "backward data call fp16 nonfused cudnn.";
+        data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_WINOGRAD_NONFUSED;
       }
 
       CUDNN_ENFORCE(
@@ -318,7 +328,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
         filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
       }
       if (EnableFp16<T>(dev_ctx, cudnn_conv_desc)) {
-        filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+        VLOG(10) << "backward filter call fp16 nonfused cudnn.";
+        filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_WINOGRAD_NONFUSED;
       }
 
       CUDNN_ENFORCE(
@@ -332,6 +343,8 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     void* cudnn_workspace = nullptr;
     platform::CUDAPlace gpu = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     cudnn_workspace = paddle::memory::Alloc(gpu, workspace_size_in_bytes);
+    VLOG(10) << "allocate workspace_size " << workspace_size_in_bytes / 1024
+             << "MB";
     // ------------------- cudnn conv backward data ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     if (input_grad) {

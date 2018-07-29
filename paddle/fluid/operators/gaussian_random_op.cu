@@ -99,9 +99,10 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(gaussian_random,
-                        paddle::operators::GPUGaussianRandomKernel<float>,
-                        paddle::operators::GPUGaussianRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    gaussian_random, paddle::operators::GPUGaussianRandomKernel<float>,
+    paddle::operators::GPUGaussianRandomKernel<double>,
+    paddle::operators::GPUGaussianRandomKernel<plat::float16>);
 REGISTER_OP_CUDA_KERNEL(gaussian_random_batch_size_like,
                         paddle::operators::GPUGaussianRandomKernel<float>,
                         paddle::operators::GPUGaussianRandomKernel<double>);

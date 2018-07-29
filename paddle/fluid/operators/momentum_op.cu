@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/momentum_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -74,6 +75,8 @@ class MomentumOpCUDAKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(momentum, ops::MomentumOpCUDAKernel<float>,
-                        ops::MomentumOpCUDAKernel<double>);
+                        ops::MomentumOpCUDAKernel<double>,
+                        ops::MomentumOpCUDAKernel<plat::float16>);

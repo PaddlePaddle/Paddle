@@ -89,7 +89,6 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-<<<<<<< HEAD
   cudnnSoftmaxAlgorithm_t algo;
   if (FLAGS_cudnn_deterministic) {
     algo = CUDNN_SOFTMAX_ACCURATE;
@@ -100,13 +99,6 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       context.cudnn_handle(), algo, CUDNN_SOFTMAX_MODE_INSTANCE,
       CudnnDataType<T>::kOne(), cudnn_y_desc, Y->data<T>(), cudnn_ygrad_desc,
       YGrad->data<T>(), CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
-=======
-  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
-      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
-      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
-      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
-      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
->>>>>>> origin/develop
       XGrad->mutable_data<T>(context.GetPlace())));
 }
 
