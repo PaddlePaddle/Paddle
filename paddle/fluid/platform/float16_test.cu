@@ -11,11 +11,13 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/float16.h"
 
+#include <glog/logging.h>
 #include <gtest/gtest.h>
+#include <bitset>
+#include <iostream>
 
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
-#include "paddle/legacy/utils/Logging.h"
 
 #define ARITHMETIC_KERNEL(op_type, sign)                                 \
   __global__ void op_type(const half* in1, const half* in2, half* out) { \
@@ -266,16 +268,45 @@ TEST(float16, isinf) {
   float16 a;
   a.x = 0x7c00;
   float16 b = float16(INFINITY);
+  // underflow to 0
+  float16 native_a(5e-40f);
+  // overflow to inf
+  float16 native_b(5e40f);
   EXPECT_EQ(std::isinf(a), true);
   EXPECT_EQ(std::isinf(b), true);
+  EXPECT_EQ(std::isinf(native_b), true);
+  EXPECT_EQ(native_a, float16(0));
 }
 
 TEST(float16, isnan) {
   float16 a;
   a.x = 0x7fff;
   float16 b = float16(NAN);
+  float16 c = float16(5e40);
+  // inf * +-0 will get a nan
+  float16 d = c * float16(0);
   EXPECT_EQ(std::isnan(a), true);
   EXPECT_EQ(std::isnan(b), true);
+  EXPECT_EQ(std::isnan(d), true);
+}
+
+TEST(float16, cast) {
+  float16 a;
+  a.x = 0x0070;
+  auto b = a;
+  {
+    // change semantic, keep the same value
+    float16 c = reinterpret_cast<float16&>(reinterpret_cast<unsigned&>(b));
+    EXPECT_EQ(b, c);
+  }
+
+  {
+    // use uint32 low 16 bit store float16
+    uint32_t c = reinterpret_cast<uint32_t&>(b);
+    float16 d;
+    d.x = c;
+    EXPECT_EQ(b, d);
+  }
 }
 
 }  // namespace platform
