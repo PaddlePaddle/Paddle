@@ -64,7 +64,7 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15"
         }
         # Run local to get a base line
-        env_local = {"CUDA_VISIBLE_DEVICES": "6"}
+        env_local = {"CUDA_VISIBLE_DEVICES": "0"}
         env_local.update(required_envs)
         local_cmd = "%s %s trainer %s 0 %s %d FLASE" % \
             (self._python_interp, model_file,
@@ -93,8 +93,8 @@ class TestDistBase(unittest.TestCase):
             (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
              self._trainers)
 
-        env0 = {"CUDA_VISIBLE_DEVICES": "6"}
-        env1 = {"CUDA_VISIBLE_DEVICES": "7"}
+        env0 = {"CUDA_VISIBLE_DEVICES": "0"}
+        env1 = {"CUDA_VISIBLE_DEVICES": "1"}
         env0.update(required_envs)
         env1.update(required_envs)
         FNULL = open(os.devnull, 'w')

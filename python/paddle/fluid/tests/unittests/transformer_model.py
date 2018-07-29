@@ -22,7 +22,7 @@ pos_enc_param_names = (
     "src_pos_enc_table",
     "trg_pos_enc_table", )
 
-batch_size = 64
+batch_size = 16
 
 
 def position_encoding_init(n_position, d_pos_vec):
