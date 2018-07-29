@@ -28,8 +28,8 @@ __global__ void GenPriorBox(T* out, const T* aspect_ratios, const int height,
                             const int im_width, const int as_num,
                             const T offset, const T step_width,
                             const T step_height, const T* min_sizes,
-                            const T* max_sizes, const int min_num,
-                            bool is_clip) {
+                            const T* max_sizes, const int min_num, bool is_clip,
+                            bool min_max_aspect_ratios_order) {
   int num_priors = max_sizes ? as_num * min_num + min_num : as_num * min_num;
   int box_num = height * width * num_priors;
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < box_num;
@@ -44,14 +44,28 @@ __global__ void GenPriorBox(T* out, const T* aspect_ratios, const int height,
     T min_size = min_sizes[m];
     if (max_sizes) {
       int s = p % (as_num + 1);
-      if (s < as_num) {
-        T ar = aspect_ratios[s];
-        bw = min_size * sqrt(ar) / 2.;
-        bh = min_size / sqrt(ar) / 2.;
+      if (!min_max_aspect_ratios_order) {
+        if (s < as_num) {
+          T ar = aspect_ratios[s];
+          bw = min_size * sqrt(ar) / 2.;
+          bh = min_size / sqrt(ar) / 2.;
+        } else {
+          T max_size = max_sizes[m];
+          bw = sqrt(min_size * max_size) / 2.;
+          bh = bw;
+        }
       } else {
-        T max_size = max_sizes[m];
-        bw = sqrt(min_size * max_size) / 2.;
-        bh = bw;
+        if (s == 0) {
+          bw = bh = min_size / 2.;
+        } else if (s == 1) {
+          T max_size = max_sizes[m];
+          bw = sqrt(min_size * max_size) / 2.;
+          bh = bw;
+        } else {
+          T ar = aspect_ratios[s - 1];
+          bw = min_size * sqrt(ar) / 2.;
+          bh = min_size / sqrt(ar) / 2.;
+        }
       }
     } else {
       int s = p % as_num;
@@ -94,6 +108,8 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     auto variances = ctx.Attr<std::vector<float>>("variances");
     auto flip = ctx.Attr<bool>("flip");
     auto clip = ctx.Attr<bool>("clip");
+    auto min_max_aspect_ratios_order =
+        ctx.Attr<bool>("min_max_aspect_ratios_order");
 
     std::vector<float> aspect_ratios;
     ExpandAspectRatios(input_aspect_ratio, flip, &aspect_ratios);
@@ -149,7 +165,7 @@ class PriorBoxOpCUDAKernel : public framework::OpKernel<T> {
     GenPriorBox<T><<<grid, block, 0, stream>>>(
         boxes->data<T>(), r.data<T>(), height, width, im_height, im_width,
         aspect_ratios.size(), offset, step_width, step_height, min.data<T>(),
-        max_data, min_num, clip);
+        max_data, min_num, clip, min_max_aspect_ratios_order);
 
     framework::Tensor v;
     framework::TensorFromVector(variances, ctx.device_context(), &v);

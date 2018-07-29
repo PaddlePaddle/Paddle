@@ -85,7 +85,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
                      "Wrong layout/format set for X tensor");
       PADDLE_ENFORCE(y->layout() == DataLayout::kMKLDNN &&
                          y->format() != memory::format::format_undef,
-                     "Wrong layout/format set for X tensor");
+                     "Wrong layout/format set for Y tensor");
 
       std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
       std::vector<int> src_y_tz = framework::vectorize2int(y_dims_untrimed);
