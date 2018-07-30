@@ -9,7 +9,7 @@ set(ANAKIN_LIBRARY "${ANAKIN_INSTALL_DIR}" CACHE STRING "path of Anakin library"
 
 set(ANAKIN_COMPILE_EXTRA_FLAGS -Wno-error=unused-but-set-variable -Wno-error=comment -Wno-error=reorder -Wno-error=format -Wno-error=switch -Wno-error=return-type -Wno-error=non-virtual-dtor -Wno-error=cpp -Wno-error=unused-variable -Wno-error=format-extra-args)
 
-set(ANAKIN_LIBRARY_URL "https://github.com/pangge/Anakin/releases/download/v0.1.0/anakin.tar.gz")
+set(ANAKIN_LIBRARY_URL "https://github.com/pangge/Anakin/releases/download/Version0.1.0/anakin.tar.gz")
 
 # A helper function used in Anakin, currently, to use it, one need to recursively include
 # nearly all the header files.
