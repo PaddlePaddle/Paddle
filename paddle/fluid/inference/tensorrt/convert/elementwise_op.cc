@@ -109,7 +109,7 @@ class ElementwiseTensorOpConverter : public OpConverter {
     nvinfer1::Dims dims_x = X->getDimensions();
     nvinfer1::Dims dims_y = Y->getDimensions();
 
-    // only support the C * H * W input format
+    // The two input tensor should have the same dims
     PADDLE_ENFORCE(dims_x.nbDims >= 3);
     if (dims_x.nbDims == dims_y.nbDims) {
       for (int i = 0; i < dims_x.nbDims; i++) {

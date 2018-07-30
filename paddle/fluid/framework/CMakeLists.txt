@@ -8,9 +8,9 @@ cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
 if(WITH_GPU)
-  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type)
+  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -110,7 +110,7 @@ cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
-      
+
 # cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 

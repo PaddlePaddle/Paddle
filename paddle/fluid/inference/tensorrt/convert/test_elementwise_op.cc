@@ -47,7 +47,7 @@ TEST(elementwise_op, add_weight_test) {
 TEST(elementwise_op, add_tensor_test) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  TRTConvertValidation validator(1, parameters, scope, 1 << 15);
+  TRTConvertValidation validator(2, parameters, scope, 1 << 15);
   validator.DeclInputVar("elementwise_add-X", nvinfer1::DimsCHW(10, 3, 3));
   validator.DeclInputVar("elementwise_add-Y", nvinfer1::Dims3(10, 3, 3));
   // validator.DeclParamVar("mul-Y", nvinfer1::Dims2(8, 2));
@@ -60,8 +60,7 @@ TEST(elementwise_op, add_tensor_test) {
   desc.SetInput("Y", {"elementwise_add-Y"});
   desc.SetOutput("Out", {"elementwise_add-Out"});
 
-  int axis = 1;
-  desc.SetAttr("axis", axis);
+  // the defalut axis of elementwise op is -1
 
   validator.SetOp(*desc.Proto());
 
