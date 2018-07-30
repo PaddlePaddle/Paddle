@@ -69,6 +69,14 @@ class FakeQuantizeOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) Last iteration number with shape of [1], "
              "used in static quantization.")
         .AsDispensable();
+    AddInput("InAccum",
+             "(Tensor) Last Accumulation with shape of [1], "
+             "used in static quantization.")
+        .AsDispensable();
+    AddInput("InState",
+             "(Tensor) Last State with shape of [1], "
+             "used in static quantization.")
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor) The output is quantized low level tensor, "
               "which is the same shape as X.");
@@ -78,6 +86,8 @@ class FakeQuantizeOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddOutput("OutMovingScale", " Current scale with shape of [1]");
     AddOutput("OutCurrentIter", "Current iteration number.").AsDispensable();
+    AddOutput("OutAccum", "Current Accumulation.").AsDispensable();
+    AddOutput("OutState", "Current State.").AsDispensable();
     AddAttr<std::string>("quantize_type",
                          "(string, default abs_max)"
                          "The scaling type of the quantize operator.")

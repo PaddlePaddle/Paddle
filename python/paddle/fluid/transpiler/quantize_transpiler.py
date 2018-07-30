@@ -343,6 +343,23 @@ class QuantizeTranspiler(object):
         self.helper.set_variable_initializer(
             iter, initializer=Constant(value=0))
 
+        accum = self.helper.create_global_variable(
+            name=unique_name.generate('accum'),
+            persistable=True,
+            dtype=var.dtype,
+            shape=[1])
+        self.helper.set_variable_initializer(
+            accum, initializer=Constant(value=1))
+
+        state = self.helper.create_global_variable(
+            name=unique_name.generate('state'),
+            persistable=True,
+            dtype=var.dtype,
+            shape=[1])
+        self.helper.set_variable_initializer(
+            state, initializer=Constant(value=1))
+
+
         scales = self.helper.create_global_variable(
             name=unique_name.generate('scales'),
             persistable=True,
@@ -354,7 +371,7 @@ class QuantizeTranspiler(object):
         scale = self.helper.create_parameter(
             attr=ParamAttr(
                 name=_quantized_scale_name(var.name),
-                initializer=Constant(0.0),
+                initializer=Constant(0.001),
                 trainable=False),
             shape=[1],
             dtype=var.dtype)
@@ -364,13 +381,17 @@ class QuantizeTranspiler(object):
             'X': var,
             'InScales': scales,
             'InMovingScale': scale,
-            'InCurrentIter': iter
+            'InCurrentIter': iter,
+            'InAccum': accum,
+            'InState': state
         }
         outs = {
             'Out': quant_var,
             'OutScales': scales,
             'OutMovingScale': scale,
-            'OutCurrentIter': iter
+            'OutCurrentIter': iter,
+            'OutAccum': accum,
+            'OutState': state
         }
         attrs = {
             'quantize_type': quant_type,
