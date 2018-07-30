@@ -11,8 +11,8 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-
 #include <gtest/gtest.h>
+#include <fstream>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
@@ -20,30 +20,41 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-TEST(MulOpConverter, main) {
+TEST(Pool2dOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  TRTConvertValidation validator(10, parameters, scope, 1000, false);
-  validator.DeclInputVar("mul-X", nvinfer1::Dims2(10, 6));
-  validator.DeclInputVar("mul-Y", nvinfer1::Dims2(6, 10));
-  validator.DeclOutputVar("mul-Out", nvinfer1::Dims2(10, 10));
+  TRTConvertValidation validator(5, parameters, scope, 1 << 15);
+
+  // The ITensor's Dims should not contain the batch size.
+  // So, the ITensor's Dims of input and output should be C * H * W.
+  validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 4, 4));
+  validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 2, 2));
 
   // Prepare Op description
   framework::OpDesc desc;
-  desc.SetType("mul");
-  desc.SetInput("X", {"mul-X"});
-  desc.SetInput("Y", {"mul-Y"});
-  desc.SetOutput("Out", {"mul-Out"});
+  desc.SetType("pool2d");
+  desc.SetInput("X", {"pool2d-X"});
+  desc.SetOutput("Out", {"pool2d-Out"});
+
+  std::vector<int> ksize({2, 2});
+  std::vector<int> strides({2, 2});
+  std::vector<int> paddings({0, 0});
+  std::string pooling_t = "max";
+
+  desc.SetAttr("pooling_type", pooling_t);
+  desc.SetAttr("ksize", ksize);
+  desc.SetAttr("strides", strides);
+  desc.SetAttr("paddings", paddings);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
-  validator.Execute(2);
+  validator.Execute(3);
 }
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(mul);
+USE_OP(pool2d);
