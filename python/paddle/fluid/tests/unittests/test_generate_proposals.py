@@ -76,10 +76,11 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
 
+    print order
     scores = scores[order, :]
     bbox_deltas = bbox_deltas[order, :]
     all_anchors = all_anchors[order, :]
-
+    print(scores, bbox_deltas, all_anchors)
     # Transform anchors into proposals via bbox encoder
     proposals = np.expand_dims(np.zeros_like(all_anchors), axis=0)
     bbox_deltas = np.expand_dims(bbox_deltas, axis=0)
@@ -157,11 +158,11 @@ class TestGenerateProposalsOp(OpTest):
         self.init_test_input()
         self.init_test_output()
         self.inputs = {
-            'scores': self.scores,
-            'bbox_deltas': self.bbox_deltas,
-            'im_info': self.im_info,
-            'anchors': self.anchors,
-            'variances': self.variances
+            'Scores': self.scores,
+            'BboxDeltas': self.bbox_deltas,
+            'ImInfo': self.im_info.astype(np.float32),
+            'Anchors': self.anchors,
+            'Variances': self.variances
         }
 
         self.attrs = {
@@ -172,8 +173,8 @@ class TestGenerateProposalsOp(OpTest):
         }
 
         self.outputs = {
-            'rpn_rois': (self.rpn_rois, [self.lod]),
-            'rpn_roi_probs': (self.rpn_roi_probs, [self.lod])
+            'RpnRois': (self.rpn_rois[0], [self.lod]),
+            'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])
         }
 
     def test_check_output(self):
