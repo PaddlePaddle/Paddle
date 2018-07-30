@@ -33,7 +33,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
     }
   };
 
-  for (auto &var_map : graph->Get<GraphVars>("vars")) {
+  for (auto &var_map : graph->Get<GraphVars>(kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
         insert_pending_var(version_pair.get());
@@ -41,11 +41,11 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
     }
   }
 
-  for (auto &var : graph->Get<GraphDepVars>("dep_vars")) {
+  for (auto &var : graph->Get<GraphDepVars>(kGraphDepVars)) {
     insert_pending_var(var.get());
   }
 
-  for (auto &op : graph->Get<GraphOps>("ops")) {
+  for (auto &op : graph->Get<GraphOps>(kGraphOps)) {
     if (op->Inputs().empty()) {
       ready_ops.insert(op.get());
     } else {
@@ -85,3 +85,10 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(multi_device_check_pass,
+              paddle::framework::details::SSAGraghBuilderWithChecker)
+    .RequireGraphAttr(paddle::framework::details::kGraphVars)
+    .RequireGraphAttr(paddle::framework::details::kGraphDepVars)
+    .RequireGraphAttr(paddle::framework::details::kGraphOps)
+    .RequireGraphAttr(paddle::framework::details::kShardedVarDevice);
