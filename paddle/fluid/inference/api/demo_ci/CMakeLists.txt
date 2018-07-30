@@ -36,7 +36,6 @@ link_directories("${PADDLE_LIB}/third_party/install/protobuf/lib")
 link_directories("${PADDLE_LIB}/third_party/install/glog/lib")
 link_directories("${PADDLE_LIB}/third_party/install/gflags/lib")
 link_directories("${PADDLE_LIB}/third_party/install/zlib/lib")
-
 add_executable(${DEMO_NAME} ${DEMO_NAME}.cc)
 
 if(WITH_MKL)
@@ -70,4 +69,7 @@ if(WITH_GPU)
   set(DEPS ${DEPS} ${CUDA_LIB}/libcudart.so)
 endif()
 
-target_link_libraries(${DEMO_NAME} ${DEPS})
+target_link_libraries(${DEMO_NAME} ${DEPS}
+        ${PADDLE_LIB}/third_party/install/glog/lib/libglog.a
+        ${PADDLE_LIB}/third_party/install/gflags/lib/libgflags.a
+        )

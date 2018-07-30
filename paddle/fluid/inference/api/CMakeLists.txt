@@ -77,3 +77,8 @@ if (WITH_ANAKIN) # only needed in CI
         target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
      endif(WITH_TESTING)
 endif()
+
+
+#cc_test(test_ditu_cnn SRCS test_ditu_cnn.cc DEPS paddle_inference_api paddle_fluid gflags glog ARGS --modeldir=/chunwei/baidu-production/ditu/baidu/paddle-inference/ditu/models/cnn/model )
+cc_test(test_ditu_rnn SRCS test_ditu_rnn.cc DEPS paddle_inference_api paddle_fluid gflags glog ARGS --modeldir=/chunwei/baidu-production/ditu/baidu/paddle-inference/ditu/models/rnn/model )
+

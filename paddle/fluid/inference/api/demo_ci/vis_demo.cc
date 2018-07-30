@@ -126,6 +126,7 @@ void Main(bool use_gpu) {
   PaddleTensor input{
       .name = "xx",
       .shape = record.shape,
+      .lod = std::vector<std::vector<size_t>>(),
       .data = PaddleBuf(record.data.data(), record.data.size() * sizeof(float)),
       .dtype = PaddleDType::FLOAT32};
 

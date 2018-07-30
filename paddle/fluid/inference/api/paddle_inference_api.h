@@ -40,6 +40,7 @@ class PaddleBuf {
   // Copy only available when memory is managed externally.
   explicit PaddleBuf(const PaddleBuf&);
   PaddleBuf& operator=(const PaddleBuf&);
+  PaddleBuf& operator=(PaddleBuf&&);
   // Do not own the memory.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
@@ -67,9 +68,9 @@ struct PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
-  // TODO(Superjomn) for LoD support, add a vector<vector<int>> field if needed.
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
+  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
 enum class PaddleEngineKind {
@@ -97,9 +98,10 @@ class PaddlePredictor {
   // `inputs`. `inputs` should be available until Run returns. Caller should be
   // responsible for the output tensor's buffer, either allocated or passed from
   // outside.
+  // `batch_size` is only used in TensorRT mode.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
-                   int batch_size = -1) = 0;
+                   int batch_size = -1 /*used in TensorRT mode*/) = 0;
 
   // Clone a predictor that share the model weights, the Cloned predictor should
   // be thread-safe.

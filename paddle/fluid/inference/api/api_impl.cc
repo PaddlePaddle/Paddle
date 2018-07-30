@@ -22,30 +22,10 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/paddle_inference_helper.h"
 
 namespace paddle {
 namespace {
-
-// Timer for timer
-class Timer {
- public:
-  double start;
-  double startu;
-  void tic() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    start = tp.tv_sec;
-    startu = tp.tv_usec;
-  }
-  double toc() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    double used_time_ms =
-        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
-    return used_time_ms;
-  }
-};
-
 template <class T>
 std::string num2str(T a) {
   std::stringstream istr;
@@ -163,8 +143,15 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
+
+  std::stringstream ss;
+  for (const auto &name : feed_target_names_) {
+    ss << name << " ";
+  }
+  VLOG(3) << "feeds: " << ss.str();
   if (inputs.size() != feed_target_names_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size, needs " << feed_target_names_.size()
+               << " get " << inputs.size();
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
@@ -183,6 +170,14 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                 inputs[i].data.length());
+
+    // TODO(Superjomn) Low performance, need optimization for heavy LoD.
+    framework::LoD lod;
+    for (auto &level : inputs[i].lod) {
+      lod.emplace_back(level);
+    }
+    input.set_lod(lod);
+
     feeds->push_back(input);
   }
   return true;
@@ -248,6 +243,10 @@ bool NativePaddlePredictor::GetFetch(
       buffer.Resize(sizeof(float) * data.size());
     }
     std::memcpy(buffer.data(), data.data(), buffer.length());
+    // copy lod
+    for (const auto &level : fetchs[i].lod()) {
+      outputs->at(i).lod.emplace_back(level);
+    }
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }
