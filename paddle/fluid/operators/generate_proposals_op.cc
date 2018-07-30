@@ -40,7 +40,6 @@ class GenerateProposalsOpInferShape : public framework::InferShapeBase {
     auto anchors_dims = ctx->GetInputDim("Anchors");
     auto variances_dims = ctx->GetInputDim("Variances");
 
-    std::cout << "in infershape " << std::endl;
     ctx->SetOutputDim("RpnRois", scores_dims);
     ctx->SetOutputDim("RpnRoiProbs", scores_dims);
   }
@@ -151,28 +150,23 @@ Tensor FilterBoxes(const platform::Place &place, Tensor &proposals,
   return keep;
 }
 
-Tensor NMS(const platform::Place &place, Tensor &proposals, float min_size,
-           Tensor &im_info) {
-  float *im_info_data = im_info.data<float>(place);
-  float *boxes_data = proposals.data<float>(place);
-  min_size *= im_info_data[2];
-  Tensor keep;
-  keep.Resize({1, proposals.dims()[0]});
-  int64_t *keep_data = keep.data<float>(place);
-
-  int64_t keep_len = 0;
-  for (int64_t i = 0; i < keep.numel(); ++i) {
-    float ws = proposals[4 * i + 2] - proposals[4 * i] + 1;
-    float hs = proposals[4 * i + 3] - proposals[4 * i + 1] + 1;
-    float x_ctr = proposals[4 * i] + ws / 2;
-    float y_ctr = proposals[4 * i + 1] + hs / 2;
-    if (ws >= min_size && hs >= min_size && x_ctr <= im_info[1] &&
-        y_ctr <= im_info[0]) {
-      keep_data[keep_len++] = i;
-    }
-  }
-  keep.Resize({1, keep_len});
-  return keep;
+void NMS(framework::Scope &scope, 
+           const platform::Place &place, 
+           std::string &proposals_keep_name, 
+           std::string &scores_keep_name, 
+           std::string &keep_name,
+           float nms_threshold,
+           float score_threshold,
+           int nms_top_k,
+           float nms_eta) {
+  framework::AttributeMap attrs;
+  attrs["score_threshold"] = score_threshold;
+  attrs["nms_threshold"] = nms_threshold;
+  attrs["nms_eta"] = nms_eta;
+  auto multiclass_nms_op = framework::OpRegistry::CreateOp(
+      "multiclass_nms", {{"BBoxes", {proposals_keep_name}},
+                    {"Scores", {scores_keep_name}}}, attrs);
+  multiclass_nms_op->Run(scope, place);
 }
 
 //<typename T>
@@ -196,7 +190,6 @@ void ProposalForOneImage(framework::Scope &scope, const platform::Place &place,
 
   bbox_deltas_trans.mutable_data(place, bbox_deltas.type());
   scores_trans.mutable_data(place, scores.type());
-  std::cout << "in one image" << std::endl;
 
   // Transpose bbox_deltas
   framework::AttributeMap trans_attrs;
@@ -230,12 +223,7 @@ void ProposalForOneImage(framework::Scope &scope, const platform::Place &place,
                      compare);
     index_t.Resize({1, pre_nms_topN});
   }
-
-  for (int i = 0; i < index_t.numel(); ++i) {
-    std::cout << index[i] << " ";
-  }
-  std::cout << "\n";
-
+  
   // Gather
   std::string index_name;
   scope.Var(&index_name)->GetMutable<LoDTensor>()->ShareDataWith(index_t);
@@ -281,6 +269,12 @@ void ProposalForOneImage(framework::Scope &scope, const platform::Place &place,
   if (nms_thresh <= 0) {
     return proposals_keep, scores_keep;
   }
+
+  NMS(scope, place, proposals_keep_name, scores_keep_name, keep_name);
+  if (post_nms_topN > 0) {
+    keep.Resize({1, post_nms_topN});
+  }
+  return proposals, scores;
 }
 
 class GenerateProposalsOp : public framework::OperatorBase {
@@ -290,17 +284,11 @@ class GenerateProposalsOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    std::cout << " this is a two test" << std::endl;
     auto &scores = scope.FindVar(Input("Scores"))->Get<LoDTensor>();
-    std::cout << " this is a two test" << std::endl;
     auto &bbox_deltas = scope.FindVar(Input("BboxDeltas"))->Get<LoDTensor>();
-    std::cout << " this is a two test" << std::endl;
     auto &im_info = scope.FindVar(Input("ImInfo"))->Get<LoDTensor>();
-    std::cout << " this is a two test" << std::endl;
     auto &anchors = scope.FindVar(Input("Anchors"))->Get<LoDTensor>();
-    std::cout << " this is a two test" << std::endl;
     auto &variances = scope.FindVar(Input("Variances"))->Get<LoDTensor>();
-    std::cout << "in kernel begin" << std::endl;
     auto *rpn_rois = scope.FindVar(Output("RpnRois"))->GetMutable<LoDTensor>();
     auto *rpn_roi_probs =
         scope.FindVar(Output("RpnRoiProbs"))->GetMutable<LoDTensor>();
