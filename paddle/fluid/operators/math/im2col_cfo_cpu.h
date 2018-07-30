@@ -80,11 +80,13 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(const framework::Tensor& im,
   int col_matrix_width = output_width * output_height;
   int im_size = im_height * im_width;
   size_t copy_size = sizeof(T) * output_width;
+  const T* im_data_oh = im_data;
+  T* dst_data_oh = col_data;
   for (int oh = 0; oh < output_height; ++oh) {
-    const T* im_data_start = im_data + oh * im_width;
-    T* dst_data = col_data + oh * output_width;
+    const T* src_data_ic = im_data_oh;
+    T* dst_data = dst_data_oh;
     for (int ic = 0; ic < im_channels; ++ic) {
-      const T* src_data = im_data_start + ic * im_size;
+      const T* src_data = src_data_ic;
       for (int kh = 0; kh < filter_height; ++kh) {
         for (int kw = 0; kw < filter_width; ++kw) {
           std::memcpy(dst_data, src_data + kw, copy_size);
@@ -92,7 +94,10 @@ inline void im2col_sh1sw1dh1dw1ph0pw0(const framework::Tensor& im,
         }
         src_data = src_data + im_width;
       }
+      src_data_ic = src_data_ic + im_size;
     }
+    im_data_oh = im_data_oh + im_width;
+    dst_data_oh = dst_data_oh + output_width;
   }
 }
 
@@ -130,34 +135,36 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
     T* col_start_r = col_data + (filter_height - 1) * col_block_fh +
                      col_matrix_width - output_width;
     for (int ic = 0; ic < im_channels; ++ic) {
-      // TODO(TJ): move * outside
-      T* dst_data_l = col_start_l + ic * col_block_ic;
-      T* dst_data_r = col_start_r + ic * col_block_ic;
+      T* dst_data_l = col_start_l;
+      T* dst_data_r = col_start_r;
       for (int kw = 0; kw < filter_width; ++kw) {
         std::memset(dst_data_l, 0, copy_size);
         std::memset(dst_data_r, 0, copy_size);
         dst_data_l = dst_data_l + col_matrix_width;
         dst_data_r = dst_data_r + col_matrix_width;
       }
+      col_start_l = col_start_l + col_block_ic;
+      col_start_r = col_start_r + col_block_ic;
     }
   }
 
   auto pad = static_cast<T>(0);
   if (filter_width == 1) {
     // fill width padding
+    T* dst_data_ic = col_data;
     for (int ic = 0; ic < im_channels; ++ic) {
-      // TODO(TJ): move * outside
-      T* dst_data_ic = col_data + ic * col_block_ic;
+      T* dst_data_kh = dst_data_ic;
       for (int kh = 0; kh < filter_height; ++kh) {
-        // TODO(TJ): move * outside
-        T* dst_data = dst_data_ic + kh * col_block_fh;
+        T* dst_data = dst_data_kh;
         for (int oh = 0; oh < output_height; ++oh) {
           *dst_data = pad;
           dst_data = dst_data + output_width - 1;
           *dst_data = pad;
           ++dst_data;
         }
+        dst_data_kh = dst_data_kh + col_block_fh;
       }
+      dst_data_ic = dst_data_ic + col_block_ic;
     }
     // fill core
     size_t copy_size = sizeof(T) * (output_width - plw - prw);
@@ -184,12 +191,10 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
 
   // filter_width != 1
   // fill width padding
+  T* dst_data_ic = col_data;
   for (int ic = 0; ic < im_channels; ++ic) {
-    // TODO(TJ): move * outside
-    T* dst_data_ic = col_data + ic * col_block_ic;
+    T* dst_data_kh = dst_data_ic;
     for (int kh = 0; kh < filter_height; ++kh) {
-      // TODO(TJ): move * outside
-      T* dst_data_kh = dst_data_ic + kh * col_block_fh;
       for (T* dst_data :
            {dst_data_kh, dst_data_kh + (filter_width - prw) * col_matrix_width +
                              output_width - 1}) {
@@ -199,7 +204,9 @@ inline void im2col_sh1sw1dh1dw1ph1pw1(const framework::Tensor& im,
           dst_data = dst_data + output_width;
         }
       }
+      dst_data_kh = dst_data_kh + col_block_fh;
     }
+    dst_data_ic = dst_data_ic + col_block_ic;
   }
 
   // TODO(TJ): use array like: size_t copy_size[kw]={sizeof(T) *
