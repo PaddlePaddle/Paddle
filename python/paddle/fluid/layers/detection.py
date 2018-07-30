@@ -691,9 +691,7 @@ def ssd_loss(location,
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
     gt_label = nn.reshape(
-        x=gt_label, shape=(len(gt_label.shape) - 1) * (0, ) + (
-            -1,
-            1, ))
+        x=gt_label, shape=(len(gt_label.shape)) * (0, ) + (1, ))
     gt_label.stop_gradient = True
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
