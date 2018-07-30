@@ -69,17 +69,18 @@ class TestSpliteIds(unittest.TestCase):
 
         op = Operator("split_ids", Ids="X", Out=outs_name)
 
-        op.run(scope, place)
+        for _ in range(3):
+            op.run(scope, place)
 
-        for i in range(len(outs)):
-            expected_rows = expected_out_rows[i]
-            self.assertEqual(outs[i].rows(), expected_rows)
-            for j in range(len(expected_rows)):
-                row = expected_rows[j]
-                self.assertAlmostEqual(
-                    float(row), np.array(outs[i].get_tensor())[j, 0])
-                self.assertAlmostEqual(
-                    float(row + 1), np.array(outs[i].get_tensor())[j, 1])
+            for i in range(len(outs)):
+                expected_rows = expected_out_rows[i]
+                self.assertEqual(outs[i].rows(), expected_rows)
+                for j in range(len(expected_rows)):
+                    row = expected_rows[j]
+                    self.assertAlmostEqual(
+                        float(row), np.array(outs[i].get_tensor())[j, 0])
+                    self.assertAlmostEqual(
+                        float(row + 1), np.array(outs[i].get_tensor())[j, 1])
 
 
 if __name__ == '__main__':
