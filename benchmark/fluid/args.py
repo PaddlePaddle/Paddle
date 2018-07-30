@@ -17,7 +17,8 @@ import argparse
 __all__ = ['parse_args', ]
 
 BENCHMARK_MODELS = [
-    "machine_translation", "resnet", "vgg", "mnist", "stacked_dynamic_lstm"
+    "machine_translation", "resnet", "se_resnext", "vgg", "mnist",
+    "stacked_dynamic_lstm"
 ]
 
 

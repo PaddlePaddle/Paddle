@@ -165,7 +165,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     startup_exe.run(startup_prog)
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = args.cpus
-    strategy.allow_op_delay = False
+    strategy.allow_op_delay = True
     avg_loss = train_args[0]
 
     if args.update_method == "pserver":
@@ -183,13 +183,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
 
-    test_loss = test_args[0]
     test_exe = fluid.ParallelExecutor(
-        True,
-        test_loss.name,
-        main_program=test_prog,
-        share_vars_from=exe,
-        scope=fluid.Scope(
+        True, main_program=test_prog, share_vars_from=exe, scope=fluid.Scope(
         ))  # NOTE: use an empty scope to avoid test exe using NCCLID
 
     for pass_id in range(args.pass_num):
@@ -200,8 +195,10 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             reader_generator = train_args[3]()  #train_reader
         batch_id = 0
         data = None
+        print("before start reader")
         if args.use_reader_op:
             train_args[4].start()
+        print("start new pass")
         while True:
             if not args.use_reader_op:
                 data = next(reader_generator, None)
@@ -214,6 +211,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             elif args.profile and batch_id == 10:
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
+                profiler.reset_profiler()
 
             if iters == args.skip_batch_num:
                 start_time = time.time()
@@ -224,7 +222,9 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             if args.use_fake_data or args.use_reader_op:
                 try:
+                    print("before run exe.run")
                     fetch_ret = exe.run(fetch_list)
+                    print("after run exe.run")
                 except fluid.core.EOFException as eof:
                     break
                 except fluid.core.EnforceNotMet as ex:
@@ -339,19 +339,18 @@ def main():
     if args.update_method == "nccl2":
         nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare(
             trainer_id, startup_prog)
-    if args.gpus == 1:
-        # NOTE: parallel executor use profiler interanlly
-        if args.use_nvprof and args.device == 'GPU':
-            with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:
-                train(*all_args)
-        else:
-            train(*all_args)
-    else:
-        if args.device == "CPU":
-            raise Exception("Only support GPU perf with parallel exe")
-        all_args.extend([nccl_id_var, num_trainers, trainer_id])
-        print("starting dist parallel mode...")
-        train_parallel(*all_args)
+    # if args.gpus == 1:
+    #     # NOTE: parallel executor use profiler interanlly
+    #     if args.use_nvprof and args.device == 'GPU':
+    #         with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:
+    #             train(*all_args)
+    #     else:
+    #         train(*all_args)
+    # else:
+    if args.device == "CPU":
+        raise Exception("Only support GPU perf with parallel exe")
+    all_args.extend([nccl_id_var, num_trainers, trainer_id])
+    train_parallel(*all_args)
 
 
 if __name__ == "__main__":

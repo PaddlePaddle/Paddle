@@ -29,8 +29,8 @@ random.seed(0)
 
 DATA_DIM = 224
 
-THREAD = 8
-BUF_SIZE = 50000
+THREAD = 10
+BUF_SIZE = 100000
 
 DATA_DIR = '/mnt/ImageNet'
 TRAIN_LIST = '/mnt/ImageNet/train.txt'
@@ -187,10 +187,12 @@ def _reader_creator(file_list,
     mapper = functools.partial(
         process_image, mode=mode, color_jitter=color_jitter, rotate=rotate)
 
-    if xmap:
-        return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
-    else:
-        return paddle.reader.map_readers(mapper, reader)
+    # if xmap:
+    return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
+    # else:
+
+
+# return paddle.reader.map_readers(mapper, reader)
 
 
 def train(file_list=TRAIN_LIST, xmap=True):
