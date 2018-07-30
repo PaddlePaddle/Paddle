@@ -259,7 +259,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::Apply(
   result.Set("ops", new GraphOps);
 
   // find send/recv vars so that we can place the distributed training
-  // realted op in the place 0
+  // related op in the place 0
   auto send_vars = FindDistTrainSendVars(sorted_ops);
   auto recv_vars = FindDistTrainRecvVars(sorted_ops);
 
@@ -715,6 +715,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
       result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
       node->Op()->Type(), places_[op_dev_id]));
 
+  // TODO(panyx0718): This might not be needed anymore.
   if (node->Op()->Type() == "send_barrier") {
     ConnectOp(result, result->Get<GraphOps>("ops").back().get(), "send");
   } else if (node->Op()->Type() == "recv") {

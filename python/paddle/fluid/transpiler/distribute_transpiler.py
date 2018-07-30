@@ -347,6 +347,7 @@ class DistributeTranspiler(object):
 
         # step1
         pserver_program = Program()
+        pserver_program.random_seed = self.origin_program.random_seed
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -544,6 +545,7 @@ class DistributeTranspiler(object):
         """
         s_prog = Program()
         orig_s_prog = default_startup_program()
+        s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):
@@ -779,7 +781,9 @@ class DistributeTranspiler(object):
                         outputs={"Out": prefetch_output_vars},
                         attrs={
                             "epmap": pserver_endpoints,
-                            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                            # FIXME(qiao) temporarily disable this config because prefetch
+                            # is not act as other rpc op, it's more like a forward op
+                            # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                         })
 
                     # insert concat_op
