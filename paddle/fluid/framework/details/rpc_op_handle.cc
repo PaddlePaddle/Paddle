@@ -29,11 +29,9 @@ RPCOpHandle::RPCOpHandle(ir::Node *node, const framework::OpDesc &op_desc,
       place_(place) {}
 
 void RPCOpHandle::RunImpl() {
-  // TODO(wuyi): need further analysis whether wait VarDummyHandle.
   // Wait input done
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
-    // FIXME(Yancey1989): need a better solution instead of use DebugString()
     if (ir::IsControlDepVar(*in->Node())) {  // HACK
       continue;
     }

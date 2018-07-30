@@ -609,20 +609,6 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
   return var;
 }
 
-// Find the first occurence of `prev_op_name` and make current `op` depend
-// on it.
-void MultiDevSSAGraphBuilder::ConnectOp(ir::Graph *result, OpHandleBase *op,
-                                        const std::string &prev_op_name) const {
-  for (auto &prev_op : result->Get<GraphOps>("ops")) {
-    if (prev_op->Name() == prev_op_name) {
-      auto *dep_var = new DummyVarHandle(result->CreateControlDepVar());
-      prev_op->AddOutput(dep_var);
-      result->Get<GraphDepVars>("dep_vars").emplace(dep_var);
-      op->AddInput(dep_var);
-    }
-  }
-}
-
 void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
                                                 ir::Node *node) const {
   int op_dev_id = -1;
@@ -664,10 +650,6 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
                  node->Op()->Type());
 
   CreateComputationalOp(result, node, op_dev_id);
-  if (node->Op()->Type() == "concat") {
-    ConnectOp(result, result->Get<GraphOps>("ops").back().get(),
-              "fetch_barrier");
-  }
 }
 
 // Create RPC related op handles that connects its in ops and out ops.
@@ -714,22 +696,6 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
   result->Get<GraphOps>("ops").emplace_back(new RPCOpHandle(
       result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
       node->Op()->Type(), places_[op_dev_id]));
-
-  // TODO(panyx0718): This might not be needed anymore.
-  if (node->Op()->Type() == "send_barrier") {
-    ConnectOp(result, result->Get<GraphOps>("ops").back().get(), "send");
-  } else if (node->Op()->Type() == "recv") {
-    ConnectOp(result, result->Get<GraphOps>("ops").back().get(),
-              "send_barrier");
-  } else if (node->Op()->Type() == "fetch_barrier") {
-    ConnectOp(result, result->Get<GraphOps>("ops").back().get(), "recv");
-  } else if (node->Op()->Type() == "send") {
-    // do nothing
-  } else {
-    PADDLE_THROW(
-        "rpc op should be in ["
-        "send, send_barrier. recv, fetch_barrier]");
-  }
 
   CreateOpHandleIOs(result, node, op_dev_id);
 }
