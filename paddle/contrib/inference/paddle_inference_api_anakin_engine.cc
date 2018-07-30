@@ -17,20 +17,20 @@
 
 namespace paddle {
 
-template<typename Target>
+template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
     const AnakinConfig &config) {
   CHECK(Init(config));
 }
 
-template<typename Target>
+template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
   if (!(graph_.load(config.model_file))) {
     LOG(FATAL) << "fail to load graph from " << config.model_file;
     return false;
   }
   auto inputs = graph_.get_ins();
-  for(auto& input_str : inputs) {
+  for (auto &input_str : inputs) {
     graph_.ResetBatchSize(input_str, config.max_batch_size);
   }
   // optimization for graph
@@ -46,7 +46,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
   return true;
 }
 
-template<typename Target>
+template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Run(
     const std::vector<PaddleTensor> &inputs,
     std::vector<PaddleTensor> *output_data) {
@@ -115,7 +115,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
   return true;
 }
 
-template<typename Target>
+template <typename Target>
 anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
     &PaddleInferenceAnakinPredictor<Target>::get_executer() {
   return *executor_p_;
@@ -123,10 +123,12 @@ anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
 
 // the cloned new Predictor of anakin share the same net weights from original
 // Predictor
-template<typename Target>
-std::unique_ptr<PaddlePredictor> PaddleInferenceAnakinPredictor<Target>::Clone() {
+template <typename Target>
+std::unique_ptr<PaddlePredictor>
+PaddleInferenceAnakinPredictor<Target>::Clone() {
   VLOG(3) << "Anakin Predictor::clone";
-  std::unique_ptr<PaddlePredictor> cls(new PaddleInferenceAnakinPredictor<Target>());
+  std::unique_ptr<PaddlePredictor> cls(
+      new PaddleInferenceAnakinPredictor<Target>());
   // construct executer from other graph
   auto anakin_predictor_p =
       dynamic_cast<PaddleInferenceAnakinPredictor<Target> *>(cls.get());
@@ -151,12 +153,12 @@ CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(
   if (config.target_type == AnakinConfig::NVGPU) {
     VLOG(3) << "Anakin Predictor create on [ NVIDIA GPU ].";
     std::unique_ptr<PaddlePredictor> x(
-	new PaddleInferenceAnakinPredictor<anakin::NV>(config));
+        new PaddleInferenceAnakinPredictor<anakin::NV>(config));
     return x;
   } else if (config.target_type == AnakinConfig::X86) {
     VLOG(3) << "Anakin Predictor create on [ Intel X86 ].";
     std::unique_ptr<PaddlePredictor> x(
-    	new PaddleInferenceAnakinPredictor<anakin::X86>(config));
+        new PaddleInferenceAnakinPredictor<anakin::X86>(config));
     return x;
   } else {
     VLOG(3) << "Anakin Predictor create on unknown platform.";

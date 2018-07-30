@@ -20,15 +20,15 @@ limitations under the License. */
 #pragma once
 
 //#define _GLIBCXX_USE_CXX11_ABI 0
-#include "framework/graph/graph.h"
 #include "framework/core/net/net.h"
+#include "framework/graph/graph.h"
 #include "paddle/contrib/inference/paddle_inference_api.h"
 #include "saber/core/shape.h"
 #include "saber/saber_types.h"
 
 namespace paddle {
 
-template<typename Target>
+template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
   PaddleInferenceAnakinPredictor() {}
@@ -53,9 +53,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::graph::Graph<Target,
-                       anakin::saber::AK_FLOAT,
-                       anakin::Precision::FP32>
+  anakin::graph::Graph<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
       graph_;
   anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>*
       executor_p_{nullptr};
