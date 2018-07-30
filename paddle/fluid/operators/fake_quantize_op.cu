@@ -165,14 +165,14 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
     T remove_tmp;
     auto& gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
     int list_idx = current_iter % window_size;
-    memory::Copy(platform::CPUPlace(), &remove_tmp, gpu_place,
-                 sl + list_idx, sizeof(float), ctx.stream());
+    memory::Copy(platform::CPUPlace(), &remove_tmp, gpu_place, sl + list_idx,
+                 sizeof(float), ctx.stream());
     memory::Copy(gpu_place, sl + list_idx, platform::CPUPlace(), &cur_scale,
                  sizeof(T), ctx.stream());
     T max_scale = last_max_scale;
     if (max_scale < cur_scale) {
-        max_scale = cur_scale;
-    }else if (fabs(remove_tmp - max_scale) < 1e-6) {
+      max_scale = cur_scale;
+    } else if (fabs(remove_tmp - max_scale) < 1e-6) {
       int size = (current_iter > window_size) ? window_size : current_iter;
       max_scale = T(FindAbsMaxGpu(ctx, scale_list->data<float>(), size));
     }
@@ -257,16 +257,16 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
       auto* in_state = const_cast<framework::Tensor*>(
           context.Input<framework::Tensor>("InState"));
       T accum;
-      memory::Copy(platform::CPUPlace(), &accum, gpu_place,
-                   in_accum->data<T>(), sizeof(T), device_ctx.stream());
+      memory::Copy(platform::CPUPlace(), &accum, gpu_place, in_accum->data<T>(),
+                   sizeof(T), device_ctx.stream());
       T state;
-      memory::Copy(platform::CPUPlace(), &state, gpu_place,
-                   in_state->data<T>(), sizeof(T), device_ctx.stream());
+      memory::Copy(platform::CPUPlace(), &state, gpu_place, in_state->data<T>(),
+                   sizeof(T), device_ctx.stream());
       if (is_test) {
-        scale = accum/state;
+        scale = accum / state;
       } else {
         scale = (T)FindAbsMaxGpu(device_ctx, in->data<float>(), in->numel());
-        
+
         state = 0.9 * state + 1;
         accum = 0.9 * accum + scale;
 
@@ -282,12 +282,9 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
       }
     }
 
-    if (!is_test) {
-      auto* saving_scale = context.Output<framework::Tensor>("OutMovingScale");
-      memory::Copy(gpu_place, saving_scale->mutable_data<T>(gpu_place),
-                   platform::CPUPlace(), &scale, sizeof(T),
-                   device_ctx.stream());
-    }
+    auto* saving_scale = context.Output<framework::Tensor>("OutMovingScale");
+    memory::Copy(gpu_place, saving_scale->mutable_data<T>(gpu_place),
+                 platform::CPUPlace(), &scale, sizeof(T), device_ctx.stream());
 
     ApplySaturateGpu<T>(device_ctx, in->numel(), in->data<T>(),
                         tensor->mutable_data<T>(in->place()), -scale, scale);
