@@ -43,7 +43,7 @@ class TestDistBase(unittest.TestCase):
         return ps0_proc, ps1_proc
 
     def _wait_ps_ready(self, pid):
-        retry_times = 20
+        retry_times = 50
         while True:
             assert retry_times >= 0, "wait ps ready failed"
             time.sleep(3)
@@ -52,7 +52,9 @@ class TestDistBase(unittest.TestCase):
                 # on the /tmp directory until it was ready to process all the RPC call.
                 os.stat("/tmp/paddle.%d.port" % pid)
                 return
-            except os.error:
+            except os.error as e:
+                sys.stderr.write('waiting for pserver: %s, left retry %d\n' %
+                                 (e, retry_times))
                 retry_times -= 1
 
     def check_with_place(self, model_file, delta=1e-3):
