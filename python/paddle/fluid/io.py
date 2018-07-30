@@ -612,9 +612,6 @@ def save_inference_model(dirname,
                 if not (all(
                         isinstance(name, six.text_type)
                         for name in feeded_var_names)):
-                    import sys
-                    print([type(name) for name in feeded_var_names])
-                    sys.stdout.flush()
                     raise ValueError(
                         "'feed_var_names' should be a list of str.")
                 else:

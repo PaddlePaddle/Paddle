@@ -32,7 +32,7 @@ def get_all_op_protos():
 
 
 def is_str(s):
-    return isinstance(s, str) or isinstance(s, str)
+    return isinstance(s, six.string_types)
 
 
 class OpDescCreationMethod(object):

@@ -524,12 +524,12 @@ class Operator(object):
                             % (in_proto.name, len(in_args)))
                     in_arg_names = []
                     for arg in in_args:
-                        if issubclass(arg.__class__, six.string_types):
+                        if isinstance(arg, six.string_types):
                             in_arg_names.append(arg)
                         elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            if issubclass(arg.name.__class__, six.string_types):
+                            if isinstance(arg.name, six.string_types):
                                 in_arg_names.append(arg.name)
                             elif isinstance(arg.name, six.binary_type):
                                 in_arg_names.append(arg.name.decode())
@@ -561,7 +561,7 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    if issubclass(arg.name.__class__, six.string_types):
+                    if isinstance(arg.name, six.string_types):
                         out_arg_names.append(arg.name)
                     elif isinstance(arg.name, six.binary_type):
                         out_arg_names.append(arg.name.decode())
@@ -911,7 +911,7 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        if not issubclass(name.__class__, six.string_types):
+        if not isinstance(name, six.string_types):
             if not isinstance(name, six.binary_type):
                 raise TypeError(
                     "var require string as parameter, but get %s instead." %
