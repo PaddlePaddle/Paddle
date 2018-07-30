@@ -273,14 +273,18 @@ class DeviceTracerImpl : public DeviceTracer {
     proto::Profile profile_pb;
     profile_pb.set_start_ns(start_ns_);
     profile_pb.set_end_ns(end_ns_);
+    std::string kernel_name;
     for (const KernelRecord &r : kernel_records_) {
       if (correlations_.find(r.correlation_id) == correlations_.end()) {
-        fprintf(stderr, "cannot relate a kernel activity\n");
-        continue;
+        // fprintf(stderr, "cannot relate a kernel activity\n");
+        // continue;
+        kernel_name = "Unknown";
+      } else {
+        kernel_name = correlations_.at(r.correlation_id);
       }
       auto *event = profile_pb.add_events();
       event->set_type(proto::Event::GPUKernel);
-      event->set_name(correlations_.at(r.correlation_id));
+      event->set_name(kernel_name);
       event->set_start_ns(r.start_ns);
       event->set_end_ns(r.end_ns);
       event->set_sub_device_id(r.stream_id);
