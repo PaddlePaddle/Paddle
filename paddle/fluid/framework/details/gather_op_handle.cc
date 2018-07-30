@@ -20,10 +20,9 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-GatherOpHandle::GatherOpHandle(ir::Node *node,
-                               const std::vector<Scope *> &local_scopes,
+GatherOpHandle::GatherOpHandle(const std::vector<Scope *> &local_scopes,
                                const std::vector<platform::Place> &places)
-    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
+    : local_scopes_(local_scopes), places_(places) {}
 
 void GatherOpHandle::RunImpl() {
   if (places_.size() == 1) return;

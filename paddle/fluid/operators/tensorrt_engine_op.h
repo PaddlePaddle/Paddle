@@ -24,9 +24,6 @@
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
 namespace paddle {
-
-DECLARE_int32(tensorrt_engine_batch_size);
-
 namespace operators {
 
 using inference::Singleton;
@@ -56,6 +53,7 @@ template <typename DeviceContext, typename T>
 class TensorRTEngineKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    VLOG(4) << "TensorRTEngineKernel executing";
     auto engine_name = context.Attr<std::string>("engine_uniq_key");
     if (!Singleton<TRT_EngineManager>::Global().HasEngine(engine_name)) {
       Prepare(context);
@@ -63,8 +61,11 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     auto* engine = Singleton<TRT_EngineManager>::Global().Get(engine_name);
     auto input_names = context.op().Inputs("Xs");
     PADDLE_ENFORCE(!input_names.empty(), "should pass more than one inputs");
-    PADDLE_ENFORCE_LE(FLAGS_tensorrt_engine_batch_size,
-                      context.Attr<int>("max_batch"));
+    // Try to determine a batch_size
+    auto& tensor0 = inference::analysis::GetFromScope<framework::LoDTensor>(
+        context.scope(), input_names.front());
+    int batch_size = tensor0.dims()[0];
+    PADDLE_ENFORCE_LE(batch_size, context.Attr<int>("max_batch"));
 
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
@@ -80,8 +81,8 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       }
     }
     // Execute the engine.
-    PADDLE_ENFORCE_GT(FLAGS_tensorrt_engine_batch_size, 0);
-    engine->Execute(FLAGS_tensorrt_engine_batch_size);
+    PADDLE_ENFORCE_GT(batch_size, 0);
+    engine->Execute(batch_size);
     // Convert output tensor from engine to fluid
     for (const auto& y : context.Outputs("Ys")) {
       // convert output and copy to fluid.
@@ -93,23 +94,18 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       auto* fluid_v = context.scope().FindVar(y);
       PADDLE_ENFORCE_NOT_NULL(fluid_v, "no output variable called %s", y);
       auto* fluid_t = fluid_v->GetMutable<framework::LoDTensor>();
-
       fluid_t->Resize(framework::make_ddim(ddim));
-
-      // TODO(Superjomn) find some way to determine which device to output the
-      // tensor.
-      // if (platform::is_cpu_place(fluid_t->place())) {
-      // TODO(Superjomn) change this float to dtype size.
-      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims) *
-                  FLAGS_tensorrt_engine_batch_size;
-      engine->GetOutputInCPU(y,
-                             fluid_t->mutable_data<float>(platform::CPUPlace()),
-                             size * sizeof(float));
-      //} else {
-      // engine->GetOutputInGPU(
-      // y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
-      // size * sizeof(float));
-      //}
+      auto size = inference::analysis::AccuDims(dims.d, dims.nbDims);
+      if (platform::is_cpu_place(fluid_t->place())) {
+        // TODO(Superjomn) change this float to dtype size.
+        engine->GetOutputInCPU(
+            y, fluid_t->mutable_data<float>(platform::CPUPlace()),
+            size * sizeof(float));
+      } else {
+        engine->GetOutputInGPU(
+            y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
+            size * sizeof(float));
+      }
     }
 
     cudaStreamSynchronize(*engine->stream());

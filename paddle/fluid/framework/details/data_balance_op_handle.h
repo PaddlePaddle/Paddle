@@ -30,11 +30,11 @@ namespace details {
 struct DataBalanceOpHandle : public OpHandleBase {
  public:
 #ifdef PADDLE_WITH_CUDA
-  DataBalanceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  DataBalanceOpHandle(const std::vector<Scope *> &local_scopes,
                       const std::vector<platform::Place> &places,
                       const platform::NCCLContextMap *ctxs);
 #else
-  DataBalanceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  DataBalanceOpHandle(const std::vector<Scope *> &local_scopes,
                       const std::vector<platform::Place> &places);
 #endif
 

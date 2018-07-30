@@ -13,21 +13,13 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include <google/protobuf/text_format.h>
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, analysis_without_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = false;
-  Analyzer analyser;
-  analyser.Run(&argument);
-}
-
-TEST_F(DFG_Tester, analysis_with_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = true;
+TEST_F(DFG_Tester, main) {
   Analyzer analyser;
   analyser.Run(&argument);
 }

@@ -33,12 +33,11 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-from .layer_function_generator import autodoc, templatedoc
-from .tensor import concat
-from . import utils
+from layer_function_generator import autodoc, templatedoc
+from tensor import concat
+import utils
 import random
 from .. import unique_name
-from functools import reduce
 
 __all__ = [
     'fc',
@@ -111,7 +110,6 @@ __all__ = [
     'relu',
     'log',
     'crop',
-    'rank_loss',
 ]
 
 
@@ -168,8 +166,7 @@ def fc(input,
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
             parameters/weights of this layer.
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
-            of this layer. If it is set to False, no bias will be added to the output units.
-            If it is set to None, the bias is initialized zero. Default: None.
+            of this layer. If it is set to None, no bias will be added to the output units.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
         use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
@@ -2963,7 +2960,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the corresponding output tensor.
+            # Each example is followed by the correspending output tensor.
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
@@ -2972,7 +2969,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
-            # Each example is followed by the corresponding output tensor.
+            # Each example is followed by the correspending output tensor.
             fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
             fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
 
@@ -4370,7 +4367,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         helper.set_variable_initializer(
             counter, initializer=Constant(
                 value=begin - 1, force_cpu=True))
-        helper.main_program.global_block()._prepend_op(
+        helper.main_program.global_block().prepend_op(
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
@@ -4844,7 +4841,7 @@ def dice_loss(input, label, epsilon=0.00001):
             loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
     """
     label = one_hot(label, depth=input.shape[-1])
-    reduce_dim = list(range(1, len(input.shape)))
+    reduce_dim = range(1, len(input.shape))
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(
         input, dim=reduce_dim) + reduce_sum(
@@ -5283,75 +5280,4 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
-    return out
-
-
-def rank_loss(label, left, right, name=None):
-    """
-    **Rank loss layer for RankNet**
-
-    RankNet(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
-    is a pairwise ranking model with a training sample consisting of a pair
-    of documents, A and B. Label P indicates whether A is ranked higher than B
-    or not:
- 
-    P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
-    about the rank of the input pair.
-    
-    Rank loss layer takes three inputs: left (o_i), right (o_j) and
-    label (P_{i,j}). The inputs respectively represent RankNet's output scores
-    for documents A and B and the value of label P. The following equation
-    computes rank loss C_{i,j} from the inputs:
-    
-    $$
-      C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
-      o_{i,j} =  o_i - o_j  \\
-      \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
-    $$
-    
-    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).   
- 
-    Args:
-        label (Variable): Indicats whether A ranked higher than B or not.
-        left (Variable): RankNet's output score for doc A.
-        right (Variable): RankNet's output score for doc B.
-        name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
-
-    Returns:
-        list: The value of rank loss.
-
-    Raises:
-        ValueError: Any of label, left, and right is not a variable.
-
-    Examples:
-
-        .. code-block:: python
-
-            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
-            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
-            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
-            out = fluid.layers.rank_loss(label, left, right)
-
-
-    """
-    helper = LayerHelper('rank_loss', **locals())
-
-    if not (isinstance(label, Variable)):
-        raise ValueError("The label should be a Variable")
-
-    if not (isinstance(left, Variable)):
-        raise ValueError("The left should be a Variable")
-
-    if not (isinstance(right, Variable)):
-        raise ValueError("The right should be a Variable")
-
-    out = helper.create_tmp_variable("float32")
-
-    helper.append_op(
-        type='rank_loss',
-        inputs={"Label": label,
-                "Left": left,
-                "Right": right},
-        outputs={'Out': out})
     return out

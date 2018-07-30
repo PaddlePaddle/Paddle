@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
+from __future__ import print_function
+import core
 import numpy
 import os
 import six.moves as six
 import multiprocessing
 
-from .framework import Variable, default_main_program
+from framework import Variable, default_main_program
 
 __all__ = ['DataFeeder']
 
@@ -141,7 +142,7 @@ class DataFeeder(object):
         if program is None:
             program = default_main_program()
         for each_var in feed_list:
-            if isinstance(each_var, str):
+            if isinstance(each_var, basestring):
                 each_var = program.block(0).var(each_var)
             if not isinstance(each_var, Variable):
                 raise TypeError("Feed list should contain a list of variable")

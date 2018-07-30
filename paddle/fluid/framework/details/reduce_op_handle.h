@@ -37,13 +37,10 @@ struct ReduceOpHandle : public OpHandleBase {
 
 #ifdef PADDLE_WITH_CUDA
   const platform::NCCLContextMap *nccl_ctxs_;
-  ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  ReduceOpHandle(const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places,
                  const platform::NCCLContextMap *nccl_ctxs)
-      : OpHandleBase(node),
-        local_scopes_(local_scopes),
-        places_(places),
-        nccl_ctxs_(nccl_ctxs) {
+      : local_scopes_(local_scopes), places_(places), nccl_ctxs_(nccl_ctxs) {
     if (nccl_ctxs_) {
       for (auto &p_ctx : nccl_ctxs_->contexts_) {
         dev_ctxes_[platform::CUDAPlace(p_ctx.first)] = p_ctx.second.ctx_.get();
@@ -51,9 +48,9 @@ struct ReduceOpHandle : public OpHandleBase {
     }
   }
 #else
-  ReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
+  ReduceOpHandle(const std::vector<Scope *> &local_scopes,
                  const std::vector<platform::Place> &places)
-      : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
+      : local_scopes_(local_scopes), places_(places) {}
 #endif
 
   std::string Name() const override;

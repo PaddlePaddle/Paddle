@@ -24,12 +24,12 @@ namespace analysis {
 TEST_F(DFG_Tester, Init) {
   FluidToDataFlowGraphPass pass;
   pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
+  DataFlowGraph graph;
+  pass.Run(&graph);
   // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(argument.main_dfg->nodes.size(), 38UL);
+  ASSERT_EQ(graph.nodes.size(), 37UL);
   pass.Finalize();
-  ASSERT_FALSE(argument.main_dfg->DotString().empty());
-  EXPECT_FALSE(argument.main_dfg->inputs.empty());
+  LOG(INFO) << '\n' << graph.DotString();
 }
 
 }  // namespace analysis

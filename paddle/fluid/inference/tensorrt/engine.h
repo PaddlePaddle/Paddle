@@ -57,9 +57,7 @@ class TensorRTEngine : public EngineBase {
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         stream_(stream ? stream : &default_stream_),
-        logger_(logger) {
-    cudaStreamCreate(&default_stream_);
-  }
+        logger_(logger) {}
 
   virtual ~TensorRTEngine();
 
@@ -117,19 +115,12 @@ class TensorRTEngine : public EngineBase {
 
   nvinfer1::ICudaEngine* engine() { return infer_engine_.get(); }
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
-  void SetRuntimeBatch(size_t batch_size);
-  int GetRuntimeBatch();
 
  private:
   // the max batch size
   int max_batch_;
-  // the runtime batch size
-  static int runtime_batch_;
   // the max memory size the engine uses
   int max_workspace_;
-
-  // batch size of the current data, will be updated each Executation.
-  int batch_size_{-1};
   cudaStream_t* stream_;
   // If stream_ is not set from outside, hold its own stream.
   cudaStream_t default_stream_;

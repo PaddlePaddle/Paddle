@@ -19,14 +19,10 @@
 namespace paddle {
 namespace framework {
 namespace details {
-ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node, size_t num_dev,
-                                             Scope *scope,
+ScaleLossGradOpHandle::ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
                                              platform::Place place,
                                              platform::DeviceContext *dev_ctx)
-    : OpHandleBase(node),
-      coeff_(static_cast<float>(1.0 / num_dev)),
-      scope_(scope),
-      place_(place) {
+    : coeff_(static_cast<float>(1.0 / num_dev)), scope_(scope), place_(place) {
   dev_ctxes_[place_] = dev_ctx;
 }
 

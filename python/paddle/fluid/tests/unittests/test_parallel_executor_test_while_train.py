@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
-import paddle.fluid.core as core
 import numpy as np
 import unittest
 import os
@@ -93,18 +92,16 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
-        if core.is_compiled_with_cuda():
-            self.check_network_convergence(
-                use_cuda=True, build_strategy=build_strategy)
+        self.check_network_convergence(
+            use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-        if core.is_compiled_with_cuda():
-            self.check_network_convergence(
-                use_cuda=True, build_strategy=build_strategy)
+        self.check_network_convergence(
+            use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 

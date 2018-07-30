@@ -312,22 +312,19 @@ void WriteToRecordIO(recordio::Writer *writer,
   writer->Write(buffer.str());
 }
 
-bool ReadFromRecordIO(recordio::Scanner *scanner,
-                      const platform::DeviceContext &dev_ctx,
-                      std::vector<LoDTensor> *result_ptr) {
-  if (!scanner->HasNext()) {
-    return false;
+std::vector<LoDTensor> ReadFromRecordIO(
+    recordio::Scanner *scanner, const platform::DeviceContext &dev_ctx) {
+  std::vector<LoDTensor> result;
+  if (scanner->HasNext()) {
+    std::istringstream sin(scanner->Next());
+    uint32_t sz;
+    sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
+    result.resize(sz);
+    for (uint32_t i = 0; i < sz; ++i) {
+      DeserializeFromStream(sin, &result[i], dev_ctx);
+    }
   }
-  std::istringstream sin(scanner->Next());
-  uint32_t sz;
-  sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-  auto &result = *result_ptr;
-  result.resize(sz);
-  for (uint32_t i = 0; i < sz; ++i) {
-    DeserializeFromStream(sin, &result[i], dev_ctx);
-  }
-
-  return true;
+  return result;
 }
 
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(

@@ -61,8 +61,6 @@ class TestSequenceSoftmaxOp(OpTest):
 
 
 # ----------------cudnn Sequencesoftmax----------------
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
 class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
     def init_op_type(self):
         self.use_cudnn = True

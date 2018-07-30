@@ -66,9 +66,9 @@ An example implementation for multiple item data reader creator:
 TODO(yuyang18): Should we add whole design doc here?
 """
 
-import paddle.reader.decorator
-from paddle.reader.decorator import *
+import decorator
+from decorator import *
 
-import paddle.reader.creator
+import creator
 
 __all__ = decorator.__all__ + ['creator']

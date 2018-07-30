@@ -36,7 +36,7 @@ except ImportError:
     cv2 = None
 import os
 import tarfile
-import pickle
+import cPickle
 
 __all__ = [
     "load_image_bytes", "load_image", "resize_short", "to_chw", "center_crop",
@@ -86,10 +86,10 @@ def batch_images_from_tar(data_file,
                 output = {}
                 output['label'] = labels
                 output['data'] = data
-                pickle.dump(
+                cPickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'w'),
-                    protocol=pickle.HIGHEST_PROTOCOL)
+                    protocol=cPickle.HIGHEST_PROTOCOL)
                 file_id += 1
                 data = []
                 labels = []
@@ -97,10 +97,10 @@ def batch_images_from_tar(data_file,
         output = {}
         output['label'] = labels
         output['data'] = data
-        pickle.dump(
+        cPickle.dump(
             output,
             open('%s/batch_%d' % (out_path, file_id), 'w'),
-            protocol=pickle.HIGHEST_PROTOCOL)
+            protocol=cPickle.HIGHEST_PROTOCOL)
 
     with open(meta_file, 'a') as meta:
         for file in os.listdir(out_path):

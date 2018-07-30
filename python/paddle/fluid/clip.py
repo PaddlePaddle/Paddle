@@ -15,8 +15,8 @@
 import copy
 
 import functools
-from . import layers
-from . import framework
+import layers
+import framework
 from . import core
 
 __all__ = [
@@ -80,8 +80,9 @@ def error_clip_callback(block, context):
     # the context is a grad_to_var map
     grad_to_var = context
     op_desc = block.desc.op(block.desc.op_size() - 1)
-    for grad_n in [n for n in op_desc.output_arg_names() if n in grad_to_var]:
-        fwd_var = block._var_recursive(grad_to_var[grad_n])
+    for grad_n in filter(lambda n: grad_to_var.has_key(n),
+                         op_desc.output_arg_names()):
+        fwd_var = block.var_recursive(grad_to_var[grad_n])
         error_clip = getattr(fwd_var, "error_clip", None)
         if not (error_clip is None or isinstance(error_clip,
                                                  BaseErrorClipAttr)):
@@ -246,7 +247,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
     """
 
     def __init__(self, clip_norm, group_name="default_group"):
-        if not isinstance(group_name, str):
+        if not isinstance(group_name, basestring):
             raise TypeError("'group_name' must be a basestring.")
 
         self.clip_norm = clip_norm
@@ -283,7 +284,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
                 x=clip_var,
                 y=layers.elementwise_max(
                     x=clip_var, y=group_norm_var))
-            assert group_scale_var.shape == (1, )
+            assert group_scale_var.shape == (1L, )
             self.context[group_scale_name] = group_scale_var
 
         new_grad = layers.elementwise_mul(
@@ -312,7 +313,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
         program = framework.default_main_program()
     if param_list is None:
         param_list = program.block(0).all_parameters()
-    if all(isinstance(elem, str) for elem in param_list):
+    if all(isinstance(elem, basestring) for elem in param_list):
         param_list = [program.block(0).var(elem) for elem in param_list]
     if not all(isinstance(elem, framework.Parameter) for elem in param_list):
         raise TypeError(

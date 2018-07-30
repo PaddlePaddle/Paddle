@@ -45,12 +45,12 @@ class TestPyReader(unittest.TestCase):
             ) else fluid.CPUPlace()
             executor = fluid.Executor(place)
 
-            data_file = fluid.layers.py_reader(
+            data_file, feed_queue = fluid.layers.py_reader(
                 capacity=self.capacity,
                 dtypes=self.dtypes,
                 lod_levels=self.lod_levels,
                 shapes=self.shapes)
-            feed_queue = data_file.queue
+
             read_out_data = fluid.layers.read_file(data_file)
             self.inputs = []
 

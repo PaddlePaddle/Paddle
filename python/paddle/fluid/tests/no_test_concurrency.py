@@ -194,7 +194,7 @@ class TestRoutineOp(unittest.TestCase):
             quit_ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
 
             with fluid.Go():
-                for i in range(10):
+                for i in xrange(10):
                     fluid.channel_recv(ch1, result)
                     Print(result)
 

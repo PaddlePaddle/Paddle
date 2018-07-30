@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
 import functools
 import sys
 
@@ -29,7 +28,7 @@ def deprecated(since, instead, extra_message=""):
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
-            print(err_msg, file=sys.stderr)
+            print >> sys.stderr, err_msg
             return func(*args, **kwargs)
 
         wrapper.__doc__ += "\n    "

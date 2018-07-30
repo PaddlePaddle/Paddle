@@ -85,11 +85,9 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
-                list(
-                    map(pd.read_input, [
-                        first_word, second_word, third_word, forth_word,
-                        next_word
-                    ])))
+                map(pd.read_input, [
+                    first_word, second_word, third_word, forth_word, next_word
+                ]))
             pd.write_output(avg_cost)
 
         avg_cost = fluid.layers.mean(pd())
@@ -204,9 +202,9 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print((results[0].recursive_sequence_lengths()))
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
-        print(("Inference Shape: ", np_data.shape))
+        print("Inference Shape: ", np_data.shape)
 
 
 def main(use_cuda, is_sparse, is_parallel):
@@ -247,7 +245,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
+    if use_cuda and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server

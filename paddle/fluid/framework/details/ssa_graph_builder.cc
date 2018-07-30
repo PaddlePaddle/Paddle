@@ -17,8 +17,8 @@
 namespace paddle {
 namespace framework {
 namespace details {
-void SSAGraphBuilder::PolishGraphToSupportDataHazards(ir::Graph *graph) {
-  for (auto &var_map : graph->Get<GraphVars>("vars")) {
+void SSAGraphBuilder::PolishGraphToSupportDataHazards(SSAGraph *graph) {
+  for (auto &var_map : graph->vars_) {
     for (auto &name_pair : var_map) {
       if (name_pair.second.size() <= 1) {
         continue;
@@ -27,8 +27,8 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(ir::Graph *graph) {
       auto it_old = name_pair.second.rbegin();
       ++it_old;
       for (; it_old != name_pair.second.rend(); it_new = it_old, ++it_old) {
-        OpHandleBase *write_op = (*it_new)->GeneratedOp();
-        const auto &read_ops = (*it_old)->PendingOps();
+        auto *write_op = (*it_new)->generated_op_;
+        auto &read_ops = (*it_old)->pending_ops_;
 
         for (auto *read_op : read_ops) {
           // Manually add a dependency var from read_op to write_op;
@@ -36,21 +36,11 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(ir::Graph *graph) {
             // Read Write is the same op.
             continue;
           }
-          bool has_dep = false;
-          for (auto *r_out : read_op->Outputs()) {
-            for (auto *w_in : write_op->Inputs()) {
-              if (r_out->Node() == w_in->Node()) {
-                has_dep = true;
-                break;
-              }
-            }
-          }
-          if (has_dep) continue;
 
-          auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
+          auto *dep_var = new DummyVarHandle();
           read_op->AddOutput(dep_var);
           write_op->AddInput(dep_var);
-          graph->Get<GraphDepVars>("dep_vars").emplace(dep_var);
+          graph->dep_vars_.emplace(dep_var);
         }
       }
     }
@@ -58,20 +48,13 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(ir::Graph *graph) {
 }
 
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
-    ir::Graph *graph, ir::Node *node, const platform::Place &place,
-    size_t place_offset) {
-  auto &var_holders = graph->Get<GraphVars>("vars")[place_offset];
-  auto &var_holder = var_holders[node->Name()];
+    SSAGraph *graph, const std::string &each_var_name,
+    const platform::Place &place, size_t place_offset) {
+  auto &var_holders = graph->vars_[place_offset];
+  auto &var_holder = var_holders[each_var_name];
   VarHandle *var = nullptr;
   if (var_holder.empty()) {
-    if (node->Var()) {
-      var = new VarHandle(graph->CreateVarNode(node->Var()), 0, place_offset,
-                          node->Name(), place);
-    } else {
-      var = new VarHandle(
-          graph->CreateEmptyNode(node->Name(), ir::Node::Type::kVariable), 0,
-          place_offset, node->Name(), place);
-    }
+    var = new VarHandle(0, place_offset, each_var_name, place);
     var_holder.emplace_back(var);
   } else {
     var = var_holder.rbegin()->get();
@@ -79,25 +62,24 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   return var;
 }
 
-void SSAGraphBuilder::CreateOpOutput(ir::Graph *graph, OpHandleBase *op_handle,
-                                     ir::Node *new_node,
+void SSAGraphBuilder::CreateOpOutput(SSAGraph *graph, OpHandleBase *op_handle,
+                                     const std::string &each_var_name,
                                      const platform::Place &place,
                                      size_t place_offset) {
-  auto &vars = graph->Get<GraphVars>("vars")[place_offset][new_node->Name()];
+  auto &vars = graph->vars_[place_offset][each_var_name];
   size_t version = vars.size();
-  auto var =
-      new VarHandle(new_node, version, place_offset, new_node->Name(), place);
+  auto var = new VarHandle(version, place_offset, each_var_name, place);
   vars.emplace_back(var);
   op_handle->AddOutput(var);
 }
 
-void SSAGraphBuilder::AddOutputToLeafOps(ir::Graph *graph) {
-  for (auto &op : graph->Get<GraphOps>("ops")) {
+void SSAGraphBuilder::AddOutputToLeafOps(SSAGraph *graph) {
+  for (auto &op : graph->ops_) {
     if (!op->Outputs().empty()) {
       continue;
     }
-    auto *dummy_leaf = new DummyVarHandle(graph->CreateControlDepVar());
-    graph->Get<GraphDepVars>("dep_vars").emplace(dummy_leaf);
+    auto *dummy_leaf = new DummyVarHandle();
+    graph->dep_vars_.emplace(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }
 }

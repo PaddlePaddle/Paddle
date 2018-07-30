@@ -33,14 +33,11 @@ class RecordIOFileReader : public framework::FileReader {
 
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
-    std::unique_ptr<std::lock_guard<std::mutex>> guard;
     if (ThreadSafe) {
-      guard.reset(new std::lock_guard<std::mutex>(*mutex_));
-    }
-
-    bool ok = framework::ReadFromRecordIO(&scanner_, dev_ctx_, out);
-    if (!ok) {
-      out->clear();
+      std::lock_guard<std::mutex> guard(*mutex_);
+      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
+    } else {
+      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
     }
   }
 

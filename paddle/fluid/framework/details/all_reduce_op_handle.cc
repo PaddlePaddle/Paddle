@@ -23,14 +23,10 @@ namespace framework {
 namespace details {
 
 #ifdef PADDLE_WITH_CUDA
-AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
-                                     const std::vector<Scope *> &local_scopes,
+AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs)
-    : OpHandleBase(node),
-      local_scopes_(local_scopes),
-      places_(places),
-      nccl_ctxs_(ctxs) {
+    : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
@@ -38,10 +34,9 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
   }
 }
 #else
-AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
-                                     const std::vector<Scope *> &local_scopes,
+AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
-    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
+    : local_scopes_(local_scopes), places_(places) {}
 #endif
 
 void AllReduceOpHandle::RunImpl() {

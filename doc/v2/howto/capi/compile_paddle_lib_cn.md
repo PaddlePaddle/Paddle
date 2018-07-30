@@ -22,23 +22,23 @@
 </tr>
 <tr>
 <td>cpu_noavx_openblas</td>
-<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddle.tgz/?branch=0.14.0" rel="nofollow">paddle.tgz</a></td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
 </tr>
 <tr>
 <td>cuda7.5_cudnn5_avx_mkl</td>
-<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz/?branch=0.14.0" rel="nofollow">paddle.tgz</a></td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda75cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
 </tr>
 <tr>
 <td>cuda8.0_cudnn5_avx_mkl</td>
-<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz/?branch=0.14.0" rel="nofollow">paddle.tgz</a></td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
 </tr>
 <tr>
 <td>cuda8.0_cudnn7_avx_mkl</td>
-<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz/?branch=0.14.0" rel="nofollow">paddle.tgz</a></td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
 </tr>
 <tr>
 <td>cuda9.0_cudnn7_avx_mkl</td>
-<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda90cudnn7avxMkl/.lastSuccessful/paddle.tgz/?branch=0.14.0" rel="nofollow">paddle.tgz</a></td>
+<td><a href="https://guest:@paddleci.ngrok.io/repository/download/Manylinux1_Cuda90cudnn7avxMkl/.lastSuccessful/paddle.tgz" rel="nofollow">paddle.tgz</a></td>
 </tr>
 </tbody></table>
 

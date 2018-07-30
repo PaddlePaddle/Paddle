@@ -13,8 +13,10 @@
 # limitations under the License.
 
 from ..framework import Variable, unique_name
-from .layer_function_generator import OpProtoHolder
+from layer_function_generator import OpProtoHolder
 from ..initializer import force_init_on_cpu
+
+__all__ = ['monkey_patch_variable']
 
 
 def monkey_patch_variable():

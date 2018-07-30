@@ -17,12 +17,6 @@ import paddle
 import unittest
 import numpy
 
-from paddle.fluid.layers.control_flow import lod_rank_table
-from paddle.fluid.layers.control_flow import max_sequence_len
-from paddle.fluid.layers.control_flow import lod_tensor_to_array
-from paddle.fluid.layers.control_flow import array_to_lod_tensor
-from paddle.fluid.layers.control_flow import shrink_memory
-
 
 class TestDynRNN(unittest.TestCase):
     def setUp(self):
@@ -44,11 +38,12 @@ class TestDynRNN(unittest.TestCase):
 
             label = fluid.layers.data(name='label', shape=[1], dtype='float32')
 
-            rank_table = lod_rank_table(x=sent_emb)
+            rank_table = fluid.layers.lod_rank_table(x=sent_emb)
 
-            sent_emb_array = lod_tensor_to_array(x=sent_emb, table=rank_table)
+            sent_emb_array = fluid.layers.lod_tensor_to_array(
+                x=sent_emb, table=rank_table)
 
-            seq_len = max_sequence_len(rank_table=rank_table)
+            seq_len = fluid.layers.max_sequence_len(rank_table=rank_table)
             i = fluid.layers.fill_constant(shape=[1], dtype='int64', value=0)
             i.stop_gradient = False
 
@@ -71,7 +66,7 @@ class TestDynRNN(unittest.TestCase):
                 mem = fluid.layers.array_read(array=mem_array, i=i)
                 ipt = fluid.layers.array_read(array=sent_emb_array, i=i)
 
-                mem = shrink_memory(x=mem, i=i, table=rank_table)
+                mem = fluid.layers.shrink_memory(x=mem, i=i, table=rank_table)
 
                 hidden = fluid.layers.fc(input=[mem, ipt], size=100, act='tanh')
 
@@ -80,7 +75,8 @@ class TestDynRNN(unittest.TestCase):
                 fluid.layers.array_write(x=hidden, i=i, array=mem_array)
                 fluid.layers.less_than(x=i, y=seq_len, cond=cond)
 
-            all_timesteps = array_to_lod_tensor(x=out, table=rank_table)
+            all_timesteps = fluid.layers.array_to_lod_tensor(
+                x=out, table=rank_table)
             last = fluid.layers.sequence_last_step(input=all_timesteps)
             logits = fluid.layers.fc(input=last, size=1, act=None)
             loss = fluid.layers.sigmoid_cross_entropy_with_logits(

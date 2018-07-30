@@ -81,7 +81,7 @@ class PoolCUDNNOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn pool algorithm ---------------------
     auto handle = ctx.cuda_device_context().cudnn_handle();
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
-    CUDNN_ENFORCE(platform::dynload::cudnnPoolingForward(
+    PADDLE_ENFORCE(platform::dynload::cudnnPoolingForward(
         handle, cudnn_pool_desc, &alpha, cudnn_input_desc, input_data, &beta,
         cudnn_output_desc, output_data));
   }
@@ -154,7 +154,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
       T *input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
 
-      CUDNN_ENFORCE(platform::dynload::cudnnPoolingBackward(
+      PADDLE_ENFORCE(platform::dynload::cudnnPoolingBackward(
           handle, cudnn_pool_desc, &alpha, cudnn_output_desc, output_data,
           cudnn_output_desc, output_grad_data, cudnn_input_desc, input_data,
           &beta, cudnn_input_desc, input_grad_data));

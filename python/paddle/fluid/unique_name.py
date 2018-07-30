@@ -67,7 +67,7 @@ def switch(new_generator=None):
 
 @contextlib.contextmanager
 def guard(new_generator=None):
-    if isinstance(new_generator, str):
+    if isinstance(new_generator, basestring):
         new_generator = UniqueNameGenerator(new_generator)
     old = switch(new_generator)
     yield

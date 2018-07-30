@@ -17,7 +17,6 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/details/var_handle.h"
-#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -27,11 +26,9 @@ namespace details {
 
 constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 
-// Wraps ir::Node and provide helper utilities.
-// It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
-  explicit OpHandleBase(ir::Node *node) : node_(node) {}
+  OpHandleBase() {}
 
   virtual ~OpHandleBase();
 
@@ -85,8 +82,6 @@ class OpHandleBase {
 
   size_t NoDummyInputSize() const;
 
-  ir::Node *Node() { return node_; }
-
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
 
@@ -95,7 +90,6 @@ class OpHandleBase {
 
   virtual void RunImpl() = 0;
 
-  ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
   std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;

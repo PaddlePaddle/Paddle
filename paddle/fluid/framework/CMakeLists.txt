@@ -1,5 +1,4 @@
 add_subdirectory(details)
-add_subdirectory(ir)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -22,12 +21,7 @@ endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
-if(WITH_GPU)
-  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
-else()
-  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
-endif()
-
+nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place memory device_context tensor)
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -99,7 +93,7 @@ else()
 endif()
 
 
-cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor graph)
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)

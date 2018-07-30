@@ -15,20 +15,20 @@
 Dataset package.
 """
 
-import paddle.dataset.mnist
-import paddle.dataset.imikolov
-import paddle.dataset.imdb
-import paddle.dataset.cifar
-import paddle.dataset.movielens
-import paddle.dataset.conll05
-import paddle.dataset.uci_housing
-import paddle.dataset.sentiment
-import paddle.dataset.wmt14
-import paddle.dataset.wmt16
-import paddle.dataset.mq2007
-import paddle.dataset.flowers
-import paddle.dataset.voc2012
-import paddle.dataset.image
+import mnist
+import imikolov
+import imdb
+import cifar
+import movielens
+import conll05
+import uci_housing
+import sentiment
+import wmt14
+import wmt16
+import mq2007
+import flowers
+import voc2012
+import image
 
 __all__ = [
     'mnist',

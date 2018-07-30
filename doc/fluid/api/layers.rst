@@ -1768,11 +1768,3 @@ reverse
 ..  autofunction:: paddle.fluid.layers.reverse
     :noindex:
 
-.. _api_fluid_layers_rank_loss:
-
-rank_loss
--------
-
-..  autofunction:: paddle.fluid.layers.rank_loss
-    :noindex:
-

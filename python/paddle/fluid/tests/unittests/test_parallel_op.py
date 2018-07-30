@@ -120,7 +120,7 @@ class BaseParallelForTest(unittest.TestCase):
                 pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
                 data = next(generator)
 
-                if isinstance(data, fluid.framework.Variable):
+                if isinstance(data, fluid.Variable):
                     data = [data]
 
                 with pd.do():

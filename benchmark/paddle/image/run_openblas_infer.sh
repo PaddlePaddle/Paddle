@@ -1,5 +1,3 @@
-#!/bin/bash
-
 set -e
 
 function clock_to_seconds() {

@@ -19,10 +19,9 @@
 namespace paddle {
 namespace framework {
 namespace details {
-ComputationOpHandle::ComputationOpHandle(ir::Node *node, Scope *scope,
+ComputationOpHandle::ComputationOpHandle(const OpDesc &op_desc, Scope *scope,
                                          platform::Place place)
-    : OpHandleBase(node),
-      op_(framework::OpRegistry::CreateOp(*node->Op())),
+    : op_(framework::OpRegistry::CreateOp(op_desc)),
       scope_(scope),
       place_(place) {}
 
@@ -36,8 +35,8 @@ void ComputationOpHandle::RunImpl() {
 
 bool ComputationOpHandle::NeedWait(VarHandleBase *in_var) {
   bool need_wait =
-      in_var && in_var->GeneratedOp() &&
-      in_var->GeneratedOp()->DeviceContext(place_) != dev_ctxes_[place_];
+      in_var && in_var->generated_op_ &&
+      in_var->generated_op_->DeviceContext(place_) != dev_ctxes_[place_];
   return need_wait;
 }
 

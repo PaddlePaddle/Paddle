@@ -80,21 +80,19 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 
 void OpHandleBase::AddInput(VarHandleBase *in) {
   this->inputs_.emplace_back(in);
-  node_->inputs.push_back(in->Node());
-  in->AddOutput(this, this->Node());
+  in->pending_ops_.insert(this);
 }
 
 void OpHandleBase::AddOutput(VarHandleBase *out) {
   outputs_.emplace_back(out);
-  node_->outputs.push_back(out->Node());
-  out->AddInput(this, this->Node());
+  out->generated_op_ = this;
 }
 
 void OpHandleBase::WaitInputVarGenerated() {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
       for (auto &pair : dev_ctxes_) {
-        in_var->GeneratedOp()->RecordWaitEventOnCtx(pair.second);
+        in_var->generated_op_->RecordWaitEventOnCtx(pair.second);
       }
     }
   }
@@ -103,7 +101,7 @@ void OpHandleBase::WaitInputVarGenerated() {
 void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
   for (auto *in : inputs_) {
     if (NeedWait(in)) {
-      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[place]);
+      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[place]);
     }
   }
 }
@@ -119,7 +117,7 @@ size_t OpHandleBase::NoDummyInputSize() const {
 }
 
 bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
-  return in_var && in_var->GeneratedOp();
+  return in_var && in_var->generated_op_;
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {

@@ -25,6 +25,8 @@
 namespace paddle {
 namespace framework {
 
+enum ReaderStatus { kRunning, kStopped };
+
 class ReaderBase {
  public:
   virtual void ReadNext(std::vector<LoDTensor>* out);
@@ -45,8 +47,6 @@ class ReaderBase {
   virtual void ShutdownImpl() {}
 
   virtual void StartImpl() {}
-
-  enum ReaderStatus { kRunning, kStopped };
 
   ReaderStatus status_{kRunning};
 
@@ -73,8 +73,6 @@ class DecoratedReader : public ReaderBase,
   void RegisterDecorateChain() {
     reader_->InsertDecoratedReader(shared_from_this());
   }
-
-  ~DecoratedReader();
 
  protected:
   void ShutdownImpl() override { reader_->Shutdown(); }

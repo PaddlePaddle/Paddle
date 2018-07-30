@@ -80,7 +80,7 @@ RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install opencv-python
 
 #For docstring checker
-RUN pip install pylint pytest astroid isort LinkChecker
+RUN pip install pylint pytest astroid isort
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt

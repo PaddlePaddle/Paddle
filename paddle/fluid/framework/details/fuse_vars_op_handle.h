@@ -30,12 +30,10 @@ namespace details {
 
 struct FuseVarsOpHandle : public OpHandleBase {
  public:
-  FuseVarsOpHandle(ir::Node *node, Scope *local_scope,
-                   const platform::Place &place,
+  FuseVarsOpHandle(Scope *local_scope, const platform::Place &place,
                    const std::unordered_map<std::string, int64_t> &inputs_numel,
                    const std::type_index &var_type)
-      : OpHandleBase(node),
-        local_scope_(local_scope),
+      : local_scope_(local_scope),
         place_(place),
         inputs_numel_(inputs_numel),
         type_(var_type) {

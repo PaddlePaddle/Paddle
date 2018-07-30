@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layers import data
-from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers import lod_rank_table, data
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
 import numpy

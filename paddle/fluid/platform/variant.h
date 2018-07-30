@@ -38,7 +38,6 @@ limitations under the License. */
 #endif
 #endif
 
-#include <boost/any.hpp>
 #include <boost/mpl/comparison.hpp>
 #include <boost/mpl/less_equal.hpp>
 #include <boost/variant.hpp>

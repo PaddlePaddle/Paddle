@@ -61,8 +61,6 @@ static void ParallelExecuteBlocks(
         framework::Async([&executor, &prepared, &program, &scope, idx]() {
           int run_block = idx;  // thread local
           try {
-            VLOG(3) << "running server block: " << run_block
-                    << "pointer: " << prepared[run_block].get();
             executor->RunPreparedContext(prepared[run_block].get(), scope);
           } catch (const std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
@@ -109,14 +107,12 @@ void ListenAndServOp::RunSyncLoop(
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  // Prepare all the server block
-  std::vector<int> optimize_blocks_list;
-  for (size_t i = 1; i < program->Size(); ++i) {
-    optimize_blocks_list.push_back(i);
+  std::vector<int> optimize_blocks_idx;
+  for (auto blk : optimize_blocks) {
+    optimize_blocks_idx.push_back(blk->ID());
   }
-  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_list);
-  // Insert placeholder for block0 which holds current op itself,
-  // NOTE the first block in `optimize_prepared` should never be ran.
+  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_idx);
+  // Insert placeholder for block0 which holds current op itself.
   optimize_prepared.insert(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));

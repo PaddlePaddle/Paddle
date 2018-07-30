@@ -133,7 +133,7 @@ struct GraphTraits<DataFlowGraph> {
 
    private:
     std::vector<Node *> sorted_;
-    size_t cursor_{0};
+    int cursor_{0};
   };
 
   explicit GraphTraits(DataFlowGraph *graph) : graph_(graph) {}
@@ -173,8 +173,36 @@ struct GraphTraits<DataFlowGraph> {
 // Extract the inputs and outputs of a graph. The inputs and outputs of a
 // sub-graph is the inputs nodes and output nodes that doesn't inside the
 // sub-graph.
-std::pair<std::vector<Node *>, std::vector<Node *>>
-ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);
+static std::pair<std::vector<Node *>, std::vector<Node *>>
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
+  std::unordered_set<Node *> nodes(graph.begin(), graph.end());
+  std::unordered_set<Node *> inputs;
+  std::unordered_set<Node *> outputs;
+  // Input a Value, check whether its inlink is in the subgraph.
+  auto inlink_in_subgraph = [&](Node *n) {
+    for (auto *in : n->inlinks) {
+      if (nodes.count(in)) return true;
+    }
+    return false;
+  };
+  for (auto &node : graph) {
+    for (auto *in : node->inlinks) {
+      // The Value that is written by nodes inside a sub-graph shouldn't be the
+      // input of the sub-graph.
+      if (!nodes.count(in) && in->type() == Node::Type::kValue &&
+          !inlink_in_subgraph(in)) {
+        inputs.insert(in);
+      }
+    }
+    for (auto *out : node->outlinks) {
+      if (!nodes.count(out) && out->type() == Node::Type::kValue) {
+        outputs.insert(out);
+      }
+    }
+  }
+  return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
+                        std::vector<Node *>(outputs.begin(), outputs.end()));
+}
 
 }  // namespace analysis
 }  // namespace inference

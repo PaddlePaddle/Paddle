@@ -44,11 +44,17 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+#ifdef PADDLE_WITH_DISTRIBUTE
   /*
-   * Close this Executor.
-   * Calling this method will send complete messages to all pserver instances.
+   * Sending signal to pserver to mark current pass started.
    */
-  void Close();
+  void BeginPass();
+
+  /*
+   * Sending signal to pserver to mark current pass finished.
+   */
+  void EndPass();
+#endif
 
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope

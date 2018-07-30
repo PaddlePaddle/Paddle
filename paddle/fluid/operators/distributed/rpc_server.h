@@ -44,7 +44,7 @@ class RPCServer {
 
   int GetSelectedPort() const { return selected_port_; }
 
-  int GetClientNum();
+  int GetClientNum() const;
 
   void SavePort() const;
 
@@ -64,7 +64,8 @@ class RPCServer {
   void WaitCond(const std::string& rpc_name);
   void IncreaseBatchBarrier(const std::string rpc_name);
 
-  void Complete();
+  void BeginPass();
+  void EndPass();
 
   void ResetBarrierCounter();
 

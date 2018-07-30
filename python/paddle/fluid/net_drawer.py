@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 try:
-    from .graphviz import Digraph
+    from graphviz import Digraph
 except ImportError:
     logger.info(
         'Cannot import graphviz, which is required for drawing a network. This '
@@ -77,7 +77,7 @@ def parse_graph(program, graph, var_dict, **kwargs):
     # fill the known variables
     for block in program.blocks:
         for var in block.vars:
-            if var not in var_dict:
+            if not var_dict.has_key(var):
                 var_dict[var] = "Feed"
 
     temp_id = 0
@@ -93,17 +93,17 @@ def parse_graph(program, graph, var_dict, **kwargs):
                     var_dict[arg] = op.type
             for e in op.inputs:
                 for arg in e.arguments:
-                    if arg in var_dict:
+                    if var_dict.has_key(arg):
                         graph.edge(**draw_edge(var_dict, op, e, arg))
         break  # only plot the first block
 
 
 def draw_graph(startup_program, main_program, **kwargs):
-    if "graph_attr" in kwargs:
+    if kwargs.has_key("graph_attr"):
         GRAPH_STYLE.update(kwargs[graph_attr])
-    if "node_attr" in kwargs:
+    if kwargs.has_key("node_attr"):
         OP_STYLE.update(kwargs[node_attr])
-    if "edge_attr" in kwargs:
+    if kwargs.has_key("edge_attr"):
         VAR_STYLE.update(kwargs[edge_attr])
 
     graph_id = unique_id()

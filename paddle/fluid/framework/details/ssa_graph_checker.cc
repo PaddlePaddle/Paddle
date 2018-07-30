@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/ssa_graph_checker.h"
+#include "paddle/fluid/framework/details/ssa_graph.h"
 #include <string>
-#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/details/ssa_graph_checker.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
+bool SSAGraghBuilderWithChecker::IsValidGraph(const SSAGraph *graph) const {
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   std::unordered_set<VarHandleBase *> ready_vars;
@@ -28,12 +28,12 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 
   auto insert_pending_var = [&](VarHandleBase *var) {
     pending_vars.insert(var);
-    if (var->GeneratedOp() == nullptr) {
+    if (var->generated_op_ == nullptr) {
       ready_vars.emplace(var);
     }
   };
 
-  for (auto &var_map : graph->Get<GraphVars>("vars")) {
+  for (auto &var_map : graph->vars_) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
         insert_pending_var(version_pair.get());
@@ -41,11 +41,11 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
     }
   }
 
-  for (auto &var : graph->Get<GraphDepVars>("dep_vars")) {
+  for (auto &var : graph->dep_vars_) {
     insert_pending_var(var.get());
   }
 
-  for (auto &op : graph->Get<GraphOps>("ops")) {
+  for (auto &op : graph->ops_) {
     if (op->Inputs().empty()) {
       ready_ops.insert(op.get());
     } else {
@@ -71,7 +71,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 
     for (auto ready_var : ready_vars) {
       pending_vars.erase(ready_var);
-      for (auto *op : ready_var->PendingOps()) {
+      for (auto *op : ready_var->pending_ops_) {
         auto &deps = --pending_ops[op];
         if (deps == 0) {
           ready_ops.insert(op);

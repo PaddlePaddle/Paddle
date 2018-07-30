@@ -12,200 +12,150 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cmath>
-#include <stdexcept>
 #include <thread>  // NOLINT
-#include "ThreadPool.h"
-#include "paddle/fluid/framework/blocking_queue.h"
+
 #include "paddle/fluid/operators/reader/blocking_queue.h"
-#include "paddle/fluid/operators/reader/buffered_reader.h"
 #include "paddle/fluid/operators/reader/reader_op_registry.h"
 
 namespace paddle {
 namespace operators {
 namespace reader {
 
-class IReaderContainer {
- public:
-  virtual ~IReaderContainer() {}
-  virtual void AppendReader(
-      std::unique_ptr<framework::ReaderBase>&& readers) = 0;
-  virtual void Stop() = 0;
-  virtual void Start() = 0;
-  virtual void ReadNext(std::vector<framework::LoDTensor>* out) = 0;
-};
-
-class OrderedReaderContainer : public IReaderContainer {
- public:
-  void AppendReader(std::unique_ptr<framework::ReaderBase>&& reader) override {
-    pending_.emplace(std::move(reader));
-  }
-
-  void Stop() override {
-    while (!pending_.empty()) {
-      MoveFrontPendingToDone();
-    }
-  }
-
-  void Start() override { std::swap(done_, pending_); }
-
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!pending_.empty()) {
-      pending_.front()->ReadNext(out);
-      if (out->empty()) {
-        MoveFrontPendingToDone();
-        ReadNext(out);
-      }
-    } else {
-      out->clear();
-    }
-  }
-
- private:
-  void MoveFrontPendingToDone() {
-    pending_.front()->Shutdown();
-    pending_.front()->Start();
-    done_.emplace(move(pending_.front()));
-    pending_.pop();
-  }
-
-  std::queue<std::unique_ptr<framework::ReaderBase>> pending_;
-  std::queue<std::unique_ptr<framework::ReaderBase>> done_;
-};
-
-class PreemptiveReaderContainer : public IReaderContainer {
-  using ReaderList = std::list<std::unique_ptr<framework::ReaderBase>>;
-
-  struct FutureItem {
-    std::vector<framework::LoDTensor> data_;
-    ReaderList::iterator reader_it_;
-    std::exception_ptr exception_;
-  };
-
-  using FutureList = std::list<std::future<FutureItem>>;
-
- public:
-  explicit PreemptiveReaderContainer(size_t thread_num) : pool_(thread_num) {}
-
-  void Stop() override {
-    if (!pending_.empty()) {
-      for (auto& reader : pending_) {
-        reader->Shutdown();
-      }
-      for (auto& fu : futures_) {
-        fu.wait();
-      }
-      futures_.clear();
-      for (auto& reader : pending_) {
-        reader->Start();
-        done_.emplace_back(std::move(reader));
-      }
-      pending_.clear();
-      bool timeout;
-      complete_queue_.PopAll(1000, &timeout);
-      PADDLE_ENFORCE(!timeout);
-    }
-  }
-
-  void Start() override {
-    for (auto& reader : done_) {
-      AppendReader(std::move(reader));
-    }
-    done_.clear();
-  }
-
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
-    if (!pending_.empty()) {
-      auto future_it = complete_queue_.Pop();
-      FutureItem item = future_it->get();
-      if (item.exception_) {
-        for (auto it = futures_.begin(); it != futures_.end(); ++it) {
-          if (it != future_it) {
-            it->wait();  // Wait all other threads complete.
-          }
-        }
-        std::rethrow_exception(item.exception_);
-
-      } else if (item.data_.empty()) {  // reader done.
-        done_.emplace_back(std::move(*item.reader_it_));
-        pending_.erase(item.reader_it_);
-        futures_.erase(future_it);
-        ReadNext(out);
-      } else {
-        *out = item.data_;
-        // continue read async
-        ReadAsync(item.reader_it_, &future_it);
-      }
-    } else {
-      out->clear();
-    }
-  }
-
- private:
-  void AppendReader(std::unique_ptr<framework::ReaderBase>&& reader) override {
-    pending_.emplace_back(std::move(reader));
-    auto reader_it = pending_.end();
-    --reader_it;
-
-    futures_.emplace_back();
-    auto future_it = futures_.end();
-    --future_it;
-
-    ReadAsync(reader_it, &future_it);
-  }
-
-  void ReadAsync(const ReaderList::iterator& reader_it,
-                 FutureList::iterator* future_it_ptr) {
-    auto& future_it = *future_it_ptr;
-    *future_it = pool_.enqueue([reader_it, future_it, this] {
-      try {
-        FutureItem item;
-        item.reader_it_ = reader_it;
-        (*reader_it)->ReadNext(&item.data_);
-        if (item.data_.empty()) {
-          (*reader_it)->Shutdown();
-          (*reader_it)->Start();
-        }
-        complete_queue_.Push(future_it);
-        return item;
-      } catch (...) {
-        FutureItem item;
-        item.exception_ = std::current_exception();
-        complete_queue_.Push(future_it);
-        return item;
-      }
-    });
-  }
-
-  FutureList futures_;
-  ThreadPool pool_;
-  framework::BlockingQueue<FutureList::iterator> complete_queue_;
-  std::list<std::unique_ptr<framework::ReaderBase>> pending_;
-  std::list<std::unique_ptr<framework::ReaderBase>> done_;
-};
-
 class MultiFileReader : public framework::ReaderBase {
  public:
-  MultiFileReader(const std::vector<std::string>& file_names,
-                  std::unique_ptr<IReaderContainer>&& container)
-      : container_(std::move(container)) {
-    for (auto& fn : file_names) {
-      container_->AppendReader(CreateReaderByFileName(fn));
+  MultiFileReader(const std::vector<std::string>& file_names, size_t thread_num,
+                  size_t buffer_size)
+      : buffer_size_(buffer_size) {
+    readers_.reserve(file_names.size());
+    for (const std::string& f_name : file_names) {
+      readers_.emplace_back(CreateReaderByFileName(f_name));
+    }
+    prefetchers_.resize(thread_num);
+    StartNewScheduler();
+  }
+
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override;
+
+  ~MultiFileReader() { EndScheduler(); }
+
+ private:
+  void ShutdownImpl() override { EndScheduler(); }
+
+  void StartImpl() override { StartNewScheduler(); }
+
+  void StartNewScheduler();
+  void EndScheduler();
+  void ScheduleThreadFunc();
+  void PrefetchThreadFunc(size_t reader_idx, size_t thread_idx);
+
+  std::vector<std::unique_ptr<framework::ReaderBase>> readers_;
+  std::thread scheduler_;
+  std::vector<std::thread> prefetchers_;
+  size_t buffer_size_;
+  reader::BlockingQueue<size_t>* waiting_reader_idx_;
+  reader::BlockingQueue<size_t>* available_thread_idx_;
+  reader::BlockingQueue<std::vector<framework::LoDTensor>>* buffer_;
+};
+
+void MultiFileReader::ReadNextImpl(std::vector<framework::LoDTensor>* out) {
+  if (!buffer_->Receive(out)) {
+    out->clear();
+  }
+}
+
+void MultiFileReader::StartNewScheduler() {
+  size_t thread_num = prefetchers_.size();
+  waiting_reader_idx_ = new reader::BlockingQueue<size_t>(readers_.size());
+  available_thread_idx_ = new reader::BlockingQueue<size_t>(thread_num);
+  buffer_ = new reader::BlockingQueue<std::vector<framework::LoDTensor>>(
+      buffer_size_);
+
+  for (size_t i = 0; i < readers_.size(); ++i) {
+    waiting_reader_idx_->Send(i);
+  }
+  waiting_reader_idx_->Close();
+  for (size_t i = 0; i < thread_num; ++i) {
+    available_thread_idx_->Send(i);
+  }
+
+  scheduler_ = std::thread([this] { ScheduleThreadFunc(); });
+}
+
+void MultiFileReader::EndScheduler() {
+  available_thread_idx_->Close();
+  buffer_->Close();
+  waiting_reader_idx_->Close();
+  if (scheduler_.joinable()) {
+    scheduler_.join();
+  }
+  delete buffer_;
+  delete available_thread_idx_;
+  delete waiting_reader_idx_;
+}
+
+void MultiFileReader::ScheduleThreadFunc() {
+  VLOG(5) << "MultiFileReader schedule thread starts.";
+  size_t completed_thread_num = 0;
+  size_t thread_idx;
+  while (available_thread_idx_->Receive(&thread_idx)) {
+    std::thread& prefetcher = prefetchers_[thread_idx];
+    if (prefetcher.joinable()) {
+      prefetcher.join();
+    }
+    size_t reader_idx;
+    if (waiting_reader_idx_->Receive(&reader_idx)) {
+      // Still have files to read. Start a new prefetch thread.
+      prefetcher = std::thread([this, reader_idx, thread_idx] {
+        PrefetchThreadFunc(reader_idx, thread_idx);
+      });
+    } else {
+      // No more file to read.
+      ++completed_thread_num;
+      if (completed_thread_num == prefetchers_.size()) {
+        buffer_->Close();
+        break;
+      }
+    }
+  }
+  // If users invoke Shutdown() when scheduler is running, it will close the
+  // 'avaiable_thread_idx_' and prefecther threads have no way to tell scheduler
+  // to release their resource. So a check is needed before scheduler ends.
+  for (auto& p : prefetchers_) {
+    if (p.joinable()) {
+      p.join();
+    }
+  }
+  VLOG(5) << "MultiFileReader schedule thread terminates.";
+}
+
+void MultiFileReader::PrefetchThreadFunc(size_t reader_idx, size_t thread_idx) {
+  VLOG(5) << "The prefetch thread of file idx '" << reader_idx << "' starts.";
+  std::unique_ptr<framework::ReaderBase>& reader = readers_[reader_idx];
+  while (true) {
+    std::vector<framework::LoDTensor> ins;
+    reader->ReadNext(&ins);
+    if (ins.empty()) {
+      reader->Shutdown();
+      reader->Start();
+      break;
+    }
+    try {
+      buffer_->Send(std::move(ins));
+    } catch (paddle::platform::EnforceNotMet e) {
+      VLOG(5) << "WARNING: The buffer channel has been closed. The prefetch "
+                 "thread of file idx '"
+              << reader_idx << "' will terminate.";
+      break;
     }
   }
 
-  ~MultiFileReader() { container_->Stop(); }
-
- protected:
-  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
-    container_->ReadNext(out);
+  if (!available_thread_idx_->Send(thread_idx)) {
+    VLOG(5) << "WARNING: The available_thread_idx_ channel has been closed. "
+               "Fail to send thread_idx.";
   }
-  void ShutdownImpl() override { container_->Stop(); }
-  void StartImpl() override { container_->Start(); }
-
- private:
-  std::unique_ptr<IReaderContainer> container_;
-};
+  VLOG(5) << "The prefetch thread of file idx '" << reader_idx
+          << "' terminates.";
+}
 
 class OpenFilesOp : public framework::OperatorBase {
  public:
@@ -223,27 +173,13 @@ class OpenFilesOp : public framework::OperatorBase {
                       "shape concat's length.");
     const auto& file_names = Attr<std::vector<std::string>>("file_names");
     PADDLE_ENFORCE(!file_names.empty(), "No file to be read!");
-    bool is_test = Attr<bool>("is_test");
+    const size_t thread_num = Attr<int>("thread_num");
+    const size_t buffer_size = Attr<int>("buffer_size");
 
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
-    std::unique_ptr<IReaderContainer> container;
-
-    if (is_test) {
-      container.reset(new OrderedReaderContainer());
-    } else {
-      container.reset(new PreemptiveReaderContainer(
-          static_cast<size_t>(Attr<int>("thread_num"))));
-    }
-
-    std::shared_ptr<framework::ReaderBase> reader(
-        new MultiFileReader(file_names, std::move(container)));
-    auto buffer_size = Attr<int>("buffer_size");
-    if (buffer_size > 1) {
-      reader = framework::MakeDecoratedReader<BufferedReader>(
-          reader, platform::CPUPlace(), buffer_size);
-    }
-    out->Reset(reader);
+    out->Reset(
+        std::make_shared<MultiFileReader>(file_names, thread_num, buffer_size));
   }
 };
 
@@ -251,7 +187,9 @@ class OpenFilesOpMaker : public FileReaderMakerBase {
  protected:
   void Apply() override {
     AddAttr<std::vector<std::string>>("file_names", "Files to be read.");
-    AddAttr<bool>("is_test", "Used for testing data.").SetDefault(false);
+    AddAttr<int>("thread_num", "The maximal concurrent prefetch thread number.")
+        .GreaterThan(0);
+    AddAttr<int>("buffer_size", "The size of prefetch buffer.").GreaterThan(0);
 
     AddComment(R"DOC(
       OpenFiles Operator
@@ -259,11 +197,6 @@ class OpenFilesOpMaker : public FileReaderMakerBase {
       An OpenFilesOp creates a MultiFileReader, which is able to
       read data multi-threaded from multiple files.
     )DOC");
-    AddAttr<int>("thread_num",
-                 "The maximal concurrent prefetch thread number. Used only "
-                 "when is_test = False");
-    AddAttr<int>("buffer_size", "The reading buffer of these files.")
-        .GreaterThan(0);
   }
 };
 

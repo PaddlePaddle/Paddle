@@ -25,9 +25,6 @@ TensorRTSubGraphPass::TensorRTSubGraphPass(
 
 void TensorRTSubGraphPass::Run(DataFlowGraph *graph) {
   SubGraphFuse(graph, node_inside_subgraph_teller_)();
-  VLOG(4) << "debug info "
-          << graph->HumanReadableInfo(false /*show_values*/,
-                                      true /*show_functions*/);
 }
 
 }  // namespace analysis

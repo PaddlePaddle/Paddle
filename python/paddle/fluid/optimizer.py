@@ -14,15 +14,15 @@
 import re
 from collections import defaultdict
 from paddle.fluid.framework import Program, Variable
-from . import framework
-from . import layers
-from .backward import append_backward
-from .framework import program_guard
-from . import unique_name
-from .initializer import Constant
-from .layer_helper import LayerHelper
-from .regularizer import append_regularization_ops
-from .clip import append_gradient_clip_ops, error_clip_callback
+import framework
+import layers
+from backward import append_backward
+from framework import program_guard
+import unique_name
+from initializer import Constant
+from layer_helper import LayerHelper
+from regularizer import append_regularization_ops
+from clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
 
 __all__ = [
@@ -106,7 +106,7 @@ class Optimizer(object):
         param_lr = param.optimize_attr['learning_rate']
         if type(param_lr) == Variable:
             # param learning rate has been updated (LARS)
-            print(("returns updated param lr ", param_lr))
+            print("returns updated param lr ", param_lr)
             return param_lr
         else:
             if param_lr == 1.0:
@@ -240,7 +240,7 @@ class Optimizer(object):
             self._finish_update(loss.block)
 
             end = len(global_block.ops)
-            return global_block._slice_ops(start, end)
+            return global_block.slice_ops(start, end)
 
     def minimize(self,
                  loss,
@@ -324,7 +324,7 @@ class MomentumOptimizer(Optimizer):
 
         & if (use\_nesterov):
 
-        &\quad   param = param - (gradient + mu * velocity) * learning\_rate
+        &\quad   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
 
         & else:
 
@@ -1172,16 +1172,16 @@ class ModelAverage(Optimizer):
                 self._add_average_restore_op(block, param_grad)
 
     def _add_average_apply_op(self, block, param_grad):
-        param = block._clone_variable(param_grad[0])
-        grad = block._clone_variable(param_grad[1])
-        sum_1 = block._clone_variable(self._get_accumulator('sum_1', param))
-        sum_2 = block._clone_variable(self._get_accumulator('sum_2', param))
-        sum_3 = block._clone_variable(self._get_accumulator('sum_3', param))
-        num_accumulates = block._clone_variable(
+        param = block.clone_variable(param_grad[0])
+        grad = block.clone_variable(param_grad[1])
+        sum_1 = block.clone_variable(self._get_accumulator('sum_1', param))
+        sum_2 = block.clone_variable(self._get_accumulator('sum_2', param))
+        sum_3 = block.clone_variable(self._get_accumulator('sum_3', param))
+        num_accumulates = block.clone_variable(
             self._get_accumulator('num_accumulates', param))
-        old_num_accumulates = block._clone_variable(
+        old_num_accumulates = block.clone_variable(
             self._get_accumulator('old_num_accumulates', param))
-        num_updates = block._clone_variable(
+        num_updates = block.clone_variable(
             self._get_accumulator('num_updates', param))
         # backup param value to grad
         layers.assign(input=param, output=grad)
@@ -1195,8 +1195,8 @@ class ModelAverage(Optimizer):
         layers.elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):
-        param = block._clone_variable(param_grad[0])
-        grad = block._clone_variable(param_grad[1])
+        param = block.clone_variable(param_grad[0])
+        grad = block.clone_variable(param_grad[1])
         layers.assign(input=grad, output=param)
 
     def _append_average_accumulate_op(self, param):

@@ -11,9 +11,7 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-
 #include <cuda_runtime.h>
-#include <memory>
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -22,6 +20,26 @@
 
 template <typename T>
 using vec = paddle::framework::Vector<T>;
+
+TEST(mixed_vector, CPU_VECTOR) {
+  vec<int> tmp;
+  for (int i = 0; i < 10; ++i) {
+    tmp.push_back(i);
+  }
+  ASSERT_EQ(tmp.size(), 10UL);
+  vec<int> tmp2;
+  tmp2 = tmp;
+  ASSERT_EQ(tmp2.size(), 10UL);
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(tmp2[i], i);
+    ASSERT_EQ(tmp2[i], tmp[i]);
+  }
+  int cnt = 0;
+  for (auto& t : tmp2) {
+    ASSERT_EQ(t, cnt);
+    ++cnt;
+  }
+}
 
 static __global__ void multiply_10(int* ptr) {
   for (int i = 0; i < 10; ++i) {
@@ -72,4 +90,25 @@ TEST(mixed_vector, MultiGPU) {
   for (int i = 0; i < 10; ++i) {
     ASSERT_EQ(tmp[i], i * 100);
   }
+}
+
+TEST(mixed_vector, InitWithCount) {
+  paddle::framework::Vector<int> vec(10, 10);
+  for (int i = 0; i < 10; ++i) {
+    ASSERT_EQ(vec[i], 10);
+  }
+}
+
+TEST(mixed_vector, ForEach) {
+  vec<int> tmp;
+  for (auto& v : tmp) {
+  }
+}
+
+TEST(mixed_vector, Reserve) {
+  paddle::framework::Vector<int> vec;
+  vec.reserve(1);
+  vec.push_back(0);
+  vec.push_back(0);
+  vec.push_back(0);
 }
