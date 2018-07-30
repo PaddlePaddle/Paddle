@@ -14,12 +14,13 @@
 
 import os
 import random
+import six
 import subprocess
 import logging
 
 
 def crepr(v):
-    if type(v) is str or type(v) is str:
+    if isinstance(v, six.string_types):
         return '"%s"' % v
     return str(v)
 

@@ -14,6 +14,7 @@
 
 import numpy as np
 import contextlib
+import six
 from .framework import Program, default_main_program, Variable
 from . import core
 
@@ -211,7 +212,7 @@ def _get_program_cache_key(feed, fetch_list):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, str):
+        elif isinstance(var, six.string_types):
             return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
@@ -229,8 +230,8 @@ class Executor(object):
     to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
     the variables(or names) that user want to get after program run. Note: the executor will run all
     operators in the program but not only the operators dependent by the fetch_list.
-    It store the global variables into the global scope, and create a local scope for the temporary 
-    variables. The local scope contents will be discarded after every minibatch forward/backward finished. 
+    It store the global variables into the global scope, and create a local scope for the temporary
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished.
     But the global scope variables will be persistent through different runs.
     All of ops in program will be running in sequence.
 

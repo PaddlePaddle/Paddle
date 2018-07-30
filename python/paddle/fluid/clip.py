@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import copy
+import six
 
 import functools
 from . import layers
@@ -246,8 +247,8 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
     """
 
     def __init__(self, clip_norm, group_name="default_group"):
-        if not isinstance(group_name, str):
-            raise TypeError("'group_name' must be a basestring.")
+        if not isinstance(group_name, six.string_types):
+            raise TypeError("'group_name' must be a %s." % (six.string_types))
 
         self.clip_norm = clip_norm
         self.group_name = group_name
@@ -312,7 +313,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
         program = framework.default_main_program()
     if param_list is None:
         param_list = program.block(0).all_parameters()
-    if all(isinstance(elem, str) for elem in param_list):
+    if all(isinstance(elem, six.string_types) for elem in param_list):
         param_list = [program.block(0).var(elem) for elem in param_list]
     if not all(isinstance(elem, framework.Parameter) for elem in param_list):
         raise TypeError(

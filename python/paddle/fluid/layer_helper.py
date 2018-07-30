@@ -14,6 +14,7 @@
 
 import copy
 import itertools
+import six
 
 from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
 from . import unique_name
@@ -398,7 +399,7 @@ class LayerHelper(object):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
-        if isinstance(act, str):
+        if isinstance(act, six.string_types):
             act = {'type': act}
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
