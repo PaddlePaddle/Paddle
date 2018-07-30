@@ -6,9 +6,11 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   tensorrt_subgraph_node_mark_pass.cc
   analyzer.cc
   helper.cc
+        model_store_pass.cc
   DEPS framework_proto proto_desc)
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
+cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis)
 
 set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 
@@ -40,3 +42,4 @@ inference_analysis_test(test_tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass_
 inference_analysis_test(test_pass_manager SRCS pass_manager_tester.cc)
 inference_analysis_test(test_tensorrt_subgraph_node_mark_pass SRCS tensorrt_subgraph_node_mark_pass_tester.cc)
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc)
+inference_analysis_test(test_model_store_pass SRCS model_store_pass_tester.cc)
