@@ -28,7 +28,7 @@ AnakinConfig GetConfig() {
   AnakinConfig config;
   // using AnakinConfig::X86 if you need to use cpu to do inference
   config.target_type = AnakinConfig::NVGPU;
-  config.model_file = "./mobilenet_v2.anakin.bin" /*FLAGS_mobile_v2_model*/;
+  config.model_file = FLAGS_mobile_v2_model;
   config.device = 0;
   config.max_batch_size = 1;
   return config;
