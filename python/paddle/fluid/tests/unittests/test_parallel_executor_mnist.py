@@ -135,29 +135,6 @@ class TestMNIST(TestParallelExecutorBase):
         for loss in zip(all_reduce_last_loss, reduce_last_loss):
             self.assertAlmostEquals(loss[0], loss[1], delta=1e-4)
 
-    def _compare_op_fuse(self, model, use_cuda, random_data=True):
-        if use_cuda and not core.is_compiled_with_cuda():
-            return
-        img, label = self._init_data(random_data)
-
-        not_fuse_op_first_loss, not_fuse_op_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            use_cuda=use_cuda,
-            fuse_op=False)
-        fuse_op_first_loss, fuse_op_last_loss = self.check_network_convergence(
-            model,
-            feed_dict={"image": img,
-                       "label": label},
-            use_cuda=use_cuda,
-            fuse_op=True)
-
-        for loss in zip(not_fuse_op_first_loss, fuse_op_first_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-6)
-        for loss in zip(not_fuse_op_last_loss, fuse_op_last_loss):
-            self.assertAlmostEquals(loss[0], loss[1], delta=1e-4)
-
     # simple_fc
     def check_simple_fc_convergence(self, use_cuda, use_reduce=False):
         if use_cuda and not core.is_compiled_with_cuda():
@@ -184,10 +161,6 @@ class TestMNIST(TestParallelExecutorBase):
         # use_cuda, use_reduce
         self._compare_reduce_and_allreduce(simple_fc_net, True)
         self._compare_reduce_and_allreduce(simple_fc_net, False)
-
-    def test_simple_fc_with_fuse_op(self):
-        self._compare_op_fuse(simple_fc_net, True)
-        self._compare_op_fuse(simple_fc_net, False)
 
     def check_simple_fc_parallel_accuracy(self, use_cuda):
         if use_cuda and not core.is_compiled_with_cuda():
@@ -240,10 +213,6 @@ class TestMNIST(TestParallelExecutorBase):
     def test_batchnorm_fc_with_new_strategy(self):
         self._compare_reduce_and_allreduce(fc_with_batchnorm, True)
         self._compare_reduce_and_allreduce(fc_with_batchnorm, False)
-
-    def test_batchnorm_fc_with_fuse_op(self):
-        self._compare_op_fuse(fc_with_batchnorm, True)
-        self._compare_op_fuse(fc_with_batchnorm, False)
 
 
 if __name__ == '__main__':

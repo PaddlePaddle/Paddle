@@ -54,7 +54,7 @@ class FusedElemwiseActivationGradMaker
     for (auto &input_param : this->InputNames()) {
       op_desc_ptr->SetInput(input_param, this->Input(input_param));
       op_desc_ptr->SetOutput(framework::GradVarName(input_param),
-                             this->InputGrad(input_param, true));
+                             this->InputGrad(input_param));
     }
 
     for (auto &output_param : this->OutputNames()) {
