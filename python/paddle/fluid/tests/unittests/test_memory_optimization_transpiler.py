@@ -49,8 +49,8 @@ class TestMemoryTranspiler2(unittest.TestCase):
         with program_guard(program, startup_program=Program()):
             x = layers.data(name='x', shape=[13], dtype='float32')
             fc = layers.fc(input=x, size=10, act=None)
-            reshape = layers.reshape(fc, [2, 5])
-            fc = layers.reshape(reshape, [5, 2])
+            reshape = layers.reshape(x=fc, shape=[-1, 2, 5])
+            fc = layers.reshape(x=reshape, shape=[-1, 5, 2])
             y_predict = layers.fc(input=fc, size=1, act=None)
             y = layers.data(name='y', shape=[1], dtype='float32')
             cost = layers.square_error_cost(input=y_predict, label=y)

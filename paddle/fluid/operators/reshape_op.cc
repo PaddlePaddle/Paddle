@@ -241,8 +241,8 @@ class ReshapeGradKernel {
     auto in_dims = d_x->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
-    framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
-    ctx.device_context().Wait();
+    framework::TensorCopySync(*d_out, ctx.GetPlace(), ctx.device_context(),
+                              d_x);
     d_x->Resize(in_dims);
   }
 };
