@@ -32,7 +32,9 @@ class SSAGraphExecutor {
 
   virtual ~SSAGraphExecutor();
 
-  virtual FeedFetchList Run(const std::vector<std::string> &fetch_tensors) = 0;
+  virtual const ir::Graph& Graph() const = 0;
+
+  virtual FeedFetchList Run(const std::vector<std::string>& fetch_tensors) = 0;
 };
 }  // namespace details
 }  // namespace framework
