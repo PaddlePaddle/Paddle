@@ -238,10 +238,10 @@ class ReshapeGradKernel {
   void operator()(const framework::ExecutionContext &ctx) const {
     auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    auto in_dims = d_x->dims();
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopy(*d_out, ctx.GetPlace(), ctx.device_context(), d_x);
-    auto in_dims = d_x->dims();
     ctx.device_context().Wait();
     d_x->Resize(in_dims);
   }

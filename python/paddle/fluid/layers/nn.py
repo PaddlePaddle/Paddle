@@ -4452,8 +4452,6 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
         raise ValueError("Input shape must be a python lsit or tuple.")
     inputs = {"X": x}
-    if not inplace:
-        inputs = {"X": helper.create_tmp_variable(dtype=x.dtype)}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
     elif actual_shape is not None:
@@ -4475,13 +4473,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": reshaped})
+        outputs={"Out": out})
 
-    return helper.append_activation(reshaped)
+    return helper.append_activation(out)
 
 
 def lod_reset(x, y=None, target_lod=None):
