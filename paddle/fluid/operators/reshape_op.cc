@@ -216,7 +216,7 @@ class ReshapeKernel {
     if (shape_tensor) {
       auto *shape_data = shape_tensor->data<int>();
       framework::Tensor cpu_shape_tensor;
-      if (platform::is_gpu_place(ctx.GetPlace())) {
+      if (platform::is_gpu_place(shape_tensor->place())) {
         TensorCopySync(*shape_tensor, platform::CPUPlace(), &cpu_shape_tensor);
         shape_data = cpu_shape_tensor.data<int>();
       }

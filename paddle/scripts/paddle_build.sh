@@ -19,6 +19,8 @@
 #                   Utils
 #=================================================
 
+set -ex
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
@@ -37,6 +39,7 @@ function print_usage() {
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
+    ${BLUE}assert_api_not_changed${NONE}: check api compability
     "
 }
 
@@ -78,6 +81,12 @@ function cmake_gen() {
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+        elif [ "$1" == "cp35-cp35m" ]; then
+            export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
+            export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
+            export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
         fi
     fi
 
@@ -108,6 +117,7 @@ function cmake_gen() {
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
+        -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -136,7 +146,8 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
+        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON} \
+        -DPY_VERSION=${PY_VERSION:-2.7}
 }
 
 function abort(){
@@ -311,6 +322,31 @@ EOF
         fi
     fi
 }
+
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+    deactivate
+
+    API_CHANGE=`git diff --name-only upstream/develop | grep "paddle/fluid/API.spec" || true`
+    echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+    if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+        # TODO: curl -H 'Authorization: token ${TOKEN}'
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have at least 2 approvals for the api change!"
+        exit 1
+        fi
+    fi
+}
+
 
 function single_test() {
     TEST_NAME=$1
@@ -494,15 +530,28 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
+        cmake .. -DWITH_DISTRIBUTE=OFF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
-        mv fluid_install_dir fluid
+        cp -r fluid_install_dir fluid
         tar -cf fluid.tgz fluid
       fi
 }
 
+function test_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+        cat <<EOF
+    ========================================
+    Testing fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./clean.sh
+      fi
+}
+
 function main() {
-    set -e
     local CMD=$1
     init
     case $CMD in
@@ -543,6 +592,7 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       check_style)
         check_style
@@ -553,6 +603,8 @@ function main() {
         run_test
         gen_capi_package
         gen_fluid_inference_lib
+        test_fluid_inference_lib
+        assert_api_not_changed
         ;;
       *)
         print_usage
