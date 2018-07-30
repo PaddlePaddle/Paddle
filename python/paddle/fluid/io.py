@@ -606,6 +606,7 @@ def save_inference_model(dirname,
         feeded_var_names = [feeded_var_names.encode()]
     else:
         if len(feeded_var_names) > 0:
+            # TODO(paddle-dev): polish these code blocks
             if not (bool(feeded_var_names) and all(
                     isinstance(name, six.binary_type)
                     for name in feeded_var_names)):
