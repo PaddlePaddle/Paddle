@@ -191,9 +191,9 @@ class TestResnet(TestParallelExecutorBase):
             optimizer=_optimizer)
 
         for p_f in parallel_first_loss:
-            self.assertAlmostEquals(p_f, single_first_loss[0], delta=1e-6)
+            self.assertAlmostEqual(p_f, single_first_loss[0], delta=1e-6)
         for p_l in parallel_last_loss:
-            self.assertAlmostEquals(p_l, single_last_loss[0], delta=1e-6)
+            self.assertAlmostEqual(p_l, single_last_loss[0], delta=1e-6)
 
     def test_seresnext_with_learning_rate_decay(self):
         self.check_resnet_convergence_with_learning_rate_decay(True, False)
