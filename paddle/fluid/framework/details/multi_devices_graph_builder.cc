@@ -715,6 +715,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
       result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
       node->Op()->Type(), places_[op_dev_id]));
 
+  // TODO(panyx0718): This might not be needed anymore.
   if (node->Op()->Type() == "send_barrier") {
     ConnectOp(result, result->Get<GraphOps>("ops").back().get(), "send");
   } else if (node->Op()->Type() == "recv") {
