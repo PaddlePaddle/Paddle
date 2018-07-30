@@ -25,6 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_int32(listen_and_serv_profile_period);
+DEFINE_int32(listen_and_serv_profile_period, 0,
+             "the period of listen_and_serv to do profile");
+
 namespace paddle {
 namespace operators {
 
@@ -122,7 +126,13 @@ void ListenAndServOp::RunSyncLoop(
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->ResetBarrierCounter();
+
+  int32_t profile_step = 0;
   while (true) {
+    if (FLAGS_listen_and_serv_profile_period > 0 && profile_step == 0) {
+      auto pf_state = paddle::platform::ProfilerState::kCPU;
+      paddle::platform::EnableProfiler(pf_state);
+    }
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -164,6 +174,14 @@ void ListenAndServOp::RunSyncLoop(
     // reset received sparse vars to avoid reuse it in the next mini-batch
     dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
         ->ResetSparseVarRecorder();
+    if (FLAGS_listen_and_serv_profile_period > 0 &&
+        profile_step == FLAGS_listen_and_serv_profile_period) {
+      paddle::platform::DisableProfiler(
+          paddle::platform::EventSortingKey::kTotal, "/dev/null");
+      profile_step = 0;
+    } else {
+      profile_step++;
+    }
   }  // while(true)
 }
 
