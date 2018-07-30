@@ -45,18 +45,18 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<OpHandleBase *> delayed_ops;
 
   // Transform SSAGraph to pending_ops & pending_vars
-  for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+  for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
         InsertPendingVar(&pending_vars, &ready_vars, version_pair.get());
       }
     }
   }
-  for (auto &var : graph_->Get<details::GraphDepVars>("dep_vars")) {
+  for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
     InsertPendingVar(&pending_vars, &ready_vars, var.get());
   }
 
-  for (auto &op : graph_->Get<details::GraphOps>("ops")) {
+  for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
@@ -162,7 +162,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());

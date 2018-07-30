@@ -39,20 +39,24 @@ namespace details {
 typedef std::vector<
     std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
     GraphVars;
+const char kGraphVars[] = "vars";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
+const char kGraphDepVars[] = "dep_vars";
 
 // all operators. NOTE that even we use a vector here, the operators is
 // unordered.
 typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
+const char kGraphOps[] = "ops";
+
+typedef std::unordered_map<std::string, int> ShardedVarDevice;
+const char kShardedVarDevice[] = "sharded_var_device";
 
 class SSAGraphBuilder : public ir::Pass {
  public:
   SSAGraphBuilder() {}
   virtual ~SSAGraphBuilder() {}
-
-  virtual int GetVarDeviceID(const std::string &var_name) const = 0;
 
   DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
 

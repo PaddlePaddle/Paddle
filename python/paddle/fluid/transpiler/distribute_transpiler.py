@@ -346,6 +346,7 @@ class DistributeTranspiler(object):
 
         # step1
         pserver_program = Program()
+        pserver_program.random_seed = self.origin_program.random_seed
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -543,6 +544,7 @@ class DistributeTranspiler(object):
         """
         s_prog = Program()
         orig_s_prog = default_startup_program()
+        s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):

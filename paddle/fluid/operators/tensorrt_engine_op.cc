@@ -163,7 +163,4 @@ REGISTER_OP_CPU_KERNEL(
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
-// A trick to compile with the needed TensorRT op converter.
-USE_TRT_CONVERTER(mul)
-
 #endif  // PADDLE_WITH_CUDA
