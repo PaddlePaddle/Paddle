@@ -68,7 +68,7 @@ struct PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
-  PaddleBuf data;                        // blob of data.
+  PaddleBuf data;  // blob of data.
   PaddleDType dtype;
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
