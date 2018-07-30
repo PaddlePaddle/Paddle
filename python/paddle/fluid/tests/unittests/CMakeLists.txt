@@ -40,7 +40,7 @@ function(py_test_modules TARGET_NAME)
              ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (py_test_modules_SERIAL)
-        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
   endif()
 endfunction()

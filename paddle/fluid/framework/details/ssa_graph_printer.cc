@@ -22,7 +22,7 @@ namespace details {
 
 template <typename Callback>
 static inline void IterAllVar(const ir::Graph &graph, Callback callback) {
-  for (auto &each : graph.Get<GraphVars>("vars")) {
+  for (auto &each : graph.Get<GraphVars>(kGraphVars)) {
     for (auto &pair1 : each) {
       for (auto &pair2 : pair1.second) {
         callback(*pair2);
@@ -30,7 +30,7 @@ static inline void IterAllVar(const ir::Graph &graph, Callback callback) {
     }
   }
 
-  for (auto &var : graph.Get<GraphDepVars>("dep_vars")) {
+  for (auto &var : graph.Get<GraphDepVars>(kGraphDepVars)) {
     callback(*var);
   }
 }
@@ -61,7 +61,7 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
   });
 
   size_t op_id = 0;
-  for (auto &op : graph.Get<GraphOps>("ops")) {
+  for (auto &op : graph.Get<GraphOps>(kGraphOps)) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;
@@ -81,3 +81,6 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(multi_device_print_pass,
+              paddle::framework::details::SSAGraghBuilderWithPrinter);
