@@ -1,7 +1,7 @@
 # Add TRT tests
 nv_library(tensorrt_converter
   SRCS mul_op.cc conv2d_op.cc fc_op.cc pool2d_op.cc
-  DEPS tensorrt_engine mul_op)
+  DEPS tensorrt_engine operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS
   ${FLUID_CORE_MODULES} tensorrt_engine tensorrt_converter)
