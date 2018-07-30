@@ -125,7 +125,7 @@ framework::OpKernelType FusedElemwiseActivationOpGrad::GetExpectedKernelType(
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(fused_elemwise_activation, ops::FusedElemwiseActivationOp,
                   ops::FusedElemwiseActivationMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FusedElemwiseActivationGradMaker);
 REGISTER_OPERATOR(fused_elemwise_activation_grad,
                   ops::FusedElemwiseActivationOpGrad);
 

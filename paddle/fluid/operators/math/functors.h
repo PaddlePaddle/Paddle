@@ -205,7 +205,7 @@ using Tensor = framework::Tensor;
 
 static bool ValidCheck(const std::string &functors) {
   std::unordered_set<std::string> unary_fun = {"scale", "relu"};
-  std::unordered_set<std::string> binary_fun = {"add"};
+  std::unordered_set<std::string> binary_fun = {"elementwise_add"};
 
   size_t pos = functors.find(",");
   auto func_1 = functors.substr(0, pos);
@@ -313,23 +313,23 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                         const std::string &functors, const Tensor *in_x,
                         const Tensor *in_y, Tensor *output) {
   // TODO(zcd): The following code can be refined.
-  if (functors == "add,scale") {
+  if (functors == "elementwise_add,scale") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
                              math::ScaleFunctor<T>>(
         ctx, math::AddFunctor<T>(), math::ScaleFunctor<T>(scale), in_x, in_y,
         output);
-  } else if (functors == "scale,add") {
+  } else if (functors == "scale,elementwise_add") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunUnaryCompoundFunctors<DeviceContext, T, math::ScaleFunctor<T>,
                              math::AddFunctor<T>>(
         ctx, math::ScaleFunctor<T>(scale), math::AddFunctor<T>(), in_x, in_y,
         output);
-  } else if (functors == "add,relu") {
+  } else if (functors == "elementwise_add,relu") {
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
                              math::ReluFunctor<T>>(
         ctx, math::AddFunctor<T>(), math::ReluFunctor<T>(), in_x, in_y, output);
-  } else if (functors == "relu,add") {
+  } else if (functors == "relu,elementwise_add") {
     RunUnaryCompoundFunctors<DeviceContext, T, math::ReluFunctor<T>,
                              math::AddFunctor<T>>(
         ctx, math::ReluFunctor<T>(), math::AddFunctor<T>(), in_x, in_y, output);
@@ -345,7 +345,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                             const Tensor *in_out_grad, Tensor *x_grad,
                             Tensor *y_grad) {
   // TODO(zcd): The following code can be refined.
-  if (functors == "add,scale") {
+  if (functors == "elementwise_add_grad,scale_grad") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
                                   math::ScaleFunctor<T>,
@@ -353,21 +353,21 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
         ctx, math::AddGradFunctor<T>(), math::ScaleFunctor<T>(scale),
         math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out, in_out_grad,
         x_grad, y_grad);
-  } else if (functors == "scale,add") {
+  } else if (functors == "scale_grad,elementwise_add_grad") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunUnaryCompoundGradFunctors<DeviceContext, T, math::ScaleGradFunctor<T>,
                                  math::AddFunctor<T>, math::AddGradFunctor<T>>(
         ctx, math::ScaleGradFunctor<T>(scale), math::AddFunctor<T>(),
         math::AddGradFunctor<T>(), in_x, in_y, in_out, in_out_grad, x_grad,
         y_grad);
-  } else if (functors == "add,relu") {
+  } else if (functors == "elementwise_add_grad,relu_grad") {
     RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
                                   math::ReluFunctor<T>,
                                   math::ReluGradFunctor<T>>(
         ctx, math::AddGradFunctor<T>(), math::ReluFunctor<T>(),
         math::ReluGradFunctor<T>(), in_x, in_y, in_out, in_out_grad, x_grad,
         y_grad);
-  } else if (functors == "relu,add") {
+  } else if (functors == "relu_grad,elementwise_add_grad") {
     RunUnaryCompoundGradFunctors<DeviceContext, T, math::ReluGradFunctor<T>,
                                  math::AddFunctor<T>, math::AddGradFunctor<T>>(
         ctx, math::ReluGradFunctor<T>(), math::AddFunctor<T>(),
