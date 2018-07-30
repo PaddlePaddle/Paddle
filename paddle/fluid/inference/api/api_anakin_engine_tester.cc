@@ -46,10 +46,11 @@ TEST(inference, anakin) {
   std::vector<PaddleTensor> paddle_tensor_feeds;
   paddle_tensor_feeds.emplace_back(std::move(tensor));
 
-  PaddleTensor tensor_out{.name = "prob_out",
-                          .shape = std::vector<int>({1000, 1}),
-                          .data = PaddleBuf(),
-                          .dtype = PaddleDType::FLOAT32};
+  PaddleTensor tensor_out;
+  tensor_out.name = "prob_out";
+  tensor_out.shape = std::vector<int>({1000, 1});
+  tensor_out.data = PaddleBuf();
+  tensor_out.dtype = PaddleDType::FLOAT32;
 
   std::vector<PaddleTensor> outputs;
   outputs.emplace_back(std::move(tensor_out));
