@@ -40,8 +40,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
   }
   // construct executer
   if (executor_p_ == nullptr) {
-    executor_p_ = new anakin::Net<Target,
-                                  anakin::saber::AK_FLOAT,
+    executor_p_ = new anakin::Net<Target, anakin::saber::AK_FLOAT,
                                   anakin::Precision::FP32>(graph_, true);
   }
   return true;
@@ -69,8 +68,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     if (sum > net_shape.count()) {
       graph_.Reshape(input.name, input.shape);
       delete executor_p_;
-      executor_p_ = new anakin::Net<Target,
-                                    anakin::saber::AK_FLOAT,
+      executor_p_ = new anakin::Net<Target, anakin::saber::AK_FLOAT,
                                     anakin::Precision::FP32>(graph_, true);
       d_tensor_in_p = executor_p_->get_in(input.name);
     }

@@ -18,8 +18,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
-DEFINE_string(mobile_v2_model,
-              "",
+DEFINE_string(mobile_v2_model, "",
               "Directory of the inference model(mobile_v2).");
 
 namespace paddle {
