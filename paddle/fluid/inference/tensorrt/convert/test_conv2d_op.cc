@@ -23,11 +23,11 @@ namespace tensorrt {
 TEST(conv2d_op, test) {
   std::unordered_set<std::string> parameters({"conv2d-Y"});
   framework::Scope scope;
-  TRTConvertValidation validator(2, parameters, scope, 1 << 15);
+  TRTConvertValidation validator(5, parameters, scope, 1 << 15);
 
-  validator.DeclInputVar("conv2d-X", nvinfer1::Dims4(1, 2, 5, 5));
+  validator.DeclInputVar("conv2d-X", nvinfer1::Dims3(2, 5, 5));
   validator.DeclParamVar("conv2d-Y", nvinfer1::Dims4(3, 2, 3, 3));
-  validator.DeclOutputVar("conv2d-Out", nvinfer1::Dims4(1, 3, 5, 5));
+  validator.DeclOutputVar("conv2d-Out", nvinfer1::Dims3(3, 5, 5));
 
   // Prepare Op description
   framework::OpDesc desc;
@@ -48,7 +48,7 @@ TEST(conv2d_op, test) {
 
   validator.SetOp(*desc.Proto());
 
-  validator.Execute(1);
+  validator.Execute(3);
 }
 
 }  // namespace tensorrt

@@ -1,11 +1,11 @@
-cc_library(var_handle SRCS var_handle.cc DEPS place framework_proto)
+cc_library(var_handle SRCS var_handle.cc DEPS place framework_proto node)
 cc_library(op_handle_base SRCS op_handle_base.cc DEPS var_handle device_context lod_tensor)
 cc_library(scale_loss_grad_op_handle SRCS scale_loss_grad_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory)
 cc_library(fetch_op_handle SRCS fetch_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory)
 cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry)
 cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place operator op_registry)
 
-cc_library(ssa_graph_builder SRCS ssa_graph_builder.cc DEPS graph)
+cc_library(ssa_graph_builder SRCS ssa_graph_builder.cc DEPS graph graph_helper)
 cc_library(ssa_graph_printer SRCS ssa_graph_printer.cc DEPS ssa_graph_builder)
 cc_library(ssa_graph_checker SRCS ssa_graph_checker.cc DEPS ssa_graph_builder)
 

@@ -17,7 +17,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
-void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
+void SSAGraphBuilder::PolishGraphToSupportDataHazards(ir::Graph *graph) {
   for (auto &var_map : graph->Get<GraphVars>("vars")) {
     for (auto &name_pair : var_map) {
       if (name_pair.second.size() <= 1) {
@@ -36,9 +36,18 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
             // Read Write is the same op.
             continue;
           }
+          bool has_dep = false;
+          for (auto *r_out : read_op->Outputs()) {
+            for (auto *w_in : write_op->Inputs()) {
+              if (r_out->Node() == w_in->Node()) {
+                has_dep = true;
+                break;
+              }
+            }
+          }
+          if (has_dep) continue;
 
-          auto *dep_var = new DummyVarHandle(
-              graph->CreateEmptyNode("dummy", ir::Node::Type::kVariable));
+          auto *dep_var = new DummyVarHandle(graph->CreateControlDepVar());
           read_op->AddOutput(dep_var);
           write_op->AddInput(dep_var);
           graph->Get<GraphDepVars>("dep_vars").emplace(dep_var);
@@ -49,7 +58,7 @@ void SSAGraphBuilder::PolishGraphToSupportDataHazards(Graph *graph) {
 }
 
 VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
-    Graph *graph, ir::Node *node, const platform::Place &place,
+    ir::Graph *graph, ir::Node *node, const platform::Place &place,
     size_t place_offset) {
   auto &var_holders = graph->Get<GraphVars>("vars")[place_offset];
   auto &var_holder = var_holders[node->Name()];
@@ -70,7 +79,7 @@ VarHandle *SSAGraphBuilder::CreateOrGetLatestVarHandle(
   return var;
 }
 
-void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
+void SSAGraphBuilder::CreateOpOutput(ir::Graph *graph, OpHandleBase *op_handle,
                                      ir::Node *new_node,
                                      const platform::Place &place,
                                      size_t place_offset) {
@@ -82,13 +91,12 @@ void SSAGraphBuilder::CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
   op_handle->AddOutput(var);
 }
 
-void SSAGraphBuilder::AddOutputToLeafOps(Graph *graph) {
+void SSAGraphBuilder::AddOutputToLeafOps(ir::Graph *graph) {
   for (auto &op : graph->Get<GraphOps>("ops")) {
     if (!op->Outputs().empty()) {
       continue;
     }
-    auto *dummy_leaf = new DummyVarHandle(
-        graph->CreateEmptyNode("dummy", ir::Node::Type::kVariable));
+    auto *dummy_leaf = new DummyVarHandle(graph->CreateControlDepVar());
     graph->Get<GraphDepVars>("dep_vars").emplace(dummy_leaf);
     op->AddOutput(dummy_leaf);
   }
