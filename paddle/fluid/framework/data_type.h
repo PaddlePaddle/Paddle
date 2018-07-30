@@ -53,6 +53,9 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
     case proto::VarType::INT16:
       visitor.template operator()<int16_t>();
       break;
+    case proto::VarType::INT8:
+      visitor.template operator()<int8_t>();
+      break;
     default:
       PADDLE_THROW("Not supported %d", type);
   }

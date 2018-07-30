@@ -51,9 +51,7 @@ class FakeDequantizeMaxAbsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensor) The output is the dequantized high "
               "precision tensor.");
-    AddAttr<int>("num_bits",
-                 "(int) `num_bits` is the quantization level bits, "
-                 "such as 2, 5, 8.");
+    AddAttr<float>("range", "(float) The range of de-quantization.");
     AddComment(R"DOC(
 FakeDequantizeMaxAbsOp operator.
 

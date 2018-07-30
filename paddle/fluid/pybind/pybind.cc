@@ -128,6 +128,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<bool>)
       .def("set", PyCPUTensorSetFromArray<uint16_t>)
       .def("set", PyCPUTensorSetFromArray<uint8_t>)
+      .def("set", PyCPUTensorSetFromArray<int8_t>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
@@ -136,6 +137,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<bool>)
       .def("set", PyCUDATensorSetFromArray<uint16_t>)
       .def("set", PyCUDATensorSetFromArray<uint8_t>)
+      .def("set", PyCUDATensorSetFromArray<int8_t>)
       .def("set", PyCUDAPinnedTensorSetFromArray<float>)
       .def("set", PyCUDAPinnedTensorSetFromArray<int>)
       .def("set", PyCUDAPinnedTensorSetFromArray<double>)
@@ -143,6 +145,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
       .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
       .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
       .def("_set_float_element", TensorSetElement<float>)

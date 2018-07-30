@@ -62,6 +62,7 @@ static DataTypeMap* InitDataTypeMap() {
   RegType(size_t, proto::VarType::SIZE_T);
   RegType(int16_t, proto::VarType::INT16);
   RegType(uint8_t, proto::VarType::UINT8);
+  RegType(int8_t, proto::VarType::INT8);
 
 #undef RegType
   return retv;

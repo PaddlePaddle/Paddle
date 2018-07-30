@@ -29,8 +29,7 @@ class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(in->place());
 
-    int num_bits = ctx.Attr<int>("num_bits");
-    int range = std::pow(2, num_bits - 1) - 1;
+    float range = ctx.Attr<float>("range");
 
     auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
