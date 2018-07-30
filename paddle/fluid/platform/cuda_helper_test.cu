@@ -86,6 +86,68 @@ TEST(CudaAtomic, float16) {
   TestCase<float16>(static_cast<size_t>(2));
   TestCase<float16>(static_cast<size_t>(3));
 
-  // TestCase<float16>(static_cast<size_t>(10));
-  // TestCase<float16>(static_cast<size_t>(1024 * 1024));
+  TestCase<float16>(static_cast<size_t>(10));
+  TestCase<float16>(static_cast<size_t>(1024 * 1024));
+}
+
+// unalignment of uint8
+void TestUnalign(size_t num, const int shift_bit) {
+  PADDLE_ENFORCE(num % 2 == 0, "must be a multiple of 2");
+  float16 *in1, *in2, *out;
+  float16 *d_in1, *d_in2;
+  size_t size = sizeof(uint8_t) * (num + shift_bit);
+  size_t array_size = sizeof(float16) * (num / 2);
+
+  cudaMalloc(reinterpret_cast<void**>(&d_in1), size);
+  cudaMalloc(reinterpret_cast<void**>(&d_in2), size);
+  in1 = reinterpret_cast<float16*>(malloc(size));
+  in2 = reinterpret_cast<float16*>(malloc(size));
+  out = reinterpret_cast<float16*>(malloc(size));
+
+  // right shift 1, mimic the unalignment of address
+  float16* r_in1 =
+      reinterpret_cast<float16*>(reinterpret_cast<uint8_t*>(in1) + shift_bit);
+  float16* r_in2 =
+      reinterpret_cast<float16*>(reinterpret_cast<uint8_t*>(in2) + shift_bit);
+
+  std::minstd_rand engine;
+  std::uniform_real_distribution<double> dist(0.0, 1.0);
+  for (size_t i = 0; i < num / 2; ++i) {
+    r_in1[i] = static_cast<float16>(dist(engine));
+    r_in2[i] = static_cast<float16>(dist(engine));
+  }
+  cudaMemcpy(d_in1, r_in1, array_size, cudaMemcpyHostToDevice);
+  cudaMemcpy(d_in2, r_in2, array_size, cudaMemcpyHostToDevice);
+  AddKernel<float16><<<1, PADDLE_CUDA_NUM_THREADS>>>(d_in1, d_in2, num / 2);
+  cudaDeviceSynchronize();
+  cudaMemcpy(out, d_in2, array_size, cudaMemcpyDeviceToHost);
+  cudaDeviceSynchronize();
+  for (size_t i = 0; i < num / 2; ++i) {
+    // NOTE(dzhwinter): the float16 add has small underflow/overflow
+    // so we use EXPECT_NEAR to check the result.
+    EXPECT_NEAR(static_cast<float>(out[i]),
+                static_cast<float>(AddFunctor<float16>()(r_in1[i], r_in2[i])),
+                0.001);
+  }
+  free(in1);
+  free(in2);
+  free(out);
+  cudaFree(d_in1);
+  cudaFree(d_in2);
+}
+
+TEST(CudaAtomic, float16Unalign) {
+  // same with float16 testcase
+  TestUnalign(static_cast<size_t>(2), /*shift_bit*/ 2);
+  TestUnalign(static_cast<size_t>(1024), /*shift_bit*/ 2);
+  TestUnalign(static_cast<size_t>(1024 * 1024), /*shift_bit*/ 2);
+
+  // shift the address.
+  TestUnalign(static_cast<size_t>(2), /*shift_bit*/ 1);
+  TestUnalign(static_cast<size_t>(1024), /*shift_bit*/ 1);
+  TestUnalign(static_cast<size_t>(1024 * 1024), /*shift_bit*/ 1);
+
+  TestUnalign(static_cast<size_t>(2), /*shift_bit*/ 3);
+  TestUnalign(static_cast<size_t>(1024), /*shift_bit*/ 3);
+  TestUnalign(static_cast<size_t>(1024 * 1024), /*shift_bit*/ 3);
 }

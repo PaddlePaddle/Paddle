@@ -100,13 +100,13 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
   // of the 32bits address.
   uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
       reinterpret_cast<char *>(address) -
-      (reinterpret_cast<uintptr_t>(address) & 0x10));
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
   float val_f = static_cast<float>(val);
   uint32_t old = *address_as_ui;
   uint32_t sum;
   uint32_t newval;
   uint32_t assumed;
-  if (((uintptr_t)address & 0x10) == 0) {
+  if (((uintptr_t)address & 0x02) == 0) {
     // the float16 value stay at lower 16 bits of the address.
     do {
       assumed = old;
