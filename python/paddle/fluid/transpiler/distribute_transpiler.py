@@ -1245,6 +1245,8 @@ class DistributeTranspiler(object):
 
     def _is_splited_grad_var(self, var, var_dict):
         grad_block = None
+        # TODO(minqiyang): replace these items() with six.iteritems() to
+        # improve memory
         for _, g in list(var_dict.items()):
             if self._orig_varname(g.name) == self._orig_varname(var.name):
                 if g.name.find(".trainer_") == -1:
