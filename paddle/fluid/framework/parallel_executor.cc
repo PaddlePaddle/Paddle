@@ -19,18 +19,79 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
+#include "paddle/fluid/framework/details/ssa_graph_checker.h"
+#include "paddle/fluid/framework/details/ssa_graph_printer.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
+
+std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
+    const ProgramDesc &main_program, const std::vector<platform::Place> &places,
+    const std::string &loss_var_name,
+    const std::unordered_set<std::string> &param_names,
+    const std::vector<Scope *> &local_scopes, const bool use_cuda,
+#ifdef PADDLE_WITH_CUDA
+    const BuildStrategy &strategy, platform::NCCLContextMap *nccl_ctxs) {
+#else
+    const BuildStrategy &strategy) {
+#endif
+  // Convert the program to graph.
+  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
+
+  // Apply a graph viz pass to record a graph.
+  if (!strategy.debug_graphviz_path_.empty()) {
+    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+    const std::string graph_path = string::Sprintf(
+        "%s%s", strategy.debug_graphviz_path_.c_str(), "_original_graph");
+    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    graph = viz_pass->Apply(std::move(graph));
+  }
+
+  // Convert graph to run on multi-devices.
+  auto multi_device_pass =
+      ir::PassRegistry::Instance().Get("multi_device_pass");
+  multi_device_pass->SetNotOwned<const std::vector<platform::Place>>("places",
+                                                                     &places);
+  multi_device_pass->SetNotOwned<const std::string>("loss_var_name",
+                                                    &loss_var_name);
+  multi_device_pass->SetNotOwned<const std::unordered_set<std::string>>(
+      "params", &param_names);
+  multi_device_pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
+                                                             &local_scopes);
+  multi_device_pass->SetNotOwned<const BuildStrategy>("strategy", &strategy);
+
+#ifdef PADDLE_WITH_CUDA
+  platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
+  multi_device_pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
+#endif
+  graph = multi_device_pass->Apply(std::move(graph));
+
+  // Apply a graph print pass to record a graph with device info.
+  if (!strategy.debug_graphviz_path_.empty()) {
+    auto multi_device_print_pass =
+        ir::PassRegistry::Instance().Get("multi_device_print_pass");
+    multi_device_print_pass->SetNotOwned<const std::string>(
+        "debug_graphviz_path", &strategy.debug_graphviz_path_);
+    multi_device_print_pass->Set<details::GraphvizSSAGraphPrinter>(
+        "graph_printer", new details::GraphvizSSAGraphPrinter);
+    graph = multi_device_print_pass->Apply(std::move(graph));
+  }
+
+  // Verify that the graph is correct for multi-device executor.
+  auto multi_device_check_pass =
+      ir::PassRegistry::Instance().Get("multi_device_check_pass");
+  graph = multi_device_check_pass->Apply(std::move(graph));
+  return graph;
+}
 
 class ParallelExecutorPrivate {
  public:
@@ -119,21 +180,19 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
-  // ncclOp
-  details::SSAGraphBuilderFactory builder_factory(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      build_strategy);
-  if (member_->use_cuda_) {
+// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+// ncclOp
 #ifdef PADDLE_WITH_CUDA
-    builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
+  std::unique_ptr<ir::Graph> graph = ApplyParallelExecutorPass(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_, build_strategy,
+      member_->nccl_ctxs_.get());
 #else
-    PADDLE_THROW("Not compiled with CUDA.");
+  std::unique_ptr<ir::Graph> graph = ApplyParallelExecutorPass(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_, build_strategy);
 #endif
-  }
-  builder_ = builder_factory.Create();
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
-  graph = builder_->Apply(std::move(graph));
+
   member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
@@ -146,11 +205,18 @@ void ParallelExecutor::BCastParamsToDevices(
   // the initializing bcast, all vars would be bcast from device(0),
   // otherwise
   // bcast from the specified device.
-  bool initializing = builder_.get() == nullptr ? true : false;
-
+  bool initializing = member_->executor_ ? false : true;
   for (auto &var : vars) {
-    int var_dev_id =
-        builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
+    int var_dev_id = -1;
+    if (member_->executor_) {
+      auto &sharded_var_device =
+          member_->executor_->Graph().Get<details::ShardedVarDevice>(
+              details::kShardedVarDevice);
+      if (sharded_var_device.find(var) != sharded_var_device.end()) {
+        var_dev_id = sharded_var_device.at(var);
+      }
+    }
+
     if (!initializing && var_dev_id == -1) continue;
 
     framework::Variable *main_var = nullptr;
@@ -286,3 +352,8 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
+
+USE_PASS(graph_viz_pass);
+USE_PASS(multi_device_pass);
+USE_PASS(multi_device_check_pass);
+USE_PASS(multi_device_print_pass);

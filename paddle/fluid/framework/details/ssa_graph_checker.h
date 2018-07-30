@@ -23,26 +23,14 @@ namespace framework {
 namespace details {
 
 class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
- public:
-  explicit SSAGraghBuilderWithChecker(
-      std::unique_ptr<SSAGraphBuilder>&& builder)
-      : builder_(std::move(builder)) {}
-
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
-    auto new_graph = builder_->Apply(std::move(graph));
-    PADDLE_ENFORCE(IsValidGraph(new_graph.get()));
-    return new_graph;
-  }
-
-  int GetVarDeviceID(const std::string& var_name) const override {
-    return builder_->GetVarDeviceID(var_name);
+    PADDLE_ENFORCE(IsValidGraph(graph.get()));
+    return graph;
   }
 
   bool IsValidGraph(const ir::Graph* graph) const;
-
- private:
-  std::unique_ptr<SSAGraphBuilder> builder_;
 };
 
 }  // namespace details
