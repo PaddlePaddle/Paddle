@@ -29,13 +29,16 @@ bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
     LOG(FATAL) << "fail to load graph from " << config.model_file;
     return false;
   }
-  graph_.ResetBatchSize("input_0", config.max_batch_size);
+  auto inputs = graph_.get_ins();
+  for(auto& input_str : inputs) {
+    graph_.ResetBatchSize(input_str, config.max_batch_size);
+  }
   // optimization for graph
   if (!(graph_.Optimize())) {
     return false;
   }
   // construct executer
-  if (executor_p_ != nullptr) {
+  if (executor_p_ == nullptr) {
     executor_p_ = new anakin::Net<Target,
                                   anakin::saber::AK_FLOAT,
                                   anakin::Precision::FP32>(graph_, true);
@@ -86,7 +89,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       return false;
     }
   }
-
+  cudaDeviceSynchronize();
   executor_p_->prediction();
   cudaDeviceSynchronize();
 

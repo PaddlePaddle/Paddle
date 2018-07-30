@@ -28,7 +28,7 @@ AnakinConfig GetConfig() {
   AnakinConfig config;
   // using AnakinConfig::X86 if you need to use cpu to do inference
   config.target_type = AnakinConfig::NVGPU; 
-  config.model_file = FLAGS_mobile_v2_model;
+  config.model_file = "./mobilenet_v2.anakin.bin"/*FLAGS_mobile_v2_model*/;
   config.device = 0;
   config.max_batch_size = 1;
   return config;
@@ -58,6 +58,7 @@ TEST(inference, anakin) {
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
   ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
+  
 
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length(); ++j) {

@@ -70,6 +70,7 @@ if (WITH_ANAKIN) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
     # compile the libinference_anakin_api.a and compile with anakin.so.
+    fetch_include_recursively(${ANAKIN_INCLUDE})
     nv_library(inference_anakin_api SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
     nv_library(inference_anakin_api_shared SHARED SRCS paddle_inference_api.cc paddle_inference_api_anakin_engine.cc)
     target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
@@ -80,7 +81,6 @@ if (WITH_ANAKIN) # only needed in CI
         cc_test(inference_anakin_test SRCS paddle_inference_api_anakin_engine_tester.cc
                                   ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
                                   DEPS inference_anakin_api_shared)
-	message(STATUS ${ANAKIN_COMPILE_EXTRA_FLAGS})
         target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
      endif(WITH_TESTING)
 endif()
