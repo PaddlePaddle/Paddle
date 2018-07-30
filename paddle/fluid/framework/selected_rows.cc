@@ -132,11 +132,11 @@ void SelectedRows::Get(const std::vector<int64_t>& keys,
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
 
-    std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
     for (size_t i = 0; i < keys.size(); ++i) {
       int64_t id = keys[i];
       int64_t index = Index(id);
       if (index == -1) {
+        std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
         rows_.push_back(id);
         index = rows_.size() - 1;
       }
@@ -166,6 +166,7 @@ bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
     is_new_key = true;
     // whether need to resize the table
     if (static_cast<int64_t>(rows_.size()) > value_->dims()[0]) {
+      VLOG(3) << "rows is full, needs to reallocate a bigger one";
       auto dims = value_->dims();
       dims[0] = (dims[0] + 1) << 1;
       framework::VisitDataType(framework::ToDataType(value.type()),
