@@ -20,11 +20,10 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 #include "framework/core/net/net.h"
 #include "framework/graph/graph.h"
-#include "paddle/contrib/inference/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "saber/core/shape.h"
 #include "saber/saber_types.h"
 

@@ -8,6 +8,7 @@ set(ANAKIN_INCLUDE "${ANAKIN_INSTALL_DIR}" CACHE STRING "root of Anakin header f
 set(ANAKIN_LIBRARY "${ANAKIN_INSTALL_DIR}" CACHE STRING "path of Anakin library")
 
 set(ANAKIN_COMPILE_EXTRA_FLAGS 
+    -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
     -Wno-error=unused-variable -Wno-unused-variable 
     -Wno-error=format-extra-args -Wno-format-extra-args
     -Wno-error=comment -Wno-comment 
