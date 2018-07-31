@@ -165,7 +165,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     startup_exe.run(startup_prog)
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = args.cpus
-    strategy.allow_op_delay = True
+    strategy.allow_op_delay = False
     avg_loss = train_args[0]
 
     if args.update_method == "pserver":
@@ -183,9 +183,13 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
 
-    test_exe = fluid.ParallelExecutor(
-        True, main_program=test_prog, share_vars_from=exe, scope=fluid.Scope(
-        ))  # NOTE: use an empty scope to avoid test exe using NCCLID
+    if not args.no_test:
+        test_exe = fluid.ParallelExecutor(
+            True,
+            main_program=test_prog,
+            share_vars_from=exe,
+            scope=fluid.Scope(
+            ))  # NOTE: use an empty scope to avoid test exe using NCCLID
 
     for pass_id in range(args.pass_num):
         num_samples = 0
@@ -195,10 +199,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             reader_generator = train_args[3]()  #train_reader
         batch_id = 0
         data = None
-        print("before start reader")
         if args.use_reader_op:
             train_args[4].start()
-        print("start new pass")
         while True:
             if not args.use_reader_op:
                 data = next(reader_generator, None)
@@ -208,10 +210,10 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 break
             if args.profile and batch_id == 5:
                 profiler.start_profiler("All")
+                profiler.reset_profiler()
             elif args.profile and batch_id == 10:
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
-                profiler.reset_profiler()
 
             if iters == args.skip_batch_num:
                 start_time = time.time()
@@ -222,9 +224,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             if args.use_fake_data or args.use_reader_op:
                 try:
-                    print("before run exe.run")
                     fetch_ret = exe.run(fetch_list)
-                    print("after run exe.run")
                 except fluid.core.EOFException as eof:
                     break
                 except fluid.core.EnforceNotMet as ex:
@@ -238,7 +238,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 num_samples += len(data)
 
             iters += 1
-            if batch_id % 1 == 0:
+            if batch_id % 10 == 0:
                 fetched_data = [np.mean(np.array(d)) for d in fetch_ret]
                 print("Pass %d, batch %d, loss %s, accucacys: %s" %
                       (pass_id, batch_id, fetched_data[0], fetched_data[1:]))

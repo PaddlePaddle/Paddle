@@ -186,7 +186,7 @@ def get_model(args, is_train, main_prog, startup_prog):
         with fluid.unique_name.guard():
             if args.use_reader_op:
                 pyreader = fluid.layers.py_reader(
-                    capacity=args.batch_size,
+                    capacity=args.batch_size * args.gpus,
                     shapes=([-1] + dshape, (-1, 1)),
                     dtypes=('float32', 'int64'),
                     name="train_reader" if is_train else "test_reader",
@@ -222,12 +222,7 @@ def get_model(args, is_train, main_prog, startup_prog):
                 lr = []
                 lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
                 optimizer = fluid.optimizer.Momentum(
-                    learning_rate=base_lr,
-                    # learning_rate=fluid.layers.piecewise_decay(
-                    #     boundaries=bd, values=lr),
-                    momentum=0.9,
-                    regularization=fluid.regularizer.L2Decay(1e-4),
-                    LARS_weight_decay=lars_decay)
+                    learning_rate=base_lr, momentum=0.9)
                 optimizer.minimize(avg_cost)
 
                 if args.memory_optimize:
@@ -236,12 +231,17 @@ def get_model(args, is_train, main_prog, startup_prog):
     # config readers
     if not args.use_reader_op:
         batched_reader = paddle.batch(
-            reader, batch_size=args.batch_size * args.gpus, drop_last=True)
+            reader if args.no_random else paddle.reader.shuffle(
+                reader, buf_size=5120),
+            batch_size=args.batch_size * args.gpus,
+            drop_last=True)
     else:
         batched_reader = None
         pyreader.decorate_paddle_reader(
             paddle.batch(
-                reader, batch_size=args.batch_size))
+                reader if args.no_random else paddle.reader.shuffle(
+                    reader, buf_size=5120),
+                batch_size=args.batch_size))
 
     return avg_cost, optimizer, [batch_acc1,
                                  batch_acc5], batched_reader, pyreader
