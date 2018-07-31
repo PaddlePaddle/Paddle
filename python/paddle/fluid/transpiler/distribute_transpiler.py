@@ -347,6 +347,7 @@ class DistributeTranspiler(object):
 
         # step1
         pserver_program = Program()
+        pserver_program.random_seed = self.origin_program.random_seed
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -494,6 +495,7 @@ class DistributeTranspiler(object):
             pserver_index = self.pserver_endpoints.index(endpoint)
             table_opt_block = self._create_table_optimize_block(
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
+            optimize_blocks.append(table_opt_block)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(
@@ -544,6 +546,7 @@ class DistributeTranspiler(object):
         """
         s_prog = Program()
         orig_s_prog = default_startup_program()
+        s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):

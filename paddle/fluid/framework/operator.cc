@@ -679,6 +679,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
         CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
       }
     }
   }
