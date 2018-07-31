@@ -23,7 +23,7 @@ function compile_demo() {
   demo_name=$1
   WITH_STATIC_LIB=$2
   rm -rf *
-  cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/docker_build/fluid_install_dir/ \
+  cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
     -DWITH_MKL=$TURN_ON_MKL \
     -DDEMO_NAME=$demo_name \
     -DWITH_GPU=$TEST_GPU_CPU \
@@ -50,7 +50,7 @@ function test_demo() {
     report $?
   done
   if [ $use_mkldnn == true ] && [ $test_mkldnn == true ]; then
-    ./$demo_name --dirname=$model_dir --use_gpu=false --use_mkldnn=true
+    ./$demo_name --dirname=$model_dir --use_gpu=false --test_mkldnn=true
     report $?
   fi
 }
@@ -68,15 +68,15 @@ function download() {
   cd ../..
 }
 vis_demo_list='se_resnext50 ocr mobilenet'
-#for vis_demo_name in $vis_demo_list; do
-#  download $vis_demo_name
-#done
+for vis_demo_name in $vis_demo_list; do
+  download $vis_demo_name
+done
 
 # compile and test the demo
 mkdir -p build
 cd build
 
-for WITH_STATIC_LIB in OFF; do
+for WITH_STATIC_LIB in ON OFF; do
   # -----simple_on_word2vec-----
   compile_demo simple_on_word2vec $WITH_STATIC_LIB
   word2vec_model=${PADDLE_ROOT}'/build/python/paddle/fluid/tests/book/word2vec.inference.model'

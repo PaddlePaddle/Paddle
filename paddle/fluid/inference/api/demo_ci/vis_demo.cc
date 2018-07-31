@@ -28,7 +28,7 @@ DECLARE_double(fraction_of_gpu_memory_to_use);
 #endif
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
-DEFINE_bool(use_mkldnn, false, "Whether use mkldnn.");
+DEFINE_bool(test_mkldnn, false, "Whether use mkldnn.");
 
 namespace paddle {
 namespace demo {
@@ -101,7 +101,7 @@ void Main(bool use_gpu) {
   config.param_file = FLAGS_dirname + "/model/__params__";
   config.prog_file = FLAGS_dirname + "/model/__model__";
   config.use_gpu = use_gpu;
-  config.use_mkldnn = FLAGS_use_mkldnn;
+  config.use_mkldnn = FLAGS_test_mkldnn;
   config.device = 0;
   if (FLAGS_use_gpu) {
     config.fraction_of_gpu_memory = 0.1;  // set by yourself

@@ -25,7 +25,7 @@ limitations under the License. */
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
-DEFINE_bool(use_mkldnn, false, "Whether use mkldnn.");
+DEFINE_bool(test_mkldnn, false, "Whether use mkldnn.");
 
 namespace paddle {
 namespace demo {
@@ -39,7 +39,7 @@ void Main(bool use_gpu) {
   }
   config.model_dir = FLAGS_dirname;
   config.use_gpu = use_gpu;
-  config.use_mkldnn = FLAGS_use_mkldnn;
+  config.use_mkldnn = FLAGS_test_mkldnn;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
   auto predictor =
@@ -82,7 +82,7 @@ void MainThreads(int num_threads, bool use_gpu) {
   NativeConfig config;
   config.model_dir = FLAGS_dirname;
   config.use_gpu = use_gpu;
-  config.use_mkldnn = FLAGS_use_mkldnn;
+  config.use_mkldnn = FLAGS_test_mkldnn;
   config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
   auto main_predictor =
