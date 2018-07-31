@@ -18,7 +18,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
-DEFINE_string(mobile_v2_model, "",
+DEFINE_string(model, "",
               "Directory of the inference model(mobile_v2).");
 
 namespace paddle {
@@ -27,7 +27,7 @@ AnakinConfig GetConfig() {
   AnakinConfig config;
   // using AnakinConfig::X86 if you need to use cpu to do inference
   config.target_type = AnakinConfig::NVGPU;
-  config.model_file = FLAGS_mobile_v2_model;
+  config.model_file = FLAGS_model;
   config.device = 0;
   config.max_batch_size = 1;
   return config;
