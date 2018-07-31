@@ -18,10 +18,7 @@ import collections
 import copy
 import unique_name
 
-__all__ = [
-    'append_backward',
-    'calc_gradient',
-]
+__all__ = ['append_backward']
 
 
 def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
@@ -123,7 +120,8 @@ def _append_grad_suffix_(name):
 def _addup_repetitive_outputs_(op_descs):
     """
     In backward part, an variable may be the output of more than one ops.
-    In this case, the variable should be the accumulation of all the outputs.
+    And one op may yield its multiple outputs to the same variable.
+    In these cases, the variable should be the accumulation of all the outputs.
     `sum_op`s are added to implement the accumulate.
     """
     pending_sum_ops = []
@@ -136,29 +134,46 @@ def _addup_repetitive_outputs_(op_descs):
                     "sum", {"X": renamed_vars[var_name]}, {"Out": [var_name]},
                     {"use_mkldnn": False}), idx))
                 renamed_vars[var_name] = [var_name]
-        for var_name in op_desc.output_arg_names():
-            if var_name == core.empty_var_name(
-            ) or var_name in op_desc.input_arg_names():
-                # empty variable or inplace op
-                continue
-            if len(renamed_vars[var_name]) == 0:
-                # it's the first time we get the variable
-                renamed_vars[var_name] = [var_name]
-            else:
-                if len(renamed_vars[var_name]) == 1:
+        for param_idx, param_name in enumerate(op_desc.output_names()):
+            arg_names = op_desc.output(param_name)
+            for arg_idx, var_name in enumerate(arg_names):
+                if var_name == core.empty_var_name(
+                ) or var_name in op_desc.input_arg_names():
+                    # empty variable or inplace op
+                    continue
+                if len(renamed_vars[var_name]) == 0:
+                    # it's the first time we get the variable
+                    renamed_vars[var_name] = [var_name]
+                else:
+                    if len(renamed_vars[var_name]) == 1:
+                        new_name = var_name + "@RENAME@" + \
+                            str(var_rename_count[var_name])
+                        var_rename_count[var_name] += 1
+                        # rename original var_name
+                        renamed_vars[var_name][0] = new_name
+                        _rename_arg_(op_descs, var_name, new_name, 0, idx)
+                        _rename_arg_(pending_sum_ops, var_name, new_name)
+
+                        for p in op_desc.output_names()[:param_idx]:
+                            p_arg_names = op_desc.output(p)
+                            if var_name in p_arg_names:
+                                op_desc.set_output(p, [
+                                    new_name if x == var_name else x
+                                    for x in p_arg_names
+                                ])
+
+                        arg_names = [
+                            new_name if x == var_name else x
+                            for x in arg_names[:arg_idx]
+                        ] + arg_names[arg_idx:]
+
                     new_name = var_name + "@RENAME@" + \
                         str(var_rename_count[var_name])
                     var_rename_count[var_name] += 1
-                    # rename original var_name
-                    renamed_vars[var_name][0] = new_name
-                    _rename_arg_(op_descs, var_name, new_name, 0, idx)
-                    _rename_arg_(pending_sum_ops, var_name, new_name)
+                    arg_names[arg_idx] = new_name
+                    op_desc.set_output(param_name, arg_names)
+                    renamed_vars[var_name].append(new_name)
 
-                new_name = var_name + "@RENAME@" + \
-                    str(var_rename_count[var_name])
-                var_rename_count[var_name] += 1
-                op_desc.rename_output(var_name, new_name)
-                renamed_vars[var_name].append(new_name)
     for var_name, inputs in renamed_vars.iteritems():
         if len(inputs) > 1:
             pending_sum_ops.append(
@@ -313,7 +328,7 @@ def _append_backward_ops_(block,
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block()
-            grad_sub_block.set_forward_block_idx(sub_block.idx)
+            grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
             if cb is not None:
                 if callbacks is None:
@@ -556,7 +571,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
     _append_backward_vars_(root_block, fwd_op_num, grad_to_var, grad_info_map)
 
     program.current_block_idx = current_block_idx
-    program.sync_with_cpp()
+    program._sync_with_cpp()
     # FIXME(zcd): prevent loss.grad optimized by mem_opt.
     loss.block.var(_append_grad_suffix_(loss.name)).persistable = True
 
@@ -729,7 +744,7 @@ def calc_gradient(targets, inputs, target_gradients=None, no_grad_set=None):
     _rename_grad_(block, fwd_op_num, grad_to_var, target_grad_map)
 
     _append_backward_vars_(block, fwd_op_num, grad_to_var, grad_info_map)
-    prog.sync_with_cpp()
+    prog._sync_with_cpp()
 
     grad_vars = []
     for input_var in inputs:

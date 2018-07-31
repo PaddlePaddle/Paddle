@@ -197,6 +197,7 @@ void ParallelThread::computeThread() {
       job_work.layer_->markAllInputGrad();
     }
   }
+  hl_fini();
 }
 
 void ParallelThread::start() {

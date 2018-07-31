@@ -15,6 +15,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <vector>
 
 #include "paddle/fluid/framework/ddim.h"
@@ -26,59 +27,116 @@ namespace framework {
 
 class ReaderBase {
  public:
-  virtual void ReadNext(std::vector<LoDTensor>* out) = 0;
+  virtual void ReadNext(std::vector<LoDTensor>* out);
 
-  virtual void ReInit() = 0;
+  virtual void Shutdown();
+
+  virtual void Start();
+
+  // Return the readers which are the end of decorating chain. Basically
+  // they are readers just before read op.
+  std::unordered_set<ReaderBase*> GetEndPoints();
 
   virtual ~ReaderBase();
+
+ protected:
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) {}
+
+  virtual void ShutdownImpl() {}
+
+  virtual void StartImpl() {}
+
+  enum ReaderStatus { kRunning, kStopped };
+
+  ReaderStatus status_{kRunning};
+
+  mutable std::mutex mu_;
+
+ private:
+  friend class DecoratedReader;
+  // These methods can be only invoked inside DecoratedReader to record the
+  // decorating chain.
+  void InsertDecoratedReader(
+      const std::shared_ptr<ReaderBase>& decorated_reader);
+  // A set of which readers that decorated this reader.
+  std::vector<std::weak_ptr<ReaderBase>> decorated_readers_;
 };
 
-class DecoratedReader : public ReaderBase {
+class DecoratedReader : public ReaderBase,
+                        public std::enable_shared_from_this<DecoratedReader> {
  public:
   explicit DecoratedReader(const std::shared_ptr<ReaderBase>& reader)
       : ReaderBase(), reader_(reader) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
   }
 
-  void ReInit() override { reader_->ReInit(); }
+  void RegisterDecorateChain() {
+    reader_->InsertDecoratedReader(shared_from_this());
+  }
+
+  ~DecoratedReader();
 
  protected:
+  void ShutdownImpl() override { reader_->Shutdown(); }
+
+  void StartImpl() override { reader_->Start(); }
+
   std::shared_ptr<ReaderBase> reader_;
 };
 
-class FileReader : public ReaderBase {
- public:
-  explicit FileReader(const std::vector<DDim>& dims);
-
-  void ReadNext(std::vector<LoDTensor>* out) override;
-
- protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
-
- private:
-  std::vector<DDim> dims_;
-};
+// FileReader is just a conceptual class.
+class FileReader : public ReaderBase {};
 
 // The ReaderHolder is used as reader' unified wrapper,
 // making it easier to access different type reader in Variables.
 class ReaderHolder {
  public:
-  void Reset(ReaderBase* reader) { reader_.reset(reader); }
+  template <typename T>
+  void Reset(const std::shared_ptr<T>& reader) {
+    auto reader_base = std::dynamic_pointer_cast<ReaderBase>(reader);
+    PADDLE_ENFORCE_NOT_NULL(reader_base);
+    reader_ = reader_base;
+  }
 
-  std::shared_ptr<ReaderBase> Get() const { return reader_; }
+  const std::shared_ptr<ReaderBase>& Get() const { return reader_; }
 
   void ReadNext(std::vector<LoDTensor>* out) {
     PADDLE_ENFORCE_NOT_NULL(reader_);
     reader_->ReadNext(out);
   }
-  void ReInit() {
-    PADDLE_ENFORCE_NOT_NULL(reader_);
-    reader_->ReInit();
+
+  void ResetAll() {
+    auto end_readers = reader_->GetEndPoints();
+    for (auto* reader : end_readers) {
+      reader->Shutdown();
+    }
+    for (auto* reader : end_readers) {
+      reader->Start();
+    }
   }
+
+  void Shutdown() {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->Shutdown();
+  }
+
+  void Start() {
+    PADDLE_ENFORCE_NOT_NULL(reader_);
+    reader_->Start();
+  }
+
+  operator const std::shared_ptr<ReaderBase>&() const { return this->reader_; }
 
  private:
   std::shared_ptr<ReaderBase> reader_;
 };
+
+template <typename T, typename... ARGS>
+inline std::shared_ptr<DecoratedReader> MakeDecoratedReader(ARGS&&... args) {
+  std::shared_ptr<DecoratedReader> reader(new T(std::forward<ARGS>(args)...));
+  reader->RegisterDecorateChain();
+  return reader;
+}
 
 }  // namespace framework
 }  // namespace paddle

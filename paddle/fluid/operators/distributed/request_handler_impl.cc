@@ -53,20 +53,18 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "sync: recv batch barrier message";
+    VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
-  } else if (varname == BEGIN_PASS_MESSAGE) {
-    VLOG(3) << "sync: recv begin pass message";
-    rpc_server_->WaitCond(kRequestSend);
-    rpc_server_->BeginPass();
+  } else if (varname == COMPLETE_MESSAGE) {
+    VLOG(3) << "sync: recv complete message";
+    rpc_server_->Complete();
   } else {
     VLOG(3) << "sync: received var_name: " << varname;
     rpc_server_->WaitCond(kRequestSend);
     VLOG(3) << "sync: processing received var: " << varname;
 
     if (invar == nullptr) {
-      LOG(ERROR) << "sync: Can not find server side var: " << varname;
-      PADDLE_THROW("sync: Can not find server side var");
+      LOG(FATAL) << "sync: Can not find server side var: " << varname;
       return false;
     }
     if (invar->IsType<framework::SelectedRows>()) {
@@ -95,14 +93,12 @@ bool RequestGetHandler::Handle(const std::string& varname,
     if (varname == FETCH_BARRIER_MESSAGE) {
       VLOG(3) << "sync: recv fetch barrier message";
       rpc_server_->IncreaseBatchBarrier(kRequestGet);
-    } else if (varname == END_PASS_MESSAGE) {
-      rpc_server_->EndPass();
     } else {
       rpc_server_->WaitCond(kRequestGet);
       *outvar = scope_->FindVar(varname);
     }
   } else {
-    if (varname != FETCH_BARRIER_MESSAGE && varname != END_PASS_MESSAGE) {
+    if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
       *outvar = scope_->FindVar(varname);
     }
   }

@@ -144,7 +144,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     # generate fake:
     if args.use_fake_data:
         for var in feed_var_list:
-            v = startup_prog.global_block().clone_variable(var)
+            v = startup_prog.global_block()._clone_variable(var)
             var.persistable = True
             v.persistable = True
 

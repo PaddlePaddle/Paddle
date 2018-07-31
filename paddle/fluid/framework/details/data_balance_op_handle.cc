@@ -22,10 +22,10 @@ namespace details {
 
 #ifdef PADDLE_WITH_CUDA
 DataBalanceOpHandle::DataBalanceOpHandle(
-    const std::vector<Scope *> &local_scopes,
+    ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     const platform::NCCLContextMap *ctxs)
-    : local_scopes_(local_scopes), places_(places) {
+    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
   if (ctxs) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = ctxs->DevCtx(p);
@@ -34,9 +34,9 @@ DataBalanceOpHandle::DataBalanceOpHandle(
 }
 #else
 DataBalanceOpHandle::DataBalanceOpHandle(
-    const std::vector<Scope *> &local_scopes,
+    ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places)
-    : local_scopes_(local_scopes), places_(places) {}
+    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
 std::string DataBalanceOpHandle::Name() const { return "data balance"; }
@@ -86,9 +86,9 @@ std::vector<std::array<int, 3>> DataBalanceOpHandle::GetBalancePlan(
 }
 
 void DataBalanceOpHandle::RunImpl() {
-  if (places_.size() == 1) {
-    return;
-  }
+  PADDLE_ENFORCE_GT(places_.size(), 1,
+                    "Data balance can only be enabled when the number of "
+                    "places to run larger than 1.");
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);
   auto out_var_handles = DynamicCast<VarHandle>(outputs_);
   PADDLE_ENFORCE(in_var_handles.size() % places_.size() == 0);
