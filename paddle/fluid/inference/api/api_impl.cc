@@ -111,7 +111,8 @@ NativePaddlePredictor::~NativePaddlePredictor() {
 }
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
-                                std::vector<PaddleTensor> *output_data) {
+                                std::vector<PaddleTensor> *output_data,
+                                int batch_size) {
   VLOG(3) << "Predictor::predict";
   Timer timer;
   timer.tic();
@@ -139,6 +140,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   executor_->RunPreparedContext(
       ctx_.get(), sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
       &feed_targets, &fetch_targets,
+      false, /* don't create local scope each time*/
       false /* don't create variable eatch time */);
   VLOG(4) << "Finish prepared context";
   if (!GetFetch(fetchs, output_data)) {

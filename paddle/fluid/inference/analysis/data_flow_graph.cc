@@ -222,10 +222,19 @@ Node *GraphTraits<DataFlowGraph>::NodesDFSIterator::operator->() {
   return stack_.top();
 }
 
+inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
+  return node.inlinks.size() == n;
+}
+
 GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
     const std::vector<Node *> &source) {
   PADDLE_ENFORCE(!source.empty(),
                  "Start points of topological sorting should not be empty!");
+  // CHECK all the inputs' in-degree is 0
+  for (auto *node : source) {
+    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
+  }
+
   std::unordered_set<Node *> visited;
   std::unordered_set<Node *> to_visit{source.begin(), source.end()};
 
@@ -233,6 +242,11 @@ GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
   while (!to_visit.empty()) {
     std::vector<Node *> queue(to_visit.begin(), to_visit.end());
     for (auto *p : queue) {
+      if (p->deleted()) {
+        visited.insert(p);
+        to_visit.erase(p);
+        continue;
+      }
       inlink_visited.clear();
 
       std::copy_if(p->inlinks.begin(), p->inlinks.end(),
@@ -290,6 +304,37 @@ bool GraphTraits<DataFlowGraph>::NodesTSIterator::operator==(
 Node *GraphTraits<DataFlowGraph>::NodesTSIterator::operator->() {
   PADDLE_ENFORCE_LT(cursor_, sorted_.size());
   return sorted_[cursor_];
+}
+
+std::pair<std::vector<Node *>, std::vector<Node *>>
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
+  std::unordered_set<Node *> nodes(graph.begin(), graph.end());
+  std::unordered_set<Node *> inputs;
+  std::unordered_set<Node *> outputs;
+  // Input a Value, check whether its inlink is in the subgraph.
+  auto inlink_in_subgraph = [&](Node *n) {
+    for (auto *in : n->inlinks) {
+      if (nodes.count(in)) return true;
+    }
+    return false;
+  };
+  for (auto &node : graph) {
+    for (auto *in : node->inlinks) {
+      // The Value that is written by nodes inside a sub-graph shouldn't be the
+      // input of the sub-graph.
+      if (!nodes.count(in) && in->type() == Node::Type::kValue &&
+          !inlink_in_subgraph(in)) {
+        inputs.insert(in);
+      }
+    }
+    for (auto *out : node->outlinks) {
+      if (!nodes.count(out) && out->type() == Node::Type::kValue) {
+        outputs.insert(out);
+      }
+    }
+  }
+  return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
+                        std::vector<Node *>(outputs.begin(), outputs.end()));
 }
 
 }  // namespace analysis

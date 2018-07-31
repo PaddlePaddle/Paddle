@@ -60,3 +60,7 @@ cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
+
+IF(WITH_GPU)
+  nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
+ENDIF()

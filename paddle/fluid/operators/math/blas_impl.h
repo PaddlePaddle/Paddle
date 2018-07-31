@@ -37,6 +37,7 @@ struct CBlas<float> {
     libxsmm_sgemm(args...);
   }
 #endif
+
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     platform::dynload::cblas_saxpy(args...);
@@ -76,6 +77,7 @@ struct CBlas<double> {
     libxsmm_dgemm(args...);
   }
 #endif
+
   template <typename... ARGS>
   static void AXPY(ARGS... args) {
     platform::dynload::cblas_daxpy(args...);
@@ -150,6 +152,7 @@ struct CBlas<double> {
   }
 };
 #endif
+
 template <>
 struct CBlas<platform::float16> {
   static void GEMM(...) { PADDLE_THROW("float16 GEMM not supported on CPU"); }
@@ -190,6 +193,37 @@ inline bool UseXSMM<platform::float16>(const int &m, const int &n, const int &k,
   return false;
 }
 
+template <typename T>
+inline void GEMM_WARP(CBLAS_ORDER order, CBLAS_TRANSPOSE transA,
+                      CBLAS_TRANSPOSE transB, int M, int N, int K, T alpha,
+                      const T *A, int lda, const T *B, int ldb, T beta, T *C,
+                      int ldc) {
+#ifdef PADDLE_WITH_LIBXSMM
+  if (UseXSMM<T>(M, N, K, transA != CblasNoTrans, transB != CblasNoTrans, alpha,
+                 beta)) {
+    // Note: SMM use ColMajor
+    const char transa = 'N';
+    const char transb = 'N';
+    CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &ldb, A, &lda,
+                       &beta, C, &ldc);
+    return;
+  }
+#endif
+
+#ifdef PADDLE_MKL_SPLIT_GEMM
+  constexpr int bs = 2;
+  if (M % bs == 0 && transA == CblasNoTrans && transB == CblasNoTrans) {
+    for (int off = 0; off < M; off += bs) {
+      CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, bs, N, K, alpha,
+                     A + off * lda, lda, B, ldb, beta, C + off * ldb, ldc);
+    }
+    return;
+  }
+#endif
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
+}
+
 template <>
 template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
@@ -199,21 +233,8 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
-#ifdef PADDLE_WITH_LIBXSMM
-  if (UseXSMM(M, N, K, transA != CblasNoTrans, transB != CblasNoTrans, alpha,
-              beta)) {
-    // Note: SMM use ColMajor
-    const char transa = 'N';
-    const char transb = 'N';
-    CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &ldb, A, &lda,
-                       &beta, C, &ldc);
-  } else {
-#endif
-    CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B,
-                   ldb, beta, C, ldc);
-#ifdef PADDLE_WITH_LIBXSMM
-  }
-#endif
+  GEMM_WARP<T>(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+               beta, C, ldc);
 }
 
 template <>
@@ -222,9 +243,9 @@ void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
                                             int N, int K, T alpha, const T *A,
                                             int lda, const T *B, int ldb,
                                             T beta, T *C, int ldc) const {
-  CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-                 transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-                 lda, B, ldb, beta, C, ldc);
+  GEMM_WARP<T>(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+               transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+               lda, B, ldb, beta, C, ldc);
 }
 
 template <typename DeviceContext>

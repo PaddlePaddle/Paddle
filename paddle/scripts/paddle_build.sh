@@ -333,8 +333,7 @@ function assert_api_not_changed() {
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 
-    # Use git diff --name-only HEAD^ may not get file changes for update commits in one PR
-    API_CHANGE=`echo $CHANGED_FILES | grep "paddle/fluid/API.spec" || true`
+    API_CHANGE=`git diff --name-only upstream/develop | grep "paddle/fluid/API.spec" || true`
     echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
         # TODO: curl -H 'Authorization: token ${TOKEN}'
@@ -548,6 +547,7 @@ function test_fluid_inference_lib() {
 EOF
         cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
         ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./clean.sh
       fi
 }
 
@@ -600,11 +600,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
+        assert_api_not_changed
         ;;
       *)
         print_usage
