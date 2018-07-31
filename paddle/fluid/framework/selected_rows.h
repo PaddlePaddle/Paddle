@@ -131,7 +131,9 @@ class SelectedRows {
 
   int64_t AutoIndex(int64_t key) const {
     auto iter = id_to_index.find(key);
-    PADDLE_ENFORCE_NE(iter, id_to_index.end(), "id not in rows");
+    if (iter == id_to_index.end()) {
+      PADDLE_THROW("Id %s not in table", key);
+    }
     return iter->second;
   }
 
