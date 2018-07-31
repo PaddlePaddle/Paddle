@@ -21,7 +21,7 @@ import paddle
 import paddle.dataset.wmt16 as wmt16
 import os
 
-WMT16_RECORDIO_FILE = "./wmt16_test_pe.recordio"
+WMT16_RECORDIO_FILE = "/tmp/wmt16_test_pe.recordio"
 
 
 class ModelHyperParams(object):
@@ -169,7 +169,7 @@ class TestTransformer(TestParallelExecutorBase):
 
     def test_main(self):
         self.check_network_convergence(transformer, use_cuda=True)
-        self.check_network_convergence(transformer, use_cuda=False)
+        self.check_network_convergence(transformer, use_cuda=False, iter=5)
 
 
 if __name__ == '__main__':
