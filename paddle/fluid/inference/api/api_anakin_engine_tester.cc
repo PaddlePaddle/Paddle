@@ -38,21 +38,20 @@ TEST(inference, anakin) {
       CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
 
   float data[1 * 3 * 224 * 224] = {1.0f};
+  PaddleTensor tensor;
+  tensor.name = "input_0";
+  tensor.shape = std::vector<int>({1, 3, 224, 224});
+  tensor.data = PaddleBuf(data, sizeof(data));
+  tensor.dtype = PaddleDType::FLOAT32;
 
-  PaddleBuf buf{.data = data, .length = sizeof(data)};
-  PaddleTensor tensor{.name = "input_0",
-                      .shape = std::vector<int>({1, 3, 224, 224}),
-                      .data = std::move(buf),
-                      .dtype = PaddleDType::FLOAT32,
-		      .lod = {{}}};
   // For simplicity, we set all the slots with the same data.
   std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
 
-  PaddleTensor tensor_out{.name = "prob_out",
-                          .shape = std::vector<int>({}),
-                          .data = PaddleBuf(),
-                          .dtype = PaddleDType::FLOAT32,
-			  .lod = {{}}};
+  PaddleTensor tensor_out;
+  tensor_out.name = "prob_out";
+  tensor_out.shape = std::vector<int>({});
+  tensor_out.data = PaddleBuf();
+  tensor_out.dtype = PaddleDType::FLOAT32;
 
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
