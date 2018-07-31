@@ -139,7 +139,10 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
 
       auto *d_table_data = d_table_value->data<T>();
       auto *d_output_data = d_output->data<T>();
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
+      auto d_output_dims = d_output->dims();
+      PADDLE_ENFORCE_EQ(
+          d_table_value->dims(),
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
                    d_output->numel() * sizeof(T), stream);
 

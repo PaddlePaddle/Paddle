@@ -127,7 +127,10 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *d_output_data = d_output->data<T>();
       auto *d_table_data = d_table_value->data<T>();
 
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
+      auto d_output_dims = d_output->dims();
+      PADDLE_ENFORCE_EQ(
+          d_table_value->dims(),
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
@@ -137,7 +140,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *ids_data = ids->data<int64_t>();
 
       int N = table_dim[0];
-      int D = d_output->dims()[1];
+      int D = table_dim[1];
 
       auto *d_output_data = d_output->data<T>();
       auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
