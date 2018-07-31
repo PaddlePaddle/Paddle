@@ -12,28 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/model_store_pass.h"
+
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include <google/protobuf/text_format.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST(Analyzer, analysis_without_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = false;
-  Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
-  Analyzer analyser;
-  analyser.Run(&argument);
-}
+DEFINE_string(inference_model_dir, "", "Model path");
 
-TEST(Analyzer, analysis_with_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = true;
-  Argument argument;
-  argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
-  Analyzer analyser;
-  analyser.Run(&argument);
+TEST(DFG_StorePass, test) {
+  Analyzer analyzer;
+  Argument argument(FLAGS_inference_model_dir);
+  argument.model_output_store_path.reset(
+      new std::string("./_dfg_store_pass_tmp"));
+  // disable storage in alalyzer
+  FLAGS_inference_analysis_output_storage_path = "";
+  analyzer.Run(&argument);
+
+  ModelStorePass pass;
+  pass.Initialize(&argument);
+  pass.Run(argument.main_dfg.get());
 }
 
 }  // namespace analysis
