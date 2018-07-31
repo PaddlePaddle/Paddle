@@ -37,19 +37,21 @@ TEST(inference, anakin) {
 
   float data[1 * 3 * 224 * 224] = {1.0f};
 
-  PaddleTensor tensor{.name = "input_0",
-                      .shape = std::vector<int>({1, 3, 224, 224}),
-                      .data = PaddleBuf(data, sizeof(data)),
-                      .dtype = PaddleDType::FLOAT32};
+  PaddleTensor tensor;
+  tensor.name = "input_0";
+  tensor.shape = std::vector<int>({1, 3, 224, 224});
+  tensor.data = PaddleBuf(data, sizeof(data));
+  tensor.dtype = PaddleDType::FLOAT32;
 
   // For simplicity, we set all the slots with the same data.
   std::vector<PaddleTensor> paddle_tensor_feeds;
   paddle_tensor_feeds.emplace_back(std::move(tensor));
 
-  PaddleTensor tensor_out{.name = "prob_out",
-                          .shape = std::vector<int>({1000, 1}),
-                          .data = PaddleBuf(),
-                          .dtype = PaddleDType::FLOAT32};
+  PaddleTensor tensor_out;
+  tensor_out.name = "prob_out";
+  tensor_out.shape = std::vector<int>({1000, 1});
+  tensor_out.data = PaddleBuf();
+  tensor_out.dtype = PaddleDType::FLOAT32;
 
   std::vector<PaddleTensor> outputs;
   outputs.emplace_back(std::move(tensor_out));

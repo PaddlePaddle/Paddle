@@ -36,6 +36,8 @@ namespace analysis {
 
 /*
  * DataFlowGraph - A container of Value and Function Nodes.
+ *
+ * This is the base graph for any other type of graphs, such as SSA or CFG.
  */
 struct DataFlowGraph {
   NodeMap nodes;
