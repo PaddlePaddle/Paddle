@@ -35,6 +35,9 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);
 
+// Get the operations of graph.
+std::vector<ir::Node *> GetOperations(const Graph &graph);
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

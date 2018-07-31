@@ -23,61 +23,70 @@ namespace paddle {
 namespace framework {
 namespace ir {
 const char kOpDescs[] = "op_descs";
-typedef std::vector<std::unique_ptr<OpDesc>> OpDescs;
+using OpDescs = std::vector<std::unique_ptr<OpDesc>>;
 
 std::unique_ptr<ir::Graph> OpFusionPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  graph->Set<OpDescs>(kOpDescs, new OpDescs);
+  // The created OpDesc will be stored in graph.
+  graph->Set<OpDescs>(kOpDescs, new OpDescs());
 
-  std::vector<ir::Node *> topo_order = ir::TopologySortOperations(*graph.get());
+  std::vector<NodePtr> operations = ir::GetOperations(*graph.get());
 
-  std::unordered_map<const Node *, Node *> internal_nodes;
-  std::unordered_set<ir::Node *> need_removed_nodes;
+  // internal_nodes is used to record the origin node
+  // and fused node which has this origin node.
+  std::unordered_map<NodePtr, InternalNodePtr> internal_nodes;
+  // need_removed_nodes is used to record the unnecessary nodes which should be
+  // released.
+  std::unordered_set<NodePtr> need_removed_nodes;
 
-  for (auto iter_node = topo_order.rbegin(); iter_node != topo_order.rend();
+  for (auto iter_node = operations.begin(); iter_node != operations.end();
        ++iter_node) {
     auto cur_node = *iter_node;
 
-    std::unordered_set<Node *> tobe_fused;
+    // tobe_fused is used to record the nodes which can be fused with cur_node,
+    // and these nodes are the generation operator of cur_node's input.
+    std::unordered_set<NodePtr> tobe_fused;
 
-    if (SetupFusion(cur_node, internal_nodes, &tobe_fused)) {
-      Node *new_node =
+    // Whether cur_node can fuse with it adjacent nodes(in-degree), if so,
+    // add the adjacent node to tobe_fused.
+    // Node: cur_node maybe has been fused, if so, get the fused
+    // node from internal_nodes, and check whether the fused node
+    // can fuse with cur_node's adjacent nodes(in-degree).
+    if (SetUpFusion(cur_node, internal_nodes, &tobe_fused)) {
+      // fuse cur_node and tobe_fused.
+      NodePtr fused_node =
           FuseOperators(cur_node, tobe_fused, &need_removed_nodes, graph.get());
 
       tobe_fused.emplace(cur_node);
-      need_removed_nodes.insert(tobe_fused.begin(), tobe_fused.end());
+
+      // Add the map between tobe_fused nodes and the fused node.
       for (auto &sub_node : tobe_fused) {
         PADDLE_ENFORCE_EQ(internal_nodes.count(sub_node), 0);
-        internal_nodes.emplace(sub_node, new_node);
+        internal_nodes.emplace(sub_node, fused_node);
       }
+
+      // Record these nodes that are no longer useful.
+      need_removed_nodes.insert(tobe_fused.begin(), tobe_fused.end());
     }
   }
 
-  if (VLOG_IS_ON(6)) {
-    PrintTopologySort(topo_order, "TopologySortOperations(before fusing): ");
-  }
-
-  // Release unnecessary node
+  // Release unnecessary nodes
   for (auto &node : need_removed_nodes) {
     graph->ReleaseNode(node);
-  }
-
-  if (VLOG_IS_ON(6)) {
-    std::vector<ir::Node *> topo_order_after =
-        ir::TopologySortOperations(*graph.get());
-    PrintTopologySort(topo_order_after,
-                      "TopologySortOperations(after fusing): ");
   }
   return graph;
 }
 
-bool OpFusionPass::SetupFusion(
+// Whether node's input
+bool OpFusionPass::SetUpFusion(
     const NodePtr node,
-    const std::unordered_map<const Node *, InternalNodePtr> &internal_nodes,
-    std::unordered_set<Node *> *tobe_fused) const {
-  PADDLE_ENFORCE(!node->IsVariable(), "Node should not be variable.");
-
+    const std::unordered_map<NodePtr, InternalNodePtr> &internal_nodes,
+    std::unordered_set<NodePtr> *tobe_fused) const {
+  PADDLE_ENFORCE(node->IsOperation(), "Node should be an operation.");
   NodePtr cur_node = node;
+
+  // If the input node has be fused, get the fused_node from
+  // internal_nodes, and the fused_node become the cur_node.
   if (internal_nodes.count(node)) {
     cur_node = internal_nodes.at(node);
   }
@@ -85,50 +94,30 @@ bool OpFusionPass::SetupFusion(
   auto no_control_vars = ir::NoControlDepVar(cur_node->inputs);
   if (no_control_vars.empty()) return false;
 
-  bool need_fusion = false;
-
   VLOG(10) << "Current op:" << cur_node->Name();
-  for (auto it = no_control_vars.begin(); it != no_control_vars.end(); ++it) {
-    auto in_var = *it;
-    PADDLE_ENFORCE(in_var->IsVariable(), "in_var should be a variable.");
+
+  bool need_fusion = false;
+  for (auto &in_var : no_control_vars) {
     if (in_var->inputs.empty()) continue;
+    PADDLE_ENFORCE(in_var->IsVariable(), "in_var should be a variable.");
     PADDLE_ENFORCE_EQ(in_var->inputs.size(), 1,
                       "in_var's generation op should be only one.");
 
     auto in_var_gen_op = in_var->inputs[0];
     if (IsFusible(cur_node, in_var_gen_op)) {
       need_fusion = true;
-      VLOG(10) << "Fuse: " << cur_node->Name() << ", " << in_var_gen_op->Name();
       tobe_fused->insert(in_var_gen_op);
+      VLOG(10) << "Fuse: " << cur_node->Name() << ", " << in_var_gen_op->Name();
     }
   }
   return need_fusion;
 }
 
-bool OpFusionPass::IsFusible(const NodePtr n1, const NodePtr n2) const {
-  PADDLE_ENFORCE(!n1->IsVariable(), "n1 should not be Variable.");
-  PADDLE_ENFORCE(!n2->IsVariable(), "n2 should not be Variable.");
-
-  // TODO(zcd): hard code
-  bool case1 = (n1->Op()->Type() == "scale" || n1->Op()->Type() == "relu") &&
-               (n2->Op()->Type() == "elementwise_add");
-  bool case2 = (n1->Op()->Type() == "elementwise_add") &&
-               (n2->Op()->Type() == "scale" || n2->Op()->Type() == "relu");
-  bool case3 =
-      (n1->Op()->Type() == "elementwise_add_grad") &&
-      (n2->Op()->Type() == "scale_grad" || n2->Op()->Type() == "relu_grad");
-  //  bool case4 =
-  //    (n1->Op()->Type() == "scale_grad" || n1->Op()->Type() == "relu_grad") &&
-  //    (n2->Op()->Type() == "elementwise_add_grad");
-
-  return case1 || case2 || case3;
-}
-
-Node *OpFusionPass::FuseOperators(
+// Fuse cur_node and tobe_fused nodes
+NodePtr OpFusionPass::FuseOperators(
     const NodePtr cur_node, const std::unordered_set<NodePtr> &tobe_fused,
-    std::unordered_set<ir::Node *> *need_removed_nodes,
-    ir::Graph *graph) const {
-  //  Create OpDesc
+    std::unordered_set<NodePtr> *need_removed_nodes, ir::Graph *graph) const {
+  //  Create OpDesc,
   graph->Get<OpDescs>(kOpDescs).emplace_back(new framework::OpDesc());
   auto *fused_op_desc = graph->Get<OpDescs>(kOpDescs).back().get();
 
@@ -144,11 +133,23 @@ Node *OpFusionPass::FuseOperators(
   } else {
     PADDLE_ENFORCE("Currently only support fusing two operators.");
   }
+
   // Create Node
   fused_op_desc->Flush();
   auto fused_node = graph->CreateOpNode(fused_op_desc);
-  auto replace_node = [](const Node *cur_node, Node *new_node,
-                         std::vector<Node *> *vars) {
+
+  // Adjust the link relationship between nodes
+
+  // Get the input arguments of the fused_node.
+  // Node: the in_args may have duplicated name.
+  auto in_args = fused_node->Op()->InputArgumentNames();
+  std::unordered_set<std::string> in_args_set;
+  for (auto &in : in_args) {
+    in_args_set.emplace(in);
+  }
+
+  auto replace_node = [](NodePtr cur_node, NodePtr new_node,
+                         std::vector<NodePtr> *vars) {
     bool flag = false;
     for (auto &o : *vars) {
       if (o == cur_node) {
@@ -159,15 +160,8 @@ Node *OpFusionPass::FuseOperators(
     PADDLE_ENFORCE(flag);
   };
 
-  auto in_args = fused_node->Op()->InputArgumentNames();
-  std::unordered_set<std::string> in_args_set;
-  for (auto &in : in_args) {
-    in_args_set.emplace(in);
-  }
-
-  // new_node input
+  // link fused_node's input.
   for (auto &var : cur_node->inputs) {
-    // the input degree of Variable Node is less than one.
     PADDLE_ENFORCE_LE(var->inputs.size(), 1);
     bool no_need_merge =
         var->inputs.empty() || !tobe_fused.count(var->inputs[0]);
@@ -181,7 +175,7 @@ Node *OpFusionPass::FuseOperators(
           PADDLE_THROW("how to deal with this situation(%s).",
                        var->outputs[0]->Name());
         } else {
-          std::vector<Node *> new_out;
+          std::vector<NodePtr> new_out;
           for (auto &o : var->outputs) {
             if (o != cur_node) {
               new_out.emplace_back(o);
@@ -211,7 +205,8 @@ Node *OpFusionPass::FuseOperators(
       }
     }
   }
-  // new_node output
+
+  // link fused_node's output.
   for (auto &cur_output : cur_node->outputs) {
     PADDLE_ENFORCE(cur_output->IsVariable());
     fused_node->outputs.emplace_back(cur_output);
@@ -223,7 +218,7 @@ Node *OpFusionPass::FuseOperators(
 }
 
 bool OpFusionPass::IsBackward(
-    const NodePtr node, const std::unordered_set<Node *> &tobe_fused) const {
+    const NodePtr node, const std::unordered_set<NodePtr> &tobe_fused) const {
   auto op_role = boost::get<int>(
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
 
@@ -233,6 +228,25 @@ bool OpFusionPass::IsBackward(
                       "Currently, only support fusing the same role operators");
   }
   return op_role == static_cast<int>(OpRole::kBackward);
+}
+
+bool OpFusionPass::IsFusible(const NodePtr n1, const NodePtr n2) const {
+  PADDLE_ENFORCE(n1->IsOperation(), "n1 should be an operation.");
+  PADDLE_ENFORCE(n2->IsOperation(), "n2 should be an operation.");
+
+  // TODO(zcd): hard code
+  bool case1 = (n1->Op()->Type() == "scale" || n1->Op()->Type() == "relu") &&
+               (n2->Op()->Type() == "elementwise_add");
+  bool case2 = (n1->Op()->Type() == "elementwise_add") &&
+               (n2->Op()->Type() == "scale" || n2->Op()->Type() == "relu");
+  bool case3 =
+      (n1->Op()->Type() == "elementwise_add_grad") &&
+      (n2->Op()->Type() == "scale_grad" || n2->Op()->Type() == "relu_grad");
+  //  bool case4 =
+  //    (n1->Op()->Type() == "scale_grad" || n1->Op()->Type() == "relu_grad") &&
+  //    (n2->Op()->Type() == "elementwise_add_grad");
+
+  return case1 || case2 || case3;
 }
 
 // temporally
@@ -250,7 +264,7 @@ static bool IsElemwise(std::string op_type) {
 }
 
 bool OpFusionPass::IsElemwiseAndActivation(
-    const NodePtr node, const std::unordered_set<Node *> &tobe_fused) const {
+    const NodePtr node, const std::unordered_set<NodePtr> &tobe_fused) const {
   PADDLE_ENFORCE_EQ(tobe_fused.size(), 1);
   auto outside_op_name = node->Op()->Type();
   auto inside_op_name = (*tobe_fused.begin())->Op()->Type();
@@ -260,20 +274,20 @@ bool OpFusionPass::IsElemwiseAndActivation(
 }
 
 void OpFusionPass::FuseElemwiseAndActivation(
-    const NodePtr outside_node, const std::unordered_set<Node *> &tobe_fused,
+    const NodePtr outside_node, const std::unordered_set<NodePtr> &tobe_fused,
     OpDesc *op_desc) const {
   auto intra_node = *tobe_fused.begin();
   auto intra_op_type = intra_node->Op()->Type();
   auto outside_op_type = outside_node->Op()->Type();
 
+  auto intra_node_in_args = intra_node->Op()->InputArgumentNames();
+  auto intra_node_out_args = intra_node->Op()->OutputArgumentNames();
+  auto outside_node_in_args = outside_node->Op()->InputArgumentNames();
+
   // Set Input
   if (IsBackward(outside_node, tobe_fused)) {
     op_desc->SetType("fused_elemwise_activation_grad");
     op_desc->SetAttr("functor_list", intra_op_type + "," + outside_op_type);
-
-    auto intra_node_in_args = intra_node->Op()->InputArgumentNames();
-    auto intra_node_out_args = intra_node->Op()->OutputArgumentNames();
-    auto outside_node_in_args = outside_node->Op()->InputArgumentNames();
 
     if (IsElemwise(outside_op_type)) {
       PADDLE_ENFORCE_LE(intra_node_in_args.size(), 3);
@@ -306,20 +320,16 @@ void OpFusionPass::FuseElemwiseAndActivation(
     op_desc->SetAttr("functor_list", outside_op_type + "," + intra_op_type);
 
     if (IsElemwise(outside_op_type)) {
-      auto in_args = intra_node->Op()->InputArgumentNames();
-      auto out_args = intra_node->Op()->OutputArgumentNames();
-      auto cur_in_args = outside_node->Op()->InputArgumentNames();
+      PADDLE_ENFORCE_EQ(intra_node_in_args.size(), 1);
+      PADDLE_ENFORCE_EQ(intra_node_out_args.size(), 1);
+      PADDLE_ENFORCE_EQ(outside_node_in_args.size(), 2);
 
-      PADDLE_ENFORCE_EQ(in_args.size(), 1);
-      PADDLE_ENFORCE_EQ(out_args.size(), 1);
-      PADDLE_ENFORCE_EQ(cur_in_args.size(), 2);
+      op_desc->SetInput("Y", intra_node_in_args);
 
-      op_desc->SetInput("Y", in_args);
-
-      if (cur_in_args[0] == out_args[0]) {
-        op_desc->SetInput("X", {cur_in_args[1]});
-      } else if (cur_in_args[1] == out_args[0]) {
-        op_desc->SetInput("X", {cur_in_args[0]});
+      if (outside_node_in_args[0] == intra_node_out_args[0]) {
+        op_desc->SetInput("X", {outside_node_in_args[1]});
+      } else if (outside_node_in_args[1] == intra_node_out_args[0]) {
+        op_desc->SetInput("X", {outside_node_in_args[0]});
       } else {
         PADDLE_THROW("exception");
       }
@@ -339,17 +349,6 @@ void OpFusionPass::FuseElemwiseAndActivation(
   }
 }
 
-void OpFusionPass::PrintTopologySort(const std::vector<Node *> &topo_order,
-                                     const std::string &info) const {
-  if (VLOG_IS_ON(10)) {
-    std::stringstream out;
-    out << info;
-    for (auto &node : topo_order) {
-      out << node->Op()->Type() << ", ";
-    }
-    VLOG(10) << out.str();
-  }
-}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

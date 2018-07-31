@@ -236,7 +236,7 @@ bool IsControlDepVar(const ir::Node &var) {
 std::vector<Node *> NoControlDepVar(const std::vector<Node *> &vars) {
   std::vector<Node *> no_control_vars;
   for (auto &var : vars) {
-    if (var->Name().find(ir::Node::kControlDepVarName) == std::string::npos) {
+    if (!IsControlDepVar(*var)) {
       no_control_vars.emplace_back(var);
     }
   }

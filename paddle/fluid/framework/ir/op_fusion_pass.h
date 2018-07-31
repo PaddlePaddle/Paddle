@@ -29,8 +29,7 @@ namespace framework {
 namespace ir {
 
 using NodePtr = Node *;
-using InternalNode = Node;
-using InternalNodePtr = NodePtr;
+using InternalNodePtr = Node *;
 
 class OpFusionPass : public Pass {
  protected:
@@ -40,28 +39,25 @@ class OpFusionPass : public Pass {
  private:
   bool IsFusible(const NodePtr n1, const NodePtr n2) const;
 
-  bool SetupFusion(
+  bool SetUpFusion(
       const NodePtr node,
-      const std::unordered_map<const Node *, InternalNodePtr> &m_internal,
-      std::unordered_set<Node *> *tobe_fused) const;
+      const std::unordered_map<NodePtr, InternalNodePtr> &m_internal,
+      std::unordered_set<NodePtr> *tobe_fused) const;
 
-  Node *FuseOperators(const NodePtr cur_node,
-                      const std::unordered_set<NodePtr> &tobe_fused,
-                      std::unordered_set<ir::Node *> *need_removed_node,
-                      ir::Graph *graph) const;
+  NodePtr FuseOperators(const NodePtr cur_node,
+                        const std::unordered_set<NodePtr> &tobe_fused,
+                        std::unordered_set<NodePtr> *need_removed_node,
+                        ir::Graph *graph) const;
 
   bool IsBackward(const NodePtr node,
-                  const std::unordered_set<Node *> &tobe_fused) const;
+                  const std::unordered_set<NodePtr> &tobe_fused) const;
 
   bool IsElemwiseAndActivation(
-      const NodePtr node, const std::unordered_set<Node *> &tobe_fused) const;
+      const NodePtr node, const std::unordered_set<NodePtr> &tobe_fused) const;
 
   void FuseElemwiseAndActivation(const NodePtr node,
-                                 const std::unordered_set<Node *> &tobe_fused,
+                                 const std::unordered_set<NodePtr> &tobe_fused,
                                  OpDesc *op_desc) const;
-
-  void PrintTopologySort(const std::vector<Node *> &topo_order,
-                         const std::string &) const;
 };
 
 }  // namespace ir

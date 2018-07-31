@@ -113,6 +113,18 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
   return adj_list;
 }
 
+std::vector<ir::Node *> GetOperations(const Graph &graph) {
+  std::vector<ir::Node *> ret;
+
+  for (auto node : graph.Nodes()) {
+    if (node->IsVariable()) {
+      continue;
+    }
+    ret.emplace_back(node);
+  }
+  return ret;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

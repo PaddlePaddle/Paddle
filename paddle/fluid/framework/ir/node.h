@@ -48,6 +48,8 @@ class Node {
 
   bool IsVariable() const { return type_ == Type::kVariable; }
 
+  bool IsOperation() const { return type_ == Type::kOperation; }
+
   std::string Name() const { return name_; }
 
   VarDesc* Var() {
@@ -56,7 +58,7 @@ class Node {
   }
 
   OpDesc* Op() {
-    PADDLE_ENFORCE(!IsVariable());
+    PADDLE_ENFORCE(IsOperation());
     return op_desc_;
   }
 
