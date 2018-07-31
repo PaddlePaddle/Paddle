@@ -517,7 +517,8 @@ class Trainer(object):
 
                 if outs:
                     accumulated = [
-                        x[0] + x[1][0] for x in zip(accumulated, outs)]
+                        x[0] + x[1][0] for x in zip(accumulated, outs)
+                    ]
                     count += 1
 
             return [x / count for x in accumulated]
