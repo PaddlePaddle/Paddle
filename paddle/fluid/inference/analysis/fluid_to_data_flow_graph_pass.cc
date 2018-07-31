@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
 #include <string>
 #include <vector>
 
@@ -25,8 +26,20 @@ namespace analysis {
 
 bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
-  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
-  PADDLE_ENFORCE(argument);
+  if (argument->origin_program_desc) {
+    LOG(WARNING) << "argument's origin_program_desc is already set, might "
+                    "duplicate called";
+  }
+  if (!argument->fluid_model_program_path) {
+    ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_dir);
+    argument->fluid_model_program_path.reset(
+        new std::string(*argument->fluid_model_dir + "/__model__"));
+  }
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_program_path);
+  auto program = LoadProgramDesc(*argument->fluid_model_program_path);
+  argument->origin_program_desc.reset(
+      new framework::proto::ProgramDesc(program));
+
   if (!argument->main_dfg) {
     argument->main_dfg.reset(new DataFlowGraph);
   }
