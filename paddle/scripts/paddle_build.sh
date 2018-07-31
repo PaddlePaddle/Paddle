@@ -534,7 +534,7 @@ EOF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
-        tar -cf fluid.tgz fluid
+        tar -czf fluid.tgz fluid
       fi
 }
 

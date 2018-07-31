@@ -495,6 +495,7 @@ class DistributeTranspiler(object):
             pserver_index = self.pserver_endpoints.index(endpoint)
             table_opt_block = self._create_table_optimize_block(
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
+            optimize_blocks.append(table_opt_block)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(

@@ -12,27 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+/*
+ * This file implements analysizer -- an executation help to analyze and
+ * optimize trained model.
+ */
+#include "paddle/fluid/inference/analysis/analyzer.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 
-#include "paddle/fluid/framework/details/ssa_graph_builder.h"
+int main(int argc, char** argv) {
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  using paddle::inference::analysis::Analyzer;
+  using paddle::inference::analysis::Argument;
 
-#include <string>
+  Argument argument;
+  Analyzer analyzer;
+  analyzer.Run(&argument);
 
-namespace paddle {
-namespace framework {
-namespace details {
-
-class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
-    return graph;
-  }
-
-  bool IsValidGraph(const ir::Graph* graph) const;
-};
-
-}  // namespace details
-}  // namespace framework
-}  // namespace paddle
+  return 0;
+}
