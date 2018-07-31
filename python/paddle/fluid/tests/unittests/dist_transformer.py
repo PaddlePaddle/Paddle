@@ -172,7 +172,7 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
     return t
 
 
-class DistTransformer2x2:
+class DistTransformer2x2(object):
     def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
                     trainer_id):
         get_model()
