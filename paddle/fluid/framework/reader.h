@@ -25,15 +25,13 @@
 namespace paddle {
 namespace framework {
 
-enum ReaderStatus { kRunning, kStopped };
-
 class ReaderBase {
  public:
-  void ReadNext(std::vector<LoDTensor>* out);
+  virtual void ReadNext(std::vector<LoDTensor>* out);
 
-  void Shutdown();
+  virtual void Shutdown();
 
-  void Start();
+  virtual void Start();
 
   // Return the readers which are the end of decorating chain. Basically
   // they are readers just before read op.
@@ -42,11 +40,13 @@ class ReaderBase {
   virtual ~ReaderBase();
 
  protected:
-  virtual void ReadNextImpl(std::vector<LoDTensor>* out) = 0;
+  virtual void ReadNextImpl(std::vector<LoDTensor>* out) {}
 
   virtual void ShutdownImpl() {}
 
   virtual void StartImpl() {}
+
+  enum ReaderStatus { kRunning, kStopped };
 
   ReaderStatus status_{kRunning};
 
@@ -73,6 +73,8 @@ class DecoratedReader : public ReaderBase,
   void RegisterDecorateChain() {
     reader_->InsertDecoratedReader(shared_from_this());
   }
+
+  ~DecoratedReader();
 
  protected:
   void ShutdownImpl() override { reader_->Shutdown(); }
