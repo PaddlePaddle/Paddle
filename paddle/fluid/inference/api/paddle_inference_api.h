@@ -126,9 +126,11 @@ struct NativeConfig : public PaddlePredictor::Config {
 
 // Configurations for Anakin engine.
 struct AnakinConfig : public PaddlePredictor::Config {
+  enum TargetType { NVGPU = 0, X86 };
   int device;
   std::string model_file;
   int max_batch_size{-1};
+  TargetType target_type;
 };
 
 struct TensorRTConfig : public NativeConfig {
