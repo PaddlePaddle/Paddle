@@ -99,6 +99,7 @@ def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
         padding=padding,
         act=None,
         bias_attr=False)
+
     return fluid.layers.batch_norm(input=conv1, act=act)
 
 

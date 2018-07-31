@@ -40,9 +40,23 @@ struct UniformGenerator {
   }
 };
 
-template <typename T, typename V>
-struct CastFunctor {
-  HOSTDEVICE V operator()(const T& a) { return static_cast<V>(a); }
+using paddle::platform::float16;
+template <>
+struct UniformGenerator<float16> {
+  float16 min_, max_;
+  unsigned int seed_;
+
+  __host__ __device__ UniformGenerator(float16 min, float16 max, int seed)
+      : min_(min), max_(max), seed_(seed) {}
+
+  __host__ __device__ float16 operator()(const unsigned int n) const {
+    thrust::minstd_rand rng;
+    rng.seed(seed_);
+    thrust::uniform_real_distribution<float> dist(static_cast<float>(min_),
+                                                  static_cast<float>(max_));
+    rng.discard(n);
+    return static_cast<float16>(dist(rng));
+  }
 };
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
@@ -75,37 +89,9 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     T max = static_cast<T>(context.Attr<float>("max"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    if (std::type_index(typeid(T)) ==
-        std::type_index(typeid(platform::float16))) {
-      framework::Tensor master_copy_tensor;
-      master_copy_tensor.Resize(tensor->dims());
-      float* master_copy_tensor_data =
-          master_copy_tensor.mutable_data<float>(context.GetPlace());
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<float>(master_copy_tensor_data),
-                        UniformGenerator<float>(static_cast<float>(min),
-                                                static_cast<float>(max), seed));
-      platform::Transform<platform::CUDADeviceContext> trans;
-      auto* in_begin = master_copy_tensor.data<float>();
-      auto* in_end = in_begin + master_copy_tensor.numel();
-      auto* out_begin = tensor->mutable_data<T>(context.GetPlace());
-      trans(context.template device_context<platform::CUDADeviceContext>(),
-            in_begin, in_end, out_begin, CastFunctor<float, T>());
-    } else {
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        UniformGenerator<T>(min, max, seed));
-    }
-
-    if (VLOG_IS_ON(5)) {
-      framework::Tensor cpu_tensor;
-      framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-      auto& dev_ctx =
-          *platform::DeviceContextPool::Instance().Get(context.GetPlace());
-      dev_ctx.Wait();
-      auto x = framework::EigenVector<T>::Flatten(cpu_tensor);
-      VLOG(5) << "The Uniform output " << x;
-    }
+    thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                      thrust::device_ptr<T>(data),
+                      UniformGenerator<T>(min, max, seed));
   }
 };
 

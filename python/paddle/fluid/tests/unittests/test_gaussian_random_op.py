@@ -14,11 +14,13 @@
 
 import unittest
 import numpy
+import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
+import paddle.fluid.framework as framework
 
 
 class TestGaussianRandomOp(unittest.TestCase):
@@ -34,7 +36,8 @@ class TestGaussianRandomOp(unittest.TestCase):
             "mean": .0,
             "std": 1.,
             "seed": 10,
-            "use_mkldnn": self.use_mkldnn
+            "use_mkldnn": self.use_mkldnn,
+            "dtype": framework.convert_np_dtype_to_dtype_(self.dtype)
         }
 
         self.outputs = ["Out"]
@@ -70,6 +73,14 @@ class TestGaussianRandomOp(unittest.TestCase):
 
     def init_kernel_type(self):
         pass
+
+    def init_dtype(self):
+        pass
+
+
+class TestFP16GaussianRandomOp(TestGaussianRandomOp):
+    def init_dtype(self):
+        self.dtype = np.float16
 
 
 if __name__ == "__main__":
