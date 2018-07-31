@@ -18,7 +18,6 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
-#include <paddle/fluid/inference/api/paddle_inference_api.h>
 #include <memory>
 #include <thread>  //NOLINT
 #include "paddle/fluid/inference/paddle_inference_api.h"
