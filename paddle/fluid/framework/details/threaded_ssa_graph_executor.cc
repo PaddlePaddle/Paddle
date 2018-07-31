@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -34,6 +35,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare", nullptr));
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   BlockingQueue<VarHandleBase *> ready_vars;
@@ -84,6 +87,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   // Clean run context
   run_op_futures_.clear();
   exception_.reset();
+  event.reset(nullptr);
 
   // Step 3. Execution
   while (!pending_vars.empty()) {
