@@ -49,11 +49,10 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
     std::vector<int64_t> data(20);
     for (int i = 0; i < 20; i++) data[i] = i;
 
-    PaddleTensor tensor{
-        .name = "",
-        .shape = std::vector<int>({10, 1}),
-        .data = PaddleBuf(data.data(), data.size() * sizeof(int64_t)),
-        .dtype = PaddleDType::INT64};
+    PaddleTensor tensor;
+    tensor.shape = std::vector<int>({10, 1});
+    tensor.data = PaddleBuf(data.data(), data.size() * sizeof(int64_t));
+    tensor.dtype = PaddleDType::INT64;
 
     // For simplicity, we set all the slots with the same data.
     std::vector<PaddleTensor> slots(4, tensor);

@@ -21,8 +21,9 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, Init) {
+TEST(FluidToDataFlowGraphPass, Test) {
   FluidToDataFlowGraphPass pass;
+  Argument argument(FLAGS_inference_model_dir);
   pass.Initialize(&argument);
   pass.Run(argument.main_dfg.get());
   // Analysis is sensitive to ProgramDesc, careful to change the original model.

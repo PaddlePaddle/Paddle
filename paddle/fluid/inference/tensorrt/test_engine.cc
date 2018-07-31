@@ -113,7 +113,7 @@ TEST_F(TensorRTEngineTest, add_layer_multi_dim) {
   ASSERT_EQ(y_cpu[1], 14.5);
 }
 
-TEST_F(TensorRTEngineTest, test_conv2d_temp) {
+TEST_F(TensorRTEngineTest, test_conv2d) {
   // Weight in CPU memory.
   float raw_weight[9] = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
   float raw_bias[1] = {0};
@@ -144,6 +144,37 @@ TEST_F(TensorRTEngineTest, test_conv2d_temp) {
   engine_->GetOutputInCPU("y", &y_cpu[0], 18 * sizeof(float));
   ASSERT_EQ(y_cpu[0], 4.0);
   ASSERT_EQ(y_cpu[1], 6.0);
+}
+
+TEST_F(TensorRTEngineTest, test_pool2d) {
+  // Weight in CPU memory.
+  auto* x = engine_->DeclareInput("x", nvinfer1::DataType::kFLOAT,
+                                  nvinfer1::Dims3{1, 2, 2});
+
+  nvinfer1::PoolingType pool_t = nvinfer1::PoolingType::kAVERAGE;
+  auto* pool_layer =
+      TRT_ENGINE_ADD_LAYER(engine_, Pooling, *const_cast<nvinfer1::ITensor*>(x),
+                           pool_t, nvinfer1::DimsHW{2, 2});
+
+  PADDLE_ENFORCE(pool_layer != nullptr);
+  pool_layer->setStride(nvinfer1::DimsHW{1, 1});
+  pool_layer->setPadding(nvinfer1::DimsHW{0, 0});
+
+  engine_->DeclareOutput(pool_layer, 0, "y");
+  engine_->FreezeNetwork();
+  ASSERT_EQ(engine_->engine()->getNbBindings(), 2);
+
+  float x_v[8] = {1.0, 2.0, 5.0, 0.0, 2.0, 3.0, 5.0, 10.0};
+  engine_->SetInputFromCPU("x", reinterpret_cast<void*>(&x_v),
+                           8 * sizeof(float));
+  engine_->Execute(2);
+
+  LOG(INFO) << "to get output";
+  float* y_cpu = new float[2];
+  engine_->GetOutputInCPU("y", &y_cpu[0], 2 * sizeof(float));
+
+  ASSERT_EQ(y_cpu[0], 2.0);
+  ASSERT_EQ(y_cpu[1], 5.0);
 }
 
 }  // namespace tensorrt

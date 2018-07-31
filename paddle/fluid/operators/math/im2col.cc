@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/im2col.h"
 #include <vector>
+#include "paddle/fluid/operators/math/im2col_cfo_cpu.h"
 
 namespace paddle {
 namespace operators {
@@ -35,61 +36,18 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     PADDLE_ENFORCE(im.dims().size() == 3);
     PADDLE_ENFORCE(col->dims().size() == 5);
 
-    int im_channels = im.dims()[0];
-    int im_height = im.dims()[1];
-    int im_width = im.dims()[2];
-    int filter_height = col->dims()[1];
-    int filter_width = col->dims()[2];
-    int output_height = col->dims()[3];
-    int output_width = col->dims()[4];
-
-    int channels_col = im_channels * filter_height * filter_width;
-
-    const T* im_data = im.data<T>();
-    T* col_data = col->data<T>();
-    // TODO(TJ): change me to template
-    // further optimaze:
-    // 1. padding != 1
-    // 2. could also support stride_h != 1
     if (stride[0] == 1 && stride[1] == 1 && dilation[0] == 1 &&
-        dilation[1] == 1 && padding[0] == 0 && padding[1] == 0) {
-      int col_matrix_width = output_width * output_height;
-      size_t copy_size = sizeof(T) * output_width;
-      for (int oh = 0; oh < output_height; ++oh) {
-        const T* im_data_start = im_data + oh * im_width;
-        T* dst_data = col_data + oh * output_width;
-        for (int ic = 0; ic < im_channels; ++ic) {
-          const T* src_data = im_data_start + ic * im_height * im_width;
-          for (int kh = 0; kh < filter_height; ++kh) {
-            for (int kw = 0; kw < filter_width; ++kw) {
-              std::memcpy(dst_data, src_data + kw, copy_size);
-              dst_data = dst_data + col_matrix_width;
-            }
-            src_data = src_data + im_width;
-          }
-        }
+        dilation[1] == 1) {
+      if (padding[0] == 0 && padding[1] == 0) {
+        im2col_sh1sw1dh1dw1ph0pw0<T>(im, col);
+        return;
+      } else if (padding[0] == 1 && padding[1] == 1) {
+        im2col_sh1sw1dh1dw1ph1pw1<T>(im, col);
+        return;
       }
-      return;
+      // TODO(TJ): complete padding >=2
     }
-
-    for (int c = 0; c < channels_col; ++c) {
-      int w_offset = c % filter_width;
-      int h_offset = (c / filter_width) % filter_height;
-      int c_im = c / (filter_width * filter_height);
-      for (int h = 0; h < output_height; ++h) {
-        int im_row_idx = h * stride[0] - padding[0] + h_offset * dilation[0];
-        for (int w = 0; w < output_width; ++w) {
-          int im_col_idx = w * stride[1] - padding[1] + w_offset * dilation[1];
-          int col_idx = (c * output_height + h) * output_width + w;
-          int im_idx = (im_row_idx + c_im * im_height) * im_width + im_col_idx;
-
-          col_data[col_idx] = (im_row_idx < 0 || im_row_idx >= im_height ||
-                               im_col_idx < 0 || im_col_idx >= im_width)
-                                  ? static_cast<T>(0)
-                                  : im_data[im_idx];
-        }
-      }
-    }
+    im2col_common<T>(im, dilation, stride, padding, col);
   }
 };
 
