@@ -19,13 +19,14 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "gflags/gflags.h"
+
 #include "paddle/fluid/operators/detail/macros.h"
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DECLARE_int32(listen_and_serv_profile_period);
 DEFINE_int32(listen_and_serv_profile_period, 0,
              "the period of listen_and_serv to do profile");
 
