@@ -80,12 +80,17 @@ def dist_transpile(trainer_id, args):
     # the role, should be either PSERVER or TRAINER
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
-    t = distribute_transpiler.DistributeTranspiler()
+    config = fluid.DistributeTranspilerConfig()
+    config.slice_var_up = not args.no_split_var
+    config.min_block_size = 1048576
+    t = distribute_transpiler.DistributeTranspiler(config=config)
+
     t.transpile(
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
         sync_mode=not args.async_mode)
+
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
         pserver_startup_program = t.get_startup_program(current_endpoint,
