@@ -130,9 +130,14 @@ void ListenAndServOp::RunSyncLoop(
 
   int32_t profile_step = 0;
   while (true) {
-    if (FLAGS_listen_and_serv_profile_period > 0 && profile_step == 0) {
-      auto pf_state = paddle::platform::ProfilerState::kCPU;
-      paddle::platform::EnableProfiler(pf_state);
+    PADDLE_ENFORCE_LE(profile_step, FLAGS_listen_and_serv_profile_period,
+                      "profile_step should not be larger then "
+                      "FLAGS_listen_and_serv_profile_period");
+    if (FLAGS_listen_and_serv_profile_period > 0) {
+      if (profile_step == 0) {
+        auto pf_state = paddle::platform::ProfilerState::kCPU;
+        paddle::platform::EnableProfiler(pf_state);
+      }
     }
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
@@ -175,13 +180,14 @@ void ListenAndServOp::RunSyncLoop(
     // reset received sparse vars to avoid reuse it in the next mini-batch
     dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
         ->ResetSparseVarRecorder();
-    if (FLAGS_listen_and_serv_profile_period > 0 &&
-        profile_step == FLAGS_listen_and_serv_profile_period) {
-      paddle::platform::DisableProfiler(
-          paddle::platform::EventSortingKey::kTotal, "/dev/null");
-      profile_step = 0;
-    } else {
-      profile_step++;
+    if (FLAGS_listen_and_serv_profile_period > 0) {
+      if (profile_step == FLAGS_listen_and_serv_profile_period) {
+        paddle::platform::DisableProfiler(
+            paddle::platform::EventSortingKey::kTotal, "/dev/null");
+        profile_step = 0;
+      } else {
+        profile_step++;
+      }
     }
   }  // while(true)
 }
