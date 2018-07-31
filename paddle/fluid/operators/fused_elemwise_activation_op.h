@@ -97,7 +97,6 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     const Tensor *in_x = ctx.Input<Tensor>("X");
     const Tensor *in_y = ctx.Input<Tensor>("Y");
     Tensor *output = ctx.Output<Tensor>("Out");
-
     std::string functors = ctx.Attr<std::string>("functor_list");
 
     math::RunFunctors<DeviceContext, T>(ctx, functors, in_x, in_y, output);
@@ -113,7 +112,6 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
     const Tensor *in_out = ctx.Input<Tensor>("Out");
     const Tensor *in_out_grad =
         ctx.Input<Tensor>(framework::GradVarName("Out"));
-
     Tensor *x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor *y_grad = ctx.Output<Tensor>(framework::GradVarName("Y"));
 

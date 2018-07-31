@@ -224,7 +224,8 @@ bool OpFusionPass::IsForward(
                                    OpProtoAndCheckerMaker::OpRoleAttrName())),
                       "Currently, only support fusing the same role operators");
   }
-  return op_role == static_cast<int>(OpRole::kForward);
+  return op_role == static_cast<int>(OpRole::kForward) ||
+         op_role == static_cast<int>(OpRole::kOptimize);
 }
 
 // temporally
@@ -257,11 +258,12 @@ void OpFusionPass::FuseElemwiseAndActivation(
   auto intra_node = *tobe_fused.begin();
   auto intra_op_type = intra_node->Op()->Type();
   auto outside_op_type = outside_node->Op()->Type();
-  auto fused_operator = outside_op_type + "," + intra_op_type;
 
   // Set Input
   if (IsForward(outside_node, tobe_fused)) {
     op_desc->SetType("fused_elemwise_activation");
+    op_desc->SetAttr("functor_list", outside_op_type + "," + intra_op_type);
+
     if (IsElemwise(outside_op_type)) {
       auto in_args = intra_node->Op()->InputArgumentNames();
       auto out_args = intra_node->Op()->OutputArgumentNames();
@@ -288,6 +290,7 @@ void OpFusionPass::FuseElemwiseAndActivation(
     op_desc->SetOutput("Out", outside_node->Op()->OutputArgumentNames());
   } else {
     op_desc->SetType("fused_elemwise_activation_grad");
+    op_desc->SetAttr("functor_list", intra_op_type + "," + outside_op_type);
 
     auto intra_node_in_args = intra_node->Op()->InputArgumentNames();
     auto intra_node_out_args = intra_node->Op()->OutputArgumentNames();
@@ -327,7 +330,6 @@ void OpFusionPass::FuseElemwiseAndActivation(
       op_desc->SetAttr(m_ele.first, m_ele.second);
     }
   }
-  op_desc->SetAttr("functor_list", fused_operator);
 }
 
 bool OpFusionPass::GetTopoOrder(const std::unordered_set<ir::Node *> &nodes,

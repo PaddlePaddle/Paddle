@@ -36,7 +36,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  fuse_op=False,
+                                  op_fuse=False,
                                   optimizer=fluid.optimizer.Adam):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
@@ -74,7 +74,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy = fluid.BuildStrategy()
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-            build_strategy.op_fuse = fuse_op
+            build_strategy.op_fuse = op_fuse
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
