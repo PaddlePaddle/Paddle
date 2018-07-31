@@ -35,8 +35,8 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
     framework::LoDTensor flattened_x;
     framework::LoDTensor flattened_out;
-    flattened_x.ShareDataWith(*X);
-    flattened_out.ShareDataWith(*Out);
+    flattened_x.ShareDataWith(*X).Resize(flattened_dims);
+    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
 
     math::SoftmaxFunctor<DeviceContext, T>()(
         context.template device_context<DeviceContext>(), &flattened_x,
@@ -60,9 +60,9 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     framework::LoDTensor flattened_out;
     framework::LoDTensor flattened_d_out;
     framework::LoDTensor flattened_d_x;
-    flattened_out.ShareDataWith(*Out);
-    flattened_d_out.ShareDataWith(*dOut);
-    flattened_d_x.ShareDataWith(*dX);
+    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
+    flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
         context.template device_context<DeviceContext>(), &flattened_out,
