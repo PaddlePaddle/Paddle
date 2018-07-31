@@ -20,7 +20,7 @@ limitations under the License. */
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <fstream>
 #include <iostream>
-#include "paddle/fluid/inference/api/demo_ci/utils.h"
+#include "paddle/fluid/inference/demo_ci/utils.h"
 #include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
