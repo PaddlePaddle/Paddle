@@ -43,14 +43,16 @@ TEST(inference, anakin) {
   PaddleTensor tensor{.name = "input_0",
                       .shape = std::vector<int>({1, 3, 224, 224}),
                       .data = std::move(buf),
-                      .dtype = PaddleDType::FLOAT32};
+                      .dtype = PaddleDType::FLOAT32,
+		      .lod = {{}}};
   // For simplicity, we set all the slots with the same data.
   std::vector<PaddleTensor> paddle_tensor_feeds(1, tensor);
 
   PaddleTensor tensor_out{.name = "prob_out",
                           .shape = std::vector<int>({}),
                           .data = PaddleBuf(),
-                          .dtype = PaddleDType::FLOAT32};
+                          .dtype = PaddleDType::FLOAT32,
+			  .lod = {{}}};
 
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
