@@ -35,6 +35,8 @@ class FakeQuantizeOp : public framework::OperatorWithKernel {
                    "OutMovingScale(Out) of FakeQuantizeOp should not be null");
     if (ctx->HasInput("InMovingScale")) {
       ctx->SetOutputDim("OutMovingScale", ctx->GetInputDim("InMovingScale"));
+    } else {
+      ctx->SetOutputDim("OutMovingScale", {1});
     }
     if (ctx->HasInput("InScales")) {
       PADDLE_ENFORCE(ctx->HasOutput("OutScales"),

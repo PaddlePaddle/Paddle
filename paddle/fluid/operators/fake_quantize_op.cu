@@ -188,26 +188,9 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
     const bool is_test = context.Attr<bool>("is_test");
     tensor->mutable_data<T>(in->place());
     context.Output<framework::Tensor>("OutMovingScale")
-        ->mutable_data<T>(
-            context.Input<framework::Tensor>("InMovingScale")->place());
+        ->mutable_data<T>(context.GetPlace());
     auto quantize_type =
         static_cast<std::string>(context.Attr<std::string>("quantize_type"));
-    if (quantize_type == std::string("range_abs_max")) {
-      context.Output<framework::Tensor>("OutScales")
-          ->mutable_data<T>(
-              context.Input<framework::Tensor>("InScales")->place());
-      context.Output<framework::Tensor>("OutCurrentIter")
-          ->mutable_data<int>(
-              context.Input<framework::Tensor>("InCurrentIter")->place());
-    }
-    if (quantize_type == std::string("moving_average_abs_max")) {
-      context.Output<framework::Tensor>("OutState")
-          ->mutable_data<T>(
-              context.Input<framework::Tensor>("InState")->place());
-      context.Output<framework::Tensor>("OutAccum")
-          ->mutable_data<T>(
-              context.Input<framework::Tensor>("InAccum")->place());
-    }
 
     T scale = T(1);
     int window_size = context.Attr<int>("window_size");
@@ -225,12 +208,19 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
       iter->mutable_data<T>(context.GetPlace());
       scalar(device_ctx, iter, static_cast<T>(0));
     } else if (quantize_type == std::string("range_abs_max")) {
-      auto* moving_scale = const_cast<framework::Tensor*>(
-          context.Input<framework::Tensor>("InMovingScale"));
+      auto ains = context.Inputs("InMovingScale");
+      auto* moving_scale = context.Input<framework::Tensor>("InMovingScale");
       if (is_test) {
         memory::Copy(platform::CPUPlace(), &scale, gpu_place,
                      moving_scale->data<T>(), sizeof(T), device_ctx.stream());
       } else {
+        context.Output<framework::Tensor>("OutScales")
+            ->mutable_data<T>(
+                context.Input<framework::Tensor>("InScales")->place());
+        context.Output<framework::Tensor>("OutCurrentIter")
+            ->mutable_data<int>(
+                context.Input<framework::Tensor>("InCurrentIter")->place());
+
         auto* in_iter = const_cast<framework::Tensor*>(
             context.Input<framework::Tensor>("InCurrentIter"));
         int iter;
@@ -271,11 +261,15 @@ class FakeQuantizeCUDAKernel : public framework::OpKernel<T> {
         accum = 0.9 * accum + scale;
 
         auto* out_state = context.Output<framework::Tensor>("OutState");
+        out_state->mutable_data<T>(
+            context.Input<framework::Tensor>("InState")->place());
         memory::Copy(gpu_place, out_state->mutable_data<T>(gpu_place),
                      platform::CPUPlace(), &state, sizeof(T),
                      device_ctx.stream());
 
         auto* out_accum = context.Output<framework::Tensor>("OutAccum");
+        out_accum->mutable_data<T>(
+            context.Input<framework::Tensor>("InAccum")->place());
         memory::Copy(gpu_place, out_accum->mutable_data<T>(gpu_place),
                      platform::CPUPlace(), &accum, sizeof(T),
                      device_ctx.stream());

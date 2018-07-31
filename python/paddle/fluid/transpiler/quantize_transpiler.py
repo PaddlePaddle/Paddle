@@ -23,6 +23,7 @@ from paddle.fluid.param_attr import ParamAttr
 from .. import core
 from ..framework import Variable
 from ..executor import global_scope
+from inference_transpiler import InferenceTranspiler
 
 _QUANTIZABLE_OP_TYPES = ['conv2d', 'depthwise_conv2d', 'mul']
 
@@ -155,13 +156,17 @@ class QuantizeTranspiler(object):
                 if op.type in grad_op_types:
                     _transpile_backward(block, op)
 
-    def freeze_program(self, program, place, freeze_weight=True, scope=None):
+    def freeze_program(self, program, place, fuse_bn=False, scope=None):
         """
         TODO(qingqing): add comments
         """
         self.is_inference = True
         scope = global_scope() if scope is None else scope
         program = default_main_program() if program is None else program
+
+        if fuse_bn:
+            bn_fuse_transpiler = BNFuseTranspiler()
+            bn_fuse_transpiler.transpile(program, place)
 
         persistable_vars = [
             v.name
@@ -260,7 +265,7 @@ class QuantizeTranspiler(object):
                         scale_v = block.var(op.output('OutMovingScale')[0])
                         var_scale_map[block_id][in_arg_name] = scale_v
 
-                    if in_arg_name in persistable_vars and freeze_weight:
+                    if in_arg_name in persistable_vars:
                         _remove_fake_quant_and_dequant_op(block, op)
                         # quantize weight and restore
                         param_t = _load_var(in_arg_name)
@@ -359,7 +364,6 @@ class QuantizeTranspiler(object):
         self.helper.set_variable_initializer(
             state, initializer=Constant(value=1))
 
-
         scales = self.helper.create_global_variable(
             name=unique_name.generate('scales'),
             persistable=True,
@@ -423,3 +427,58 @@ class QuantizeTranspiler(object):
                     'Scale': scale},
             outputs={"Out": dequant_var})
         return dequant_var
+
+
+class BNFuseTranspiler(InferenceTranspiler):
+    def _fuse_param(self, current_op, bn_op, bias_op, with_bias):
+        def _update_param(op, param_name, new_param):
+            var = self.block.vars[param_name]
+            tensor = self.scope.find_var(param_name).get_tensor()
+            tensor.set(np.array(new_param), self.place)
+
+        def _load_param(param_name):
+            return np.array(self.scope.find_var(param_name).get_tensor())
+
+        bias_bn = _load_param(bn_op.input("Bias")[0])  #Bias
+        scale_bn = _load_param(bn_op.input("Scale")[0])  #Scale
+        mean_bn = _load_param(bn_op.input("Mean")[0])  #Mean
+        var_bn = _load_param(bn_op.input("Variance")[0])  #Variance
+
+        if current_op.type in ['conv2d', 'depthwise_conv2d']:
+            current_param = _load_param(
+                _original_var_name(current_op.input("Filter")[0]))
+        elif current_op.type == 'mul':
+            current_param = _load_param(
+                _original_var_name(current_op.input("Y")[0]))
+
+        std_bn = np.float32(np.sqrt(np.add(var_bn, 1e-5)))
+        tmp = np.float32(np.divide(scale_bn, std_bn))
+
+        # add bias of batch_norm_op to conv2d
+        if with_bias:
+            bias = _load_param(bias_op.input("Y"))
+        else:
+            bias = np.zeros(bias_bn.shape)
+        bias = np.float32(
+            np.add(np.multiply(np.subtract(bias, mean_bn), tmp), bias_bn))
+
+        # re-compute weight of conv2d/fc
+        tmp = tmp.reshape(tmp.shape[0], -1)
+        dst_param = current_param.reshape((tmp.shape[0], -1))
+        dst_param = np.float32(np.multiply(dst_param, tmp))
+        dst_param = dst_param.reshape(current_param.shape)
+
+        # update parameters
+        if current_op.type in ['conv2d', 'depthwise_conv2d']:
+            _update_param(current_op,
+                          _original_var_name(current_op.input("Filter")[0]),
+                          dst_param)
+        elif current_op.type == 'mul':
+            _update_param(current_op,
+                          _original_var_name(current_op.input("Y")[0]),
+                          dst_param)
+
+        _update_param(bias_op, bias_op.input("Y"), bias)
+
+        # collect the renamed input
+        self.input_map[bn_op.output("Y")[0]] = bias_op.output("Out")[0]
