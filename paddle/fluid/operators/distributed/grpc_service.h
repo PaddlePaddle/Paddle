@@ -63,7 +63,6 @@ class SerializationTraits<
       paddle::operators::distributed::GrpcByteSource source(buffer);
       int ret = msg->Parse(&source);
       if (ret != 0) {
-        PADDLE_ENFORCE(false, "VariableResponse parse error");
         result = Status(StatusCode::INTERNAL, "VariableResponse parse error");
       }
     }
