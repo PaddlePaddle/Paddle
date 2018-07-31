@@ -21,6 +21,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -44,16 +45,13 @@ class OpFusionPass : public Pass {
       const std::unordered_map<const Node *, InternalNodePtr> &m_internal,
       std::unordered_set<Node *> *tobe_fused) const;
 
-  bool GetTopoOrder(const std::unordered_set<ir::Node *> &nodes,
-                    std::vector<ir::Node *> *topo_order) const;
-
   Node *FuseOperators(const NodePtr cur_node,
                       const std::unordered_set<NodePtr> &tobe_fused,
                       std::unordered_set<ir::Node *> *need_removed_node,
                       ir::Graph *graph) const;
 
-  bool IsForward(const NodePtr node,
-                 const std::unordered_set<Node *> &tobe_fused) const;
+  bool IsBackward(const NodePtr node,
+                  const std::unordered_set<Node *> &tobe_fused) const;
 
   bool IsElemwiseAndActivation(
       const NodePtr node, const std::unordered_set<Node *> &tobe_fused) const;
@@ -61,6 +59,9 @@ class OpFusionPass : public Pass {
   void FuseElemwiseAndActivation(const NodePtr node,
                                  const std::unordered_set<Node *> &tobe_fused,
                                  OpDesc *op_desc) const;
+
+  void PrintTopologySort(const std::vector<Node *> &topo_order,
+                         const std::string &) const;
 };
 
 }  // namespace ir
