@@ -71,7 +71,7 @@ class LookupSparseTableOp : public framework::OperatorBase {
     PADDLE_ENFORCE_EQ(framework::ToDataType(w_t->value().type()),
                       framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
-    w_t->Get(keys, out_t);
+    w_t->Get(keys, out_t, true);
   }
 };
 

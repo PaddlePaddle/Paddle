@@ -121,7 +121,7 @@ bool SelectedRows::HasKey(int64_t key) const {
 }
 
 void SelectedRows::Get(const std::vector<int64_t>& keys,
-                       framework::Tensor* value) {
+                       framework::Tensor* value, bool auto_grown) {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
   if (keys.empty()) {
@@ -134,11 +134,11 @@ void SelectedRows::Get(const std::vector<int64_t>& keys,
 
     for (size_t i = 0; i < keys.size(); ++i) {
       int64_t id = keys[i];
-      int64_t index = Index(id);
-      if (index == -1) {
-        std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
-        rows_.push_back(id);
-        index = rows_.size() - 1;
+      int64_t index;
+      if (auto_grown) {
+        index = AutoIndex(id);
+      } else {
+        index = Index(id);
       }
       framework::VisitDataType(
           framework::ToDataType(value_->type()),

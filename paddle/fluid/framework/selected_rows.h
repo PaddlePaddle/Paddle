@@ -86,7 +86,8 @@ class SelectedRows {
    * @return a list of pair which contains the non-exists key and the index in
    * the value
    */
-  void Get(const std::vector<int64_t>& keys, framework::Tensor* value);
+  void Get(const std::vector<int64_t>& keys, framework::Tensor* value,
+           bool auto_grown = false);
 
   /*
    * @brief Set a key-value pair into the table.
@@ -108,10 +109,19 @@ class SelectedRows {
    * @return -1 if the key does not exists.
    */
   int64_t Index(int64_t key) const {
-    std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      return static_cast<int64_t>(-1);
+      PADDLE_THROW("id %s not in table", key);
+    }
+    return static_cast<int64_t>(std::distance(rows_.begin(), it));
+  }
+
+  int64_t AutoIndex(int64_t key) {
+    auto it = std::find(rows_.begin(), rows_.end(), key);
+    if (it == rows_.end()) {
+      std::lock_guard<std::mutex> lock(*auto_grown_mutex_);
+      rows_.push_back(key);
+      return static_cast<int64_t>(rows_.size() - 1);
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
