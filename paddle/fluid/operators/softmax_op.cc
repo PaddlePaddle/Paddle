@@ -37,10 +37,7 @@ class SoftmaxOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SoftmaxOp should not be null.");
 
-    auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(x_dims.size() == 2UL,
-                   "The input of softmax op must be a matrix.");
-    ctx->SetOutputDim("Out", x_dims);
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 
@@ -81,8 +78,8 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "The input tensor of softmax. "
-             "2-D with shape [batch_size, input_feature_dimensions].");
+             "The input tensor of softmax, "
+             "whose last dimension is the input_feature_dimensions.");
     AddOutput("Out", "The normalized values with the same shape as X.")
         .Reuse("X");
     AddAttr<bool>(
@@ -105,20 +102,23 @@ class SoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Softmax Operator.
 
-The input of the softmax operator is a 2-D tensor with shape N x K (N is the
-batch_size, K is the dimension of input feature). The output tensor has the
-same shape as the input tensor.
+The input of the softmax operator is a tensor of any rank. The output tensor 
+has the same shape as the input.
 
-For each row of the input tensor, the softmax operator squashes the
-K-dimensional vector of arbitrary real values to a K-dimensional vector of real
-values in the range [0, 1] that add up to 1.
+The input tensor will first be logically flattened to a 2-D matrix. The matrix's 
+second dimension(row length) is as same as the last dimension of the input 
+tensor, and the first dimension(column length) is the product of all other 
+dimensions of the input tensor. For each row of the matrix, the softmax operator 
+squashes the K-dimensional(K is the width of the matrix, which is also the size 
+of the input tensor's last dimension) vector of arbitrary real values to a 
+K-dimensional vector of real values in the range [0, 1] that add up to 1.
 It computes the exponential of the given dimension and the sum of exponential
 values of all the other dimensions in the K-dimensional vector input.
 Then the ratio of the exponential of the given dimension and the sum of
 exponential values of all the other dimensions is the output of the softmax
 operator.
 
-For each row $i$ and each column $j$ in Input(X), we have:
+For each row $i$ and each column $j$ in the matrix, we have:
     $$Out[i, j] = \frac{\exp(X[i, j])}{\sum_j(exp(X[i, j])}$$
 
 )DOC");
