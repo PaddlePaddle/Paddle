@@ -206,8 +206,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 data = next(reader_generator, None)
                 if data == None:
                     break
-            if iters == args.iterations:
-                break
+
             if args.profile and batch_id == args.skip_batch_num:
                 profiler.start_profiler("All")
                 profiler.reset_profiler()
@@ -215,6 +214,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 print("profiling total time: ", start_time)
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
+            if iters == args.iterations:
+                break
 
             if iters == args.skip_batch_num:
                 start_time = time.time()
