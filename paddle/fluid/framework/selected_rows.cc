@@ -136,7 +136,7 @@ void SelectedRows::Get(const std::vector<int64_t>& keys,
       int64_t id = keys[i];
       int64_t index;
       if (auto_grown) {
-        index = AutoIndex(id);
+        index = AutoGrownIndex(id);
       } else {
         index = Index(id);
       }

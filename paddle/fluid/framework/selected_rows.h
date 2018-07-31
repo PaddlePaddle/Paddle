@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -116,14 +117,22 @@ class SelectedRows {
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
 
-  int64_t AutoIndex(int64_t key) {
-    auto it = std::find(rows_.begin(), rows_.end(), key);
-    if (it == rows_.end()) {
+  int64_t AutoGrownIndex(int64_t key) {
+    auto iter = id_to_index.find(key);
+    if (iter == id_to_index.end()) {
       std::lock_guard<std::mutex> lock(*auto_grown_mutex_);
       rows_.push_back(key);
-      return static_cast<int64_t>(rows_.size() - 1);
+      int64_t index = static_cast<int64_t>(rows_.size() - 1);
+      id_to_index[key] = index;
+      return index;
     }
-    return static_cast<int64_t>(std::distance(rows_.begin(), it));
+    return iter->second;
+  }
+
+  int64_t AutoIndex(int64_t key) const {
+    auto iter = id_to_index.find(key);
+    PADDLE_ENFORCE_NE(iter, id_to_index.end(), "id not in rows");
+    return iter->second;
   }
 
   DDim GetCompleteDims() const {
@@ -137,6 +146,7 @@ class SelectedRows {
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
+  std::unordered_map<int64_t, int64_t> id_to_index;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
   std::unique_ptr<std::mutex> auto_grown_mutex_{nullptr};
