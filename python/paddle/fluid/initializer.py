@@ -154,7 +154,7 @@ class ConstantInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var, 'uniform_random')
+        init_op = _is_inited_by(block, var, 'fill_constant')
         if init_op is not None:
             return init_op
         # Initialization Ops should be prepended and not appended
@@ -266,7 +266,7 @@ class NormalInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var, 'uniform_random')
+        init_op = _is_inited_by(block, var, 'gaussian_random')
         if init_op is not None:
             return init_op
         # Initialization Ops should be prepended and not appended
@@ -458,6 +458,10 @@ class MSRAInitializer(Initializer):
         if init_op is not None:
             return init_op
 
+        init_op = _is_inited_by(block, var, 'gaussian_random')
+        if init_op is not None:
+            return init_op
+
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in is passed, use it
@@ -556,7 +560,7 @@ class BilinearInitializer(Initializer):
         if not isinstance(block, framework.Block):
             raise ValueError("block must be framework.Block.")
 
-        init_op = _is_inited_by(block, var, 'uniform_random')
+        init_op = _is_inited_by(block, var, 'assign_value')
         if init_op is not None:
             return init_op
 
