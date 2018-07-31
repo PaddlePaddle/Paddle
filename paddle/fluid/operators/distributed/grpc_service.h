@@ -45,14 +45,14 @@ class SerializationTraits<
     paddle::operators::distributed::GRPCVariableResponse> {
  public:
   static Status Serialize(
-      const paddle::operators::distributed::VariableResponse& msg,
+      const paddle::operators::distributed::GRPCVariableResponse& msg,
       grpc_byte_buffer** bp, bool* own_buffer) {
     PADDLE_ENFORCE(false, "SerializationTraits::Serialize not implemented!");
     return Status();
   }
   static Status Deserialize(
       grpc_byte_buffer* buffer,
-      paddle::operators::distributed::VariableResponse* msg,
+      paddle::operators::distributed::GRPCVariableResponse* msg,
       int max_message_size = INT_MAX) {
     if (buffer == nullptr) {
       return Status(StatusCode::INTERNAL, "No payload");

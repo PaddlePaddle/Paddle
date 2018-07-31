@@ -84,21 +84,11 @@ class BRPCClient : public RPCClient {
 
   bool Wait() override;
 
-  void AsyncSendBeginPass(const std::string& ep,
-                          int64_t time_out = FLAGS_rpc_deadline) override {
-    assert(false);
+  void SendComplete() override{
+      assert(false);
   }
 
-  void AsyncSendEndPass(const std::string& ep,
-                        int64_t time_out = FLAGS_rpc_deadline) override {
-    assert(false);
-  }
-
-  void SendBeginPass() override { assert(false); }
-
-  void SendEndPass() override { assert(false); }
-
- private:
+private:
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);
 

@@ -15,7 +15,7 @@ limitations under the License. */
 #include <limits>
 #include <string>
 
-#include "paddle/fluid/operators/distributed/grpc_sendrecvop_utils.h"
+#include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/grpc_server.h"
 
 using ::grpc::ServerAsyncResponseWriter;
@@ -207,8 +207,8 @@ class RequestCheckpointNotify final : public RequestBase {
                                    ::grpc::ServerCompletionQueue* cq,
                                    RequestHandler* request_handler, int req_id)
       : RequestBase(service, cq, request_handler, req_id), responder_(&ctx_) {
-    request_.reset(new VariableResponse(request_handler->scope(),
-                                        request_handler->dev_ctx()));
+    request_.reset(new GRPCVariableResponse(request_handler->scope(),
+                                            request_handler->dev_ctx()));
     int method_id =
         static_cast<int>(distributed::GrpcMethod::kCheckpointNotify);
     service_->RequestAsyncUnary(
@@ -235,7 +235,7 @@ class RequestCheckpointNotify final : public RequestBase {
   }
 
  protected:
-  std::shared_ptr<VariableResponse> request_;
+  std::shared_ptr<GRPCVariableResponse> request_;
   sendrecv::VoidMessage reply_;
   ServerAsyncResponseWriter<sendrecv::VoidMessage> responder_;
 };

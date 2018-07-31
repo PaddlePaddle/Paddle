@@ -13,15 +13,17 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
+#include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-RPCOpHandle::RPCOpHandle(const framework::OpDesc &op_desc,
+RPCOpHandle::RPCOpHandle(ir::Node *node, const framework::OpDesc &op_desc,
                          const Scope *local_scope, const std::string &name,
                          const platform::Place &place)
-    : op_(framework::OpRegistry::CreateOp(op_desc)),
+    : OpHandleBase(node),
+      op_(framework::OpRegistry::CreateOp(op_desc)),
       local_scope_(local_scope),
       name_(name),
       place_(place) {}
@@ -32,11 +34,11 @@ void RPCOpHandle::RunImpl() {
   for (auto *in : inputs_) {
     auto &p = static_cast<VarHandle *>(in)->place_;
     // FIXME(Yancey1989): need a better solution instead of use DebugString()
-    if (in->DebugString() == "dummy") {  // HACK
+    if (ir::IsControlDepVar(*in->Node())) {  // HACK
       continue;
     }
-    if (in->generated_op_) {
-      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[p]);
+    if (in->GeneratedOp()) {
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[p]);
     }
   }
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();

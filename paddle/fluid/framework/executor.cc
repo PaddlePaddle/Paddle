@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/operators/detail/macros.h"
 
 DECLARE_bool(benchmark);
 DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
@@ -45,17 +46,13 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
-void Executor::BeginPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>()
-      ->SendBeginPass();
-}
-
-void Executor::EndPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>()
-      ->SendEndPass();
-}
+    auto client =
+      paddle::operators::distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+  client->SendComplete();
 #endif
+}
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
