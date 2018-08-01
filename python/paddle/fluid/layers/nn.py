@@ -4474,15 +4474,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape", **locals())
-    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs=inputs,
-        attrs={"shape": shape,
-               "inplace": inplace},
-        outputs={"Out": reshaped})
+        attrs={"shape": shape},
+        outputs={"Out": out})
 
-    return helper.append_activation(reshaped)
+    return helper.append_activation(out)
 
 
 def lod_reset(x, y=None, target_lod=None):

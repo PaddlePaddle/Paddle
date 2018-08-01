@@ -25,7 +25,7 @@ class TestReshapeOp(OpTest):
 
         self.op_type = "reshape"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape, "inplace": False}
+        self.attrs = {"shape": new_shape}
         self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
 
     def test_check_output(self):
@@ -42,7 +42,7 @@ class TestReshapeOpDimInfer1(OpTest):
 
         self.op_type = "reshape"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape, "inplace": False}
+        self.attrs = {"shape": new_shape}
         self.outputs = {"Out": self.inputs["X"].reshape(self.attrs["shape"])}
 
     def test_check_output(self):
@@ -60,7 +60,7 @@ class TestReshapeOpDimInfer2(OpTest):
 
         self.op_type = "reshape"
         self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape, "inplace": False}
+        self.attrs = {"shape": new_shape}
         self.outputs = {"Out": self.inputs["X"].reshape(infered_shape)}
 
     def test_check_output(self):
