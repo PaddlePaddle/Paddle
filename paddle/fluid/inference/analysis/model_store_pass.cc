@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/model_store_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/argument.h"
+#include "paddle/fluid/inference/analysis/model_store_pass.h"
 
 namespace paddle {
 namespace inference {

@@ -11,14 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistSeResneXt2x2(TestDistBase):
-    def test_se_resnext(self):
-        # TODO(paddle-dev): Is the delta too large?
-        self.check_with_place("dist_se_resnext.py", delta=0.2)
+class TestDistTransformer2x2(TestDistBase):
+    def test_transformer(self):
+        # TODO(paddle-dev): check if the delta is OK.
+        # Usually start around ~8000 and converge to ~5000
+        self.check_with_place("dist_transformer.py", delta=400)
 
 
 if __name__ == "__main__":
