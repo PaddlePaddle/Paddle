@@ -1375,21 +1375,26 @@ class MixedPrecisionSGDOptimizer(Optimizer):
         # params_grads = append_regularization_ops(params_grads,
         #                                          self.regularization)
 
-        ifcond = self._has_overflow(params_grads)
-        ie = layers.IfElse(ifcond)
-        with ie.true_block():
-            true_target = ie.input(self._scale_factor)
-            self._grad_scaling(params_grads)
-            optimize_ops = self._create_optimization_pass(
-                self.master_copy, scaled_loss, startup_program)
-            self._copy_cast_params(
-                self.master_copy, params_grads, params_only=True)
-            ie.output(self._scale_factor)
-        with ie.false_block():
-            false_target = ie.input(self._scale_factor)
-            self._scale_factor /= 2
-            ie.output(self._scale_factor)
-        self._scale_factor = ie()
+        self._grad_scaling(params_grads)
+        optimize_ops = self._create_optimization_pass(
+            self.master_copy, scaled_loss, startup_program)
+        self._copy_cast_params(self.master_copy, params_grads, params_only=True)
+
+        # ifcond = self._has_overflow(params_grads)
+        # ie = layers.IfElse(ifcond)
+        # with ie.true_block():
+        #     true_target = ie.input(self._scale_factor)
+        #     self._grad_scaling(params_grads)
+        #     optimize_ops = self._create_optimization_pass(
+        #         self.master_copy, scaled_loss, startup_program)
+        #     self._copy_cast_params(
+        #         self.master_copy, params_grads, params_only=True)
+        #     ie.output(self._scale_factor)
+        # with ie.false_block():
+        #     false_target = ie.input(self._scale_factor)
+        #     self._scale_factor /= 2
+        #     ie.output(self._scale_factor)
+        # self._scale_factor = ie()
         return optimize_ops, self.master_copy
 
 

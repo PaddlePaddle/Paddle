@@ -247,7 +247,7 @@ def run_benchmark(model, args):
         return test_accuracy.eval()
 
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
-    exe = fluid.Executor(place, log_level=10)
+    exe = fluid.Executor(place, log_level=0)
     exe.run(fluid.default_startup_program())
     accuracy = fluid.average.WeightedAverage()
     if args.use_fake_data:
@@ -273,13 +273,25 @@ def run_benchmark(model, args):
                                      data)).astype(DATA_TYPE)
                 label = np.array(map(lambda x: x[1], data)).astype('int64')
                 label = label.reshape([-1, 1])
-            with profiler.profiler("All", 'total', '/tmp/profile') as pf:
-                loss, acc, weight = exe.run(
-                    fluid.default_main_program(),
-                    feed={'data': image,
-                          'label': label},
-                    fetch_list=[avg_cost, batch_acc, batch_size_tensor])
+            # with profiler.profiler("All", 'total', '/tmp/profile') as pf:
+            loss, acc, weight = exe.run(
+                fluid.default_main_program(),
+                feed={'data': image,
+                      'label': label},
+                fetch_list=[avg_cost, batch_acc, batch_size_tensor])
             iters += 1
+            num_samples += len(label)
+            accuracy.add(value=acc, weight=weight)
+            train_losses.append(loss)
+            train_accs.append(acc)
+            print("Pass: %d, Iter: %d, Loss: %f, Accuracy: %f" %
+                  (pass_id, iters, loss, acc))
+        print("Pass: %d, Loss: %f, Train Accuray: %f\n" %
+              (pass_id, np.mean(train_losses), np.mean(train_accs)))
+        train_elapsed = time.time() - start_time
+        examples_per_sec = num_samples / train_elapsed
+        print('\nTotal examples: %d, total time: %.5f, %.5f examples/sed\n' %
+              (num_samples, train_elapsed, examples_per_sec))
 
 
 def print_arguments(args):
