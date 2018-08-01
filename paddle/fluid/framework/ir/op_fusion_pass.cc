@@ -74,10 +74,10 @@ std::unique_ptr<ir::Graph> OpFusionPass::ApplyImpl(
   for (auto &node : need_removed_nodes) {
     graph->ReleaseNode(node);
   }
+  VLOG(10) << "Over";
   return graph;
 }
 
-// Whether node's input
 bool OpFusionPass::SetUpFusion(
     const NodePtr node,
     const std::unordered_map<NodePtr, InternalNodePtr> &internal_nodes,
@@ -107,7 +107,7 @@ bool OpFusionPass::SetUpFusion(
     if (IsFusible(cur_node, in_var_gen_op)) {
       need_fusion = true;
       tobe_fused->insert(in_var_gen_op);
-      VLOG(10) << "Fuse: " << cur_node->Name() << ", " << in_var_gen_op->Name();
+      VLOG(10) << "Fuse: " << in_var_gen_op->Name() << ", " << cur_node->Name();
     }
   }
   return need_fusion;
@@ -246,7 +246,26 @@ bool OpFusionPass::IsFusible(const NodePtr n1, const NodePtr n2) const {
   //    (n1->Op()->Type() == "scale_grad" || n1->Op()->Type() == "relu_grad") &&
   //    (n2->Op()->Type() == "elementwise_add_grad");
 
-  return case1 || case2 || case3;
+  auto n2_no_cntrl_node = ir::NoControlDepVar(n2->outputs);
+  bool fusable = (case1 || case2 || case3) && (n2_no_cntrl_node.size() == 1);
+
+  auto &o_var = n2_no_cntrl_node[0];
+  if (o_var->outputs.size() == 1) {
+    return fusable;
+  } else if (o_var->outputs.size() == 3) {
+    // TODO(zcd): hard code
+    for (auto &o_node : o_var->outputs) {
+      if (!(o_node->Op()->Type() == n1->Op()->Type() ||
+            o_node->Op()->Type() == n1->Op()->Type() + "_grad" ||
+            o_node->Op()->Type() == n2->Op()->Type() + "_grad")) {
+        return false;
+      }
+    }
+  } else {
+    return false;
+  }
+
+  return fusable;
 }
 
 // temporally
