@@ -38,7 +38,7 @@ void Reorder2(nvinfer1::DimsHW shape, const T* idata, nvinfer1::DimsHW istrides,
 }
 // indata c * k
 // Reorder the data layout from CK to KC.
-void ReorderCKtoKC(TensorRTEngine::Weight& iweights,
+void ReorderCKtoKC(TensorRTEngine::Weight& iweights,  // NOLINT
                    TensorRTEngine::Weight* oweights) {
   int c = iweights.dims[0];
   int k = iweights.dims[1];
