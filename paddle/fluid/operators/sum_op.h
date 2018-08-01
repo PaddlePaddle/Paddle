@@ -114,16 +114,20 @@ class SumKernel : public framework::OpKernel<T> {
           break;
         }
       }
+      if (in_dim.empty()) {
+        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+      }
+
       in_dim[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim));
+      out_value->mutable_data<T>(context.GetPlace());
 
       // if all the input sparse vars are empty, no need to
       // merge these vars.
       if (first_dim == 0UL) {
         return;
       }
-      out_value->mutable_data<T>(context.GetPlace());
 
       math::SelectedRowsAddTo<DeviceContext, T> functor;
 
