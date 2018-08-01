@@ -23,7 +23,7 @@ namespace tensorrt {
 TEST(elementwise_op, add_weight_test) {
   std::unordered_set<std::string> parameters({"elementwise_add-Y"});
   framework::Scope scope;
-  TRTConvertValidation validator(1, parameters, scope, 1 << 15);
+  TRTConvertValidation validator(10, parameters, scope, 1 << 15);
   validator.DeclInputVar("elementwise_add-X", nvinfer1::DimsCHW(10, 3, 3));
   validator.DeclParamVar("elementwise_add-Y", nvinfer1::Dims3(10, 1, 1));
   // validator.DeclParamVar("mul-Y", nvinfer1::Dims2(8, 2));
@@ -41,13 +41,13 @@ TEST(elementwise_op, add_weight_test) {
 
   validator.SetOp(*desc.Proto());
 
-  validator.Execute(1);
+  validator.Execute(8);
 }
 
 TEST(elementwise_op, add_tensor_test) {
   std::unordered_set<std::string> parameters;
   framework::Scope scope;
-  TRTConvertValidation validator(2, parameters, scope, 1 << 15);
+  TRTConvertValidation validator(8, parameters, scope, 1 << 15);
   validator.DeclInputVar("elementwise_add-X", nvinfer1::DimsCHW(10, 3, 3));
   validator.DeclInputVar("elementwise_add-Y", nvinfer1::Dims3(10, 3, 3));
   // validator.DeclParamVar("mul-Y", nvinfer1::Dims2(8, 2));
@@ -64,7 +64,7 @@ TEST(elementwise_op, add_tensor_test) {
 
   validator.SetOp(*desc.Proto());
 
-  validator.Execute(1);
+  validator.Execute(8);
 }
 
 }  // namespace tensorrt
