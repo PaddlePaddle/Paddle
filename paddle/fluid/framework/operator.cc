@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/framework/details/print_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
@@ -97,6 +98,33 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 }
 
+std::string OperatorBase::DebugInputsStrings(const Scope& scope) {
+  std::stringstream ss;
+  ss << "before run operator" << type_ << std::endl;
+  for (auto t : inputs_) {
+    for (auto name : t.second) {
+      ss << paddle::framework::GetVariableReadableData(scope, t.first, name)
+         << std::endl;
+    }
+  }
+
+  return ss.str();
+}
+
+std::string OperatorBase::DebugOutputsStrings(const Scope& scope) {
+  std::stringstream ss;
+  ss << "after run operator" << type_ << std::endl;
+  for (auto t : outputs_) {
+    for (auto name : t.second) {
+      ss << paddle::framework::GetVariableReadableData(scope, t.first, name)
+         << std::endl;
+    }
+  }
+  ss << "end run operator" << type_ << std::endl;
+
+  return ss.str();
+}
+
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(10) << "- " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
@@ -107,7 +135,12 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
+  // God bless you not need to open it to compare the float data.
+  VLOG(11) << DebugInputsStrings(scope);
+
   RunImpl(scope, place);
+
+  VLOG(11) << DebugOutputsStrings(scope);
   VLOG(10) << "+ " << DebugStringEx(&scope);
 }
 

@@ -26,7 +26,8 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-void GetArrayReadalbeData(int b, int e, int w, int summarize, void* data) {
+std::string GetArrayReadalbeData(int b, int e, int w, int summarize,
+                                 void* data) {
   std::stringstream ss;
   auto* d = reinterpret_cast<T*>(data);
 
@@ -39,7 +40,10 @@ void GetArrayReadalbeData(int b, int e, int w, int summarize, void* data) {
     ss << "[";
     for (int m = l_b; m < l_e; m++) {
       int pos = i * w + m;
-      ss << d[pos] if (pos < l_e - 1) { ss << ","; }
+      ss << d[pos];
+      if (pos < l_e - 1) {
+        ss << ",";
+      }
     }
 
     if (r_b > l_e) {
@@ -63,8 +67,9 @@ void GetArrayReadalbeData(int b, int e, int w, int summarize, void* data) {
 }
 
 template <typename T>
-void GetMatrixReadableData(const std::string& message, const std::string& name,
-                           int h, int w, int summarize, void* data) {
+std::string GetMatrixReadableData(const std::string& message,
+                                  const std::string& name, int h, int w,
+                                  int summarize, void* data) {
   std::stringstream ss;
 
   int t_b = 0;
@@ -83,8 +88,12 @@ void GetMatrixReadableData(const std::string& message, const std::string& name,
   return ss.str();
 }
 
-void GetVariableReadableData(framework::Variable* var, std::string name,
-                             std::string message);
+std::string GetVariableReadableData(framework::Variable* var,
+                                    const std::string& message,
+                                    const std::string& name);
 
+std::string GetVariableReadableData(const Scope& scope,
+                                    const std::string& message,
+                                    const std::string& name);
 }  // namespace framework
 }  // namespace paddle

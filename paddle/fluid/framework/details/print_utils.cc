@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
 #include <sstream>  // std::stringstream
 #include <string>
 
@@ -55,20 +54,20 @@ std::string GetVariableReadableData(framework::Variable* var,
 
   ss << message << " " << name << ":";
   if (IsType<const float>(dtype)) {
-    return paddle::framework::GetArrayReadalbeData<float>(0, 1, size, summarize,
-                                                          data);
-  } else if (IsType<const double>(dtype)) {
-    return paddle::framework::GetArrayReadalbeData<double>(0, 1, size,
-                                                           summarize, data);
-  } else if (IsType<const int>(dtype)) {
-    return paddle::framework::GetArrayReadalbeData<int>(0, 1, size, summarize,
-                                                        data);
-  } else if (IsType<const int64_t>(dtype)) {
-    return paddle::framework::GetArrayReadalbeData<int64_t>(0, 1, size,
-                                                            summarize, data);
-  } else if (IsType<const bool>(dtype)) {
-    return paddle::framework::GetArrayReadalbeData<bool>(0, 1, size, summarize,
+    ss << paddle::framework::GetArrayReadalbeData<float>(0, 1, size, summarize,
                                                          data);
+  } else if (IsType<const double>(dtype)) {
+    ss << paddle::framework::GetArrayReadalbeData<double>(0, 1, size, summarize,
+                                                          data);
+  } else if (IsType<const int>(dtype)) {
+    ss << paddle::framework::GetArrayReadalbeData<int>(0, 1, size, summarize,
+                                                       data);
+  } else if (IsType<const int64_t>(dtype)) {
+    ss << paddle::framework::GetArrayReadalbeData<int64_t>(0, 1, size,
+                                                           summarize, data);
+  } else if (IsType<const bool>(dtype)) {
+    ss << paddle::framework::GetArrayReadalbeData<bool>(0, 1, size, summarize,
+                                                        data);
   } else {
     // TODO(gongwb): add more data types support.
     ss << "\tdata: unprintable type: " << dtype.name();
