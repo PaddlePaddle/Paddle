@@ -1285,6 +1285,15 @@ class MixedPrecisionSGDOptimizer(Optimizer):
         scaled_loss = loss * self._scale_factor
         return scaled_loss
 
+    def _has_overflow(self, params_grads):
+        flags = []
+        for (param, grad) in params_grads:
+            if grad.dtype == core.VarDesc.VarType.FP16:
+                # print(grad.name, grad.dtype)
+                flag = layers.isfinite(grad)
+                flags.append(flag)
+        return layers.sums(flags)
+
     def _grad_scaling(self, params_grads):
         # Multiply the weight gradient with 1/S
         for (param, grad) in self.master_copy:
@@ -1360,22 +1369,27 @@ class MixedPrecisionSGDOptimizer(Optimizer):
 
         self._copy_cast_params(params_grads, self.master_copy)
 
-        self._grad_scaling(params_grads)
         # params_grads = append_gradient_clip_ops(params_grads)
 
         # # Add regularization if any
         # params_grads = append_regularization_ops(params_grads,
         #                                          self.regularization)
 
-        ifcond = layers.has_overflow(grads)
+        ifcond = self._has_overflow(params_grads)
         ie = layers.IfElse(ifcond)
         with ie.true_block():
             true_target = ie.input(self._scale_factor)
-            true_target /= 2
-            ie.output()
-        optimize_ops = self._create_optimization_pass(self.master_copy, loss,
-                                                      startup_program)
-        self._copy_cast_params(self.master_copy, params_grads, params_only=True)
+            self._grad_scaling(params_grads)
+            optimize_ops = self._create_optimization_pass(
+                self.master_copy, scaled_loss, startup_program)
+            self._copy_cast_params(
+                self.master_copy, params_grads, params_only=True)
+            ie.output(self._scale_factor)
+        with ie.false_block():
+            false_target = ie.input(self._scale_factor)
+            self._scale_factor /= 2
+            ie.output(self._scale_factor)
+        self._scale_factor = ie()
         return optimize_ops, self.master_copy
 
 

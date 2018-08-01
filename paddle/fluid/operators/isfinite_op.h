@@ -49,7 +49,7 @@ class OverflowKernel : public framework::OpKernel<T> {
     auto* x = ctx.InputVar("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-    Functor functor();
+    Functor functor;
     if (x->IsType<framework::LoDTensor>()) {
       auto* in = ctx.Input<framework::Tensor>("X");
       functor(*in, out);
@@ -68,4 +68,4 @@ class OverflowKernel : public framework::OpKernel<T> {
 #define FOR_EACH_KERNEL_FUNCTOR(__macro) \
   __macro(isinf, InfinityFunctor);       \
   __macro(isnan, NANFunctor);            \
-  __macro(overflow, IsfiniteFunctor);
+  __macro(isfinite, IsfiniteFunctor);

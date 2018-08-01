@@ -247,7 +247,7 @@ def run_benchmark(model, args):
         return test_accuracy.eval()
 
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
-    exe = fluid.Executor(place)
+    exe = fluid.Executor(place, log_level=10)
     exe.run(fluid.default_startup_program())
     accuracy = fluid.average.WeightedAverage()
     if args.use_fake_data:
