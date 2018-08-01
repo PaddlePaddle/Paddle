@@ -97,15 +97,15 @@ TEST(GraphTest, Basic) {
   std::vector<ir::Node *> nodes(g->Nodes().begin(), g->Nodes().end());
   for (ir::Node *n : nodes) {
     if (n->Name() == "sum") {
-      ASSERT_EQ(n->inputs.size(), 3);
-      ASSERT_EQ(n->outputs.size(), 1);
+      ASSERT_EQ(n->inputs.size(), 3UL);
+      ASSERT_EQ(n->outputs.size(), 1UL);
     } else if (n->Name() == "test_a" || n->Name() == "test_b" ||
                n->Name() == "test_c") {
-      ASSERT_EQ(n->inputs.size(), 0);
-      ASSERT_EQ(n->outputs.size(), 1);
+      ASSERT_EQ(n->inputs.size(), 0UL);
+      ASSERT_EQ(n->outputs.size(), 1UL);
     } else if (n->Name() == "test_out") {
-      ASSERT_EQ(n->inputs.size(), 1);
-      ASSERT_EQ(n->outputs.size(), 0);
+      ASSERT_EQ(n->inputs.size(), 1UL);
+      ASSERT_EQ(n->outputs.size(), 0UL);
     }
   }
   ASSERT_EQ(nodes.size(), 5);
