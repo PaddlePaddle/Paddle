@@ -19,6 +19,7 @@ endif(APPLE)
 
 
 set(inference_deps paddle_inference_api paddle_fluid_api)
+
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
 endif()
@@ -42,7 +43,7 @@ function(inference_api_test TARGET_NAME)
     endif(WITH_TESTING)
 endfunction(inference_api_test)
 
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc)
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
 
 
 cc_test(test_paddle_inference_api
@@ -63,6 +64,8 @@ endif()
 if (WITH_ANAKIN) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
+    # compile the libinference_anakin_api.a and compile with anakin.so.
+    fetch_include_recursively(${ANAKIN_INCLUDE})
     # compile the libinference_anakin_api.a and anakin.so.
     nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
     nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
@@ -73,7 +76,7 @@ if (WITH_ANAKIN) # only needed in CI
     if (WITH_TESTING)
         cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
                                   ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                                  DEPS inference_anakin_api)
+                                  DEPS inference_anakin_api_shared)
         target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
      endif(WITH_TESTING)
 endif()

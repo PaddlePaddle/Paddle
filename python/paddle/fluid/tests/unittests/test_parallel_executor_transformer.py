@@ -21,7 +21,7 @@ import paddle
 import paddle.dataset.wmt16 as wmt16
 import os
 
-WMT16_RECORDIO_FILE = "/tmp/wmt16_test_pe.recordio"
+WMT16_RECORDIO_FILE = "/tmp/wmt16.recordio"
 
 
 class ModelHyperParams(object):

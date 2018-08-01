@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <fstream>
 #include <iosfwd>
+#include <ostream>
 #include <string>
 #include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
@@ -34,38 +36,15 @@ class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
 };
 
 class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
- public:
-  SSAGraghBuilderWithPrinter(std::ostream& sout,
-                             std::unique_ptr<SSAGraphPrinter>&& printer,
-                             std::unique_ptr<SSAGraphBuilder>&& builder)
-      : printer_(std::move(printer)),
-        builder_(std::move(builder)),
-        stream_ref_(sout) {}
-
-  SSAGraghBuilderWithPrinter(std::unique_ptr<std::ostream>&& sout,
-                             std::unique_ptr<SSAGraphPrinter>&& printer,
-                             std::unique_ptr<SSAGraphBuilder>&& builder)
-      : printer_(std::move(printer)),
-        builder_(std::move(builder)),
-        stream_ptr_(std::move(sout)),
-        stream_ref_(*stream_ptr_) {}
-
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
-    auto new_graph = builder_->Apply(std::move(graph));
-    printer_->Print(*new_graph, stream_ref_);
-    return new_graph;
+    std::unique_ptr<std::ostream> fout(
+        new std::ofstream(Get<const std::string>("debug_graphviz_path")));
+    PADDLE_ENFORCE(fout->good());
+    Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
+    return graph;
   }
-
-  int GetVarDeviceID(const std::string& var_name) const override {
-    return builder_->GetVarDeviceID(var_name);
-  }
-
- private:
-  std::unique_ptr<SSAGraphPrinter> printer_;
-  std::unique_ptr<SSAGraphBuilder> builder_;
-  std::unique_ptr<std::ostream> stream_ptr_;
-  std::ostream& stream_ref_;
 };
 
 }  // namespace details

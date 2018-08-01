@@ -23,12 +23,18 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, dfg_graphviz_draw_pass_tester) {
-  auto dfg = ProgramDescToDFG(*argument.origin_program_desc);
+TEST(DFG_GraphvizDrawPass, dfg_graphviz_draw_pass_tester) {
+  Argument argument(FLAGS_inference_model_dir);
+  FluidToDataFlowGraphPass pass0;
+  ASSERT_TRUE(pass0.Initialize(&argument));
+  pass0.Run(argument.main_dfg.get());
+
+  // auto dfg = ProgramDescToDFG(*argument.origin_program_desc);
+
   DFG_GraphvizDrawPass::Config config("./", "test");
   DFG_GraphvizDrawPass pass(config);
   pass.Initialize(&argument);
-  pass.Run(&dfg);
+  pass.Run(argument.main_dfg.get());
 
   // test content
   std::ifstream file("./0-graph_test.dot");
