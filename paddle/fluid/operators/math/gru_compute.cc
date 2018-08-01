@@ -29,7 +29,7 @@ struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
     if (value.prev_out_value) {
       blas.GEMM(false, false, batch_size, frame_size * 2, frame_size, 1,
                 value.prev_out_value, frame_size, value.gate_weight,
-                frame_size * 2, 1, value.gate_value, frame_size * 3);
+                frame_size * 2, 1, value.gate_value, frame_size * 2);
     }
 
     detail::forward_reset_output(detail::forward::gru_resetOutput<T>(), value,
@@ -39,7 +39,7 @@ struct GRUUnitFunctor<platform::CPUDeviceContext, T> {
       blas.GEMM(false, false, batch_size, frame_size, frame_size, 1,
                 value.reset_output_value, frame_size, value.state_weight,
                 frame_size, 1, value.gate_value + frame_size * 2,
-                frame_size * 3);
+                frame_size * 2);
     }
 
     detail::forward_final_output(detail::forward::gru_finalOutput<T>(), value,
