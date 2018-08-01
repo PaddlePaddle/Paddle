@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -56,13 +57,22 @@ static DDim GetDims(const Scope& scope, const std::string& name,
     return DDim({-1});
   }
 
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
-  } else if (var->IsType<SelectedRows>()) {
-    if (get_actual_dim) {
-      return var->Get<SelectedRows>().value().dims();
+  if (var->IsInitialized()) {
+    if (var->IsType<LoDTensor>()) {
+      const LoDTensor& tensor = var->Get<LoDTensor>();
+      if (tensor.IsInitialized()) {
+        return tensor.dims();
+      } else {
+        return DDim({-1});
+      }
+    } else if (var->IsType<SelectedRows>()) {
+      if (get_actual_dim) {
+        return var->Get<SelectedRows>().value().dims();
+      } else {
+        return var->Get<SelectedRows>().GetCompleteDims();
+      }
     } else {
-      return var->Get<SelectedRows>().GetCompleteDims();
+      return DDim({-1});
     }
   } else {
     return DDim({-1});
@@ -74,11 +84,21 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
-  if (var->IsType<LoDTensor>()) {
-    return DataTypeToString(ToDataType(var->Get<LoDTensor>().type()));
-  } else if (var->IsType<SelectedRows>()) {
-    return DataTypeToString(
-        ToDataType(var->Get<SelectedRows>().value().type()));
+
+  if (var->IsInitialized()) {
+    if (var->IsType<LoDTensor>()) {
+      const LoDTensor& tensor = var->Get<LoDTensor>();
+      if (tensor.IsInitialized()) {
+        return DataTypeToString(ToDataType(tensor.type()));
+      } else {
+        return "";
+      }
+    } else if (var->IsType<SelectedRows>()) {
+      return DataTypeToString(
+          ToDataType(var->Get<SelectedRows>().value().type()));
+    } else {
+      return "";
+    }
   } else {
     return "";
   }
@@ -90,8 +110,10 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
     return -1;
   }
 
-  if (var->IsType<SelectedRows>()) {
-    return var->Get<SelectedRows>().rows().size();
+  if (var->IsInitialized()) {
+    if (var->IsType<SelectedRows>()) {
+      return var->Get<SelectedRows>().rows().size();
+    }
   }
 
   return -1;
@@ -105,8 +127,17 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
     return default_lod;
   }
 
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+  if (var->IsInitialized()) {
+    if (var->IsType<LoDTensor>()) {
+      const LoDTensor& tensor = var->Get<LoDTensor>();
+      if (tensor.IsInitialized()) {
+        return tensor.lod();
+      } else {
+        return default_lod;
+      }
+    } else {
+      return default_lod;
+    }
   } else {
     return default_lod;
   }
