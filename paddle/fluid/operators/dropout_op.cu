@@ -23,35 +23,30 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename T>
-__global__ void RandomGenerator(const size_t n, const int seed,
-                                const float dropout_prob, const T* src,
-                                T* mask_data, T* dst) {
+inline __host__ __device__ size_t HashCombine(size_t seed, size_t idx) {
+  // use boost::hash_combine to make seed more random
+  seed ^= idx + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+  return seed;
+}
+
+template <typename T, typename MaskType>
+__global__ void RandomGenerator(const size_t n, const size_t seed,
+                                const uint32_t int_dropout_prob, const T* src,
+                                MaskType* mask_data, T* dst) {
+  size_t idx = blockDim.x * blockIdx.x + threadIdx.x;
   thrust::minstd_rand rng;
-  rng.seed(seed);
-  thrust::uniform_real_distribution<float> dist(0, 1);
+  rng.seed(HashCombine(seed, idx));
+  constexpr uint32_t kUInt32Max = static_cast<uint32_t>(-1);
+  thrust::uniform_int_distribution<uint32_t> dist(0, kUInt32Max - 1);
 
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  int step_size = 0;
-
-  T mask;
-  T dest;
-  for (; idx < n; idx += blockDim.x * gridDim.x) {
-    T s = src[idx];
-    if (step_size == 0) {
-      rng.discard(idx);
-      step_size = blockDim.x * gridDim.x;
+  if (idx < n) {
+    if (dist(rng) < int_dropout_prob) {
+      mask_data[idx] = static_cast<MaskType>(0);
+      dst[idx] = static_cast<T>(0);
     } else {
-      rng.discard(step_size);
+      mask_data[idx] = static_cast<MaskType>(1);
+      dst[idx] = src[idx];
     }
-    if (dist(rng) < dropout_prob) {
-      mask = static_cast<T>(0);
-    } else {
-      mask = static_cast<T>(1);
-    }
-    dest = s * mask;
-    mask_data[idx] = mask;
-    dst[idx] = dest;
   }
 }
 
@@ -70,7 +65,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+      auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
       size_t size = framework::product(mask->dims());
       auto* x_data = x->data<T>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
@@ -79,11 +74,16 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
-      int threads = 512;
-      int grid = (x->numel() + threads - 1) / threads;
-      RandomGenerator<
-          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
-          size, seed, dropout_prob, x_data, mask_data, y_data);
+      size_t threads = 512;
+      size_t grid = (size + threads - 1) / threads;
+
+      // cast dropout_prob to double type to prevent overflow when dropout_prob
+      // is near 1
+      uint32_t int_dropout_prob = static_cast<uint32_t>(
+          static_cast<double>(dropout_prob) * static_cast<uint32_t>(-1));
+      RandomGenerator<<<grid, threads, 0,
+                        context.cuda_device_context().stream()>>>(
+          size, seed, int_dropout_prob, x_data, mask_data, y_data);
     } else {
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);

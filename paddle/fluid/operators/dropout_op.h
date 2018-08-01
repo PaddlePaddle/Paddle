@@ -38,7 +38,7 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
 
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
-      auto* mask_data = mask->mutable_data<T>(context.GetPlace());
+      auto* mask_data = mask->mutable_data<uint8_t>(context.GetPlace());
 
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
@@ -81,7 +81,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
 
-    auto M = EigenMatrix<T>::Reshape(*mask, 1);
+    auto M = EigenMatrix<uint8_t>::Reshape(*mask, 1);
     auto dX = EigenMatrix<T>::Reshape(*grad_x, 1);
     auto dY = EigenMatrix<T>::Reshape(*grad_y, 1);
 
