@@ -111,6 +111,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'api_test',
 ]
 
 
@@ -5352,4 +5353,16 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def api_test(x, name=None):
+    """
+
+    """
+    helper = LayerHelper('spp', **locals())
+
+    out = helper.create_tmp_variable("float32")
+
+    helper.append_op(type='spp', inputs={"X": x}, outputs={'Out': out})
     return out

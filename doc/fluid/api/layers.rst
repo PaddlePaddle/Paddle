@@ -1776,3 +1776,10 @@ rank_loss
 ..  autofunction:: paddle.fluid.layers.rank_loss
     :noindex:
 
+.. _api_fluid_layers_api_test:
+
+api_test
+-------
+
+..  autofunction:: paddle.fluid.layers.api_test
+    :noindex:
