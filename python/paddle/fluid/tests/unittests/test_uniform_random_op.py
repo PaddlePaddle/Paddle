@@ -77,7 +77,10 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
         pass
 
     def get_places(self):
-        places = [core.CPUPlace()]
+        if self.dtype == np.float16:
+            places = []
+        else:
+            places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         return places
@@ -96,7 +99,8 @@ class TestUniformRandomOpSelectedRows(unittest.TestCase):
             shape=[4, 784],
             min=-5.0,
             max=10.0,
-            seed=10, )
+            seed=10,
+            dtype=int(framework.convert_np_dtype_to_dtype_(self.dtype)))
         op.run(scope, place)
         self.assertEqual(out.get_tensor().shape(), [4, 784])
         hist, prob = output_hist(np.array(out.get_tensor()), self.dtype)

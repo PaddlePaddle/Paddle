@@ -69,9 +69,9 @@ class TestFP16NAN(OpTest):
         self.dtype = np.float16
 
 
-class TestOverflow(OpTest):
+class TestIsfinite(OpTest):
     def setUp(self):
-        self.op_type = "overflow"
+        self.op_type = "isfinite"
         self.dtype = np.float32
         self.init_dtype()
 
@@ -90,33 +90,7 @@ class TestOverflow(OpTest):
         self.check_output()
 
 
-class TestFP16Overflow(OpTest):
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestNotOverflow(OpTest):
-    def setUp(self):
-        self.op_type = "not_overflow"
-        self.dtype = np.float32
-        self.init_dtype()
-
-        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
-        x[0] = np.inf
-        x[-1] = np.nan
-        out = np.ones_like(x) - (np.isinf(x) | np.isnan(x))
-
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
-
-    def init_dtype(self):
-        pass
-
-    def test_output(self):
-        self.check_output()
-
-
-class TestFP16NotOverflow(OpTest):
+class TestFP16Isfinite(OpTest):
     def init_dtype(self):
         self.dtype = np.float16
 

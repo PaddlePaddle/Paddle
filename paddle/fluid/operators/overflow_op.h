@@ -17,38 +17,28 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
 
-// isinf isnan in std has been customized.
-template <typename T>
 struct InfinityFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a) { return std::isinf(a); }
-};
-
-template <typename T>
-struct NANFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a) { return std::isnan(a); }
-};
-
-template <typename T>
-struct OverflowFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a) {
-    return std::isnan(a) || std::isinf(a);
+  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+    framework::TensorContainsInf(tensor, out);
   }
 };
 
-template <typename T>
-struct NotOverflowFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& a) {
-    return !std::isnan(a) && !std::isinf(a);
+struct NANFunctor {
+  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+    framework::TensorContainsNAN(tensor, out);
+  }
+};
+
+struct IsfiniteFunctor {
+  void operator()(const framework::Tensor& tensor, framework::Tensor* out) {
+    framework::TensorIsfinite(tensor, out);
   }
 };
 
@@ -59,22 +49,13 @@ class OverflowKernel : public framework::OpKernel<T> {
     auto* x = ctx.InputVar("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
-    platform::Transform<DeviceContext> transfunctor;
-    auto* out_begin = out->mutable_data<T>(ctx.GetPlace());
+    Functor functor();
     if (x->IsType<framework::LoDTensor>()) {
       auto* in = ctx.Input<framework::Tensor>("X");
-      auto* in_begin = in->data<T>();
-      auto numel = in->numel();
-      auto* in_end = in_begin + numel;
-      transfunctor(ctx.template device_context<DeviceContext>(), in_begin,
-                   in_end, out_begin, Functor());
+      functor(*in, out);
     } else if (x->IsType<framework::SelectedRows>()) {
       auto& in = ctx.Input<framework::SelectedRows>("X")->value();
-      auto* in_begin = in.data<T>();
-      auto numel = in.numel();
-      auto* in_end = in_begin + numel;
-      transfunctor(ctx.template device_context<DeviceContext>(), in_begin,
-                   in_end, out_begin, Functor());
+      functor(in, out);
     } else {
       PADDLE_THROW("Unsupported input type.");
     }
@@ -87,5 +68,4 @@ class OverflowKernel : public framework::OpKernel<T> {
 #define FOR_EACH_KERNEL_FUNCTOR(__macro) \
   __macro(isinf, InfinityFunctor);       \
   __macro(isnan, NANFunctor);            \
-  __macro(overflow, OverflowFunctor);    \
-  __macro(not_overflow, NotOverflowFunctor);
+  __macro(overflow, IsfiniteFunctor);

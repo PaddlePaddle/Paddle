@@ -31,7 +31,7 @@ class OverflowOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of OverflowOp should not be null.");
 
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("Out", {1});
   }
 
  protected:
@@ -55,9 +55,10 @@ class OverflowOp : public framework::OperatorWithKernel {
 class OverflowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(vector<Tensor>) The input tensors of overflow operator.");
-    AddOutput("Out", "(Tensor) The output tensor of overflow operator.")
-        .Reuse("X");
+    AddInput("X", "(Tensor) The input tensors of overflow operator.");
+    AddOutput("Out",
+              "(Tensor) 1-dim tensor, contains a bool scalar. The output "
+              "tensor of overflow operator.");
     AddComment(string::Sprintf(R"DOC(
 Overflow operator.
 
@@ -100,14 +101,13 @@ namespace ops = paddle::operators;
 #define REGISTER_OVERFLOW_CPU_KERNEL(op_type, functor)                      \
   REGISTER_OP_CPU_KERNEL(                                                   \
       op_type, ops::OverflowKernel<paddle::platform::CPUDeviceContext, int, \
-                                   ops::functor<int>>,                      \
+                                   ops::functor>,                           \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, float,        \
-                          ops::functor<float>>,                             \
+                          ops::functor>,                                    \
       ops::OverflowKernel<paddle::platform::CPUDeviceContext, double,       \
-                          ops::functor<double>>);
+                          ops::functor>);
 
 REGISTER_OP_MAKER(isinf, "isinf(X)");
 REGISTER_OP_MAKER(isnan, "isnan(X)");
-REGISTER_OP_MAKER(overflow, "overflow(X)");
-REGISTER_OP_MAKER(not_overflow, "overflow(X)");
+REGISTER_OP_MAKER(isfinite, "isfinite(X)");
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_OVERFLOW_CPU_KERNEL);

@@ -154,6 +154,7 @@ struct AnyDTypeVisitor {
     auto o = EigenScalar<bool>::From(*out_);
     // return any of predicate_(t) is true.
     o.device(*ctx_.eigen_device()) = predicate_(t).any();
+    // o.device(*ctx_.eigen_device()) = predicate_(t).all();
   }
 };
 
@@ -207,10 +208,36 @@ struct AnyVisitor : public boost::static_visitor<bool> {
 };
 
 template <typename Predicate>
+struct AnyOutVisitor : public boost::static_visitor<> {
+  const framework::Tensor& tensor_;
+  mutable framework::Tensor* out_;
+  Predicate predicate_;
+  AnyOutVisitor(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out)
+      : tensor_(tensor), out_(out), predicate_(std::move(predicate)) {}
+
+  template <typename Place>
+  void operator()(const Place& place) const {
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
+    out_->Resize({1});
+    out_->mutable_data<bool>(place);
+    AnyImpl(predicate_, tensor_, *ctx, out_);
+  }
+};
+
+template <typename Predicate>
 inline bool Any(const framework::Tensor& tensor, Predicate predicate) {
   AnyVisitor<Predicate> visitor(tensor, predicate);
   auto place = tensor.place();
   return platform::VisitPlace(place, visitor);
+}
+
+template <typename Predicate>
+inline void Any(const framework::Tensor& tensor, Predicate predicate,
+                framework::Tensor* out) {
+  AnyOutVisitor<Predicate> visitor(tensor, predicate, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
 }
 
 struct ContainsNANPredicate {
@@ -227,6 +254,12 @@ bool TensorContainsNAN(const framework::Tensor& tensor) {
   return Any(tensor, predicate);
 }
 
+void TensorContainsNAN(const framework::Tensor& tensor,
+                       framework::Tensor* out) {
+  ContainsNANPredicate predicate;
+  Any(tensor, predicate, out);
+}
+
 struct ContainsInfPredicate {
   template <typename T>
   auto operator()(const T& eigen_vec) const
@@ -239,6 +272,67 @@ struct ContainsInfPredicate {
 bool TensorContainsInf(const framework::Tensor& tensor) {
   ContainsInfPredicate predicate;
   return Any(tensor, predicate);
+}
+
+void TensorContainsInf(const framework::Tensor& tensor,
+                       framework::Tensor* out) {
+  ContainsInfPredicate predicate;
+  Any(tensor, predicate, out);
+}
+
+// NOTE(dzhwinter):
+// Isfinite need a AllVisitor to loop through all the elements.
+// We choose two cuda call instead of one allvisitor. The AllVisitor
+// should be implemented if the performance hurts.
+bool TensorIsfinite(const framework::Tensor& tensor) {
+  ContainsInfPredicate pred_inf;
+  ContainsNANPredicate pred_nan;
+  return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
+}
+
+template <typename T>
+static inline void __global__ EqualAssign(const T* cmp, T* out) {
+  out[0] = (!cmp[0]) && (!out[0]);
+}
+
+struct EqualAssignVisitor : public boost::static_visitor<> {
+  const framework::Tensor& in_;
+  mutable framework::Tensor* out_;
+  EqualAssignVisitor(const framework::Tensor& in, framework::Tensor* out)
+      : in_(in), out_(out) {}
+
+  template <typename Place>
+  void operator()(const Place& place) const {
+    VisitorImpl(place);
+  }
+
+  void VisitorImpl(const platform::CUDAPlace& gpu) const {
+    auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
+    EqualAssign<bool><<<1, 1, 0, ctx->stream()>>>(
+        in_.data<bool>(), out_->mutable_data<bool>(gpu));
+  }
+
+  void VisitorImpl(const platform::CPUPlace& cpu) const {
+    bool lhs = !in_.data<bool>()[0];
+    bool rhs = !out_->mutable_data<bool>(cpu)[0];
+    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+  }
+
+  void VisitorImpl(
+      const platform::CUDAPinnedPlace& cpu /* equals to cpu*/) const {
+    bool lhs = !in_.data<bool>()[0];
+    bool rhs = !out_->mutable_data<bool>(cpu)[0];
+    out_->mutable_data<bool>(cpu)[0] = lhs && rhs;
+  }
+};
+
+void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
+  framework::Tensor tmp;
+  TensorContainsInf(tensor, &tmp);
+  TensorContainsNAN(tensor, out);
+  EqualAssignVisitor visitor(tmp, out);
+  auto place = tensor.place();
+  platform::VisitPlace(place, visitor);
 }
 
 void TensorToStream(std::ostream& os, const Tensor& tensor,

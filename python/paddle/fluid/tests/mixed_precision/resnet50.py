@@ -100,7 +100,9 @@ def conv_bn_layer(input, ch_out, filter_size, stride, padding, act='relu'):
         act=None,
         bias_attr=False)
 
-    return fluid.layers.batch_norm(input=conv1, act=act)
+    conv1 = fluid.layers.cast(conv1, dtype=np.float32)
+    conv1 = fluid.layers.batch_norm(input=conv1, act=act)
+    return fluid.layers.cast(conv1, dtype=DATA_TYPE)
 
 
 def shortcut(input, ch_out, stride):
@@ -209,7 +211,10 @@ def run_benchmark(model, args):
         inference_program = fluid.io.get_inference_program(
             target_vars=[batch_acc, batch_size_tensor])
 
-    optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+    # optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+    optimizer = fluid.optimizer.MixedSGD(
+        scale_factor=128.0, learning_rate=0.001)
+    # optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     opts = optimizer.minimize(avg_cost)
 
     fluid.memory_optimize(fluid.default_main_program())

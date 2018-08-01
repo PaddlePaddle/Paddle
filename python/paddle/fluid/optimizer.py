@@ -30,11 +30,10 @@ from contextlib import contextmanager
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
-    'MixedSGD'
-    'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer', 'AdamOptimizer',
-    'AdamaxOptimizer', 'DecayedAdagradOptimizer', 'RMSPropOptimizer',
-    'FtrlOptimizer', 'Adadelta', 'ModelAverage', 'RMSPropOptimizer',
-    'MixedPrecisionSGDOptimizer'
+    'MixedSGD', 'SGDOptimizer', 'MomentumOptimizer', 'AdagradOptimizer',
+    'AdamOptimizer', 'AdamaxOptimizer', 'DecayedAdagradOptimizer',
+    'RMSPropOptimizer', 'FtrlOptimizer', 'Adadelta', 'ModelAverage',
+    'RMSPropOptimizer', 'MixedPrecisionSGDOptimizer'
 ]
 
 
@@ -1326,14 +1325,6 @@ class MixedPrecisionSGDOptimizer(Optimizer):
                     attrs={'in_dtype': grad2.dtype,
                            "out_dtype": grad2.dtype})
 
-    def _has_overflow(self):
-        if self._inited == False:
-            raise RuntimeError(
-                "the master_copy of params not exsits. Please call _create_master_copy first."
-            )
-        # for (param, grad) in self.master_copy:
-        #     if has_overflow(grad):
-
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
 
@@ -1376,8 +1367,14 @@ class MixedPrecisionSGDOptimizer(Optimizer):
         # params_grads = append_regularization_ops(params_grads,
         #                                          self.regularization)
 
-        optimize_ops = self.create_optimization_pass(self.master_copy, loss,
-                                                     startup_program)
+        ifcond = layers.has_overflow(grads)
+        ie = layers.IfElse(ifcond)
+        with ie.true_block():
+            true_target = ie.input(self._scale_factor)
+            true_target /= 2
+            ie.output()
+        optimize_ops = self._create_optimization_pass(self.master_copy, loss,
+                                                      startup_program)
         self._copy_cast_params(self.master_copy, params_grads, params_only=True)
         return optimize_ops, self.master_copy
 

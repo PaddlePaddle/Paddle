@@ -22,12 +22,12 @@ namespace plat = paddle::platform;
 #define REGISTER_OVERFLOW_CUDA_KERNEL(op_type, functor)                       \
   REGISTER_OP_CUDA_KERNEL(                                                    \
       op_type, ops::OverflowKernel<paddle::platform::CUDADeviceContext, int,  \
-                                   ops::functor<int>>,                        \
+                                   ops::functor>,                             \
       ops::OverflowKernel<paddle::platform::CUDADeviceContext, float,         \
-                          ops::functor<float>>,                               \
+                          ops::functor>,                                      \
       ops::OverflowKernel<paddle::platform::CUDADeviceContext, double,        \
-                          ops::functor<double>>,                              \
+                          ops::functor>,                                      \
       ops::OverflowKernel<paddle::platform::CUDADeviceContext, plat::float16, \
-                          ops::functor<plat::float16>>);
+                          ops::functor>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_OVERFLOW_CUDA_KERNEL);
