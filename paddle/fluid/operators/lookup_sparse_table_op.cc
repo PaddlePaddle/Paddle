@@ -69,36 +69,43 @@ class LookupSparseTableOp : public framework::OperatorBase {
     // TODO(Yancey1989): support CUDA Place for the sparse table
     platform::CPUPlace cpu;
     auto out_shape = w_t->value().dims();
+    int64_t table_width = out_shape[1];
     out_shape[0] = keys.size();
     out_t->Resize(out_shape);
     out_t->mutable_data(cpu, w_t->value().type());
     PADDLE_ENFORCE_EQ(framework::ToDataType(w_t->value().type()),
                       framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
-    auto non_keys_pair = w_t->Get(keys, out_t);
     if (!auto_grown_table) {
-      PADDLE_ENFORCE_EQ(non_keys_pair.size(), static_cast<size_t>(0),
-                        "there is some keys does exists in the sparse table.");
-    }
-    auto value_shape = w_t->value().dims();
-    value_shape[0] = 1;
-    for (const auto &it : non_keys_pair) {
-      const auto key = it.first;
-      const auto index = it.second;
-      framework::Tensor value;
-      value.Resize(value_shape);
-      auto data = value.mutable_data<float>(cpu);
-
-      std::minstd_rand engine;
-      engine.seed(seed);
-      std::uniform_real_distribution<float> dist(min, max);
-      int64_t size = value.numel();
-      for (int64_t i = 0; i < size; ++i) {
-        data[i] = dist(engine);
+      for (size_t index = 0; index < keys.size(); ++index) {
+        auto id = keys[index];
+        memory::Copy(cpu, out_t->mutable_data<float>(cpu) + index * table_width,
+                     cpu, w_t->value().data<float>() + id * table_width,
+                     table_width * sizeof(float));
       }
-      w_t->Set(key, value);
-      memory::Copy(cpu, out_t->mutable_data<float>(cpu) + index * value.numel(),
-                   cpu, value.data<float>(), value.numel() * sizeof(float));
+    } else {
+      auto non_keys_pair = w_t->Get(keys, out_t);
+      auto value_shape = w_t->value().dims();
+      value_shape[0] = 1;
+      for (const auto &it : non_keys_pair) {
+        const auto key = it.first;
+        const auto index = it.second;
+        framework::Tensor value;
+        value.Resize(value_shape);
+        auto data = value.mutable_data<float>(cpu);
+
+        std::minstd_rand engine;
+        engine.seed(seed);
+        std::uniform_real_distribution<float> dist(min, max);
+        int64_t size = value.numel();
+        for (int64_t i = 0; i < size; ++i) {
+          data[i] = dist(engine);
+        }
+        w_t->Set(key, value);
+        memory::Copy(cpu,
+                     out_t->mutable_data<float>(cpu) + index * value.numel(),
+                     cpu, value.data<float>(), value.numel() * sizeof(float));
+      }
     }
   }
 };
