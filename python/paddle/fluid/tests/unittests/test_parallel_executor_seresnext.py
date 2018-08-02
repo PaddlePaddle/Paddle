@@ -21,6 +21,8 @@ from parallel_executor_test_base import TestParallelExecutorBase
 import unittest
 import math
 import os
+import functools
+import numpy as np
 
 
 def squeeze_excitation(input, num_channels, reduction_ratio):
@@ -92,13 +94,19 @@ def bottleneck_block(input, num_filters, stride, cardinality, reduction_ratio):
     return fluid.layers.elementwise_add(x=short, y=scale, act='relu')
 
 
-def SE_ResNeXt50Small(batch_size=2, use_feed=False):
-    assert not use_feed, "SE_ResNeXt doesn't support feed yet"
+img_shape = [3, 224, 224]
 
-    img = fluid.layers.fill_constant(
-        shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
-    label = fluid.layers.fill_constant(
-        shape=[batch_size, 1], dtype='int64', value=0.0)
+
+def SE_ResNeXt50Small(use_feed=False):
+    # assert not use_feed, "SE_ResNeXt doesn't support feed yet"
+
+    img = fluid.layers.data(name='image', shape=img_shape, dtype='float32')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+
+    # img = fluid.layers.fill_constant(
+    #     shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
+    # label = fluid.layers.fill_constant(
+    #     shape=[batch_size, 1], dtype='int64', value=0.0)
 
     conv = conv_bn_layer(
         input=img, num_filters=16, filter_size=3, stride=2, act='relu')
@@ -136,6 +144,16 @@ def SE_ResNeXt50Small(batch_size=2, use_feed=False):
 
 
 class TestResnet(TestParallelExecutorBase):
+    def _init_data(self, batch_size=2, random=True):
+        np.random.seed(5)
+        if random:
+            img = np.random.random(
+                size=[batch_size] + img_shape).astype(np.float32)
+        else:
+            img = np.ones(shape=[batch_size] + img_shape, dtype='float32')
+        label = np.ones(shape=[batch_size, 1], dtype='int64')
+        return img, label
+
     def check_resnet_convergence_with_learning_rate_decay(self,
                                                           use_cuda=True,
                                                           use_reduce=False,
@@ -167,13 +185,13 @@ class TestResnet(TestParallelExecutorBase):
                 regularization=fluid.regularizer.L2Decay(1e-4))
             return optimizer
 
-        import functools
-
         batch_size = 2
+        img, label = self._init_data(batch_size=batch_size)
 
         single_first_loss, single_last_loss = self.check_network_convergence(
-            functools.partial(
-                SE_ResNeXt50Small, batch_size=batch_size),
+            functools.partial(SE_ResNeXt50Small),
+            feed_dict={"image": img,
+                       "label": label},
             iter=iter,
             batch_size=batch_size,
             use_cuda=use_cuda,
@@ -182,8 +200,9 @@ class TestResnet(TestParallelExecutorBase):
             use_parallel_executor=False)
 
         parallel_first_loss, parallel_last_loss = self.check_network_convergence(
-            functools.partial(
-                SE_ResNeXt50Small, batch_size=batch_size),
+            functools.partial(SE_ResNeXt50Small),
+            feed_dict={"image": img,
+                       "label": label},
             iter=iter,
             batch_size=batch_size,
             use_cuda=use_cuda,
