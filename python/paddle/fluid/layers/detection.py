@@ -37,6 +37,7 @@ __all__ = [
 __auto__ = [
     'iou_similarity',
     'box_coder',
+    'polygon_box_transform',
 ]
 
 __all__ += __auto__

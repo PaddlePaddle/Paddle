@@ -24,6 +24,7 @@
 #include <functional>
 #include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/blocking_queue.h"
+#include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/fetch_op_handle.h"
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
@@ -42,6 +43,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
                            const std::vector<platform::Place> &places,
                            std::unique_ptr<ir::Graph> &&graph);
 
+  const ir::Graph &Graph() const override { return *graph_; }
   // Run a SSAGraph by a thread pool
   // Use topological sort algorithm
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
@@ -58,8 +60,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   platform::DeviceContextPool fetch_ctxs_;
-  std::mutex exception_mu_;
-  std::unique_ptr<std::exception> exception_;
+  ExceptionHolder exception_holder_;
   std::atomic<int> running_ops_;
 
   void InsertPendingOp(std::unordered_map<OpHandleBase *, size_t> *pending_ops,

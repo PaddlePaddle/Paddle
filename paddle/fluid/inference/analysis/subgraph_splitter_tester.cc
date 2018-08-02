@@ -31,8 +31,8 @@ SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
   return false;
 };
 
-TEST_F(DFG_Tester, Split) {
-  auto desc = LoadProgramDesc();
+TEST(SubGraphSplitter, Split) {
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
   LOG(INFO) << "spliter\n" << dfg.DotString();
 
@@ -63,8 +63,8 @@ TEST_F(DFG_Tester, Split) {
   ASSERT_EQ(subgraphs.back().size(), 6UL);
 }
 
-TEST_F(DFG_Tester, Fuse) {
-  auto desc = LoadProgramDesc();
+TEST(SubGraphSplitter, Fuse) {
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
 
   size_t count0 = dfg.nodes.size();
