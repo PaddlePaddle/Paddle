@@ -124,7 +124,7 @@ class SE_ResNeXt():
 
         pool = fluid.layers.pool2d(
             input=conv, pool_size=7, pool_type='avg', global_pooling=True)
-        drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
+        drop = fluid.layers.dropout(x=pool, dropout_prob=0.2, seed=1)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(input=drop, size=class_dim, act='softmax')
         return out
@@ -287,7 +287,7 @@ class DistSeResneXt2x2:
         else:
             trainer_prog = fluid.default_main_program()
 
-        startup_exe = fluid.Executor(place)
+        startup_exe = fluid.Executor(fluid.CUDAPlace(0))
         startup_exe.run(fluid.default_startup_program())
 
         strategy = fluid.ExecutionStrategy()
@@ -302,12 +302,20 @@ class DistSeResneXt2x2:
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        reader_generator = train_reader()
-        first_loss, = exe.run(fetch_list=[avg_cost.name])
+        reader_generator = test_reader(
+            use_xmap=False)  # for deterministic input
+
+        data = next(reader_generator)
+        first_loss, = exe.run(fetch_list=[avg_cost.name],
+                              feed=feeder.feed(data))
         print(first_loss)
+
         for i in xrange(5):
-            loss, = exe.run(fetch_list=[avg_cost.name])
-        last_loss, = exe.run(fetch_list=[avg_cost.name])
+            data = next(reader_generator)
+            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+            print(loss)
+        data = next(reader_generator)
+        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
         print(last_loss)
 
 
