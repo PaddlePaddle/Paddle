@@ -313,7 +313,7 @@ class DistSeResneXt2x2:
         for i in xrange(5):
             data = next(reader_generator)
             loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
-            print(loss)
+
         data = next(reader_generator)
         last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
         print(last_loss)
