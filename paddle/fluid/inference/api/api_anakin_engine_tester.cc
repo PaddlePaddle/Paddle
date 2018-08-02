@@ -55,7 +55,9 @@ TEST(inference, anakin) {
 
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
-  ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
+  for (int i = 0; i < 2000; i++) {
+    ASSERT_TRUE(predictor->Run(paddle_tensor_feeds, &outputs));
+  }
 
   float* data_o = static_cast<float*>(outputs[0].data.data());
   for (size_t j = 0; j < outputs[0].data.length(); ++j) {

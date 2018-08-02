@@ -79,6 +79,16 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     }
     d_tensor_in_p->reshape(tmp_shape);
 
+    if (input.lod.size() > 0) {
+      if (input.lod.size() > 1) {
+        LOG(ERROR) << " input lod first dim should <=1, but you set "
+                   << input.lod.size();
+        return false;
+      }
+      std::vector<int> offset(input.lod[0].begin(), input.lod[0].end());
+      d_tensor_in_p->set_seq_offset(offset);
+    }
+
     float *d_data_p = d_tensor_in_p->mutable_data();
     if (cudaMemcpy(d_data_p, static_cast<float *>(input.data.data()),
                    d_tensor_in_p->valid_size() * sizeof(float),
@@ -86,7 +96,6 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       LOG(ERROR) << "copy data from CPU to GPU error";
       return false;
     }
-    cudaStreamSynchronize(NULL);
   }
   cudaDeviceSynchronize();
   executor_p_->prediction();
@@ -109,7 +118,6 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       LOG(ERROR) << "copy data from GPU to CPU error";
       return false;
     }
-    cudaStreamSynchronize(NULL);
   }
   return true;
 }
