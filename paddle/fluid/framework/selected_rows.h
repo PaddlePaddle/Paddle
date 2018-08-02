@@ -29,6 +29,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+struct RWLock {
+  RWLock() { pthread_rwlock_init(&lock, nullptr); }
+
+  ~RWLock() { pthread_rwlock_destroy(&lock); }
+
+  pthread_rwlock_t lock;
+};
+
 class SelectedRows {
   /*
    * @brief We can use the SelectedRows structure to reproduce a sparse table.
@@ -51,17 +59,15 @@ class SelectedRows {
       : rows_(rows), height_(height) {
     value_.reset(new Tensor());
     auto_grown_mutex_.reset(new std::mutex);
-    pthread_rwlock_init(&rwlock, nullptr);
+    rwlock_.reset(new RWLock);
   }
 
   SelectedRows() {
     height_ = 0;
     value_.reset(new Tensor());
     auto_grown_mutex_.reset(new std::mutex);
-    pthread_rwlock_init(&rwlock, nullptr);
+    rwlock_.reset(new RWLock);
   }
-
-  ~SelectedRows() { pthread_rwlock_destroy(&rwlock); }
 
   platform::Place place() const { return value_->place(); }
 
@@ -123,19 +129,27 @@ class SelectedRows {
   }
 
   int64_t AutoGrownIndex(int64_t key) {
-    pthread_rwlock_rdlock(&rwlock);
+    pthread_rwlock_rdlock(&rwlock_.get()->lock);
     auto iter = id_to_index.find(key);
     if (iter == id_to_index.end()) {
-      pthread_rwlock_unlock(&rwlock);
-      pthread_rwlock_wrlock(&rwlock);
-      rows_.push_back(key);
-      auto index = static_cast<int64_t>(rows_.size() - 1);
-      id_to_index[key] = index;
-      pthread_rwlock_unlock(&rwlock);
-      return index;
+      pthread_rwlock_unlock(&rwlock_.get()->lock);
+      pthread_rwlock_wrlock(&rwlock_.get()->lock);
+      auto write_iter = id_to_index.find(key);
+      if (write_iter == id_to_index.end()) {
+        rows_.push_back(key);
+        auto index = static_cast<int64_t>(rows_.size() - 1);
+        id_to_index[key] = index;
+        pthread_rwlock_unlock(&rwlock_.get()->lock);
+        return index;
+      } else {
+        auto index = write_iter->second;
+        pthread_rwlock_unlock(&rwlock_.get()->lock);
+        return index;
+      }
     } else {
-      pthread_rwlock_unlock(&rwlock);
-      return iter->second;
+      auto index = iter->second;
+      pthread_rwlock_unlock(&rwlock_.get()->lock);
+      return index;
     }
   }
 
@@ -162,7 +176,7 @@ class SelectedRows {
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
   std::unique_ptr<std::mutex> auto_grown_mutex_{nullptr};
-  pthread_rwlock_t rwlock;
+  std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 
 /*
