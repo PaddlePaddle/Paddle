@@ -49,7 +49,7 @@ def parse_args():
     parser.add_argument(
         '--fluid', default=1, type=int, help='whether is fluid job')
     parser.add_argument(
-        '--rdma', action='store_ture', help='whether mount rdma libs')
+        '--rdma', action='store_true', help='whether mount rdma libs')
     parser.add_argument(
         '--disttype',
         default="pserver",
