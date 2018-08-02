@@ -949,6 +949,10 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     helper = LayerHelper('dropout', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
