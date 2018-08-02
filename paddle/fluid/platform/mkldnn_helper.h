@@ -251,5 +251,14 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
   return data_format;
 }
 
+static bool InplaceConvWeights(const std::string& name,
+                               const framework::OperatorWithKernel& op) {
+#ifdef PADDLE_WITH_MKLDNN
+  return name.find("conv2d") == 0 && name.find("GRAD") == std::string::npos &&
+         op.Attr<bool>("is_test");
+#endif
+  return false;
+}
+
 }  // namespace platform
 }  // namespace paddle

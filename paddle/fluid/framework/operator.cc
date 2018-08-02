@@ -22,6 +22,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+#endif
 
 DECLARE_bool(benchmark);
 DEFINE_bool(check_nan_inf, false,
@@ -370,6 +373,12 @@ const Tensor* ExecutionContext::Input<Tensor>(const std::string& name) const {
   auto* var = InputVar(name);
   return var == nullptr ? nullptr
                         : GetTensorFromVar(const_cast<Variable*>(var));
+}
+
+template <>
+Tensor* ExecutionContext::MutableInput<Tensor>(const std::string& name) const {
+  auto* var = MutableInputVar(name);
+  return var == nullptr ? nullptr : GetMutableTensorFromVar(var);
 }
 
 template <>
@@ -740,7 +749,11 @@ Scope* OperatorWithKernel::TryTransferData(
 
       auto out_var_names = OutputVars(true);
       if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
-          out_var_names.end()) {
+              out_var_names.end()
+#ifdef PADDLE_WITH_MKLDNN
+          || platform::InplaceConvWeights(var_name, *this)
+#endif
+              ) {
         transfered_inplace_vars->emplace_back(var_name);
       }
 
