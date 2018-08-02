@@ -91,6 +91,23 @@ class Blas {
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
   template <typename T>
+  T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
+                const int K) const;
+
+  template <typename T>
+  void GEMM_PACK(const CBLAS_IDENTIFIER id, const CBLAS_TRANSPOSE trans, int M,
+                 int N, int K, const T alpha, const T* src, const int ld,
+                 T* dst) const;
+
+  template <typename T>
+  void GEMM_COMPUTE(int transA, int transB, int M, int N, int K, const T* A,
+                    const int lda, const T* B, const int ldb, T beta, T* C,
+                    const int ldc) const;
+
+  template <typename T>
+  void GEMM_FREE(T* data) const;
+
+  template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
               const framework::Tensor& mat_b, bool trans_b, T alpha,
               framework::Tensor* mat_out, T beta) const;
@@ -144,6 +161,26 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void GEMM(ARGS... args) const {
     Base()->template GEMM<T>(args...);
+  }
+
+  template <typename... ARGS>
+  T* GEMM_ALLOC(ARGS... args) const {
+    Base()->template GEMM_ALLOC<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_PACK(ARGS... args) const {
+    Base()->template GEMM_PACK<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_COMPUTE(ARGS... args) const {
+    Base()->template GEMM_COMPUTE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_FREE(ARGS... args) const {
+    Base()->template GEMM_FREE<T>(args...);
   }
 
   template <typename... ARGS>
