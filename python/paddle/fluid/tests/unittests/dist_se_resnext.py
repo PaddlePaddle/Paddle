@@ -232,7 +232,7 @@ def get_model(batch_size):
     train_reader = paddle.batch(
         paddle.dataset.flowers.train(), batch_size=batch_size)
     test_reader = paddle.batch(
-        paddle.dataset.flowers.test(), batch_size=batch_size)
+        paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size)
 
     return test_program, avg_cost, train_reader, test_reader, acc_top1, out
 
@@ -302,8 +302,7 @@ class DistSeResneXt2x2:
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        reader_generator = test_reader(
-            use_xmap=False)  # for deterministic input
+        reader_generator = test_reader()
 
         data = next(reader_generator)
         first_loss, = exe.run(fetch_list=[avg_cost.name],
