@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import decoder
-from decoder import *
+from . import decoder
+from .decoder import *
 
 __all__ = decoder.__all__
