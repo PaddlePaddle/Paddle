@@ -22,6 +22,7 @@ This API is still under active development and may change drastically.
 
 import contextlib
 import numpy as np
+import six
 
 from ... import layers
 from ...framework import Variable
