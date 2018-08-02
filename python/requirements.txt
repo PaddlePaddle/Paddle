@@ -1,5 +1,5 @@
 requests==2.9.2
-numpy>=1.12
+numpy>=1.12,<=1.14
 protobuf==3.1
 recordio>=0.1.0
 matplotlib
