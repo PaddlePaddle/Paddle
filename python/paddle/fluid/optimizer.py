@@ -324,7 +324,7 @@ class MomentumOptimizer(Optimizer):
 
         & if (use\_nesterov):
 
-        &\quad   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
+        &\quad   param = param - (gradient + mu * velocity) * learning\_rate
 
         & else:
 

@@ -333,7 +333,7 @@ function assert_api_not_changed() {
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 
-    API_CHANGE=`git diff --name-only HEAD^ | grep "paddle/fluid/API.spec" || true`
+    API_CHANGE=`git diff --name-only upstream/develop | grep "paddle/fluid/API.spec" || true`
     echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
         # TODO: curl -H 'Authorization: token ${TOKEN}'
@@ -534,7 +534,7 @@ EOF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
-        tar -cf fluid.tgz fluid
+        tar -czf fluid.tgz fluid
       fi
 }
 
@@ -547,6 +547,7 @@ function test_fluid_inference_lib() {
 EOF
         cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
         ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./clean.sh
       fi
 }
 
@@ -599,11 +600,11 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
-        assert_api_not_changed
         run_test
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
+        assert_api_not_changed
         ;;
       *)
         print_usage

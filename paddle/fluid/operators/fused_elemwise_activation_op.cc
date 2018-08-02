@@ -68,8 +68,16 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("scale",
                    "scale is used by scale_op, the default value is 0.0.")
         .SetDefault(0.0);
-    AddAttr<bool>("recomputation", "Whether to recompute the Out.")
-        .SetDefault(false);
+    AddAttr<bool>("recomputation",
+                  "Whether to recompute the Out."
+                  "fused_elemwise_activation_grad has two methods to get the "
+                  "dx and dy, one "
+                  "is to use the 'Out', and the other is not to use it. "
+                  "The former method will save the time of recomputing the "
+                  "'Out', but it must occupy the memory to store the 'out'. "
+                  "While, the later method can avoid occupying the memory, "
+                  "but it must recompute the 'Out'. The default value is true.")
+        .SetDefault(true);
     AddAttr<std::string>("functor_list", "The functors that should be fused.")
         .AddCustomChecker([&](const std::string &functor_list) {
           PADDLE_ENFORCE(ValidCheck(functor_list));
@@ -78,15 +86,15 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 FusedElemwiseActivation Operator.
 
-At present, FusedElemwiseActivation supports only two combinations of two
-types(elementwise_op and activation_op) of Op.
+At present, FusedElemwiseActivation only supports Two kinds of compound
+operators (elementwise_op and activation_op):
 
-    z = f1(x, f2(y))
-    z = f1(f2(x, y))
+    Z = Binary(X, Unary(Y))
+    Z = Unary(Binary(X, Y))
 
-for example:
-  functor_list(f1, f2) can be represented as 'add,scale' or 'relu,add'.
-
+The attributions of activation_op can be get from fused_elemwise_activation_op's
+attributions. functor_list records the functors to be fused, for example
+"scale,elementwise_add".
 
 )DOC");
   }
@@ -97,6 +105,7 @@ for example:
     std::unordered_set<std::string> binary_fun = {"elementwise_add"};
 
     size_t pos = functors.find(",");
+    PADDLE_ENFORCE_NE(pos, std::string::npos);
     auto func_1 = functors.substr(0, pos);
     auto func_2 = functors.substr(pos + 1, functors.size());
     std::string unary_fun_str;
@@ -142,7 +151,6 @@ class FusedElemwiseActivationGradMaker
     PADDLE_ENFORCE_NE(pos, std::string::npos);
     auto func_1 = functor_names.substr(0, pos);
     auto func_2 = functor_names.substr(pos + 1, functor_names.size());
-
     op_desc_ptr->SetAttr("functor_list", func_1 + "_grad," + func_2 + "_grad");
 
     return std::unique_ptr<framework::OpDesc>(op_desc_ptr);

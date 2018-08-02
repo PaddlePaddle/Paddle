@@ -21,7 +21,8 @@ namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
     const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
-    const std::vector<platform::Place> &places, std::unique_ptr<Graph> &&graph)
+    const std::vector<platform::Place> &places,
+    std::unique_ptr<ir::Graph> &&graph)
     : graph_(std::move(graph)),
       pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
                                        : nullptr),
@@ -44,18 +45,18 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   std::unordered_set<OpHandleBase *> delayed_ops;
 
   // Transform SSAGraph to pending_ops & pending_vars
-  for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+  for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
         InsertPendingVar(&pending_vars, &ready_vars, version_pair.get());
       }
     }
   }
-  for (auto &var : graph_->Get<details::GraphDepVars>("dep_vars")) {
+  for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
     InsertPendingVar(&pending_vars, &ready_vars, var.get());
   }
 
-  for (auto &op : graph_->Get<details::GraphOps>("ops")) {
+  for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
@@ -82,7 +83,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
 
   // Clean run context
   run_op_futures_.clear();
-  exception_.reset();
+  exception_holder_.Clear();
 
   // Step 3. Execution
   while (!pending_vars.empty()) {
@@ -102,23 +103,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
-      std::unique_lock<std::mutex> l(exception_mu_);
-      if (exception_) {
-        l.unlock();
+      if (exception_holder_.ExceptionCatched()) {
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
-        l.lock();
-        std::exception *exp = exception_.get();
-        if (dynamic_cast<platform::EOFException *>(exp)) {
-          auto e = *static_cast<platform::EOFException *>(exp);
-          throw e;
-        } else if (dynamic_cast<platform::EnforceNotMet *>(exp)) {
-          auto e = *static_cast<platform::EnforceNotMet *>(exp);
-          throw e;
-        } else {
-          LOG(FATAL) << "Unknown exception.";
-        }
+        exception_holder_.Throw();
       } else {
         continue;
       }
@@ -161,7 +150,7 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
 
   for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->Get<details::GraphVars>("vars")) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
       auto it = var_map.find(fetch_var_name);
       if (it != var_map.end()) {
         fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
@@ -171,7 +160,12 @@ void ThreadedSSAGraphExecutor::InsertFetchOps(
 
   for (size_t i = 0; i < fetch_tensors.size(); ++i) {
     auto &var_name = fetch_tensors[i];
-    auto &vars = fetched_vars.at(var_name);
+    auto fetched_var_it = fetched_vars.find(var_name);
+    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
+                   "Cannot find fetched variable.(Perhaps the main_program "
+                   "is not set to ParallelExecutor)");
+
+    auto &vars = fetched_var_it->second;
 
     temp_nodes->emplace_back(new ir::Node("fetch", ir::Node::Type::kOperation));
     auto *op = new FetchOpHandle(temp_nodes->back().get(), fetch_data, i,
@@ -223,14 +217,9 @@ void ThreadedSSAGraphExecutor::RunOp(
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
     } catch (platform::EOFException ex) {
-      std::lock_guard<std::mutex> l(exception_mu_);
-      // EOFException will not cover up existing EnforceNotMet.
-      if (exception_.get() == nullptr) {
-        exception_.reset(new platform::EOFException(ex));
-      }
+      exception_holder_.Catch(ex);
     } catch (platform::EnforceNotMet ex) {
-      std::lock_guard<std::mutex> l(exception_mu_);
-      exception_.reset(new platform::EnforceNotMet(ex));
+      exception_holder_.Catch(ex);
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
     }

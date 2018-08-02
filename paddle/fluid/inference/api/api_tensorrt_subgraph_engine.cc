@@ -16,6 +16,7 @@
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/operators/tensorrt_engine_op.h"
 
 namespace paddle {
 
@@ -64,16 +65,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
       return false;
     }
 
-    // Analyze inference_program
-    Argument argument;
-    argument.origin_program_desc.reset(
-        new ProgramDesc(*inference_program_->Proto()));
-    Singleton<Analyzer>::Global().Run(&argument);
-    CHECK(argument.transformed_program_desc);
-    VLOG(5) << "transformed program:\n"
-            << argument.transformed_program_desc->SerializeAsString();
-    VLOG(5) << "to prepare executor";
-    *inference_program_->Proto() = *argument.transformed_program_desc;
+    OptimizeInferenceProgram();
     ctx_ = executor_->Prepare(*inference_program_, 0);
 
     VLOG(5) << "to create variables";
@@ -84,6 +76,41 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     feed_target_names_ = inference_program_->GetFeedTargetNames();
     fetch_target_names_ = inference_program_->GetFetchTargetNames();
     return true;
+  }
+
+  bool Run(const std::vector<PaddleTensor>& inputs,
+           std::vector<PaddleTensor>* output_data,
+           int batch_size = -1) override {
+    PADDLE_ENFORCE_GT(batch_size, 0,
+                      "TensorRT engine needs the argument batch_size set");
+    FLAGS_tensorrt_engine_batch_size = batch_size;
+    return NativePaddlePredictor::Run(inputs, output_data, batch_size);
+  }
+
+  void OptimizeInferenceProgram() {
+    // Analyze inference_program
+    Argument argument;
+    if (!config_.model_dir.empty()) {
+      argument.fluid_model_dir.reset(new std::string(config_.model_dir));
+    } else {
+      PADDLE_ENFORCE(
+          !config_.param_file.empty(),
+          "Either model_dir or (param_file, prog_file) should be set.");
+      PADDLE_ENFORCE(!config_.prog_file.empty());
+      argument.fluid_model_program_path.reset(
+          new std::string(config_.prog_file));
+      argument.fluid_model_param_path.reset(
+          new std::string(config_.param_file));
+    }
+    argument.origin_program_desc.reset(
+        new ProgramDesc(*inference_program_->Proto()));
+    Singleton<Analyzer>::Global().Run(&argument);
+    CHECK(argument.transformed_program_desc);
+    VLOG(5) << "transformed program:\n"
+            << argument.transformed_program_desc->SerializeAsString();
+    VLOG(5) << "to prepare executor";
+    inference_program_.reset(
+        new framework::ProgramDesc(*argument.transformed_program_desc));
   }
 
  private:

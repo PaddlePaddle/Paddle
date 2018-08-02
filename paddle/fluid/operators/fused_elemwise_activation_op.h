@@ -297,7 +297,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
   auto &functors = ctx.Attr<std::string>("functor_list");
   bool recomputation = ctx.Attr<bool>("recomputation");
 
-  // TODO(zcd): The following code can be refined.
+  // TODO(zcd): The following code can be refined. for example, use registion
   if (functors == "elementwise_add_grad,scale_grad") {
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     if (recomputation) {
