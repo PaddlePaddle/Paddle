@@ -137,7 +137,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
                       ctx->GetInputDim(framework::GradVarName("Out")),
                       "Input(Out) and its gradients should have a same shape.");
 
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
+    ctx->SetOutputDim(framework::GradVarName("X"),
+                      ctx->GetInputDim(framework::GradVarName("Out")));
   }
 
  protected:
@@ -160,8 +161,8 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
       layout_ = framework::DataLayout::kMKLDNN;
     }
 #endif
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    auto input_data_type = framework::ToDataType(
+        ctx.Input<Tensor>(framework::GradVarName("Out"))->type());
     if (input_data_type == framework::proto::VarType::FP16) {
       PADDLE_ENFORCE(platform::is_gpu_place(ctx.GetPlace()),
                      "float16 can only be used on GPU place");
@@ -172,13 +173,31 @@ class SoftmaxOpGrad : public framework::OperatorWithKernel {
   }
 };
 
+class SoftmaxOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* op = new framework::OpDesc();
+    op->SetType("softmax_grad");
+
+    op->SetInput("Out", Output("Out"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+
+    op->SetAttrMap(Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    return std::unique_ptr<framework::OpDesc>(op);
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(softmax, ops::SoftmaxOp, ops::SoftmaxOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SoftmaxOpGradMaker);
 REGISTER_OPERATOR(softmax_grad, ops::SoftmaxOpGrad);
 REGISTER_OP_CPU_KERNEL(
     softmax, ops::SoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
