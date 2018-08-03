@@ -31,11 +31,7 @@ script:
     if [[ "$JOB" != "doc" ]]; then exit 0; fi;
     # For document only
     if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
-    if [[ "$TRAVIS_BRANCH" != "develop"  && ! "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then exit 0; fi;
-    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/master/scripts/deploy/deploy_docs.sh
-    export DOCS_DIR=`pwd`
-    cd ..
-    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH $DOCS_DIR $DOCS_DIR/build/doc/
+    paddle/scripts/paddle_deploy_doc.sh
 notifications:
   email:
     on_success: change
