@@ -165,7 +165,7 @@ class BlasT : private Blas<DeviceContext> {
 
   template <typename... ARGS>
   T* GEMM_ALLOC(ARGS... args) const {
-    Base()->template GEMM_ALLOC<T>(args...);
+    return Base()->template GEMM_ALLOC<T>(args...);
   }
 
   template <typename... ARGS>
