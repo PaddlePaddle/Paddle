@@ -465,6 +465,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_shape(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.shape(input, name="shape")
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
