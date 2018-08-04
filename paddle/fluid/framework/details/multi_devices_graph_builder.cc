@@ -137,9 +137,12 @@ bool MultiDevSSAGraphBuilder::IsDistTrainOp(
       // a variable name with the suffix `.block` means it's a splited
       // variable by (DistributeTranspiler)
       // [python/paddle/fluid/transpiler/distribute_transpiler.py]
-      if (var.find(".block") != std::string::npos &&
-          std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
-        return true;
+      if (var.find(".block") != std::string::npos ||
+          var.find(".pserver") != std::string::npos) {
+        if (std::find(rpc_vars.begin(), rpc_vars.end(), var) !=
+            rpc_vars.end()) {
+          return true;
+        }
       }
     }
     return false;
@@ -269,6 +272,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         static_cast<int>(OpRole::kRPC)) {
       CreateRPCOp(&result, node);
     } else if (IsDistTrainOp(node, send_vars, recv_vars)) {
+      VLOG(3) << "dist train op: " << node->Op()->Type();
       CreateDistTrainOp(&result, node);
     } else if (IsScaleLossOp(node)) {
       // user can customize loss@grad if not use_default_grad_scale_
@@ -635,7 +639,8 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
   }
 
   if (node->Op()->Type() == "split_byref" ||
-      node->Op()->Type() == "split_selected_rows") {
+      node->Op()->Type() == "split_selected_rows" ||
+      node->Op()->Type() == "split_ids") {
     // TODO(paddle-dev): getting the first var is not safe.
     op_dev_id = GetVarDeviceID(*result, input_var_names[0]);
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {

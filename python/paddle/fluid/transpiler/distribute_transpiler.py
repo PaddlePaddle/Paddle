@@ -825,7 +825,11 @@ class DistributeTranspiler(object):
                     inputs={
                         'Ids': [program.global_block().vars[table_grad_name]]
                     },
-                    outputs={"Out": self.trainer_side_table_grad_list})
+                    outputs={"Out": self.trainer_side_table_grad_list},
+                    #attrs={
+                    #    RPC_OP_ROLE_ATTR_NAME: core.op_proto_and_checker_maker.OpRole.Backward
+                    #}
+                )
                 program.global_block()._insert_op(
                     index=op_index + 2,
                     type="send",
