@@ -194,7 +194,7 @@ class SE_ResNeXt():
 
 def get_model(batch_size):
     # Input data
-    image = fluid.layers.data(name="data", shape=[3, 244, 244], dtype='float32')
+    image = fluid.layers.data(name="data", shape=[3, 224, 224], dtype='float32')
     label = fluid.layers.data(name="int64", shape=[1], dtype='int64')
 
     # Train program
