@@ -64,4 +64,3 @@ py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SE
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 py_test_modules(test_dist_transformer MODULES test_dist_transformer SERIAL)
 py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext SERIAL)
-py_test_modules(test_dist_transformer MODULES test_dist_transformer SERIAL)
