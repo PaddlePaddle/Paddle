@@ -127,6 +127,7 @@ def __bootstrap__():
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
+        read_env_flags.append('listen_and_serv_profile_period')
 
     if core.is_compiled_with_cuda():
         read_env_flags += [
