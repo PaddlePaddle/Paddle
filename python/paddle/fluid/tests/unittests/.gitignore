@@ -4,3 +4,5 @@ mnist_1.recordio
 mnist_2.recordio
 flowers.recordio
 wmt16.recordio
+data_balance_test.recordio
+data_balance_with_lod_test.recordio

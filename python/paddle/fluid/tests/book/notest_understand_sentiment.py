@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
-
+from paddle.fluid.layers.device import get_places
 import unittest
 import paddle.fluid as fluid
 import paddle
@@ -144,7 +144,7 @@ def train(word_dict,
         cost, acc_out, prediction = net_method(
             data, label, input_dim=dict_dim, class_dim=class_dim)
     else:
-        places = fluid.layers.get_places()
+        places = get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             cost, acc, _ = net_method(
@@ -238,17 +238,21 @@ def infer(word_dict, use_cuda, save_dirname=None):
         # Here each word is the basic element of the LoDTensor and the shape of 
         # each word (base_shape) should be [1] since it is simply an index to 
         # look up for the corresponding word vector.
-        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
-        # which has only one lod level. Then the created LoDTensor will have only 
+        # Suppose the recursive_sequence_lengths info is set to [[3, 4, 2]],
+        # which has only one level of detail. Then the created LoDTensor will have only 
         # one higher level structure (sequence of words, or sentence) than the basic 
         # element (word). Hence the LoDTensor will hold data for three sentences of 
         # length 3, 4 and 2, respectively. 
-        # Note that lod info should be a list of lists.
-        lod = [[3, 4, 2]]
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[3, 4, 2]]
         base_shape = [1]
         # The range of random integers is [low, high]
         tensor_words = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=word_dict_len - 1)
+            recursive_seq_lens,
+            base_shape,
+            place,
+            low=0,
+            high=word_dict_len - 1)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}
         # and results will contain a list of data corresponding to fetch_targets.
@@ -257,7 +261,7 @@ def infer(word_dict, use_cuda, save_dirname=None):
                           feed={feed_target_names[0]: tensor_words},
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
         print("Inference results: ", np_data)

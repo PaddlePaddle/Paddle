@@ -20,9 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/grpc_client.h"
-#endif
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -47,13 +45,13 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
-void Executor::Complete() {
   ::paddle::operators::distributed::RPCClient::GetInstance<
       ::paddle::operators::distributed::GRPCClient>()
       ->SendComplete();
-}
 #endif
+}
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {

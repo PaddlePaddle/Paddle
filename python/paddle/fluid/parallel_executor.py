@@ -121,7 +121,7 @@ class ParallelExecutor(object):
             else:
                 cpu_num = int(
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num
+                exec_strategy.num_threads = cpu_num * 2
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
@@ -152,7 +152,7 @@ class ParallelExecutor(object):
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                p.name for p in main.global_block().iter_parameters()
+                p.name for p in main.global_block()._iter_parameters()
                 if not p.stop_gradient
             ]),
             set(self.persistable_vars), main.desc, loss_name

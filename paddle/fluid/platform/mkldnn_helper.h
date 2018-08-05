@@ -14,6 +14,7 @@ limitations under the License. */
 #pragma once
 
 #include <mkldnn.h>
+#include <string>
 #include <vector>
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
@@ -182,10 +183,11 @@ class MKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireMemory(
-      mkldnn::memory::primitive_desc& mpd,
-      mkldnn::memory::primitive_desc& user_mpd,
+      mkldnn::memory::primitive_desc& mpd,       // NOLINT
+      mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
       const std::shared_ptr<mkldnn::memory> user_memory_p,
-      const std::string& suffix, std::vector<mkldnn::primitive>& pipeline) {
+      const std::string& suffix,
+      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
     // create reorder primitive if the input format is not the preferred one
     auto local_key = key_ + suffix;
     auto key_reorder_p = key_ + suffix + "reorder_p";
@@ -218,17 +220,19 @@ class MKLDNNHandler {
     return target_memory_p;
   }
 
-  static std::string GetHash(mkldnn::memory::dims& operand_dims,
+  static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
                              const std::string& suffix) {
-    auto dims2str = [](const mkldnn::memory::dims& operand_dims) {
-      std::string dstr = "";
-      for (size_t i = 0; i < operand_dims.size(); ++i) {
-        dstr += std::to_string(operand_dims[i]) + "-";
-      }
-      return dstr;
-    };
     return dims2str(operand_dims) + suffix;
   };
+
+ protected:
+  static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
+    std::string dstr = "";
+    for (size_t i = 0; i < operand_dims.size(); ++i) {
+      dstr += std::to_string(operand_dims[i]) + "-";
+    }
+    return dstr;
+  }
 
  protected:
   const MKLDNNDeviceContext& dev_ctx_;
@@ -236,6 +240,16 @@ class MKLDNNHandler {
   std::string key_;
   bool is_reusing_;
 };
+
+inline mkldnn::memory::format MKLDNNFormatForSize(
+    size_t dims_size, mkldnn::memory::format data_format) {
+  if (dims_size == 1) {
+    return mkldnn::memory::format::x;
+  } else if (dims_size == 2) {
+    return mkldnn::memory::format::nc;
+  }
+  return data_format;
+}
 
 }  // namespace platform
 }  // namespace paddle

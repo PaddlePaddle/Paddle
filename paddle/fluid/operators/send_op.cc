@@ -59,7 +59,7 @@ class SendOp : public framework::OperatorBase {
       }
     }
     if (sync_send) {
-      rpc_client->Wait();
+      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     }
   }
 };

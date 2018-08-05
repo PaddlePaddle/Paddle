@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set_property(GLOBAL PROPERTY FLUID_MODULES "")
-# find all fluid modules is used for paddle fluid static library
-function(find_fluid_modules TARGET_NAME)
-  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
-  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
-  string(FIND "${__target_path}" "fluid" pos)
-  if(pos GREATER 1)
-    get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-    set(fluid_modules ${fluid_modules} ${TARGET_NAME})
-    set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
-  endif()
-endfunction(find_fluid_modules)
-
 # make package for paddle fluid shared and static library
 function(copy TARGET)
     set(options "")
@@ -149,20 +136,24 @@ copy(memory_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
 )
 
-set(module "inference")
-copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
-  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}
-)
+set(inference_deps paddle_fluid_shared paddle_fluid)
 
-if(WITH_CONTRIB)
-   set(contrib_dst_dir "${FLUID_INSTALL_DIR}/contrib/inference")
-   copy(contrib_inference_lib DEPS paddle_inference_api
-        SRCS ${PADDLE_SOURCE_DIR}/paddle/contrib/inference/paddle_inference_api.h
-        ${PADDLE_BINARY_DIR}/paddle/contrib/inference/libpaddle_inference_api.*
-        DSTS ${contrib_dst_dir} ${contrib_dst_dir}
-   )
+set(module "inference/api")
+if (WITH_ANAKIN AND WITH_GPU)
+    copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
+        SRCS
+        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
+        ${PADDLE_BINARY_DIR}/third_party/install/anakin/*.tar.gz # anakin release
+        DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
+     list(APPEND inference_deps anakin_inference_lib)
 endif()
+
+set(module "inference")
+copy(inference_lib DEPS ${inference_deps}
+  SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
+       ${src_dir}/${module}/api/paddle_inference_api.h ${src_dir}/${module}/api/demo_ci
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+)
 
 set(module "platform")
 copy(platform_lib DEPS profiler_py_proto

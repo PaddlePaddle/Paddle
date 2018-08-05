@@ -85,8 +85,7 @@ def dist_transpile(trainer_id, args):
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
-        sync_mode=not args.async_mode,
-        slice_var_up=not args.no_split_var)
+        sync_mode=not args.async_mode)
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
         pserver_startup_program = t.get_startup_program(current_endpoint,
@@ -131,6 +130,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
     exe = fluid.Executor(place)
     exe.run(startup_prog)
 
+    # Use inference_transpiler to speedup
     if not args.use_reader_op:
         feed_var_list = [
             var for var in train_prog.global_block().vars.itervalues()
@@ -181,6 +181,10 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
         print("Pass: %d, Loss: %f" % (pass_id, np.mean(train_losses))),
         # evaluation
         if not args.no_test and batch_acc and not args.use_reader_op:
+            if args.use_inference_transpiler:
+                t = fluid.InferenceTranspiler()
+                t.transpile(infer_prog, place)
+
             pass_test_acc = test(exe, infer_prog, test_reader, feeder,
                                  batch_acc)
             print(", Test Accuracy: %f" % pass_test_acc)
@@ -205,7 +209,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
     # generate fake:
     if args.use_fake_data:
         for var in feed_var_list:
-            v = startup_prog.global_block().clone_variable(var)
+            v = startup_prog.global_block()._clone_variable(var)
             var.persistable = True
             v.persistable = True
 
@@ -311,6 +315,8 @@ def main():
     args = parse_args()
     print_arguments(args)
     print_paddle_envs()
+    if args.no_random:
+        fluid.default_startup_program().random_seed = 1
 
     # the unique trainer id, starting from 0, needed by trainer
     # only

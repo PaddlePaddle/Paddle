@@ -12,13 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/inference/analysis/pass_manager.h"
+#include <gtest/gtest.h>
+
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/inference/analysis/pass_manager.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
-
-#include <gtest/gtest.h>
 
 namespace paddle {
 namespace inference {
@@ -56,7 +56,7 @@ class TestNodePass final : public NodePass {
   std::string description() const override { return "some doc"; }
 };
 
-TEST_F(DFG_Tester, DFG_pass_manager) {
+TEST(PassManager, DFG_pass_manager) {
   TestDfgPassManager manager;
   DFG_GraphvizDrawPass::Config config("./", "dfg.dot");
 
@@ -64,11 +64,15 @@ TEST_F(DFG_Tester, DFG_pass_manager) {
   manager.Register("graphviz", new DFG_GraphvizDrawPass(config));
   manager.Register("dfg-to-fluid", new DataFlowGraphToFluidPass);
 
+  Argument argument(FLAGS_inference_model_dir);
+
+  ASSERT_TRUE(&argument);
   ASSERT_TRUE(manager.Initialize(&argument));
   manager.RunAll();
 }
 
-TEST_F(DFG_Tester, Node_pass_manager) {
+TEST(PassManager, Node_pass_manager) {
+  Argument argument(FLAGS_inference_model_dir);
   // Pre-process: initialize the DFG with the ProgramDesc first.
   FluidToDataFlowGraphPass pass0;
   pass0.Initialize(&argument);

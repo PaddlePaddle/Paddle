@@ -61,8 +61,17 @@ option(EIGEN_USE_THREADS "Compile with multi-threaded Eigen"            OFF)
 option(WITH_ARM_FP16    "Use half precision support on armv8.2-a cpu"   OFF)
 option(WITH_FAST_BUNDLE_TEST    "Bundle tests that can be run in a single process together to reduce launch overhead"   OFF)
 option(WITH_CONTRIB     "Compile the third-party contributation"        OFF)
+option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better debug." OFF)
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
+option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
+option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
+option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
+
+# PY_VERSION
+if(NOT PY_VERSION)
+  set(PY_VERSION 2.7)
+endif()
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -100,6 +109,11 @@ if(ANDROID OR IOS)
     add_definitions(-DPADDLE_MOBILE_INFERENCE)
 endif()
 
+if (APPLE OR WIN32)
+    set(WITH_MKL OFF CACHE STRING
+        "Disable MKL for building on mac and windows" FORCE)
+endif()
+
 set(THIRD_PARTY_PATH "${CMAKE_BINARY_DIR}/third_party" CACHE STRING
   "A path setting third party libraries download & build directories.")
 
@@ -122,6 +136,12 @@ else()
     set(THIRD_PARTY_BUILD_TYPE Release)
 endif()
 
+if(WITH_MKL)
+  option(MKL_SPLIT_GEMM "PaddlePaddle MKL gemm would split to small ones" OFF)
+  if (MKL_SPLIT_GEMM)
+    add_definitions(-DPADDLE_MKL_SPLIT_GEMM)
+  endif()
+endif()
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
     if (WITH_MKL AND AVX2_FOUND)
@@ -131,9 +151,14 @@ if (NOT DEFINED WITH_MKLDNN)
         set(WITH_MKLDNN OFF)
     endif()
 endif()
+
+if (REPLACE_ENFORCE_GLOG)
+  add_definitions("-DREPLACE_ENFORCE_GLOG")
+endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
 include(external/glog)      # download, build, install glog
@@ -153,15 +178,35 @@ include(external/cares)
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
         include(external/grpc)
+        message(STATUS "Use grpc framework.")
     else()
+        message(STATUS "Use brpc framework.")
         include(external/leveldb)
         include(external/brpc)
+    endif()
+endif()
+
+if(WITH_BRPC_RDMA)
+    message(STATUS "Use brpc with rdma.")
+    if(WITH_GRPC)
+        message(FATAL_ERROR "Can't use grpc with brpc rdma.")
+    endif()
+    if(NOT WITH_DISTRIBUTE)
+        message(FATAL_ERROR "Can't use brpc rdma in no distribute env.")
     endif()
 endif()
 
 include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
+
+if(WITH_GPU)
+    include(cuda)
+    include(tensorrt)
+    include(external/anakin)
+else()
+  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
+endif()
 
 include(cudnn)              # set cudnn libraries, must before configure
 include(cupti)
@@ -178,7 +223,7 @@ include(inference_lib)      # add paddle fluid inference libraries
 
 
 include_directories("${PADDLE_SOURCE_DIR}")
-include_directories("${PADDLE_SOURCE_DIR}/paddle/cuda/include")
+include_directories("${PADDLE_SOURCE_DIR}/paddle/legacy/cuda/include")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/proto")
 include_directories("${CMAKE_CURRENT_BINARY_DIR}/go/pserver/client/c")
 
@@ -191,14 +236,6 @@ set(EXTERNAL_LIBS
     ${PYTHON_LIBRARIES}
 )
 
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-    include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
-endif()
-
 if(WITH_AMD_GPU)
     find_package(HIP)
     include(hip)
@@ -206,6 +243,10 @@ endif(WITH_AMD_GPU)
 
 if(WITH_MKLML)
     list(APPEND EXTERNAL_LIBS ${MKLML_IOMP_LIB})
+endif()
+
+if(WITH_LIBXSMM)
+    list(APPEND EXTERNAL_LIBS ${LIBXSMM_LIBS})
 endif()
 
 if(WITH_MKLDNN)
@@ -222,7 +263,7 @@ add_subdirectory(proto)
 if(NOT MOBILE_INFERENCE AND NOT WITH_FLUID_ONLY)
     # "add_subdirectory(go)" should be placed after the following loine,
     # because it depends on paddle/optimizer.
-    add_subdirectory(paddle/optimizer)
+    add_subdirectory(paddle/legacy/optimizer)
 endif()
 
 # "add_subdirectory(paddle)" and "add_subdirectory(python)" should be
@@ -246,8 +287,4 @@ if(WITH_DOC)
     find_package(Sphinx REQUIRED)
     find_python_module(recommonmark REQUIRED)
     add_subdirectory(doc)
-endif()
-
-if (WITH_CONTRIB)
-    add_subdirectory(paddle/contrib)
 endif()

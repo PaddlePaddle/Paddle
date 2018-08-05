@@ -149,6 +149,13 @@ class PriorBoxOpMaker : public framework::OpProtoAndCheckerMaker {
                    "(float) "
                    "Prior boxes center offset.")
         .SetDefault(0.5);
+    AddAttr<bool>(
+        "min_max_aspect_ratios_order",
+        "(bool) If set True, the output prior box is in order of"
+        "[min, max, aspect_ratios], which is consistent with Caffe."
+        "Please note, this order affects the weights order of convolution layer"
+        "followed by and does not affect the final detection results.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Prior box operator
 Generate prior boxes for SSD(Single Shot MultiBox Detector) algorithm.

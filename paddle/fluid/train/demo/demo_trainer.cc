@@ -12,15 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <time.h>
 #include <fstream>
 
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace train {
@@ -93,11 +95,21 @@ int main() {
 
   auto loss_var = scope.Var(loss_name);
 
+  paddle::platform::ProfilerState pf_state;
+  pf_state = paddle::platform::ProfilerState::kCPU;
+  paddle::platform::EnableProfiler(pf_state);
+  clock_t t1 = clock();
+
   for (int i = 0; i < 10; ++i) {
     executor.Run(*train_program.get(), &scope, 0, false, true);
     std::cout << "step: " << i << " loss: "
               << loss_var->Get<paddle::framework::LoDTensor>().data<float>()[0]
               << std::endl;
   }
+
+  clock_t t2 = clock();
+  paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
+                                    "run_paddle_op_profiler");
+  std::cout << "run_time = " << t2 - t1 << std::endl;
   return 0;
 }

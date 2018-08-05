@@ -13,9 +13,12 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import unittest
 import os
+import sys
+import math
 
 
 def simple_fc_net():
@@ -73,6 +76,14 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
 
+                avg_test_loss_val = np.array(test_loss).mean()
+                if math.isnan(float(avg_test_loss_val)):
+                    sys.exit("got NaN loss, testing failed.")
+
+                avg_train_loss_val = np.array(train_loss).mean()
+                if math.isnan(float(avg_train_loss_val)):
+                    sys.exit("got NaN loss, training failed.")
+
                 self.assertTrue(
                     np.allclose(
                         train_loss, test_loss, atol=1e-8),
@@ -82,16 +93,18 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
-        self.check_network_convergence(
-            use_cuda=True, build_strategy=build_strategy)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(
+                use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-        self.check_network_convergence(
-            use_cuda=True, build_strategy=build_strategy)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(
+                use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
