@@ -43,6 +43,9 @@ Node *NodeMap::Create(Node::Type type) {
     case Node::Type::kFunctionBlock:
       nodes_.emplace_back(new FunctionBlock);
       break;
+    case Node::Type::kFusePattern:
+      nodes_.emplace_back(new FusePatternNode);
+      break;
     default:
       PADDLE_THROW("Not supported node type.");
   }

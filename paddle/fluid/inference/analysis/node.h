@@ -39,8 +39,9 @@ class NodeMap;
 
 // A helper class to maintain the status from Pass.
 struct NodeAttr {
-  using any_t =
-      boost::variant<bool, float, int32_t, int64_t, void *, std::string>;
+  using any_t = boost::variant<bool, float, int32_t, int64_t, void *,
+                               std::string, std::vector<int32_t>,
+                               std::vector<int64_t>, std::vector<std::string>>;
   // NOTE T should be a primary type or a struct combined by several primary
   // types.
   // NOTE the STL containers should not use here.
@@ -53,6 +54,9 @@ struct NodeAttr {
   int64_t &Int64() { return As<int64_t>(); }
   void *&Pointer() { return As<void *>(); }
   std::string &String() { return As<std::string>(); }
+  std::vector<std::string> &Strings() { return As<std::vector<std::string>>(); }
+  std::vector<int32_t> &Int32s() { return As<std::vector<int32_t>>(); }
+  std::vector<int64_t> &Int64s() { return As<std::vector<int64_t>>(); }
 
  private:
   template <typename T>
@@ -82,7 +86,13 @@ struct NodeAttr {
 class Node {
  public:
   // Node type. NOTE the new node types should add here.
-  enum class Type { kNone = -1, kFunction, kValue, kFunctionBlock };
+  enum class Type {
+    kNone = -1,
+    kFunction,
+    kValue,
+    kFunctionBlock,
+    kFusePattern
+  };
 
   Node() = default;
 
@@ -106,6 +116,7 @@ class Node {
   // Get an additional attribute and convert it to T data type. NOTE this will
   // silently create a new attribute if not exists.
   NodeAttr &attr(const std::string &name) const { return attrs_[name]; }
+  bool has_attr(const std::string &name) const { return attrs_.count(name); }
 
   int id() const { return id_; }
 
@@ -216,6 +227,20 @@ struct FunctionBlock : public Node {
 
  protected:
   FunctionBlock() { SetType(Node::Type::kFunctionBlock); }
+  friend class NodeMap;
+};
+
+/*
+ * Node for defining fuse pattern.
+ */
+struct FusePatternNode : public Node {
+  // Tell whether a node is within a pattern.
+  std::function<bool(Node *)> teller;
+
+  std::string repr() const override { return "fuse-" + std::to_string(id()); }
+
+ protected:
+  FusePatternNode() { SetType(Node::Type::kFusePattern); }
   friend class NodeMap;
 };
 

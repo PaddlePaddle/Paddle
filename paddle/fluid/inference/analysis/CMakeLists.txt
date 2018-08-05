@@ -6,7 +6,8 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   tensorrt_subgraph_node_mark_pass.cc
   analyzer.cc
   helper.cc
-        model_store_pass.cc
+  model_store_pass.cc
+  fuse.cc
   DEPS framework_proto proto_desc)
 cc_test(test_node SRCS node_tester.cc DEPS analysis gflags glog gtest)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
