@@ -34,8 +34,8 @@ def _rename_arg_(op_descs, old_name, new_name, begin_idx=None, end_idx=None):
         op_desc = op_descs[i]
         if isinstance(op_desc, tuple):
             op_desc = op_desc[0]
-        op_desc.rename_input(old_name, new_name)
-        op_desc.rename_output(old_name, new_name)
+        op_desc._rename_input(old_name, new_name)
+        op_desc._rename_output(old_name, new_name)
 
 
 def _create_op_desc_(op_type, inputs, outputs, attrs):
@@ -58,7 +58,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
         else:
-            op_desc.set_attr(name, val)
+            op_desc._set_attr(name, val)
     return op_desc
 
 
@@ -326,7 +326,7 @@ def _append_backward_ops_(block,
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
         if op.has_attr("sub_block"):
-            sub_block = program.block(op.block_attr("sub_block"))
+            sub_block = program.block(op._block_attr("sub_block"))
             grad_sub_block = program.create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
@@ -362,7 +362,7 @@ def _append_backward_ops_(block,
     for op_desc in grad_op_descs:
         new_op_desc = target_block.desc.append_op()
         new_op_desc.copy_from(op_desc)
-        new_op_desc.set_attr(op_role_attr_name, backward)
+        new_op_desc._set_attr(op_role_attr_name, backward)
         grad_to_var["__current_op_desc__"] = new_op_desc
         if callbacks is not None:
             assert (isinstance(callbacks, list))
@@ -388,7 +388,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
-            sub_block = block.program.block(op_desc.block_attr("sub_block"))
+            sub_block = block.program.block(op_desc._block_attr("sub_block"))
             _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
         new_vars = set()
         # create new gradient variables
@@ -419,12 +419,12 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
         op_desc = block.desc.op(op_idx)
         for name in op_desc.input_arg_names():
             if name in var_map:
-                op_desc.rename_input(name, var_map[name])
+                op_desc._rename_input(name, var_map[name])
 
         for name in op_desc.output_arg_names():
             if block.desc.find_var(name.encode("ascii")):
                 new_name = unique_name.generate(name)
-                op_desc.rename_output(name, new_name)
+                op_desc._rename_output(name, new_name)
                 var_map[name] = new_name
 
     for g, ng in var_map.iteritems():
@@ -523,9 +523,9 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         if loss.op is None:
             raise ValueError("loss.op is None. Should not happend")
 
-    loss.op.set_attr(core.op_proto_and_checker_maker.kOpRoleAttrName(),
-                     int(core.op_proto_and_checker_maker.OpRole.Forward) |
-                     int(core.op_proto_and_checker_maker.OpRole.Loss))
+    loss.op._set_attr(core.op_proto_and_checker_maker.kOpRoleAttrName(),
+                      int(core.op_proto_and_checker_maker.OpRole.Forward) |
+                      int(core.op_proto_and_checker_maker.OpRole.Loss))
 
     if callbacks is not None:
         isinstance(callbacks, list)
@@ -613,7 +613,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         attr_val = [p.name, g.name]
         if g.op.has_attr(op_role_var_attr_name):
             attr_val.extend(g.op.attr(op_role_var_attr_name))
-        g.op.set_attr(op_role_var_attr_name, attr_val)
+        g.op._set_attr(op_role_var_attr_name, attr_val)
 
     return params_and_grads
 

@@ -65,13 +65,6 @@ program_guard
 ..  autofunction:: paddle.fluid.program_guard
     :noindex:
 
-.. _api_fluid_get_var:
-
-get_var
--------
-
-..  autofunction:: paddle.fluid.get_var
-    :noindex:
 
 .. _api_fluid_Executor:
 

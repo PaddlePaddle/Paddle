@@ -439,7 +439,7 @@ class DistributeTranspiler(object):
                 __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
             # reset the block of op
-            op.set_attr('sub_block', new_sub_block)
+            op._set_attr('sub_block', new_sub_block)
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()

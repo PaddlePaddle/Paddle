@@ -32,13 +32,8 @@ except Exception, e:
 import unique_name
 
 __all__ = [
-    'Program',
-    'Operator',
-    'Parameter',
-    'default_startup_program',
-    'default_main_program',
-    'program_guard',
-    'get_var',
+    'Program', 'Parameter', 'default_startup_program', 'default_main_program',
+    'program_guard'
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
@@ -570,11 +565,11 @@ class Operator(object):
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
-        if self.has_kernel(type):
+        if self._has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
-    def has_kernel(self, op_type):
+    def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
     def to_string(self, throw_on_error):
@@ -615,7 +610,7 @@ class Operator(object):
         """
         return self.desc.input(name)
 
-    def rename_input(self, old_name, new_name):
+    def _rename_input(self, old_name, new_name):
         """
         Rename the `old_name` to `new_name`.
 
@@ -626,9 +621,9 @@ class Operator(object):
         Returns:
             None
         """
-        self.desc.rename_input(old_name, new_name)
+        self.desc._rename_input(old_name, new_name)
 
-    def rename_output(self, old_name, new_name):
+    def _rename_output(self, old_name, new_name):
         """
         Rename the `old_name` to `new_name`.
 
@@ -639,7 +634,7 @@ class Operator(object):
         Returns:
             None
         """
-        self.desc.rename_output(old_name, new_name)
+        self.desc._rename_output(old_name, new_name)
 
     @property
     def input_names(self):
@@ -703,7 +698,7 @@ class Operator(object):
         """
         return self.desc.attr_type(name)
 
-    def set_attr(self, name, val):
+    def _set_attr(self, name, val):
         """
         Set the value of attribute by attribute's name.
 
@@ -737,7 +732,7 @@ class Operator(object):
                 isinstance(val, core.ProgramDesc):
             self.desc.set_serialized_attr(name, val.serialize_to_string())
         else:
-            self.desc.set_attr(name, val)
+            self.desc._set_attr(name, val)
 
     @property
     def attr_names(self):
@@ -756,7 +751,7 @@ class Operator(object):
         """
         return self.desc.attr(name)
 
-    def block_attr(self, name):
+    def _block_attr(self, name):
         """
         Get the block attribute by name.
 
@@ -766,7 +761,7 @@ class Operator(object):
         Returns:
             int: the block index.
         """
-        return self.desc.block_attr(name)
+        return self.desc._block_attr(name)
 
     def all_attrs(self):
         """
@@ -779,7 +774,7 @@ class Operator(object):
         attr_map = {}
         for n in attr_names:
             if n == 'sub_block':
-                attr_map[n] = self.block_attr(n)
+                attr_map[n] = self._block_attr(n)
             else:
                 attr_map[n] = self.attr(n)
         return attr_map
@@ -1580,7 +1575,7 @@ class Program(object):
             for j in xrange(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
-                    op.set_attr('is_test', True)
+                    op._set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
         res._sync_with_cpp()
         return res
@@ -1952,7 +1947,7 @@ def program_guard(main_program, startup_program=None):
         switch_startup_program(startup_program)
 
 
-def get_var(name, program=None):
+def _get_var(name, program=None):
     """
     Get a variable by name from the global block of a program.
 
