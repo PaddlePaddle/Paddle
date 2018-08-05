@@ -59,7 +59,7 @@ from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
+__all__ = framework.__all__ + executor.__all__ + \
     trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
     parallel_executor.__all__ + lod_tensor.__all__ + [
         'io',
