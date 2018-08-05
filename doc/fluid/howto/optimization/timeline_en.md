@@ -1,6 +1,6 @@
 # how to use timeline tool to do profile
 
-1. Add `profiler.start_profiler(...)`和`profiler.start_profiler(...)` to the main training loop. After run, the code will generate a profile record file `/tmp/profile`. **Warning**: Please do not run too many batches when use profiler to record timeline information, for the profile record will grow with the batch number.
+1. Add `profiler.start_profiler(...)`和`profiler.stop_profiler(...)` to the main training loop. After run, the code will generate a profile record file `/tmp/profile`. **Warning**: Please do not run too many batches when use profiler to record timeline information, for the profile record will grow with the batch number.
 
 	```python
     for pass_id in range(pass_num):

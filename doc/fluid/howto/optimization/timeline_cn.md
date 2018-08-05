@@ -1,6 +1,6 @@
 # 如何使用timeline工具做性能分析
 
-1. 在训练的主循环外加上`profiler.start_profiler(...)`和`profiler.start_profiler(...)`。运行之后，代码会在`/tmp/profile`目录下生成一个profile的记录文件。
+1. 在训练的主循环外加上`profiler.start_profiler(...)`和`profiler.stop_profiler(...)`。运行之后，代码会在`/tmp/profile`目录下生成一个profile的记录文件。
 
 	**提示：**
 	请不要在timeline记录信息时运行太多次迭代，因为timeline中的记录数量和迭代次数是成正比的。
