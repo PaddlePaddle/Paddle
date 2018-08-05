@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -57,7 +58,11 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
+    return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
       return var->Get<SelectedRows>().value().dims();
@@ -66,6 +71,26 @@ static DDim GetDims(const Scope& scope, const std::string& name,
     }
   } else {
     return DDim({-1});
+  }
+}
+
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(ToDataType(tensor.type()));
+  } else if (var->IsType<SelectedRows>()) {
+    return DataTypeToString(
+        ToDataType(var->Get<SelectedRows>().value().type()));
+  } else {
+    return "";
   }
 }
 
@@ -91,7 +116,11 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
+    return tensor.lod();
   } else {
     return default_lod;
   }
@@ -172,6 +201,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
         if (row_size >= 0) {
           ss << "[row_size=" << row_size << "]";
         }
+        std::string dtype = GetDtype(*scope, input.second[i]);
+        ss << ":" << dtype;
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
