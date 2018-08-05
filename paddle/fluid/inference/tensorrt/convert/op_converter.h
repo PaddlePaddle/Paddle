@@ -55,6 +55,31 @@ class OpConverter {
         it = Registry<OpConverter>::Lookup("fc");
       }
     }
+
+    if (op_desc.Type().find("elementwise") != std::string::npos) {
+      static std::unordered_set<std::string> add_tensor_op_set{
+          "add", "mul", "sub", "div", "max", "min", "pow"};
+      // TODO(xingzhaolong): all mul, sub, div
+      // static std::unordered_set<std::string> add_weight_op_set {"add", "mul",
+      // "sub", "div"};
+      static std::unordered_set<std::string> add_weight_op_set{"add"};
+      PADDLE_ENFORCE_EQ(op_desc.Input("Y").size(), 1UL);
+      int op_type_len = op_desc.Type().size();
+      std::string op_type = op_desc.Type().substr(op_type_len - 3, op_type_len);
+      std::string Y = op_desc.Input("Y")[0];
+      if (parameters.count(Y)) {
+        PADDLE_ENFORCE(add_weight_op_set.count(op_type) > 0,
+                       "Unsupported elementwise type" + op_type);
+        it =
+            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_weight");
+      } else {
+        PADDLE_ENFORCE(add_tensor_op_set.count(op_type) > 0,
+                       "Unsupported elementwise type" + op_type);
+        it =
+            Registry<OpConverter>::Lookup("elementwise_" + op_type + "_tensor");
+      }
+    }
+
     if (!it) {
       it = Registry<OpConverter>::Lookup(op_desc.Type());
     }
