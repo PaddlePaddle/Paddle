@@ -72,9 +72,10 @@ def _is_inited_by(block, var, init_op_types):
 def _is_duplicated_init_op(op1, op2):
     if op1.block == op2.block and \
             op1.type == op2.type and \
-            op1.input_arg_names == op2.output_arg_names and \
+            op1.input_arg_names == op2.input_arg_names and \
+            op1.output_arg_names == op2.output_arg_names and \
             op1.idx != op2.idx and \
-            op1.all_attrs == op2.all_attrs:
+            op1.all_attrs() == op2.all_attrs():
         return True
     return False
 
