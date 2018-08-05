@@ -749,14 +749,14 @@ class DistributeTranspiler(object):
                     out_name = op.output("Out")
 
                     ids_var = program.global_block().vars[ids_name[0]]
-                    prefetch_input_vars = self.create_splited_vars(
+                    prefetch_input_vars = self._create_splited_vars(
                         source_var=ids_var,
                         block=program.global_block(),
                         tag="_prefetch_in_")
                     self.all_prefetch_input_vars.append(prefetch_input_vars)
 
                     out_var = program.global_block().vars[out_name[0]]
-                    prefetch_output_vars = self.create_splited_vars(
+                    prefetch_output_vars = self._create_splited_vars(
                         source_var=out_var,
                         block=program.global_block(),
                         tag="_prefetch_out_")
@@ -1039,7 +1039,7 @@ class DistributeTranspiler(object):
             program.global_block()._sync_with_cpp()
         return var_mapping
 
-    def create_splited_vars(self, source_var, block, tag):
+    def _create_splited_vars(self, source_var, block, tag):
         return [
             block.create_var(
                 name=str(source_var.name + tag + str(index)),

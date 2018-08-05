@@ -34,14 +34,10 @@ paddle.fluid.default_main_program ArgSpec(args=[], varargs=None, keywords=None, 
 paddle.fluid.program_guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.get_var ArgSpec(args=['name', 'program'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.Executor.__init__ ArgSpec(args=['self', 'place'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.Executor.as_lodtensor ArgSpec(args=['self', 'data'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Executor.close ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Executor.run ArgSpec(args=['self', 'program', 'feed', 'fetch_list', 'feed_var_name', 'fetch_var_name', 'scope', 'return_numpy', 'use_program_cache'], varargs=None, keywords=None, defaults=(None, None, None, 'feed', 'fetch', None, True, False))
 paddle.fluid.global_scope ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.scope_guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
-paddle.fluid.fetch_var ArgSpec(args=['name', 'scope', 'return_numpy'], varargs=None, keywords=None, defaults=(None, True))
-paddle.fluid.Go.__init__ ArgSpec(args=['self', 'name'], varargs=None, keywords=None, defaults=(None,))
-paddle.fluid.Go.construct_go_op ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.make_channel ArgSpec(args=['dtype', 'capacity'], varargs=None, keywords=None, defaults=(0,))
 paddle.fluid.channel_send ArgSpec(args=['channel', 'value', 'is_copy'], varargs=None, keywords=None, defaults=(False,))
 paddle.fluid.channel_recv ArgSpec(args=['channel', 'return_value'], varargs=None, keywords=None, defaults=None)
@@ -68,14 +64,11 @@ paddle.fluid.DistributeTranspiler.get_startup_program ArgSpec(args=['self', 'end
 paddle.fluid.DistributeTranspiler.get_trainer_program ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.DistributeTranspiler.transpile ArgSpec(args=['self', 'trainer_id', 'program', 'pservers', 'trainers', 'sync_mode'], varargs=None, keywords=None, defaults=(None, '127.0.0.1:6174', 1, True))
 paddle.fluid.InferenceTranspiler.__init__ 
-paddle.fluid.InferenceTranspiler.fuse_batch_norm ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.InferenceTranspiler.fuse_relu_mkldnn ArgSpec(args=['self', 'program'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.InferenceTranspiler.transpile ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.memory_optimize ArgSpec(args=['input_program', 'skip_opt_set', 'print_log', 'level'], varargs=None, keywords=None, defaults=(None, False, 0))
 paddle.fluid.release_memory ArgSpec(args=['input_program', 'skip_opt_set'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.DistributeTranspilerConfig.__init__ 
 paddle.fluid.ParallelExecutor.__init__ ArgSpec(args=['self', 'use_cuda', 'loss_name', 'main_program', 'share_vars_from', 'exec_strategy', 'build_strategy', 'num_trainers', 'trainer_id'], varargs=None, keywords='kwargs', defaults=(None, None, None, None, None, 1, 0))
-paddle.fluid.ParallelExecutor.bcast_params ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.ParallelExecutor.run ArgSpec(args=['self', 'fetch_list', 'feed', 'feed_dict', 'return_numpy'], varargs=None, keywords=None, defaults=(None, None, True))
 paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core.ExecutionStrategy) -> None
 paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core.GradientScaleStrategy, arg0: int) -> None
@@ -343,8 +336,6 @@ paddle.fluid.transpiler.DistributeTranspiler.get_startup_program ArgSpec(args=['
 paddle.fluid.transpiler.DistributeTranspiler.get_trainer_program ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.transpiler.DistributeTranspiler.transpile ArgSpec(args=['self', 'trainer_id', 'program', 'pservers', 'trainers', 'sync_mode'], varargs=None, keywords=None, defaults=(None, '127.0.0.1:6174', 1, True))
 paddle.fluid.transpiler.InferenceTranspiler.__init__ 
-paddle.fluid.transpiler.InferenceTranspiler.fuse_batch_norm ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.transpiler.InferenceTranspiler.fuse_relu_mkldnn ArgSpec(args=['self', 'program'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.transpiler.InferenceTranspiler.transpile ArgSpec(args=['self', 'program', 'place', 'scope'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.transpiler.memory_optimize ArgSpec(args=['input_program', 'skip_opt_set', 'print_log', 'level'], varargs=None, keywords=None, defaults=(None, False, 0))
 paddle.fluid.transpiler.release_memory ArgSpec(args=['input_program', 'skip_opt_set'], varargs=None, keywords=None, defaults=(None,))

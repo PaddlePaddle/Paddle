@@ -270,19 +270,19 @@ class ParallelExecutor(object):
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:
-            self.bcast_params()
+            self._bcast_params()
 
         if return_numpy:
             return executor.as_numpy(arr)
 
         return [arr[i] for i in range(len(arr))]
 
-    def bcast_params(self):
+    def _bcast_params(self):
         """
         Broadcast the parameters to other devices. It is used during
         distributed training.
         """
-        self.executor.bcast_params(set(self.persistable_vars))
+        self.executor._bcast_params(set(self.persistable_vars))
 
     @property
     def device_count(self):
