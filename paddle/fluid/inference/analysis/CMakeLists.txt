@@ -4,6 +4,7 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   dfg_graphviz_draw_pass.cc
   tensorrt_subgraph_pass.cc
   tensorrt_subgraph_node_mark_pass.cc
+  batch_norm_fuse_pass.cc
   analyzer.cc
   helper.cc
   model_store_pass.cc
