@@ -174,6 +174,9 @@ class SE_ResNeXt():
             padding=(filter_size - 1) / 2,
             groups=groups,
             act=None,
+            # avoid pserver CPU init differs from GPU
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant()),
             bias_attr=False)
         return fluid.layers.batch_norm(input=conv, act=act)
 
