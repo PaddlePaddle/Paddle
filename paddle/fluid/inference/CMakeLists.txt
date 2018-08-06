@@ -58,5 +58,6 @@ if(WITH_TESTING)
   add_subdirectory(tests/book)
 endif()
 
-cc_test(multi_thread_executor_test SRCS multi_thread_executor_test.cc DEPS executor mul_op elementwise_add_op activation_op uniform_random_op)
+cc_test(multi_thread_executor_test SRCS multi_thread_executor_test.cc DEPS executor mul_op elementwise_add_op activation_op uniform_random_op
+        fill_constant_op gaussian_random_op conv_op batch_norm_op pool_op softmax_op)
 target_link_libraries(multi_thread_executor_test -lprofiler)

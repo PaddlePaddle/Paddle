@@ -131,14 +131,13 @@ class GemmConvKernel : public framework::OpKernel<T> {
         framework::flatten_to_2d(col_shape, data_dim + 1);
 
     bool is_expand = IsExpand(filter_shape_vec, strides, paddings, dilations);
-    Tensor col;
     // col_matrix shares the same piece of data with col,
     // but will be reshaped into a two-dimensional matrix shape
     // to call the matrix multiplication interface.
     Tensor col_matrix;
     if (is_expand) {
-      col.mutable_data<T>(col_shape, context.GetPlace());
-      col_matrix.ShareDataWith(col);
+      col_.mutable_data<T>(col_shape, context.GetPlace());
+      col_matrix.ShareDataWith(col_);
       col_matrix.Resize(col_matrix_shape);
     }
 
@@ -170,18 +169,18 @@ class GemmConvKernel : public framework::OpKernel<T> {
         Tensor in_slice = in_batch.Slice(g * in_step, (g + 1) * in_step);
 
         if (!is_expand) {
-          col.ShareDataWith(in_slice);
-          col_matrix.ShareDataWith(col);
+          col_.ShareDataWith(in_slice);
+          col_matrix.ShareDataWith(col_);
           col_matrix.Resize(col_matrix_shape);
         } else if (data_dim == 2U) {
           // im2col
           im2col(dev_ctx, in_slice, dilations, strides,
                  std::vector<int>{paddings[0], paddings[1], paddings[0],
                                   paddings[1]},
-                 &col);
+                 &col_);
         } else if (data_dim == 3U) {
           // vol2col
-          vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col);
+          vol2col(dev_ctx, in_slice, dilations, strides, paddings, &col_);
         }
 
         // gemm
@@ -192,6 +191,9 @@ class GemmConvKernel : public framework::OpKernel<T> {
       }
     }
   }
+
+ private:
+  mutable Tensor col_;
 };
 
 template <typename DeviceContext, typename T>

@@ -15,7 +15,8 @@
 #include <gperftools/profiler.h>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
-#include <thread>              // NOLINT
+#include <fstream>
+#include <thread>  // NOLINT
 #include "gtest/gtest.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -24,46 +25,54 @@
 
 USE_OP(uniform_random);
 USE_OP(mul);
+USE_OP_ITSELF(fill_constant);
+USE_OP(gaussian_random);
+USE_OP(conv2d);
+USE_OP(batch_norm);
+USE_OP(relu);
+USE_OP(pool2d);
+USE_OP(elementwise_add);
+USE_OP(softmax);
 
 TEST(MultiThread, main) {
   paddle::framework::Scope param_scope;
+  std::unique_ptr<paddle::framework::ProgramDesc> startup_program;
   {
-    paddle::framework::ProgramDesc startup_program;
-    auto& global_block = *startup_program.MutableBlock(0);
-    auto& w = *global_block.Var("W");
-    w.SetType(paddle::framework::proto::VarType::LOD_TENSOR);
-    w.SetLoDLevel(0);
-
-    auto& op = *global_block.AppendOp();
-    op.SetType("uniform_random");
-    op.SetOutput("Out", {w.Name()});
-    op.SetAttr("shape", std::vector<int>{2000, 10});
-    op.SetAttr("dtype", paddle::framework::proto::VarType::FP32);
+    std::ifstream in("startup.protobin");
+    std::string str((std::istreambuf_iterator<char>(in)),
+                    std::istreambuf_iterator<char>());
+    paddle::framework::proto::ProgramDesc proto_startup_program;
+    proto_startup_program.ParseFromString(str);
+    startup_program.reset(
+        new paddle::framework::ProgramDesc(proto_startup_program));
     paddle::platform::CPUPlace cpu;
     paddle::framework::Executor exe(cpu);
-    auto ctx = paddle::framework::Executor::Prepare(startup_program, 0);
+    auto ctx = paddle::framework::Executor::Prepare(*startup_program, 0);
     exe.RunPreparedContext(ctx.get(), &param_scope, false, true, false);
   }
-
-  // Out = mul_op(X, W)
-  paddle::framework::ProgramDesc main_program;
+  std::unique_ptr<paddle::framework::ProgramDesc> main_program;
   {
-    auto& global_block = *main_program.MutableBlock(0);
-    auto& w = *global_block.Var("W");
-    w.SetType(paddle::framework::proto::VarType::LOD_TENSOR);
-
-    auto& x = *global_block.Var("X");
-    x.SetType(paddle::framework::proto::VarType::LOD_TENSOR);
-
-    auto& y = *global_block.Var("Y");
-    x.SetType(paddle::framework::proto::VarType::LOD_TENSOR);
-
-    auto& op = *global_block.AppendOp();
-    op.SetType("mul");
-    op.SetInput("X", {x.Name()});
-    op.SetInput("Y", {w.Name()});
-    op.SetOutput("Out", {y.Name()});
+    std::ifstream in("main.protobin");
+    std::string str((std::istreambuf_iterator<char>(in)),
+                    std::istreambuf_iterator<char>());
+    paddle::framework::proto::ProgramDesc proto;
+    proto.ParseFromString(str);
+    main_program.reset(new paddle::framework::ProgramDesc(proto));
   }
+  int cpu_count = std::thread::hardware_concurrency();
+  std::unique_ptr<paddle::framework::Scope[]> scopes(
+      new paddle::framework::Scope[cpu_count]);
+  for (int i = 0; i < cpu_count; ++i) {
+    for (auto* var : startup_program->Block(0).AllVars()) {
+      auto var_name = var->Name();
+      scopes[i]
+          .Var(var_name)
+          ->GetMutable<paddle::framework::LoDTensor>()
+          ->ShareDataWith(
+              param_scope.Var(var_name)->Get<paddle::framework::LoDTensor>());
+    }
+  }
+
   std::mutex start_flag_mtx;
   bool start_flag = false;
   std::condition_variable start_cv;
@@ -76,39 +85,26 @@ TEST(MultiThread, main) {
     paddle::platform::CPUPlace cpu;
     paddle::framework::Executor exec(cpu);
     auto& working_scope = *scope;
-    working_scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
-    working_scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
+    working_scope.Var("img")->GetMutable<paddle::framework::LoDTensor>();
 
     {
       // initialize x
       paddle::framework::OpRegistry::CreateOp(
-          "uniform_random", {}, {{"Out", {"X"}}},
-          {{"shape", std::vector<int>{64, 2000}},
+          "uniform_random", {}, {{"Out", {"img"}}},
+          {{"shape", std::vector<int>{1, 3, 224, 224}},
            {"dtype",
             static_cast<int>(paddle::framework::proto::VarType::FP32)}})
           ->Run(working_scope, cpu);
     }
-    auto ctx = exec.Prepare(main_program, 0);
-
-    for (size_t i = 0; i < (1U << 15); ++i) {
+    auto ctx = exec.Prepare(*main_program, 0);
+    exec.RunPreparedContext(ctx.get(), &working_scope, false, true, false);
+    for (size_t i = 0; i < (1U << 4); ++i) {
       exec.RunPreparedContext(ctx.get(), &working_scope, false, false, false);
     }
   };
-  int cpu_count = std::thread::hardware_concurrency();
+
   std::unique_ptr<std::chrono::nanoseconds[]> times(
       new std::chrono::nanoseconds[cpu_count]);
-
-  std::unique_ptr<paddle::framework::Scope[]> scopes(
-      new paddle::framework::Scope[cpu_count]);
-
-  for (int i = 0; i < cpu_count; ++i) {
-    // Create Working scopes, which are sharing data from param_scope.
-    scopes[i]
-        .Var("W")
-        ->GetMutable<paddle::framework::LoDTensor>()
-        ->ShareDataWith(
-            param_scope.Var("W")->Get<paddle::framework::LoDTensor>());
-  }
 
   for (int i = 0; i < cpu_count; ++i) {
     std::vector<std::thread> threads;
