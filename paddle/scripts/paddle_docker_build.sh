@@ -54,6 +54,7 @@ EOL
         -e SCRIPT_NAME=$0 \
         -e CONTENT_DEC_PASSWD=$CONTENT_DEC_PASSWD \
         -e TRAVIS_BRANCH=$TRAVIS_BRANCH \
+        -e TRAVIS_PULL_REQUEST=$TRAVIS_PULL_REQUEST \
         -v $PADDLE_ROOT:/paddle \
         -v ${HOME}/.ccache:/root/.ccache \
         -w /paddle \

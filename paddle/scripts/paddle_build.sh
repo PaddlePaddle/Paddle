@@ -420,6 +420,8 @@ EOF
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
 
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+
     # Deploy to the the content server if its a "develop" or "release/version" branch
     # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
     if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
