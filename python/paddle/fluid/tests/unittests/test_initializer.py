@@ -88,13 +88,13 @@ class TestUniformInitializer(unittest.TestCase):
                 dtype="float32",
                 shape=[5, 10],
                 lod_level=0,
-                name="param",
+                name="param1",
                 initializer=initializer.UniformInitializer())
             block.create_parameter(
                 dtype="float32",
                 shape=[5, 10],
                 lod_level=0,
-                name="param",
+                name="param2",
                 initializer=initializer.UniformInitializer(seed=456))
         init_op = block.ops[1]
         self.assertEqual(init_op.attr("seed"), 123)
@@ -136,7 +136,7 @@ class TestUniformInitializer(unittest.TestCase):
         init_op0 = block.ops[0]
         self.assertEqual(init_op0.type, 'uniform_random')
         self.assertAlmostEqual(init_op0.attr('min'), -4.2, delta=DELTA)
-        self.assertAlmostEqual(init_op0.attr('max'), 1.0, delta=DELTA)
+        self.assertAlmostEqual(init_op0.attr('max'), 0.0, delta=DELTA)
         self.assertEqual(init_op0.attr('seed'), 123)
 
 
