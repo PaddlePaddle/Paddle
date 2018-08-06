@@ -57,9 +57,11 @@ SamplingId Operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    sampling_id,
-    ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OPERATOR(sampling_id, ops::SamplingIdOp, ops::SamplingIdOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
+
+REGISTER_OP_CPU_KERNEL(
+    sampling_id, ops::SamplingIdKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::SamplingIdKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SamplingIdKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SamplingIdKernel<paddle::platform::CPUDeviceContext, double>);
