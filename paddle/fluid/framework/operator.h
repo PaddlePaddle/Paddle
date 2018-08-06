@@ -134,6 +134,9 @@ class OperatorBase {
   VariableNameMap outputs_;
   AttributeMap attrs_;
 
+  virtual std::string DebugInputsStrings(const Scope& scope);
+  virtual std::string DebugOutputsStrings(const Scope& scope);
+
  private:
   void GenerateTemporaryNames();
   void CheckAllInputOutputSet() const;
