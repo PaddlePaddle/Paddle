@@ -58,4 +58,4 @@ if(WITH_TESTING)
   add_subdirectory(tests/book)
 endif()
 
-cc_test(multi_thread_executor_test SRCS multi_thread_executor_test.cc DEPS executor mul_op elementwise_add_op activation_op)
+cc_test(multi_thread_executor_test SRCS multi_thread_executor_test.cc DEPS executor mul_op elementwise_add_op activation_op uniform_random_op)
