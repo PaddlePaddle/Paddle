@@ -25,9 +25,9 @@ class SamplingIdOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of RowConvOp should not be null.");
+                   "Input(X) of SamplingIdOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of RowConvOp should not be null.");
+                   "Output(Out) of SamplingIdOp should not be null.");
 
     auto input_dims = ctx->GetInputDim("X");
 
@@ -43,8 +43,7 @@ class SamplingIdOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "The input tensor of softmax. "
              "2-D with shape [batch_size, input_feature_dimensions].");
-    AddOutput("Out", "Sliced data tensor.");
-
+    AddOutput("Out", "SamplingId data tensor.");
     AddComment(R"DOC(
 SamplingId Operator.
   @brief A layer for sampling id from multinomial distribution from the
