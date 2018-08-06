@@ -1497,7 +1497,9 @@ class Program(object):
         else:
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [Block(p, i) for i in range(self.desc.num_blocks())]
+            p.blocks = [
+                Block(p, i) for i in six.moves.range(self.desc.num_blocks())
+            ]
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
@@ -1549,7 +1551,9 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
@@ -1590,13 +1594,15 @@ class Program(object):
                 root_block._remove_var(var.name())
 
         # change all `is_test` attributes to True
-        for i in range(res.desc.num_blocks()):
+        for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
-            for j in range(block.op_size()):
+            for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op.set_attr('is_test', True)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
@@ -1616,7 +1622,7 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
-        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
 

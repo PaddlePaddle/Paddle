@@ -19,6 +19,7 @@ from . import framework
 from . import executor
 import warnings
 import sys
+import six
 import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
@@ -95,7 +96,7 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in range(core.get_cuda_device_count()):
+            for i in six.moves.range(core.get_cuda_device_count()):
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
@@ -103,7 +104,7 @@ class ParallelExecutor(object):
         else:
             cpu_num = int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            for i in range(cpu_num):
+            for i in six.moves.range(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])

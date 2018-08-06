@@ -21,6 +21,7 @@ import paddle.dataset.common
 import subprocess
 import numpy
 import platform
+from six.moves import range
 __all__ = ['train', 'test', 'convert']
 
 URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'

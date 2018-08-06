@@ -346,7 +346,7 @@ class Executor(object):
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in range(len(fetch_list))
+            for i in six.moves.range(len(fetch_list))
         ]
         return outs
 

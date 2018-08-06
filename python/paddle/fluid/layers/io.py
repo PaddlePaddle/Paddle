@@ -13,6 +13,7 @@
 # limitations under the License.
 import contextlib
 import multiprocessing
+import six
 import threading
 
 from ..data_feeder import DataFeeder
@@ -69,7 +70,7 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in range(len(shape)):
+    for i in six.moves.range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -674,7 +675,7 @@ def py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in xrange(counter)]
+                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
 
         __set_tensor_provider__(__tensor_provider__)
 
@@ -1005,7 +1006,7 @@ class Preprocessor(object):
         source_lod_levels = self.underlying_reader.desc.lod_levels()
         self.source_var_names = [
             unique_name("preprocessor_source")
-            for _ in range(len(source_shapes))
+            for _ in six.moves.range(len(source_shapes))
         ]
         source_vars = []
         for var_name, shape, dtype, lod_level in zip(

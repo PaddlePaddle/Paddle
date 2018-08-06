@@ -25,6 +25,7 @@ import collections
 import tarfile
 import re
 import string
+from six.moves import range
 
 __all__ = ['build_dict', 'train', 'test', 'convert']
 
@@ -66,7 +67,7 @@ def build_dict(pattern, cutoff):
 
     dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
     words, _ = list(zip(*dictionary))
-    word_idx = dict(list(zip(words, list(range(len(words))))))
+    word_idx = dict(list(zip(words, range(len(words)))))
     word_idx['<unk>'] = len(words)
     return word_idx
 

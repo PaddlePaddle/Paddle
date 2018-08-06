@@ -22,6 +22,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 import os
 import sys
+import six
 import transformer_model
 import paddle.dataset.wmt16 as wmt16
 
@@ -222,7 +223,7 @@ class DistTransformer2x2(object):
 
         first_loss, = exe.run(fetch_list=[avg_cost.name])
         print(first_loss)
-        for i in xrange(5):
+        for i in six.moves.xrange(5):
             _ = exe.run(fetch_list=[avg_cost.name])
         last_loss, = exe.run(fetch_list=[avg_cost.name])
         print(last_loss)
