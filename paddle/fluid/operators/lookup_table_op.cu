@@ -118,28 +118,31 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
-      auto ids_dim = ids->dims();
+      int64_t ids_num = ids->numel();
 
       auto stream = dev_ctx.stream();
       // copy GPU memory to CPU pinned memory
       framework::Vector<int64_t> new_rows;
-      new_rows.resize(ids_dim[0]);
+      new_rows.resize(ids_num);
       auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
 
       // TODO(yuyang18): Strange code here.
       memory::Copy(platform::CPUPlace(),
                    new_rows.CUDAMutableData(context.GetPlace()), gpu_place,
-                   ids_data, ids_dim[0] * sizeof(int64_t), stream);
+                   ids_data, ids_num * sizeof(int64_t), stream);
 
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
-      d_table_value->Resize({ids_dim[0], table->dims()[1]});
+      d_table_value->Resize({ids_num, table->dims()[1]});
       d_table_value->mutable_data<T>(context.GetPlace());
 
       auto *d_table_data = d_table_value->data<T>();
       auto *d_output_data = d_output->data<T>();
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
+      auto d_output_dims = d_output->dims();
+      PADDLE_ENFORCE_EQ(
+          d_table_value->dims(),
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
       memory::Copy(gpu_place, d_table_data, gpu_place, d_output_data,
                    d_output->numel() * sizeof(T), stream);
 
