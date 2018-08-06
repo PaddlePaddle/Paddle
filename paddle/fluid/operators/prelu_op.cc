@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -13,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/prelu_op.h"
-#include <string>
+#include <string>   
 
 namespace paddle {
 namespace operators {
@@ -25,14 +22,35 @@ class PReluOp : public framework::OperatorWithKernel {
           const framework::AttributeMap &attrs)
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework:: InferShapeContext *ctx) const override {
+
+    std::string mode = ctx->Attrs().Get<std::string>("mode");
+
+    auto dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Alpha"), "Input(Alpha) should not be null");
-    PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
-                   "Size of weight Alpha must be one.");
+    
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    if (mode == "all")
+      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
+                   "For all mode, Size of weight Alpha must be one.");
+    else if (mode == "channel")
+      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == dim[1],
+                   "For channel-wise mode, Size of weight Alpha must equal to the number of channels.");
+    else if (mode == "element")
+      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(ctx->GetInputDim("X")),
+                   "For element-wise mode, Size of weight Alpha must equal to the number of elements.");
+    else
+      PADDLE_ENFORCE(0,"A mode is needed.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        platform::CPUPlace());
   }
 };
 
@@ -44,9 +62,7 @@ class PReluOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "The output tensor of prelu operator.");
     AddComment(R"DOC(
 PRelu Operator.
-
 The equation is:
-
 $$
 f(x) =
 \begin{cases}
@@ -54,11 +70,17 @@ f(x) =
 x,         \qquad  \text{if} \ x >= 0
 \end{cases}
 $$
-
 The input `X` can carry the LoD (Level of Details) information,
 or not. And the output shares the LoD information with input `X`.
 
+There are modes: 
+  all: all elements share same weight
+  channel:elements in a channel share same weight
+  element:each element has a weight 
 )DOC");
+AddAttr<std::string>("mode",
+                      "The mode for inputs to share weights.")
+        .SetDefault("all");
   }
 };
 
@@ -68,12 +90,25 @@ class PReluGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+   
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-    ctx->SetOutputDim(framework::GradVarName("Alpha"),
+    auto x_grad_name = framework::GradVarName("X");
+    auto alpha_grad_name = framework::GradVarName("Alpha");
+
+    if(ctx->HasOutput(x_grad_name))
+      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+    if(ctx->HasOutput(alpha_grad_name))
+      ctx->SetOutputDim(alpha_grad_name,
                       ctx->GetInputDim("Alpha"));
+  }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("X")->type()),
+        platform::CPUPlace());
   }
 };
 

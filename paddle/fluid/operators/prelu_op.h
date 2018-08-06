@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,12 +13,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/transform.h"
-
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using platform::Transform;
+using platform::Transform;  
 
 template <typename T>
 class PReluFunctor {
@@ -29,6 +25,7 @@ class PReluFunctor {
   explicit PReluFunctor(const T* alpha) : alpha_(alpha) {}
 
   HOSTDEVICE T operator()(const T& x) const {
+
     if (x > 0)
       return x;
     else
@@ -51,19 +48,43 @@ class PReluKernel : public framework::OpKernel<T> {
     T* o_ptr = out->mutable_data<T>(context.GetPlace());
 
     auto* alpha_ptr = alpha->data<T>();
+    std::string mode = context.Attr<std::string>("mode");
+    
 
     int numel = x->numel();
+    auto dim = x->dims();
+    int index = 0;
+    for (int i = 0; i < numel; i++){
+      if (mode == "channel")
+        index = i / dim[0] % dim[1];
+      else if(mode == "element")
+        index = i;
+      *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+    }
 
-    Transform<DeviceContext> trans;
-    trans(context.template device_context<DeviceContext>(), x_ptr,
-          x_ptr + numel, o_ptr, PReluFunctor<T>(alpha_ptr));
   }
 };
 
 template <typename T>
-class PReluGradFunctor {
+class PReluGradFunctor_alpha {
  public:
-  explicit PReluGradFunctor(const T* alpha) : alpha_(alpha) {}
+  explicit PReluGradFunctor_alpha(const T* x) : x_(x){}
+
+  HOSTDEVICE T operator()(const T& out, const T& dout) const {
+    if (out > 0)
+      return 0;
+    else
+      return dout * (*x_);
+  }
+
+  private:
+  const T* x_;
+};
+
+template <typename T>
+class PReluGradFunctor_X {
+ public:
+  explicit PReluGradFunctor_X(const T* alpha) : alpha_(alpha) {}
 
   HOSTDEVICE T operator()(const T& out, const T& dout) const {
     if (out > 0)
@@ -76,25 +97,50 @@ class PReluGradFunctor {
   const T* alpha_;
 };
 
+
+
+
 template <typename DeviceContext, typename T>
 class PReluGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext& context) const override { 
+    auto* x = context.Input<Tensor>("X");
     auto* dx = context.Output<Tensor>(framework::GradVarName("X"));
     auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
-
+    auto* dalpha = context.Output<Tensor>(framework::GradVarName("Alpha"));
     auto* out = context.Input<Tensor>("Out");
     auto* alpha = context.Input<Tensor>("Alpha");
     auto* alpha_ptr = alpha->data<T>();
-
-    T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
+    const T* x_ptr = x->data<T>();  
     const T* dout_ptr = dout->data<T>();
     const T* out_ptr = out->data<T>();
-    int numel = dx->numel();
+    std::string mode = context.Attr<std::string>("mode");
+    int numel = x->numel();
+    auto dim = x->dims();
+    int index = 0;
+    if(dx){
+      T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
+      for (int i = 0; i < numel; i++){
+        if (mode == "channel")
+          index = i / dim[0] % dim[1];
+        else if(mode == "element")
+          index = i;
+        *dx_ptr++ = PReluGradFunctor_X<T>(alpha_ptr + index)(out_ptr[i], dout_ptr[i]);
+      }
+    }
 
-    Transform<DeviceContext> trans;
-    trans(context.template device_context<DeviceContext>(), out_ptr,
-          out_ptr + numel, dout_ptr, dx_ptr, PReluGradFunctor<T>(alpha_ptr));
+    index = 0;
+    if(dalpha){
+      T* dalpha_ptr = dalpha->mutable_data<T>(context.GetPlace());
+      for (int i = 0; i < numel; i++){
+        if (mode == "channel")
+          index = i / dim[0] % dim[1];
+        else if(mode == "element")
+          index = i;
+        dalpha_ptr[index] += PReluGradFunctor_alpha<T>(x_ptr + i)(out_ptr[i], dout_ptr[i]);
+        
+      }
+    }
 
     // TODO(Zhuoyuan): add dalpha upgrade when GPU kernels ready
   }
@@ -102,3 +148,4 @@ class PReluGradKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+
