@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <gperftools/profiler.h>
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
 #include <thread>              // NOLINT
@@ -67,14 +68,14 @@ TEST(MultiThread, main) {
   bool start_flag = false;
   std::condition_variable start_cv;
 
-  auto thread_main = [&] {
+  auto thread_main = [&](paddle::framework::Scope* scope) {
     {
       std::unique_lock<std::mutex> lock(start_flag_mtx);
       start_cv.wait(lock, [&] { return start_flag; });
     }
     paddle::platform::CPUPlace cpu;
     paddle::framework::Executor exec(cpu);
-    auto& working_scope = param_scope.NewScope();
+    auto& working_scope = *scope;
     working_scope.Var("X")->GetMutable<paddle::framework::LoDTensor>();
     working_scope.Var("Y")->GetMutable<paddle::framework::LoDTensor>();
 
@@ -92,18 +93,32 @@ TEST(MultiThread, main) {
     for (size_t i = 0; i < (1U << 15); ++i) {
       exec.RunPreparedContext(ctx.get(), &working_scope, false, false, false);
     }
-    param_scope.DeleteScope(&working_scope);
   };
   int cpu_count = std::thread::hardware_concurrency();
   std::unique_ptr<std::chrono::nanoseconds[]> times(
       new std::chrono::nanoseconds[cpu_count]);
 
+  std::unique_ptr<paddle::framework::Scope[]> scopes(
+      new paddle::framework::Scope[cpu_count]);
+
+  for (int i = 0; i < cpu_count; ++i) {
+    // Create Working scopes, which are sharing data from param_scope.
+    scopes[i]
+        .Var("W")
+        ->GetMutable<paddle::framework::LoDTensor>()
+        ->ShareDataWith(
+            param_scope.Var("W")->Get<paddle::framework::LoDTensor>());
+  }
+
   for (int i = 0; i < cpu_count; ++i) {
     std::vector<std::thread> threads;
     auto begin = std::chrono::high_resolution_clock::now();
     for (int j = 0; j < i + 1; ++j) {
-      threads.emplace_back(thread_main);
+      threads.emplace_back(
+          [thread_main, &scopes, j] { thread_main(&scopes[j]); });
     }
+
+    ProfilerStart(paddle::string::Sprintf("thread_%d.prof", i + 1).c_str());
 
     {
       std::unique_lock<std::mutex> lock(start_flag_mtx);
@@ -115,6 +130,9 @@ TEST(MultiThread, main) {
     for (auto& th : threads) {
       th.join();
     }
+
+    ProfilerStop();
+
     threads.clear();
     auto end = std::chrono::high_resolution_clock::now();
     times[i] =
