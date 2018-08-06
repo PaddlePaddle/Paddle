@@ -12,6 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#ifdef PADDLE_WITH_TESTING
+#include <gtest/gtest_prod.h>
+#endif
+
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/node.h"
 
@@ -43,14 +47,24 @@ class Pattern {
  private:
   void MarkNodesInPattern(DataFlowGraph* graph);
 
-  std::vector<std::pair<hit_t, hit_t>> Extract2GramPatterns(
-      DataFlowGraph* graph);
+  // std::vector<std::pair<hit_t, hit_t>> Extract2GramPatterns( DataFlowGraph*
+  // graph);
 
-  std::vector<PatternRecord> ExtractPatterns(
-      DataFlowGraph* graph, const std::vector<PatternRecord>& init_patterns);
+  std::vector<PatternRecord> ExtractPatterns(DataFlowGraph* graph);
 
  private:
+#ifdef PADDLE_WITH_TESTING
+  FRIEND_TEST(Pattern, AddNode);
+  FRIEND_TEST(Pattern, AddEdge);
+  FRIEND_TEST(Pattern, SetHandle);
+  FRIEND_TEST(Pattern, Match);
+  FRIEND_TEST(Pattern, Fuse);
+  FRIEND_TEST(Pattern, MarkNodesInPattern);
+  FRIEND_TEST(Pattern, ExtractPatterns);
+#endif
+
   handle_t handle_;
+  std::vector<std::pair<FusePatternNode*, FusePatternNode*>> edges_;
   DataFlowGraph pattern_graph_;
   std::unordered_map<int32_t /*pnode_id*/, std::unordered_set<Node*> /*nodes*/>
       pattern_to_node_map_;
@@ -63,6 +77,8 @@ struct PatternRecord {
   PatternRecord() = default;
 
   PatternRecord(const PatternRecord& o) = default;
+
+  PatternRecord(int32_t pnode_id, Node* node) { MatchOrInsert(node, pnode_id); }
 
   PatternRecord(const hit_t& source, const hit_t target) {
     if (!MatchOrInsert(source.first, source.second)) return;
@@ -85,6 +101,11 @@ struct PatternRecord {
   }
 
  private:
+#ifdef PADDLE_WITH_TESTING
+  FRIEND_TEST(Pattern, Match);
+  FRIEND_TEST(Pattern, MatchOrInsert);
+#endif
+
   bool valid_{true};
 };
 

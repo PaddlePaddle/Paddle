@@ -28,6 +28,7 @@ FusePatternNode *Pattern::AddNode() {
 void Pattern::AddEdge(FusePatternNode *source, FusePatternNode *target) {
   source->outlinks.push_back(target);
   target->inlinks.push_back(source);
+  edges_.emplace_back(source, target);
 }
 
 void Pattern::SetHandle(const Pattern::handle_t &handle) { handle_ = handle; }
@@ -41,14 +42,16 @@ bool Links(const Node &a, const Node &b) {
 std::vector<PatternRecord> Pattern::Match(DataFlowGraph *graph) {
   MarkNodesInPattern(graph);
   std::vector<PatternRecord> pattern_records;
-  auto two_gram_hits = Extract2GramPatterns(graph);
+  // auto two_gram_hits = Extract2GramPatterns(graph);
   // Create an initial FuseRecord for each 2-gram pattern.
+  /*
   std::transform(two_gram_hits.begin(), two_gram_hits.end(),
                  std::back_inserter(pattern_records),
                  [](std::pair<hit_t, hit_t> &x) {
                    return PatternRecord(x.first, x.second);
                  });
-  auto patterns = ExtractPatterns(graph, pattern_records);
+                 */
+  auto patterns = ExtractPatterns(graph);
   // check results
   // The pattern should have the same number of nodes with pattern.
 
@@ -115,6 +118,7 @@ struct PairHitHasher {
   }
 };
 
+/*
 std::vector<std::pair<hit_t, hit_t>> Pattern::Extract2GramPatterns(
     DataFlowGraph *graph) {
   std::vector<std::pair<hit_t, hit_t>> result;
@@ -143,45 +147,54 @@ std::vector<std::pair<hit_t, hit_t>> Pattern::Extract2GramPatterns(
   }
   return result;
 }
+ */
 
-std::vector<PatternRecord> Pattern::ExtractPatterns(
-    DataFlowGraph *graph, const std::vector<PatternRecord> &init_patterns) {
+std::vector<PatternRecord> Pattern::ExtractPatterns(DataFlowGraph *graph) {
+  // Init pattern with the first node.
+  PADDLE_ENFORCE(!edges_.empty(),
+                 "a pattern should be defined with at least edges");
+  auto *start_point_pnode = edges_.front().first;
+
+  std::vector<PatternRecord> init_patterns;
+  for (auto *node : pattern_to_node_map_[start_point_pnode->id()]) {
+    init_patterns.emplace_back(start_point_pnode->id(), node);
+  }
+
   // Extend the records from beginning
   auto pre_pattern = init_patterns;
-  auto traits = GraphTraits<DataFlowGraph>(&pattern_graph_).nodes_in_DFS();
-  FusePatternNode *pre_pnode{nullptr};
-  for (auto &pnode : traits) {
-    if (!pre_pnode) {
-      pre_pnode = dynamic_cast<FusePatternNode *>(&pnode);
-      continue;
-    }
-    // the local 2-gram pattern nodes is a pair of (pre_pnode, pnode)
-    std::vector<PatternRecord>
-        patterns;  // patterns extracted by source pattern node
-    std::vector<PatternRecord>
-        patterns2;  // patterns extracted by 2-gram pattern nodes
-    // get local 2gram pattern
-    // prune by the input nodes
-    for (auto *in_node : pattern_to_node_map_[pre_pnode->id()]) {
-      for (const auto &pattern : pre_pattern) {
-        if (pattern.Match(in_node, pre_pnode->id())) {
-          patterns.emplace_back(pattern);
-          patterns.back().MatchOrInsert(in_node, pre_pnode->id());
-        }
+  auto fits_pnode = [&](PatternRecord &record, FusePatternNode *pnode,
+                        std::vector<PatternRecord> *pattern_records) {
+    for (auto *node : pattern_to_node_map_[pnode->id()]) {
+      if (record.Match(node, pnode->id())) {
+        pattern_records->emplace_back(record);
+        pattern_records->back().MatchOrInsert(node, pnode->id());
       }
     }
-    // prune by the output nodes and the eage between source node and target
-    // node
-    for (auto *out_node : pattern_to_node_map_[pnode.id()]) {
-      for (const auto &pattern : patterns) {
-        if (pattern.Match(out_node, pnode.id()) &&
-            Links(*pattern.symbol_table.at(pre_pnode->id()), *out_node)) {
-          patterns2.emplace_back(pattern);
-          patterns2.back().MatchOrInsert(out_node, pnode.id());
-        }
-      }
+  };
+  for (auto &edge : edges_) {
+    auto *source_pnode = edge.first;
+    auto *target_pnode = edge.second;
+
+    std::vector<PatternRecord> patterns0, patterns1;
+    // match source pattern node.
+    for (auto &pattern : pre_pattern) {
+      fits_pnode(pattern, source_pnode, &patterns0);
     }
-    pre_pattern = std::move(patterns2);
+    for (auto &pattern : patterns0) {
+      fits_pnode(pattern, target_pnode, &patterns1);
+    }
+    // check the nodes in this pattern links to each other.
+    patterns1.erase(
+        std::remove_if(patterns1.begin(), patterns1.end(),
+                       [&](PatternRecord &pattern) {
+                         auto *source_node =
+                             pattern.symbol_table.at(source_pnode->id());
+                         auto *target_node =
+                             pattern.symbol_table.at(target_pnode->id());
+                         return !Links(*source_node, *target_node);
+                       }),
+        patterns1.end());
+    pre_pattern = std::move(patterns1);
   }
   return pre_pattern;
 }
