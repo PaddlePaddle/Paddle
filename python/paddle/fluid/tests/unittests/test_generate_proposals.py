@@ -84,6 +84,8 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     # Transform anchors into proposals via bbox encoder
     proposals = np.expand_dims(np.zeros_like(all_anchors), axis=0)
     bbox_deltas = np.expand_dims(bbox_deltas, axis=0)
+
+    print(proposals.shape, bbox_deltas.shape)
     box_coder(
         prior_box=all_anchors,
         target_box=bbox_deltas,
@@ -94,15 +96,19 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     proposals = proposals.squeeze()
     bbox_deltas = bbox_deltas.squeeze()
 
+    print("proposals: ", proposals)
+
     # clip proposals to image (may result in proposals with zero area
     # that will be removed in the next step)
     proposals = clip_tiled_boxes(proposals, im_info[:2])
 
+    print("proposals clipped: ", proposals)
     # remove predicted boxes with height or width < min_size
     keep = filter_boxes(proposals, min_size, im_info)
     proposals = proposals[keep, :]
     scores = scores[keep, :]
 
+    print(proposals, scores)
     # apply loose nms (e.g. threshold = 0.7)
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
@@ -172,6 +178,7 @@ class TestGenerateProposalsOp(OpTest):
             'min_size': self.min_size
         }
 
+        print("lod = ", self.lod)
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.lod]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])
@@ -187,7 +194,7 @@ class TestGenerateProposalsOp(OpTest):
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
         self.post_nms_topN = 2000  # train 6000, test 1000
-        self.nms_thresh = 0.7
+        self.nms_thresh = 0.0
         self.min_size = 0.0
 
     def init_test_input(self):

@@ -22,6 +22,35 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+struct DyDataTypeVisitor {
+  const platform::Place place_;
+  LoDTensor *in_;
+  DyDataTypeVisitor(const platform::Place &place, LoDTensor *in)
+      : place_(place), in_(in) {}
+
+  template <typename T>
+  T *operator()() {
+    auto *p = in_->mutable_data<T>(place_);
+    return p;
+  }
+};
+
+struct AppendProposalsFunctor {
+  LoDTensor *out_;
+  int64_t offset_;
+  Tensor *to_add_;
+
+  AppendProposalsFunctor(LoDTensor *out, int64_t offset, Tensor *to_add)
+      : out_(out), offset_(offset), to_add_(to_add) {}
+
+  template <typename T>
+  void operator()() const {
+    auto *out_data = out_->data<T>();
+    auto *to_add_data = to_add_->data<T>();
+    memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
+  }
+};
+
 class GenerateProposalsOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
@@ -40,175 +69,204 @@ class GenerateProposalsOpInferShape : public framework::InferShapeBase {
     auto anchors_dims = ctx->GetInputDim("Anchors");
     auto variances_dims = ctx->GetInputDim("Variances");
 
-    ctx->SetOutputDim("RpnRois", scores_dims);
+    ctx->SetOutputDim("RpnRois", anchors_dims);
     ctx->SetOutputDim("RpnRoiProbs", scores_dims);
   }
 };
 
-void Transpose(framework::Scope &scope, const platform::Place &place,
-               std::string &in_name, Tensor &in_tensor, std::string &out_name,
-               Tensor &out_tensor, framework::AttributeMap &attrs) {
-  scope.Var(&in_name)->GetMutable<LoDTensor>()->ShareDataWith(in_tensor);
-  scope.Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(out_tensor);
+void Transpose(framework::Scope *scope, const platform::Place &place,
+               const Tensor &in_tensor, Tensor *out_tensor,
+               const framework::AttributeMap &attrs) {
+  std::string in_name, out_name;
+  scope->Var(&in_name)->GetMutable<LoDTensor>()->ShareDataWith(in_tensor);
+  scope->Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(*out_tensor);
+
   auto transpose_op = framework::OpRegistry::CreateOp(
       "transpose", {{"X", {in_name}}}, {{"Out", {out_name}}}, attrs);
-  transpose_op->Run(scope, place);
+  transpose_op->Run(*scope, place);
+
+  out_tensor->Resize(scope->FindVar(out_name)->GetMutable<LoDTensor>()->dims());
 }
 
-void Gather(framework::Scope &scope, const platform::Place &place,
-            std::string &in_name, std::string &index_name,
-            std::string &out_name) {
+void Gather(framework::Scope *scope, const platform::Place &place,
+            const Tensor &in, const Tensor &index, Tensor *out) {
+  std::string in_name, index_name, out_name;
+  scope->Var(&in_name)->GetMutable<LoDTensor>()->ShareDataWith(in);
+  scope->Var(&index_name)->GetMutable<LoDTensor>()->ShareDataWith(index);
+  scope->Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(*out);
+
   framework::AttributeMap attrs;
   auto gather_op = framework::OpRegistry::CreateOp(
       "gather", {{"X", {in_name}}, {"Index", {index_name}}},
       {{"Out", {out_name}}}, attrs);
-  gather_op->Run(scope, place);
+  gather_op->Run(*scope, place);
+
+  out->Resize(scope->FindVar(out_name)->GetMutable<LoDTensor>()->dims());
 }
 
-void BoxCoder(framework::Scope &scope, const platform::Place &place,
-              Tensor &all_anchors, Tensor &bbox_deltas, Tensor &variances,
-              Tensor &proposals, std::string code_type, bool box_normalized) {
-  std::vector<int64_t> bbox_deltas_shape =
-      framework::vectorize(bbox_deltas.dims());
-  bbox_deltas_shape.emplace(bbox_deltas_shape.begin(), 1);
-  bbox_deltas.Resize(framework::make_ddim(bbox_deltas_shape));
+Tensor BoxCoder(framework::Scope *scope, const platform::Place &place,
+                Tensor *all_anchors, Tensor *bbox_deltas,
+                const Tensor &variances, std::string code_type,
+                bool box_normalized) {
+  std::vector<int64_t> bbox_deltas_dims =
+      framework::vectorize(bbox_deltas->dims());
+  bbox_deltas_dims.emplace(bbox_deltas_dims.begin(), 1);
+  framework::DDim bbox_deltas_shape = framework::make_ddim(bbox_deltas_dims);
+  bbox_deltas->Resize(bbox_deltas_shape);
 
-  proposals.Resize(all_anchors.dims());
-  proposals.mutable_data(place, all_anchors.type());
+  Tensor proposals;
+  proposals.Resize(all_anchors->dims());
+  proposals.mutable_data(place, all_anchors->type());
 
-  std::string all_anchors_name, bbox_deltas_name, variances_name,
-      proposals_name;
+  Tensor variances_swap = variances;
+  variances_swap.Resize({variances_swap.numel() / 4, 4});
+
   framework::AttributeMap attrs;
   attrs["code_type"] = code_type;
   attrs["box_normalized"] = box_normalized;
-  scope.Var(&all_anchors_name)
+
+  std::string all_anchors_name, bbox_deltas_name, variances_name,
+      proposals_name;
+  scope->Var(&all_anchors_name)
       ->GetMutable<LoDTensor>()
-      ->ShareDataWith(all_anchors);
-  scope.Var(&bbox_deltas_name)
-      ->GetMutable<Tensor>()
-      ->ShareDataWith(bbox_deltas);
-  scope.Var(&variances_name)->GetMutable<Tensor>()->ShareDataWith(variances);
-  scope.Var(&proposals_name)->GetMutable<Tensor>()->ShareDataWith(bbox_deltas);
+      ->ShareDataWith(*all_anchors);
+  scope->Var(&bbox_deltas_name)
+      ->GetMutable<LoDTensor>()
+      ->ShareDataWith(*bbox_deltas);
+  scope->Var(&variances_name)
+      ->GetMutable<LoDTensor>()
+      ->ShareDataWith(variances_swap);
+  scope->Var(&proposals_name)
+      ->GetMutable<LoDTensor>()
+      ->ShareDataWith(proposals);
+
   auto box_coder_op = framework::OpRegistry::CreateOp(
       "box_coder", {{"PriorBox", {all_anchors_name}},
-                    {"PriorBoxVar", {invariances_name}},
-                    {"TargetBox", {bbox_deltas_name}},
-                    {{"OutputBox", proposals_name}}},
-      attrs);
-  box_coder_op->Run(scope, place);
+                    {"PriorBoxVar", {variances_name}},
+                    {"TargetBox", {bbox_deltas_name}}},
+      {{"OutputBox", {proposals_name}}}, attrs);
+  box_coder_op->Run(*scope, place);
 
   bbox_deltas_shape =
-      framework::slice_ddim(bbox_deltas.dims(), 1, bbox_deltas.dims().size());
-  framework::DDim proposals_shape =
-      framework::slice_ddim(proposals.dims(), 1, proposals.dims().size());
-  bbox_deltas.Resize(bbox_deltas_shape);
-  proposals.Resize(proposals_shape);
+      framework::slice_ddim(bbox_deltas->dims(), 1, bbox_deltas->dims().size());
+  bbox_deltas->Resize(bbox_deltas_shape);
+
+  return proposals;
 }
 
-void ClipTiledBoxes(const platform::Place &place, Tensor &boxes,
-                    const Tensor &im_info) {
-  float *boxes_data = boxes.data<float>(place);
-  float *im_info_data = im_info.data<float>(place);
-  for (int64_t i = 0; i < boxes.numel(); ++i) {
+void ClipTiledBoxes(const platform::Place &place, Tensor *boxes,
+                    Tensor *im_info) {
+  float *boxes_data = boxes->mutable_data<float>(place);
+  float *im_info_data = im_info->mutable_data<float>(place);
+  for (int64_t i = 0; i < boxes->numel(); ++i) {
     if (i % 4 == 0) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), 0.0);
+          std::max(std::min(boxes_data[i], im_info_data[1] - 1), 0.0f);
     } else if (i % 4 == 1) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), 0.0);
+          std::max(std::min(boxes_data[i], im_info_data[0] - 1), 0.0f);
     } else if (i % 4 == 2) {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[1] - 1), 0.0);
+          std::max(std::min(boxes_data[i], im_info_data[1] - 1), 0.0f);
     } else {
       boxes_data[i] =
-          std::max(std::min(boxes_data[i], im_info_data[0] - 1), 0.0);
+          std::max(std::min(boxes_data[i], im_info_data[0] - 1), 0.0f);
     }
   }
 }
 
-Tensor FilterBoxes(const platform::Place &place, Tensor &proposals,
-                   float min_size, Tensor &im_info) {
-  float *im_info_data = im_info.data<float>(place);
-  float *boxes_data = proposals.data<float>(place);
+Tensor FilterBoxes(const platform::Place &place, Tensor *boxes, float min_size,
+                   Tensor *im_info) {
+  float *im_info_data = im_info->mutable_data<float>(place);
+  float *boxes_data = boxes->mutable_data<float>(place);
   min_size *= im_info_data[2];
   Tensor keep;
-  keep.Resize({1, proposals.dims()[0]});
-  int64_t *keep_data = keep.data<float>(place);
+  keep.Resize({boxes->dims()[0]});
+  int *keep_data = keep.mutable_data<int>(place);
 
-  int64_t keep_len = 0;
-  for (int64_t i = 0; i < keep.numel(); ++i) {
-    float ws = proposals[4 * i + 2] - proposals[4 * i] + 1;
-    float hs = proposals[4 * i + 3] - proposals[4 * i + 1] + 1;
-    float x_ctr = proposals[4 * i] + ws / 2;
-    float y_ctr = proposals[4 * i + 1] + hs / 2;
-    if (ws >= min_size && hs >= min_size && x_ctr <= im_info[1] &&
-        y_ctr <= im_info[0]) {
+  int keep_len = 0;
+  for (int i = 0; i < keep.numel(); ++i) {
+    float ws = boxes_data[4 * i + 2] - boxes_data[4 * i] + 1;
+    float hs = boxes_data[4 * i + 3] - boxes_data[4 * i + 1] + 1;
+    float x_ctr = boxes_data[4 * i] + ws / 2;
+    float y_ctr = boxes_data[4 * i + 1] + hs / 2;
+    if (ws >= min_size && hs >= min_size && x_ctr <= im_info_data[1] &&
+        y_ctr <= im_info_data[0]) {
       keep_data[keep_len++] = i;
     }
   }
-  keep.Resize({1, keep_len});
+  keep.Resize({keep_len});
   return keep;
 }
 
-void NMS(framework::Scope &scope, 
-           const platform::Place &place, 
-           std::string &proposals_keep_name, 
-           std::string &scores_keep_name, 
-           std::string &keep_name,
+/*
+void NMS(framework::Scope &scope,
+           const platform::Place &place,
+           Tensor &proposals,
+           Tensor &scores,
            float nms_threshold,
            float score_threshold,
            int nms_top_k,
-           float nms_eta) {
+           float nms_eta,
+           Tensor &keep) {
   framework::AttributeMap attrs;
   attrs["score_threshold"] = score_threshold;
   attrs["nms_threshold"] = nms_threshold;
   attrs["nms_eta"] = nms_eta;
+
+  std::string proposals_name, scores_name, variances_name;
+  scope.Var(&proposals_name)->GetMutable<LoDTensor>()
+      ->ShareDataWith(proposals);
+  scope.Var(&scores_name)->GetMutable<LoDTensor>()
+      ->ShareDataWith(scores);
+  scope.Var(&variances_name)->GetMutable<LoDTensor>()
+      ->ShareDataWith(variances);
+
   auto multiclass_nms_op = framework::OpRegistry::CreateOp(
-      "multiclass_nms", {{"BBoxes", {proposals_keep_name}},
-                    {"Scores", {scores_keep_name}}}, attrs);
+      "multiclass_nms", {{"BBoxes", {proposals_name}},
+                    {"Scores", {scores_name}}}, attrs);
   multiclass_nms_op->Run(scope, place);
 }
+*/
 
-//<typename T>
-void ProposalForOneImage(framework::Scope &scope, const platform::Place &place,
-                         const Tensor &im_info, const Tensor &anchors,
-                         const Tensor &variances, Tensor &bbox_deltas,
-                         Tensor &scores, int pre_nms_topN, int post_nms_topN,
-                         float nms_thresh, float min_size) {
-  Tensor bbox_deltas_trans;
-  Tensor scores_trans;
+std::pair<Tensor, Tensor> ProposalForOneImage(
+    framework::Scope *scope, const platform::Place &place,
+    Tensor *im_info_slice, const Tensor &anchors, const Tensor &variances,
+    Tensor *bbox_deltas_slice, Tensor *scores_slice, int pre_nms_topN,
+    int post_nms_topN, float nms_thresh, float min_size) {
+  Tensor bbox_deltas, bbox_deltas_swap;
+  Tensor scores, scores_swap;
 
-  framework::DDim bbox_deltas_shape =
-      framework::slice_ddim(bbox_deltas.dims(), 1, bbox_deltas.dims().size());
-  framework::DDim scores_shape =
-      framework::slice_ddim(scores.dims(), 1, scores.dims().size());
+  framework::DDim bbox_deltas_shape = framework::slice_ddim(
+      bbox_deltas_slice->dims(), 1, bbox_deltas_slice->dims().size());
+  framework::DDim scores_shape = framework::slice_ddim(
+      scores_slice->dims(), 1, scores_slice->dims().size());
 
+  bbox_deltas = *bbox_deltas_slice;
+  scores = *scores_slice;
   bbox_deltas.Resize(bbox_deltas_shape);
   scores.Resize(scores_shape);
-  bbox_deltas_trans.Resize(bbox_deltas_shape);
-  scores_trans.Resize(scores_shape);
 
-  bbox_deltas_trans.mutable_data(place, bbox_deltas.type());
-  scores_trans.mutable_data(place, scores.type());
+  bbox_deltas_swap.Resize(bbox_deltas_shape);
+  scores_swap.Resize(scores_shape);
+  bbox_deltas_swap.mutable_data(place, bbox_deltas.type());
+  scores_swap.mutable_data(place, scores.type());
 
   // Transpose bbox_deltas
   framework::AttributeMap trans_attrs;
   trans_attrs["axis"] = framework::vectorize2int({1, 2, 0});
-  std::string bbox_deltas_var_name, bbox_deltas_trans_var_name;
-  Transpose(scope, place, bbox_deltas_var_name, bbox_deltas,
-            bbox_deltas_trans_var_name, bbox_deltas_trans, trans_attrs);
+  Transpose(scope, place, bbox_deltas, &bbox_deltas_swap, trans_attrs);
 
   // Transpose scores
-  std::string scores_var_name, scores_trans_var_name;
-  Transpose(scope, place, scores_var_name, scores, scores_trans_var_name,
-            scores_trans, trans_attrs);
+  Transpose(scope, place, scores, &scores_swap, trans_attrs);
 
-  auto *scores_data = scores_trans.mutable_data<float>(place);
+  scores_swap.Resize({scores_swap.numel(), 1});
+  auto *scores_data = scores_swap.mutable_data<float>(place);
 
   // Sort index
   Tensor index_t;
-  index_t.Resize({1, scores_trans.numel()});
-  int64_t *index = index_t.mutable_data<int64_t>(place);
+  index_t.Resize({scores_swap.numel()});
+  int *index = index_t.mutable_data<int>(place);
   for (int64_t i = 0; i < scores.numel(); ++i) {
     index[i] = i;
   }
@@ -216,65 +274,65 @@ void ProposalForOneImage(framework::Scope &scope, const platform::Place &place,
       const int64_t &i, const int64_t &j) {
     return scores_data[i] > scores_data[j];
   };
-  if (pre_nms_topN <= 0 || pre_nms_topN >= scores_trans.numel()) {
+  if (pre_nms_topN <= 0 || pre_nms_topN >= scores_swap.numel()) {
     std::sort(index, index + scores.numel(), compare);
   } else {
     std::nth_element(index, index + pre_nms_topN, index + scores.numel(),
                      compare);
-    index_t.Resize({1, pre_nms_topN});
+    index_t.Resize({pre_nms_topN});
   }
-  
-  // Gather
-  std::string index_name;
-  scope.Var(&index_name)->GetMutable<LoDTensor>()->ShareDataWith(index_t);
-  Gather(scope, place, scores_trans_var_name, index_name, scores_var_name);
-  Gather(scope, place, bbox_deltas_trans_var_name, index_name,
-         bbox_deltas_var_name);
 
-  std::string anchors_var_name, all_anchors_var_name;
-  Tensor all_anchors;
-  all_anchors.Resize(anchors.dims());
-  all_anchors.mutable_data(place, anchors.type());
-  scope.Var(&anchors_var_name)->GetMutable<Tensor>()->ShareDataWith(anchors);
-  scope.Var(&all_anchors_var_name)
-      ->GetMutable<Tensor>()
-      ->ShareDataWith(all_anchors);
-  Gather(scope, place, anchors_var_name, index_name, all_anchors_var_name);
+  Gather(scope, place, scores_swap, index_t, &scores);
 
-  // box_coder();
-  Tensor proposals;
-  BoxCoder(scope, place, all_anchors, bbox_deltas, variances, proposals,
-           "DecodeCenterSize", false);
+  bbox_deltas_swap.Resize({bbox_deltas_swap.numel() / 4, 4});
+  Gather(scope, place, bbox_deltas_swap, index_t, &bbox_deltas);
 
-  ClipTiledBoxes(place, proposals, im_info);
+  Tensor all_anchors, all_anchors_swap;
+  all_anchors_swap = anchors;
+  all_anchors_swap.Resize({all_anchors_swap.numel() / 4, 4});
+  all_anchors.Resize(all_anchors_swap.dims());
+  all_anchors.mutable_data(place, all_anchors_swap.type());
 
-  Tensor keep = FilterBoxes(place, proposals, min_size, im_info);
+  Gather(scope, place, all_anchors_swap, index_t, &all_anchors);
 
-  Tensor proposals_keep, scores_keep;
-  std::string keep_name, proposals_name, proposals_keep_name, scores_keep_name;
-  proposals_keep.mutable_data(place, proposals.type());
-  scores_keep.mutable_data(place, scores.type());
-  scope.Var(&keep_name)->GetMutable<Tensor>()->ShareDataWith(keep);
-  scope.Var(&proposals_name)->GetMutable<Tensor>()->ShareDataWith(proposals);
-  scope.Var(&proposals_keep_name)
-      ->GetMutable<Tensor>()
-      ->ShareDataWith(proposals_keep);
-  scope.Var(&scores_keep_name)
-      ->GetMutable<Tensor>()
-      ->ShareDataWith(scores_keep);
+  Tensor proposals = BoxCoder(scope, place, &all_anchors, &bbox_deltas,
+                              variances, "decode_center_size", false);
 
-  Gather(scope, place, proposals_name, keep_name, proposals_keep_name);
-  Gather(scope, place, scores_name, keep_name, scores_keep_name);
+  ClipTiledBoxes(place, &proposals, im_info_slice);
+
+  Tensor keep = FilterBoxes(place, &proposals, min_size, im_info_slice);
+
+  Tensor proposals_swap;
+  proposals_swap.Resize(proposals.dims());
+  proposals_swap.mutable_data(place, proposals.type());
+
+  Gather(scope, place, proposals, keep, &proposals_swap);
+  Gather(scope, place, scores, keep, &scores_swap);
+
+  std::cout << "proposals kept: " << std::endl;
+  for (int64_t i = 0; i < proposals_swap.numel(); ++i) {
+    std::cout << proposals_swap.data<float>()[i] << " ";
+  }
+  std::cout << std::endl;
+
+  std::cout << "scores kept: " << std::endl;
+  for (int64_t i = 0; i < scores_swap.numel(); ++i) {
+    std::cout << scores_swap.data<float>()[i] << " ";
+  }
+  std::cout << std::endl;
 
   if (nms_thresh <= 0) {
-    return proposals_keep, scores_keep;
+    return std::make_pair(proposals_swap, scores_swap);
   }
-
-  NMS(scope, place, proposals_keep_name, scores_keep_name, keep_name);
+  /*
+  NMS(scope, place, proposals_swap, scores_swap, keep);
   if (post_nms_topN > 0) {
-    keep.Resize({1, post_nms_topN});
+    keep.Resize({post_nms_topN});
   }
-  return proposals, scores;
+  Gather(scope, place, proposals_swap, keep, proposals);
+  Gather(scope, place, scores_swap, keep, scores);
+  */
+  return std::make_pair(proposals, scores);
 }
 
 class GenerateProposalsOp : public framework::OperatorBase {
@@ -293,27 +351,55 @@ class GenerateProposalsOp : public framework::OperatorBase {
     auto *rpn_roi_probs =
         scope.FindVar(Output("RpnRoiProbs"))->GetMutable<LoDTensor>();
 
-    rpn_rois->mutable_data(place, anchors.type());
-    rpn_roi_probs->mutable_data(place, anchors.type());
+    // rpn_rois->mutable_data(place, anchors.type());
+    // rpn_roi_probs->mutable_data(place, scores.type());
+
+    rpn_rois->Resize(anchors.dims());
+    rpn_roi_probs->Resize(scores.dims());
+    framework::VisitDataType(framework::ToDataType(anchors.type()),
+                             DyDataTypeVisitor(place, rpn_rois));
+    framework::VisitDataType(framework::ToDataType(scores.type()),
+                             DyDataTypeVisitor(place, rpn_roi_probs));
 
     int pre_nms_topN = Attr<int>("pre_nms_topN");
     int post_nms_topN = Attr<int>("post_nms_topN");
     float nms_thresh = Attr<float>("nms_thresh");
     float min_size = Attr<float>("min_size");
 
-    std::cout << "before for loop" << std::endl;
-
     paddle::framework::Scope &local_scope = scope.NewScope();
 
+    framework::LoD lod;
+    std::vector<size_t> lod0(1, 0);
+
     int64_t num_images = scores.dims()[0];
+    int64_t num_proposals = 0;
     for (int64_t i = 0; i < num_images; ++i) {
-      Tensor im_info_i = im_info.Slice(i, i + 1);
-      Tensor bbox_deltas_i = bbox_deltas.Slice(i, i + 1);
-      Tensor scores_i = scores.Slice(i, i + 1);
-      ProposalForOneImage(local_scope, place, im_info_i, anchors, variances,
-                          bbox_deltas_i, scores_i, pre_nms_topN, post_nms_topN,
-                          nms_thresh, min_size);
+      Tensor im_info_slice = im_info.Slice(i, i + 1);
+      Tensor bbox_deltas_slice = bbox_deltas.Slice(i, i + 1);
+      Tensor scores_slice = scores.Slice(i, i + 1);
+      std::pair<Tensor, Tensor> tensor_pair = ProposalForOneImage(
+          &local_scope, place, &im_info_slice, anchors, variances,
+          &bbox_deltas_slice, &scores_slice, pre_nms_topN, post_nms_topN,
+          nms_thresh, min_size);
+      Tensor proposals = tensor_pair.first;
+      Tensor scores = tensor_pair.second;
+
+      framework::VisitDataType(
+          framework::ToDataType(rpn_rois->type()),
+          AppendProposalsFunctor(rpn_rois, 4 * num_proposals, &proposals));
+      framework::VisitDataType(
+          framework::ToDataType(rpn_roi_probs->type()),
+          AppendProposalsFunctor(rpn_roi_probs, num_proposals, &scores));
+
+      num_proposals += proposals.dims()[0];
+      lod0.emplace_back(num_proposals);
     }
+
+    lod.emplace_back(lod0);
+    rpn_rois->set_lod(lod);
+    rpn_roi_probs->set_lod(lod);
+    rpn_rois->Resize({num_proposals, 4});
+    rpn_roi_probs->Resize({num_proposals, 1});
   }
 };
 
