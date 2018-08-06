@@ -109,17 +109,17 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
-      auto ids_dim = ids->dims();
+      int64_t ids_num = ids->numel();
 
       framework::Vector<int64_t> new_rows;
-      new_rows.reserve(ids_dim[0]);
-      for (int64_t i = 0; i < ids_dim[0]; i++) {
+      new_rows.reserve(ids_num);
+      for (int64_t i = 0; i < ids_num; i++) {
         new_rows.push_back(ids_data[i]);
       }
       d_table->set_rows(new_rows);
 
       auto *d_table_value = d_table->mutable_value();
-      d_table_value->Resize({ids_dim[0], table_dim[1]});
+      d_table_value->Resize({ids_num, table_dim[1]});
       d_table_value->mutable_data<T>(context.GetPlace());
 
       d_table->set_height(table_dim[0]);
@@ -127,7 +127,10 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *d_output_data = d_output->data<T>();
       auto *d_table_data = d_table_value->data<T>();
 
-      PADDLE_ENFORCE_EQ(d_table_value->dims(), d_output->dims());
+      auto d_output_dims = d_output->dims();
+      PADDLE_ENFORCE_EQ(
+          d_table_value->dims(),
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
@@ -135,10 +138,9 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       auto *d_table = context.Output<LoDTensor>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
-      auto ids_dim = ids->dims();
 
       int N = table_dim[0];
-      int D = d_output->dims()[1];
+      int D = table_dim[1];
 
       auto *d_output_data = d_output->data<T>();
       auto *d_table_data = d_table->mutable_data<T>(context.GetPlace());
