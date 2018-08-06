@@ -137,11 +137,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
   }
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
-
-  // For profiling, don't move out of this function because that will result
-  // in the failure of multi-GPU profiling.
-  platform::RecordEvent record_event(Type(), dev_ctx);
+  platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
   VLOG(10) << "+ " << DebugStringEx(&scope);
 }
