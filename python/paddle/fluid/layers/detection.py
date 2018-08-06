@@ -22,6 +22,7 @@ import ops
 import tensor
 import nn
 import math
+import numpy
 
 __all__ = [
     'prior_box',
@@ -1105,8 +1106,13 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        new_shape = [0, -1, 4]
-        mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
+        compile_shape = [
+            mbox_loc.shape[0],
+            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
+        ]
+        run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
+        mbox_loc_flatten = nn.reshape(
+            mbox_loc, shape=compile_shape, actual_shape=run_shape)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -1119,7 +1125,14 @@ def multi_box_head(inputs,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
         new_shape = [0, -1, num_classes]
-        conf_loc_flatten = nn.reshape(conf_loc, shape=new_shape)
+        compile_shape = [
+            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
+            conf_loc.shape[3] / num_classes, num_classes
+        ]
+        run_shape = tensor.assign(
+            numpy.array([0, -1, num_classes]).astype("int32"))
+        conf_loc_flatten = nn.reshape(
+            conf_loc, shape=compile_shape, actual_shape=run_shape)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
