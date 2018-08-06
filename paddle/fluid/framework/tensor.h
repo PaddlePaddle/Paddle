@@ -82,7 +82,7 @@ class Tensor {
   template <typename T>
   const T* data() const;
 
-  bool IsInitialized() const;
+  inline bool IsInitialized() const;
 
   /**
    * @brief   Return a pointer to mutable memory block.

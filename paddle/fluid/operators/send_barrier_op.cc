@@ -50,13 +50,13 @@ class SendBarrierOp : public framework::OperatorBase {
     VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
 
     // need to wait before sending send_barrier message
-    rpc_client->Wait();
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     if (sync_mode) {
       for (auto& ep : eps) {
         VLOG(3) << "send barrier, ep: " << ep;
         rpc_client->AsyncSendBatchBarrier(ep);
       }
-      rpc_client->Wait();
+      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     }
   }
 };

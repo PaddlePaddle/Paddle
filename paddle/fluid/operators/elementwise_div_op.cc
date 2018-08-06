@@ -15,7 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise_div_op.h"
 #include "paddle/fluid/operators/elementwise_op.h"
 namespace ops = paddle::operators;
+
 REGISTER_ELEMWISE_OP(elementwise_div, "Div", "Out = X / Y");
+
 REGISTER_OP_CPU_KERNEL(
     elementwise_div,
     ops::ElementwiseDivKernel<paddle::platform::CPUDeviceContext, float>,

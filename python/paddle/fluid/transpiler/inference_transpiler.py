@@ -95,7 +95,7 @@ class InferenceTranspiler(object):
                     # modify bnorm OP to include relu
                     current_op.set_attr("fuse_with_relu", True)
                     # remove relu OP
-                    self.block.remove_op(i + 1)
+                    self.block._remove_op(i + 1)
             i = i + 1
 
         self._remove_unused_var()
@@ -171,7 +171,7 @@ class InferenceTranspiler(object):
                     # fuse batch_norm
                     self._fuse_param(current_op, next_op, bias_op, 0)
                     # remove batch_norm_op
-                    self.block.remove_op(i + 2)
+                    self.block._remove_op(i + 2)
                     i = i + 1
                 # conv2d with bias, the next_op.type is elementwise_add
                 elif (next_op.type == 'elementwise_add'):
@@ -180,7 +180,7 @@ class InferenceTranspiler(object):
                         # fuse batch_norm
                         self._fuse_param(current_op, next_next_op, next_op, 1)
                         # remove batch_norm_op
-                        self.block.remove_op(i + 2)
+                        self.block._remove_op(i + 2)
                         i = i + 1
             i = i + 1
 
@@ -212,7 +212,7 @@ class InferenceTranspiler(object):
         y_var = self.block.var(bn_op.input("Bias")[0])
         out_var = self.block.var(bn_op.output("Y")[0])
 
-        bias_op = self.block.insert_op(
+        bias_op = self.block._insert_op(
             index,
             type="elementwise_add",
             inputs={"X": x_var,
@@ -307,4 +307,4 @@ class InferenceTranspiler(object):
 
         for var in self.block.vars.keys():
             if var not in args:
-                self.block.remove_var(var)
+                self.block._remove_var(var)

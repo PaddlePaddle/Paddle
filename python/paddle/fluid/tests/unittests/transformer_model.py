@@ -403,7 +403,7 @@ def transformer(
         trg_pad_idx,
         pos_pad_idx, ):
     file_obj = fluid.layers.open_recordio_file(
-        filename='./wmt16.recordio',
+        filename='/tmp/wmt16.recordio',
         shapes=[
             [batch_size * max_length, 1],
             [batch_size * max_length, 1],

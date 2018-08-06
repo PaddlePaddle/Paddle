@@ -26,9 +26,9 @@ using paddle::platform::MKLDNNMemDesc;
 
 using mkldnn::memory;  // Note: paddle has also "memory" namespace
 using mkldnn::primitive;
-using mkldnn::softmax_forward;
-using mkldnn::softmax_backward;
 using mkldnn::prop_kind;
+using mkldnn::softmax_backward;
+using mkldnn::softmax_forward;
 using mkldnn::stream;
 using platform::to_void_cast;
 
@@ -113,17 +113,27 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     auto mkldnn_engine = dev_ctx.GetEngine();
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
-    PADDLE_ENFORCE(input->dims().size() == 2UL,
-                   "The input of softmax op must be a 2D matrix.");
-    const T* input_data = input->data<T>();
-    // allocate memory for output
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
-    std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
-    // MKL-DNN does support softmax over selected axis. Having 2D Tensor,
-    // we will make normalization after final eg. axis: 1
-    PADDLE_ENFORCE(((src_tz[0] == dst_tz[0]) && (src_tz[1] == dst_tz[1])),
-                   "Softmax input and output dimensions should match");
+    PADDLE_ENFORCE_EQ(
+        input->dims(), output->dims(),
+        "The shape of softmax's input and output must be identical.");
+
+    // make sure 'output' holds memory, which will be shared by
+    // 'flattened_output' later.
+    output->mutable_data<T>(ctx.GetPlace());
+
+    // flatten input and output to 2-D matrixs
+    auto dims = input->dims();  // input and output share the same shape
+    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
+    framework::Tensor flattened_input;
+    framework::Tensor flattened_output;
+    flattened_input.ShareDataWith(*input).Resize(flattened_dims);
+    flattened_output.ShareDataWith(*output).Resize(flattened_dims);
+
+    const T* input_data = flattened_input.data<T>();
+    T* output_data = flattened_output.mutable_data<T>(ctx.GetPlace());
+
+    std::vector<int> src_tz = paddle::framework::vectorize2int(flattened_dims);
+    std::vector<int> dst_tz = src_tz;
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
     // Generate keys for storing/retriving primitives for this operator
@@ -174,23 +184,34 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<MKLDNNDeviceContext>();
     auto mkldnn_engine = dev_ctx.GetEngine();
     const Tensor* output = ctx.Input<Tensor>("Out");
-    const T* dst_data = output->data<T>();
-
     auto* dout = ctx.template Input<Tensor>(framework::GradVarName("Out"));
-    const auto* diff_dst_ptr = dout->template data<T>();
-
     auto* dx =
         ctx.template Output<framework::Tensor>(framework::GradVarName("X"));
-    T* diff_src_ptr = dx->template mutable_data<T>(ctx.GetPlace());
 
-    std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
+    PADDLE_ENFORCE_EQ(
+        dout->dims(), dx->dims(),
+        "The shape of softmax_grad's input and output must be identical.");
+
+    // make sure 'dx' holds memory, which will be shared by 'flattened_dx'
+    // later.
+    dx->template mutable_data<T>(ctx.GetPlace());
+
+    auto dims = dout->dims();  // input and output share the same shape
+    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
+    framework::Tensor flattened_output;
+    framework::Tensor flattened_dout;
+    framework::Tensor flattened_dx;
+    flattened_output.ShareDataWith(*output).Resize(flattened_dims);
+    flattened_dout.ShareDataWith(*dout).Resize(flattened_dims);
+    flattened_dx.ShareDataWith(*dx).Resize(flattened_dims);
+
+    const T* dst_data = flattened_output.data<T>();
+    const T* diff_dst_ptr = flattened_dout.template data<T>();
+    T* diff_src_ptr = flattened_dx.template mutable_data<T>(ctx.GetPlace());
+
+    std::vector<int> dst_tz = paddle::framework::vectorize2int(flattened_dims);
     std::vector<int> src_tz(dst_tz);
-    PADDLE_ENFORCE(output->dims().size() == 2UL,
-                   "The input of softmax op must be a 2D matrix.");
-    // MKL-DNN does support softmax over selected axis. Having 2D Tensor,
-    // we will make normalization after final eg. axis: 1
-    PADDLE_ENFORCE(((src_tz[0] == dst_tz[0]) && (src_tz[1] == dst_tz[1])),
-                   "Softmax input and output dimensions should match");
+
     // Same memory descriptor to be used for input and output
     memory::dims softmax_tz = {src_tz[0], src_tz[1]};
     // Currently only supports NC data format
