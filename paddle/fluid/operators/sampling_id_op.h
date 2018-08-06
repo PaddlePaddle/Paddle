@@ -72,11 +72,11 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     // Standard mersenne_twister_engine seeded with rd()
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0, 1);
-    rnd = std::bind(dis, gen);
+    rnd = std::bind(dis, std::ref(gen));
   }
 
   static std::once_flag init_flag_;
-  static std::function<> rnd;
+  static std::function<double()> rnd;
 };
 }  // namespace operators
 }  // namespace paddle
