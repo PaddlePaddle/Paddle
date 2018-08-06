@@ -142,16 +142,35 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
 
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    if (platform::is_cpu_place(ctx.GetPlace()) && (x->dims() == y->dims())) {
-      elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
+    if (dx != nullptr) dx->ShareDataWith(*dout);
+    if (dy == nullptr) return;
+
+    if (x->dims() == y->dims()) {
+      dy->ShareDataWith(*dout);
     } else {
-      default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,
-                                                     dy);
+      dy->mutable_data<T>(ctx.GetPlace());
+      // Perform reduction to dout to calculate dy
+      const framework::DDim& x_dim = x->dims();
+      framework::DDim y_dim = y->dims();
+      int axis = ctx.Attr<int>("axis");
+      axis = (axis == -1 ? x_dim.size() - y_dim.size() : axis);
+      y_dim = trim_trailing_singular_dims(y_dim);
+      axis = (y_dim.size() == 0) ? x_dim.size() : axis;
+
+      auto* device =
+          ctx.template device_context<DeviceContext>().eigen_device();
+      int pre, n, post;
+      get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
+      auto eigen_dout = framework::EigenTensor<T, 3>::From(
+          *dout, framework::make_ddim({pre, n, post}));
+      auto eigen_dy =
+          framework::EigenTensor<T, 1>::From(*dy, framework::make_ddim({n}));
+      eigen_dy.device(*device) = eigen_dout.sum(
+          framework::EigenDim<2>::From(framework::make_ddim({0, 2})));
     }
   }
 };
