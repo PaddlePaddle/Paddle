@@ -14,13 +14,14 @@
 """
 imikolov's simple dataset.
 
-This module will download dataset from 
+This module will download dataset from
 http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
 import paddle.dataset.common
 import collections
 import tarfile
+from six.moves import range
 
 __all__ = ['train', 'test', 'build_dict', 'convert']
 
@@ -68,7 +69,7 @@ def build_dict(min_word_freq=50):
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))
         words, _ = list(zip(*word_freq_sorted))
-        word_idx = dict(list(zip(words, list(range(len(words))))))
+        word_idx = dict(list(zip(words, range(len(words)))))
         word_idx['<unk>'] = len(words)
 
     return word_idx
