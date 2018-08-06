@@ -156,6 +156,7 @@ include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
+include(external/cub)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
