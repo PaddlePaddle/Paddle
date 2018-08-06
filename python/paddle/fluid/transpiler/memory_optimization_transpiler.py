@@ -14,7 +14,7 @@
 
 from collections import defaultdict
 from .. import core
-from ..framework import Program, default_main_program, Parameter, Variable
+from ..framework import Program, default_main_program, Parameter
 from ..backward import _rename_arg_
 
 dtype_to_size = {
@@ -177,7 +177,7 @@ class ControlFlowGraph(object):
                 in_diff)
             if can_optimize:
                 index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
-                delete_op = block_desc.insert_op(index)
+                delete_op = block_desc._insert_op(index)
                 delete_op.set_type("delete_var")
                 delete_op.set_input("X", can_optimize)
                 if is_forward:
@@ -324,6 +324,8 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
+            sub_op_output.update(sub_op_dict[grad_id].input_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
 
         # Process rest fwd_op block ops
@@ -335,6 +337,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
                 sub_block_ops.append(sub_block.op(i))
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
             ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
     return ops_list
 
@@ -349,13 +352,17 @@ def _get_cfgs(input_program):
     pdesc = input_program.get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
-    # Get global block ops
-    ops_list.append(
-        ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     # Only process one level of nested subblock.
     ops_list.extend(_process_sub_block_pair(pdesc, SUB_BLOCK_PAIR))
 
+    skip_opt_set = set()
+    for _, _, skip_opt in ops_list:
+        skip_opt_set.update(skip_opt)
+
+    # Get global block ops
+    ops_list.insert(
+        0, ([block_desc.op(i) for i in range(op_size)], op_size, skip_opt_set))
     cfgs = [
         ControlFlowGraph(input_program, ops, forward_num, skip_opt)
         for ops, forward_num, skip_opt in ops_list

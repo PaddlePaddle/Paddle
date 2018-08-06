@@ -16,12 +16,14 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
+  platform::RecordEvent r("reduce", nullptr);
   if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);

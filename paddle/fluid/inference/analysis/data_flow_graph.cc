@@ -90,6 +90,20 @@ std::string DataFlowGraph::DotString() const {
   return dot.Build();
 }
 
+std::string DataFlowGraph::HumanReadableInfo(bool show_values,
+                                             bool show_functions) const {
+  std::stringstream values, functions;
+  for (auto &n : nodes.nodes()) {
+    if (show_values && n->IsValue()) {
+      values << n->repr() << "\n";
+    }
+    if (show_functions && n->IsFunction()) {
+      functions << n->repr() << "\n";
+    }
+  }
+  return "Values:\n" + values.str() + "\n\n" + "Functions:\n" + functions.str();
+}
+
 //
 // NodesBFSIterator
 //
@@ -146,7 +160,7 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
   if ((!queue_.empty()) && (!other.queue_.empty())) {
     return queue_.front() == other.queue_.front() &&
            visited_.size() == other.visited_.size();  // here need to check the
-                                                      // equality of queue and
+    // equality of queue and
     // visited. Just a light but week implementation.
   }
   return false;
@@ -206,6 +220,121 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator::operator=(
 }
 Node *GraphTraits<DataFlowGraph>::NodesDFSIterator::operator->() {
   return stack_.top();
+}
+
+inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
+  return node.inlinks.size() == n;
+}
+
+GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
+    const std::vector<Node *> &source) {
+  PADDLE_ENFORCE(!source.empty(),
+                 "Start points of topological sorting should not be empty!");
+  // CHECK all the inputs' in-degree is 0
+  for (auto *node : source) {
+    PADDLE_ENFORCE(CheckNodeIndegreeEquals(*node, 0));
+  }
+
+  std::unordered_set<Node *> visited;
+  std::unordered_set<Node *> to_visit{source.begin(), source.end()};
+
+  std::vector<Node *> inlink_visited;
+  while (!to_visit.empty()) {
+    std::vector<Node *> queue(to_visit.begin(), to_visit.end());
+    for (auto *p : queue) {
+      if (p->deleted()) {
+        visited.insert(p);
+        to_visit.erase(p);
+        continue;
+      }
+      inlink_visited.clear();
+
+      std::copy_if(p->inlinks.begin(), p->inlinks.end(),
+                   std::back_inserter(inlink_visited),
+                   [&](Node *x) { return visited.count(x); });
+
+      if (inlink_visited.size() == p->inlinks.size()) {
+        sorted_.push_back(p);
+        for (auto *_ : p->outlinks) {
+          if (!visited.count(_)) {
+            to_visit.insert(_);
+          }
+        }
+
+        to_visit.erase(p);
+        visited.insert(p);
+      }
+    }
+  }
+}
+
+GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
+    const paddle::inference::analysis::GraphTraits<
+        DataFlowGraph>::NodesTSIterator &other)
+    : sorted_(other.sorted_), cursor_(other.cursor_) {}
+
+Node &GraphTraits<DataFlowGraph>::NodesTSIterator::operator*() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return *sorted_[cursor_];
+}
+
+paddle::inference::analysis::GraphTraits<DataFlowGraph>::NodesTSIterator
+    &GraphTraits<DataFlowGraph>::NodesTSIterator::operator++() {
+  if (++cursor_ >= sorted_.size()) {
+    sorted_.clear();
+    cursor_ = 0;
+  }
+  return *this;
+}
+paddle::inference::analysis::GraphTraits<DataFlowGraph>::NodesTSIterator &
+GraphTraits<DataFlowGraph>::NodesTSIterator::operator=(
+    const paddle::inference::analysis::GraphTraits<
+        DataFlowGraph>::NodesTSIterator &other) {
+  cursor_ = other.cursor_;
+  sorted_ = other.sorted_;
+  return *this;
+}
+
+bool GraphTraits<DataFlowGraph>::NodesTSIterator::operator==(
+    const paddle::inference::analysis::GraphTraits<
+        DataFlowGraph>::NodesTSIterator &other) {
+  return sorted_ == other.sorted_ && cursor_ == other.cursor_;
+}
+
+Node *GraphTraits<DataFlowGraph>::NodesTSIterator::operator->() {
+  PADDLE_ENFORCE_LT(cursor_, sorted_.size());
+  return sorted_[cursor_];
+}
+
+std::pair<std::vector<Node *>, std::vector<Node *>>
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
+  std::unordered_set<Node *> nodes(graph.begin(), graph.end());
+  std::unordered_set<Node *> inputs;
+  std::unordered_set<Node *> outputs;
+  // Input a Value, check whether its inlink is in the subgraph.
+  auto inlink_in_subgraph = [&](Node *n) {
+    for (auto *in : n->inlinks) {
+      if (nodes.count(in)) return true;
+    }
+    return false;
+  };
+  for (auto &node : graph) {
+    for (auto *in : node->inlinks) {
+      // The Value that is written by nodes inside a sub-graph shouldn't be the
+      // input of the sub-graph.
+      if (!nodes.count(in) && in->type() == Node::Type::kValue &&
+          !inlink_in_subgraph(in)) {
+        inputs.insert(in);
+      }
+    }
+    for (auto *out : node->outlinks) {
+      if (!nodes.count(out) && out->type() == Node::Type::kValue) {
+        outputs.insert(out);
+      }
+    }
+  }
+  return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
+                        std::vector<Node *>(outputs.begin(), outputs.end()));
 }
 
 }  // namespace analysis
