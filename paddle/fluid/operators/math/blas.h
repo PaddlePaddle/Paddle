@@ -90,6 +90,7 @@ class Blas {
   void GEMM(bool transA, bool transB, int M, int N, int K, T alpha, const T* A,
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
+#ifdef PADDLE_WITH_MKLML
   template <typename T>
   T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
                 const int K) const;
@@ -106,6 +107,7 @@ class Blas {
 
   template <typename T>
   void GEMM_FREE(T* data) const;
+#endif
 
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
@@ -163,6 +165,7 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GEMM<T>(args...);
   }
 
+#ifdef PADDLE_WITH_MKLML
   template <typename... ARGS>
   T* GEMM_ALLOC(ARGS... args) const {
     return Base()->template GEMM_ALLOC<T>(args...);
@@ -182,6 +185,7 @@ class BlasT : private Blas<DeviceContext> {
   void GEMM_FREE(ARGS... args) const {
     Base()->template GEMM_FREE<T>(args...);
   }
+#endif
 
   template <typename... ARGS>
   void MatMul(ARGS... args) const {

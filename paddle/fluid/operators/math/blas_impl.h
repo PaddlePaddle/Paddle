@@ -264,6 +264,7 @@ inline void GEMM_WARP(CBLAS_ORDER order, CBLAS_TRANSPOSE transA,
                  beta, C, ldc);
 }
 
+#ifdef PADDLE_WITH_MKLML
 template <>
 template <typename T>
 T *Blas<platform::CPUDeviceContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id,
@@ -296,6 +297,7 @@ template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMM_FREE(T *data) const {
   CBlas<T>::GEMM_FREE(data);
 }
+#endif
 
 template <>
 template <typename T>
