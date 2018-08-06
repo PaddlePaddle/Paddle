@@ -235,7 +235,7 @@ class TestResnet(TestParallelExecutorBase):
                                   use_cuda=True,
                                   use_reduce=False,
                                   iter=20,
-                                  delta2=1e-3):
+                                  delta2=1e-6):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
