@@ -111,7 +111,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
       for (size_t i = 0; i < grad.rows().size(); i++) {
         PADDLE_ENFORCE(grad.rows()[i] < grad.height(),
                        "Input rows index should less than height");
-        int64_t id_index = param.Index(grad.rows()[i]);
+        int64_t id_index = param.AutoIndex(grad.rows()[i]);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
         for (int64_t j = 0; j < grad_row_width; j++) {

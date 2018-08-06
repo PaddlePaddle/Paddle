@@ -17,6 +17,7 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -86,8 +87,8 @@ class SelectedRows {
    * @return a list of pair which contains the non-exists key and the index in
    * the value
    */
-  std::vector<std::pair<int64_t, int64_t>> Get(const std::vector<int64_t>& keys,
-                                               framework::Tensor* value) const;
+  void Get(const std::vector<int64_t>& keys, framework::Tensor* value,
+           bool auto_grown = false);
 
   /*
    * @brief Set a key-value pair into the table.
@@ -111,9 +112,29 @@ class SelectedRows {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      return static_cast<int64_t>(-1);
+      PADDLE_THROW("id %s not in table", key);
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
+  }
+
+  int64_t AutoGrownIndex(int64_t key) {
+    auto iter = id_to_index.find(key);
+    if (iter == id_to_index.end()) {
+      std::lock_guard<std::mutex> lock(*auto_grown_mutex_);
+      rows_.push_back(key);
+      int64_t index = static_cast<int64_t>(rows_.size() - 1);
+      id_to_index[key] = index;
+      return index;
+    }
+    return iter->second;
+  }
+
+  int64_t AutoIndex(int64_t key) const {
+    auto iter = id_to_index.find(key);
+    if (iter == id_to_index.end()) {
+      PADDLE_THROW("Id %s not in table", key);
+    }
+    return iter->second;
   }
 
   DDim GetCompleteDims() const {
@@ -127,6 +148,7 @@ class SelectedRows {
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
+  std::unordered_map<int64_t, int64_t> id_to_index;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
   std::unique_ptr<std::mutex> auto_grown_mutex_{nullptr};

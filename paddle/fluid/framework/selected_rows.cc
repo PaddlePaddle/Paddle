@@ -120,11 +120,10 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
-std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
-    const std::vector<int64_t>& keys, framework::Tensor* value) const {
+void SelectedRows::Get(const std::vector<int64_t>& keys,
+                       framework::Tensor* value, bool auto_grown) {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
-  std::vector<std::pair<int64_t, int64_t>> non_keys_pair;
   if (keys.empty()) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
@@ -134,19 +133,19 @@ std::vector<std::pair<int64_t, int64_t>> SelectedRows::Get(
                       "except the dims[0].");
 
     for (size_t i = 0; i < keys.size(); ++i) {
-      int64_t index = Index(keys[i]);
-      if (index == -1) {
-        non_keys_pair.push_back(
-            std::make_pair(keys[i], static_cast<int64_t>(i)));
+      int64_t id = keys[i];
+      int64_t index;
+      if (auto_grown) {
+        index = AutoGrownIndex(id);
       } else {
-        framework::VisitDataType(
-            framework::ToDataType(value_->type()),
-            TensorCopyVisitor(value, i * value_width, *value_.get(),
-                              index * value_width, value_width));
+        index = Index(id);
       }
+      framework::VisitDataType(
+          framework::ToDataType(value_->type()),
+          TensorCopyVisitor(value, i * value_width, *value_.get(),
+                            index * value_width, value_width));
     }
   }
-  return non_keys_pair;
 }
 
 bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
@@ -167,6 +166,7 @@ bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
     is_new_key = true;
     // whether need to resize the table
     if (static_cast<int64_t>(rows_.size()) > value_->dims()[0]) {
+      VLOG(3) << "rows is full, needs to reallocate a bigger one";
       auto dims = value_->dims();
       dims[0] = (dims[0] + 1) << 1;
       framework::VisitDataType(framework::ToDataType(value.type()),
