@@ -132,19 +132,12 @@ class TestUniformInitializer(unittest.TestCase):
                 lod_level=0,
                 name="param",
                 initializer=initializer.UniformInitializer(-4.2, float(i), 123))
-        self.assertEqual(len(block.ops), 2)
+        self.assertEqual(len(block.ops), 1)
         init_op0 = block.ops[0]
         self.assertEqual(init_op0.type, 'uniform_random')
         self.assertAlmostEqual(init_op0.attr('min'), -4.2, delta=DELTA)
         self.assertAlmostEqual(init_op0.attr('max'), 1.0, delta=DELTA)
         self.assertEqual(init_op0.attr('seed'), 123)
-
-        self.assertEqual(len(block.ops), 2)
-        init_op1 = block.ops[1]
-        self.assertEqual(init_op1.type, 'uniform_random')
-        self.assertAlmostEqual(init_op1.attr('min'), -4.2, delta=DELTA)
-        self.assertAlmostEqual(init_op1.attr('max'), 0.0, delta=DELTA)
-        self.assertEqual(init_op1.attr('seed'), 123)
 
 
 class TestNormalInitializer(unittest.TestCase):
