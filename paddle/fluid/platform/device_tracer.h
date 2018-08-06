@@ -99,9 +99,5 @@ std::string CurAnnotation();
 void SetCurBlock(int block_id);
 void ClearCurBlock();
 int BlockDepth();
-
-void SetCurThread(int thread_id);
-void ClearCurThread();
-int CurThread();
 }  // namespace platform
 }  // namespace paddle

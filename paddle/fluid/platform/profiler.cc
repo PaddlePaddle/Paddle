@@ -190,7 +190,7 @@ RecordEvent::~RecordEvent() {
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
-                          BlockDepth(), CurThread());
+                          BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
@@ -211,19 +211,9 @@ RecordBlock::~RecordBlock() {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
     tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
-                          CurThread());
+                          g_thread_id);
   }
   ClearCurBlock();
-}
-
-RecordThread::RecordThread(int thread_id) {
-  if (g_state == ProfilerState::kDisabled) return;
-  SetCurThread(thread_id);
-}
-
-RecordThread::~RecordThread() {
-  if (g_state == ProfilerState::kDisabled) return;
-  ClearCurThread();
 }
 
 void EnableProfiler(ProfilerState state) {

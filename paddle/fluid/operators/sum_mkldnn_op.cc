@@ -88,7 +88,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         input_format = memory::format::nc;
       }
 
-      for (int i = in_place ? 1 : 0; i < N; i++) {
+      for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
                        "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();

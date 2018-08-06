@@ -20,6 +20,11 @@ from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
 
+from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import max_sequence_len
+from paddle.fluid.layers.control_flow import lod_tensor_to_array
+from paddle.fluid.layers.control_flow import array_to_lod_tensor
+
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
     def place(self):
@@ -137,13 +142,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[10])
             x.persistable = True
-            table = layers.lod_rank_table(x, level=level)
-            max_len = layers.max_sequence_len(table)
+            table = lod_rank_table(x, level=level)
+            max_len = max_sequence_len(table)
             max_len.persistable = True
-            array = layers.lod_tensor_to_array(x, table)
+            array = lod_tensor_to_array(x, table)
             array.persistable = True
 
-            result = layers.array_to_lod_tensor(array, table)
+            result = array_to_lod_tensor(array, table)
             result.persistable = True
         exe = Executor(place)
         scope = core.Scope()
@@ -181,9 +186,9 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         with program_guard(program):
             x = layers.data(
                 name='x', shape=[1], dtype='float32', stop_gradient=False)
-            table = layers.lod_rank_table(x, level=0)
-            array = layers.lod_tensor_to_array(x, table)
-            result = layers.array_to_lod_tensor(array, table)
+            table = lod_rank_table(x, level=0)
+            array = lod_tensor_to_array(x, table)
+            result = array_to_lod_tensor(array, table)
 
             mean = layers.mean(result)
 
