@@ -62,24 +62,6 @@ def init_on_cpu():
     _force_init_on_cpu_ = pre_state
 
 
-def _is_inited_by(block, var, init_op_types):
-    for op in block.ops:
-        if var.name in op.output_arg_names and op.type in init_op_types:
-            return op
-    return None
-
-
-def _is_duplicated_init_op(op1, op2):
-    if op1.block == op2.block and \
-            op1.type == op2.type and \
-            op1.input_arg_names == op2.input_arg_names and \
-            op1.output_arg_names == op2.output_arg_names and \
-            op1.idx != op2.idx and \
-            op1.all_attrs() == op2.all_attrs():
-        return True
-    return False
-
-
 class Initializer(object):
     """Base class for variable initializers
 
@@ -165,7 +147,6 @@ class ConstantInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var, ['fill_constant'])
         # Initialization Ops should be prepended and not appended
         op = block._prepend_op(
             type="fill_constant",
@@ -176,9 +157,6 @@ class ConstantInitializer(Initializer):
                 "value": float(self._value),
                 'force_cpu': self._force_cpu or force_init_on_cpu()
             })
-        if init_op is not None and _is_duplicated_init_op(init_op, op):
-            block._remove_op(0)
-            return init_op
         var.op = op
         return op
 
@@ -221,7 +199,6 @@ class UniformInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var, ['uniform_random'])
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -235,9 +212,6 @@ class UniformInitializer(Initializer):
                 "max": self._high,
                 "seed": self._seed
             })
-        if init_op is not None and _is_duplicated_init_op(init_op, op):
-            block._remove_op(0)
-            return init_op
         var.op = op
         return op
 
@@ -279,7 +253,6 @@ class NormalInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var, ['gaussian_random'])
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
@@ -293,9 +266,6 @@ class NormalInitializer(Initializer):
                 "std": self._std_dev,
                 "seed": self._seed
             })
-        if init_op is not None and _is_duplicated_init_op(init_op, op):
-            block._remove_op(0)
-            return init_op
         var.op = op
         return op
 
@@ -365,9 +335,6 @@ class XavierInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var,
-                                ['uniform_random', 'gaussian_random'])
-
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in and fan_out are passed, use them
@@ -402,9 +369,6 @@ class XavierInitializer(Initializer):
                     "std": std,
                     "seed": self._seed
                 })
-        if init_op is not None and _is_duplicated_init_op(init_op, op):
-            block._remove_op(0)
-            return init_op
         var.op = op
         return op
 
@@ -470,9 +434,6 @@ class MSRAInitializer(Initializer):
         """
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
-        init_op = _is_inited_by(block, var,
-                                ['uniform_random', 'gaussian_random'])
-
         f_in, f_out = self._compute_fans(var)
 
         # If fan_in is passed, use it
@@ -506,9 +467,6 @@ class MSRAInitializer(Initializer):
                     "std": std,
                     "seed": self._seed
                 })
-        if init_op is not None and _is_duplicated_init_op(init_op, op):
-            block._remove_op(0)
-            return init_op
         var.op = op
         return op
 
@@ -574,8 +532,6 @@ class BilinearInitializer(Initializer):
         if not isinstance(block, framework.Block):
             raise ValueError("block must be framework.Block.")
 
-        init_op = _is_inited_by(block, var, 'assign_value')
-
         shape = var.shape
         if len(shape) != 4:
             raise ValueError("the length of shape must be 4.")
@@ -609,9 +565,6 @@ class BilinearInitializer(Initializer):
                 'shape': list(shape),
                 value_name: values
             })
-        if init_op is not None and _is_duplicated_init_op(init_op, op):
-            block._remove_op(0)
-            return init_op
         var.op = op
         return op
 
