@@ -30,9 +30,6 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 namespace {
-// Current thread's id. Note, we don't distinguish nested threads
-// for now.
-thread_local int cur_thread_id = 0;
 // Tracking the nested block stacks of each thread.
 thread_local std::deque<int> block_id_stack;
 // Tracking the nested event stacks.
@@ -413,12 +410,5 @@ void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }
 void ClearCurBlock() { block_id_stack.pop_back(); }
 
 int BlockDepth() { return block_id_stack.size(); }
-
-void SetCurThread(int thread_id) { cur_thread_id = thread_id; }
-
-void ClearCurThread() { cur_thread_id = 0; }
-
-int CurThread() { return cur_thread_id; }
-
 }  // namespace platform
 }  // namespace paddle
