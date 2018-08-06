@@ -16,19 +16,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/sampling_id_op.h"
 
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
-
-class SamplingIdOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext *ctx) const override {}
-}
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sampling_id,
