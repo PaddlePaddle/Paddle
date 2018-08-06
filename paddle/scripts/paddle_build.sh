@@ -430,7 +430,7 @@ EOF
         PPO_SCRIPT_BRANCH=master
     else
         # Early exit, this branch doesn't require documentation build
-        exit 0;
+        return 0;
     fi
      # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
     export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
