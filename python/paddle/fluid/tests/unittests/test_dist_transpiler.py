@@ -54,6 +54,7 @@ class TranspilerTest(unittest.TestCase):
     def get_trainer(self, config=None):
         t = self._transpiler_instance(config)
         return t.get_trainer_program(), fluid.default_startup_program()
+        #return t.get_trainer_program(), t._get_trainer_startup_program()
 
     def get_pserver(self, ep, config=None):
         t = self._transpiler_instance(config)
@@ -144,7 +145,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
         pserver, startup = self.get_pserver(self.pserver1_ep, config)
         pserver2, startup2 = self.get_pserver(self.pserver2_ep, config)
 
-        trainer = self.get_trainer(config)
+        trainer, _ = self.get_trainer(config)
 
         self.assertEqual([op.type for op in trainer.global_block().ops], [
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',

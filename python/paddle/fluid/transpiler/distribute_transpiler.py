@@ -359,7 +359,7 @@ class DistributeTranspiler(object):
         recv_vars = []
         for _, var in enumerate(send_vars):
             recv_vars.append(self.grad_param_mapping[var])
-        ps_dispatcher = self.split_method(self.pserver_endpoints)
+        ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
