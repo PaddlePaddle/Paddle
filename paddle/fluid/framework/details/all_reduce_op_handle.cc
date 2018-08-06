@@ -17,16 +17,21 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 #ifdef PADDLE_WITH_CUDA
-AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
+                                     const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places,
                                      const platform::NCCLContextMap *ctxs)
-    : local_scopes_(local_scopes), places_(places), nccl_ctxs_(ctxs) {
+    : OpHandleBase(node),
+      local_scopes_(local_scopes),
+      places_(places),
+      nccl_ctxs_(ctxs) {
   if (nccl_ctxs_) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = nccl_ctxs_->DevCtx(p);
@@ -34,12 +39,14 @@ AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
   }
 }
 #else
-AllReduceOpHandle::AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
+                                     const std::vector<Scope *> &local_scopes,
                                      const std::vector<platform::Place> &places)
-    : local_scopes_(local_scopes), places_(places) {}
+    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
 void AllReduceOpHandle::RunImpl() {
+  platform::RecordEvent r("all_reduce", nullptr);
   if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
   } else {
