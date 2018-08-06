@@ -74,6 +74,7 @@ if (WITH_ANAKIN) # only needed in CI
     target_link_libraries(inference_anakin_api anakin anakin_saber_common)
     target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
     if (WITH_TESTING)
+        # this test is unstable, disable it first.
         #cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
                                   #ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
                                   #DEPS inference_anakin_api_shared)
