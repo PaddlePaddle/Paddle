@@ -58,7 +58,8 @@ SamplingId Operator.
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    slice, ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, float>,
+    sampling_id,
+    ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SamplingIdKernel<paddle::platform::CUDADeviceContext, int64_t>);
