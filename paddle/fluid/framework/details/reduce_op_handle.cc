@@ -108,7 +108,9 @@ void ReduceOpHandle::RunImpl() {
         VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
         auto trg = out_var->GetMutable<framework::LoDTensor>();
-        TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+        if (reduce_sum_trg.data<void>() != trg->data<void>()) {
+          TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+        }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
