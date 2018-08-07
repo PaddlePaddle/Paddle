@@ -17,6 +17,7 @@ import multiprocessing
 from . import core
 from . import framework
 from . import executor
+from . import compat as cpt
 import warnings
 import sys
 import six
@@ -154,11 +155,14 @@ class ParallelExecutor(object):
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                p.name for p in main.global_block().iter_parameters()
+                cpt.to_literal_str(p.name)
+                for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(self.persistable_vars), main.desc, loss_name
-            if loss_name else '', scope, local_scopes, exec_strategy,
+            set(cpt.to_literal_str(var)
+                for var in self.persistable_vars), main.desc,
+            cpt.to_literal_str(loss_name)
+            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
@@ -270,7 +274,8 @@ class ParallelExecutor(object):
             self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
-        self.executor.run(fetch_list, fetch_var_name)
+        self.executor.run(
+            cpt.to_literal_str(fetch_list), cpt.to_literal_str(fetch_var_name))
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:

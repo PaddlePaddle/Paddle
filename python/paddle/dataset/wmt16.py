@@ -29,6 +29,7 @@ Multi30K: Multilingual English-German Image Descriptions.
 """
 
 import os
+import six
 import tarfile
 import gzip
 from collections import defaultdict
@@ -120,7 +121,7 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
 
         with tarfile.open(tar_file, mode="r") as f:
             for line in f.extractfile(file_name):
-                line_split = line.strip().split("\t")
+                line_split = line.strip().split(six.b("\t"))
                 if len(line_split) != 2:
                     continue
                 src_words = line_split[src_col].split()

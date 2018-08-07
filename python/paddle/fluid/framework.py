@@ -19,6 +19,7 @@ import six
 
 import numpy as np
 
+from . import compat as cpt
 from .proto import framework_pb2
 try:
     from . import core
@@ -87,7 +88,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     else:
-        raise ValueError("Not supported numpy dtype " + six.binary_type(dtype))
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -198,11 +199,11 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        name = name if isinstance(name, six.binary_type) else name.encode()
-        self.desc = self.block.desc.find_var(name)
+        name = cpt.to_literal_str(name)
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
         if self.desc is None:
-            self.desc = self.block.desc.var(name)
+            self.desc = self.block.desc.var(cpt.to_bytes(name))
             is_new_var = True
 
         if is_new_var:
@@ -325,7 +326,7 @@ class Variable(object):
 
     @property
     def name(self):
-        return self.desc.name()
+        return cpt.to_literal_str(self.desc.name())
 
     @name.setter
     def name(self, new_name):
@@ -529,10 +530,7 @@ class Operator(object):
                         elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            if isinstance(arg.name, six.string_types):
-                                in_arg_names.append(arg.name)
-                            elif isinstance(arg.name, six.binary_type):
-                                in_arg_names.append(arg.name.decode())
+                            in_arg_names.append(cpt.to_literal_str(arg.name))
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -561,12 +559,7 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    if isinstance(arg.name, six.string_types):
-                        out_arg_names.append(arg.name)
-                    elif isinstance(arg.name, six.binary_type):
-                        out_arg_names.append(arg.name.decode())
-                    else:
-                        out_arg_names.append(six.u(arg.name))
+                    out_arg_names.append(cpt.to_literal_str(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -994,6 +987,9 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
+        name = cpt.to_literal_str(name)
+        new_name = cpt.to_literal_str(new_name)
+
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
         v = self.var(name)
@@ -1012,9 +1008,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(name, new_name)
+        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(new_name)
+        d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
             var = Parameter(
                 self,
@@ -1045,7 +1041,7 @@ class Block(object):
 
     def _remove_var(self, name):
         self._sync_with_cpp()
-        self.desc._remove_var(name)
+        self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -1128,7 +1124,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(var):
+            if not self.desc.find_var(cpt.to_bytes(var)):
                 self.vars.pop(var)
 
         # sync operators from cpp

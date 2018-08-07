@@ -751,7 +751,7 @@ def open_files(filenames,
     else:
         buffer_size = int(buffer_size)
 
-    if isinstance(filenames, basestring):
+    if isinstance(filenames, six.string_types):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []

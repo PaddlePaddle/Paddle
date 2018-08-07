@@ -56,7 +56,7 @@ def batch_images_from_tar(data_file,
     :type data_file: string
     :param dataset_name: 'train','test' or 'valid'
     :type dataset_name: string
-    :param img2label: a dic with image file name as key 
+    :param img2label: a dic with image file name as key
                     and image's label as value
     :type img2label: dic
     :param num_per_batch: image number per batch file
@@ -88,7 +88,7 @@ def batch_images_from_tar(data_file,
                 output['data'] = data
                 pickle.dump(
                     output,
-                    open('%s/batch_%d' % (out_path, file_id), 'w'),
+                    open('%s/batch_%d' % (out_path, file_id), 'wb'),
                     protocol=pickle.HIGHEST_PROTOCOL)
                 file_id += 1
                 data = []
@@ -99,7 +99,7 @@ def batch_images_from_tar(data_file,
         output['data'] = data
         pickle.dump(
             output,
-            open('%s/batch_%d' % (out_path, file_id), 'w'),
+            open('%s/batch_%d' % (out_path, file_id), 'wb'),
             protocol=pickle.HIGHEST_PROTOCOL)
 
     with open(meta_file, 'a') as meta:
@@ -113,7 +113,7 @@ def load_image_bytes(bytes, is_color=True):
     Load an color or gray image from bytes array.
 
     Example usage:
-    
+
     .. code-block:: python
 
         with open('cat.jpg') as f:
@@ -137,7 +137,7 @@ def load_image(file, is_color=True):
     Load an color or gray image from the file path.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = load_image('cat.jpg')
@@ -161,16 +161,16 @@ def load_image(file, is_color=True):
 
 
 def resize_short(im, size):
-    """ 
+    """
     Resize an image so that the length of shorter edge is size.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
-    
+
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param size: the shorter edge size of image after resizing.
@@ -193,17 +193,17 @@ def to_chw(im, order=(2, 0, 1)):
     according the order (2,0,1).
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
         im = to_chw(im)
-    
+
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param order: the transposed order.
-    :type order: tuple|list 
+    :type order: tuple|list
     """
     assert len(im.shape) == len(order)
     im = im.transpose(order)
@@ -215,11 +215,11 @@ def center_crop(im, size, is_color=True):
     Crop the center of image with size.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = center_crop(im, 224)
-    
+
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param size: the cropping size.
@@ -243,11 +243,11 @@ def random_crop(im, size, is_color=True):
     Randomly crop input image with size.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = random_crop(im, 224)
-    
+
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param size: the cropping size.
@@ -272,11 +272,11 @@ def left_right_flip(im, is_color=True):
     Return the flipped image.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = left_right_flip(im)
-    
+
     :param im: input image with HWC layout or HW layout for gray image
     :type im: ndarray
     :param is_color: whether input image is color or not
@@ -299,7 +299,7 @@ def simple_transform(im,
     resizing, croping and flipping.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = simple_transform(im, 256, 224, True)
@@ -314,7 +314,7 @@ def simple_transform(im,
     :type is_train: bool
     :param is_color: whether the image is color or not.
     :type is_color: bool
-    :param mean: the mean values, which can be element-wise mean values or 
+    :param mean: the mean values, which can be element-wise mean values or
                  mean values per channel.
     :type mean: numpy array | list
     """
@@ -332,7 +332,7 @@ def simple_transform(im,
     im = im.astype('float32')
     if mean is not None:
         mean = np.array(mean, dtype=np.float32)
-        # mean value, may be one value per channel 
+        # mean value, may be one value per channel
         if mean.ndim == 1 and is_color:
             mean = mean[:, np.newaxis, np.newaxis]
         elif mean.ndim == 1:
@@ -357,7 +357,7 @@ def load_and_transform(filename,
     for the transform operations.
 
     Example usage:
-    
+
     .. code-block:: python
 
         im = load_and_transform('cat.jpg', 256, 224, True)
@@ -372,7 +372,7 @@ def load_and_transform(filename,
     :type is_train: bool
     :param is_color: whether the image is color or not.
     :type is_color: bool
-    :param mean: the mean values, which can be element-wise mean values or 
+    :param mean: the mean values, which can be element-wise mean values or
                  mean values per channel.
     :type mean: numpy array | list
     """

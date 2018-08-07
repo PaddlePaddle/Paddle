@@ -1017,7 +1017,7 @@ class DistributeTranspiler(object):
 
             for i, block in enumerate(splited):
                 size = block[1]
-                rows = size / orig_dim1_flatten
+                rows = size // orig_dim1_flatten
                 splited_shape = [rows]
                 if len(orig_shape) >= 2:
                     splited_shape.extend(orig_shape[1:])

@@ -20,6 +20,7 @@ import shutil
 import sys
 import importlib
 import paddle.dataset
+import paddle.fluid.compat as cpt
 import six.moves.cPickle as pickle
 import glob
 
@@ -93,7 +94,7 @@ def download(url, module_name, md5sum, save_name=None):
                 total_length = int(total_length)
                 for data in r.iter_content(chunk_size=4096):
                     dl += len(data)
-                    f.write(data)
+                    f.write(cpt.to_literal_str(data))
                     done = int(50 * dl / total_length)
                     sys.stdout.write("\r[%s%s]" % ('=' * done,
                                                    ' ' * (50 - done)))
