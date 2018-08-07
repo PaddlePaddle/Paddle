@@ -91,11 +91,20 @@ void ReduceOpHandle::RunImpl() {
   } else {
     std::vector<const LoDTensor *> lod_tensors =
         GetInputValues<LoDTensor>(in_var_handles, var_scopes);
+
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
       this->RunAndRecordEvent([&] {
-        ReduceLoDTensor func(lod_tensors,
-                             out_var->GetMutable<framework::LoDTensor>());
+        auto &reduce_sum_trg = *this->local_scopes_[0]
+                                    ->FindVar(kLocalExecScopeName)
+                                    ->Get<Scope *>()
+                                    ->FindVar(out_var_handle->name_)
+                                    ->GetMutable<framework::LoDTensor>();
+
+        ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
         VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+
+        auto trg = out_var->GetMutable<framework::LoDTensor>();
+        TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {
 #ifdef PADDLE_WITH_CUDA
