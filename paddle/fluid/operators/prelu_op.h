@@ -54,21 +54,33 @@ class PReluKernel : public framework::OpKernel<T> {
     int numel = x->numel();
     auto dim = x->dims();
     int index = 0;
-    for (int i = 0; i < numel; i++){
-      if (mode == "channel")
-        index = i / dim[0] % dim[1];
-      else if(mode == "element")
-        index = i;
-      *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
-    }
+    int i = 0;
+      if (mode == "channel"){
+        for (i = 0; i < numel; i++){
+          index = i / dim[0] % dim[1];
+          *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+        }
+      }
+      else if(mode == "element"){
+        for (i = 0; i < numel; i++){
+          index = i;
+          *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+        }
+      }
+      else{
+        for (i = 0; i < numel; i++){
+          *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+        }
+      }
+      
 
   }
 };
 
 template <typename T>
-class PReluGradFunctor_alpha {
+class PReluBackwardWeightFunctor {
  public:
-  explicit PReluGradFunctor_alpha(const T* x) : x_(x){}
+  explicit PReluBackwardWeightFunctor(const T* x) : x_(x){}
 
   HOSTDEVICE T operator()(const T& out, const T& dout) const {
     if (out > 0)
@@ -82,9 +94,9 @@ class PReluGradFunctor_alpha {
 };
 
 template <typename T>
-class PReluGradFunctor_X {
+class PReluBackwardInputFunctor {
  public:
-  explicit PReluGradFunctor_X(const T* alpha) : alpha_(alpha) {}
+  explicit PReluBackwardInputFunctor(const T* alpha) : alpha_(alpha) {}
 
   HOSTDEVICE T operator()(const T& out, const T& dout) const {
     if (out > 0)
@@ -118,27 +130,37 @@ class PReluGradKernel : public framework::OpKernel<T> {
     int numel = x->numel();
     auto dim = x->dims();
     int index = 0;
+    int i = 0;
     if(dx){
       T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
-      for (int i = 0; i < numel; i++){
-        if (mode == "channel")
+      if (mode == "channel"){
+        for (i = 0; i < numel; i++){
           index = i / dim[0] % dim[1];
-        else if(mode == "element")
+          *dx_ptr++ = PReluBackwardInputFunctor<T>(alpha_ptr + index)(out_ptr[i], dout_ptr[i]);
+        }
+      }
+      else if(mode == "element"){
+        for (i = 0; i < numel; i++){
           index = i;
-        *dx_ptr++ = PReluGradFunctor_X<T>(alpha_ptr + index)(out_ptr[i], dout_ptr[i]);
+          *dx_ptr++ = PReluBackwardInputFunctor<T>(alpha_ptr + index)(out_ptr[i], dout_ptr[i]);
+        } 
       }
     }
 
     index = 0;
     if(dalpha){
       T* dalpha_ptr = dalpha->mutable_data<T>(context.GetPlace());
-      for (int i = 0; i < numel; i++){
-        if (mode == "channel")
+      if (mode == "channel"){
+        for (i = 0; i < numel; i++){
           index = i / dim[0] % dim[1];
-        else if(mode == "element")
+          dalpha_ptr[index] += PReluBackwardWeightFunctor<T>(x_ptr + i)(out_ptr[i], dout_ptr[i]);
+        }
+      }
+      else if(mode == "element"){
+        for (i = 0; i < numel; i++){
           index = i;
-        dalpha_ptr[index] += PReluGradFunctor_alpha<T>(x_ptr + i)(out_ptr[i], dout_ptr[i]);
-        
+          dalpha_ptr[index] += PReluBackwardWeightFunctor<T>(x_ptr + i)(out_ptr[i], dout_ptr[i]);
+        }      
       }
     }
 

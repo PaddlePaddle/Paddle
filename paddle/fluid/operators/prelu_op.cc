@@ -26,23 +26,27 @@ class PReluOp : public framework::OperatorWithKernel {
 
     std::string mode = ctx->Attrs().Get<std::string>("mode");
 
-    auto dim = ctx->GetInputDim("X");
+    auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasInput("Alpha"), "Input(Alpha) should not be null");
     
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
-    if (mode == "all")
+    if (mode == "all"){
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
-                   "For all mode, Size of weight Alpha must be one.");
-    else if (mode == "channel")
-      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == dim[1],
-                   "For channel-wise mode, Size of weight Alpha must equal to the number of channels.");
-    else if (mode == "element")
-      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(ctx->GetInputDim("X")),
-                   "For element-wise mode, Size of weight Alpha must equal to the number of elements.");
-    else
+                   "For mode 'all', size of weight Alpha must be one.");
+    }
+    else if (mode == "channel"){
+      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == x_dim[1],
+                   "For channel-wise mode, size of weight Alpha must equal to the number of channels.");
+    }
+    else if (mode ==  "element"){
+      PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(x_dim),
+                   "For element-wise mode, size of weight Alpha must equal to the number of elements.");
+    }
+    else{
       PADDLE_ENFORCE(0,"A mode is needed.");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    }
+    ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
  protected:
