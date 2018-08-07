@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include <string>
 #include "paddle/fluid/framework/data_layout.h"
+#include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -177,6 +178,7 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    platform::RecordEvent e("batch_norm_compute", nullptr);
     const float epsilon = ctx.Attr<float>("epsilon");
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");

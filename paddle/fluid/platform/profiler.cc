@@ -136,7 +136,7 @@ double Event::CudaElapsedMs(const Event& e) const {
   PADDLE_ENFORCE(cudaEventElapsedTime(&ms, event_, e.event()));
   return ms;
 #else
-  PADDLE_THROW("CUDA is not enabled");
+  return 0;
 #endif
 }
 
