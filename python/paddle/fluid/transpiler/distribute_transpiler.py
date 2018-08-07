@@ -936,6 +936,10 @@ class DistributeTranspiler(object):
         }
         outputs = {"ParamOut": [param_var]}
         # only support sgd now
+        import logging
+        logging.warn(
+            "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
+            + table_opt_op.type)
         table_opt_block.append_op(type="sgd", inputs=inputs, outputs=outputs)
 
         # add table parameter gradient and it's block id to grad_to_block_id
