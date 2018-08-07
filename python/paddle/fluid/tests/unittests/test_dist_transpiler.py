@@ -73,9 +73,18 @@ class TranspilerTest(unittest.TestCase):
 
         return self.transpiler
 
+    def transpiler_test_impl(self):
+        pass
+
+    def test_transpiler(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            self.transpiler_test_impl()
+
 
 class TestBasicModel(TranspilerTest):
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         pserver2, startup2 = self.get_pserver(self.pserver2_ep)
 
@@ -123,7 +132,7 @@ class TestBasicModel(TranspilerTest):
 
 
 class TestBasicModelWithLargeBlockSize(TranspilerTest):
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         config = fluid.DistributeTranspilerConfig()
         config.min_block_size = 1048576
 
@@ -148,7 +157,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
                          ["sum", "scale", "sgd"])
         # confirm startup program
         self.assertEqual([op.type for op in startup.global_block().ops],
-                         ["fill_constant", "fill_constant", "fill_constant"])
+                         ["fill_constant", "fill_constant"])
         # the variable #fc_w will be split into two blocks
         fc_w_var = startup2.global_block().var("fc_w")
         self.assertEqual(fc_w_var.shape, (1000L, 1000L))
@@ -177,7 +186,7 @@ class TestNoSliceVar(TranspilerTest):
     def setUp(self):
         super(TestNoSliceVar, self).setUp()
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         config = fluid.DistributeTranspilerConfig()
         config.slice_var_up = False
 
@@ -212,7 +221,7 @@ class TestLRDecay(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
@@ -242,7 +251,7 @@ class TestLRDecayConditional(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
@@ -291,7 +300,7 @@ class TestL2Decay(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
@@ -326,7 +335,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
