@@ -31,13 +31,14 @@ All layers just related to the neural network.
 
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, default_startup_program, default_main_program
 from ..param_attr import ParamAttr
 from layer_function_generator import autodoc, templatedoc
 from tensor import concat
 import utils
 import random
 from .. import unique_name
+from .. import core
 
 __all__ = [
     'fc',
@@ -947,18 +948,48 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     """
 
     helper = LayerHelper('dropout', **locals())
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
     out = helper.create_tmp_variable(dtype=x.dtype)
-    mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+    mask = helper.create_tmp_variable(
+        dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+
+    if seed is not None:
+        seed_name = unique_name.generate('dropout_seed')
+        seed_dtype = core.VarDesc.VarType.INT64
+
+        default_startup_program().current_block().create_var(
+            name=seed_name,
+            shape=[1],
+            dtype=seed_dtype,
+            persistable=True,
+            stop_gradient=True,
+            initializer=Constant(
+                value=seed, force_cpu=True))
+
+        seed_var = default_main_program().current_block().create_var(
+            name=seed_name,
+            shape=[1],
+            dtype=seed_dtype,
+            persistable=True,
+            stop_gradient=True)
+        inputs = {'X': [x], 'SeedIn': [seed_var]}
+        outputs = {'Out': [out], 'Mask': [mask], 'SeedOut': [seed_var]}
+    else:
+        inputs = {'X': [x]}
+        outputs = {'Out': [out], 'Mask': [mask]}
+
     helper.append_op(
         type='dropout',
-        inputs={'X': [x]},
-        outputs={'Out': [out],
-                 'Mask': [mask]},
+        inputs=inputs,
+        outputs=outputs,
         attrs={
             'dropout_prob': dropout_prob,
             'is_test': is_test,
             'fix_seed': seed is not None,
-            'seed': seed if seed is not None else 0
+            'startup_seed': seed if seed is not None else 0
         })
     return out
 

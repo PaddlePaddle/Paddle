@@ -17,9 +17,9 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using framework::Tensor;
-
 class DropoutOp : public framework::OperatorWithKernel {
+  using Tensor = framework::LoDTensor;
+
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -29,6 +29,13 @@ class DropoutOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     ctx->SetOutputDim("Out", x_dims);
     if (ctx->Attrs().Get<bool>("is_test") == false) {
+      if (ctx->Attrs().Get<bool>("fix_seed")) {
+        PADDLE_ENFORCE(ctx->HasInput("SeedIn"),
+                       "Input(SeedIn) must not be null when fix_seed is true.");
+        PADDLE_ENFORCE(
+            ctx->HasOutput("SeedOut"),
+            "Output(SeedOut) must not be null when fix_seed is true.");
+      }
       ctx->SetOutputDim("Mask", x_dims);
     }
     ctx->ShareLoD("X", /*->*/ "Out");
@@ -40,14 +47,32 @@ class DropoutOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,  // NOLINT
+      const framework::OpKernelType& expected_kernel_type) const override {
+    // Prevent data transform of Input(SeedIn) from CPUPlace to CUDAPlace
+    return var_name == "SeedIn"
+               ? expected_kernel_type
+               : framework::OperatorWithKernel::GetKernelTypeForVar(
+                     var_name, tensor, expected_kernel_type);
+  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input of dropout op.");
+    AddInput("SeedIn",
+             "The input random seed of dropout op when fix_seed is true. It "
+             "may be changed after each iterations")
+        .AsDispensable();
     AddOutput("Out", "The output of dropout op.");
     AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddOutput("SeedOut",
+              "The output random seed of dropout op when fix_seed is true. It "
+              "should share memory with Input(SeedIn)")
+        .AsDispensable();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
@@ -63,8 +88,10 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(false);
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
-
+    AddAttr<int>("startup_seed",
+                 "The startup seed when fix_seed is true and Input(SeedIn) has "
+                 "not been initialized.")
+        .SetDefault(0);
     AddComment(R"DOC(
 Dropout Operator.
 
@@ -79,6 +106,8 @@ are set equal to their corresponding inputs.
 };
 
 class DropoutOpGrad : public framework::OperatorWithKernel {
+  using Tensor = framework::LoDTensor;
+
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -86,20 +115,17 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
                       "GradOp is only callable when is_test is false");
 
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) must not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Mask"), "Mask must not be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) must not be null.");
 
-    auto x_dims = ctx->GetInputDim("X");
     auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-    PADDLE_ENFORCE_EQ(x_dims, out_dims,
-                      "Dimensions of Input(X) and Out@Grad must be the same.");
     auto mask_dims = ctx->GetInputDim("Mask");
-    PADDLE_ENFORCE_EQ(x_dims, mask_dims,
-                      "Dimensions of Input(X) and Mask must be the same.");
+    PADDLE_ENFORCE_EQ(
+        out_dims, mask_dims,
+        "Dimensions of Input(Mask) and Input(Out@GRAD) must be the same.");
 
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+    ctx->SetOutputDim(framework::GradVarName("X"), mask_dims);
   }
 
  protected:
@@ -110,6 +136,19 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
             ctx.Input<Tensor>(framework::GradVarName("Out"))->type()),
         ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const framework::Tensor& tensor,  // NOLINT
+      const framework::OpKernelType& expected_kernel_type) const override {
+    // Prevent data transform of Input(SeedIn) from CPUPlace to CUDAPlace
+    return (var_name == "SeedIn" ||
+            var_name == framework::GradVarName("SeedIn") ||
+            var_name == "SeedOut" ||
+            var_name == framework::GradVarName("SeedOut"))
+               ? expected_kernel_type
+               : framework::OperatorWithKernel::GetKernelTypeForVar(
+                     var_name, tensor, expected_kernel_type);
+  }
 };
 
 }  // namespace operators
@@ -119,8 +158,7 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
-REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(dropout, ops::CPUDropoutKernel<float>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad,
     ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);

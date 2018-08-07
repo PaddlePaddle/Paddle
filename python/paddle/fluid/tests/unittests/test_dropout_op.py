@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,106 +13,158 @@
 # limitations under the License.
 
 import unittest
-import numpy as np
+import paddle.fluid as fluid
 import paddle.fluid.core as core
+import paddle.fluid.framework as framework
+import numpy as np
 from op_test import OpTest
+from op_builder import OpBuilder
 
 
-class TestDropoutOp(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-        self.outputs = {
-            'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64)).astype('float32')
-        }
+class BaseTestCase(OpTest):
+    def initParameterIterator(self):
+        self.shape_list = [(2000000, ), (1000, 2000), (100, 500, 40),
+                           (100, 20, 30, 40), (10, 20, 30, 40, 10)]
+        self.dtype_list = ['float32', 'float16']
+        self.dropout_prob_list = [0, 0, 0.2, 0.5, 1.0]
+        self.is_test_list = [False, True]
+        self.seed_list = [1, None]
 
-    def test_check_output(self):
-        self.check_output()
+        self.num_tol = 1e-6
+        self.dropout_prob_tol = 0.02
 
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.05)
+        for shape in self.shape_list:
+            self.shape = shape
+            for dtype in self.dtype_list:
+                self.dtype = dtype
+                for dropout_prob in self.dropout_prob_list:
+                    self.dropout_prob = dropout_prob
+                    for is_test in self.is_test_list:
+                        self.is_test = is_test
+                        for seed in self.seed_list:
+                            self.seed = seed
+                            yield True
 
+        yield None
 
-class TestDropoutOp2(TestDropoutOp):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {'dropout_prob': 1.0, 'fix_seed': True, 'is_test': False}
-        self.outputs = {
-            'Out': np.zeros((32, 64)).astype('float32'),
-            'Mask': np.zeros((32, 64)).astype('float32')
-        }
+    def test(self):
+        init = self.initParameterIterator()
+        while True:
+            if next(init, None) is None:
+                break
 
+            self.op_type = 'dropout'
+            self.fix_seed = self.seed is not None
 
-class TestDropoutOp3(TestDropoutOp):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64, 2)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.0, 'fix_seed': True, 'is_test': False}
-        self.outputs = {
-            'Out': self.inputs['X'],
-            'Mask': np.ones((32, 64, 2)).astype('float32')
-        }
+            if self.dropout_prob in [0.0, 1.0]:
+                self.actual_dropout_prob_tol = 0
+            else:
+                self.actual_dropout_prob_tol = self.dropout_prob_tol
 
+            self.x = np.random.uniform(
+                low=1, high=10, size=self.shape).astype(self.dtype)
 
-class TestDropoutOp4(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.35, 'fix_seed': True, 'is_test': True}
-        self.outputs = {
-            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-        }
+            self.grad_out = np.random.uniform(
+                low=1, high=10, size=self.shape).astype(self.dtype)
 
-    def test_check_output(self):
-        self.check_output()
+            self.inputs = {'X': self.x}
+            if self.fix_seed:
+                self.inputs['SeedIn'] = np.array([self.seed]).astype('int64')
 
+            self.outputs = {'Out': None, 'Mask': None}
+            if self.fix_seed:
+                self.outputs['SeedOut'] = None
 
-class TestDropoutOp5(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.inputs = {'X': np.random.random((32, 64, 3)).astype("float32")}
-        self.attrs = {'dropout_prob': 0.75, 'is_test': True}
-        self.outputs = {
-            'Out': self.inputs['X'] * (1.0 - self.attrs['dropout_prob'])
-        }
+            self.attrs = {
+                'is_test': self.is_test,
+                'startup_seed': self.seed,
+                'fix_seed': self.fix_seed,
+                'dropout_prob': float(self.dropout_prob),
+            }
 
-    def test_check_output(self):
-        self.check_output()
+            print(
+                'shape:{},dtype:{},is_test:{},startup_seed:{},fix_seed:{},dropout_prob:{}'
+                .format(self.shape, self.dtype, self.is_test, self.seed,
+                        self.fix_seed, self.dropout_prob))
 
+            self.place = fluid.CUDAPlace(0)
 
-class TestFP16DropoutOp(OpTest):
-    def setUp(self):
-        self.op_type = "dropout"
-        self.init_test_case()
+            mask1 = self.main_exec()
+            if not self.is_test and self.seed is not None:
+                mask2 = self.main_exec()
+                self.assertTrue(np.array_equal(mask1, mask2), 'Fix seed error')
 
-        x = np.random.random(self.input_size).astype("float16")
-        out = x * (1.0 - self.prob)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.attrs = {
-            'dropout_prob': self.prob,
-            'fix_seed': self.fix_seed,
-            'is_test': True
-        }
-        self.outputs = {'Out': out}
+    def main_exec(self):
+        fwd_mask = self.fwd_exec()
+        if not self.is_test:
+            bwd_mask = self.bwd_exec()
+            self.assertTrue(
+                np.array_equal(fwd_mask, bwd_mask),
+                'Forward mask and backward mask not match')
+        return fwd_mask
 
-    def init_test_case(self):
-        self.input_size = [32, 64]
-        self.prob = 0.35
-        self.fix_seed = True
+    def fwd_exec(self):
+        self.scope = core.Scope()
+        fwd_builder = OpBuilder(self.scope, self.place)
+        fwd_builder.set_type(self.op_type)
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda() and core.op_support_gpu("dropout"):
-            self.check_output_with_place(core.CUDAPlace(0), atol=1e-3)
+        for name, value in self.inputs.items():
+            fwd_builder.add_input(name, value=value)
 
+        for name, value in self.outputs.items():
+            fwd_builder.add_output(name)
 
-class TestFP16DropoutOp2(TestFP16DropoutOp):
-    def init_test_case(self):
-        self.input_size = [32, 64, 3]
-        self.prob = 0.75
-        self.fix_seed = False
+        for name, value in self.attrs.items():
+            fwd_builder.add_attr(name, value=value)
+
+        y, = fwd_builder.build_and_run(fetch_list=['Out'])
+        return self.validate_and_return_mask(self.x, y)
+
+    def bwd_exec(self):
+        bwd_builder = OpBuilder(self.scope, self.place)
+        bwd_builder.set_type(self.op_type + '_grad')
+        for name, value in self.outputs.items():
+            if name == 'Out':
+                bwd_builder.add_input(
+                    framework.grad_var_name(name), value=self.grad_out)
+            else:
+                value = np.array(self.scope.var(name).get_tensor())
+                bwd_builder.add_input(name, value=value)
+
+        for name, value in self.inputs.items():
+            bwd_builder.add_output(framework.grad_var_name(name))
+
+        x_value = np.array(self.scope.var('X').get_tensor())
+        bwd_builder.add_input('X', value=x_value)
+
+        for name, value in self.attrs.items():
+            bwd_builder.add_attr(name, value=value)
+
+        grad_x, = bwd_builder.build_and_run(
+            fetch_list=[framework.grad_var_name('X')])
+
+        return self.validate_and_return_mask(self.grad_out, grad_x)
+
+    def validate_and_return_mask(self, x, y):
+        self.assertEqual(x.shape, y.shape)
+        if self.is_test:
+            mask1 = y / x
+            max_err = np.amax(np.absolute(mask1 - 1 + self.dropout_prob))
+            self.assertTrue(max_err <= self.num_tol)
+            return np.array([1 - self.dropout_prob])
+        else:
+            mask1 = (abs(x - y) <= self.num_tol)
+            mask2 = (y != 0)
+            self.assertTrue(
+                np.array_equal(mask1, mask2), "Dropout op arithmetic error")
+            dropout_num = x.size - mask1.sum()
+            actual_dropout_ratio = float(dropout_num) / x.size
+            self.assertTrue(
+                abs(actual_dropout_ratio - self.dropout_prob) <=
+                self.actual_dropout_prob_tol,
+                "Set dropout_prob={} but actual is {}".format(
+                    self.dropout_prob, actual_dropout_ratio))
+        return mask1
 
 
 if __name__ == '__main__':
