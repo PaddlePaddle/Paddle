@@ -18,6 +18,10 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DEFINE_bool(
+    cpu_deterministic, false,
+    "Whether to make the result of computation deterministic in CPU side.");
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -98,18 +102,25 @@ void ReduceOpHandle::RunImpl() {
         // especially when the type of data is float or double.
         // For example, the result of `a+b+c+d` may be different
         // with the result of `c+a+b+d`, so the summing order should be fixed.
-        auto &reduce_sum_trg = *this->local_scopes_[0]
-                                    ->FindVar(kLocalExecScopeName)
-                                    ->Get<Scope *>()
-                                    ->FindVar(out_var_handle->name_)
-                                    ->GetMutable<framework::LoDTensor>();
+        if (!FLAGS_cpu_deterministic) {
+          ReduceLoDTensor func(lod_tensors,
+                               out_var->GetMutable<framework::LoDTensor>());
+          VisitDataType(ToDataType(lod_tensors[0]->type()), func);
+        } else {
+          // We sum lod_tensors to reduce_sum_trg which is in local_scopes_0
+          // here, but it doesn't mean reduce_sum_trg must be in local_scopes_0.
+          auto &reduce_sum_trg = *this->local_scopes_[0]
+                                      ->FindVar(kLocalExecScopeName)
+                                      ->Get<Scope *>()
+                                      ->FindVar(out_var_handle->name_)
+                                      ->GetMutable<framework::LoDTensor>();
+          ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
+          VisitDataType(ToDataType(lod_tensors[0]->type()), func);
 
-        ReduceLoDTensor func(lod_tensors, &reduce_sum_trg);
-        VisitDataType(ToDataType(lod_tensors[0]->type()), func);
-
-        auto trg = out_var->GetMutable<framework::LoDTensor>();
-        if (reduce_sum_trg.data<void>() != trg->data<void>()) {
-          TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+          auto trg = out_var->GetMutable<framework::LoDTensor>();
+          if (reduce_sum_trg.data<void>() != trg->data<void>()) {
+            TensorCopy(reduce_sum_trg, platform::CPUPlace(), trg);
+          }
         }
       });
     } else if (paddle::platform::is_gpu_place(lod_tensors[0]->place())) {

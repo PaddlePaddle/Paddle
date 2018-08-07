@@ -36,10 +36,11 @@ struct BuildStrategy {
   // equal for GPU. Because, the result of the different order of summing maybe
   // different, for example, the result of `a+b+c+d` may be different with the
   // result of `c+a+b+d`.
-  // For GPU, the implementation of kAllReduce and kReduce
-  // is adopted NCCL, so the result of kAllReduce and kReduce maybe not equal.
-  // For CPU, we can fix the order of summing, so the result of kAllReduce and
-  // kReduce should be equal.
+  // For GPU, the implementation of kAllReduce and kReduce is adopted NCCL,
+  // so the result of kAllReduce and kReduce maybe not equal.
+  // For CPU, if you want to fix the order of summing to make the result
+  // of kAllReduce and kReduce no diff, you can add
+  // `FLAGS_cpu_deterministic=true` to env.
   enum class ReduceStrategy { kAllReduce = 0, kReduce = 1 };
 
   enum class GradientScaleStrategy {
