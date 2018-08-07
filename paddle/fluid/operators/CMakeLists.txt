@@ -329,3 +329,5 @@ cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
 nv_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
 nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)
+cc_test(multi_thread_op_test SRCS multi_thread_op_test.cc DEPS conv_op batch_norm_op
+        uniform_random_op mul_op)
