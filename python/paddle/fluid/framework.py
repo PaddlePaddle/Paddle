@@ -739,6 +739,15 @@ class Operator(object):
         else:
             self.desc.set_attr(name, val)
 
+    def _sync_with_cpp(self):
+        """
+        Sync attrs from c++ end.
+        """
+        for name in self.desc.attr_names():
+            attr = self.desc.attr(name)
+            self.attrs[name] = attr
+        print "attrs:", self.attrs
+
     @property
     def attr_names(self):
         return self.desc.attr_names()
@@ -1167,6 +1176,7 @@ class Block(object):
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
+            self.ops[index]._sync_with_cpp()
 
     def _copy_param_info_from(self, other):
         """
@@ -1398,7 +1408,7 @@ class Program(object):
         """
         return self.desc
 
-    def clone(self, for_test=False):
+    def clone(self, for_test=False, detail=False):
         """
         Create a new, duplicated program.
 
@@ -1485,6 +1495,11 @@ class Program(object):
             p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            if detail:
+                for t in p.blocks:
+                    print("block ops:", t.ops)
+                for t in self.blocks:
+                    print("block ops 2:", len(t.ops))
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)

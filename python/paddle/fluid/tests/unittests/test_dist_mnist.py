@@ -112,6 +112,8 @@ def run_pserver(pserver_endpoints, trainers, current_endpoint):
     pserver_prog = t.get_pserver_program(current_endpoint)
     startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
 
+    #print "pserver_startup_prog:", startup_prog
+
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     exe.run(startup_prog)
@@ -149,15 +151,18 @@ class TestDistMnist(unittest.TestCase):
         os.kill(pid, signal.SIGTERM)
 
     def test_with_place(self):
+        role = os.getenv('PADDLE_ROLE')
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-
-        pserver_pid = self.start_pserver(self._ps_endpoints)
-        self._wait_ps_ready(pserver_pid)
-
-        self.run_trainer(p, 0)
-
-        self.stop_pserver(pserver_pid)
+        if role == "pserver":
+            pserver_pid = self.start_pserver(self._ps_endpoints)
+            self._wait_ps_ready(pserver_pid)
+            print "pserver started"
+            time.sleep(1800)
+            self.stop_pserver(pserver_pid)
+        else:
+            print "start trainer"
+            self.run_trainer(p, 0)
 
     def run_trainer(self, place, trainer_id):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = get_model(
@@ -166,10 +171,16 @@ class TestDistMnist(unittest.TestCase):
                            fluid.default_main_program(), self._ps_endpoints,
                            self._trainers)
 
+        fetch_list = ["conv2d_0.w_0"]
         trainer_prog = t.get_trainer_program()
 
+        #print "trainer_startup_prog:", fluid.default_startup_program()
+
         exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        outs = exe.run(fluid.default_startup_program(), fetch_list=fetch_list)
+        #print "outs conv2d_0.w_0:", outs[0]
+
+        #return
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.itervalues()
@@ -177,7 +188,7 @@ class TestDistMnist(unittest.TestCase):
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        for pass_id in xrange(10):
+        for pass_id in xrange(1):
             for batch_id, data in enumerate(train_reader()):
                 exe.run(trainer_prog, feed=feeder.feed(data))
 

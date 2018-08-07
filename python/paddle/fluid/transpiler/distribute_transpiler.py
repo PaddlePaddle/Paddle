@@ -197,7 +197,17 @@ class DistributeTranspiler(object):
         if program is None:
             program = default_main_program()
         self.origin_program = program
-        self.origin_startup_program = default_startup_program().clone()
+        self.origin_startup_program = default_startup_program().clone(
+            detail=True)
+
+        #print("origin_startup_program:")
+        #for op in self.origin_startup_program.global_block().ops:
+        #    print("op_name:", op.type, "attrs:", op.attrs, "op_outputs", op.output)
+
+        #print("default_startup_program:")
+        #for op in default_startup_program().global_block().ops:
+        #    print("op_name:", op.type, "attrs:", op.attrs, "op_outputs", op.output)
+
         self.startup_program = default_startup_program()
         self.trainer_num = trainers
         self.sync_mode = sync_mode
@@ -628,6 +638,7 @@ class DistributeTranspiler(object):
         """
         s_prog = Program()
         orig_s_prog = self.origin_startup_program
+        #print("orig_s_prog:", orig_s_prog)
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
@@ -654,6 +665,7 @@ class DistributeTranspiler(object):
             if op.type not in ["recv", "fetch_barrier", "concat"]:
                 for key in op.output_names:
                     newname, _ = _get_splited_name_and_shape(op.output(key)[0])
+                    #print("op:", op.type, "key:", key, "newname:", newname)
                     if newname:
                         op_on_pserver = True
                         new_outputs[key] = created_var_map[newname]
@@ -668,12 +680,18 @@ class DistributeTranspiler(object):
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
+                    #print("beore op:", op.type, "attrs:", op.attrs, "outputs:", new_outputs, "op:", op)
                     op.attrs["shape"] = new_outputs["Out"].shape
+                    #print("after op:", op.type, "attrs:", op.attrs, "outputs:", new_outputs, "op:", op)
                 s_prog.global_block().append_op(
                     type=op.type,
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.attrs)
+                if "learning_rate_0" in op.output(key)[0]:
+                    print("s_prog3:", s_prog)
+                    #break
+                #print("orig_s_prog 2:", orig_s_prog)
         return s_prog
 
     # ====================== private transpiler functions =====================

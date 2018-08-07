@@ -151,11 +151,11 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
   }
   // God bless you not need to open it to compare the float data.
-  VLOG(11) << DebugInputsStrings(scope);
+  std::cout << DebugInputsStrings(scope) << std::endl;
 
   RunImpl(scope, place);
 
-  VLOG(11) << DebugOutputsStrings(scope);
+  std::cout << DebugOutputsStrings(scope) << std::endl << std::endl;
   VLOG(10) << "+ " << DebugStringEx(&scope);
 }
 
