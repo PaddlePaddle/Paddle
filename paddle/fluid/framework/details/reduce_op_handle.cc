@@ -94,6 +94,10 @@ void ReduceOpHandle::RunImpl() {
 
     if (paddle::platform::is_cpu_place(lod_tensors[0]->place())) {
       this->RunAndRecordEvent([&] {
+        // FIXME(zcd): The order of summing is important,
+        // especially when the type of data is float or double.
+        // For example, the result of `a+b+c+d` may be different
+        // with the result of `c+a+b+d`, so the summing order should be fixed.
         auto &reduce_sum_trg = *this->local_scopes_[0]
                                     ->FindVar(kLocalExecScopeName)
                                     ->Get<Scope *>()

@@ -277,7 +277,7 @@ class TestResnet(TestParallelExecutorBase):
 
     def test_seresnext_with_new_strategy(self):
         self._compare_reduce_and_allreduce(
-            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-4)
+            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-2)
         self._compare_reduce_and_allreduce(
             model=SE_ResNeXt50Small, use_cuda=False, iter=5)
 
