@@ -39,11 +39,6 @@ class SendBarrierOp : public framework::OperatorBase {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
     bool sync_mode = Attr<bool>("sync_mode");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
-
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 

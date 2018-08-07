@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <cuda.h>
+// NOTE(): support float16 to half in header file.
+#define PADDLE_CUDA_FP16
+#include <cuda_fp16.h>
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace platform {
@@ -36,6 +40,18 @@ __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
 #endif
 }
 
+// CUDA 9.0 have native compatible float16 shfl_down
+#if CUDA_VERSION < 9000
+template <>
+__forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
+                                                       float16 val, int delta,
+                                                       int width) {
+  half tmp = static_cast<half>(val);
+  __shfl_down(tmp, static_cast<unsigned>(delta), width);
+  return float16(tmp);
+}
+#endif
+
 template <typename T>
 __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
                                              int width = 32) {
@@ -44,6 +60,11 @@ __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
 #else
   return __shfl_sync(mask, val, src_line, width);
 #endif
+}
+
+template <typename T>
+HOSTDEVICE T Infinity() {
+  return INFINITY;
 }
 
 template <typename T>
