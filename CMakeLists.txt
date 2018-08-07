@@ -200,6 +200,14 @@ include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
 
+if(WITH_GPU)
+    include(cuda)
+    include(tensorrt)
+    include(external/anakin)
+else()
+  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
+endif()
+
 include(cudnn)              # set cudnn libraries, must before configure
 include(cupti)
 include(configure)          # add paddle env configuration
@@ -227,14 +235,6 @@ set(EXTERNAL_LIBS
     zlib
     ${PYTHON_LIBRARIES}
 )
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-    include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
-endif()
 
 if(WITH_AMD_GPU)
     find_package(HIP)
