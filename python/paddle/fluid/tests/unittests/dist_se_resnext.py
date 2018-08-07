@@ -289,7 +289,7 @@ class DistSeResneXt2x2:
         else:
             trainer_prog = fluid.default_main_program()
 
-        startup_exe = fluid.Executor(fluid.CUDAPlace(0))
+        startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())
 
         strategy = fluid.ExecutionStrategy()
