@@ -20,17 +20,16 @@ from op_test import OpTest
 class PReluTest(OpTest):
     def setUp(self):
         self.op_type = "prelu"
-        x_np = np.random.normal(size=(2, 3,2)).astype("float32")
+        x_np = np.random.normal(size=(2,8)).astype("float32")
 
             # Since zero point in prelu is not differentiable, avoid randomize
             # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
-
         x_np_sign = np.sign(x_np)
         x_np = x_np_sign * np.maximum(x_np, .005)
-        alpha_np = np.array([.1,.2,.1], dtype="float32").reshape([1,3,1])
+        alpha_np = np.array([.1], dtype="float32")
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
-        self.attrs = {'mode': "channel"}
+        self.attrs = {'mode': "all"}
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'],
                                      0.) * self.inputs['Alpha']

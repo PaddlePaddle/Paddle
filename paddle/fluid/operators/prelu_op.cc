@@ -34,16 +34,13 @@ class PReluOp : public framework::OperatorWithKernel {
     if (mode == "all"){
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == 1,
                    "For mode 'all', size of weight Alpha must be one.");
-    }
-    else if (mode == "channel"){
+    }else if (mode == "channel"){
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == x_dim[1],
                    "For channel-wise mode, size of weight Alpha must be equal to the number of channels, should be %d", x_dim[1]);
-    }
-    else if (mode ==  "element"){
+    }else if (mode ==  "element"){
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(x_dim),
                    "For element-wise mode, size of weight Alpha must be equal to the number of input, should be %d", product(x_dim));
-    }
-    else{
+    }else{
       PADDLE_THROW("Unkown mode %s", mode);
     }
     ctx->SetOutputDim("Out", x_dim);
@@ -76,7 +73,6 @@ x,         \qquad  \text{if} \ x >= 0
 $$
 The input `X` can carry the LoD (Level of Details) information,
 or not. And the output shares the LoD information with input `X`.
-
 There are modes: 
   all: all elements share same weight
   channel:elements in a channel share same weight

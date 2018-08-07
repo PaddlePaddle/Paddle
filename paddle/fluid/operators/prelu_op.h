@@ -19,23 +19,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using platform::Transform;  
 
-template <typename T>
-class PReluFunctor {
- public:
-  explicit PReluFunctor(const T* alpha) : alpha_(alpha) {}
-
-  HOSTDEVICE T operator()(const T& x) const {
-
-    if (x > 0)
-      return x;
-    else
-      return x * (*alpha_);
-  }
-
- private:
-  const T* alpha_;
-};
-
 template <typename DeviceContext, typename T>
 class PReluKernel : public framework::OpKernel<T> {
  public:
@@ -43,7 +26,7 @@ class PReluKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* alpha = context.Input<Tensor>("Alpha");
     auto* out = context.Output<Tensor>("Out");
-
+	
     const T* x_ptr = x->data<T>();
     T* o_ptr = out->mutable_data<T>(context.GetPlace());
 
@@ -58,59 +41,20 @@ class PReluKernel : public framework::OpKernel<T> {
       if (mode == "channel"){
         for (i = 0; i < numel; i++){
           index = i / dim[0] % dim[1];
-          *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+          o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
         }
-      }
-      else if(mode == "element"){
+      }else if(mode == "element"){
         for (i = 0; i < numel; i++){
-          index = i;
-          *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+          o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[i] * x_ptr[i];
         }
-      }
-      else{
+      }else{
         for (i = 0; i < numel; i++){
-          *o_ptr++ = PReluFunctor<T>(alpha_ptr + index)(x_ptr[i]);
+          o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[0] * x_ptr[i];
         }
       }
       
-
   }
 };
-
-template <typename T>
-class PReluBackwardWeightFunctor {
- public:
-  explicit PReluBackwardWeightFunctor(const T* x) : x_(x){}
-
-  HOSTDEVICE T operator()(const T& out, const T& dout) const {
-    if (out > 0)
-      return 0;
-    else
-      return dout * (*x_);
-  }
-
-  private:
-  const T* x_;
-};
-
-template <typename T>
-class PReluBackwardInputFunctor {
- public:
-  explicit PReluBackwardInputFunctor(const T* alpha) : alpha_(alpha) {}
-
-  HOSTDEVICE T operator()(const T& out, const T& dout) const {
-    if (out > 0)
-      return dout;
-    else
-      return dout * (*alpha_);
-  }
-
- private:
-  const T* alpha_;
-};
-
-
-
 
 template <typename DeviceContext, typename T>
 class PReluGradKernel : public framework::OpKernel<T> {
@@ -136,14 +80,16 @@ class PReluGradKernel : public framework::OpKernel<T> {
       if (mode == "channel"){
         for (i = 0; i < numel; i++){
           index = i / dim[0] % dim[1];
-          *dx_ptr++ = PReluBackwardInputFunctor<T>(alpha_ptr + index)(out_ptr[i], dout_ptr[i]);
+	  dx_ptr[i] = out_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
         }
-      }
-      else if(mode == "element"){
+      }else if(mode == "element"){
         for (i = 0; i < numel; i++){
-          index = i;
-          *dx_ptr++ = PReluBackwardInputFunctor<T>(alpha_ptr + index)(out_ptr[i], dout_ptr[i]);
+          dx_ptr[i] = out_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[i] * dout_ptr[i];
         } 
+      }else{
+	for (i = 0; i < numel; i++){
+	  dx_ptr[i] = out_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[0] * dout_ptr[i];
+	}
       }
     }
 
@@ -153,14 +99,18 @@ class PReluGradKernel : public framework::OpKernel<T> {
       if (mode == "channel"){
         for (i = 0; i < numel; i++){
           index = i / dim[0] % dim[1];
-          dalpha_ptr[index] += PReluBackwardWeightFunctor<T>(x_ptr + i)(out_ptr[i], dout_ptr[i]);
+	  dalpha_ptr[index] += out_ptr[i]>0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
-      }
-      else if(mode == "element"){
+      }else if(mode == "element"){
         for (i = 0; i < numel; i++){
           index = i;
-          dalpha_ptr[index] += PReluBackwardWeightFunctor<T>(x_ptr + i)(out_ptr[i], dout_ptr[i]);
+	  dalpha_ptr[index] += out_ptr[i]>0 ? 0 : x_ptr[i] * dout_ptr[i];
         }      
+      }else{
+        for (i = 0; i < numel; i++){
+	  index = 0;
+	  dalpha_ptr[index] += out_ptr[i]>0 ? 0 : x_ptr[i] * dout_ptr[i];
+        }
       }
     }
 
@@ -170,4 +120,3 @@ class PReluGradKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
