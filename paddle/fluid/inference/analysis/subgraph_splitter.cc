@@ -76,7 +76,7 @@ void UnionFindCombine(const node_map_t &node_map, size_t a, size_t b) {
 
 std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
   std::vector<Node *> marked_nodes;
-  for (auto &node : GraphTraits<DataFlowGraph>(graph_).nodes()) {
+  for (auto &node : GraphTraits<DataFlowGraph>(graph_).nodes_in_TS()) {
     if (node.attr(kMarkerAttrName).Bool()) {
       marked_nodes.push_back(&node);
     }
