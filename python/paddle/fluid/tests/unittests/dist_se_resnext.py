@@ -257,7 +257,6 @@ class DistSeResneXt2x2:
                            trainers)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
-
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -306,16 +305,19 @@ class DistSeResneXt2x2:
         reader_generator = test_reader()
 
         data = next(reader_generator)
-        first_loss, = exe.run(fetch_list=[avg_cost.name],
-                              feed=feeder.feed(data))
+        # FIXME(typhoonzero): change to use ParallelExecutor once fixed.
+        first_loss, = startup_exe.run(fetch_list=[avg_cost.name],
+                                      feed=feeder.feed(data))
         print(first_loss)
 
         for i in xrange(5):
             data = next(reader_generator)
-            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+            loss, = startup_exe.run(fetch_list=[avg_cost.name],
+                                    feed=feeder.feed(data))
 
         data = next(reader_generator)
-        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+        last_loss, = startup_exe.run(fetch_list=[avg_cost.name],
+                                     feed=feeder.feed(data))
         print(last_loss)
 
 
