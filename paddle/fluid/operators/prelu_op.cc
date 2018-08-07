@@ -37,14 +37,14 @@ class PReluOp : public framework::OperatorWithKernel {
     }
     else if (mode == "channel"){
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == x_dim[1],
-                   "For channel-wise mode, size of weight Alpha must equal to the number of channels.");
+                   "For channel-wise mode, size of weight Alpha must be equal to the number of channels, should be %d", x_dim[1]);
     }
     else if (mode ==  "element"){
       PADDLE_ENFORCE(product(ctx->GetInputDim("Alpha")) == product(x_dim),
-                   "For element-wise mode, size of weight Alpha must equal to the number of elements.");
+                   "For element-wise mode, size of weight Alpha must be equal to the number of input, should be %d", product(x_dim));
     }
     else{
-      PADDLE_ENFORCE(0,"A mode is needed.");
+      PADDLE_THROW("Unkown mode %s", mode);
     }
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
