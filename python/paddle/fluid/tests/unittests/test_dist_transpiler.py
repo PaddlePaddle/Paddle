@@ -402,7 +402,6 @@ class TestLocalLookupTable(TestDistLookupTableBase):
         pserver1, startup1 = self.get_pserver(self.pserver1_ep)
 
         self.assertEqual(len(pserver1.blocks), 3)
-        # print(str(pserver1))
         # 0 listen_and_serv
         # 1 optimize for fc_w or fc_b adam
         self.assertEqual([op.type for op in pserver1.blocks[1].ops],
