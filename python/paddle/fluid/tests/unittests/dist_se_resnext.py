@@ -223,10 +223,8 @@ def get_model(batch_size):
     lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
     optimizer = fluid.optimizer.Momentum(
-        # FIXME(typhoonzero): add back LR decay once ParallelExecutor fixed.
-        #learning_rate=fluid.layers.piecewise_decay(
-        #    boundaries=bd, values=lr),
-        learning_rate=base_lr,
+        learning_rate=fluid.layers.piecewise_decay(
+            boundaries=bd, values=lr),
         momentum=0.9,
         regularization=fluid.regularizer.L2Decay(1e-4))
     optimizer.minimize(avg_cost)
@@ -306,17 +304,16 @@ class DistSeResneXt2x2:
         feeder = fluid.DataFeeder(feed_var_list, place)
         reader_generator = test_reader()
 
-        data = next(reader_generator)
         first_loss, = exe.run(fetch_list=[avg_cost.name],
-                              feed=feeder.feed(data))
+                              feed=feeder.feed(next(reader_generator)))
         print(first_loss)
 
         for i in xrange(5):
-            data = next(reader_generator)
-            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+            loss, = exe.run(fetch_list=[avg_cost.name],
+                            feed=feeder.feed(next(reader_generator)))
 
-        data = next(reader_generator)
-        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+        last_loss, = exe.run(fetch_list=[avg_cost.name],
+                             feed=feeder.feed(next(reader_generator)))
         print(last_loss)
 
 
