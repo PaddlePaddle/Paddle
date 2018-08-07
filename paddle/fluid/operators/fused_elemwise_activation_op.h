@@ -258,31 +258,33 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                         const framework::Tensor *in_x,
                         const framework::Tensor *in_y,
                         framework::Tensor *output) {
-  auto &functors = ctx.Attr<std::string>("functor_list");
-
+  auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
+  auto funcs_str = functors[0] + "," + functors[1];
   // TODO(zcd): The following code can be refined.
-  if (functors == "elementwise_add,scale") {
+  if (funcs_str == "elementwise_add,scale") {
+    // Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
                              math::ScaleFunctor<T>>(
         ctx, math::AddFunctor<T>(), math::ScaleFunctor<T>(scale), in_x, in_y,
         output);
-  } else if (functors == "scale,elementwise_add") {
+  } else if (funcs_str == "scale,elementwise_add") {
+    // Z = Unary(Binary(X, Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunUnaryCompoundFunctors<DeviceContext, T, math::ScaleFunctor<T>,
                              math::AddFunctor<T>>(
         ctx, math::ScaleFunctor<T>(scale), math::AddFunctor<T>(), in_x, in_y,
         output);
-  } else if (functors == "elementwise_add,relu") {
+  } else if (funcs_str == "elementwise_add,relu") {
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
                              math::ReluFunctor<T>>(
         ctx, math::AddFunctor<T>(), math::ReluFunctor<T>(), in_x, in_y, output);
-  } else if (functors == "relu,elementwise_add") {
+  } else if (funcs_str == "relu,elementwise_add") {
     RunUnaryCompoundFunctors<DeviceContext, T, math::ReluFunctor<T>,
                              math::AddFunctor<T>>(
         ctx, math::ReluFunctor<T>(), math::AddFunctor<T>(), in_x, in_y, output);
   } else {
-    PADDLE_THROW("%s has not been implemented.", functors);
+    PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
 }
 
@@ -294,11 +296,14 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                             const framework::Tensor *in_out_grad,
                             framework::Tensor *x_grad,
                             framework::Tensor *y_grad) {
-  auto &functors = ctx.Attr<std::string>("functor_list");
+  auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
+  auto funcs_str = functors[0] + "," + functors[1];
+
   bool recomputation = ctx.Attr<bool>("recomputation");
 
   // TODO(zcd): The following code can be refined. for example, use registion
-  if (functors == "elementwise_add_grad,scale_grad") {
+  if (funcs_str == "elementwise_add_grad,scale_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     if (recomputation) {
       RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
@@ -315,7 +320,8 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
           math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out, in_out_grad,
           x_grad, y_grad);
     }
-  } else if (functors == "scale_grad,elementwise_add_grad") {
+  } else if (funcs_str == "scale_grad,elementwise_add_grad") {
+    // The backward of Z = Unary(Binary(X, Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     if (recomputation) {
       RunUnaryCompoundGradFunctors<DeviceContext, T, math::ScaleGradFunctor<T>,
@@ -332,7 +338,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                                           math::AddGradFunctor<T>(), in_x, in_y,
                                           in_out, in_out_grad, x_grad, y_grad);
     }
-  } else if (functors == "elementwise_add_grad,relu_grad") {
+  } else if (funcs_str == "elementwise_add_grad,relu_grad") {
     if (recomputation) {
       RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
                                     math::ReluFunctor<T>,
@@ -348,7 +354,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
           math::ReluGradFunctor<T>(), in_x, in_y, in_out, in_out_grad, x_grad,
           y_grad);
     }
-  } else if (functors == "relu_grad,elementwise_add_grad") {
+  } else if (funcs_str == "relu_grad,elementwise_add_grad") {
     if (recomputation) {
       RunUnaryCompoundGradFunctors<DeviceContext, T, math::ReluGradFunctor<T>,
                                    math::AddFunctor<T>, math::AddGradFunctor<T>,
@@ -365,7 +371,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                                           in_out, in_out_grad, x_grad, y_grad);
     }
   } else {
-    PADDLE_THROW("%s has not been implemented.", functors);
+    PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
 }
 

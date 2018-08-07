@@ -78,8 +78,9 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
                   "While, the later method can avoid occupying the memory, "
                   "but it must recompute the 'Out'. The default value is true.")
         .SetDefault(true);
-    AddAttr<std::string>("functor_list", "The functors that should be fused.")
-        .AddCustomChecker([&](const std::string &functor_list) {
+    AddAttr<std::vector<std::string>>("functor_list",
+                                      "The functors that should be fused.")
+        .AddCustomChecker([&](const std::vector<std::string> &functor_list) {
           PADDLE_ENFORCE(ValidCheck(functor_list));
         });
 
@@ -100,21 +101,18 @@ attributions. functor_list records the functors to be fused, for example
   }
 
  private:
-  bool ValidCheck(const std::string &functors) {
+  bool ValidCheck(const std::vector<std::string> &functors) {
     std::unordered_set<std::string> unary_fun = {"scale", "relu"};
     std::unordered_set<std::string> binary_fun = {"elementwise_add"};
 
-    size_t pos = functors.find(",");
-    PADDLE_ENFORCE_NE(pos, std::string::npos);
-    auto func_1 = functors.substr(0, pos);
-    auto func_2 = functors.substr(pos + 1, functors.size());
     std::string unary_fun_str;
-    if (binary_fun.count(func_1)) {
-      unary_fun_str = func_2;
-    } else if (binary_fun.count(func_2)) {
-      unary_fun_str = func_1;
+    if (binary_fun.count(functors[0])) {
+      unary_fun_str = functors[1];
+    } else if (binary_fun.count(functors[1])) {
+      unary_fun_str = functors[0];
     } else {
-      PADDLE_THROW("%s and %s are not included in fused_list.", func_1, func_2);
+      PADDLE_THROW("%s and %s are not included in fused_list.", functors[0],
+                   functors[1]);
     }
     PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str), 1,
                       "%s is not included in fused_list.", unary_fun_str);
@@ -145,14 +143,12 @@ class FusedElemwiseActivationGradMaker
     }
     op_desc_ptr->SetAttrMap(this->Attrs());
 
-    std::string functor_names =
-        boost::get<std::string>(op_desc_ptr->GetAttr("functor_list"));
-    size_t pos = functor_names.find(",");
-    PADDLE_ENFORCE_NE(pos, std::string::npos);
-    auto func_1 = functor_names.substr(0, pos);
-    auto func_2 = functor_names.substr(pos + 1, functor_names.size());
-    op_desc_ptr->SetAttr("functor_list", func_1 + "_grad," + func_2 + "_grad");
-
+    std::vector<std::string> functor_names =
+        boost::get<std::vector<std::string>>(
+            op_desc_ptr->GetAttr("functor_list"));
+    functor_names[0] += "_grad";
+    functor_names[1] += "_grad";
+    op_desc_ptr->SetAttr("functor_list", functor_names);
     return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
   }
 };
