@@ -82,5 +82,55 @@ class TestLookupSpraseTable(OpTest):
             self.check_with_place(place)
 
 
+class TestLookupSpraseTableNotAutoGrown(OpTest):
+    def check_with_place(self, place):
+        scope = core.Scope()
+
+        # create and initialize Id Variable
+        ids = scope.var("Ids").get_tensor()
+        ids_array = np.array([0, 2, 3, 5, 45, 8, 99]).astype("int64")
+        ids.set(ids_array, place)
+
+        # create and initialize W Variable
+        table_wight = 10000
+        table_height = 100
+
+        w_selected_rows = scope.var('W').get_selected_rows()
+        w_selected_rows.set_height(table_height)
+        w_array = np.ones((table_height, table_wight)).astype("float32")
+        for i in range(table_height):
+            w_array[i] *= i
+        w_tensor = w_selected_rows.get_tensor()
+        w_tensor.set(w_array, place)
+
+        # create Out Variable
+        out_tensor = scope.var('Out').get_tensor()
+
+        # create and run lookup_table operator
+        lookup_table = Operator(
+            "lookup_sparse_table",
+            W='W',
+            Ids='Ids',
+            Out='Out',
+            min=-5.0,
+            max=10.0,
+            seed=10,
+            auto_grown_table=False)
+        lookup_table.run(scope, place)
+
+        # get result from Out
+        result_array = np.array(out_tensor)
+
+        for i in range(len(ids_array)):
+            self.assertTrue((result_array[i] == np.ones((1, table_wight))
+                             .astype('float32') * ids_array[i]).all())
+
+    def test_not_auto_grown(self):
+        places = [core.CPUPlace()]
+        # currently only support CPU
+        for place in places:
+            self.check_with_place(place)
+
+
 if __name__ == "__main__":
     unittest.main()
