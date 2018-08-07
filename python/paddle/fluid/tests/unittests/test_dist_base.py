@@ -16,8 +16,11 @@ import time
 import unittest
 import os
 import sys
+import six
 import signal
 import subprocess
+
+import paddle.fluid.compat as cpt
 
 
 class TestDistBase(unittest.TestCase):
@@ -78,7 +81,7 @@ class TestDistBase(unittest.TestCase):
             env=env_local)
         local_proc.wait()
         out, err = local_proc.communicate()
-        local_ret = out
+        local_ret = cpt.to_literal_str(out)
         sys.stderr.write('local_loss: %s\n' % local_ret)
         sys.stderr.write('local_stderr: %s\n' % err)
 
@@ -116,7 +119,7 @@ class TestDistBase(unittest.TestCase):
         tr1_proc.wait()
         out, err = tr0_proc.communicate()
         sys.stderr.write('dist_stderr: %s\n' % err)
-        loss_data0 = out
+        loss_data0 = cpt.to_literal_str(out)
         sys.stderr.write('dist_loss: %s\n' % loss_data0)
         lines = loss_data0.split("\n")
         dist_first_loss = eval(lines[0].replace(" ", ","))[0]

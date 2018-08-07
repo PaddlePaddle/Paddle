@@ -360,7 +360,7 @@ def dynamic_lstm(input,
     """
 
     helper = LayerHelper('lstm', **locals())
-    size = size / 4
+    size = size // 4
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
     bias_size = [1, 7 * size]
@@ -1498,7 +1498,7 @@ def conv2d(input,
         raise ValueError("use_cudnn should be True or False")
 
     input_shape = input.shape
-    filter_shape = [num_filters, num_filter_channels] + filter_size
+    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
@@ -2669,15 +2669,15 @@ def beam_search(pre_ids,
 
     Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
-    
-    This layer does the search in beams for one time step. Specifically, it 
+
+    This layer does the search in beams for one time step. Specifically, it
     selects the top-K candidate word ids of current step from :attr:`ids`
     according to their :attr:`scores` for all source sentences, where K is
     :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
     computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
     the output of beam_search at previous step, they are needed for special use
     to handle ended candidate translations.
- 
+
     Note that the :attr:`scores` passed in should be accumulated scores, and
     length penalty should be done with extra operators before calculating the
     accumulated scores if needed, also suggest finding top-K before it and
@@ -3878,7 +3878,7 @@ def nce(input,
 def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
     """
     The hierarchical sigmoid operator is used to accelerate the training
-    process of language model. This operator organizes the classes into a 
+    process of language model. This operator organizes the classes into a
     complete binary tree, each leaf node represents a class(a word) and each
     internal node acts as a binary classifier. For each word there's a unique
     path from root to it's leaf node, hsigmoid calculate the cost for each
@@ -3888,9 +3888,9 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
 
     Refer to `Hierarchical Probabilistic Neural Network Language Model
     <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
-    
+
     Args:
-        input (Variable): The input tensor variable with shape 
+        input (Variable): The input tensor variable with shape
             :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
             and :math:`D` is the feature size.
         label (Variable): The tensor variable contains labels of training data.
@@ -3898,7 +3898,7 @@ def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
         num_classes: (int), The number of classes, must not be less than 2.
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter
              attribute for learnable parameters/weights of this layer.
-        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter 
+        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter
              attribute for the bias of this layer. If it is set to False, no
              bias will be applied.
 
@@ -5293,23 +5293,23 @@ def rank_loss(label, left, right, name=None):
     is a pairwise ranking model with a training sample consisting of a pair
     of documents, A and B. Label P indicates whether A is ranked higher than B
     or not:
- 
+
     P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
     about the rank of the input pair.
-    
+
     Rank loss layer takes three inputs: left (o_i), right (o_j) and
     label (P_{i,j}). The inputs respectively represent RankNet's output scores
     for documents A and B and the value of label P. The following equation
     computes rank loss C_{i,j} from the inputs:
-    
+
     $$
       C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
       o_{i,j} =  o_i - o_j  \\
       \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
     $$
-    
-    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).   
- 
+
+    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).
+
     Args:
         label (Variable): Indicats whether A ranked higher than B or not.
         left (Variable): RankNet's output score for doc A.

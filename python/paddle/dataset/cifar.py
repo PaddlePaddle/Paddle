@@ -53,7 +53,7 @@ def reader_creator(filename, sub_name, cycle=False):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():
-        with tarfile.open(filename, mode='r') as f:
+        with tarfile.open(filename, mode='rb') as f:
             names = (each_item.name for each_item in f
                      if sub_name in each_item.name)
 

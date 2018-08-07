@@ -30,7 +30,7 @@ images per class.
 
 import itertools
 import numpy
-import paddle.v2.dataset.common
+import paddle.dataset.common
 import tarfile
 from six.moves import cPickle as pickle
 from six.moves import zip
@@ -78,6 +78,6 @@ def train10(batch_size=None):
     :rtype: callable
     """
     return reader_creator(
-        paddle.v2.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
+        paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
         'data_batch',
         batch_size=batch_size)

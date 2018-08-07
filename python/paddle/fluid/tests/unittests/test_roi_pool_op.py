@@ -16,6 +16,7 @@ import unittest
 import numpy as np
 import math
 import sys
+import paddle.fluid.compat as cpt
 from op_test import OpTest
 
 
@@ -59,10 +60,10 @@ class TestROIPoolOp(OpTest):
         for i in range(self.rois_num):
             roi = self.rois[i]
             roi_batch_id = roi[0]
-            roi_start_w = int(round(roi[1] * self.spatial_scale))
-            roi_start_h = int(round(roi[2] * self.spatial_scale))
-            roi_end_w = int(round(roi[3] * self.spatial_scale))
-            roi_end_h = int(round(roi[4] * self.spatial_scale))
+            roi_start_w = int(cpt.round(roi[1] * self.spatial_scale))
+            roi_start_h = int(cpt.round(roi[2] * self.spatial_scale))
+            roi_end_w = int(cpt.round(roi[3] * self.spatial_scale))
+            roi_end_h = int(cpt.round(roi[4] * self.spatial_scale))
 
             roi_height = int(max(roi_end_h - roi_start_h + 1, 1))
             roi_width = int(max(roi_end_w - roi_start_w + 1, 1))
@@ -97,8 +98,8 @@ class TestROIPoolOp(OpTest):
                             for w in range(wstart, wend):
                                 if x_i[c, h, w] > out_data[i, c, ph, pw]:
                                     out_data[i, c, ph, pw] = x_i[c, h, w]
-                                    argmax_data[i, c, ph, pw] = h * \
-                                        self.width + w
+                                    argmax_data[i, c, ph,
+                                                pw] = h * self.width + w
 
         self.outs = out_data.astype('float32')
         self.argmaxes = argmax_data.astype('int64')
@@ -110,14 +111,14 @@ class TestROIPoolOp(OpTest):
             self.rois_lod[0].append(bno + 1)
             for i in range(bno + 1):
                 x1 = np.random.random_integers(
-                    0, self.width / self.spatial_scale - self.pooled_width)
+                    0, self.width // self.spatial_scale - self.pooled_width)
                 y1 = np.random.random_integers(
-                    0, self.height / self.spatial_scale - self.pooled_height)
+                    0, self.height // self.spatial_scale - self.pooled_height)
 
                 x2 = np.random.random_integers(x1 + self.pooled_width,
-                                               self.width / self.spatial_scale)
-                y2 = np.random.random_integers(y1 + self.pooled_height,
-                                               self.height / self.spatial_scale)
+                                               self.width // self.spatial_scale)
+                y2 = np.random.random_integers(
+                    y1 + self.pooled_height, self.height // self.spatial_scale)
 
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)

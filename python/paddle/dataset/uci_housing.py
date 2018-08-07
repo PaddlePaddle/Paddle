@@ -71,7 +71,7 @@ def load_data(filename, feature_num=14, ratio=0.8):
         return
 
     data = np.fromfile(filename, sep=' ')
-    data = data.reshape(data.shape[0] / feature_num, feature_num)
+    data = data.reshape(data.shape[0] // feature_num, feature_num)
     maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
         axis=0) / data.shape[0]
     feature_range(maximums[:-1], minimums[:-1])

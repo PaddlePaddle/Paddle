@@ -17,6 +17,7 @@ from . import core
 import collections
 import copy
 import six
+from . import compat as cpt
 from . import unique_name
 
 __all__ = ['append_backward']
@@ -75,10 +76,10 @@ def _infer_var_data_type_(grad_var_name, block):
     """
     Infer the data type of given grad variable
     """
-    grad_var = block.desc.find_var(grad_var_name.encode("ascii"))
-    fwd_name = _strip_grad_suffix_(grad_var_name.encode("ascii"))
-    if block.desc.has_var_recursive(fwd_name):
-        fwd_var = block.desc.find_var_recursive(fwd_name.encode("ascii"))
+    grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
+    fwd_name = _strip_grad_suffix_(grad_var_name)
+    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
+        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
         grad_var.set_dtype(fwd_var.dtype())
     else:
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
@@ -102,8 +103,10 @@ def _some_in_set_(cands, s):
     """
     if len(cands) == 0:
         return False
-    for c in cands:
-        if c in s:
+    literal_set = cpt.to_literal_str(s)
+    literal_cands = cpt.to_literal_str(cands)
+    for c in literal_cands:
+        if c in literal_set:
             return True
     return False
 
@@ -114,9 +117,8 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    if isinstance(name, six.text_type):
-        name = name.encode()
-    pos = name.find(six.b(core.grad_var_suffix()))
+    name = cpt.to_literal_str(name)
+    pos = name.find(core.grad_var_suffix())
     return name[:pos] if pos != -1 else name
 
 
@@ -125,9 +127,7 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    if isinstance(name, six.text_type):
-        name = name.encode()
-    return name + six.b(core.grad_var_suffix())
+    return cpt.to_literal_str(name) + core.grad_var_suffix()
 
 
 def _addup_repetitive_outputs_(op_descs):
@@ -364,7 +364,8 @@ def _append_backward_ops_(block,
 
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, no_grad_dict[block.idx], grad_sub_block_list)
+            op.desc,
+            cpt.to_literal_str(no_grad_dict[block.idx]), grad_sub_block_list)
 
         grad_op_descs.extend(grad_op_desc)
         grad_to_var.update(op_grad_to_var)
@@ -411,11 +412,10 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            grad_var_name = grad_var_name.encode("ascii")
-            if block.desc.has_var_recursive(
-                    grad_var_name) or grad_var_name == core.empty_var_name():
+            if block.desc.has_var_recursive(cpt.to_bytes(
+                    grad_var_name)) or grad_var_name == core.empty_var_name():
                 continue
-            block.desc.var(grad_var_name)
+            block.desc.var(cpt.to_bytes(grad_var_name))
             new_vars.add(grad_var_name)
             if grad_var_name not in grad_to_var:
                 continue
@@ -597,11 +597,12 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
         parameters = parameter_list
     else:
         params = program.global_block().all_parameters()
+        program.global_block().iter_parameters()
         parameters = [param.name for param in params]
 
     params_and_grads = []
     for param in parameters:
-        if param not in grad_info_map:
+        if cpt.to_literal_str(param) not in grad_info_map:
             continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]

@@ -106,7 +106,8 @@ class Graph(object):
     def _rank_repr(self):
         ranks = sorted(
             list(self.rank_groups.items()),
-            cmp=lambda a, b: a[1].priority > b[1].priority)
+            key=functools.cmp_to_key(
+                lambda a, b: a[1].priority > b[1].priority))
         repr = []
         for x in ranks:
             repr.append(str(x[1]))
