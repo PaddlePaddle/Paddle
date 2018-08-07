@@ -264,6 +264,8 @@ function(cc_test TARGET_NAME)
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (${cc_test_SERIAL})
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     endif()
@@ -330,6 +332,8 @@ function(nv_test TARGET_NAME)
     add_test(${TARGET_NAME} ${TARGET_NAME})
     if (nv_test_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
+
+    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
     endif()
@@ -580,6 +584,7 @@ function(py_test TARGET_NAME)
     cmake_parse_arguments(py_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_test(NAME ${TARGET_NAME}
              COMMAND env FLAGS_init_allocated_mem=true FLAGS_cudnn_deterministic=true
+             FLAGS_cpu_deterministic=true
              PYTHONPATH=${PADDLE_BINARY_DIR}/python ${py_test_ENVS}
              ${PYTHON_EXECUTABLE} -u ${py_test_SRCS} ${py_test_ARGS}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
