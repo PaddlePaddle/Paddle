@@ -197,8 +197,7 @@ class DistributeTranspiler(object):
         if program is None:
             program = default_main_program()
         self.origin_program = program
-        self.origin_startup_program = default_startup_program().clone(
-            detail=True)
+        self.origin_startup_program = default_startup_program().clone()
 
         #print("origin_startup_program:")
         #for op in self.origin_startup_program.global_block().ops:
@@ -688,10 +687,10 @@ class DistributeTranspiler(object):
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.attrs)
-                if "learning_rate_0" in op.output(key)[0]:
-                    print("s_prog3:", s_prog)
-                    #break
-                #print("orig_s_prog 2:", orig_s_prog)
+                #if "learning_rate_0" in op.output(key)[0]:
+                #    print("s_prog3:", s_prog)
+            #break
+            #print("orig_s_prog 2:", orig_s_prog)
         return s_prog
 
     # ====================== private transpiler functions =====================

@@ -574,6 +574,34 @@ class Operator(object):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
+    def __eq__(self, other):
+        print(self.attrs)
+        print(other.attrs)
+        for k, v in self.__dict__.iteritems():
+            if v is None:
+                continue
+
+            if isinstance(v, core.ProgramDesc) or isinstance(
+                    v, Program) or isinstance(v, Block):
+                continue
+
+            if isinstance(v, collections.OrderedDict):
+                v0 = collections.OrderedDict(
+                    sorted(
+                        self.vars.iteritems(), key=lambda x: x[0]))
+                v1 = collections.OrderedDict(
+                    sorted(
+                        other.vars.iteritems(), key=lambda x: x[0]))
+                if v0 != v1:
+                    print("In Operator(Object) not equal:", k)
+                    return False
+
+            if (v != other.__dict__[k]):
+                print("not equal in Operator(Object):", k)
+                return False
+
+        return True
+
     def has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
@@ -746,7 +774,11 @@ class Operator(object):
         for name in self.desc.attr_names():
             attr = self.desc.attr(name)
             self.attrs[name] = attr
-        print "attrs:", self.attrs
+
+        op_maker = core.op_proto_and_checker_maker
+        role_var_name = op_maker.kOpRoleVarAttrName()
+        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
+            del self.attrs[role_var_name]
 
     @property
     def attr_names(self):
@@ -830,6 +862,28 @@ class Block(object):
         self.ops = list()  # operator list
         self.program = program
         self.removed_vars = collections.OrderedDict()
+
+    def __eq__(self, other):
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, core.ProgramDesc) or isinstance(v, Program):
+                continue
+
+            if isinstance(v, collections.OrderedDict):
+                v0 = collections.OrderedDict(
+                    sorted(
+                        self.vars.iteritems(), key=lambda x: x[0]))
+                v1 = collections.OrderedDict(
+                    sorted(
+                        other.vars.iteritems(), key=lambda x: x[0]))
+                if v0 != v1:
+                    print("In Block(Object) not equal:", k)
+                    return False
+
+            if (v != other.__dict__[k]):
+                print("not equal in Block(Object):", k)
+                return False
+
+        return True
 
     def __str__(self):
         return self.to_string(True)
@@ -1118,6 +1172,7 @@ class Block(object):
         """
         # sync variables from cpp
         for var in self.desc.all_vars():
+            #print("var:", var.name())
             if not self.has_var(var.name()):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
@@ -1291,6 +1346,16 @@ class Program(object):
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
 
+    def __eq__(self, other):
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, core.ProgramDesc):
+                continue
+            if (v != other.__dict__[k]):
+                print("not equal in Program(Object):", k)
+                return False
+
+        return True
+
     @property
     def op_role(self):
         """
@@ -1408,7 +1473,7 @@ class Program(object):
         """
         return self.desc
 
-    def clone(self, for_test=False, detail=False):
+    def clone(self, for_test=False):
         """
         Create a new, duplicated program.
 
@@ -1495,11 +1560,10 @@ class Program(object):
             p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-            if detail:
-                for t in p.blocks:
-                    print("block ops:", t.ops)
-                for t in self.blocks:
-                    print("block ops 2:", len(t.ops))
+
+            p._current_role = self._current_role
+            p._op_role_var = self._op_role_var
+
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
