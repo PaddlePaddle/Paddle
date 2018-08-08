@@ -35,6 +35,7 @@ import gzip
 from collections import defaultdict
 
 import paddle.dataset.common
+import paddle.fluid.compat as cpt
 
 __all__ = [
     "train",
@@ -82,16 +83,16 @@ def __load_dict(tar_file, dict_size, lang, reverse=False):
     dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))
     if not os.path.exists(dict_path) or (
-            len(open(dict_path, "r").readlines()) != dict_size):
+            len(open(dict_path, "rb").readlines()) != dict_size):
         __build_dict(tar_file, dict_size, dict_path, lang)
 
     word_dict = {}
-    with open(dict_path, "r") as fdict:
+    with open(dict_path, "rb") as fdict:
         for idx, line in enumerate(fdict):
             if reverse:
-                word_dict[idx] = line.strip()
+                word_dict[idx] = cpt.to_literal_str(line.strip())
             else:
-                word_dict[line.strip()] = idx
+                word_dict[cpt.to_literal_str(line.strip())] = idx
     return word_dict
 
 
