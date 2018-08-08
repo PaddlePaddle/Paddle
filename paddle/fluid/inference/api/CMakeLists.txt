@@ -76,8 +76,8 @@ if (WITH_ANAKIN) # only needed in CI
     if (WITH_TESTING)
         # this test is unstable, disable it first.
         #cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                                  #ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                                  #DEPS inference_anakin_api_shared)
+        #ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
+        #DEPS inference_anakin_api_shared)
         #target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-     endif(WITH_TESTING)
+    endif(WITH_TESTING)
 endif()
