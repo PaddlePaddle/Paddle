@@ -72,3 +72,11 @@ def round(x, d=0):
 
 def floor_division(x, y):
     return x // y
+
+# exception related functions
+def get_exception_message(exc):
+    if six.PY2:
+        return exc.message
+    else:
+        return str(exc)
+
