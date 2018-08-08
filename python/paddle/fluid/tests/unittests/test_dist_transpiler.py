@@ -268,10 +268,10 @@ class TestLRDecayConditional(TranspilerTest):
         lr_decay_ops = [op.type for op in pserver.blocks[1].ops]
         self.assertEqual(lr_decay_ops, [
             "increment", "cast", "fill_constant", "fill_constant", "less_than",
-            "logical_not", "conditional_block", "fill_constant",
+            "logical_not", "conditional_block", "assign", "fill_constant",
             "fill_constant", "less_than", "logical_not", "logical_and",
-            "logical_and", "conditional_block", "fill_constant",
-            "conditional_block"
+            "logical_and", "conditional_block", "assign", "fill_constant",
+            "conditional_block", "assign"
         ])
         # test the condition blocks
         for b in sub_blocks:
@@ -342,14 +342,14 @@ class TestL2DecayWithPiecewise(TranspilerTest):
         self.assertEqual(len(pserver.blocks), 9)
         self.assertEqual([op.type for op in pserver.blocks[1].ops], [
             "increment", "cast", "fill_constant", "fill_constant", "less_than",
-            "logical_not", "conditional_block", "fill_constant",
+            "logical_not", "conditional_block", "assign", "fill_constant",
             "fill_constant", "less_than", "logical_not", "logical_and",
-            "logical_and", "conditional_block", "fill_constant",
+            "logical_and", "conditional_block", "assign", "fill_constant",
             "fill_constant", "less_than", "logical_not", "logical_and",
-            "logical_and", "conditional_block", "fill_constant",
+            "logical_and", "conditional_block", "assign", "fill_constant",
             "fill_constant", "less_than", "logical_not", "logical_and",
-            "logical_and", "conditional_block", "fill_constant",
-            "conditional_block"
+            "logical_and", "conditional_block", "assign", "fill_constant",
+            "conditional_block", "assign"
         ])
         self.assertEqual(
             [op.type for op in pserver.blocks[7].ops],
