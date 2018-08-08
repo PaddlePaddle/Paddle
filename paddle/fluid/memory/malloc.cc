@@ -119,8 +119,8 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     LOG(WARNING) << "Cannot allocate " << size << " bytes in GPU "
                  << place.device << ", available " << avail << " bytes";
     LOG(WARNING) << "total " << total;
-    LOG(WARNING) << "GpuMinChunkSize " << platform::GpuMinChunkSize();
-    LOG(WARNING) << "GpuMaxChunkSize " << platform::GpuMaxChunkSize();
+    LOG(WARNING) << "GpuMinChunkSize " << buddy_allocator->GetMinChunkSize();
+    LOG(WARNING) << "GpuMaxChunkSize " << buddy_allocator->GetMaxChunkSize();
     LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
     platform::SetDeviceId(cur_dev);
   }
