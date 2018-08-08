@@ -95,7 +95,7 @@ The equation is:
 
 $$%s$$
 
-- $X$: a tensor of any dimension. 
+- $X$: a tensor of any dimension.
 - $Y$: a tensor whose dimensions must be less than or equal to the dimensions of $X$.
 
 There are two cases for this operator:
@@ -105,10 +105,10 @@ There are two cases for this operator:
 
 For case 2:
 
-1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index 
-   for broadcasting $Y$ onto $X$. 
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+   for broadcasting $Y$ onto $X$.
 2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
-3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of 
+3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
    subsequence, such as shape(Y) = (2, 1) => (2).
 
 For example:
@@ -122,7 +122,7 @@ For example:
     shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
     shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
 
-The inputs $X$ and $Y$ can carry the different LoD information. 
+The inputs $X$ and $Y$ can carry the different LoD information.
 But the output only shares the LoD information with the input $X$.
 
 )DOC",
@@ -222,6 +222,7 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
       auto* op = new paddle::framework::OpDesc();                            \
       op->SetType(#kernel_type "_grad");                                     \
       op->SetInput("Y", Input("Y"));                                         \
+      op->SetInput("Out", Output("Out"));                                    \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
                    OutputGrad("Out"));                                       \
       op->SetAttrMap(Attrs());                                               \
