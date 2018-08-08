@@ -905,10 +905,9 @@ class Block(object):
             Variable: the Variable with the giving name.
         """
         if not isinstance(name, six.string_types):
-            if not isinstance(name, six.binary_type):
-                raise TypeError(
-                    "var require string as parameter, but get %s instead." %
-                    (type(name)))
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
