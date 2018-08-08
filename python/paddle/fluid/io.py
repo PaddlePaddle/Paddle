@@ -554,7 +554,8 @@ def save_inference_model(dirname,
                          executor,
                          main_program=None,
                          model_filename=None,
-                         params_filename=None):
+                         params_filename=None,
+                         keep_read_op=False):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -630,7 +631,8 @@ def save_inference_model(dirname,
     copy_program.desc.flush()
 
     pruned_program = copy_program.prune(targets=target_vars)
-    inference_program = pruned_program.inference_optimize()
+    inference_program = pruned_program.inference_optimize(
+        keep_read_op=keep_read_op)
     fetch_var_names = [v.name for v in target_vars]
 
     prepend_feed_ops(inference_program, feeded_var_names)
