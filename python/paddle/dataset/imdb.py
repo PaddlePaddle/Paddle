@@ -25,7 +25,7 @@ import collections
 import tarfile
 import re
 import string
-from six.moves import range
+import six
 
 __all__ = ['build_dict', 'train', 'test', 'convert']
 
@@ -43,13 +43,13 @@ def tokenize(pattern):
         # sequential access of member files, other than
         # tarfile.extractfile, which does random access and might
         # destroy hard disks.
-        tf = next(tarf)
+        tf = tarf.next()
         while tf != None:
             if bool(pattern.match(tf.name)):
                 # newline and punctuations removal and ad-hoc tokenization.
-                yield tarf.extractfile(tf).read().rstrip("\n\r").translate(
-                    None, string.punctuation).lower().split()
-            tf = next(tarf)
+                yield tarf.extractfile(tf).read().rstrip(six.b("\n\r")).translate(
+                    None, six.b(string.punctuation)).lower().split()
+            tf = tarf.next()
 
 
 def build_dict(pattern, cutoff):
@@ -67,7 +67,7 @@ def build_dict(pattern, cutoff):
 
     dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
     words, _ = list(zip(*dictionary))
-    word_idx = dict(list(zip(words, range(len(words)))))
+    word_idx = dict(list(zip(words, six.moves.range(len(words)))))
     word_idx['<unk>'] = len(words)
     return word_idx
 
