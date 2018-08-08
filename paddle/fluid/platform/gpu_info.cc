@@ -100,25 +100,25 @@ size_t GpuMinChunkSize() {
 
 size_t GpuMaxChunkSize() {
   size_t total = 0;
-  size_t available = 0;
+  size_t available_memory = 0;
 
-  GpuMemoryUsage(&available, &total);
-  VLOG(10) << "GPU Usage " << available / 1024 / 1024 << "M/"
+  GpuMemoryUsage(&available_memory, &total);
+  VLOG(10) << "GPU Usage " << available_memory / 1024 / 1024 << "M/"
            << total / 1024 / 1024 << "M";
   size_t reserving = static_cast<size_t>(0.05 * total);
   // If available less than minimum chunk size, no usable memory exists.
-  available =
-      std::min(std::max(available, GpuMinChunkSize()) - GpuMinChunkSize(),
-               total - reserving);
+  available_memory = std::min(
+      std::max(available_memory, GpuMinChunkSize()) - GpuMinChunkSize(),
+      total - reserving);
 
   // Reserving the rest memory for page tables, etc.
 
-  size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
-                                          (total - reserving));
+  size_t allocating_memory = static_cast<size_t>(
+      FLAGS_fraction_of_gpu_memory_to_use * (total - reserving));
 
-  PADDLE_ENFORCE_LE(allocating, available);
+  PADDLE_ENFORCE_LE(allocating_memory, available_memory);
 
-  return allocating;
+  return allocating_memory;
 }
 
 void GpuMemcpyAsync(void *dst, const void *src, size_t count,
