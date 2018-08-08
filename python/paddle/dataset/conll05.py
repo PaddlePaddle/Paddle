@@ -24,19 +24,20 @@ import tarfile
 import gzip
 import itertools
 import paddle.dataset.common
+import paddle.fluid.compat as cpt
 from six.moves import zip, range
 
 __all__ = ['test, get_dict', 'get_embedding', 'convert']
 
 DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
-WORDDICT_URL = 'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/wordDict.txt'
+WORDDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/wordDict.txt'
 WORDDICT_MD5 = 'ea7fb7d4c75cc6254716f0177a506baa'
-VERBDICT_URL = 'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/verbDict.txt'
+VERBDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/verbDict.txt'
 VERBDICT_MD5 = '0d2977293bbb6cbefab5b0f97db1e77c'
-TRGDICT_URL = 'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/targetDict.txt'
+TRGDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/targetDict.txt'
 TRGDICT_MD5 = 'd8c7f03ceb5fc2e5a0fa7503a4353751'
-EMB_URL = 'http://paddlepaddle.bj.bcebos.com/demo/srl_dict_and_embedding/emb'
+EMB_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/emb'
 EMB_MD5 = 'bf436eb0faa1f6f9103017f8be57cdb7'
 
 UNK_IDX = 0
@@ -89,8 +90,8 @@ def corpus_reader(data_path, words_name, props_name):
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = word.strip()
-                label = label.strip().split()
+                word = cpt.to_literal_str(word.strip())
+                label = cpt.to_literal_str(label.strip().split())
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):

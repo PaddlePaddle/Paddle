@@ -59,6 +59,11 @@ def reader_creator(filename, sub_name, cycle=False):
 
             while True:
                 for name in names:
+                    import sys
+                    print(name)
+                    sys.stdout.flush()
+                    print(f.extractfile(name))
+                    sys.stdout.flush()
                     batch = pickle.load(f.extractfile(name))
                     for item in read_batch(batch):
                         yield item
