@@ -32,8 +32,8 @@ import itertools
 import numpy
 import paddle.dataset.common
 import tarfile
+import six
 from six.moves import cPickle as pickle
-from six.moves import zip
 
 __all__ = ['train10']
 
@@ -44,20 +44,23 @@ CIFAR10_MD5 = 'c58f30108f718f92721af3b95e74349a'
 
 def reader_creator(filename, sub_name, batch_size=None):
     def read_batch(batch):
-        data = batch['data']
-        labels = batch.get('labels', batch.get('fine_labels', None))
+        data = batch[six.b('data')]
+        labels = batch.get(six.b('labels'), batch.get(six.b('fine_labels'), None))
         assert labels is not None
-        for sample, label in zip(data, labels):
+        for sample, label in six.moves.zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():
         with tarfile.open(filename, mode='r') as f:
-            names = (each_item.name for each_item in f
-                     if sub_name in each_item.name)
+            names = [each_item.name for each_item in f
+                     if sub_name in each_item.name]
 
             batch_count = 0
             for name in names:
-                batch = pickle.load(f.extractfile(name))
+                if six.PY2:
+                    batch = pickle.load(f.extractfile(name))
+                else:
+                    batch = pickle.load(f.extractfile(name), encoding='bytes')
                 for item in read_batch(batch):
                     if isinstance(batch_size, int) and batch_count > batch_size:
                         break
