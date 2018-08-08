@@ -123,10 +123,12 @@ def __bootstrap__():
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
-        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads'
+        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
+        'cpu_deterministic'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')
+        read_env_flags.append('listen_and_serv_profile_period')
 
     if core.is_compiled_with_cuda():
         read_env_flags += [

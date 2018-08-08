@@ -66,6 +66,10 @@ def get_numeric_gradient(place,
         tensor_to_check_dtype = np.float32
     elif tensor_to_check_dtype == core.VarDesc.VarType.FP64:
         tensor_to_check_dtype = np.float64
+    elif tensor_to_check_dtype == core.VarDesc.VarType.FP16:
+        tensor_to_check_dtype = np.float16
+        # set delta as np.float16, will automatic convert to float32, float64
+        delta = np.array(delta).astype(np.float16)
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
@@ -73,13 +77,24 @@ def get_numeric_gradient(place,
     gradient_flat = np.zeros(shape=(tensor_size, ), dtype=tensor_to_check_dtype)
 
     def __get_elem__(tensor, i):
-        if tensor_to_check_dtype == np.float32:
+        if tensor_to_check_dtype == np.float16:
+            numpy_tensor = np.array(tensor).astype(np.float16)
+            numpy_tensor = numpy_tensor.flatten()
+            return numpy_tensor[i]
+        elif tensor_to_check_dtype == np.float32:
             return tensor._get_float_element(i)
         else:
             return tensor._get_double_element(i)
 
     def __set_elem__(tensor, i, e):
-        if tensor_to_check_dtype == np.float32:
+        if tensor_to_check_dtype == np.float16:
+            numpy_tensor = np.array(tensor).astype(np.float16)
+            shape = numpy_tensor.shape
+            numpy_tensor = numpy_tensor.flatten()
+            numpy_tensor[i] = e
+            numpy_tensor = numpy_tensor.reshape(shape).view(np.uint16)
+            tensor.set(numpy_tensor, place)
+        elif tensor_to_check_dtype == np.float32:
             tensor._set_float_element(i, e)
         else:
             tensor._set_double_element(i, e)
@@ -133,6 +148,11 @@ class OpTest(unittest.TestCase):
         if not self.call_once:
             self.call_once = True
             self.dtype = data_type
+            # See the comment of np_dtype_to_fluid_dtype
+            # If the input type is uint16, we assume use float16
+            # for lodtensor dtype.
+            if self.dtype == np.uint16:
+                self.dtype == np.float16
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def infer_dtype(numpy_dict):
@@ -161,19 +181,25 @@ class OpTest(unittest.TestCase):
                 for name, np_value in self.inputs[var_name]:
                     tensor = core.LoDTensor()
                     if isinstance(np_value, tuple):
-                        tensor.set(np_value[0], place)
+                        tensor.set(
+                            OpTest.np_value_to_fluid_value(np_value[0]), place)
                         tensor.set_recursive_sequence_lengths(np_value[1])
                     else:
-                        tensor.set(np_value, place)
+                        tensor.set(
+                            OpTest.np_value_to_fluid_value(np_value), place)
                     feed_map[name] = tensor
             else:
                 tensor = core.LoDTensor()
                 if isinstance(self.inputs[var_name], tuple):
-                    tensor.set(self.inputs[var_name][0], place)
+                    tensor.set(
+                        OpTest.np_value_to_fluid_value(self.inputs[var_name][
+                            0]), place)
                     tensor.set_recursive_sequence_lengths(self.inputs[var_name][
                         1])
                 else:
-                    tensor.set(self.inputs[var_name], place)
+                    tensor.set(
+                        OpTest.np_value_to_fluid_value(self.inputs[var_name]),
+                        place)
                 feed_map[var_name] = tensor
 
         return feed_map
@@ -307,13 +333,22 @@ class OpTest(unittest.TestCase):
                     np.allclose(
                         actual_t, expect_t, atol=atol),
                     "Output (" + out_name + ") has diff at " + str(place) +
-                    str(actual_t) + "\n" + str(expect_t))
+                    "\nExpect " + str(expect_t) + "\n" + "But Got" +
+                    str(actual_t))
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
                                          ") has different lod at " + str(place))
 
     def _get_places(self):
+        if self.dtype == np.float16:
+            if core.is_compiled_with_cuda() and core.op_support_gpu(
+                    self.op_type):
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    return [place]
+            else:
+                return []
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda() and core.op_support_gpu(self.op_type):
             places.append(core.CUDAPlace(0))
@@ -344,9 +379,9 @@ class OpTest(unittest.TestCase):
             def err_msg():
                 offset = np.argmax(diff_mat > max_relative_error)
                 return ("%s Variable %s max gradient diff %f over limit %f, "
-                        "the first error element is %d, %f, %f") % (
-                            msg_prefix, name, max_diff, max_relative_error,
-                            offset, a.flatten()[offset], b.flatten()[offset])
+                        "the first error element is %d, expected %f, but got %f"
+                        ) % (msg_prefix, name, max_diff, max_relative_error,
+                             offset, a.flatten()[offset], b.flatten()[offset])
 
             self.assertLessEqual(max_diff, max_relative_error, err_msg())
 
@@ -435,6 +470,21 @@ class OpTest(unittest.TestCase):
             input.dtype = np.uint16
         return input
 
+    @staticmethod
+    def fluid_dtype_to_np_dtype(self, dtype):
+        """
+        See above, convert the dtype to normal type.
+        """
+        if dtype == np.uint16:
+            dtype = np.float16
+        return dtype
+
+    @staticmethod
+    def np_value_to_fluid_value(input):
+        if input.dtype == np.float16:
+            input = input.view(np.uint16)
+        return input
+
     def _get_gradient(self,
                       input_to_check,
                       place,
@@ -457,7 +507,7 @@ class OpTest(unittest.TestCase):
             if isinstance(place, fluid.CUDAPlace(0)):
                 use_cuda = True
             executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=program)
+                use_cuda=use_cuda, loss_name=loss.name, main_program=prog)
         else:
             executor = Executor(place)
         return map(np.array,

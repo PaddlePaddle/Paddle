@@ -17,6 +17,7 @@
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/inference/analysis/model_store_pass.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_node_mark_pass.h"
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
@@ -28,6 +29,9 @@ DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
 
 DEFINE_string(inference_analysis_graphviz_log_root, "./",
               "Graphviz debuger for data flow graphs.");
+
+DEFINE_string(inference_analysis_output_storage_path, "",
+              "optimized model output path");
 
 namespace inference {
 namespace analysis {
@@ -47,6 +51,9 @@ class DfgPassManagerImpl final : public DfgPassManager {
       AddPass("tensorrt-subgraph", new TensorRTSubGraphPass(trt_teller));
     }
     AddPass("data-flow-graph-to-fluid", new DataFlowGraphToFluidPass);
+    if (!FLAGS_inference_analysis_output_storage_path.empty()) {
+      AddPass("model-store-pass", new ModelStorePass);
+    }
   }
 
   std::string repr() const override { return "dfg-pass-manager"; }

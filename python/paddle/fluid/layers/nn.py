@@ -949,6 +949,10 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     helper = LayerHelper('dropout', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
@@ -1313,13 +1317,16 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     """
-    The input of the softmax layer is a 2-D tensor with shape N x K (N is the
-    batch_size, K is the dimension of input feature). The output tensor has the
-    same shape as the input tensor.
+    The input of the softmax operator is a tensor of any rank. The output tensor 
+    has the same shape as the input.
 
-    For each row of the input tensor, the softmax operator squashes the
-    K-dimensional vector of arbitrary real values to a K-dimensional vector of real
-    values in the range [0, 1] that add up to 1.
+    The input tensor will first be logically flattened to a 2-D matrix. The matrix's 
+    second dimension(row length) is as same as the last dimension of the input 
+    tensor, and the first dimension(column length) is the product of all other 
+    dimensions of the input tensor. For each row of the matrix, the softmax operator 
+    squashes the K-dimensional(K is the width of the matrix, which is also the size 
+    of the input tensor's last dimension) vector of arbitrary real values to a 
+    K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
@@ -1327,7 +1334,7 @@ def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     exponential values of all the other dimensions is the output of the softmax
     operator.
 
-    For each row :math:`i` and each column :math:`j` in Input(X), we have:
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
 
     .. math::
 
@@ -4473,15 +4480,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape", **locals())
-    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs=inputs,
-        attrs={"shape": shape,
-               "inplace": inplace},
-        outputs={"Out": reshaped})
+        attrs={"shape": shape},
+        outputs={"Out": out})
 
-    return helper.append_activation(reshaped)
+    return helper.append_activation(out)
 
 
 def lod_reset(x, y=None, target_lod=None):
