@@ -15,7 +15,6 @@
 import collections
 import contextlib
 import re
-from copy import deepcopy
 
 import numpy as np
 
@@ -577,9 +576,6 @@ class Operator(object):
 
     def __eq__(self, other):
         for k, v in self.__dict__.iteritems():
-            if v is None:
-                continue
-
             if isinstance(v, core.OpDesc) or isinstance(
                     v, Program) or isinstance(v, Block):
                 continue
