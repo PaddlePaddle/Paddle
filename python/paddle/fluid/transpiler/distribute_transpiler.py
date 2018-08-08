@@ -989,8 +989,6 @@ class DistributeTranspiler(object):
             self.table_name
         ][0]
         table_opt_block = pserver_program.create_block(pre_block_idx)
-        # only support sgd now
-        assert table_opt_op.type == "sgd"
 
         if self.sync_mode:
             # create grad vars in pserver program
@@ -1030,11 +1028,12 @@ class DistributeTranspiler(object):
             "LearningRate": [lr_var]
         }
         outputs = {"ParamOut": [param_var]}
-        table_opt_block.append_op(
-            type=table_opt_op.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=table_opt_op.attrs)
+        # only support sgd now
+        import logging
+        logging.warn(
+            "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
+            + table_opt_op.type)
+        table_opt_block.append_op(type="sgd", inputs=inputs, outputs=outputs)
 
         # add table parameter gradient and it's block id to grad_to_block_id
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))

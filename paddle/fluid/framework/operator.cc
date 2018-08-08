@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/details/print_utils.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -58,7 +59,11 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
+    return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
       return var->Get<SelectedRows>().value().dims();
@@ -75,8 +80,13 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
   if (var == nullptr) {
     return "";
   }
+
   if (var->IsType<LoDTensor>()) {
-    return DataTypeToString(ToDataType(var->Get<LoDTensor>().type()));
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(ToDataType(tensor.type()));
   } else if (var->IsType<SelectedRows>()) {
     return DataTypeToString(
         ToDataType(var->Get<SelectedRows>().value().type()));
@@ -107,7 +117,11 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
+    return tensor.lod();
   } else {
     return default_lod;
   }
@@ -153,6 +167,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   // God bless you not need to open it to compare the float data.
   // std::cout << DebugInputsStrings(scope) << std::endl;
 
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
 
   // std::cout << DebugOutputsStrings(scope) << std::endl << std::endl;
@@ -658,9 +674,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  // For profiling, don't move out of this function because that will result
-  // in the failure of multi-GPU profiling.
-  platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
