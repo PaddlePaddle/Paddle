@@ -62,7 +62,7 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
-            line_split = line.strip().split("\t")
+            line_split = line.strip().split(six.b("\t"))
             if len(line_split) != 2: continue
             sen = line_split[0] if lang == "en" else line_split[1]
             for w in sen.split():
