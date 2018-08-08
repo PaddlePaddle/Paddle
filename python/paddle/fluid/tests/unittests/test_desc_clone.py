@@ -119,7 +119,7 @@ class TestDistMnist(unittest.TestCase):
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
         main = pserver_prog.clone()
-        startup = startup_prog.clone()
+        startup = startup_prog.clone(detail=True)
 
         self.assertTrue(main.equal(pserver_prog))
         self.assertTrue(startup.equal(startup_prog))
