@@ -18,9 +18,9 @@
 #include <cuda.h>
 #endif
 
-#include <vector>
 #include <mkl_service.h>
 #include <omp.h>
+#include <vector>
 namespace paddle {
 
 template <typename Target>
@@ -28,13 +28,13 @@ PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
     const AnakinConfig &config) {
   CHECK(Init(config));
 }
-template<>
+template <>
 PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
     const AnakinConfig &config) {
-    omp_set_dynamic(0);
-    omp_set_num_threads(1);
-    mkl_set_num_threads(1);
-    CHECK(Init(config));
+  omp_set_dynamic(0);
+  omp_set_num_threads(1);
+  mkl_set_num_threads(1);
+  CHECK(Init(config));
 }
 template <typename Target>
 bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
@@ -69,7 +69,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       return false;
     }
     auto d_tensor_in_p = executor_p_->get_in(input.name);
-    //auto net_shape = d_tensor_in_p->valid_shape();
+    // auto net_shape = d_tensor_in_p->valid_shape();
     auto net_shape = d_tensor_in_p->shape();
     if (net_shape.size() != input.shape.size()) {
       VLOG(3) << " input  " << input.name
@@ -102,7 +102,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       d_tensor_in_p->set_seq_offset(offset);
       LOG(WARNING) << "============== offset.size()" << offset.size();
       for (int i = 0; i < offset.size(); i++) {
-      LOG(WARNING) << offset[i];
+        LOG(WARNING) << offset[i];
       }
     }
 
@@ -119,8 +119,8 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     }
 #endif
     if (std::is_same<anakin::X86, Target>::value) {
-      memcpy(d_data_p,  static_cast<float *>(input.data.data()),
-        d_tensor_in_p->valid_size() * sizeof(float));
+      memcpy(d_data_p, static_cast<float *>(input.data.data()),
+             d_tensor_in_p->valid_size() * sizeof(float));
     }
   }
 #ifdef PADDLE_WITH_CUDA
@@ -155,7 +155,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
 #endif
     if (std::is_same<anakin::X86, Target>::value) {
       memcpy(output.data.data(), tensor->mutable_data(),
-            tensor->valid_size() * sizeof(float));
+             tensor->valid_size() * sizeof(float));
     }
   }
   return true;
