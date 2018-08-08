@@ -1561,7 +1561,7 @@ class Program(object):
             p._current_role = self._current_role
             p._op_role_var = self._op_role_var
 
-            p._sync_with_cpp(detail)
+            p._sync_with_cpp()
 
         p._copy_param_info_from(self)
         p.copy_data_info_from(self)
