@@ -27,7 +27,7 @@ def to_literal_str(obj):
 
 def _to_literal_str(obj):
     if isinstance(obj, six.binary_type):
-        return obj.decode('latin-1')
+        return obj.decode('utf-8')
     elif isinstance(obj, six.text_type):
         return obj
     else:
@@ -45,7 +45,7 @@ def to_bytes(obj):
 
 def _to_bytes(obj):
     if isinstance(obj, six.text_type):
-        return obj.encode('latin-1')
+        return obj.encode('utf-8')
     elif isinstance(obj, six.binary_type):
         return obj
     else:

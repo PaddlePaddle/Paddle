@@ -87,20 +87,14 @@ def download(url, module_name, md5sum, save_name=None):
 
         if total_length is None:
             with open(filename, 'wb') as f:
-                import sys
-                print("write follow block")
-                sys.stdout.flush()
-                shutil.copyfileobj(cpt.to_bytes(r.raw), f)
+                shutil.copyfileobj(r.raw, f)
         else:
             with open(filename, 'wb') as f:
-                import sys
-                print("write follow length")
-                sys.stdout.flush()
                 dl = 0
                 total_length = int(total_length)
                 for data in r.iter_content(chunk_size=4096):
                     dl += len(data)
-                    f.write(cpt.to_bytes(data))
+                    f.write(data)
                     done = int(50 * dl / total_length)
                     sys.stdout.write("\r[%s%s]" % ('=' * done,
                                                    ' ' * (50 - done)))
