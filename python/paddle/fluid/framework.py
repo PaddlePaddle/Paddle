@@ -15,6 +15,7 @@
 import collections
 import contextlib
 import re
+from copy import deepcopy
 
 import numpy as np
 
@@ -129,15 +130,15 @@ def _debug_string_(proto, throw_on_error=True):
 
 class Variable(object):
     """
-    In Fluid, every input and output of an operator is a variable. In most 
-    cases, variables are used for holding different kinds of data or training 
-    labels. A variable belongs to a block. All variable has its own name and 
+    In Fluid, every input and output of an operator is a variable. In most
+    cases, variables are used for holding different kinds of data or training
+    labels. A variable belongs to a block. All variable has its own name and
     two variables in different blocks could have the same name.
 
-    There are many kinds of variables. Each kind of them has its own attributes 
-    and usages. Please reference the framework.proto for details. 
+    There are many kinds of variables. Each kind of them has its own attributes
+    and usages. Please reference the framework.proto for details.
 
-    Most of a Variable's member variables can be setted to be None. It mean 
+    Most of a Variable's member variables can be setted to be None. It mean
     it is not available or will be specified later.
 
     Args:
@@ -574,6 +575,30 @@ class Operator(object):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
+    def __eq__(self, other):
+        for k, v in self.__dict__.iteritems():
+            if v is None:
+                continue
+
+            if isinstance(v, core.OpDesc) or isinstance(
+                    v, Program) or isinstance(v, Block):
+                continue
+
+            if isinstance(v, collections.OrderedDict):
+                v0 = sorted(v.iteritems(), key=lambda x: x[0])
+                v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
+
+                if v0 != v1:
+                    print("In Operator(Object) not equal:", k)
+                    return False
+                continue
+
+            if (v != other.__dict__[k]):
+                print("not equal in Operator(Object):", k)
+                return False
+
+        return True
+
     def has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
 
@@ -739,6 +764,19 @@ class Operator(object):
         else:
             self.desc.set_attr(name, val)
 
+    def _sync_with_cpp(self):
+        """
+        Sync attrs from c++ end.
+        """
+        for name in self.desc.attr_names():
+            attr = self.desc.attr(name)
+            self.attrs[name] = attr
+
+        op_maker = core.op_proto_and_checker_maker
+        role_var_name = op_maker.kOpRoleVarAttrName()
+        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
+            del self.attrs[role_var_name]
+
     @property
     def attr_names(self):
         return self.desc.attr_names()
@@ -821,6 +859,27 @@ class Block(object):
         self.ops = list()  # operator list
         self.program = program
         self.removed_vars = collections.OrderedDict()
+
+    def __eq__(self, other):
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, core.ProgramDesc) or isinstance(
+                    v, Program) or isinstance(v, core.BlockDesc):
+                continue
+
+            if isinstance(v, collections.OrderedDict):
+                v0 = sorted(v.iteritems(), key=lambda x: x[0])
+                v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
+
+                if v0 != v1:
+                    print("Not equal in Block(Object):", k)
+                    return False
+                continue
+
+            if (v != other.__dict__[k]):
+                print("Not equal in Block(Object):", k)
+                return False
+
+        return True
 
     def __str__(self):
         return self.to_string(True)
@@ -1186,6 +1245,7 @@ class Block(object):
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
+            self.ops[index]._sync_with_cpp()
 
     def _copy_param_info_from(self, other):
         """
@@ -1299,6 +1359,16 @@ class Program(object):
         self._seed = 0
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
+
+    def __eq__(self, other):
+        for k, v in self.__dict__.iteritems():
+            if isinstance(v, core.ProgramDesc):
+                continue
+            if (v != other.__dict__[k]):
+                print("not equal in Program(Object):", k)
+                return False
+
+        return True
 
     @property
     def op_role(self):
@@ -1500,8 +1570,14 @@ class Program(object):
             p = self.inference_optimize()
         else:
             p = Program()
+            p.current_block_idx = self.current_block_idx
+            p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+
+            p._current_role = self._current_role
+            p._op_role_var = self._op_role_var
+
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
@@ -1777,9 +1853,9 @@ class Program(object):
 
 class Parameter(Variable):
     """
-    Parameter is derived from Variable. A parameter is a persistable 
+    Parameter is derived from Variable. A parameter is a persistable
     Variable, and will be updated by optimizers after each iteration.
-    The training of a neural network is essentially the updating of 
+    The training of a neural network is essentially the updating of
     its parameters.
 
     Relative to a general Variable, a Parameter has several its own
