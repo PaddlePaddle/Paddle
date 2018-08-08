@@ -25,10 +25,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
-#include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/ssa_graph_checker.h"
 #include "paddle/fluid/framework/details/ssa_graph_printer.h"
+#include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -193,7 +193,7 @@ ParallelExecutor::ParallelExecutor(
       member_->local_scopes_, member_->use_cuda_, build_strategy);
 #endif
 
-  member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+  member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, places, std::move(graph)));
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),

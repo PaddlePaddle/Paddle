@@ -33,13 +33,6 @@ class DropoutOp : public framework::OperatorWithKernel {
     }
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace());
-  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -100,15 +93,6 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
                       "Dimensions of Input(X) and Mask must be the same.");
 
     ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        framework::ToDataType(
-            ctx.Input<Tensor>(framework::GradVarName("Out"))->type()),
-        ctx.GetPlace());
   }
 };
 

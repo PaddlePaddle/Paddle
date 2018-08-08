@@ -145,12 +145,11 @@ struct CPUSliceOpGradFunctor {
     memset(dx, 0, sizeof(T) * dx_size);
     for (int64_t i = 0; i < dy_size; ++i) {
       int64_t dy_idx = i;
-      int64_t dx_idx = 0;
+      int64_t dx_idx = idx_offset;
       for (auto j = 0; j < Rank; ++j) {
         dx_idx += (dy_idx / dy_strides[j]) * dx_strides[j];
         dy_idx %= dy_strides[j];
       }
-      dx_idx += idx_offset;
       dx[dx_idx] = dy[i];
     }
   }

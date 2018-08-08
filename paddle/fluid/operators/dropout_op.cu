@@ -23,40 +23,36 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-__device__ inline int hash_combine(int seed, int idx) {
-  // boost::hash_combine() to make seed more random
-  seed ^= idx + 0x9e3779b9 + ((seed) << 6) + ((seed) >> 2);
-  return seed;
-}
-
-template <typename T, typename MaskType>
-__global__ void DropoutForward(size_t n, int seed, uint32_t threshold,
-                               const T* src, MaskType* mask_data, T* dst) {
-  int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  if (idx >= n) return;
-
+template <typename T>
+__global__ void RandomGenerator(const size_t n, const int seed,
+                                const float dropout_prob, const T* src,
+                                T* mask_data, T* dst) {
   thrust::minstd_rand rng;
-  seed = hash_combine(seed, idx);
   rng.seed(seed);
-  thrust::uniform_int_distribution<uint32_t> dist(
-      0, static_cast<uint32_t>(-1) - 1);
+  thrust::uniform_real_distribution<float> dist(0, 1);
 
-  if (dist(rng) < threshold) {
-    mask_data[idx] = static_cast<MaskType>(0);
-    dst[idx] = static_cast<T>(0);
-  } else {
-    mask_data[idx] = static_cast<MaskType>(1);
-    dst[idx] = src[idx];
-  }
-}
-
-template <typename T, typename MaskType>
-__global__ void DropoutBackward(size_t n, const T* dy,
-                                const MaskType* mask_data, T* dx) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-  if (idx >= n) return;
-  dx[idx] =
-      mask_data[idx] > static_cast<MaskType>(0) ? dy[idx] : static_cast<T>(0);
+  int step_size = 0;
+
+  T mask;
+  T dest;
+  for (; idx < n; idx += blockDim.x * gridDim.x) {
+    T s = src[idx];
+    if (step_size == 0) {
+      rng.discard(idx);
+      step_size = blockDim.x * gridDim.x;
+    } else {
+      rng.discard(step_size);
+    }
+    if (dist(rng) < dropout_prob) {
+      mask = static_cast<T>(0);
+    } else {
+      mask = static_cast<T>(1);
+    }
+    dest = s * mask;
+    mask_data[idx] = mask;
+    dst[idx] = dest;
+  }
 }
 
 // It seems that Eigen::Tensor::setRandom in GPU will SEGFAULT.
@@ -68,13 +64,14 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Output<Tensor>("Out");
+    y->mutable_data<T>(context.GetPlace());
     float dropout_prob = context.Attr<float>("dropout_prob");
 
     auto& place = *context.template device_context<Place>().eigen_device();
     if (!context.Attr<bool>("is_test")) {
       auto* mask = context.Output<Tensor>("Mask");
       auto* mask_data = mask->mutable_data<T>(context.GetPlace());
-      size_t size = x->numel();
+      size_t size = framework::product(mask->dims());
       auto* x_data = x->data<T>();
       auto* y_data = y->mutable_data<T>(context.GetPlace());
 
@@ -82,44 +79,16 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       int seed =
           context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
 
-      uint32_t threshold = static_cast<uint32_t>(
-          static_cast<uint32_t>(-1) * static_cast<double>(dropout_prob));
-
-      size_t threads = 512;
-      size_t grids = (size + threads - 1) / threads;
-      DropoutForward<
-          T><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          size, seed, threshold, x_data, mask_data, y_data);
+      int threads = 512;
+      int grid = (x->numel() + threads - 1) / threads;
+      RandomGenerator<
+          T><<<grid, threads, 0, context.cuda_device_context().stream()>>>(
+          size, seed, dropout_prob, x_data, mask_data, y_data);
     } else {
-      y->mutable_data<T>(context.GetPlace());
       auto X = EigenMatrix<T>::Reshape(*x, 1);
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
       Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
-  }
-};
-
-template <typename T>
-class GPUDropoutGradKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    PADDLE_ENFORCE(!context.Attr<bool>("is_test"),
-                   "GradOp is only callable when is_test is false");
-
-    auto* grad_x = context.Output<Tensor>(framework::GradVarName("X"));
-    auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* mask = context.Input<Tensor>("Mask");
-
-    auto* grad_x_data = grad_x->mutable_data<T>(context.GetPlace());
-    auto* grad_y_data = grad_y->data<T>();
-    auto* mask_data = mask->data<T>();
-
-    size_t size = grad_y->numel();
-    size_t threads = 512;
-    size_t grids = (size + threads - 1) / threads;
-    DropoutBackward<
-        T><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-        size, grad_y_data, mask_data, grad_x_data);
   }
 };
 
@@ -131,6 +100,5 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     dropout, ops::GPUDropoutKernel<plat::CUDADeviceContext, float>,
     ops::GPUDropoutKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    dropout_grad, ops::GPUDropoutGradKernel<float>
-    /*ops::DropoutGradKernel<plat::CUDADeviceContext, float>*/);
+REGISTER_OP_CUDA_KERNEL(dropout_grad,
+                        ops::DropoutGradKernel<plat::CUDADeviceContext, float>);

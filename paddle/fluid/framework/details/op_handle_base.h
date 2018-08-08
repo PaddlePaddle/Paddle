@@ -81,16 +81,6 @@ class OpHandleBase {
     return res.size();
   }
 
-  size_t NotReadyInputSize() const {
-    std::unordered_set<VarHandleBase *> res;
-    for (auto *var : inputs_) {
-      if (var->GeneratedOp() != nullptr) {
-        res.emplace(var);
-      }
-    }
-    return res.size();
-  }
-
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
 
   size_t NoDummyInputSize() const;

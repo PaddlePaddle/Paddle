@@ -18,14 +18,6 @@ import paddle.fluid.core as core
 from paddle.fluid.op import Operator
 
 
-def as_lodtensor(np_array, lod, place):
-    tensor = core.LoDTensor()
-    tensor.set(np_value, place)
-    if lod is not None:
-        tensor.set_recursive_sequence_lengths(lod)
-    return tensor
-
-
 def create_op(scope, op_type, inputs, outputs, attrs):
     kwargs = dict()
 
@@ -69,6 +61,11 @@ def create_op(scope, op_type, inputs, outputs, attrs):
 
 
 def set_input(scope, op, inputs, place):
+    def np_value_to_fluid_value(input):
+        if input.dtype == np.float16:
+            input = input.view(np.uint16)
+        return input
+
     def __set_input__(var_name, var):
         if isinstance(var, tuple) or isinstance(var, np.ndarray):
             tensor = scope.find_var(var_name).get_tensor()
@@ -76,7 +73,7 @@ def set_input(scope, op, inputs, place):
                 tensor.set_recursive_sequence_lengths(var[1])
                 var = var[0]
             tensor._set_dims(var.shape)
-            tensor.set(var, place)
+            tensor.set(np_value_to_fluid_value(var), place)
         elif isinstance(var, float):
             scope.find_var(var_name).set_float(var)
         elif isinstance(var, int):
@@ -104,6 +101,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
         if name not in np_list:
             assert var_proto.intermediate, "{} not found".format(name)
         else:
+            # inferece the dtype from numpy value.
             np_value = np_list[name]
             if isinstance(np_value, tuple):
                 dtype = np_value[0].dtype
@@ -116,6 +114,16 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
                 if is_input:
                     shape = list(np_value.shape)
                     lod_level = 0
+        # NOTE(dzhwinter): type hacking
+        # numpy float16 is binded to paddle::platform::float16
+        # in tensor_py.h via the help of uint16 datatype. Because
+        # the internal memory representation of float16 is
+        # actually uint16_t in paddle. So we use np.uint16 in numpy for
+        # raw memory, it can pass through the pybind. So in the testcase,
+        # we feed data use data.view(uint16), but the dtype is float16 in fact.
+        # The data.view(uint16) means do not cast the data type, but process data as the uint16
+        if dtype == np.uint16:
+            dtype = np.float16
         return block.create_var(
             dtype=dtype, shape=shape, lod_level=lod_level, name=name)
 

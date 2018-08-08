@@ -53,7 +53,6 @@ REGISTER_OP_WITHOUT_GRADIENT(fill_zeros_like, ops::FillZerosLikeOp,
                              ops::FillZerosLikeOpMaker);
 REGISTER_OP_CPU_KERNEL(
     fill_zeros_like,
-    ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::FillZerosLikeKernel<paddle::platform::CPUDeviceContext, float>,

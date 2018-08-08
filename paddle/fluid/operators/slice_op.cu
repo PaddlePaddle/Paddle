@@ -25,12 +25,11 @@ __global__ void CUDASliceOpGradImpl(T *dx, framework::Dim<Rank> dx_strides,
                                     int64_t idx_offset) {
   int64_t i = blockDim.x * blockIdx.x + threadIdx.x;
   if (i >= dy_size) return;
-  int64_t dx_idx = 0, dy_idx = i;
+  int64_t dx_idx = idx_offset, dy_idx = i;
   for (auto j = 0; j < Rank; ++j) {
     dx_idx += (dy_idx / dy_strides[j]) * dx_strides[j];
     dy_idx %= dy_strides[j];
   }
-  dx_idx += idx_offset;
   dx[dx_idx] = dy[i];
 }
 
