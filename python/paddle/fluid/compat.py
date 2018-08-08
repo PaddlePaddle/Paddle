@@ -13,39 +13,40 @@
 # limitations under the License.
 
 import six
+import math
 
 
 #  str and bytes related functions
-def to_literal_str(obj):
+def to_literal_str(obj, encoding='utf-8'):
     if isinstance(obj, list):
-        return [_to_literal_str(item) for item in obj]
+        return [_to_literal_str(item, encoding) for item in obj]
     elif isinstance(obj, set):
-        return set([_to_literal_str(item) for item in obj])
+        return set([_to_literal_str(item, encoding) for item in obj])
     else:
-        return _to_literal_str(obj)
+        return _to_literal_str(obj, encoding)
 
 
-def _to_literal_str(obj):
+def _to_literal_str(obj, encoding):
     if isinstance(obj, six.binary_type):
-        return obj.decode('utf-8')
+        return obj.decode(encoding)
     elif isinstance(obj, six.text_type):
         return obj
     else:
         return six.u(obj)
 
 
-def to_bytes(obj):
+def to_bytes(obj, encoding='utf-8'):
     if isinstance(obj, list):
-        return [_to_bytes(item) for item in obj]
+        return [_to_bytes(item, encoding) for item in obj]
     elif isinstance(obj, set):
-        return set([_to_bytes(item) for item in obj])
+        return set([_to_bytes(item, encoding) for item in obj])
     else:
-        return _to_bytes(obj)
+        return _to_bytes(obj, encoding)
 
 
-def _to_bytes(obj):
+def _to_bytes(obj, encoding):
     if isinstance(obj, six.text_type):
-        return obj.encode('utf-8')
+        return obj.encode(encoding)
     elif isinstance(obj, six.binary_type):
         return obj
     else:
@@ -53,9 +54,6 @@ def _to_bytes(obj):
 
 
 # math related functions
-import math
-
-
 def round(x, d=0):
     """
     Compatible round which act the same behaviour in Python3.
