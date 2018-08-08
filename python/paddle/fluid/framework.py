@@ -585,11 +585,9 @@ class Operator(object):
                 continue
 
             if isinstance(v, collections.OrderedDict):
-                v0 = deepcopy(v)
-                v1 = deepcopy(other.__dict__[k].iteritems())
+                v0 = sorted(v.iteritems(), key=lambda x: x[0])
+                v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
 
-                v0 = sorted(v0, key=lambda x: x[0])
-                v1 = sorted(v1, key=lambda x: x[0])
                 if v0 != v1:
                     print("In Operator(Object) not equal:", k)
                     return False
