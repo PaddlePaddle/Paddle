@@ -52,6 +52,7 @@ bool DataFlowGraphToFluidPass::Initialize(Argument *argument) {
 bool DataFlowGraphToFluidPass::Finalize() { return true; }
 
 void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
+  FilterRedundantOutputOfSubGraph(graph);
   LOG(INFO) << "graph.inputs " << graph->inputs.size();
   for (auto &node : GraphTraits<DataFlowGraph>(graph).nodes_in_TS()) {
     if (node.deleted()) continue;
