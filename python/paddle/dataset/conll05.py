@@ -29,7 +29,7 @@ from six.moves import zip, range
 
 __all__ = ['test, get_dict', 'get_embedding', 'convert']
 
-DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'
+DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
 WORDDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/wordDict.txt'
 WORDDICT_MD5 = 'ea7fb7d4c75cc6254716f0177a506baa'
