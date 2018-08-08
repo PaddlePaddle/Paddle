@@ -21,6 +21,11 @@
 #include <mkl_service.h>
 #include <omp.h>
 #include <vector>
+
+#include "framework/core/net/net.h"
+#include "framework/operators/ops.h"
+#include "saber/funcs/timer.h"
+
 namespace paddle {
 
 template <typename Target>
@@ -45,6 +50,7 @@ bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
   auto inputs = graph_.get_ins();
   for (auto &input_str : inputs) {
     graph_.ResetBatchSize(input_str, config.max_batch_size);
+    max_batch_size_ = config.max_batch_size;
   }
   // optimization for graph
   if (!(graph_.Optimize())) {
@@ -209,6 +215,42 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     VLOG(3) << "Anakin Predictor create on unknown platform.";
     return nullptr;
   }
+};
+
+template <typename Target>
+using executor_t =
+    anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>;
+
+template <typename Target>
+void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
+  using namespace anakin;
+  std::vector<float> op_time = net_executor->get_op_time();
+  auto exec_funcs = net_executor->get_exec_funcs();
+  auto op_param = net_executor->get_op_param();
+  for (int i = 0; i < op_time.size(); i++) {
+    LOG(INFO) << "name: " << exec_funcs[i].name
+              << " op_type: " << exec_funcs[i].op_name
+              << " op_param: " << op_param[i] << " time " << op_time[i] / epoch;
+  }
+  std::map<std::string, float> op_map;
+  for (int i = 0; i < op_time.size(); i++) {
+    auto it = op_map.find(op_param[i]);
+    if (it != op_map.end())
+      op_map[op_param[i]] += op_time[i];
+    else
+      op_map.insert(std::pair<std::string, float>(op_param[i], op_time[i]));
+  }
+  for (auto it = op_map.begin(); it != op_map.end(); ++it) {
+    LOG(INFO) << it->first << "  " << (it->second) / epoch << " ms";
+  }
+}
+
+template <typename Target>
+PaddleInferenceAnakinPredictor<Target>::~PaddleInferenceAnakinPredictor() {
+  DisplayOpTimer<Target>(executor_p_, max_batch_size_);
+
+  delete executor_p_;
+  executor_p_ = nullptr;
 };
 
 }  // namespace paddle

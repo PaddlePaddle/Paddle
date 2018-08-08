@@ -47,10 +47,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
   get_executer();
 
-  ~PaddleInferenceAnakinPredictor() override {
-    delete executor_p_;
-    executor_p_ = nullptr;
-  };
+  ~PaddleInferenceAnakinPredictor() override;
 
  private:
   bool Init(const AnakinConfig& config);
@@ -60,6 +57,7 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
   anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>*
       executor_p_{nullptr};
   AnakinConfig config_;
+  int max_batch_size_{0};
 };
 
 }  // namespace paddle

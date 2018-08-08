@@ -1,11 +1,25 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <thread>  //NOLINT
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "anakin/utils/logger/logger.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "sys/time.h"
 #include "utils.h"
 
@@ -54,15 +68,15 @@ int Main(int max_batch) {
   std::string line;
   std::ifstream file(FLAGS_data);
   std::vector<PaddleTensor> inputs;
-  std::vector<std::vector<int>> shapes({{ 4, 1, 1},
-                                        { 1, 50, 12},
-                                        { 1, 50, 19},
-                                        { 1, 50, 1},
-                                        { 4, 50, 1},
-                                        { 1, 50, 1},
-                                        { 5, 50, 1},
-                                        { 7, 50, 1},
-                                        { 3, 50, 1}});
+  std::vector<std::vector<int>> shapes({{4, 1, 1},
+                                        {1, 50, 12},
+                                        {1, 50, 19},
+                                        {1, 50, 1},
+                                        {4, 50, 1},
+                                        {1, 50, 1},
+                                        {5, 50, 1},
+                                        {7, 50, 1},
+                                        {3, 50, 1}});
 
   int id = 0;
   int ids[] = {8, 0, 1, 2, 3, 4, 5, 6, 7};
@@ -73,11 +87,10 @@ int Main(int max_batch) {
     PaddleTensor feature;
     feature.name = "input_" + std::to_string(ids[id++]);
     feature.shape = shape;
-    feature.data =
-        PaddleBuf(record.data.data(),
-                  sizeof(float) *
-                      std::accumulate(shape.begin(), shape.end(), 1,
-                                      [](int a, int b) { return a * b; }));
+    feature.data = PaddleBuf(
+        record.data.data(),
+        sizeof(float) * std::accumulate(shape.begin(), shape.end(), 1,
+                                        [](int a, int b) { return a * b; }));
     feature.dtype = PaddleDType::FLOAT32;
     inputs.emplace_back(std::move(feature));
     CHECK_EQ(inputs.back().shape.size(), 4UL);
@@ -96,7 +109,9 @@ int Main(int max_batch) {
   tensor_out.dtype = PaddleDType::FLOAT32;
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
-  CHECK(predictor->Run(inputs, &outputs));
+  for (int i = 0; i < 100000; i++) {
+    CHECK(predictor->Run(inputs, &outputs));
+  }
 
   LOG(INFO) << "output.size: " << outputs.size();
   for (auto& tensor : outputs) {
@@ -111,10 +126,9 @@ int Main(int max_batch) {
   gettimeofday(&cur_time, NULL);
   long t2 = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
 
-  std::cout << "max_batch:" << max_batch
-            << ", time:" << (t2 - t) / 1000 << "ms" << std::endl;
+  std::cout << "max_batch:" << max_batch << ", time:" << (t2 - t) / 1000 << "ms"
+            << std::endl;
 }
-
 }
 
 int main(int argc, char** argv) {
@@ -122,6 +136,5 @@ int main(int argc, char** argv) {
   logger::init(argv[0]);
 
   paddle::Main(100);
-	return 0;
+  return 0;
 }
-
