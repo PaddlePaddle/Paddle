@@ -118,31 +118,11 @@ class TestDistMnist(unittest.TestCase):
 
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
-
         main = pserver_prog.clone()
         startup = startup_prog.clone()
 
-        vars1 = collections.OrderedDict(
-            sorted(
-                startup.blocks[0].vars.iteritems(), key=lambda x: x[0]))
-        vars2 = collections.OrderedDict(
-            sorted(
-                startup_prog.blocks[0].vars.iteritems(), key=lambda x: x[0]))
-        for t in vars1:
-            print t
-            break
-
-        for t in vars2:
-            print t
-            break
-
-        #print "vars1:", startup.blocks[0].vars
-        #print "vars2:", startup_prog.blocks[0].vars
-
-        #self.assertTrue(main == pserver_prog)
+        self.assertTrue(main == pserver_prog)
         self.assertTrue(startup == startup_prog)
-        #print "clone:", startup
-        #print "startup:", startup_prog
 
 
 if __name__ == "__main__":

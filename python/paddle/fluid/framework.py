@@ -15,6 +15,7 @@
 import collections
 import contextlib
 import re
+from copy import deepcopy
 
 import numpy as np
 
@@ -575,26 +576,24 @@ class Operator(object):
             self.desc.infer_shape(self.block.desc)
 
     def __eq__(self, other):
-        print(self.attrs)
-        print(other.attrs)
         for k, v in self.__dict__.iteritems():
             if v is None:
                 continue
 
-            if isinstance(v, core.ProgramDesc) or isinstance(
+            if isinstance(v, core.OpDesc) or isinstance(
                     v, Program) or isinstance(v, Block):
                 continue
 
             if isinstance(v, collections.OrderedDict):
-                v0 = collections.OrderedDict(
-                    sorted(
-                        self.vars.iteritems(), key=lambda x: x[0]))
-                v1 = collections.OrderedDict(
-                    sorted(
-                        other.vars.iteritems(), key=lambda x: x[0]))
+                v0 = deepcopy(v)
+                v1 = deepcopy(other.__dict__[k].iteritems())
+
+                v0 = sorted(v0, key=lambda x: x[0])
+                v1 = sorted(v1, key=lambda x: x[0])
                 if v0 != v1:
                     print("In Operator(Object) not equal:", k)
                     return False
+                continue
 
             if (v != other.__dict__[k]):
                 print("not equal in Operator(Object):", k)
@@ -865,22 +864,21 @@ class Block(object):
 
     def __eq__(self, other):
         for k, v in self.__dict__.iteritems():
-            if isinstance(v, core.ProgramDesc) or isinstance(v, Program):
+            if isinstance(v, core.ProgramDesc) or isinstance(
+                    v, Program) or isinstance(v, core.BlockDesc):
                 continue
 
             if isinstance(v, collections.OrderedDict):
-                v0 = collections.OrderedDict(
-                    sorted(
-                        self.vars.iteritems(), key=lambda x: x[0]))
-                v1 = collections.OrderedDict(
-                    sorted(
-                        other.vars.iteritems(), key=lambda x: x[0]))
+                v0 = sorted(v.iteritems(), key=lambda x: x[0])
+                v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
+
                 if v0 != v1:
-                    print("In Block(Object) not equal:", k)
+                    print("Not equal in Block(Object):", k)
                     return False
+                continue
 
             if (v != other.__dict__[k]):
-                print("not equal in Block(Object):", k)
+                print("Not equal in Block(Object):", k)
                 return False
 
         return True
@@ -1172,7 +1170,6 @@ class Block(object):
         """
         # sync variables from cpp
         for var in self.desc.all_vars():
-            #print("var:", var.name())
             if not self.has_var(var.name()):
                 self.create_var(name=var.name(), desc=var, type=var.type())
 
@@ -1564,7 +1561,7 @@ class Program(object):
             p._current_role = self._current_role
             p._op_role_var = self._op_role_var
 
-            p._sync_with_cpp()
+            p._sync_with_cpp(detail)
 
         p._copy_param_info_from(self)
         p.copy_data_info_from(self)

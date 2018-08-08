@@ -657,14 +657,12 @@ class DistributeTranspiler(object):
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
-
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
             if op.type not in ["recv", "fetch_barrier", "concat"]:
                 for key in op.output_names:
                     newname, _ = _get_splited_name_and_shape(op.output(key)[0])
-                    #print("op:", op.type, "key:", key, "newname:", newname)
                     if newname:
                         op_on_pserver = True
                         new_outputs[key] = created_var_map[newname]
@@ -679,18 +677,12 @@ class DistributeTranspiler(object):
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
-                    #print("beore op:", op.type, "attrs:", op.attrs, "outputs:", new_outputs, "op:", op)
-                    op.attrs["shape"] = new_outputs["Out"].shape
-                    #print("after op:", op.type, "attrs:", op.attrs, "outputs:", new_outputs, "op:", op)
+                    op.attrs["shape"] = list(new_outputs["Out"].shape)
                 s_prog.global_block().append_op(
                     type=op.type,
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.attrs)
-                #if "learning_rate_0" in op.output(key)[0]:
-                #    print("s_prog3:", s_prog)
-            #break
-            #print("orig_s_prog 2:", orig_s_prog)
         return s_prog
 
     # ====================== private transpiler functions =====================
