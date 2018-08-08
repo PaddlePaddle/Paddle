@@ -320,7 +320,7 @@ class Executor(object):
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
-                assert isinstance(var, Variable) or isinstance(var, str), (
+                assert isinstance(var, Variable) or isinstance(var, six.text_type), (
                     "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
                 global_block.append_op(
                     type='fetch',
