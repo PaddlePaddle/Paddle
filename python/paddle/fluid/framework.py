@@ -574,6 +574,8 @@ class Operator(object):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
+        self._sync_with_cpp()
+
     def equal(self, other):
         for k, v in self.__dict__.iteritems():
             if isinstance(v, core.OpDesc) or isinstance(
@@ -591,8 +593,30 @@ class Operator(object):
                 continue
 
             if k == 'attrs':
+                if len(self.attrs) != len(other.attrs):
+                    raise ValueError(
+                        "In Operator(Object)'s attrs not equal:{0}\n".format(
+                            ak))
+                    return False
+
                 for ak, av in self.attrs.iteritems():
-                    if ak == 'op_role' and av != int(other.attrs[ak]):
+                    if ak == 'op_role':
+                        if av != int(other.attrs[ak]):
+                            raise ValueError(
+                                "In Operator(Object)'s attrs not equal:{0}\n".
+                                format(ak))
+                            return False
+                        continue
+
+                    if isinstance(av, float):
+                        if abs(av - other.attrs[ak]) > 0.000001:
+                            raise ValueError(
+                                "In Operator(Object)'s attrs not equal:{0}\n".
+                                format(ak))
+                            return False
+                        continue
+
+                    if av != other.attrs[ak]:
                         raise ValueError(
                             "In Operator(Object)'s attrs not equal:{0}\n".
                             format(ak))
@@ -600,8 +624,6 @@ class Operator(object):
                 continue
 
             if (v != other.__dict__[k]):
-                print(v)
-                print(other.__dict__[k])
                 raise ValueError("In Operator(Object) not equal:{0}\n".format(
                     k))
                 return False
@@ -784,12 +806,15 @@ class Operator(object):
             self.attrs[name] = attr
         if detail:
             print(self.attrs)
-            print("")
 
         op_maker = core.op_proto_and_checker_maker
         role_var_name = op_maker.kOpRoleVarAttrName()
         if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
             del self.attrs[role_var_name]
+
+        if detail:
+            print "sync complete"
+            print("")
 
     @property
     def attr_names(self):
