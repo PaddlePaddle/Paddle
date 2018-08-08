@@ -174,6 +174,7 @@ include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
+include(external/anakin)    # prepre anakin
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -204,8 +205,6 @@ if(WITH_GPU)
     include(cuda)
     include(tensorrt)
     include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
 endif()
 
 include(cudnn)              # set cudnn libraries, must before configure
