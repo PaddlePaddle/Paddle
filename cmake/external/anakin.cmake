@@ -10,7 +10,35 @@ set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
 SET(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
 SET(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 
-include_directories(${ANAKIN_INCLUDE})
+# A helper function used in Anakin, currently, to use it, one need to recursively include
+# nearly all the header files.
+function(fetch_include_recursively root_dir)
+    if (IS_DIRECTORY ${root_dir})
+        include_directories(${root_dir})
+    endif()
+
+    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
+    foreach(sub ${ALL_SUB})
+        if (IS_DIRECTORY ${root_dir}/${sub})
+            fetch_include_recursively(${root_dir}/${sub})
+        endif()
+    endforeach()
+endfunction()
+fetch_include_recursively(${ANAKIN_INCLUDE})
+
+# A nother helper function used in Anakin.
+function(target_fetch_include_recursively root_dir target_name)
+    if (IS_DIRECTORY ${root_dir})
+        target_include_directories(${target_name} PUBLIC ${root_dir})
+    endif()
+
+    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
+    foreach(sub ${ALL_SUB})
+        if (IS_DIRECTORY ${root_dir}/${sub})
+            target_include_directories(${target_name} PUBLIC ${root_dir}/${sub})
+        endif()
+    endforeach()
+endfunction()
 
 set(ANAKIN_COMPILE_EXTRA_FLAGS 
     -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
@@ -29,7 +57,7 @@ ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
     GIT_REPOSITORY      "https://github.com/luotao1/Anakin"
-    GIT_TAG             "20f6cb94a0f6ebbef0b45068b34baeb07242bac7"
+    GIT_TAG             "3957ae9263eaa0b1986758dac60a88852afb09be"
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DUSE_GPU_PLACE=YES
@@ -41,27 +69,9 @@ ExternalProject_Add(
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
 )
-# must manualy copy anakin_config.h to install dir. 
-execute_process(COMMAND bash -c "cp ${ANAKIN_INSTALL_DIR}/../../extern_anakin-build/anakin_config.h ${ANAKIN_INSTALL_DIR}")
-
-# A helper function used in Anakin, currently, to use it, one need to recursively include
-# nearly all the header files.
-function(fetch_include_recursively root_dir)
-    if (IS_DIRECTORY ${root_dir})
-        include_directories(${root_dir})
-    endif()
-
-    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
-    foreach(sub ${ALL_SUB})
-        if (IS_DIRECTORY ${root_dir}/${sub})
-            fetch_include_recursively(${root_dir}/${sub})
-        endif()
-    endforeach()
-endfunction()
 
 message(STATUS "Anakin for inference is enabled")
 message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
-
 
 add_dependencies(extern_anakin protobuf mklml)
 add_library(anakin SHARED IMPORTED GLOBAL)
