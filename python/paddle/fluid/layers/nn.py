@@ -550,7 +550,7 @@ def dynamic_lstmp(input,
     """
 
     helper = LayerHelper('lstmp', **locals())
-    size = size / 4
+    size = size // 4
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype)
     proj_weight = helper.create_parameter(
@@ -778,7 +778,7 @@ def gru_unit(input,
 
     helper = LayerHelper('gru_unit', **locals())
     dtype = helper.input_dtype()
-    size = size / 3
+    size = size // 3
 
     # create weight
     weight = helper.create_parameter(
@@ -1258,7 +1258,7 @@ def sequence_conv(input,
         outputs={"Out": pre_bias},
         attrs={
             'contextStride': filter_stride,
-            'contextStart': -int(filter_size / 2),
+            'contextStart': -int(filter_size // 2),
             'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
@@ -1487,7 +1487,7 @@ def conv2d(input,
     else:
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels / groups
+        num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -1649,7 +1649,7 @@ def conv3d(input,
     else:
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels / groups
+        num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
     stride = utils.convert_to_list(stride, 3, 'stride')
@@ -2384,16 +2384,16 @@ def conv2d_transpose(input,
         w_in = input.shape[3]
 
         filter_size_h = (output_size[0] - (h_in - 1) * stride[0] + 2 *
-                         padding[0] - 1) / dilation[0] + 1
+                         padding[0] - 1) // dilation[0] + 1
         filter_size_w = (output_size[1] - (w_in - 1) * stride[1] + 2 *
-                         padding[1] - 1) / dilation[1] + 1
+                         padding[1] - 1) // dilation[1] + 1
         filter_size = [filter_size_h, filter_size_w]
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
     groups = 1 if groups is None else groups
-    filter_shape = [input_channel, num_filters / groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
@@ -2551,18 +2551,18 @@ def conv3d_transpose(input,
         w_in = input.shape[4]
 
         filter_size_d = (output_size[0] - (d_in - 1) * stride[0] + 2 *
-                         padding[0] - 1) / dilation[0] + 1
+                         padding[0] - 1) // dilation[0] + 1
         filter_size_h = (output_size[1] - (h_in - 1) * stride[1] + 2 *
-                         padding[1] - 1) / dilation[1] + 1
+                         padding[1] - 1) // dilation[1] + 1
         filter_size_w = (output_size[2] - (w_in - 1) * stride[2] + 2 *
-                         padding[2] - 1) / dilation[2] + 1
+                         padding[2] - 1) // dilation[2] + 1
         filter_size = [filter_size_d, filter_size_h, filter_size_w]
     else:
         filter_size = utils.convert_to_list(filter_size, 3,
                                             'conv3d_transpose.filter_size')
 
     groups = 1 if groups is None else groups
-    filter_shape = [input_channel, num_filters / groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
