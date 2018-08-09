@@ -46,7 +46,7 @@ import transpiler
 from param_attr import ParamAttr, WeightNormParamAttr
 from data_feeder import DataFeeder
 from core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
-from transpiler import DistributeTranspiler, InferenceTranspiler, \
+from transpiler import DistributeTranspiler, InferenceTranspiler, TrainingTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from concurrency import (Go, make_channel, channel_send, channel_recv,
                          channel_close, Select)

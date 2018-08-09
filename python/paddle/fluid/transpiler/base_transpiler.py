@@ -12,13 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig
-from inference_transpiler import InferenceTranspiler
-from training_transpiler import TrainingTranspiler
-from memory_optimization_transpiler import memory_optimize, release_memory
-from ps_dispatcher import HashName, RoundRobin
 
-__all__ = [
-    "DistributeTranspiler", "InferenceTranspiler", "memory_optimize",
-    "release_memory", "HashName", "RoundRobin", "DistributeTranspilerConfig"
-]
+class BaseTranspiler:
+    '''
+    Base class for transpilers.
+    '''
+
+    def _remove_unused_var(self):
+        '''
+        remove unused varibles in program
+        '''
+        args = []
+        for i in range(len(self.block.ops)):
+            current_op = self.block.ops[i]
+            args += current_op.input_arg_names
+            args += current_op.output_arg_names
+        args = list(set(args))  # unique the input and output arguments
+
+        for var in self.block.vars.keys():
+            if var not in args:
+                self.block._remove_var(var)
