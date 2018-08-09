@@ -62,11 +62,11 @@ endif()
 
 if (WITH_ANAKIN) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
+    fetch_include_recursively(${ANAKIN_INCLUDE})
     nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin)
     nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
     set(ANAKIN_DEPS_LIB ${ANAKIN_SHARED_LIB} ${ANAKIN_SABER_LIB} ${CUDNN_LIBRARY})
     function(anakin_target target_name)
-      target_fetch_include_recursively(${ANAKIN_INCLUDE} ${target_name})
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
       target_link_libraries(${target_name} ${ANAKIN_DEPS_LIB})
     endfunction()

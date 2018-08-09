@@ -14,7 +14,7 @@ SET(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 # nearly all the header files.
 function(fetch_include_recursively root_dir)
     if (IS_DIRECTORY ${root_dir})
-        include_directories(${root_dir})
+        include_directories(BEFORE ${root_dir})
     endif()
 
     file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
@@ -25,20 +25,6 @@ function(fetch_include_recursively root_dir)
     endforeach()
 endfunction()
 fetch_include_recursively(${ANAKIN_INCLUDE})
-
-# A nother helper function used in Anakin.
-function(target_fetch_include_recursively root_dir target_name)
-    if (IS_DIRECTORY ${root_dir})
-        target_include_directories(${target_name} PUBLIC ${root_dir})
-    endif()
-
-    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
-    foreach(sub ${ALL_SUB})
-        if (IS_DIRECTORY ${root_dir}/${sub})
-            target_include_directories(${target_name} PUBLIC ${root_dir}/${sub})
-        endif()
-    endforeach()
-endfunction()
 
 set(ANAKIN_COMPILE_EXTRA_FLAGS 
     -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
@@ -56,6 +42,7 @@ set(ANAKIN_COMPILE_EXTRA_FLAGS
 ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    # TODO(luotao): use PaddlePaddle/Anakin later
     GIT_REPOSITORY      "https://github.com/luotao1/Anakin"
     GIT_TAG             "3957ae9263eaa0b1986758dac60a88852afb09be"
     PREFIX              ${ANAKIN_SOURCE_DIR}
@@ -73,6 +60,7 @@ ExternalProject_Add(
 message(STATUS "Anakin for inference is enabled")
 message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
 
+fetch_include_recursively(${ANAKIN_INCLUDE})
 add_dependencies(extern_anakin protobuf mklml)
 add_library(anakin SHARED IMPORTED GLOBAL)
 set_property(TARGET anakin PROPERTY IMPORTED_LOCATION ${ANAKIN_SHARED_LIB})
