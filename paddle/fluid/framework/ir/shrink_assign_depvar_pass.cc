@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <stdio.h>
 #include <algorithm>
+#include <utility>
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/shrink_assign_depvar_pass.h"
@@ -36,16 +37,18 @@ std::vector<ir::Node*> GetUpstreamOps(const ir::Node* op) {
 std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   std::vector<ir::Node*> to_remove;
+  //                    last_op      input var
+  std::vector<std::pair<ir::Node*, ir::Node*>> to_remove_unused_input;
 
   for (ir::Node* n : graph->Nodes()) {
     if (n->NodeType() == ir::Node::Type::kVariable) continue;
-
     for (ir::Node* in_var : n->inputs) {
+      if (in_var->NodeType() == ir::Node::Type::kOperation) continue;
       for (ir::Node* upstream_op : in_var->inputs) {
-        PADDLE_ENFORCE(upstream_op->NodeType() == ir::Node::Type::kOperation);
         if (upstream_op->Name() == "assign") {
-          printf("find path: %s -> %s -> %s\n", upstream_op->Name().c_str(),
-                 in_var->Name().c_str(), n->Name().c_str());
+          VLOG(3) << "find path: " << upstream_op->Name() << "->"
+                  << in_var->Name() << "->" << n->Name();
+          // NOTE: This is a special case!!!
           // connected by dep_var, cases like:
           // condition_op -> learning_rate
           //              \-> assign -> final_learning_rate ->
@@ -66,15 +69,29 @@ std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
               in_var->inputs.push_back(grand);
             }
             // assign then can remove all inputs
-            upstream_op->inputs.clear();
+            // upstream_op->inputs.clear();
           } else {
             // connected by in/out, case like:
             // condition_op -> learning_rate -> assign -> final_learning_rate ->
             // sgd
-            // can remove assign and final_learning_rate
-            // TODO(typhoonzero): Can remove assign for performance
-            //                    but need to change the operators input var
-            //                    names.
+            auto it =
+                std::find(to_remove.begin(), to_remove.end(), upstream_op);
+            if (it == to_remove.end()) {
+              to_remove.push_back(upstream_op);
+            }
+            // connect origin var before assign to current op
+            for (ir::Node* v : upstream_op->inputs) {
+              VLOG(3) << "connect var: " << v->Name();
+              auto upstream_it =
+                  std::find(v->outputs.begin(), v->outputs.end(), upstream_op);
+              if (upstream_it != v->outputs.end()) {
+                v->outputs.erase(upstream_it);
+              }
+              v->outputs.push_back(n);
+              n->inputs.push_back(v);
+            }
+            // // remove later out side the iterator
+            to_remove_unused_input.push_back(std::make_pair(n, in_var));
           }
         }
       }
@@ -82,7 +99,16 @@ std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
   }
 
   for (ir::Node* n : to_remove) {
+    n->inputs.clear();
     n->outputs.clear();
+  }
+
+  for (std::pair<ir::Node*, ir::Node*> np : to_remove_unused_input) {
+    auto it =
+        std::find(np.first->inputs.begin(), np.first->inputs.end(), np.second);
+    if (it != np.first->inputs.end()) {
+      np.first->inputs.erase(it);
+    }
   }
 
   for (ir::Node* n : to_remove) {
