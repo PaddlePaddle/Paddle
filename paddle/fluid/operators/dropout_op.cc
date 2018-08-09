@@ -141,10 +141,7 @@ class DropoutOpGrad : public framework::OperatorWithKernel {
       const std::string& var_name, const framework::Tensor& tensor,  // NOLINT
       const framework::OpKernelType& expected_kernel_type) const override {
     // Prevent data transform of Input(SeedIn) from CPUPlace to CUDAPlace
-    return (var_name == "SeedIn" ||
-            var_name == framework::GradVarName("SeedIn") ||
-            var_name == "SeedOut" ||
-            var_name == framework::GradVarName("SeedOut"))
+    return (var_name == "SeedIn" || var_name == "SeedOut")
                ? expected_kernel_type
                : framework::OperatorWithKernel::GetKernelTypeForVar(
                      var_name, tensor, expected_kernel_type);

@@ -33,7 +33,6 @@ __global__ void RandomGenerator(const size_t n, const size_t seed,
   thrust::minstd_rand rng;
   thrust::uniform_int_distribution<uint32_t> dist(0, kUInt32Max - 1);
   rng.seed(HashCombine(seed, idx));
-  rng.seed(dist(rng));
 
   if (idx < n) {
     if (dist(rng) < int_dropout_prob) {
