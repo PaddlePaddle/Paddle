@@ -183,9 +183,11 @@ def round(x, d=0):
         if x > 0.0:
             p = 10 ** d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p
-        else:
+        elif x < 0.0:
             p = 10 ** d
             return float(math.ceil((x * p) + math.copysign(0.5, x))) / p
+        else:
+            return math.copysign(0.0, x)
     else:
         import __builtin__
         return __builtin__.round(x, d)

@@ -15,6 +15,7 @@
 import os
 import random
 import six
+import functools
 import subprocess
 import logging
 

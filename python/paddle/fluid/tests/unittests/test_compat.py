@@ -440,6 +440,8 @@ class TestCompatible(unittest.TestCase):
         self.assertEqual(3.0, cpt.round(3.4))
         self.assertEqual(4.0, cpt.round(3.5))
         self.assertEqual(0.0, cpt.round(0.1))
+        self.assertEqual(0.0, cpt.round(0.0))
+        self.assertEqual(-0.0, cpt.round(-0.0))
         self.assertEqual(-0.0, cpt.round(-0.1))
         self.assertEqual(-3.0, cpt.round(-3.4))
         self.assertEqual(-4.0, cpt.round(-3.5))
