@@ -798,6 +798,10 @@ class Operator(object):
         Sync attrs data from c++ end.
         """
         for name in self.desc.attr_names():
+            attr_type = self.desc.attr_type(name)
+            if attr_type == core.AttrType.BLOCK or attr_type == core.AttrType.BLOCKS:
+                continue
+
             attr = self.desc.attr(name)
             self.attrs[name] = attr
 
