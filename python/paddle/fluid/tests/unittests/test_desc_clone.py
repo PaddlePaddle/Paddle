@@ -121,8 +121,8 @@ class TestDistMnist(unittest.TestCase):
         main = pserver_prog.clone()
         startup = startup_prog.clone()
 
-        self.assertTrue(main == pserver_prog)
-        self.assertTrue(startup == startup_prog)
+        self.assertTrue(main.equal(pserver_prog))
+        self.assertTrue(startup.equal(startup_prog))
 
 
 if __name__ == "__main__":

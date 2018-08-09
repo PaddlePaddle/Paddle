@@ -264,7 +264,8 @@ class NormalInitializer(Initializer):
                 "dtype": int(var.dtype),
                 "mean": self._mean,
                 "std": self._std_dev,
-                "seed": self._seed
+                "seed": self._seed,
+                "use_mkldnn": False
             })
         var.op = op
         return op

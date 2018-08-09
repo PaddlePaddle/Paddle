@@ -575,11 +575,8 @@ class Operator(object):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
 
-    def __eq__(self, other):
+    def equal(self, other):
         for k, v in self.__dict__.iteritems():
-            if v is None:
-                continue
-
             if isinstance(v, core.OpDesc) or isinstance(
                     v, Program) or isinstance(v, Block):
                 continue
@@ -589,12 +586,45 @@ class Operator(object):
                 v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
 
                 if v0 != v1:
-                    print("In Operator(Object) not equal:", k)
+                    raise ValueError(
+                        "In Operator(Object) not equal:{0}\n".format(k))
                     return False
                 continue
 
+            if k == 'attrs':
+                if len(self.attrs) != len(other.attrs):
+                    raise ValueError(
+                        "In Operator(Object)'s attrs not equal:{0}\n".format(
+                            ak))
+                    return False
+
+                for ak, av in self.attrs.iteritems():
+                    if ak == 'op_role':
+                        if av != int(other.attrs[ak]):
+                            raise ValueError(
+                                "In Operator(Object)'s attrs not equal:{0}\n".
+                                format(ak))
+                            return False
+                        continue
+
+                    if isinstance(av, float):
+                        if abs(av - other.attrs[ak]) > 0.000001:
+                            raise ValueError(
+                                "In Operator(Object)'s attrs not equal:{0}\n".
+                                format(ak))
+                            return False
+                        continue
+
+                    if av != other.attrs[ak]:
+                        raise ValueError(
+                            "In Operator(Object)'s attrs not equal:{0}\n".
+                            format(ak))
+                        return False
+                continue
+
             if (v != other.__dict__[k]):
-                print("not equal in Operator(Object):", k)
+                raise ValueError("In Operator(Object) not equal:{0}\n".format(
+                    k))
                 return False
 
         return True
@@ -860,10 +890,19 @@ class Block(object):
         self.program = program
         self.removed_vars = collections.OrderedDict()
 
-    def __eq__(self, other):
+    def equal(self, other):
         for k, v in self.__dict__.iteritems():
             if isinstance(v, core.ProgramDesc) or isinstance(
                     v, Program) or isinstance(v, core.BlockDesc):
+                continue
+
+            if k == "ops":
+                for i in range(0, len(self.ops)):
+                    if not self.ops[i].equal(other.ops[i]):
+                        raise ValueError(
+                            "In Block(Object) not equal:{0}\n".format(k))
+                        return False
+                assert (len(self.ops) == len(other.ops))
                 continue
 
             if isinstance(v, collections.OrderedDict):
@@ -871,12 +910,13 @@ class Block(object):
                 v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
 
                 if v0 != v1:
-                    print("Not equal in Block(Object):", k)
+                    raise ValueError("In Block(Object) not equal:{0}\n".format(
+                        k))
                     return False
                 continue
 
             if (v != other.__dict__[k]):
-                print("Not equal in Block(Object):", k)
+                raise ValueError("In Block(Object) not equal:{0}\n".format(k))
                 return False
 
         return True
@@ -1360,12 +1400,22 @@ class Program(object):
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
 
-    def __eq__(self, other):
+    def equal(self, other):
         for k, v in self.__dict__.iteritems():
             if isinstance(v, core.ProgramDesc):
                 continue
+
+            if k == 'blocks':
+                for i in range(0, len(self.blocks)):
+                    if not self.blocks[i].equal(other.blocks[i]):
+                        raise ValueError(
+                            "In Operator(Object) not equal:{0}\n".format(k))
+                        return False
+                assert (len(self.blocks) == len(other.blocks))
+                continue
+
             if (v != other.__dict__[k]):
-                print("not equal in Program(Object):", k)
+                raise ValueError("In Program(Object) not equal:{0}\n".format(k))
                 return False
 
         return True
