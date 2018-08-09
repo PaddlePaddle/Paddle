@@ -766,7 +766,7 @@ class Operator(object):
 
     def _sync_with_cpp(self):
         """
-        Sync attrs from c++ end.
+        Sync attrs data from c++ end.
         """
         for name in self.desc.attr_names():
             attr = self.desc.attr(name)
