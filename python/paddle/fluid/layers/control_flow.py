@@ -21,27 +21,20 @@ from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
 from ops import logical_and, logical_not, logical_or
 import numpy
+import warnings
 
 __all__ = [
-    'split_lod_tensor',
-    'merge_lod_tensor',
     'While',
     'Switch',
-    'lod_rank_table',
-    'max_sequence_len',
-    'lod_tensor_to_array',
-    'array_to_lod_tensor',
     'increment',
     'array_write',
     'create_array',
     'less_than',
     'equal',
     'array_read',
-    'shrink_memory',
     'array_length',
     'IfElse',
     'DynamicRNN',
-    'ConditionalBlock',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
     'ParallelDo',
@@ -288,6 +281,9 @@ class ParallelDo(object):
     """
 
     def __init__(self, places, use_nccl=False, name=None):
+        warnings.warn(
+            "API ParallelDo is deprecated since 0.15.0. Please use ParallelExecutor instead.",
+            Warning)
         self.helper = LayerHelper("parallel_do", name=name)
         self.inputs = []
         self.places = places
@@ -346,7 +342,7 @@ class ParallelDo(object):
 
         return [parent_block.var(name) for name in params]
 
-    def complete_op(self):
+    def _complete_op(self):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
@@ -402,7 +398,7 @@ class BlockGuardWithCompletion(BlockGuard):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
-        self.rnn.complete_op()
+        self.rnn._complete_op()
         return super(BlockGuardWithCompletion, self).__exit__(exc_type, exc_val,
                                                               exc_tb)
 
@@ -478,7 +474,7 @@ class StaticRNN(object):
             if shape is None or batch_ref is None:
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
-            parent_block = self.parent_block()
+            parent_block = self._parent_block()
             var_name = unique_name.generate("@".join(
                 [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
@@ -535,7 +531,7 @@ class StaticRNN(object):
             outputs={'Out': tmp_o},
             attrs={'dtype': o.dtype})
 
-        out_var = self.parent_block().create_var(
+        out_var = self._parent_block().create_var(
             name=tmp_o.name,
             shape=[self.seq_len] + list(tmp_o.shape),
             dtype=tmp_o.dtype)
@@ -551,7 +547,7 @@ class StaticRNN(object):
             raise TypeError("update memory should take variables")
         self.memories[mem.name].mem = var
 
-    def parent_block(self):
+    def _parent_block(self):
         prog = self.helper.main_program
         parent_idx = prog.current_block().parent_idx
         assert parent_idx >= 0
@@ -568,10 +564,10 @@ class StaticRNN(object):
         else:
             return self.outputs
 
-    def complete_op(self):
+    def _complete_op(self):
         main_program = self.helper.main_program
         rnn_block = main_program.current_block()
-        parent_block = self.parent_block()
+        parent_block = self._parent_block()
 
         local_inputs = set()
 
@@ -651,7 +647,7 @@ class WhileGuard(BlockGuard):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
-        self.while_op.complete()
+        self.while_op._complete()
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -698,7 +694,7 @@ class While(object):
     def block(self):
         return WhileGuard(self)
 
-    def complete(self):
+    def _complete(self):
         main_program = self.helper.main_program
         while_block = main_program.current_block()
         parent_block = main_program.block(main_program.current_block()
@@ -1457,7 +1453,7 @@ class IfElse(object):
         if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
             raise ValueError("input must in true/false blocks")
         if id(x) not in self.input_table:
-            parent_block = self.parent_block()
+            parent_block = self._parent_block()
             out_true = parent_block.create_var(
                 name=unique_name.generate('ifelse_input' + self.helper.name),
                 dtype=x.dtype)
@@ -1483,7 +1479,7 @@ class IfElse(object):
         else:
             return out_false
 
-    def parent_block(self):
+    def _parent_block(self):
         current_block = self.helper.main_program.current_block()
         return self.helper.main_program.block(current_block.parent_idx)
 
@@ -1499,7 +1495,7 @@ class IfElse(object):
 
         out_table = self.output_table[1 if self.status ==
                                       self.IN_IF_ELSE_TRUE_BLOCKS else 0]
-        parent_block = self.parent_block()
+        parent_block = self._parent_block()
         for each_out in outs:
             if not isinstance(each_out, Variable):
                 raise TypeError("Each output should be a variable")

@@ -137,6 +137,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   executor_->RunPreparedContext(
       ctx_.get(), sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
       &feed_targets, &fetch_targets,
+      false, /* don't create local scope each time*/
       false /* don't create variable eatch time */);
   VLOG(4) << "Finish prepared context";
   if (!GetFetch(fetchs, output_data)) {
@@ -182,6 +183,13 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                 inputs[i].data.length());
+    // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
+    framework::LoD lod;
+    for (auto &level : inputs[i].lod) {
+      lod.emplace_back(level);
+    }
+    input.set_lod(lod);
+
     feeds->push_back(input);
   }
   return true;
@@ -247,6 +255,10 @@ bool NativePaddlePredictor::GetFetch(
       buffer.Resize(sizeof(float) * data.size());
     }
     std::memcpy(buffer.data(), data.data(), buffer.length());
+    // copy LoD
+    for (const auto &level : fetchs[i].lod()) {
+      outputs->at(i).lod.emplace_back(level);
+    }
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }

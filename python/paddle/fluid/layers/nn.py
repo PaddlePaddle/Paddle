@@ -110,6 +110,7 @@ __all__ = [
     'relu',
     'log',
     'crop',
+    'rank_loss',
 ]
 
 
@@ -948,6 +949,10 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     helper = LayerHelper('dropout', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
@@ -1312,13 +1317,16 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     """
-    The input of the softmax layer is a 2-D tensor with shape N x K (N is the
-    batch_size, K is the dimension of input feature). The output tensor has the
-    same shape as the input tensor.
+    The input of the softmax operator is a tensor of any rank. The output tensor 
+    has the same shape as the input.
 
-    For each row of the input tensor, the softmax operator squashes the
-    K-dimensional vector of arbitrary real values to a K-dimensional vector of real
-    values in the range [0, 1] that add up to 1.
+    The input tensor will first be logically flattened to a 2-D matrix. The matrix's 
+    second dimension(row length) is as same as the last dimension of the input 
+    tensor, and the first dimension(column length) is the product of all other 
+    dimensions of the input tensor. For each row of the matrix, the softmax operator 
+    squashes the K-dimensional(K is the width of the matrix, which is also the size 
+    of the input tensor's last dimension) vector of arbitrary real values to a 
+    K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
@@ -1326,7 +1334,7 @@ def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     exponential values of all the other dimensions is the output of the softmax
     operator.
 
-    For each row :math:`i` and each column :math:`j` in Input(X), we have:
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
 
     .. math::
 
@@ -2961,7 +2969,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the correspending output tensor.
+            # Each example is followed by the corresponding output tensor.
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
@@ -2970,7 +2978,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
-            # Each example is followed by the correspending output tensor.
+            # Each example is followed by the corresponding output tensor.
             fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
             fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
 
@@ -4472,15 +4480,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape", **locals())
-    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs=inputs,
-        attrs={"shape": shape,
-               "inplace": inplace},
-        outputs={"Out": reshaped})
+        attrs={"shape": shape},
+        outputs={"Out": out})
 
-    return helper.append_activation(reshaped)
+    return helper.append_activation(out)
 
 
 def lod_reset(x, y=None, target_lod=None):
@@ -5281,4 +5288,75 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def rank_loss(label, left, right, name=None):
+    """
+    **Rank loss layer for RankNet**
+
+    RankNet(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
+    is a pairwise ranking model with a training sample consisting of a pair
+    of documents, A and B. Label P indicates whether A is ranked higher than B
+    or not:
+ 
+    P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
+    about the rank of the input pair.
+    
+    Rank loss layer takes three inputs: left (o_i), right (o_j) and
+    label (P_{i,j}). The inputs respectively represent RankNet's output scores
+    for documents A and B and the value of label P. The following equation
+    computes rank loss C_{i,j} from the inputs:
+    
+    $$
+      C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
+      o_{i,j} =  o_i - o_j  \\
+      \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
+    $$
+    
+    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).   
+ 
+    Args:
+        label (Variable): Indicats whether A ranked higher than B or not.
+        left (Variable): RankNet's output score for doc A.
+        right (Variable): RankNet's output score for doc B.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        list: The value of rank loss.
+
+    Raises:
+        ValueError: Any of label, left, and right is not a variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            out = fluid.layers.rank_loss(label, left, right)
+
+
+    """
+    helper = LayerHelper('rank_loss', **locals())
+
+    if not (isinstance(label, Variable)):
+        raise ValueError("The label should be a Variable")
+
+    if not (isinstance(left, Variable)):
+        raise ValueError("The left should be a Variable")
+
+    if not (isinstance(right, Variable)):
+        raise ValueError("The right should be a Variable")
+
+    out = helper.create_tmp_variable("float32")
+
+    helper.append_op(
+        type='rank_loss',
+        inputs={"Label": label,
+                "Left": left,
+                "Right": right},
+        outputs={'Out': out})
     return out

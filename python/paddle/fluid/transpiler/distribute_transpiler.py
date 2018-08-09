@@ -38,7 +38,7 @@ from ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
 from ..framework import Program, default_main_program, \
                         default_startup_program, Block, \
-                        Variable, Parameter, grad_var_name
+                        Parameter, grad_var_name
 from details import *
 
 LOOKUP_TABLE_TYPE = "lookup_table"
@@ -347,6 +347,7 @@ class DistributeTranspiler(object):
 
         # step1
         pserver_program = Program()
+        pserver_program.random_seed = self.origin_program.random_seed
         # step2: Create vars to receive vars at parameter servers.
         recv_inputs = []
         for v in self.param_grad_ep_mapping[endpoint]["params"]:
@@ -494,6 +495,7 @@ class DistributeTranspiler(object):
             pserver_index = self.pserver_endpoints.index(endpoint)
             table_opt_block = self._create_table_optimize_block(
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
+            optimize_blocks.append(table_opt_block)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(
@@ -544,6 +546,7 @@ class DistributeTranspiler(object):
         """
         s_prog = Program()
         orig_s_prog = default_startup_program()
+        s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
         def _get_splited_name_and_shape(varname):
@@ -779,7 +782,9 @@ class DistributeTranspiler(object):
                         outputs={"Out": prefetch_output_vars},
                         attrs={
                             "epmap": pserver_endpoints,
-                            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                            # FIXME(qiao) temporarily disable this config because prefetch
+                            # is not act as other rpc op, it's more like a forward op
+                            # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                         })
 
                     # insert concat_op
@@ -887,11 +892,10 @@ class DistributeTranspiler(object):
         # create table optimize block in pserver program
         table_opt_op = [
             op for op in self.optimize_ops
-            if op.input("Param")[0] == self.table_name
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
         ][0]
         table_opt_block = pserver_program.create_block(pre_block_idx)
-        # only support sgd now
-        assert table_opt_op.type == "sgd"
 
         if self.sync_mode:
             # create grad vars in pserver program
@@ -931,11 +935,12 @@ class DistributeTranspiler(object):
             "LearningRate": [lr_var]
         }
         outputs = {"ParamOut": [param_var]}
-        table_opt_block.append_op(
-            type=table_opt_op.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=table_opt_op.attrs)
+        # only support sgd now
+        import logging
+        logging.warn(
+            "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
+            + table_opt_op.type)
+        table_opt_block.append_op(type="sgd", inputs=inputs, outputs=outputs)
 
         # add table parameter gradient and it's block id to grad_to_block_id
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
@@ -1044,7 +1049,6 @@ class DistributeTranspiler(object):
         ]
 
     def _clone_var(self, block, var, persistable=True):
-        assert isinstance(var, Variable)
         return block.create_var(
             name=var.name,
             shape=var.shape,
