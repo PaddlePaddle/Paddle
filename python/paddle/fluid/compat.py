@@ -15,18 +15,77 @@
 import six
 import math
 
+__all__ = [
+    'to_literal_str',
+    'to_bytes',
+    'round',
+    'floor_division',
+    'get_exception_message',
+]
 
 #  str and bytes related functions
-def to_literal_str(obj, encoding='utf-8'):
+def to_literal_str(obj, encoding='utf-8', inplace=False):
+    """
+      All string in PaddlePaddle should be represented as a literal string.
+    This function will convert object to a literal string without any encoding.
+    Especially, if the object type is a list or set container, we will iterate
+    all items in the object and convert them to literal string.
+
+    In Python3:
+        Decode the bytes type object to str type with specific encoding
+
+    In Python2:
+        Decode the str type object to unicode type with specific encoding
+
+    Args:
+        obj(unicode|str|bytes|list|set) : The object to be decoded.
+        encoding(str) : The encoding format to decode a string
+        inplace(bool) : If we change the original object or we create a new one
+
+    Returns:
+        Decoded result of obj
+    """
+    if obj is None:
+        return obj
+
     if isinstance(obj, list):
-        return [_to_literal_str(item, encoding) for item in obj]
+        if inplace:
+            for i in six.moves.xrange(len(obj)):
+                obj[i] = _to_literal_str(obj[i], encoding)
+            return obj
+        else:
+            return [_to_literal_str(item, encoding) for item in obj]
     elif isinstance(obj, set):
-        return set([_to_literal_str(item, encoding) for item in obj])
+        if inplace:
+            for item in obj:
+                obj.remove(item)
+                obj.add(_to_literal_str(item, encoding))
+            return obj
+        else:
+            return set([_to_literal_str(item, encoding) for item in obj])
     else:
         return _to_literal_str(obj, encoding)
 
 
 def _to_literal_str(obj, encoding):
+    """
+    In Python3:
+        Decode the bytes type object to str type with specific encoding
+
+    In Python2:
+        Decode the str type object to unicode type with specific encoding,
+        or we just return the unicode string of object
+
+    Args:
+        obj(unicode|str|bytes) : The object to be decoded.
+        encoding(str) : The encoding format
+
+    Returns:
+        decoded result of obj
+    """
+    if obj is None:
+        return obj
+
     if isinstance(obj, six.binary_type):
         return obj.decode(encoding)
     elif isinstance(obj, six.text_type):
@@ -35,16 +94,70 @@ def _to_literal_str(obj, encoding):
         return six.u(obj)
 
 
-def to_bytes(obj, encoding='utf-8'):
+def to_bytes(obj, encoding='utf-8', inplace=False):
+    """
+      All string in PaddlePaddle should be represented as a literal string.
+    This function will convert object to a bytes with specific encoding.
+    Especially, if the object type is a list or set container, we will iterate
+    all items in the object and convert them to bytes.
+
+    In Python3:
+        Encode the str type object to bytes type with specific encoding
+
+    In Python2:
+        Encode the unicode type object to str type with specific encoding,
+        or we just return the 8-bit string of object
+
+    Args:
+        obj(unicode|str|bytes|list|set) : The object to be encoded.
+        encoding(str) : The encoding format to encode a string
+        inplace(bool) : If we change the original object or we create a new one
+
+    Returns:
+        Decoded result of obj
+    """
+    if obj is None:
+        return obj
+
     if isinstance(obj, list):
-        return [_to_bytes(item, encoding) for item in obj]
+        if inplace:
+            for i in six.moves.xrange(len(obj)):
+                obj[i] = _to_bytes(obj[i], encoding)
+            return obj
+        else:
+            return [_to_bytes(item, encoding) for item in obj]
     elif isinstance(obj, set):
-        return set([_to_bytes(item, encoding) for item in obj])
+        if inplace:
+            for item in obj:
+                obj.remove(item)
+                obj.add(_to_bytes(item, encoding))
+            return obj
+        else:
+            return set([_to_bytes(item, encoding) for item in obj])
     else:
         return _to_bytes(obj, encoding)
 
 
 def _to_bytes(obj, encoding):
+    """
+    In Python3:
+        Encode the str type object to bytes type with specific encoding
+
+    In Python2:
+        Encode the unicode type object to str type with specific encoding,
+        or we just return the 8-bit string of object
+
+    Args:
+        obj(unicode|str|bytes) : The object to be encoded.
+        encoding(str) : The encoding format
+
+    Returns:
+        encoded result of obj
+    """
+    if obj is None:
+        return obj
+
+    assert encoding is not None
     if isinstance(obj, six.text_type):
         return obj.encode(encoding)
     elif isinstance(obj, six.binary_type):
@@ -64,15 +177,48 @@ def round(x, d=0):
     Returns:
         round result of x
     """
-    p = 10**d
-    return float(math.floor((x * p) + math.copysign(0.5, x))) / p
+    if six.PY3:
+        # The official walkaround of round in Python3 is incorrect
+        # we implement accroding this answer: https://www.techforgeek.info/round_python.html
+        if x > 0.0:
+            p = 10 ** d
+            return float(math.floor((x * p) + math.copysign(0.5, x))) / p
+        else:
+            p = 10 ** d
+            return float(math.ceil((x * p) + math.copysign(0.5, x))) / p
+    else:
+        import __builtin__
+        return __builtin__.round(x, d)
 
 
 def floor_division(x, y):
+    """
+    Compatible division which act the same behaviour in Python3 and Python2,
+    whose result will be a int value of floor(x / y) in Python3 and value of
+    (x / y) in Python2.
+
+    Args:
+        x(int|float) : The number to divide.
+        y(int|float) : The number to be divided
+
+    Returns:
+        division result of x // y
+    """
     return x // y
 
 # exception related functions
 def get_exception_message(exc):
+    """
+    Get the error message of a specific exception
+
+    Args:
+        exec(Exception) : The exception to get error message.
+
+    Returns:
+        the error message of exec
+    """
+    assert exc is not None
+
     if six.PY2:
         return exc.message
     else:
