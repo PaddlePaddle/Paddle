@@ -124,6 +124,7 @@ class DistributeTranspilerConfig(object):
     slice_var_up = True
     split_method = None
     min_block_size = 8192
+    sync_mode = True
 
 
 class DistributeTranspiler(object):
@@ -197,7 +198,7 @@ class DistributeTranspiler(object):
             program = default_main_program()
         self.origin_program = program
         self.trainer_num = trainers
-        self.sync_mode = sync_mode
+        self.sync_mode = sync_mode and self.config.sync_mode
         self.trainer_id = trainer_id
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
@@ -293,14 +294,15 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        program.global_block().append_op(
-            type="fetch_barrier",
-            inputs={},
-            outputs={},
-            attrs={
-                "endpoints": pserver_endpoints,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        if self.sync_mode:
+            program.global_block().append_op(
+                type="fetch_barrier",
+                inputs={},
+                outputs={},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
 
         for varname, splited_var in self.param_var_mapping.iteritems():
             if len(splited_var) <= 1:
