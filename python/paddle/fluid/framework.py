@@ -814,12 +814,12 @@ class Operator(object):
         for name in self.desc.attr_names():
             attr_type = self.desc.attr_type(name)
             if attr_type == core.AttrType.BLOCK:
-                self.attrs[name] = blocks[block_attr(name)]
+                self.attrs[name] = blocks[self.block_attr(name)]
                 continue
 
             if attr_type == core.AttrType.BLOCKS:
                 bs_attr = []
-                for i in blocks_attr(name):
+                for i in self.blocks_attr(name):
                     bs_attr.append(blocks[i])
 
                 self.attrs[name] = bs_attr
