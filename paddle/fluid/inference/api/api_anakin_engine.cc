@@ -134,6 +134,10 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     cudaDeviceSynchronize();
     executor_p_->prediction();
     cudaDeviceSynchronize();
+  } else {
+    cudaDeviceSynchronize();
+    executor_p_->prediction();
+    cudaDeviceSynchronize();
   }
 #endif
 

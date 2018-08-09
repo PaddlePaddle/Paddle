@@ -109,7 +109,7 @@ int Main(int max_batch) {
   tensor_out.dtype = PaddleDType::FLOAT32;
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
-  for (int i = 0; i < 100000; i++) {
+  for (int i = 0; i < 1; i++) {
     CHECK(predictor->Run(inputs, &outputs));
   }
 

@@ -84,5 +84,10 @@ if (WITH_ANAKIN) # only needed in CI
                                   ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
                                   DEPS inference_anakin_api_shared)
         target_compile_options(inference_anakin_cnn_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+
+        cc_test(inference_anakin_rnn_test SRCS ditu_rnn.cc
+                                  ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
+                                  DEPS inference_anakin_api_shared)
+        target_compile_options(inference_anakin_rnn_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endif(WITH_TESTING)
 endif()

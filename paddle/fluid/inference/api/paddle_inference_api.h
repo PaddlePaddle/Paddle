@@ -40,11 +40,12 @@ class PaddleBuf {
   // Copy only available when memory is managed externally.
   explicit PaddleBuf(const PaddleBuf&);
   PaddleBuf& operator=(const PaddleBuf&);
+  PaddleBuf& operator=(PaddleBuf&&);
   // Do not own the memory.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  explicit PaddleBuf(size_t length)
+  PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -69,7 +70,7 @@ struct PaddleTensor {
   std::vector<int> shape;
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<uint64_t>> lod;  // lod data
+  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
 enum class PaddleEngineKind {
