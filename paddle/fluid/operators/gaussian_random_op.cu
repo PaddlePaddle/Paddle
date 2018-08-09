@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <thrust/execution_policy.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/op_registry.h"
@@ -51,7 +52,9 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
     T std = static_cast<T>(context.Attr<float>("std"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    thrust::transform(index_sequence_begin, index_sequence_begin + size,
+    auto& cuda_ctx = context.cuda_device_context();
+    thrust::transform(thrust::cuda::par.on(cuda_ctx.stream()),
+                      index_sequence_begin, index_sequence_begin + size,
                       thrust::device_ptr<T>(data),
                       GaussianGenerator<T>(mean, std, seed));
   }
