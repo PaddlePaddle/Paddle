@@ -1,0 +1,173 @@
+#include <gflags/gflags.h>
+#include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
+#include <fstream>
+#include <iostream>
+#include "paddle/fluid/inference/paddle_inference_api.h"
+#include "paddle/fluid/platform/profiler.h"
+#include "utils.h"
+#include "sys/time.h"
+#include <thread>  //NOLINT
+#include <pthread.h>
+
+using namespace paddle;
+
+DEFINE_double(fraction_of_gpu_memory_to_use, 0.1, "");
+DEFINE_string(dirname, "", "Directory of the inference model and data.");
+
+struct Record {
+  std::vector<float> data;
+};
+
+void paddle::demo::split(const std::string& str, char sep, std::vector<std::string>* pieces);
+
+Record ProcessALine(const std::string& line) {
+  VLOG(3) << "process a line";
+  Record record;
+  std::vector<std::string> data_strs;
+  paddle::demo::split(line, ',', &data_strs);
+  for (auto& d : data_strs) {
+    record.data.push_back(std::stof(d));
+  }
+  VLOG(3) << "data size " << record.data.size();
+  return record;
+}
+
+int Main(int max_batch) {
+  NativeConfig config;
+  config.prog_file = FLAGS_dirname + "/__model__" ;
+  config.param_file = FLAGS_dirname + "/__param__";
+  config.use_gpu = false;
+  config.device = 0;
+
+  std::string line;
+  std::ifstream file(FLAGS_dirname + "/feature");
+
+  std::vector<PaddleTensor> inputs;
+  std::vector<std::vector<int>> shapes({{4},
+                                        {1, 50, 12},
+                                        {1, 50, 19},
+                                        {1, 50, 1},
+                                        {4, 50, 1},
+                                        {1, 50, 1},
+                                        {5, 50, 1},
+                                        {7, 50, 1},
+                                        {3, 50, 1}});
+  for (auto& shape : shapes) {
+    std::getline(file, line);
+    auto record = ProcessALine(line);
+    shape.insert(shape.begin(), max_batch);
+    PaddleTensor feature{
+        .name = "",
+        .shape = shape,
+        .data = PaddleBuf(record.data.data(), sizeof(float) *
+                          std::accumulate(shape.begin(), shape.end(), 1,
+                                          [](int a, int b) { return a * b; })),
+        .dtype = PaddleDType::FLOAT32};
+    inputs.emplace_back(std::move(feature));
+  }
+
+  auto predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+
+  std::vector<PaddleTensor> outputs;
+ 
+  for (int i =0; i< 100; i ++)
+    CHECK(predictor->Run(inputs, &outputs));
+
+  struct timeval cur_time;
+  gettimeofday(&cur_time, NULL);
+  long t = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
+
+  platform::EnableProfiler(platform::ProfilerState::kCPU);
+  for (int i =0; i< 1; i++)
+    CHECK(predictor->Run(inputs, &outputs));
+  platform::DisableProfiler(
+              platform::EventSortingKey::kDefault,
+              "/tmp/infer_profile");
+
+  gettimeofday(&cur_time, NULL);
+  long t2 = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
+  std::cout << "10 iteration, max_batch:" << max_batch << ", time:" << (t2 - t)/1000 << "ms" << std::endl;
+}
+
+void MainThreads(int max_batch, int num_threads) {
+  // Multi-threads only support on CPU
+  // 0. Create PaddlePredictor with a config.
+  NativeConfig config;
+  config.prog_file = FLAGS_dirname + "/__model__" ;
+  config.param_file = FLAGS_dirname + "/__param__";
+  config.use_gpu = false;
+  config.device = 0;
+  auto main_predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+
+  std::vector<std::thread> threads;
+  platform::EnableProfiler(platform::ProfilerState::kCPU);
+  for (int tid = 0; tid < num_threads; ++tid) {
+    threads.emplace_back([&, tid]() {
+      // 1. clone a predictor which shares the same parameters
+      auto predictor = main_predictor->Clone();
+      std::string line;
+      std::ifstream file(FLAGS_dirname + "/feature");
+
+      std::vector<PaddleTensor> inputs;
+      std::vector<std::vector<int>> shapes({{4},
+                                            {1, 50, 12},
+                                            {1, 50, 19},
+                                            {1, 50, 1},
+                                            {4, 50, 1},
+                                            {1, 50, 1},
+                                            {5, 50, 1},
+                                            {7, 50, 1},
+                                            {3, 50, 1}});
+      for (auto& shape : shapes) {
+        std::getline(file, line);
+        auto record = ProcessALine(line);
+        shape.insert(shape.begin(), max_batch);
+        PaddleTensor feature{
+            .name = "",
+            .shape = shape,
+            .data = PaddleBuf(record.data.data(), sizeof(float) *
+                              std::accumulate(shape.begin(), shape.end(), 1,
+                                              [](int a, int b) { return a * b; })),
+            .dtype = PaddleDType::FLOAT32};
+        inputs.emplace_back(std::move(feature));
+      }
+      std::vector<PaddleTensor> outputs;
+      // 3. Run
+      struct timeval cur_time;
+      gettimeofday(&cur_time, NULL);
+      long t = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
+      for (int i =0; i< 10; i++) {
+        CHECK(predictor->Run(inputs, &outputs));
+      }
+      gettimeofday(&cur_time, NULL);
+      long t2 = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
+      std::cout << "10 iteration, thread_num:"<< tid << ",max_batch:" << max_batch 
+        << ", time:" << (t2 - t)/1000 << "ms" << std::endl;
+
+    });
+  }
+  for (int i = 0; i < num_threads; ++i) {
+    threads[i].join();
+  }
+  platform::DisableProfiler(
+      platform::EventSortingKey::kDefault,
+      "/tmp/infer_profile_thread");
+}
+
+int main(int argc, char** argv) {
+  google::ParseCommandLineFlags(&argc, &argv, true);
+  // Main(1);
+  // Main(3);
+  // Main(5);
+  // Main(10);
+  int threads[4] ={8};
+  for (int i=0; i<1; i++) {
+    MainThreads(1,threads[i]);
+    // MainThreads(3,threads[i]);
+    // MainThreads(5,threads[i]);
+    // MainThreads(10,threads[i]);
+  }
+  return 0;
+}
