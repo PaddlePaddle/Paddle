@@ -243,7 +243,7 @@ from .proto import framework_pb2
 
 def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
-    proto = framework_pb2.OpDesc.FromString(str(protostr))
+    proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
     return proto.__str__()
 
 
