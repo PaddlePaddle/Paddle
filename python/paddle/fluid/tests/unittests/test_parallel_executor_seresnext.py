@@ -198,7 +198,7 @@ class TestResnet(TestParallelExecutorBase):
                                       model,
                                       use_cuda,
                                       iter=20,
-                                      delta2=1e-4):
+                                      delta2=1e-6):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -276,10 +276,10 @@ class TestResnet(TestParallelExecutorBase):
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 
     def test_seresnext_with_new_strategy(self):
-        # self._compare_reduce_and_allreduce(
-        #     model=SE_ResNeXt50Small, use_cuda=True)
         self._compare_reduce_and_allreduce(
-            model=SE_ResNeXt50Small, use_cuda=False, iter=5, delta2=1e-2)
+            model=SE_ResNeXt50Small, use_cuda=True, delta2=1e-2)
+        self._compare_reduce_and_allreduce(
+            model=SE_ResNeXt50Small, use_cuda=False, iter=5)
 
 
 if __name__ == '__main__':
