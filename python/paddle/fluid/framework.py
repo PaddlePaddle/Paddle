@@ -28,7 +28,7 @@ except ImportError as e:
         """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + e.message)
+    directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -574,6 +574,9 @@ class Operator(object):
                 attr_val = self.attrs[attr_name]
                 self._update_desc_attr(attr_name, attr_val)
 
+        import sys
+        print('self.attrs', self.attrs)
+        sys.stdout.flush()
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
