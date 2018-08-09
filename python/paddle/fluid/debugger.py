@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import six
 import re
 from .graphviz import GraphPreviewGenerator
 from .proto import framework_pb2
