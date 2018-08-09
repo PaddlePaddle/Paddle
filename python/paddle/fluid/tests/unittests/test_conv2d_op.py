@@ -66,6 +66,7 @@ class TestConv2dOp(OpTest):
         self.op_type = "conv2d"
         self.use_cudnn = False
         self.use_mkldnn = False
+        self.data_format = "AnyLayout"
         self.dtype = np.float32
         self.init_kernel_type()
         self.init_group()
@@ -93,7 +94,8 @@ class TestConv2dOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format
         }
         self.outputs = {'Output': output}
 
