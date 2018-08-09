@@ -163,12 +163,11 @@ class ParallelDoOp : public framework::OperatorBase {
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
 
-      workers.emplace_back(
-          framework::Async([program, cur_scope, place, block, place_idx] {
-            framework::Executor executor(place);
-            executor.Run(*program, cur_scope, block->ID(),
-                         false /*create_local_scope*/);
-          }));
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
+        executor.Run(*program, cur_scope, block->ID(),
+                     false /*create_local_scope*/);
+      }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -239,12 +238,11 @@ class ParallelDoGradOp : public framework::OperatorBase {
       auto *cur_scope = sub_scopes[i];
 
       // execute
-      workers.emplace_back(
-          framework::Async([program, cur_scope, place, block, i] {
-            framework::Executor executor(place);
-            executor.Run(*program, cur_scope, block->ID(),
-                         false /*create_local_scope*/);
-          }));
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
+        executor.Run(*program, cur_scope, block->ID(),
+                     false /*create_local_scope*/);
+      }));
     }
     for (auto &worker : workers) {
       worker.wait();
