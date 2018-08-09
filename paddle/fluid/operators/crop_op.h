@@ -65,7 +65,9 @@ class CropKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     const T* x_data = x->data<T>();
-    T* out_data = out->mutable_data<T>(context.GetPlace());
+    auto out_dims = out->dims();
+    out_dims[0] = x->dims()[0];
+    T* out_data = out->mutable_data<T>(out_dims, context.GetPlace());
     auto x_stride = framework::stride(x->dims());
     auto out_stride = framework::stride(out->dims());
     auto offsets = GetOffsets(context);
@@ -81,9 +83,10 @@ class CropKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T, size_t D>
 void CropGradFunction(const framework::ExecutionContext& context) {
   auto* d_x = context.Output<Tensor>(framework::GradVarName("X"));
+  auto* x = context.Input<Tensor>("X");
   if (d_x != nullptr) {
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
-    d_x->mutable_data<T>(context.GetPlace());
+    d_x->mutable_data<T>(x->dims(), context.GetPlace());
     auto offsets = GetOffsets(context);
     Eigen::array<std::pair<int, int>, D> paddings;
     for (size_t i = 0; i < D; ++i) {

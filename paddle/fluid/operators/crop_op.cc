@@ -39,6 +39,7 @@ class CropOp : public framework::OperatorWithKernel {
       for (size_t i = 0; i < shape.size(); ++i) {
         tensor_shape[i] = static_cast<int64_t>(shape[i]);
       }
+      tensor_shape[0] = -1;
       ctx->SetOutputDim("Out", framework::make_ddim(tensor_shape));
     } else {
       auto y_dim = ctx->GetInputDim("Y");
