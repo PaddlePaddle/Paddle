@@ -202,7 +202,6 @@ std::vector<std::string> OpDesc::AttrNames() const {
 }
 
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
-  VLOG(11) << "SetAttr: " << Type() << ", " << name << ", " << v.which();
   // NOTICE(minqiyang): pybind11 will take the empty list in python as
   // the std::vector<int> type in C++; so we have to change the attr's type
   // here if we meet this issue
