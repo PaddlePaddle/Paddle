@@ -574,9 +574,6 @@ class Operator(object):
                 attr_val = self.attrs[attr_name]
                 self._update_desc_attr(attr_name, attr_val)
 
-        import sys
-        print('self.attrs', self.attrs)
-        sys.stdout.flush()
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
