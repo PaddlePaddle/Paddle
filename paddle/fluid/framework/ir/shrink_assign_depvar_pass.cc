@@ -37,12 +37,13 @@ std::vector<ir::Node*> GetUpstreamOps(const ir::Node* op) {
 std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   std::vector<ir::Node*> to_remove;
-  //                    last_op      input var
+  //                       op      input var
   std::vector<std::pair<ir::Node*, ir::Node*>> to_remove_unused_input;
 
   for (ir::Node* n : graph->Nodes()) {
     if (n->NodeType() == ir::Node::Type::kVariable) continue;
     for (ir::Node* in_var : n->inputs) {
+      // FIXME(typhoonzero): shouldn't got op here?
       if (in_var->NodeType() == ir::Node::Type::kOperation) continue;
       for (ir::Node* upstream_op : in_var->inputs) {
         if (upstream_op->Name() == "assign") {
@@ -56,20 +57,14 @@ std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
           // then, use dep_var to connect ops around assign
           if (IsControlDepVar(*in_var)) {
             to_remove.push_back(upstream_op);
-            // remove assign -> dep_var connect
-            auto it = std::find(in_var->inputs.begin(), in_var->inputs.end(),
-                                upstream_op);
-            if (it != in_var->inputs.end()) {
-              in_var->inputs.erase(it);
-            }
+            to_remove_unused_input.push_back(
+                std::make_pair(in_var, upstream_op));
             // add grand -> dep_var connect
             auto before_assign_ops = GetUpstreamOps(upstream_op);
             for (ir::Node* grand : before_assign_ops) {
               grand->outputs.push_back(in_var);
               in_var->inputs.push_back(grand);
             }
-            // assign then can remove all inputs
-            // upstream_op->inputs.clear();
           } else {
             // connected by in/out, case like:
             // condition_op -> learning_rate -> assign -> final_learning_rate ->
@@ -81,7 +76,7 @@ std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
             }
             // connect origin var before assign to current op
             for (ir::Node* v : upstream_op->inputs) {
-              VLOG(3) << "connect var: " << v->Name();
+              VLOG(3) << "connect var: " << v->Name() << " to " << n->Name();
               auto upstream_it =
                   std::find(v->outputs.begin(), v->outputs.end(), upstream_op);
               if (upstream_it != v->outputs.end()) {
@@ -89,8 +84,14 @@ std::unique_ptr<ir::Graph> ShrinkAssignDepvarPass::ApplyImpl(
               }
               v->outputs.push_back(n);
               n->inputs.push_back(v);
+              // change operator_desc to read that var name before assign.
+              auto input_keys = n->Op()->InputNames();
+              for (std::string key : input_keys) {
+                VLOG(3) << "finding key " << key << "n " << n->Name();
+                n->Op()->RenameInput(in_var->Name(), v->Name());
+              }
             }
-            // // remove later out side the iterator
+            // remove later out side the iterator
             to_remove_unused_input.push_back(std::make_pair(n, in_var));
           }
         }
