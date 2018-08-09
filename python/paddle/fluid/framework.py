@@ -1536,7 +1536,7 @@ class Program(object):
         """
         return self.desc
 
-    def clone(self, for_test=False, detail=False):
+    def clone(self, for_test=False):
         """
         Create a new, duplicated program.
 
