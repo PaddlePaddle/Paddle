@@ -594,19 +594,19 @@ class Operator(object):
                 if len(self.attrs) != len(other.attrs):
                     raise ValueError(
                         "In Operator(Object)'s attrs's number not equal\n")
-                return False
+                    return False
 
                 for ak, av in self.attrs.iteritems():
                     attr_type = self.desc.attr_type(ak)
                     if attr_type == core.AttrType.BLOCK:
-                        if self.block_attr(name) != others.block_attr(name):
+                        if self.block_attr(ak) != other.block_attr(ak):
                             raise ValueError(
                                 "In Operator(Object)'s block attr not equal:{0}\n".
                                 format(ak))
                         continue
 
                     if attr_type == core.AttrType.BLOCKS:
-                        if self.blocks_attr(name) != others.blocks_attr(name):
+                        if self.blocks_attr(ak) != other.blocks_attr(ak):
                             raise ValueError(
                                 "In Operator(Object)'s block attr not equal:{0}\n".
                                 format(ak))
