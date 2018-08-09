@@ -85,6 +85,8 @@ class OpDesc {
 
   int GetBlockAttr(const std::string &name) const;
 
+  std::vector<int> GetBlocksAttr(const std::string &name) const;
+
   void Rename(const std::string &old_name, const std::string &new_name);
 
   void RenameOutput(const std::string &old_name, const std::string &new_name);

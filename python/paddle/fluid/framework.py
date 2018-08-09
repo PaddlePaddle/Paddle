@@ -593,11 +593,25 @@ class Operator(object):
             if k == 'attrs':
                 if len(self.attrs) != len(other.attrs):
                     raise ValueError(
-                        "In Operator(Object)'s attrs not equal:{0}\n".format(
-                            ak))
-                    return False
+                        "In Operator(Object)'s attrs's number not equal\n")
+                return False
 
                 for ak, av in self.attrs.iteritems():
+                    attr_type = self.desc.attr_type(ak)
+                    if attr_type == core.AttrType.BLOCK:
+                        if self.block_attr(name) != others.block_attr(name):
+                            raise ValueError(
+                                "In Operator(Object)'s block attr not equal:{0}\n".
+                                format(ak))
+                        continue
+
+                    if attr_type == core.AttrType.BLOCKS:
+                        if self.blocks_attr(name) != others.blocks_attr(name):
+                            raise ValueError(
+                                "In Operator(Object)'s block attr not equal:{0}\n".
+                                format(ak))
+                        continue
+
                     if ak == 'op_role':
                         if av != int(other.attrs[ak]):
                             raise ValueError(
@@ -793,13 +807,22 @@ class Operator(object):
         else:
             self.desc.set_attr(name, val)
 
-    def _sync_with_cpp(self):
+    def _sync_with_cpp(self, blocks):
         """
         Sync attrs data from c++ end.
         """
         for name in self.desc.attr_names():
             attr_type = self.desc.attr_type(name)
-            if attr_type == core.AttrType.BLOCK or attr_type == core.AttrType.BLOCKS:
+            if attr_type == core.AttrType.BLOCK:
+                self.attrs[name] = blocks[block_attr(name)]
+                continue
+
+            if attr_type == core.AttrType.BLOCKS:
+                bs_attr = []
+                for i in blocks_attr(name):
+                    bs_attr.append(blocks[i])
+
+                self.attrs[name] = bs_attr
                 continue
 
             attr = self.desc.attr(name)
@@ -838,6 +861,19 @@ class Operator(object):
             int: the block index.
         """
         return self.desc.block_attr(name)
+
+    def blocks_attr(self, name):
+        """
+        Get the blocks attribute by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            list(int): the blocks index.
+        """
+
+        return self.desc.blocks_attr(name)
 
     def all_attrs(self):
         """
@@ -1288,7 +1324,7 @@ class Block(object):
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
-            self.ops[index]._sync_with_cpp()
+            self.ops[index]._sync_with_cpp(self.program.blocks)
 
     def _copy_param_info_from(self, other):
         """
