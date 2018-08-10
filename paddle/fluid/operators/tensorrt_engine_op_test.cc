@@ -103,6 +103,9 @@ TEST(TensorRTEngineOp, manual) {
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "a_engine");
   SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
                                     std::vector<std::string>({}));
+  SetAttr<std::vector<std::string>>(engine_op_desc.Proto(),
+                                    "output_name_mapping",
+                                    std::vector<std::string>({"z0"}));
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());
@@ -195,6 +198,10 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
       engine_op_desc.Proto(), "parameters",
       std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "b_engine");
+
+  SetAttr<std::vector<std::string>>(engine_op_desc.Proto(),
+                                    "output_name_mapping",
+                                    std::vector<std::string>({"z3"}));
 
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());
 
