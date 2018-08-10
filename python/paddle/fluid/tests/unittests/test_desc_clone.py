@@ -107,24 +107,23 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 
 def operator_equal(a, b):
     for k, v in a.__dict__.iteritems():
-        if isinstance(v, core.OpDesc) or isinstance(
-                v, fluid.framework.Program) or isinstance(
-                    v, fluid.framework.Block):
+        if isinstance(v, fluid.framework.Program) or \
+                isinstance(v, fluid.framework.Block):
             continue
 
-        if isinstance(v, collections.OrderedDict):
+        elif isinstance(v, core.OpDesc):
+            if v.serialize_to_string() != b.__dict__[k].serialize_to_string():
+                raise ValueError("In operator_equal not equal:{0}\n".format(k))
+
+        elif isinstance(v, collections.OrderedDict):
             v0 = sorted(v.iteritems(), key=lambda x: x[0])
             v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
 
             if v0 != v1:
-                raise ValueError("In Operator(Object) not equal:{0}\n".format(
-                    k))
-                return False
-            continue
+                raise ValueError("In operator_equal not equal:{0}\n".format(k))
 
-        if (v != b.__dict__[k]):
-            raise ValueError("In Operator(Object) not equal:{0}\n".format(k))
-            return False
+        elif (v != b.__dict__[k]):
+            raise ValueError("In operator_equal not equal:{0}\n".format(k))
 
     return True
 
@@ -135,27 +134,21 @@ def block_equal(a, b):
                 v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
             continue
 
-        if k == "ops":
+        elif k == "ops":
             for i in range(0, len(a.ops)):
                 if not operator_equal(a.ops[i], b.ops[i]):
-                    raise ValueError("In Block(Object) not equal:{0}\n".format(
-                        k))
-                    return False
+                    raise ValueError("In block_equal not equal:{0}\n".format(k))
             assert (len(a.ops) == len(b.ops))
-            continue
 
-        if isinstance(v, collections.OrderedDict):
+        elif isinstance(v, collections.OrderedDict):
             v0 = sorted(v.iteritems(), key=lambda x: x[0])
             v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
 
             if v0 != v1:
-                raise ValueError("In Block(Object) not equal:{0}\n".format(k))
-                return False
-            continue
+                raise ValueError("In block_equal not equal:{0}\n".format(k))
 
-        if (v != b.__dict__[k]):
-            raise ValueError("In Block(Object) not equal:{0}\n".format(k))
-            return False
+        elif (v != b.__dict__[k]):
+            raise ValueError("In block_equal not equal:{0}\n".format(k))
 
     return True
 
@@ -165,18 +158,16 @@ def program_equal(a, b):
         if isinstance(v, core.ProgramDesc):
             continue
 
-        if k == 'blocks':
+        elif k == 'blocks':
             for i in range(0, len(a.blocks)):
                 if not block_equal(a.blocks[i], b.blocks[i]):
-                    raise ValueError(
-                        "In Operator(Object) not equal:{0}\n".format(k))
+                    raise ValueError("In operator_equal not equal:{0}\n".format(
+                        k))
                     return False
             assert (len(a.blocks) == len(b.blocks))
-            continue
 
-        if (v != b.__dict__[k]):
-            raise ValueError("In Program(Object) not equal:{0}\n".format(k))
-            return False
+        elif (v != b.__dict__[k]):
+            raise ValueError("In program_equal not equal:{0}\n".format(k))
 
     return True
 
