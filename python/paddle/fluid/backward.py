@@ -46,13 +46,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     """
     op_desc = core.OpDesc()
     op_desc.set_type(op_type)
-    for para, args in six.moves.iteritems(inputs):
+    for para, args in six.iteritems(inputs):
         op_desc.set_input(
             para,
             list(
                 map(lambda arg: arg.decode() if isinstance(arg, six.binary_type) else arg,
                     args)))
-    for para, args in six.moves.iteritems(outputs):
+    for para, args in six.iteritems(outputs):
         op_desc.set_output(
             para,
             list(
@@ -64,7 +64,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
-    for name, val in six.moves.iteritems(attrs):
+    for name, val in six.iteritems(attrs):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
         else:
@@ -187,7 +187,7 @@ def _addup_repetitive_outputs_(op_descs):
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
 
-    for var_name, inputs in six.moves.iteritems(renamed_vars):
+    for var_name, inputs in six.iteritems(renamed_vars):
         if len(inputs) > 1:
             pending_sum_ops.append(
                 (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
@@ -445,7 +445,7 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
                 op_desc.rename_output(name, new_name)
                 var_map[name] = new_name
 
-    for g, ng in six.moves.iteritems(var_map):
+    for g, ng in six.iteritems(var_map):
         if g in grad_to_var:
             grad_to_var[ng] = grad_to_var[g]
             grad_to_var.pop(g)

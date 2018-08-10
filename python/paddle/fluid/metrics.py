@@ -80,10 +80,10 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.moves.iteritems(self.__dict__)
+            for attr, value in six.iteritems(self.__dict__)
             if not attr.startswith("_")
         }
-        for attr, value in six.moves.iteritems(states):
+        for attr, value in six.iteritems(states):
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
@@ -106,7 +106,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.moves.iteritems(self.__dict__)
+            for attr, value in six.iteritems(self.__dict__)
             if not attr.startswith("_")
         }
         config = {}

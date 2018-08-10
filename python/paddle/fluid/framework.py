@@ -958,7 +958,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in six.moves.iteritems(self.vars)
+        return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):

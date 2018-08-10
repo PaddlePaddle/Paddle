@@ -66,7 +66,7 @@ def build_dict(min_word_freq=50):
             del word_freq['<unk>']
 
         word_freq = [
-            x for x in six.moves.iteritems(word_freq) if x[1] > min_word_freq
+            x for x in six.iteritems(word_freq) if x[1] > min_word_freq
         ]
 
         word_freq_sorted = sorted(word_freq, key=lambda x: (-x[1], x[0]))

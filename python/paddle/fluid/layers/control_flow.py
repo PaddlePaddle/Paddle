@@ -603,7 +603,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in six.moves.iteritems(self.memories):
+        for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
