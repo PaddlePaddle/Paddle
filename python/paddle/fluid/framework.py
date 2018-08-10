@@ -768,7 +768,7 @@ class Operator(object):
         """
         return self.desc.block_attr_id(name)
 
-    def block_attr2(self, name):
+    def block_attr(self, name):
         """
         Get the block attribute  by name.
 
@@ -783,7 +783,7 @@ class Operator(object):
         assert (id >= 0 and id < len(self.block.program.blocks))
         return self.block.program.blocks[id]
 
-    def blocks_attr2(self, name):
+    def blocks_attr(self, name):
         """
         Get the blocks attribute  by name.
 
@@ -813,7 +813,7 @@ class Operator(object):
 
         return self.desc.blocks_attr_ids(name)
 
-    def all_attrs_new(self):
+    def all_attrs(self):
         """
         Get the attribute dict.
 
@@ -825,11 +825,11 @@ class Operator(object):
         for n in attr_names:
             attr_type = self.desc.attr_type(n)
             if attr_type == core.AttrType.BLOCK:
-                attr_map[n] = self.block_attr2(n)
+                attr_map[n] = self.block_attr(n)
                 continue
 
             if attr_type == core.AttrType.BLOCKS:
-                attr_map[n] = self.blocks_attr2(n)
+                attr_map[n] = self.blocks_attr(n)
                 continue
 
             attr_map[n] = self.attr(n)
