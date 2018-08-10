@@ -1497,7 +1497,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize()
+            p = self.inference_optimize(keep_read_op=True)
         else:
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
