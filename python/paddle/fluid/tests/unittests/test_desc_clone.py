@@ -105,6 +105,73 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
     return t
 
 
+def operator_equal(a, b):
+    for k, v in a.__dict__.iteritems():
+        if isinstance(v, fluid.framework.Program) or \
+                isinstance(v, fluid.framework.Block):
+            continue
+
+        elif isinstance(v, core.OpDesc):
+            if v.serialize_to_string() != b.__dict__[k].serialize_to_string():
+                raise ValueError("In operator_equal not equal:{0}\n".format(k))
+
+        elif isinstance(v, collections.OrderedDict):
+            v0 = sorted(v.iteritems(), key=lambda x: x[0])
+            v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
+
+            if v0 != v1:
+                raise ValueError("In operator_equal not equal:{0}\n".format(k))
+
+        elif (v != b.__dict__[k]):
+            raise ValueError("In operator_equal not equal:{0}\n".format(k))
+
+    return True
+
+
+def block_equal(a, b):
+    for k, v in a.__dict__.iteritems():
+        if isinstance(v, core.ProgramDesc) or isinstance(
+                v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
+            continue
+
+        elif k == "ops":
+            for i in range(0, len(a.ops)):
+                if not operator_equal(a.ops[i], b.ops[i]):
+                    raise ValueError("In block_equal not equal:{0}\n".format(k))
+            assert (len(a.ops) == len(b.ops))
+
+        elif isinstance(v, collections.OrderedDict):
+            v0 = sorted(v.iteritems(), key=lambda x: x[0])
+            v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
+
+            if v0 != v1:
+                raise ValueError("In block_equal not equal:{0}\n".format(k))
+
+        elif (v != b.__dict__[k]):
+            raise ValueError("In block_equal not equal:{0}\n".format(k))
+
+    return True
+
+
+def program_equal(a, b):
+    for k, v in a.__dict__.iteritems():
+        if isinstance(v, core.ProgramDesc):
+            continue
+
+        elif k == 'blocks':
+            for i in range(0, len(a.blocks)):
+                if not block_equal(a.blocks[i], b.blocks[i]):
+                    raise ValueError("In operator_equal not equal:{0}\n".format(
+                        k))
+                    return False
+            assert (len(a.blocks) == len(b.blocks))
+
+        elif (v != b.__dict__[k]):
+            raise ValueError("In program_equal not equal:{0}\n".format(k))
+
+    return True
+
+
 class TestDistMnist(unittest.TestCase):
     def test_desc_clone(self):
         get_model(batch_size=20)
@@ -121,8 +188,8 @@ class TestDistMnist(unittest.TestCase):
         main = pserver_prog.clone()
         startup = startup_prog.clone()
 
-        self.assertTrue(main.equal(pserver_prog))
-        self.assertTrue(startup.equal(startup_prog))
+        self.assertTrue(program_equal(main, pserver_prog))
+        self.assertTrue(program_equal(startup, startup_prog))
 
 
 if __name__ == "__main__":

@@ -155,7 +155,7 @@ std::string OperatorBase::DebugOutputsStrings(const Scope& scope) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(10) << "- " << DebugStringEx(&scope);
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -172,7 +172,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   RunImpl(scope, place);
 
   // std::cout << DebugOutputsStrings(scope) << std::endl << std::endl;
-  VLOG(10) << "+ " << DebugStringEx(&scope);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
