@@ -76,3 +76,7 @@ class TestCase2(PReluTest):
 class TestCase3(PReluTest):
     def initTestCase(self):
         self.attrs = {'mode': "element"}
+
+
+if __name__ == "__main__":
+    unittest.main()

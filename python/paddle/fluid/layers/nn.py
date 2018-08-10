@@ -111,6 +111,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'prelu',
 ]
 
 
@@ -5355,4 +5356,37 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def prelu(x, mode='all'):
+    """
+    Equation:
+    	f(x) =
+   	\begin{cases}
+   	\alpha * x, \quad  \text{if} \ x < 0 \\
+    	x,         \qquad  \text{if} \ x >= 0
+    	\end{cases}
+
+    Args:
+        x(Variable): The input tensor.
+        mode(str|None): The mode for weight sharing
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.prelu(x,mode)
+    """
+    helper = LayerHelper('relu', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x},
+        attrs={"mode": mode},
+        outputs={"Out": out})
     return out

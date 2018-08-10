@@ -79,8 +79,8 @@ The input `X` can carry the LoD (Level of Details) information,
 or not. And the output shares the LoD information with input `X`.
 There are modes: 
   all: all elements share same weight
-  channel:elements in a channel share same weight
-  element:each element has a weight 
+  channel: elements in a channel share same weight
+  element: each element has a weight 
 )DOC");
     AddAttr<std::string>("mode", "The mode for inputs to share weights.")
         .SetDefault("all");
@@ -99,10 +99,12 @@ class PReluGradOp : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     auto alpha_grad_name = framework::GradVarName("Alpha");
 
-    if (ctx->HasOutput(x_grad_name))
+    if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
-    if (ctx->HasOutput(alpha_grad_name))
+    }
+    if (ctx->HasOutput(alpha_grad_name)) {
       ctx->SetOutputDim(alpha_grad_name, ctx->GetInputDim("Alpha"));
+    }
   }
 
  protected:
