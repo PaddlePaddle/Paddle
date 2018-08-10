@@ -23,6 +23,8 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/api/api_impl.h"
 
+DEFINE_bool(verbose, false, "Verbose for some initial information (not affect the performance).");
+
 namespace paddle {
 namespace {
 
@@ -52,7 +54,18 @@ std::string num2str(T a) {
   istr << a;
   return istr.str();
 }
+
+struct RuntimeState {
+  bool is_init_phase{true};
+
+  static RuntimeState& Instance() {
+    static RuntimeState x;
+    return x;
+  }
+};
+
 }  // namespace
+
 
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
@@ -168,6 +181,10 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
+    if (FLAGS_verbose && RuntimeState::Instance().is_init_phase) {
+      LOG(INFO) << "Parse Input " << feed_target_names_[i];
+      RuntimeState::Instance().is_init_phase = false;
+    }
     framework::LoDTensor input;
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
