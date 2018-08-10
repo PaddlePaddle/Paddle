@@ -352,7 +352,7 @@ class TestL2DecayWithPiecewise(TranspilerTest):
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
-        trainer = self.get_trainer()
+        trainer, _ = self.get_trainer()
 
         self.assertEqual(len(pserver.blocks), 9)
         self.assertEqual([op.type for op in pserver.blocks[1].ops], [
@@ -426,7 +426,7 @@ class TestLocalLookupTable(TestDistLookupTableBase):
         self.assertEqual([op.type for op in pserver1.blocks[2].ops],
                          ["sum", "adam", "scale", "scale"])
 
-        trainer = self.get_trainer()
+        trainer, _ = self.get_trainer()
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
@@ -464,7 +464,7 @@ class TestDistLookupTable(TestDistLookupTableBase):
         # 5 save table
         self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
 
-        trainer = self.get_trainer()
+        trainer, _ = self.get_trainer()
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool', 'split_ids',
