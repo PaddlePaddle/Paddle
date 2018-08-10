@@ -31,9 +31,6 @@ class LoadOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &place) const override {
-    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    platform::RecordEvent record_event(Type(), dev_ctx);
-
     // FIXME(yuyang18): We save variable to local file now, but we should change
     // it to save an output stream.
     auto filename = Attr<std::string>("file_path");

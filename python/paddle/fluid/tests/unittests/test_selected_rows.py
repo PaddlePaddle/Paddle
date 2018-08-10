@@ -40,12 +40,12 @@ class TestSelectedRows(unittest.TestCase):
 
         # compare tensor
         self.assertAlmostEqual(2.0,
-                               selected_rows.get_tensor().get_float_element(0))
+                               selected_rows.get_tensor()._get_float_element(0))
         self.assertAlmostEqual(1.0,
-                               selected_rows.get_tensor().get_float_element(1))
+                               selected_rows.get_tensor()._get_float_element(1))
         self.assertAlmostEqual(
             4.0,
-            selected_rows.get_tensor().get_float_element(2 * row_numel + 8))
+            selected_rows.get_tensor()._get_float_element(2 * row_numel + 8))
 
 
 if __name__ == "__main__":

@@ -21,28 +21,16 @@
 namespace paddle {
 namespace framework {
 namespace details {
-struct SSAGraph;
 
 class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
- public:
-  explicit SSAGraghBuilderWithChecker(
-      std::unique_ptr<SSAGraphBuilder>&& builder)
-      : builder_(std::move(builder)) {}
-
-  std::unique_ptr<SSAGraph> Build(const ProgramDesc& program) const override {
-    auto graph = builder_->Build(program);
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override {
     PADDLE_ENFORCE(IsValidGraph(graph.get()));
     return graph;
   }
 
-  int GetVarDeviceID(const std::string& var_name) const override {
-    return builder_->GetVarDeviceID(var_name);
-  }
-
-  bool IsValidGraph(const SSAGraph* graph) const;
-
- private:
-  std::unique_ptr<SSAGraphBuilder> builder_;
+  bool IsValidGraph(const ir::Graph* graph) const;
 };
 
 }  // namespace details

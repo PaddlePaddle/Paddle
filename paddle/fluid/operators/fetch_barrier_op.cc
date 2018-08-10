@@ -36,22 +36,16 @@ class FetchBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
-
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    rpc_client->Wait();
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
 
     for (auto& ep : eps) {
       VLOG(3) << "fetch barrier, ep: " << ep;
       rpc_client->AsyncSendFetchBarrier(ep);
     }
-    rpc_client->Wait();
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 

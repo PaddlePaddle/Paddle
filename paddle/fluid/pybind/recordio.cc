@@ -30,7 +30,9 @@ class RecordIOWriter {
  public:
   RecordIOWriter(const std::string& filename, recordio::Compressor compressor,
                  size_t max_num_record)
-      : stream_(filename), writer_(&stream_, compressor, max_num_record) {}
+      : closed_(false),
+        stream_(filename),
+        writer_(&stream_, compressor, max_num_record) {}
 
   void AppendTensor(const framework::LoDTensor& tensor) {
     tensors_.push_back(tensor);
@@ -47,9 +49,17 @@ class RecordIOWriter {
     PADDLE_ENFORCE(tensors_.empty());
     writer_.Flush();
     stream_.close();
+    closed_ = true;
+  }
+
+  ~RecordIOWriter() {
+    if (!closed_) {
+      Close();
+    }
   }
 
  private:
+  bool closed_;
   std::vector<framework::LoDTensor> tensors_;
   std::ofstream stream_;
   recordio::Writer writer_;

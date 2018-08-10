@@ -28,6 +28,7 @@ Scanner::Scanner(std::unique_ptr<std::istream> &&stream)
 
 Scanner::Scanner(const std::string &filename)
     : stream_(new std::ifstream(filename)), parser_(*stream_) {
+  PADDLE_ENFORCE(static_cast<bool>(*stream_), "Cannot open file %s", filename);
   Reset();
 }
 

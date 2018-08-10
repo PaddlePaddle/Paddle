@@ -301,11 +301,12 @@ static void TestRecordIO() {
   {
     std::unique_ptr<std::istream> stream_ptr(stream);
     recordio::Scanner scanner(std::move(stream_ptr));
-    auto tensors = ReadFromRecordIO(&scanner, ctx);
+    std::vector<framework::LoDTensor> tensors;
+    ASSERT_TRUE(ReadFromRecordIO(&scanner, ctx, &tensors));
     ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
-    tensors = ReadFromRecordIO(&scanner, ctx);
+    ASSERT_TRUE(ReadFromRecordIO(&scanner, ctx, &tensors));
     ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
