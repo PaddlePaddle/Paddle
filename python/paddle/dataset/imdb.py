@@ -64,7 +64,7 @@ def build_dict(pattern, cutoff):
             word_freq[word] += 1
 
     # Not sure if we should prune less-frequent words here.
-    word_freq = [x for x in six.moves.iteritems(word_freq) if x[1] > cutoff]
+    word_freq = [x for x in six.iteritems(word_freq) if x[1] > cutoff]
 
     dictionary = sorted(word_freq, key=lambda x: (-x[1], x[0]))
     words, _ = list(zip(*dictionary))

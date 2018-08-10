@@ -177,7 +177,7 @@ class TestDetectionMAPOp(OpTest):
             true_pos[label].append([score, tp])
             false_pos[label].append([score, fp])
 
-        for (label, label_pos_num) in six.moves.iteritems(label_count):
+        for (label, label_pos_num) in six.iteritems(label_count):
             if label_pos_num == 0 or label not in true_pos: continue
             label_true_pos = true_pos[label]
             label_false_pos = false_pos[label]

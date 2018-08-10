@@ -619,7 +619,7 @@ def build_feed_var_list(program, feed_order):
                 "The values of 'feed_order' should be a permutation of [0, len(feed_order))"
             )
         sorted_pair_list = sorted(
-            six.moves.iteritems(feed_order), key=lambda item: item[1])
+            six.iteritems(feed_order), key=lambda item: item[1])
         feed_var_list = [
             program.global_block().var(pair[0]) for pair in sorted_pair_list
         ]
@@ -1037,7 +1037,7 @@ def _save_trainer_args(dirname, trainer_id, trainer_args):
 
     cur_dir = _get_trainer_dir(dirname, trainer_id)
 
-    for name, value in six.moves.iteritems(trainer_args):
+    for name, value in six.iteritems(trainer_args):
         args_file = os.path.join(cur_dir, name)
         with open(args_file, 'w') as f:
             f.write(str(value))
