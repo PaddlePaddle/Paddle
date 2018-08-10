@@ -16,7 +16,7 @@ import framework
 import numpy as np
 import contextlib
 from framework import convert_np_dtype_to_dtype_
-from core import VarDesc
+from core import VarDesc, op_proto_and_checker_maker
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
@@ -564,6 +564,51 @@ class BilinearInitializer(Initializer):
                 'dtype': var.dtype,
                 'shape': list(shape),
                 value_name: values
+            })
+        var.op = op
+        return op
+
+
+class RemoteInitializer(Initializer):
+    """Implements the remote initializer
+
+    Args:
+        value (float): constant value to initialize the variable
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.Constant(value=2.0))
+    """
+
+    def __init__(self, eps=[]):
+        assert eps is not None
+        super(RemoteInitializer, self).__init__()
+        self._endpoints = eps
+        self._op_role_attr_name = op_proto_and_checker_maker.kOpRoleAttrName()
+        self._op_role_attr_value = op_proto_and_checker_maker.OpRole.RPC
+
+    def __call__(self, var, block):
+        """Add constant initialization ops for a variable
+
+        Args:
+            var: Variable that needs to be initialized
+            block: The block in which initialization ops
+                   should be added
+
+        Returns:
+            the initialization op
+        """
+        assert isinstance(var, framework.Variable)
+        assert isinstance(block, framework.Block)
+        op = block.append_op(
+            type="recv",
+            inputs={},
+            outputs={"Out": var},
+            attrs={
+                "epmap": self._endpoints,
+                self._op_role_attr_name: self._op_role_attr_value
             })
         var.op = op
         return op

@@ -126,9 +126,12 @@ void ListenAndServOp::RunSyncLoop(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
-  rpc_service_->ResetBarrierCounter();
-
   int32_t profile_step = 0;
+  // Trainers will get all parameters from pserver in the
+  // startup program, so we will wait RequestGet first
+  rpc_service_->SetCond(distributed::kRequestGet);
+  rpc_service_->WaitBarrier(distributed::kRequestGet);
+  rpc_service_->ResetBarrierCounter();
   while (true) {
     PADDLE_ENFORCE_LE(profile_step, FLAGS_listen_and_serv_profile_period,
                       "profile_step should not be larger then "
