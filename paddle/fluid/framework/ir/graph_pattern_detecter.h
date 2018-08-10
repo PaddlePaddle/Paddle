@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef PADDLE_WITH_TESTING
+#include <gtest/gtest_prod.h>
+#endif
+
 #include <numeric>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
@@ -16,10 +20,29 @@ struct PDNode {
   // tell whether an ir::Node* is a candidation for a PDNode.
   using teller_t = std::function<bool(Node*)>;
 
-  uint64_t id{std::numeric_limits<uint64_t>::max()};
+  PDNode(teller_t&& teller, const std::string& name = "")
+      : teller_(teller), name_(name) {
+    PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
+  }
+
+  PDNode(PDNode&& other) = default;
+
   std::vector<PDNode*> inlinks;
   std::vector<PDNode*> outlinks;
-  teller_t teller;
+
+  bool Tell(Node* node) const {
+    PADDLE_ENFORCE(teller_ != nullptr, "teller should be set for a PDNode");
+    return teller_(node);
+  }
+
+  const std::string& name() const { return name_; }
+
+  PDNode(const PDNode&) = delete;
+  PDNode& operator=(const PDNode&) = delete;
+
+ private:
+  teller_t teller_;
+  std::string name_;
 };
 
 class PDPattern {
@@ -28,13 +51,18 @@ class PDPattern {
 
   void AddEdge(PDNode* a, PDNode* b);
 
-  PDNode* NewNode();
+  PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name="");
 
-  const std::vector<PDNode>& nodes() const { return nodes_; }
+  const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
 
  private:
-  std::vector<PDNode> nodes_;
+#ifdef PADDLE_WITH_TESTING
+  FRIEND_TEST(PDPattern, AddEdge);
+  FRIEND_TEST(PDPattern, NewNode);
+#endif
+
+  std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;
 };
 
@@ -47,13 +75,16 @@ class GraphPatternDetecter {
  public:
   using hit_rcd_t =
       std::pair<Node* /*node in graph*/, PDNode* /*node in pattern*/>;
-  using subgraph_t = std::vector<hit_rcd_t>;
+  using subgraph_t = std::unordered_map<PDNode*, Node*>;
 
   // Operate on the detected pattern.
-  using handle_t = std::function<void(
-      const std::vector<hit_rcd_t>& /*hitted pattern*/, Graph*)>;
+  using handle_t =
+      std::function<void(const subgraph_t& /*hitted pattern*/, Graph*)>;
 
-  void operator()(handle_t handler);
+  void operator()(Graph* graph, handle_t handler);
+
+  const PDPattern& pattern() const { return pattern_; }
+  PDPattern* mutable_pattern() { return &pattern_; }
 
  private:
   // Mark the nodes that fits the pattern.
@@ -61,6 +92,14 @@ class GraphPatternDetecter {
 
   // Detect all the pattern and output the hit records.
   std::vector<subgraph_t> DetectPatterns();
+
+  // Remove duplicate patterns
+  void UniquePatterns(std::vector<subgraph_t>* subgraphs);
+
+#ifdef PADDLE_WITH_TESTING
+  FRIEND_TEST(GraphPatternDetecter, MarkPDNodesInGraph);
+  FRIEND_TEST(GraphPatternDetecter, DetectPatterns);
+#endif
 
  private:
   PDPattern pattern_;
