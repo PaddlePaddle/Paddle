@@ -222,13 +222,16 @@ def polynomial_decay(learning_rate,
 
     if cycle:
         div_res = ops.ceil(global_step / decay_steps)
+        div_res_dep_var = tensor.assign(div_res)
         zero_var = tensor.fill_constant(shape=[1], dtype='float32', value=0.0)
         one_var = tensor.fill_constant(shape=[1], dtype='float32', value=1.0)
 
         with control_flow.Switch() as switch:
             with switch.case(global_step == zero_var):
                 tensor.assign(input=one_var, output=div_res)
-        decay_steps = decay_steps * div_res
+            # Add dependency of the 
+            tensor.assign(div_res, output=div_res_dep_var)
+        decay_steps = decay_steps * div_res_dep_var
     else:
         decay_steps_var = tensor.fill_constant(
             shape=[1], dtype='float32', value=float(decay_steps))
@@ -276,6 +279,12 @@ def piecewise_decay(boundaries, values):
         dtype='float32',
         persistable=True,
         name="learning_rate")
+    final_lr = tensor.create_global_var(
+        shape=[1],
+        value=0.0,
+        dtype='float32',
+        persistable=True,
+        name="final_learning_rate")
 
     with control_flow.Switch() as switch:
         for i in range(len(boundaries)):
@@ -288,12 +297,13 @@ def piecewise_decay(boundaries, values):
                 shape=[1], dtype='float32', value=float(values[i]))
             with switch.case(global_step < boundary_val):
                 tensor.assign(value_var, lr)
+            tensor.assign(lr, final_lr)
         last_value_var = tensor.fill_constant(
             shape=[1], dtype='float32', value=float(values[len(values) - 1]))
         with switch.default():
             tensor.assign(last_value_var, lr)
-
-    return lr
+        tensor.assign(lr, final_lr)
+    return final_lr
 
 
 def append_LARS(params_grads, learning_rate, weight_decay):

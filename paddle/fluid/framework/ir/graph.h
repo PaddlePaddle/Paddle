@@ -102,6 +102,12 @@ class Graph {
     return ret;
   }
 
+  void RemoveNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
+    node_set_.erase(node);
+    nodes_.erase(node);
+  }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -109,12 +115,6 @@ class Graph {
     nodes_[node].reset(node);
     node_set_.insert(node);
     return node;
-  }
-
-  void RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
-    nodes_.erase(node);
   }
 
   // NOTE: program_ shouldn't be exposed to user.

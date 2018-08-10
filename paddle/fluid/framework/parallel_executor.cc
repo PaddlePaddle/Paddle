@@ -56,6 +56,11 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
     graph = viz_pass->Apply(std::move(graph));
   }
 
+  // Apply shrink assign depvar pass
+  auto shrink_assign_depvar_pass =
+      ir::PassRegistry::Instance().Get("shrink_assign_depvar_pass");
+  graph = shrink_assign_depvar_pass->Apply(std::move(graph));
+
   // Convert graph to run on multi-devices.
   auto multi_device_pass =
       ir::PassRegistry::Instance().Get("multi_device_pass");
@@ -357,3 +362,4 @@ USE_PASS(graph_viz_pass);
 USE_PASS(multi_device_pass);
 USE_PASS(multi_device_check_pass);
 USE_PASS(multi_device_print_pass);
+USE_PASS(shrink_assign_depvar_pass);
