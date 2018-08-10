@@ -75,7 +75,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
-  void CreateScaleLossGradOp(ir::Graph *result) const;
+  void CreateScaleLossGradOp(ir::Graph *result,
+                             const std::string &loss_grad_name) const;
+
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
