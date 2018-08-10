@@ -577,6 +577,9 @@ def save_inference_model(dirname,
         params_filename(str|None): The name of file to save all related parameters. 
                                    If it is setted None, parameters will be saved 
                                    in separate files .
+        keep_read_op(bool): keep the read ops that are added by py_reader so user can
+                            use load_inference_model Python api to load an inference
+                            program and run with py_reader, default is False.
 
     Returns:
         None

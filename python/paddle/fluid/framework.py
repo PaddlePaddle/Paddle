@@ -1568,6 +1568,11 @@ class Program(object):
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
 
+        Args:
+            keep_read_op(bool): keep the read ops that are added by py_reader so user can
+                                use load_inference_model Python api to load an inference
+                                program and run with py_reader, default is False.
+
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
 
