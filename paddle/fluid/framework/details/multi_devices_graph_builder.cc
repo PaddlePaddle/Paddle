@@ -275,7 +275,8 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
       if (strategy_.gradient_scale_ !=
           BuildStrategy::GradientScaleStrategy::kCustomized) {
         // TODO(paddle-dev): Why is there no input for this op_handle?
-        CreateScaleLossGradOp(&result);
+        auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
+        CreateScaleLossGradOp(&result, loss_grad_name);
       }
       // This assumes the backward generating code will ensure IsScaleLossOp
       // is true only for the op that scale the final scalar loss.
@@ -535,7 +536,8 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
   return got == sharded_var_device.end() ? -1 : got->second;
 }
 
-void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(ir::Graph *result) const {
+void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
+    ir::Graph *result, const std::string &loss_grad_name) const {
   for (size_t i = 0; i < places_.size(); ++i) {
 // Insert ScaleCost OpHandle
 #ifdef PADDLE_WITH_CUDA
@@ -558,10 +560,10 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(ir::Graph *result) const {
     // loss->pending_ops_.emplace_back(op_handle);
     // op_handle->inputs_.emplace_back(loss);
 
-    CreateOpOutput(result, op_handle,
-                   result->CreateEmptyNode(GradVarName(loss_var_name_),
-                                           ir::Node::Type::kVariable),
-                   places_[i], i);
+    CreateOpOutput(
+        result, op_handle,
+        result->CreateEmptyNode(loss_grad_name, ir::Node::Type::kVariable),
+        places_[i], i);
   }
 }
 
