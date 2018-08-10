@@ -758,24 +758,41 @@ class Operator(object):
 
     def block_attr_id(self, name):
         """
-        Get the block attribute by name.
+        Get the block attribute's id by name.
 
         Args:
             name(str): the attribute name.
 
         Returns:
-            int: the block index.
+            (int): the block index.
         """
-        #if name == "optimize_blocks":
-        #    print(self)
         return self.desc.block_attr_id(name)
 
     def block_attr2(self, name):
+        """
+        Get the block attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            (block): the block attribute.
+        """
+
         id = self.block_attr_id(name)
         assert (id >= 0 and id < len(self.block.program.blocks))
         return self.block.program.blocks[id]
 
     def blocks_attr2(self, name):
+        """
+        Get the blocks attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            attrs(list[block]): the blocks attribute.
+        """
         attrs = []
         for i in self.blocks_attr_ids(name):
             assert (i >= 0 and i < len(self.block.program.blocks))
@@ -785,13 +802,13 @@ class Operator(object):
 
     def blocks_attr_ids(self, name):
         """
-        Get the blocks attribute by name.
+        Get the blocks attribute's ids by name.
 
         Args:
             name(str): the attribute name.
 
         Returns:
-            list(int): the blocks index.
+            (list[int]): the blocks index.
         """
 
         return self.desc.blocks_attr_ids(name)
@@ -801,7 +818,7 @@ class Operator(object):
         Get the attribute dict.
 
         Returns:
-            dict: The Operator's attribute dict.
+            attr_map(dict(name->attr)): The Operator's attribute dict.
         """
         attr_names = self.attr_names
         attr_map = {}
