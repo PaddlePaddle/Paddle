@@ -533,6 +533,10 @@ class Operator(object):
                                 in_arg_names.append(arg.name)
                             elif isinstance(arg.name, six.binary_type):
                                 in_arg_names.append(arg.name.decode())
+                            else:
+                                raise TypeError(
+                                    "arguments require unicode, str or bytes, but get %s instead."
+                                    % (type(arg.name)))
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -566,7 +570,9 @@ class Operator(object):
                     elif isinstance(arg.name, six.binary_type):
                         out_arg_names.append(arg.name.decode())
                     else:
-                        out_arg_names.append(six.u(arg.name))
+                        raise TypeError(
+                            "arguments require unicode, str or bytes, but get %s instead."
+                            % (type(arg.name)))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
