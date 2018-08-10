@@ -589,7 +589,7 @@ class DistributeTranspiler(object):
                     type=op.type,
                     inputs=new_inputs,
                     outputs=new_outputs,
-                    attrs=op.all_attrs())
+                    attrs=op.all_attrs_new())
         return s_prog
 
     # ====================== private transpiler functions =====================
@@ -1242,7 +1242,7 @@ class DistributeTranspiler(object):
             type=opt_op.type,
             inputs=new_inputs,
             outputs=outputs,
-            attrs=opt_op.all_attrs())
+            attrs=opt_op.all_attrs_new())
 
     def _is_splited_grad_var(self, var, var_dict):
         grad_block = None
@@ -1273,7 +1273,10 @@ class DistributeTranspiler(object):
                     block._clone_variable(var)
 
         return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
+            type=op.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=op.all_attrs_new())
 
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
@@ -1314,7 +1317,7 @@ class DistributeTranspiler(object):
             type=opt_op.type,
             inputs=inputs,
             outputs=outputs,
-            attrs=opt_op.all_attrs())
+            attrs=opt_op.all_attrs_new())
 
     def _is_op_connected(self, op1, op2):
         # If one op's input is another op's output or
@@ -1420,7 +1423,7 @@ class DistributeTranspiler(object):
         op_maker = core.op_proto_and_checker_maker
         optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
         if op_maker.kOpRoleAttrName() in op.attr_names and \
-                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+                int(op.all_attrs_new()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
             return True
         return False
 

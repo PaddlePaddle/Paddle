@@ -570,7 +570,6 @@ class Operator(object):
                 attr_val = op_attrs[attr_name]
                 self._update_desc_attr(attr_name, attr_val)
 
-        print("attrs:", op_attrs)
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
@@ -767,6 +766,8 @@ class Operator(object):
         Returns:
             int: the block index.
         """
+        #if name == "optimize_blocks":
+        #    print(self)
         return self.desc.block_attr_id(name)
 
     def block_attr2(self, name):
@@ -777,7 +778,8 @@ class Operator(object):
     def blocks_attr2(self, name):
         attrs = []
         for i in self.blocks_attr_ids(name):
-            attrs.append(self.block_attr2[name])
+            assert (i >= 0 and i < len(self.block.program.blocks))
+            attrs.append(self.block.program.blocks[i])
 
         return attrs
 
@@ -806,7 +808,7 @@ class Operator(object):
         for n in attr_names:
             attr_type = self.desc.attr_type(n)
             if attr_type == core.AttrType.BLOCK:
-                attr_map[n] = self.block_attr2[n]
+                attr_map[n] = self.block_attr2(n)
                 continue
 
             if attr_type == core.AttrType.BLOCKS:
