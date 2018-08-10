@@ -16,6 +16,7 @@ import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import traceback
+import collections
 
 
 class TranspilerTest(unittest.TestCase):
@@ -52,8 +53,17 @@ class TranspilerTest(unittest.TestCase):
         return main
 
     def get_trainer(self, config=None):
+        src = fluid.default_startup_program().clone()
+
         t = self._transpiler_instance(config)
-        return t.get_trainer_program(), fluid.default_startup_program()
+
+        trainer_main = t.get_trainer_program()
+        trainer_startup = fluid.default_startup_program()
+
+        assert (src.num_blocks == 1)
+        assert (trainer_startup.num_blocks == src.num_blocks)
+
+        return trainer_main, trainer_startup
 
     def get_pserver(self, ep, config=None, sync_mode=True):
         t = self._transpiler_instance(config, sync_mode)
@@ -100,10 +110,8 @@ class TestBasicModel(TranspilerTest):
         self.assertTrue("fc_b@GRAD" not in trainer_startup.global_block().vars)
 
         self.assertEqual(
-            [op.type for op in trainer_startup.global_block().ops], [
-                'fill_constant', 'fill_constant', 'uniform_random', 'recv',
-                'recv', 'recv', 'fetch_barrier', 'concat'
-            ])
+            [op.type for op in trainer_startup.global_block().ops],
+            ['recv', 'recv', 'recv', 'fetch_barrier', 'concat'])
 
         self.assertEqual([op.type for op in trainer.global_block().ops], [
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
@@ -497,7 +505,7 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
         self.assertEqual([op.type for op in pserver1.blocks[2].ops],
                          ["adam", "scale", "scale"])
 
-        trainer = self.get_trainer(config)
+        trainer, _ = self.get_trainer(config)
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
@@ -536,7 +544,7 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         # 5 save table
         self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
 
-        trainer = self.get_trainer(config)
+        trainer, _ = self.get_trainer(config)
         self.assertEqual(len(trainer.blocks), 1)
         ops = [
             'split_ids', 'prefetch', 'merge_ids', 'sequence_pool', 'split_ids',

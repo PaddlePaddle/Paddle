@@ -358,6 +358,10 @@ class DistributeTranspiler(object):
 
         orig_s_prog = program
 
+        #delete initialize operators.
+        assert (orig_s_prog.num_blocks == 1)
+        delete_ops(orig_s_prog.global_block(), orig_s_prog.global_block().ops)
+
         # add concat ops to origin parameters in startup program to
         # let the origin parameters initialized by the spilited parameters
         send_vars = []
