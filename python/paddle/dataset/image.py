@@ -33,6 +33,11 @@ import numpy as np
 try:
     import cv2
 except ImportError:
+    import sys
+    sys.stderr.write(
+        '''Warning with paddle image module: opencv-python should be imported,
+    or paddle image module could NOT work; please install opencv-python first.'''
+    )
     cv2 = None
 import os
 import tarfile
@@ -126,6 +131,8 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
+    assert cv2 is not None
+
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
     img = cv2.imdecode(file_bytes, flag)
@@ -149,6 +156,8 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
+    assert cv2 is not None
+
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
     # cv2.IMAGE_GRAYSCALE for OpenCV3
@@ -176,12 +185,14 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
+    assert cv2 is not None
+
     h, w = im.shape[:2]
     h_new, w_new = size, size
     if h > w:
-        h_new = size * h / w
+        h_new = size * h // w
     else:
-        w_new = size * w / h
+        w_new = size * w // h
     im = cv2.resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
     return im
 
@@ -228,8 +239,8 @@ def center_crop(im, size, is_color=True):
     :type is_color: bool
     """
     h, w = im.shape[:2]
-    h_start = (h - size) / 2
-    w_start = (w - size) / 2
+    h_start = (h - size) // 2
+    w_start = (w - size) // 2
     h_end, w_end = h_start + size, w_start + size
     if is_color:
         im = im[h_start:h_end, w_start:w_end, :]

@@ -27,6 +27,7 @@ from six.moves import zip
 import itertools
 import random
 import zlib
+import paddle.fluid.compat as cpt
 
 
 def map_readers(func, *readers):
@@ -390,9 +391,9 @@ class PipeReader:
             buff = self.process.stdout.read(self.bufsize)
             if buff:
                 if self.file_type == "gzip":
-                    decomp_buff = self.dec.decompress(buff)
+                    decomp_buff = cpt.to_literal_str(self.dec.decompress(buff))
                 elif self.file_type == "plain":
-                    decomp_buff = buff
+                    decomp_buff = cpt.to_literal_str(buff)
                 else:
                     raise TypeError("file_type %s is not allowed" %
                                     self.file_type)
