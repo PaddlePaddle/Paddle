@@ -475,23 +475,25 @@ class Operator(object):
 
         self.block = block
         self.desc = desc
-        self.attrs = attrs
-        if self.attrs is None:
-            self.attrs = dict()
+        # note: not add self.attrs here:
+        # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
+        op_attrs = attrs
+        if op_attrs is None:
+            op_attrs = dict()
         del attrs
 
         op_maker = core.op_proto_and_checker_maker
 
-        if op_maker.kOpRoleAttrName() not in self.attrs:
-            self.attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
+        if op_maker.kOpRoleAttrName() not in op_attrs:
+            op_attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
 
         role_var_name = op_maker.kOpRoleVarAttrName()
         if len(self.block.program.
-               op_role_var) != 0 and role_var_name not in self.attrs:
-            self.attrs[role_var_name] = self.block.program.op_role_var
+               op_role_var) != 0 and role_var_name not in op_attrs:
+            op_attrs[role_var_name] = self.block.program.op_role_var
 
-        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
-            del self.attrs[role_var_name]
+        if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
+            del op_attrs[role_var_name]
 
         if len(self.desc.type()) != 0:
             return
@@ -558,89 +560,21 @@ class Operator(object):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        if self.attrs is not None:
-            if not isinstance(self.attrs, dict):
+        if op_attrs is not None:
+            if not isinstance(op_attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (attr_name not in self.attrs) or (
-                        self.attrs[attr_name] is None):
+                if (attr_name not in op_attrs) or (op_attrs[attr_name] is None):
                     continue
-                attr_val = self.attrs[attr_name]
+                attr_val = op_attrs[attr_name]
                 self._update_desc_attr(attr_name, attr_val)
 
+        print("attrs:", op_attrs)
         self.desc.check_attrs()
         if self.has_kernel(type):
             self.desc.infer_var_type(self.block.desc)
             self.desc.infer_shape(self.block.desc)
-
-    def equal(self, other):
-        for k, v in self.__dict__.iteritems():
-            if isinstance(v, core.OpDesc) or isinstance(
-                    v, Program) or isinstance(v, Block):
-                continue
-
-            if isinstance(v, collections.OrderedDict):
-                v0 = sorted(v.iteritems(), key=lambda x: x[0])
-                v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
-
-                if v0 != v1:
-                    raise ValueError(
-                        "In Operator(Object) not equal:{0}\n".format(k))
-                    return False
-                continue
-
-            if k == 'attrs':
-                if len(self.attrs) != len(other.attrs):
-                    raise ValueError(
-                        "In Operator(Object)'s attrs's number not equal\n")
-                    return False
-
-                for ak, av in self.attrs.iteritems():
-                    attr_type = self.desc.attr_type(ak)
-                    if attr_type == core.AttrType.BLOCK:
-                        if self.block_attr(ak) != other.block_attr(ak):
-                            raise ValueError(
-                                "In Operator(Object)'s block attr not equal:{0}\n".
-                                format(ak))
-                        continue
-
-                    if attr_type == core.AttrType.BLOCKS:
-                        if self.blocks_attr(ak) != other.blocks_attr(ak):
-                            raise ValueError(
-                                "In Operator(Object)'s block attr not equal:{0}\n".
-                                format(ak))
-                        continue
-
-                    if ak == 'op_role':
-                        if av != int(other.attrs[ak]):
-                            raise ValueError(
-                                "In Operator(Object)'s attrs not equal:{0}\n".
-                                format(ak))
-                            return False
-                        continue
-
-                    if isinstance(av, float):
-                        if abs(av - other.attrs[ak]) > 0.000001:
-                            raise ValueError(
-                                "In Operator(Object)'s attrs not equal:{0}\n".
-                                format(ak))
-                            return False
-                        continue
-
-                    if av != other.attrs[ak]:
-                        raise ValueError(
-                            "In Operator(Object)'s attrs not equal:{0}\n".
-                            format(ak))
-                        return False
-                continue
-
-            if (v != other.__dict__[k]):
-                raise ValueError("In Operator(Object) not equal:{0}\n".format(
-                    k))
-                return False
-
-        return True
 
     def has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
@@ -782,7 +716,6 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        self.attrs[name] = val
         self._update_desc_attr(name, val)
 
     def _update_desc_attr(self, name, val):
@@ -807,32 +740,6 @@ class Operator(object):
         else:
             self.desc.set_attr(name, val)
 
-    def _sync_with_cpp(self, blocks):
-        """
-        Sync attrs data from c++ end.
-        """
-        for name in self.desc.attr_names():
-            attr_type = self.desc.attr_type(name)
-            if attr_type == core.AttrType.BLOCK:
-                self.attrs[name] = blocks[self.block_attr(name)]
-                continue
-
-            if attr_type == core.AttrType.BLOCKS:
-                bs_attr = []
-                for i in self.blocks_attr(name):
-                    bs_attr.append(blocks[i])
-
-                self.attrs[name] = bs_attr
-                continue
-
-            attr = self.desc.attr(name)
-            self.attrs[name] = attr
-
-        op_maker = core.op_proto_and_checker_maker
-        role_var_name = op_maker.kOpRoleVarAttrName()
-        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
-            del self.attrs[role_var_name]
-
     @property
     def attr_names(self):
         return self.desc.attr_names()
@@ -850,7 +757,7 @@ class Operator(object):
         """
         return self.desc.attr(name)
 
-    def block_attr(self, name):
+    def block_attr_id(self, name):
         """
         Get the block attribute by name.
 
@@ -860,9 +767,21 @@ class Operator(object):
         Returns:
             int: the block index.
         """
-        return self.desc.block_attr(name)
+        return self.desc.block_attr_id(name)
 
-    def blocks_attr(self, name):
+    def block_attr2(self, name):
+        id = self.block_attr_id(name)
+        assert (id >= 0 and id < len(self.block.program.blocks))
+        return self.block.program.blocks[id]
+
+    def blocks_attr2(self, name):
+        attrs = []
+        for i in self.blocks_attr_ids(name):
+            attrs.append(self.block_attr2[name])
+
+        return attrs
+
+    def blocks_attr_ids(self, name):
         """
         Get the blocks attribute by name.
 
@@ -873,9 +792,9 @@ class Operator(object):
             list(int): the blocks index.
         """
 
-        return self.desc.blocks_attr(name)
+        return self.desc.blocks_attr_ids(name)
 
-    def all_attrs(self):
+    def all_attrs_new(self):
         """
         Get the attribute dict.
 
@@ -885,10 +804,17 @@ class Operator(object):
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            if n == 'sub_block':
-                attr_map[n] = self.block_attr(n)
-            else:
-                attr_map[n] = self.attr(n)
+            attr_type = self.desc.attr_type(n)
+            if attr_type == core.AttrType.BLOCK:
+                attr_map[n] = self.block_attr2[n]
+                continue
+
+            if attr_type == core.AttrType.BLOCKS:
+                attr_map[n] = self.blocks_attr2(n)
+                continue
+
+            attr_map[n] = self.attr(n)
+
         return attr_map
 
 
@@ -928,37 +854,6 @@ class Block(object):
         self.ops = list()  # operator list
         self.program = program
         self.removed_vars = collections.OrderedDict()
-
-    def equal(self, other):
-        for k, v in self.__dict__.iteritems():
-            if isinstance(v, core.ProgramDesc) or isinstance(
-                    v, Program) or isinstance(v, core.BlockDesc):
-                continue
-
-            if k == "ops":
-                for i in range(0, len(self.ops)):
-                    if not self.ops[i].equal(other.ops[i]):
-                        raise ValueError(
-                            "In Block(Object) not equal:{0}\n".format(k))
-                        return False
-                assert (len(self.ops) == len(other.ops))
-                continue
-
-            if isinstance(v, collections.OrderedDict):
-                v0 = sorted(v.iteritems(), key=lambda x: x[0])
-                v1 = sorted(other.__dict__[k].iteritems(), key=lambda x: x[0])
-
-                if v0 != v1:
-                    raise ValueError("In Block(Object) not equal:{0}\n".format(
-                        k))
-                    return False
-                continue
-
-            if (v != other.__dict__[k]):
-                raise ValueError("In Block(Object) not equal:{0}\n".format(k))
-                return False
-
-        return True
 
     def __str__(self):
         return self.to_string(True)
@@ -1324,7 +1219,6 @@ class Block(object):
         assert len(self.ops) == len(ops_in_cpp)
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
-            self.ops[index]._sync_with_cpp(self.program.blocks)
 
     def _copy_param_info_from(self, other):
         """
@@ -1438,26 +1332,6 @@ class Program(object):
         self._seed = 0
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
-
-    def equal(self, other):
-        for k, v in self.__dict__.iteritems():
-            if isinstance(v, core.ProgramDesc):
-                continue
-
-            if k == 'blocks':
-                for i in range(0, len(self.blocks)):
-                    if not self.blocks[i].equal(other.blocks[i]):
-                        raise ValueError(
-                            "In Operator(Object) not equal:{0}\n".format(k))
-                        return False
-                assert (len(self.blocks) == len(other.blocks))
-                continue
-
-            if (v != other.__dict__[k]):
-                raise ValueError("In Program(Object) not equal:{0}\n".format(k))
-                return False
-
-        return True
 
     @property
     def op_role(self):

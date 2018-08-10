@@ -238,7 +238,7 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
   }
 }
 
-std::vector<int> OpDesc::GetBlocksAttr(const std::string &name) const {
+std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   auto blocks = boost::get<std::vector<BlockDesc *>>(it->second);
@@ -251,7 +251,7 @@ std::vector<int> OpDesc::GetBlocksAttr(const std::string &name) const {
   return ids;
 }
 
-int OpDesc::GetBlockAttr(const std::string &name) const {
+int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return boost::get<BlockDesc *>(it->second)->ID();
