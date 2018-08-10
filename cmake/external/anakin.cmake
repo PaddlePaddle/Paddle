@@ -2,29 +2,17 @@ if (NOT WITH_ANAKIN)
   return()
 endif()
 
+INCLUDE(ExternalProject)
 set(ANAKIN_SOURCE_DIR  ${THIRD_PARTY_PATH}/anakin)
 # the anakin install dir is only default one now
 set(ANAKIN_INSTALL_DIR ${THIRD_PARTY_PATH}/anakin/src/extern_anakin/output)
 set(ANAKIN_INCLUDE     ${ANAKIN_INSTALL_DIR})
 set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
-SET(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
-SET(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
+set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
+set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 
-# A helper function used in Anakin, currently, to use it, one need to recursively include
-# nearly all the header files.
-function(fetch_include_recursively root_dir)
-    if (IS_DIRECTORY ${root_dir})
-        include_directories(BEFORE ${root_dir})
-    endif()
-
-    file(GLOB ALL_SUB RELATIVE ${root_dir} ${root_dir}/*)
-    foreach(sub ${ALL_SUB})
-        if (IS_DIRECTORY ${root_dir}/${sub})
-            fetch_include_recursively(${root_dir}/${sub})
-        endif()
-    endforeach()
-endfunction()
-fetch_include_recursively(${ANAKIN_INCLUDE})
+include_directories(${ANAKIN_INCLUDE})
+include_directories(${ANAKIN_INCLUDE}/saber/)
 
 set(ANAKIN_COMPILE_EXTRA_FLAGS 
     -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
@@ -60,11 +48,9 @@ ExternalProject_Add(
 message(STATUS "Anakin for inference is enabled")
 message(STATUS "Anakin is set INCLUDE:${ANAKIN_INCLUDE} LIBRARY:${ANAKIN_LIBRARY}")
 
-fetch_include_recursively(${ANAKIN_INCLUDE})
-add_dependencies(extern_anakin protobuf mklml)
 add_library(anakin SHARED IMPORTED GLOBAL)
 set_property(TARGET anakin PROPERTY IMPORTED_LOCATION ${ANAKIN_SHARED_LIB})
 set_property(TARGET anakin PROPERTY IMPORTED_LOCATION ${ANAKIN_SABER_LIB})
 set_property(TARGET anakin PROPERTY IMPORTED_LOCATION ${CUDNN_LIBRARY})
-add_dependencies(anakin extern_anakin)
+add_dependencies(anakin extern_anakin protobuf mklml)
 list(APPEND external_project_dependencies anakin)
