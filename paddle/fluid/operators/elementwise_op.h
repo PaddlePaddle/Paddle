@@ -78,8 +78,6 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() final {
     AddInput("X", "(Tensor), The first input tensor of elementwise op.");
     AddInput("Y", "(Tensor), The second input tensor of elementwise op.");
-    // AddOutput("SavedShape", "(Tensor), save X, Y shape for grad to save
-    // memory.").AsIntermediate();
     AddOutput("Out", "The output of elementwise op.");
     AddAttr<int>("axis",
                  "(int, default -1). The start dimension index "
