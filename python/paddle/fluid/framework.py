@@ -32,8 +32,6 @@ except Exception, e:
 import unique_name
 
 __all__ = [
-    'Block',
-    'Variable',
     'Program',
     'Operator',
     'Parameter',
@@ -303,7 +301,7 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def set_desc(self, input):
+    def _set_desc(self, input):
         """
         Set the variable description.
 
@@ -348,7 +346,7 @@ class Variable(object):
     def type(self):
         return self.desc.type()
 
-    def set_error_clip(self, error_clip):
+    def _set_error_clip(self, error_clip):
         """
         Set the error_clip.
 
@@ -447,7 +445,7 @@ class Operator(object):
 
     Notes:
         The constructor of operator should not be invoked directly. Use
-        Block.append_op or Block.prepend_op instead.
+        Block.append_op or Block._prepend_op instead.
 
     Examples:
         .. code-block:: python
@@ -870,7 +868,7 @@ class Block(object):
     def forward_block_idx(self):
         return self.desc.get_forward_block_idx()
 
-    def set_forward_block_idx(self, idx):
+    def _set_forward_block_idx(self, idx):
         """
         Set the forward block Idx.
 
@@ -880,7 +878,7 @@ class Block(object):
         Returns:
             None
         """
-        self.desc.set_forward_block_idx(idx)
+        self.desc._set_forward_block_idx(idx)
 
     @property
     def idx(self):
@@ -909,7 +907,7 @@ class Block(object):
             raise ValueError("var %s not in this block" % name)
         return v
 
-    def var_recursive(self, name):
+    def _var_recursive(self, name):
         """
         Get a Variable by name from this block recursively.
 
@@ -951,9 +949,9 @@ class Block(object):
         raise ValueError("Var {0} is not found recursively".format(name))
 
     def all_parameters(self):
-        return list(self.iter_parameters())
+        return list(self._iter_parameters())
 
-    def iter_parameters(self):
+    def _iter_parameters(self):
         return (item[1] for item in self.vars.iteritems()
                 if isinstance(item[1], Parameter))
 
@@ -966,7 +964,7 @@ class Block(object):
     def has_var(self, name):
         return name in self.vars
 
-    def rename_var(self, name, new_name):
+    def _rename_var(self, name, new_name):
         """
         Rename variable in vars and ops' inputs and outputs
 
@@ -1000,8 +998,8 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc.rename_var(name, new_name)
-        # NOTE: v is destroyed by C++ after calling rename_var.
+        self.desc._rename_var(name, new_name)
+        # NOTE: v is destroyed by C++ after calling _rename_var.
         d = self.desc.find_var(new_name)
         if var_type == "Parameter":
             var = Parameter(
@@ -1024,23 +1022,42 @@ class Block(object):
                 error_clip=error_clip,
                 stop_gradient=stop_gradient)
 
-        # rename the python side, sync_with_cpp will only add
+        # rename the python side, _sync_with_cpp will only add
         # new vars/ops to python side.
         self.vars[new_name] = var
         del self.vars[name]
-        self.sync_with_cpp()
+        self._sync_with_cpp()
         return var
 
-    def remove_var(self, name):
-        self.sync_with_cpp()
-        self.desc.remove_var(name)
+    def _remove_var(self, name):
+        self._sync_with_cpp()
+        self.desc._remove_var(name)
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
         if 'initializer' in kwargs:
-            kwargs['initializer'](param, self)
+
+            def _is_inited_by(block, var):
+                init_ops = []
+                for op in block.ops:
+                    if var.name in op.output_arg_names:
+                        init_ops.append(op)
+                return init_ops
+
+            initializer = kwargs['initializer']
+            init_ops = _is_inited_by(global_block, param)
+            init_ops_len = len(init_ops)
+            if init_ops_len > 1:
+                raise RuntimeError("param " + param.name +
+                                   " is inited by multiple init ops " + str(
+                                       init_ops))
+            elif init_ops_len == 1:
+                #TODO already inited, do nothing, should log a warning
+                pass
+            else:
+                initializer(param, self)
         return param
 
     def append_op(self, *args, **kwargs):
@@ -1055,7 +1072,7 @@ class Block(object):
         self.ops.append(op)
         return op
 
-    def insert_op(self, index, *args, **kwargs):
+    def _insert_op(self, index, *args, **kwargs):
         """
         Insert a Operator according to the giving arguments.
 
@@ -1065,13 +1082,13 @@ class Block(object):
         Returns:
             Operator: the insert Operator.
         """
-        self.sync_with_cpp()
-        op_desc = self.desc.insert_op(index)
+        self._sync_with_cpp()
+        op_desc = self.desc._insert_op(index)
         op = Operator(block=self, desc=op_desc, *args, **kwargs)
         self.ops.insert(index, op)
         return op
 
-    def remove_op(self, index):
+    def _remove_op(self, index):
         """
         Remove the specific position operator.
 
@@ -1081,11 +1098,11 @@ class Block(object):
         Returns:
             None
         """
-        self.sync_with_cpp()
-        self.desc.remove_op(index, index + 1)
+        self._sync_with_cpp()
+        self.desc._remove_op(index, index + 1)
         del self.ops[index]
 
-    def slice_ops(self, start, end):
+    def _slice_ops(self, start, end):
         """
         Return the Operator between start and end.
 
@@ -1098,13 +1115,13 @@ class Block(object):
         """
         return self.ops[start:end]
 
-    def prepend_op(self, *args, **kwargs):
-        op_desc = self.desc.prepend_op()
+    def _prepend_op(self, *args, **kwargs):
+        op_desc = self.desc._prepend_op()
         op = Operator(self, op_desc, *args, **kwargs)
         self.ops.insert(0, op)
         return op
 
-    def sync_with_cpp(self):
+    def _sync_with_cpp(self):
         """
         Sync from the desc on the c++ end. This method is used to synchronize
         the c++ desc instance generated by backward.
@@ -1170,7 +1187,7 @@ class Block(object):
         for index in range(len(self.ops)):
             assert self.ops[index].desc == ops_in_cpp[index]
 
-    def copy_param_info_from(self, other):
+    def _copy_param_info_from(self, other):
         """
         Copy the information of parameters from the other block.
 
@@ -1185,12 +1202,13 @@ class Block(object):
             None
         """
         if not isinstance(other, Block):
-            raise TypeError("copy_param_info_from should be invoked with Block")
-        for p in other.iter_parameters():
+            raise TypeError(
+                "_copy_param_info_from should be invoked with Block")
+        for p in other._iter_parameters():
             assert isinstance(p, Parameter)
             v = self.vars.get(p.name, None)
             if v is None:
-                raise ValueError("copy_param_info_from should be invoked with "
+                raise ValueError("_copy_param_info_from should be invoked with "
                                  "same topology")
             assert isinstance(v, Variable)
             new_p = Parameter(
@@ -1208,7 +1226,7 @@ class Block(object):
                 name=v.name)
             self.vars[new_p.name] = new_p
 
-    def clone_variable(self, var):
+    def _clone_variable(self, var):
         """
         Clone a variable into current block.
 
@@ -1319,7 +1337,7 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimized_guard(self, var):
+    def optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
@@ -1327,17 +1345,20 @@ class Program(object):
         Notes: This is a very low level API. Users should not use it directly.
 
         Args:
-            var(Variable|str): The variable (name) to be optimized.
+            param_and_grads(list): The variables (names) to be optimized.
 
         Examples:
 
             >>> p, g = backward(...)
-            >>> with program.optimized_guard(p):
+            >>> with program.optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
         OpRole = core.op_proto_and_checker_maker.OpRole
         self._current_role = OpRole.Optimize
-        self._op_role_var = [var.name if isinstance(var, Variable) else var]
+        self._op_role_var = [
+            var.name if isinstance(var, Variable) else var
+            for var in param_and_grads
+        ]
         yield
         self._op_role_var = []
         self._current_role = OpRole.Forward
@@ -1481,9 +1502,9 @@ class Program(object):
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
-            p.sync_with_cpp()
+            p._sync_with_cpp()
 
-        p.copy_param_info_from(self)
+        p._copy_param_info_from(self)
         p.copy_data_info_from(self)
         return p
 
@@ -1533,12 +1554,17 @@ class Program(object):
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
-        res.sync_with_cpp()
+        res._sync_with_cpp()
         return res
 
     def inference_optimize(self):
         """
-        This method will create a new program and change the :code:`is_test`
+        This method will create a new program and do following adjustments on it:
+        1. Remove all reader variables and their creator ops if exist.
+
+        2. Remove the :code:`read_op` if exists.
+
+        3. change the :code:`is_test` 
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
 
@@ -1552,6 +1578,22 @@ class Program(object):
         # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
+
+        # remove all readers and the read_op if exist
+        read_op_idx = 0
+        root_block = res.desc.block(0)
+        while True:
+            if read_op_idx >= root_block.op_size() or root_block.op(
+                    read_op_idx).type() == 'read':
+                break
+            read_op_idx += 1
+        if read_op_idx < root_block.op_size():
+            root_block._remove_op(0, read_op_idx + 1)
+        for var in root_block.all_vars():
+            if var.type() == core.VarDesc.VarType.READER:
+                root_block._remove_var(var.name())
+
+        # change all `is_test` attributes to True
         for i in xrange(res.desc.num_blocks()):
             block = res.desc.block(i)
             for j in xrange(block.op_size()):
@@ -1559,7 +1601,7 @@ class Program(object):
                 if op.has_attr('is_test'):
                     op.set_attr('is_test', True)
         res.blocks = [Block(res, i) for i in xrange(res.desc.num_blocks())]
-        res.sync_with_cpp()
+        res._sync_with_cpp()
         return res
 
     @staticmethod
@@ -1579,7 +1621,7 @@ class Program(object):
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
         p.blocks = [Block(p, i) for i in xrange(p.desc.num_blocks())]
-        p.sync_with_cpp()
+        p._sync_with_cpp()
         return p
 
     @property
@@ -1659,7 +1701,7 @@ class Program(object):
         """
         self.current_block_idx = self.current_block().parent_idx
 
-    def sync_with_cpp(self):
+    def _sync_with_cpp(self):
         """
         Synchronize Python instance to its binding C++ object instance.
         If the program is modified in C++ space, this method should be invoked.
@@ -1673,9 +1715,9 @@ class Program(object):
         for block_idx in range(len(self.blocks), self.desc.num_blocks()):
             self.blocks.append(Block(self, block_idx))
         for block in self.blocks:
-            block.sync_with_cpp()
+            block._sync_with_cpp()
 
-    def copy_param_info_from(self, other):
+    def _copy_param_info_from(self, other):
         """
         Copy the information of parameters from other program.
 
@@ -1689,13 +1731,13 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("copy_param_info_from should be invoked with "
+            raise TypeError("_copy_param_info_from should be invoked with "
                             "Program")
 
         if len(self.blocks) != len(other.blocks):
-            raise ValueError("copy_param_info_from should be invoked with two "
+            raise ValueError("_copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
-        self.global_block().copy_param_info_from(other.global_block())
+        self.global_block()._copy_param_info_from(other.global_block())
 
     def copy_data_info_from(self, other):
         """
@@ -1711,11 +1753,11 @@ class Program(object):
             None
         """
         if not isinstance(other, Program):
-            raise TypeError("copy_param_info_from should be invoked with "
+            raise TypeError("_copy_param_info_from should be invoked with "
                             "Program")
 
         if len(self.blocks) != len(other.blocks):
-            raise ValueError("copy_param_info_from should be invoked with two "
+            raise ValueError("_copy_param_info_from should be invoked with two "
                              "program, with represent the same topology")
         for var in other.global_block().vars.itervalues():
             if var.is_data:

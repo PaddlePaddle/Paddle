@@ -27,7 +27,6 @@ class TranspilerTest(unittest.TestCase):
         self.pserver_eps = "127.0.0.1:6174,127.0.0.1:6175"
         self.pserver1_ep = "127.0.0.1:6174"
         self.pserver2_ep = "127.0.0.1:6175"
-        self.slice_var_up = True
         self.sync_mode = True
         self.transpiler = None
 
@@ -52,32 +51,41 @@ class TranspilerTest(unittest.TestCase):
         self.origin_prog = main.clone()
         return main
 
-    def get_trainer(self):
-        t = self._transpiler_instance()
+    def get_trainer(self, config=None, sync_mode=True):
+        t = self._transpiler_instance(config, sync_mode)
         return t.get_trainer_program()
 
-    def get_pserver(self, ep):
-        t = self._transpiler_instance()
+    def get_pserver(self, ep, config=None, sync_mode=True):
+        t = self._transpiler_instance(config, sync_mode)
         pserver = t.get_pserver_program(ep)
         startup = t.get_startup_program(ep, pserver)
         return pserver, startup
 
-    def _transpiler_instance(self):
+    def _transpiler_instance(self, config=None, sync_mode=True):
         if not self.transpiler:
             main = self.get_main_program()
-            self.transpiler = fluid.DistributeTranspiler()
+            self.transpiler = fluid.DistributeTranspiler(config=config)
             self.transpiler.transpile(
                 self.trainer_id,
                 program=main,
                 pservers=self.pserver_eps,
                 trainers=self.trainers,
-                slice_var_up=self.slice_var_up,
-                sync_mode=self.sync_mode)
+                sync_mode=sync_mode)
+
         return self.transpiler
+
+    def transpiler_test_impl(self):
+        pass
+
+    def test_transpiler(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(main, startup):
+            self.transpiler_test_impl()
 
 
 class TestBasicModel(TranspilerTest):
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         pserver2, startup2 = self.get_pserver(self.pserver2_ep)
 
@@ -124,14 +132,67 @@ class TestBasicModel(TranspilerTest):
         self.assertEqual(set(pserver_params), set(trainer_params))
 
 
+class TestBasicModelWithLargeBlockSize(TranspilerTest):
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        config.min_block_size = 1048576
+
+        pserver, startup = self.get_pserver(self.pserver1_ep, config)
+        pserver2, startup2 = self.get_pserver(self.pserver2_ep, config)
+
+        trainer = self.get_trainer(config)
+
+        self.assertEqual([op.type for op in trainer.global_block().ops], [
+            'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
+            'fill_constant', 'mean_grad', 'square_grad', 'elementwise_sub_grad',
+            'elementwise_add_grad', 'send', 'mul_grad', 'send', 'send_barrier',
+            'recv', 'recv', 'fetch_barrier'
+        ])
+
+        self.assertEqual(len(pserver.blocks), 2)
+        # block0: listen_and_serv
+        self.assertEqual([op.type for op in pserver.blocks[0].ops],
+                         ["listen_and_serv"])
+        # block1~2: optimize pass
+        self.assertEqual([op.type for op in pserver.blocks[1].ops],
+                         ["sum", "scale", "sgd"])
+        # confirm startup program
+        self.assertEqual([op.type for op in startup.global_block().ops],
+                         ["fill_constant", "fill_constant"])
+        # the variable #fc_w will be split into two blocks
+        fc_w_var = startup2.global_block().var("fc_w")
+        self.assertEqual(fc_w_var.shape, (1000L, 1000L))
+        # all parameters should be optimized on pserver
+
+        pserver_params = []
+        for prog in [pserver, pserver2]:
+            for blk in prog.blocks:
+                for op in blk.ops:
+                    if "Param" in op.input_names:
+                        param_name = op.input("Param")[0]
+                        is_block_idx = param_name.find(".block")
+                        if is_block_idx != -1:
+                            origin_param_name = param_name[:is_block_idx]
+                        else:
+                            origin_param_name = param_name
+                        pserver_params.append(origin_param_name)
+        trainer_params = []
+        for op in self.origin_prog.global_block().ops:
+            if "Param" in op.input_names:
+                trainer_params.append(op.input("Param")[0])
+        self.assertEqual(set(pserver_params), set(trainer_params))
+
+
 class TestNoSliceVar(TranspilerTest):
     def setUp(self):
         super(TestNoSliceVar, self).setUp()
-        self.slice_var_up = False
 
-    def test_transpiler(self):
-        _, startup = self.get_pserver(self.pserver1_ep)
-        _, startup2 = self.get_pserver(self.pserver2_ep)
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        config.slice_var_up = False
+
+        _, startup = self.get_pserver(self.pserver1_ep, config)
+        _, startup2 = self.get_pserver(self.pserver2_ep, config)
 
         if startup.global_block().vars.has_key("fc_w"):
             fc_w_var = startup.global_block().vars["fc_w"]
@@ -161,7 +222,7 @@ class TestLRDecay(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
@@ -191,7 +252,7 @@ class TestLRDecayConditional(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
@@ -240,7 +301,7 @@ class TestL2Decay(TranspilerTest):
         sgd_optimizer.minimize(avg_cost)
         return
 
-    def test_transpiler(self):
+    def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
         trainer = self.get_trainer()
 
@@ -253,10 +314,226 @@ class TestL2Decay(TranspilerTest):
         # TODO(typhoonzero): test clipping and L2Decay ops are removed from trainer
 
 
-    # FIXME(typhoonzero): need to add test for async case:
-    # see https://github.com/PaddlePaddle/Paddle/issues/11691
-class TestAsyncSGD(TranspilerTest):
-    pass
+class TestL2DecayWithPiecewise(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=fluid.ParamAttr(name='fc_b'))
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        base_lr = 1.0
+        bd = [1, 10, 20, 30]
+        lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
+        sgd_optimizer = fluid.optimizer.Momentum(
+            learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr),
+            momentum=0.9,
+            regularization=fluid.regularizer.L2Decay(1e-4))
+        sgd_optimizer.minimize(avg_cost)
+        return
+
+    def transpiler_test_impl(self):
+        pserver, startup = self.get_pserver(self.pserver1_ep)
+        trainer = self.get_trainer()
+
+        self.assertEqual(len(pserver.blocks), 9)
+        self.assertEqual([op.type for op in pserver.blocks[1].ops], [
+            "increment", "cast", "fill_constant", "fill_constant", "less_than",
+            "logical_not", "conditional_block", "fill_constant",
+            "fill_constant", "less_than", "logical_not", "logical_and",
+            "logical_and", "conditional_block", "fill_constant",
+            "fill_constant", "less_than", "logical_not", "logical_and",
+            "logical_and", "conditional_block", "fill_constant",
+            "fill_constant", "less_than", "logical_not", "logical_and",
+            "logical_and", "conditional_block", "fill_constant",
+            "conditional_block"
+        ])
+        self.assertEqual(
+            [op.type for op in pserver.blocks[7].ops],
+            ["sum", "scale", "scale", "elementwise_add", "momentum"])
+        self.assertEqual(
+            [op.type for op in pserver.blocks[8].ops],
+            ["sum", "scale", "scale", "elementwise_add", "momentum"])
+
+
+class TestDistLookupTableBase(TranspilerTest):
+    def network_with_table(self, is_sparse, is_distributed):
+        def emb_pool(ids):
+            table_size = 1000
+            emb_size = 64
+            emb = fluid.layers.embedding(
+                input=ids,
+                size=[table_size, emb_size],
+                dtype='float32',
+                param_attr='shared_w',  # share parameter
+                is_sparse=is_sparse,
+                is_distributed=is_distributed)
+            pool = fluid.layers.sequence_pool(input=emb, pool_type='average')
+            return pool
+
+        title_ids = fluid.layers.data(
+            name='title_ids', shape=[1], dtype='int64', lod_level=1)
+        brand_ids = fluid.layers.data(
+            name='brand_ids', shape=[1], dtype='int64', lod_level=1)
+        title_emb = emb_pool(title_ids)
+        brand_emb = emb_pool(brand_ids)
+        fc0 = fluid.layers.concat(input=[title_emb, brand_emb], axis=1)
+        predict = fluid.layers.fc(input=fc0,
+                                  size=2,
+                                  act=None,
+                                  param_attr=fluid.ParamAttr(name='fc_w'),
+                                  bias_attr=fluid.ParamAttr(name='fc_b'))
+
+        label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+        cost = fluid.layers.cross_entropy(input=predict, label=label)
+        avg_cost = fluid.layers.mean(cost)
+        optimizer = fluid.optimizer.Adam(learning_rate=0.003)
+        optimizer.minimize(avg_cost)
+
+
+class TestLocalLookupTable(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=False)
+
+    def transpiler_test_impl(self):
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep)
+
+        self.assertEqual(len(pserver1.blocks), 3)
+        # 0 listen_and_serv
+        # 1 optimize for fc_w or fc_b adam
+        self.assertEqual([op.type for op in pserver1.blocks[1].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+        # 2 optimize for table adam
+        # NOTE: if param is not selected rows, the grad will scaled to grad / trainer_num
+        self.assertEqual([op.type for op in pserver1.blocks[2].ops],
+                         ["sum", "adam", "scale", "scale"])
+
+        trainer = self.get_trainer()
+        self.assertEqual(len(trainer.blocks), 1)
+        ops = [
+            'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
+            'concat', 'mul', 'elementwise_add', 'cross_entropy', 'mean',
+            'fill_constant', 'mean_grad', 'cross_entropy_grad',
+            'elementwise_add_grad', 'send', 'mul_grad', 'send', 'concat_grad',
+            'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sum', 'split_selected_rows', 'send',
+            'send_barrier', 'recv', 'recv', 'recv', 'fetch_barrier', 'concat'
+        ]
+        self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+class TestDistLookupTable(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=True)
+
+    def transpiler_test_impl(self):
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep)
+
+        self.assertEqual(len(pserver1.blocks), 6)
+        # 0 listen_and_serv
+        # 1 optimize for fc_w or fc_b adam
+        self.assertEqual([op.type for op in pserver1.blocks[1].ops],
+                         ["sum", "scale", "adam", "scale", "scale"])
+        # 2 optimize for table sgd
+        self.assertEqual([op.type for op in pserver1.blocks[2].ops],
+                         ["sum", "sgd"])
+        # 3 prefetch -> lookup_sparse_table for data0
+        self.assertEqual([op.type for op in pserver1.blocks[3].ops],
+                         ["lookup_sparse_table"])
+        # 4 prefetch -> lookup_sparse_table for data1
+        self.assertEqual([op.type for op in pserver1.blocks[4].ops],
+                         ["lookup_sparse_table"])
+        # 5 save table
+        self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
+
+        trainer = self.get_trainer()
+        self.assertEqual(len(trainer.blocks), 1)
+        ops = [
+            'split_ids', 'prefetch', 'merge_ids', 'sequence_pool', 'split_ids',
+            'prefetch', 'merge_ids', 'sequence_pool', 'concat', 'mul',
+            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sum', 'split_ids', 'send', 'send_barrier', 'recv', 'recv',
+            'fetch_barrier'
+        ]
+        self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+class TestAsyncLocalLookupTable(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=False)
+
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep, config, False)
+
+        self.assertEqual(len(pserver1.blocks), 3)
+        # 0 listen_and_serv
+        # 1 optimize for fc_w or fc_b adam
+        self.assertEqual([op.type for op in pserver1.blocks[1].ops],
+                         ["adam", "scale", "scale"])
+        # 2 optimize for table adam
+        # NOTE: if param is not selected rows, the grad will scaled to grad / trainer_num
+        self.assertEqual([op.type for op in pserver1.blocks[2].ops],
+                         ["adam", "scale", "scale"])
+
+        trainer = self.get_trainer(config)
+        self.assertEqual(len(trainer.blocks), 1)
+        ops = [
+            'lookup_table', 'sequence_pool', 'lookup_table', 'sequence_pool',
+            'concat', 'mul', 'elementwise_add', 'cross_entropy', 'mean',
+            'fill_constant', 'mean_grad', 'cross_entropy_grad',
+            'elementwise_add_grad', 'send', 'mul_grad', 'send', 'concat_grad',
+            'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sum', 'split_selected_rows', 'send', 'recv',
+            'recv', 'recv', 'concat'
+        ]
+        self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+class TestAsyncDistLookupTable(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=True)
+
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep, config, False)
+
+        self.assertEqual(len(pserver1.blocks), 6)
+        # 0 listen_and_serv
+        # 1 optimize for fc_w or fc_b adam
+        self.assertEqual([op.type for op in pserver1.blocks[1].ops],
+                         ["adam", "scale", "scale"])
+        # 2 optimize for table sgd
+        self.assertEqual([op.type for op in pserver1.blocks[2].ops], ["sgd"])
+        # 3 prefetch -> lookup_sparse_table for data0
+        self.assertEqual([op.type for op in pserver1.blocks[3].ops],
+                         ["lookup_sparse_table"])
+        # 4 prefetch -> lookup_sparse_table for data1
+        self.assertEqual([op.type for op in pserver1.blocks[4].ops],
+                         ["lookup_sparse_table"])
+        # 5 save table
+        self.assertEqual([op.type for op in pserver1.blocks[5].ops], ["save"])
+
+        trainer = self.get_trainer(config)
+        self.assertEqual(len(trainer.blocks), 1)
+        ops = [
+            'split_ids', 'prefetch', 'merge_ids', 'sequence_pool', 'split_ids',
+            'prefetch', 'merge_ids', 'sequence_pool', 'concat', 'mul',
+            'elementwise_add', 'cross_entropy', 'mean', 'fill_constant',
+            'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
+            'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
+            'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
+            'sum', 'split_ids', 'send', 'recv', 'recv'
+        ]
+        self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
 
 if __name__ == "__main__":

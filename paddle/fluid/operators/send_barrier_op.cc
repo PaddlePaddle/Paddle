@@ -39,24 +39,19 @@ class SendBarrierOp : public framework::OperatorBase {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
     bool sync_mode = Attr<bool>("sync_mode");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
-
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
     VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
 
     // need to wait before sending send_barrier message
-    rpc_client->Wait();
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     if (sync_mode) {
       for (auto& ep : eps) {
         VLOG(3) << "send barrier, ep: " << ep;
         rpc_client->AsyncSendBatchBarrier(ep);
       }
-      rpc_client->Wait();
+      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     }
   }
 };

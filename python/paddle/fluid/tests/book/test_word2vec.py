@@ -14,6 +14,7 @@
 
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
 import unittest
 import os
 import numpy as np
@@ -80,7 +81,7 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         avg_cost, predict_word = __network__(
             [first_word, second_word, third_word, forth_word, next_word])
     else:
-        places = fluid.layers.get_places()
+        places = get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
@@ -244,7 +245,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if use_cuda and is_sparse:
+    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server

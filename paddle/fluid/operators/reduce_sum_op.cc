@@ -23,12 +23,13 @@ REGISTER_OP_CPU_KERNEL(
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int, ops::SumFunctor>,
     ops::ReduceKernel<paddle::platform::CPUDeviceContext, int64_t,
                       ops::SumFunctor>);
-REGISTER_OP_CPU_KERNEL(reduce_sum_grad,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             float, ops::SumGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             double, ops::SumGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             int, ops::SumGradFunctor>,
-                       ops::ReduceGradKernel<paddle::platform::CPUDeviceContext,
-                                             int64_t, ops::SumGradFunctor>);
+REGISTER_OP_CPU_KERNEL(
+    reduce_sum_grad,
+    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, float,
+                             ops::SumGradFunctor>,
+    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, double,
+                             ops::SumGradFunctor>,
+    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, int,
+                             ops::SumGradFunctor>,
+    ops::ReduceSumGradKernel<paddle::platform::CPUDeviceContext, int64_t,
+                             ops::SumGradFunctor>);
