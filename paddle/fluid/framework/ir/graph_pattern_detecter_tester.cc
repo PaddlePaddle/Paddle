@@ -1,3 +1,17 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 
 #include <gtest/gtest.h>
@@ -121,13 +135,15 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
 
   // The pattern is a graph:
   //   op -> var
-  auto* any_op = x.mutable_pattern()->NewNode([](Node* node) {
-    return node->IsOp() && (node->Name() == "op2" || node->Name() == "op3");
-  }, "OP0");
-  auto* any_var =
-      x.mutable_pattern()->NewNode([](Node* node) { return node->IsVar(); }, "VAR");
-  auto* any_op1 =
-      x.mutable_pattern()->NewNode([](Node* node) { return node->IsOp(); }, "OP1");
+  auto* any_op = x.mutable_pattern()->NewNode(
+      [](Node* node) {
+        return node->IsOp() && (node->Name() == "op2" || node->Name() == "op3");
+      },
+      "OP0");
+  auto* any_var = x.mutable_pattern()->NewNode(
+      [](Node* node) { return node->IsVar(); }, "VAR");
+  auto* any_op1 = x.mutable_pattern()->NewNode(
+      [](Node* node) { return node->IsOp(); }, "OP1");
 
   x.mutable_pattern()->AddEdge(any_op, any_var);
   x.mutable_pattern()->AddEdge(any_var, any_op1);

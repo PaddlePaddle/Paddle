@@ -1,3 +1,17 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -88,7 +102,6 @@ GraphPatternDetecter::DetectPatterns() {
     auto& cur_groups = bi_records[1 - (step++ % 2)];
     cur_groups.clear();
     // source -> target
-    LOG(INFO) << "step " << step << " ...";
     for (Node* source : pdnodes2nodes_[edge.first]) {
       for (Node* target : pdnodes2nodes_[edge.second]) {
         // TODO(Superjomn) add some prune strategies.
@@ -99,11 +112,6 @@ GraphPatternDetecter::DetectPatterns() {
             new_group.Register(source, edge.first);
             if (new_group.Match(target, edge.second)) {
               new_group.Register(target, edge.second);
-              if (target->Name() == "op4" || source->Name() == "op4") {
-                LOG(INFO) << step << " detecting " << edge.first->name() << "->"
-                          << edge.second->name() << ": " << source->Name()
-                          << " -> " << target->Name();
-              }
               cur_groups.push_back(new_group);
               // TODO(Superjomn) need to unique
             }
