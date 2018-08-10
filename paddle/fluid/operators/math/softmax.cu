@@ -52,16 +52,10 @@ void SoftmaxCUDNNFunctor<T>::operator()(
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_y_desc =
       xDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  cudnnSoftmaxAlgorithm_t algo;
-  if (FLAGS_cudnn_deterministic) {
-    algo = CUDNN_SOFTMAX_ACCURATE;
-  } else {
-    algo = CUDNN_SOFTMAX_FAST;
-  }
-  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxForward(
-      context.cudnn_handle(), algo, CUDNN_SOFTMAX_MODE_INSTANCE,
-      CudnnDataType<T>::kOne(), cudnn_x_desc, X->data<T>(),
-      CudnnDataType<T>::kZero(), cudnn_y_desc,
+  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxForward(
+      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_x_desc,
+      X->data<T>(), CudnnDataType<T>::kZero(), cudnn_y_desc,
       Y->mutable_data<T>(context.GetPlace())));
 }
 
@@ -89,16 +83,11 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
       dxDesc.descriptor<T>(layout, cudnn_tensor_dims);
   cudnnTensorDescriptor_t cudnn_ygrad_desc =
       dyDesc.descriptor<T>(layout, cudnn_tensor_dims);
-  cudnnSoftmaxAlgorithm_t algo;
-  if (FLAGS_cudnn_deterministic) {
-    algo = CUDNN_SOFTMAX_ACCURATE;
-  } else {
-    algo = CUDNN_SOFTMAX_FAST;
-  }
-  PADDLE_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
-      context.cudnn_handle(), algo, CUDNN_SOFTMAX_MODE_INSTANCE,
-      CudnnDataType<T>::kOne(), cudnn_y_desc, Y->data<T>(), cudnn_ygrad_desc,
-      YGrad->data<T>(), CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
+  CUDNN_ENFORCE(platform::dynload::cudnnSoftmaxBackward(
+      context.cudnn_handle(), CUDNN_SOFTMAX_ACCURATE,
+      CUDNN_SOFTMAX_MODE_INSTANCE, CudnnDataType<T>::kOne(), cudnn_y_desc,
+      Y->data<T>(), cudnn_ygrad_desc, YGrad->data<T>(),
+      CudnnDataType<T>::kZero(), cudnn_xgrad_desc,
       XGrad->mutable_data<T>(context.GetPlace())));
 }
 

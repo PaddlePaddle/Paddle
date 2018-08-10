@@ -32,7 +32,6 @@ except Exception, e:
 import unique_name
 
 __all__ = [
-    'Variable',
     'Program',
     'Operator',
     'Parameter',
@@ -302,7 +301,7 @@ class Variable(object):
 
     __repr__ = __str__
 
-    def set_desc(self, input):
+    def _set_desc(self, input):
         """
         Set the variable description.
 
@@ -347,7 +346,7 @@ class Variable(object):
     def type(self):
         return self.desc.type()
 
-    def set_error_clip(self, error_clip):
+    def _set_error_clip(self, error_clip):
         """
         Set the error_clip.
 
@@ -1039,7 +1038,26 @@ class Block(object):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
         if 'initializer' in kwargs:
-            kwargs['initializer'](param, self)
+
+            def _is_inited_by(block, var):
+                init_ops = []
+                for op in block.ops:
+                    if var.name in op.output_arg_names:
+                        init_ops.append(op)
+                return init_ops
+
+            initializer = kwargs['initializer']
+            init_ops = _is_inited_by(global_block, param)
+            init_ops_len = len(init_ops)
+            if init_ops_len > 1:
+                raise RuntimeError("param " + param.name +
+                                   " is inited by multiple init ops " + str(
+                                       init_ops))
+            elif init_ops_len == 1:
+                #TODO already inited, do nothing, should log a warning
+                pass
+            else:
+                initializer(param, self)
         return param
 
     def append_op(self, *args, **kwargs):
@@ -1541,7 +1559,12 @@ class Program(object):
 
     def inference_optimize(self):
         """
-        This method will create a new program and change the :code:`is_test`
+        This method will create a new program and do following adjustments on it:
+        1. Remove all reader variables and their creator ops if exist.
+
+        2. Remove the :code:`read_op` if exists.
+
+        3. change the :code:`is_test` 
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
 
@@ -1555,6 +1578,22 @@ class Program(object):
         # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
+
+        # remove all readers and the read_op if exist
+        read_op_idx = 0
+        root_block = res.desc.block(0)
+        while True:
+            if read_op_idx >= root_block.op_size() or root_block.op(
+                    read_op_idx).type() == 'read':
+                break
+            read_op_idx += 1
+        if read_op_idx < root_block.op_size():
+            root_block._remove_op(0, read_op_idx + 1)
+        for var in root_block.all_vars():
+            if var.type() == core.VarDesc.VarType.READER:
+                root_block._remove_var(var.name())
+
+        # change all `is_test` attributes to True
         for i in xrange(res.desc.num_blocks()):
             block = res.desc.block(i)
             for j in xrange(block.op_size()):
