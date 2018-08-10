@@ -14,6 +14,7 @@
 
 import numpy as np
 import argparse
+import six
 import time
 import math
 
@@ -174,6 +175,9 @@ class SE_ResNeXt():
             padding=(filter_size - 1) / 2,
             groups=groups,
             act=None,
+            # avoid pserver CPU init differs from GPU
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant()),
             bias_attr=False)
         return fluid.layers.batch_norm(input=conv, act=act)
 
@@ -194,10 +198,8 @@ class SE_ResNeXt():
 
 def get_model(batch_size):
     # Input data
-    image = fluid.layers.fill_constant(
-        shape=[batch_size, 3, 224, 224], dtype='float32', value=0.0)
-    label = fluid.layers.fill_constant(
-        shape=[batch_size, 1], dtype='int64', value=0.0)
+    image = fluid.layers.data(name="data", shape=[3, 224, 224], dtype='float32')
+    label = fluid.layers.data(name="int64", shape=[1], dtype='int64')
 
     # Train program
     model = SE_ResNeXt(layers=50)
@@ -222,8 +224,10 @@ def get_model(batch_size):
     lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
     optimizer = fluid.optimizer.Momentum(
-        learning_rate=fluid.layers.piecewise_decay(
-            boundaries=bd, values=lr),
+        # FIXME(typhoonzero): add back LR decay once ParallelExecutor fixed.
+        #learning_rate=fluid.layers.piecewise_decay(
+        #    boundaries=bd, values=lr),
+        learning_rate=base_lr,
         momentum=0.9,
         regularization=fluid.regularizer.L2Decay(1e-4))
     optimizer.minimize(avg_cost)
@@ -232,7 +236,7 @@ def get_model(batch_size):
     train_reader = paddle.batch(
         paddle.dataset.flowers.train(), batch_size=batch_size)
     test_reader = paddle.batch(
-        paddle.dataset.flowers.test(), batch_size=batch_size)
+        paddle.dataset.flowers.test(use_xmap=False), batch_size=batch_size)
 
     return test_program, avg_cost, train_reader, test_reader, acc_top1, out
 
@@ -256,7 +260,6 @@ class DistSeResneXt2x2:
                            trainers)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
-
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -302,12 +305,19 @@ class DistSeResneXt2x2:
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        reader_generator = train_reader()
-        first_loss, = exe.run(fetch_list=[avg_cost.name])
+        reader_generator = test_reader()
+
+        data = next(reader_generator)
+        first_loss, = exe.run(fetch_list=[avg_cost.name],
+                              feed=feeder.feed(data))
         print(first_loss)
-        for i in range(5):
-            loss, = exe.run(fetch_list=[avg_cost.name])
-        last_loss, = exe.run(fetch_list=[avg_cost.name])
+
+        for i in six.moves.xrange(5):
+            data = next(reader_generator)
+            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+
+        data = next(reader_generator)
+        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
         print(last_loss)
 
 
