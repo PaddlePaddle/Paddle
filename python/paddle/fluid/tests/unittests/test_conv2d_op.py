@@ -106,8 +106,8 @@ class TestConv2dOp(OpTest):
         if self.testcudnn():
             place = core.CUDAPlace(0)
             self.check_output_with_place(place, atol=1e-5)
-        else:
-            self.check_output()
+        place = core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
@@ -119,9 +119,9 @@ class TestConv2dOp(OpTest):
                 set(['Input', 'Filter']),
                 'Output',
                 max_relative_error=0.02)
-        else:
-            self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
@@ -133,12 +133,12 @@ class TestConv2dOp(OpTest):
                 'Output',
                 max_relative_error=0.02,
                 no_grad_set=set(['Filter']))
-        else:
-            self.check_grad(
-                ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Input'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
@@ -150,12 +150,12 @@ class TestConv2dOp(OpTest):
                 'Output',
                 max_relative_error=0.02,
                 no_grad_set=set(['Input']))
-        else:
-            self.check_grad(
-                ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
+        place = core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Filter'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
