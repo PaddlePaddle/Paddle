@@ -201,6 +201,17 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
 
+      // Add write after write dependence
+      ir::Node *upstream_op =
+          (*it_old)->inputs.empty() ? nullptr : (*it_old)->inputs[0];
+      if (upstream_op) {
+        ir::Node *dep_var = CreateControlDepVar();
+        write_op->inputs.push_back(dep_var);
+        upstream_op->outputs.push_back(dep_var);
+        dep_var->outputs.push_back(write_op);
+        dep_var->inputs.push_back(upstream_op);
+      }
+
       for (auto *read_op : read_ops) {
         // Manually add a dependency var from read_op to write_op;
         if (read_op == write_op) {
