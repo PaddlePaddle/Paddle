@@ -127,7 +127,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(10) << "- " << DebugStringEx(&scope);
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -139,7 +139,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
-  VLOG(10) << "+ " << DebugStringEx(&scope);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -778,6 +778,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
+  std::string last_input_name;
   for (auto& input : this->inputs_) {
     for (auto& ipt_name : input.second) {
       auto* var = scope.FindVar(ipt_name);
@@ -794,9 +795,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           int tmp = static_cast<int>(ToDataType(t->type()));
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
-              "DataType of Paddle Op %s must be the same. Get %d != %d", Type(),
-              data_type, tmp);
+              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
+              Type(), last_input_name, data_type, ipt_name, tmp);
           data_type = tmp;
+          last_input_name = ipt_name;
         }
       }
     }

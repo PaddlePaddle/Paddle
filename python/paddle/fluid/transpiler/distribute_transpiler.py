@@ -293,14 +293,15 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        program.global_block().append_op(
-            type="fetch_barrier",
-            inputs={},
-            outputs={},
-            attrs={
-                "endpoints": pserver_endpoints,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        if self.sync_mode:
+            program.global_block().append_op(
+                type="fetch_barrier",
+                inputs={},
+                outputs={},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
 
         for varname, splited_var in self.param_var_mapping.iteritems():
             if len(splited_var) <= 1:
