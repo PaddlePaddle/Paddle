@@ -72,8 +72,6 @@ def guard(new_generator=None):
         new_generator = UniqueNameGenerator(new_generator)
     elif isinstance(new_generator, six.binary_type):
         new_generator = UniqueNameGenerator(new_generator.decode())
-    else:
-        raise TypeError(str(new_generator) + " should be unicode or str")
     old = switch(new_generator)
     yield
     switch(old)
