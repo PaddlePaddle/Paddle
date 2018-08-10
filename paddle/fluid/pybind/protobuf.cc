@@ -302,6 +302,7 @@ void BindOpDesc(pybind11::module *m) {
              self.SetAttr(name, ser);
            })
       .def("block_attr", &pd::OpDesc::GetBlockAttr)
+      .def("blocks_attr", &pd::OpDesc::GetBlocksAttr)
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)
