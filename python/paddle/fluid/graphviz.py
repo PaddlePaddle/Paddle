@@ -106,7 +106,7 @@ class Graph(object):
 
     def _rank_repr(self):
         ranks = sorted(
-            list(self.rank_groups.items()),
+            six.moves.iteritems(self.rank_groups),
             key=functools.cmp_to_key(
                 lambda a, b: a[1].priority > b[1].priority))
         repr = []
@@ -150,8 +150,9 @@ class Node(object):
         reprs = '{name} [label={label} {extra} ];'.format(
             name=self.name,
             label=self.label,
-            extra=',' + ','.join("%s=%s" % (key, crepr(value))
-                                 for key, value in list(self.attrs.items()))
+            extra=',' + ','.join(
+                "%s=%s" % (key, crepr(value))
+                for key, value in six.moves.iteritems(self.attrs))
             if self.attrs else "")
         return reprs
 
@@ -175,7 +176,7 @@ class Edge(object):
             target=self.target.name,
             extra="" if not self.attrs else
             "[" + ','.join("{}={}".format(attr[0], crepr(attr[1]))
-                           for attr in list(self.attrs.items())) + "]")
+                           for attr in six.moves.iteritems(self.attrs)) + "]")
         return repr
 
 
