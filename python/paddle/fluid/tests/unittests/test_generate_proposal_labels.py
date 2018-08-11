@@ -21,8 +21,9 @@ from op_test import OpTest
 
 
 def generate_proposal_labels_in_python(
-        rpn_rois, ground_truth, im_scales, batch_size_per_im, fg_fraction,
-        fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums):
+        rpn_rois, gt_classes, gt_boxes, im_scales, batch_size_per_im,
+        fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
+        class_nums):
     rois = []
     labels_int32 = []
     bbox_targets = []
@@ -30,13 +31,13 @@ def generate_proposal_labels_in_python(
     bbox_outside_weights = []
     lod = []
     assert len(rpn_rois) == len(
-        ground_truth), 'batch size of rpn_rois and ground_truth is not matched'
+        im_scales), 'batch size of rpn_rois and ground_truth is not matched'
 
-    for im_i, entry in enumerate(ground_truth):
-        frcn_blobs = _sample_rois(rpn_rois[im_i], entry, im_scales[im_i],
-                                  batch_size_per_im, fg_fraction, fg_thresh,
-                                  bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
-                                  class_nums)
+    for im_i in range(len(im_scales)):
+        frcn_blobs = _sample_rois(
+            rpn_rois[im_i], gt_classes[im_i], gt_boxes[im_i], im_scales[im_i],
+            batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
+            bg_thresh_lo, bbox_reg_weights, class_nums)
 
         lod.append(len(frcn_blobs['rois']))
 
@@ -49,7 +50,7 @@ def generate_proposal_labels_in_python(
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, lod
 
 
-def _sample_rois(rpn_rois, ground_truth, im_scale, batch_size_per_im,
+def _sample_rois(rpn_rois, gt_classes, gt_boxes, im_scale, batch_size_per_im,
                  fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo,
                  bbox_reg_weights, class_nums):
     rois_per_image = int(batch_size_per_im)
@@ -59,8 +60,6 @@ def _sample_rois(rpn_rois, ground_truth, im_scale, batch_size_per_im,
     inv_im_scale = 1. / im_scale
     rpn_rois = rpn_rois * inv_im_scale
 
-    gt_classes = ground_truth['gt_classes']
-    gt_boxes = ground_truth['boxes']
     boxes = np.vstack([gt_boxes, rpn_rois])
     gt_overlaps = np.zeros((boxes.shape[0], class_nums))
     box_to_gt_ind_map = -np.ones((boxes.shape[0]), dtype=np.int32)
@@ -207,9 +206,10 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.init_test_input()
         self.init_test_output()
         self.inputs = {
-            'rpn_rois': self.rpn_rois,
-            'ground_truth': self.ground_truth,
-            'im_scales': self.im_scales
+            'RpnRois': self.rpn_rois,
+            'GtClasses': self.gt_classes,
+            'GtBoxes': self.gt_boxes,
+            'ImScales': self.im_scales
         }
         self.attrs = {
             'batch_size_per_im': self.batch_size_per_im,
@@ -221,11 +221,11 @@ class TestGenerateProposalLabelsOp(OpTest):
             'class_nums': self.class_nums
         }
         self.outputs = {
-            'rois': (self.rois, [self.lod]),
-            'labels_int32': (self.labels_int32, [self.lod]),
-            'bbox_targets': (self.bbox_targets, [self.lod]),
-            'bbox_inside_weights': (self.bbox_inside_weights, [self.lod]),
-            'bbox_outside_weights': (self.bbox_outside_weights, [self.lod]),
+            'Rois': (self.rois, [self.lod]),
+            'LabelsInt32': (self.labels_int32, [self.lod]),
+            'BboxTargets': (self.bbox_targets, [self.lod]),
+            'BboxInsideWeights': (self.bbox_inside_weights, [self.lod]),
+            'BboxOutsideWeights': (self.bbox_outside_weights, [self.lod]),
         }
 
     def test_check_output(self):
@@ -241,7 +241,7 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.fg_thresh = 0.5
         self.bg_thresh_hi = 0.5
         self.bg_thresh_lo = 0.0
-        self.bbox_reg_weights = (0.1, 0.1, 0.2, 0.2)
+        self.bbox_reg_weights = [0.1, 0.1, 0.2, 0.2]
         self.class_nums = 81
 
     def init_test_input(self):
@@ -255,13 +255,15 @@ class TestGenerateProposalLabelsOp(OpTest):
             self.im_scales.append(1)
 
         self.rpn_rois = _generate_proposals(images_shape, proposal_nums)
-        self.ground_truth = _generate_groundtruth(images_shape, self.class_nums)
+        ground_truth = _generate_groundtruth(images_shape, self.class_nums)
+        self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
+        self.gt_boxes = [gt['boxes'] for gt in ground_truth]
 
     def init_test_output(self):
         self.rois, self.labels_int32, self.bbox_targets, \
         self.bbox_inside_weights, self.bbox_outside_weights, \
         self.lod = generate_proposal_labels_in_python(
-                self.rpn_rois, self.ground_truth, self.im_scales,
+                self.rpn_rois, self.gt_classes, self.gt_boxes, self.im_scales,
                 self.batch_size_per_im, self.fg_fraction,
                 self.fg_thresh, self.bg_thresh_hi, self.bg_thresh_lo,
                 self.bbox_reg_weights, self.class_nums

@@ -86,7 +86,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                          std::minstd_rand engine,
                          std::vector<int>* inds) const {
     std::uniform_real_distribution<float> uniform(0, 1);
-    const int64_t size = static_cast<int64_t>(inds->size());
+    const int64_t size = static_cast<int64_t>(inds->size() - offset);
     if (size > num) {
       for (int64_t i = num; i < size; ++i) {
         int rng_ind = std::floor(uniform(engine) * i);
@@ -126,7 +126,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                 neg_threshold, target_label_data, fg_inds, bg_inds);
     // Reservoir Sampling
     ReservoirSampling(fg_num, fg_offset, engine, fg_inds);
-    int bg_num = rpn_batch_size - fg_inds->size();
+    int bg_num = rpn_batch_size - (fg_inds->size() - fg_offset);
     ReservoirSampling(bg_num, bg_offset, engine, bg_inds);
   }
 

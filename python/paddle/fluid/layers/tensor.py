@@ -27,6 +27,7 @@ __all__ = [
     'create_global_var',
     'cast',
     'concat',
+    'sequence_concat'
     'sums',
     'assign',
     'fill_constant_batch_size_like',
@@ -199,6 +200,18 @@ def concat(input, axis=0, name=None):
         inputs={'X': input},
         outputs={'Out': [out]},
         attrs={'axis': axis})
+    return out
+
+
+def sequence_concat(input, axis=0, level=0):
+    helper = LayerHelper('sequence_concat', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type="sequence_concat",
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'axis': axis,
+               'level': level})
     return out
 
 

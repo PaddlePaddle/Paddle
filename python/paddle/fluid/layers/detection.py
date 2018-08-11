@@ -20,6 +20,7 @@ from layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 import tensor
 import nn
+import ops
 import math
 
 __all__ = [
@@ -1235,3 +1236,66 @@ def anchor_generator(input,
     anchor.stop_gradient = True
     var.stop_gradient = True
     return anchor, var
+
+
+def generate_proposal_labels(
+        rpn_rois,
+        gt_classes,
+        gt_boxes,
+        im_scales,
+        batch_size_per_im=256,
+        fg_fraction=0.25,
+        fg_thresh=0.25,
+        bg_thresh_hi=0.5,
+        bg_thresh_lo=0.0,
+        bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+        class_nums=None, ):
+    """
+    ** Generate proposal labels Faster-RCNN **
+    """
+
+    helper = LayerHelper('generate_proposal_labels', **locals())
+
+    boxes = tensor.sequence_concat(input=[gt_boxes, rpn_rois], axis=0, level=0)
+
+    iou = iou_similarity(x=boxes, y=gt_boxes)
+
+    fg_index = helper.create_tmp_variable(dtype=gt_classes.dtype)
+    bg_index = helper.create_tmp_variable(dtype=gt_classes.dtype)
+    gt_index = helper.create_tmp_variable(dtype=gt_classes.dtype)
+
+    helper.append_op(
+        type="generate_proposal_labels",
+        inputs={'DistMat': iou},
+        outputs={
+            'FGIndex': fg_index,
+            'BGIndex': bg_index,
+            'GtIndex': gt_index
+        },
+        attrs={
+            'batch_size_per_im': batch_size_per_im,
+            'fg_fraction': fg_fraction,
+            'fg_thresh': fg_thresh,
+            'bg_thresh_hi': bg_thresh_hi,
+            'bg_thresh_lo': bg_thresh_lo,
+            'bbox_reg_weights': bbox_reg_weights
+        })
+
+    fg_index.stop_gradient = True
+    bg_index.stop_gradient = True
+    gt_index.stop_gradient = True
+
+    fg_index = nn.reshape(x=fg_index, shape=(-1, 1))
+    bg_index = nn.reshape(x=bg_index, shape=(-1, 1))
+    gt_index = nn.reshape(x=gt_index, shape=(-1, 1))
+
+    fg_boxes = nn.gather(boxes, fg_index)
+    bg_boxes = nn.gather(boxes, bg_index)
+    gt_boxes = nn.gather(gt_boxes, gt_index)
+
+    labels_int32 = tensor.fill_constant(
+        shape=[batch_size_per_im], value=0, dtype='int32')
+    fg_int32 = nn.gather(gt_classes, gt_index)
+    labels_int32 = ops.scatter(x=label_int32, ids=fg_index, updates=fg_int32)
+
+    return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
