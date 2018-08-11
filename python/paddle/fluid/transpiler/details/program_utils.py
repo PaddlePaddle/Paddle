@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddle.fluid import core
+
 
 def delete_ops(block, ops):
     try:
@@ -45,15 +47,58 @@ def get_indent_space(indent, space_num=4):
     return ret
 
 
-def get_variable(var):
-    buf = "{name} = fluid.{type}.shape{shape}.astype({dtype})".\
+def variable_to_code(var):
+    var_str = "{name} = fluid.{type}.shape{shape}.astype({dtype})".\
         format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
-    return buf
+    return var_str
 
 
-def get_op(op):
-    #buf = "{outputs}={op_type}({inputs}, attrs"
-    return
+def op_to_code(op):
+    outputs_str = ""
+    for i in range(0, len(op.output_names)):
+        o = op.output(op.output_names[i])
+        for n in o:
+            outputs_str += "{name}".format(name=n)
+
+        if i != len(op.output_names) - 1:
+            outputs_str += ", "
+
+    inputs_str = "("
+    for i in range(0, len(op.input_names)):
+        o = op.input(op.input_names[i])
+        for n in o:
+            inputs_str += "{name}".format(name=n)
+
+        if i != len(op.input_names) - 1:
+            inputs_str += ", "
+
+    inputs_str += ")"
+
+    attrs_str = ""
+    for i in range(0, len(op.attr_names)):
+        name = op.attr_names[i]
+
+        attr_type = op.desc.attr_type(name)
+        if attr_type == core.AttrType.BLOCK:
+            attr_map[name] = op.block_attr_id(name)
+            continue
+
+        if attr_type == core.AttrType.BLOCKS:
+            attr_map[name] = op.blocks_attr_ids(name)
+            continue
+
+        #a = "{name}=({type}){value}".format(name=name, type=attr_type, value=op.desc.attr(name))
+        a = "{name} = {value}".format(
+            name=name, type=attr_type, value=op.desc.attr(name))
+        attrs_str += a
+        if i != len(op.attr_names) - 1:
+            attrs_str += ", "
+
+
+
+    op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
+        format(outputs = outputs_str, op_type=op.type, inputs=inputs_str, attrs=attrs_str)
+    return op_str
 
 
 def program_to_code(prog):
@@ -64,6 +109,9 @@ def program_to_code(prog):
         # sort all vars
         all_vars = sorted(block.vars.iteritems(), key=lambda x: x[0])
         for var in all_vars:
-            print "{}{}".format(get_indent_space(indent), get_variable(var[1]))
+            print "{}{}".format(
+                get_indent_space(indent), variable_to_code(var[1]))
+        for op in block.ops:
+            print "{}{}".format(get_indent_space(indent), op_to_code(op))
         indent -= 1
         print "{0}{1}".format(get_indent_space(indent), '}')
