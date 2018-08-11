@@ -11,6 +11,11 @@ set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
 set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
 set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 
+# TODO(luotao): ANAKIN_MODLE_URL will move to demo ci later.
+set(ANAKIN_MODLE_URL "http://paddle-inference-dist.bj.bcebos.com/mobilenet_v2.anakin.bin")
+execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_SOURCE_DIR}")
+execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL}")
+
 include_directories(${ANAKIN_INCLUDE})
 include_directories(${ANAKIN_INCLUDE}/saber/)
 
