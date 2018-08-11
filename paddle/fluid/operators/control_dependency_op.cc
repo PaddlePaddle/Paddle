@@ -43,6 +43,8 @@ class ControlDependencyOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Any) Outputs").AsDuplicable();
     AddComment(R"DOC(
 Control Dependency operator.
+
+Add dummy inputs and outputs to add dependency for these variables.
 )DOC");
   }
 };
@@ -57,7 +59,7 @@ class ControlDependencyOpShapeInference : public framework::InferShapeBase {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(contro_dependency, ops::ControlDependencyOp,
+REGISTER_OPERATOR(control_dependency, ops::ControlDependencyOp,
                   paddle::framework::EmptyGradOpMaker,
                   ops::ControlDependencyOpMaker,
                   ops::ControlDependencyOpShapeInference);
