@@ -26,6 +26,7 @@ from multiprocessing import Process
 import os
 import sys
 import signal
+from paddle.fluid.transpiler.details import program_to_code
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -287,9 +288,10 @@ class DistSeResneXt2x2:
                                trainers)
             trainer_prog = t.get_trainer_program()
             #print("dist trainer startup program", fluid.default_startup_program())
-            block = fluid.default_startup_program().block(0)
-            v0 = sorted(block.vars.iteritems(), key=lambda x: x[0])
-            print(v0)
+            #block = fluid.default_startup_program().block(0)
+            #v0 = sorted(block.vars.iteritems(), key=lambda x: x[0])
+            #print(v0)
+            program_to_code(fluid.default_startup_program())
         else:
             trainer_prog = fluid.default_main_program()
             #print("2", fluid.default_startup_program())

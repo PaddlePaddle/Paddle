@@ -48,8 +48,12 @@ def get_indent_space(indent, space_num=4):
 
 
 def variable_to_code(var):
-    var_str = "{name} = fluid.{type}.shape{shape}.astype({dtype})".\
+    var_str = "var {name} = fluid.{type}.shape{shape}.astype({dtype})".\
         format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+
+    if var.persistable:
+        var_str = "persist " + var_str
+
     return var_str
 
 
