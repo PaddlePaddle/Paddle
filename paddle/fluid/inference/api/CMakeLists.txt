@@ -62,22 +62,20 @@ endif()
 
 if (WITH_ANAKIN) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin)
-    nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
-    set(ANAKIN_DEPS_LIB ${ANAKIN_SHARED_LIB} ${ANAKIN_SABER_LIB} ${CUDNN_LIBRARY})
+    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    #nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-      target_link_libraries(${target_name} ${ANAKIN_DEPS_LIB})
     endfunction()
     anakin_target(inference_anakin_api)
-    anakin_target(inference_anakin_api_shared)
+    #anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
         # TODO(luotao): anakin_model will move to demo_ci later
         set(ANAKIN_MODLE_URL "http://paddle-inference-dist.bj.bcebos.com/mobilenet_v2.anakin.bin")
-        execute_process(COMMAND bash -c "cd ${ANAKIN_INSTALL_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL}")
+        execute_process(COMMAND bash -c "wget -q --no-check-certificate ${ANAKIN_MODLE_URL}")
         cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                ARGS --model=${ANAKIN_INSTAL_DIR}/mobilenet_v2.anakin.bin
-                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+                ARGS --model=${CMAKE_CURRENT_BINARY_DIR}/mobilenet_v2.anakin.bin
+                DEPS inference_anakin_api dynload_cuda SERIAL)
         target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endif(WITH_TESTING)
 endif()
