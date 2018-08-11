@@ -360,13 +360,15 @@ class DistributeTranspiler(object):
 
         #delete initialize operators.
         assert (orig_s_prog.num_blocks == 1)
-        delete_ops(orig_s_prog.global_block(), orig_s_prog.global_block().ops)
+        # FIXME(gongwb): delete not need ops.
+        #delete_ops(orig_s_prog.global_block(), orig_s_prog.global_block().ops)
 
         # add concat ops to origin parameters in startup program to
         # let the origin parameters initialized by the spilited parameters
         send_vars = []
 
         for orig_varname, splited_vars in self.grad_var_mapping.items():
+            print("name:", orig_varname)
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 

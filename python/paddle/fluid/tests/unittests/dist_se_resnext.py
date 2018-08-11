@@ -286,8 +286,13 @@ class DistSeResneXt2x2:
                                fluid.default_main_program(), endpoints,
                                trainers)
             trainer_prog = t.get_trainer_program()
+            #print("dist trainer startup program", fluid.default_startup_program())
+            block = fluid.default_startup_program().block(0)
+            v0 = sorted(block.vars.iteritems(), key=lambda x: x[0])
+            print(v0)
         else:
             trainer_prog = fluid.default_main_program()
+            #print("2", fluid.default_startup_program())
 
         startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())

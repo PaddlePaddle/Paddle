@@ -35,3 +35,35 @@ def find_op_by_output_arg(block, arg_name):
         if arg_name in op.output_arg_names:
             return index
     return -1
+
+
+def get_indent_space(indent, space_num=4):
+    ret = ""
+    for i in range(0, indent * space_num):
+        ret += " "
+
+    return ret
+
+
+def get_variable(var):
+    buf = "{name} = fluid.{type}.shape{shape}.astype({dtype})".\
+        format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+    return buf
+
+
+def get_op(op):
+    #buf = "{outputs}={op_type}({inputs}, attrs"
+    return
+
+
+def program_to_code(prog):
+    indent = 0
+    for block in prog.blocks:
+        print "{0}{1}".format(get_indent_space(indent), '{')
+        indent += 1
+        # sort all vars
+        all_vars = sorted(block.vars.iteritems(), key=lambda x: x[0])
+        for var in all_vars:
+            print "{}{}".format(get_indent_space(indent), get_variable(var[1]))
+        indent -= 1
+        print "{0}{1}".format(get_indent_space(indent), '}')
