@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #define EIGEN_USE_GPU
-#include <thrust/device_ptr.h>
-#include <thrust/iterator/counting_iterator.h>
 #include <thrust/random.h>
-#include <thrust/transform.h>
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -33,6 +30,7 @@ __global__ void RandomGenerator(const size_t n, const size_t seed,
   thrust::minstd_rand rng;
   thrust::uniform_int_distribution<uint32_t> dist(0, kUInt32Max - 1);
   rng.seed(HashCombine(seed, idx));
+  rng.seed(dist(rng));
 
   if (idx < n) {
     if (dist(rng) < int_dropout_prob) {
@@ -55,8 +53,9 @@ struct GPUDropoutFunctor {
     uint32_t int_dropout_prob = static_cast<uint32_t>(
         static_cast<double>(dropout_prob) * static_cast<uint32_t>(-1));
 
-    RandomGenerator<<<grid, threads, 0, ctx.stream()>>>(
-        size, seed, int_dropout_prob, x_data, mask_data, y_data);
+    cudaStream_t stream = ctx.stream();
+    RandomGenerator<<<grid, threads, 0, stream>>>(size, seed, int_dropout_prob,
+                                                  x_data, mask_data, y_data);
   }
 };
 

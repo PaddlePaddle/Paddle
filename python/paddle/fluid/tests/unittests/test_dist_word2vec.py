@@ -183,12 +183,12 @@ class TestDistMnist(unittest.TestCase):
             exec_strategy=exec_strategy)
 
         feed_var_list = [
-            var for var in trainer_prog.global_block().vars.itervalues()
+            var for var in trainer_prog.global_block().vars.values()
             if var.is_data
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        for pass_id in xrange(10):
+        for pass_id in range(10):
             for batch_id, data in enumerate(train_reader()):
                 avg_loss_np = train_exe.run(feed=feeder.feed(data),
                                             fetch_list=[avg_cost.name])
