@@ -30,6 +30,9 @@ limitations under the License. */
 DEFINE_int32(listen_and_serv_profile_period, 0,
              "the period of listen_and_serv to do profile");
 
+DEFINE_string(listen_and_serv_profile_path, "/dev/null",
+              "the profile log file path");
+
 namespace paddle {
 namespace operators {
 
@@ -183,7 +186,8 @@ void ListenAndServOp::RunSyncLoop(
     if (FLAGS_listen_and_serv_profile_period > 0) {
       if (profile_step == FLAGS_listen_and_serv_profile_period) {
         paddle::platform::DisableProfiler(
-            paddle::platform::EventSortingKey::kTotal, "/dev/null");
+            paddle::platform::EventSortingKey::kTotal,
+            FLAGS_listen_and_serv_profile_path);
         profile_step = 0;
       } else {
         profile_step++;
