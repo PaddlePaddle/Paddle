@@ -23,9 +23,9 @@ def PolygonBoxRestore(input):
     geo_channels = shape[1]
     h = shape[2]
     w = shape[3]
-    h_indexes = np.array(range(h) * w).reshape(
+    h_indexes = np.array(list(range(h)) * w).reshape(
         [w, h]).transpose()[np.newaxis, :]  # [1, h, w]
-    w_indexes = np.array(range(w) * h).reshape(
+    w_indexes = np.array(list(range(w)) * h).reshape(
         [h, w])[np.newaxis, :]  # [1, h, w]
     indexes = np.concatenate(
         (w_indexes, h_indexes))[np.newaxis, :]  # [1, 2, h, w]

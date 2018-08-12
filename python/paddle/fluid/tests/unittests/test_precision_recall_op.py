@@ -39,19 +39,19 @@ def get_states(idxs, labels, cls_num, weights=None):
     ins_num = idxs.shape[0]
     # TP FP TN FN
     states = np.zeros((cls_num, 4)).astype('float32')
-    for i in xrange(ins_num):
+    for i in range(ins_num):
         w = weights[i] if weights is not None else 1.0
         idx = idxs[i][0]
         label = labels[i][0]
         if idx == label:
             states[idx][0] += w
-            for j in xrange(cls_num):
+            for j in range(cls_num):
                 states[j][2] += w
             states[idx][2] -= w
         else:
             states[label][3] += w
             states[idx][1] += w
-            for j in xrange(cls_num):
+            for j in range(cls_num):
                 states[j][2] += w
             states[label][2] -= w
             states[idx][2] -= w
@@ -64,7 +64,7 @@ def compute_metrics(states, cls_num):
     total_fn_count = 0.0
     macro_avg_precision = 0.0
     macro_avg_recall = 0.0
-    for i in xrange(cls_num):
+    for i in range(cls_num):
         total_tp_count += states[i][0]
         total_fp_count += states[i][1]
         total_fn_count += states[i][3]
@@ -90,9 +90,9 @@ class TestPrecisionRecallOp_0(OpTest):
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        idxs = np.random.choice(xrange(cls_num), ins_num).reshape(
+        idxs = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
-        labels = np.random.choice(xrange(cls_num), ins_num).reshape(
+        labels = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
         states = get_states(idxs, labels, cls_num)
         metrics = compute_metrics(states, cls_num)
@@ -117,10 +117,10 @@ class TestPrecisionRecallOp_1(OpTest):
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        idxs = np.random.choice(xrange(cls_num), ins_num).reshape(
+        idxs = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
         weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        labels = np.random.choice(xrange(cls_num), ins_num).reshape(
+        labels = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
 
         states = get_states(idxs, labels, cls_num, weights)
@@ -151,10 +151,10 @@ class TestPrecisionRecallOp_2(OpTest):
         ins_num = 64
         cls_num = 10
         max_probs = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        idxs = np.random.choice(xrange(cls_num), ins_num).reshape(
+        idxs = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
         weights = np.random.uniform(0, 1.0, (ins_num, 1)).astype('float32')
-        labels = np.random.choice(xrange(cls_num), ins_num).reshape(
+        labels = np.random.choice(range(cls_num), ins_num).reshape(
             (ins_num, 1)).astype('int32')
         states = np.random.randint(0, 30, (cls_num, 4)).astype('float32')
 
