@@ -63,7 +63,7 @@ def train(use_cuda, train_program, params_dirname):
             if event.step == 10:
                 test_metrics = trainer.test(
                     reader=test_reader, feed_order=['x', 'y'])
-                print test_metrics
+                print(test_metrics)
                 '''
                 ...
                 ['25.768919467926025']
