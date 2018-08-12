@@ -182,9 +182,11 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   }
 
   /**
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
+   * We should handle write after read(WAR) and write after write(WAW) here.
+   * Because some of the operators of the program can be executed parallelly.
+   * So, to make the program running in the right order, we should add the
+   * dependence of WAR and WAW.
+   *
    *
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
@@ -200,6 +202,8 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
+
+      PADDLE_ENFORCE(write_op, "The write_op should not be empty.");
 
       // Add write after write dependence
       ir::Node *upstream_op =
