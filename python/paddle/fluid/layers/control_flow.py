@@ -13,15 +13,16 @@
 # limitations under the License.
 import contextlib
 
-from layer_function_generator import autodoc, templatedoc
-from tensor import assign, fill_constant
+from .layer_function_generator import autodoc, templatedoc
+from .tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from ops import logical_and, logical_not, logical_or
+from .ops import logical_and, logical_not, logical_or
 import numpy
 import warnings
+from functools import reduce
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -264,7 +265,7 @@ class ParallelDo(object):
           avg_cost = fluid.layers.mean(x=cost)
 
     .. warning::
-    
+
        It will be soon deprecated, please use ParallelExecutor instead.
     """
 
@@ -589,7 +590,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in self.memories.iteritems():
+        for _, mem in list(self.memories.items()):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
@@ -807,21 +808,21 @@ def max_sequence_len(rank_table):
 
 
 def lod_tensor_to_array(x, table):
-    """ 
+    """
     Convert a LoDTensor to a LoDTensorArray.
 
-    This function split a LoDTesnor to a LoDTensorArray according to its LoD 
-    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in 
-    PaddlePaddle. The generated LoDTensorArray of this function can be further read 
-    or written by `read_from_array()` and `write_to_array()` operators. However, 
-    this function is generally an internal component of PaddlePaddle `DynamicRNN`. 
+    This function split a LoDTesnor to a LoDTensorArray according to its LoD
+    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in
+    PaddlePaddle. The generated LoDTensorArray of this function can be further read
+    or written by `read_from_array()` and `write_to_array()` operators. However,
+    this function is generally an internal component of PaddlePaddle `DynamicRNN`.
     Users should not use it directly.
 
     Args:
         x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
-                                descending order. It is generally generated 
+                                descending order. It is generally generated
                                 by `layers.lod_rank_table()` API.
 
     Returns:
@@ -1055,9 +1056,9 @@ def array_read(array, i):
         Given:
 
         array = [0.6, 0.1, 0.3, 0.1]
-        
+
         And:
-        
+
         i = 2
 
         Then:
@@ -1164,9 +1165,9 @@ def array_length(array):
 
 class ConditionalBlockGuard(BlockGuard):
     """
-    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for 
-    holding a ConditionalBlock, and helping users entering and exiting the 
-    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard 
+    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
+    holding a ConditionalBlock, and helping users entering and exiting the
+    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard
     is generally an internal component of IfElse, users should not use it directly.
     """
 
@@ -1500,7 +1501,7 @@ class IfElse(object):
     def __call__(self):
         if self.status != self.OUT_IF_ELSE_BLOCKS:
             raise ValueError("IfElse::__call__ must be out of sub-block")
-        false_len, true_len = map(len, self.output_table)
+        false_len, true_len = list(map(len, self.output_table))
         if false_len == 0 and true_len == 0:
             raise ValueError("Must invoke true_block/false_block before "
                              "__call__")
@@ -1920,7 +1921,7 @@ def is_empty(x, cond=None, **ignored):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result 
+        cond (Variable|None): Output parameter. Returns the test result
                               of given 'x'. Default: None
 
     Returns:
