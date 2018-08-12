@@ -256,7 +256,8 @@ class DistributeTranspiler(object):
                 outputs={"Out": dummy_output},
                 attrs={
                     "epmap": eplist,
-                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                    "sync_mode": True,
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
