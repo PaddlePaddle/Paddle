@@ -6,7 +6,7 @@ paddle.fluid.Program.create_block ArgSpec(args=['self', 'parent_idx'], varargs=N
 paddle.fluid.Program.current_block ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.get_desc ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.global_block ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.Program.inference_optimize ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
+paddle.fluid.Program.inference_optimize ArgSpec(args=['self', 'keep_read_op'], varargs=None, keywords=None, defaults=(False,))
 paddle.fluid.Program.list_vars ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Program.optimized_guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.Program.parse_from_string ArgSpec(args=['binary_str'], varargs=None, keywords=None, defaults=None)
