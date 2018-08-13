@@ -15,6 +15,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/fc_op.h"
 #include <vector>
 
+DECLARE_int32(paddle_num_threads);
+
 namespace paddle {
 namespace operators {
 
@@ -25,25 +27,23 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
                  "Out(Output) of Fully Connected should not be null.");
   PADDLE_ENFORCE(ctx->HasInput("W"),
                  "W(Input) of Fully Connected should not be null.");
-
+  // NCHW
   auto in_dims = ctx->GetInputDim("Input");
+  // IO, I=C*H*W
   auto w_dims = ctx->GetInputDim("W");
   std::vector<int64_t> output_shape({in_dims[0], w_dims[1]});
 
   if (ctx->HasInput("Bias")) {
     auto bias_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(bias_dims[0], 1, "The shape of Bias must be [1, dim].");
-    PADDLE_ENFORCE_EQ(bias_dims[1], framework::product(w_dims) / w_dims[0],
+    PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
                       "The shape of Bias must be [1, dim].");
   }
   PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
                  "Fully Connected input should be 2-D or 4-D tensor.");
-
-  PADDLE_ENFORCE(w_dims.size() == 2 || w_dims.size() == 4,
-                 "Fully Connected input should be 2-D or 4-D tensor.");
-
-  PADDLE_ENFORCE_EQ(framework::product(w_dims) / w_dims[0],
-                    framework::product(in_dims) / in_dims[0],
+  PADDLE_ENFORCE_EQ(w_dims.size(), 2UL,
+                    "Fully Connected input should be 2-D tensor.");
+  PADDLE_ENFORCE_EQ(framework::product(in_dims) / in_dims[0], w_dims[0],
                     "Fully Connected input and weigth size do not match.");
 
   ctx->SetOutputDim("Out", framework::make_ddim(output_shape));
@@ -54,7 +54,7 @@ framework::OpKernelType FCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  if (ctx.Attr<bool>("use_mkldnn");) {
+  if (ctx.Attr<bool>("use_mkldnn")) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -75,8 +75,9 @@ void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
   }
 
   if (ctx->HasInput("Bias")) {
+    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias")),
+                   "Should have bias grad");
     auto bias_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("Bias"));
     ctx->SetOutputDim(framework::GradVarName("Bias"), bias_dims);
   }
 }
@@ -85,7 +86,7 @@ framework::OpKernelType FCOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  if (ctx.Attr<bool>("use_mkldnn");) {
+  if (ctx.Attr<bool>("use_mkldnn")) {
     library = framework::LibraryType::kMKLDNN;
     layout = framework::DataLayout::kMKLDNN;
   }
@@ -95,9 +96,11 @@ framework::OpKernelType FCOpGrad::GetExpectedKernelType(
 }
 
 void FCOpMaker::Make() {
-  AddInput("Input", "(Tensor) The input tensor of fully connected operator. ");
-  AddInput("W", "(Tensor), The second input tensor of fc op.");
-  AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x D")
+  AddInput("Input",
+           "(Tensor), The input tensor of fully connected operator with format "
+           "(NCHW). ");
+  AddInput("W", "(Tensor), The weight fc op with shape (I, O).");
+  AddInput("Bias", "(Tensor, optional) Bias vector with shape (1 x O")
       .AsDispensable();
   AddOutput("Out", "(Tensor) The output tensor of fully connected operator. ");
   AddAttr<bool>("use_mkldnn",
@@ -120,25 +123,32 @@ template <typename T>
 class FCOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE(paddle::platform::is_cpu_place(ctx.GetPlace()),
+    PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "It must use CPUPlace.");
-    auto& dev_ctx = ctx.template device_context<CPUDeviceContext>();
-    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
     auto b = ctx.Input<Tensor>("Bias");
-
-    const T* input_data = input->data<T>();
-    const T* w_data = w->data<T>();
     auto output = ctx.Output<Tensor>("Out");
-    T* output_data = output->mutable_data<T>(ctx.GetPlace());
-
     auto in_dims = ctx->GetInputDim("Input");
     auto w_dims = ctx->GetInputDim("W");
-    std::vector<int64_t> output_shape({in_dims[0], w_dims[1]});
+
+    auto& dev_ctx = ctx.template device_context<CPUDeviceContext>();
+    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
+    const T* input_data = input->data<T>();
+    const T* w_data = w->data<T>();
+    T* output_data = output->mutable_data<T>(ctx.GetPlace());
+
+    blas.GEMM(CblasNoTrans, CblasNoTrans, in_dims[0], w_dims[1], w_dims[0],
+              static_cast<T>(1), input_data, w_data, static_cast<T>(0),
+              output_data);
 
     if (bias) {
       const T* bias_data = bias->data<T>();
+#pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
+      for (int bs = 0; bs < in_dims[0]; bs++) {
+        blas.AXPY(w_dims[1], static_cast<T>(1), bias_data,
+                  output_data + bs * w_dimws[1]);
+      }
     }
   }
 };
@@ -150,5 +160,4 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(fc, ops::FCOp, ops::FCOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(fc_grad, ops::FCOpGrad);
-REGISTER_OP_CPU_KERNEL(fc, ops::FCMKLDNNOpKernel<float>,
-                       ops::FCMKLDNNOpKernel<double>);
+REGISTER_OP_CPU_KERNEL(fc, ops::FCOpKernel<float>, ops::FCOpKernel<double>);
