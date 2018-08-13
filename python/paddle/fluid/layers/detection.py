@@ -722,7 +722,7 @@ def ssd_loss(location,
         },
         attrs={
             'neg_pos_ratio': neg_pos_ratio,
-            'neg_dist_threshold': neg_pos_ratio,
+            'neg_dist_threshold': neg_overlap,
             'mining_type': mining_type,
             'sample_size': sample_size,
         })
