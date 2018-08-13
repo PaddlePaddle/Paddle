@@ -50,10 +50,12 @@ for pass_id in range(10):
             y_data = np.array(map(lambda x: x[1], data)).astype(DATA_TYPE)
             y_data = y_data.reshape([len(y_data), 1])
 
+            # print(fluid.default_main_program())
+            # exit(0)
             outs = exe.run(fluid.default_main_program(),
                            feed={'x': x_data,
                                  'y': y_data},
                            fetch_list=[avg_cost])
             print("pass {0}, batch {1}, loss {2}".format(pass_id, i, outs[0]))
-            if i == 1:
+            if i == 0:
                 exit(0)

@@ -56,5 +56,5 @@ for pass_id in range(10):
                                  'y': y_data},
                            fetch_list=[avg_cost])
             print("pass {0}, batch {1}, loss {2}".format(pass_id, i, outs[0]))
-            if i == 1:
+            if i == 0:
                 exit(0)
