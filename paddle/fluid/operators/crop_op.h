@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,32 +60,32 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
 
 template <typename DeviceContext, typename T, size_t D>
 void CropFunction(const framework::ExecutionContext& context) {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
-    auto out_dims = out->dims();
-    if (out_dims[0] == -1) {
-      out_dims[0] = x->dims()[0];
-    }
-    out->mutable_data<T>(out_dims, context.GetPlace());
-    auto x_stride = framework::stride(x->dims());
-    auto out_stride = framework::stride(out->dims());
-    auto offsets = GetOffsets(context);
-    int64_t offset = 0;
-    for (size_t i = 0; i < offsets.size(); ++i) {
-      offset += (x_stride[i] * offsets[i]);
-    }
+  auto* x = context.Input<Tensor>("X");
+  auto* out = context.Output<Tensor>("Out");
+  auto out_dims = out->dims();
+  if (out_dims[0] == -1) {
+    out_dims[0] = x->dims()[0];
+  }
+  out->mutable_data<T>(out_dims, context.GetPlace());
+  auto x_stride = framework::stride(x->dims());
+  auto out_stride = framework::stride(out->dims());
+  auto offsets = GetOffsets(context);
+  int64_t offset = 0;
+  for (size_t i = 0; i < offsets.size(); ++i) {
+    offset += (x_stride[i] * offsets[i]);
+  }
 
-    auto x_tensor = EigenTensor<T, D>::From(*x);
-    auto out_tensor = EigenTensor<T, D>::From(*out);
-    Eigen::array<int, D> e_offsets;
-    Eigen::array<int, D> e_shape;
-    for (size_t i=0; i<D; ++i) {
-      e_offsets[i] = offsets[i];
-      e_shape[i] = out->dims()[i];
-    }
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    out_tensor.device(place) = x_tensor.slice(e_offsets, e_shape);
+  auto x_tensor = EigenTensor<T, D>::From(*x);
+  auto out_tensor = EigenTensor<T, D>::From(*out);
+  Eigen::array<int, D> e_offsets;
+  Eigen::array<int, D> e_shape;
+  for (size_t i = 0; i < D; ++i) {
+    e_offsets[i] = offsets[i];
+    e_shape[i] = out->dims()[i];
+  }
+  auto& place =
+      *context.template device_context<DeviceContext>().eigen_device();
+  out_tensor.device(place) = x_tensor.slice(e_offsets, e_shape);
 }
 
 template <typename DeviceContext, typename T>
@@ -116,8 +116,6 @@ class CropKernel : public framework::OpKernel<T> {
         PADDLE_THROW(
             "CropOp only support tensors with no more than 6 dimensions.");
     }
-
-
   }
 };
 

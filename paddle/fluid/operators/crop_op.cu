@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/crop_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(crop, ops::CropKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    crop, ops::CropKernel<paddle::platform::CUDADeviceContext, float>);
 REGISTER_OP_CUDA_KERNEL(
     crop_grad, ops::CropGradKernel<paddle::platform::CUDADeviceContext, float>);
