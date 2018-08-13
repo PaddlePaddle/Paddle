@@ -32,7 +32,7 @@ endfunction(inference_test)
 # This unittest is buggy!
 #inference_test(fit_a_line)
 inference_test(image_classification ARGS vgg resnet)
-inference_test(label_semantic_roles)
+#inference_test(label_semantic_roles)
 inference_test(recognize_digits ARGS mlp conv)
 inference_test(recommender_system)
 #inference_test(rnn_encoder_decoder)
