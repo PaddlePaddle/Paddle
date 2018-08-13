@@ -18,7 +18,6 @@ from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
 import numpy
 import unittest
-import six
 
 
 class TestLoDRankTable(unittest.TestCase):
@@ -37,7 +36,7 @@ class TestLoDRankTable(unittest.TestCase):
         exe.run(scope=scope, feed={'x': tensor})
         var = scope.find_var(rank_table.name)
         table = var.get_lod_rank_table()
-        self.assertEqual([(0, 5), (1, 1), (2, 1)], list(six.iteritems(table)))
+        self.assertEqual([(0, 5), (1, 1), (2, 1)], list(table.items()))
 
 
 if __name__ == '__main__':
