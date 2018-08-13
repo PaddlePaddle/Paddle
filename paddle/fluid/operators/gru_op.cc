@@ -276,6 +276,7 @@ class GRUCPUKernel : public framework::OpKernel<T> {
         context.Attr<std::string>("gate_activation"));
 
 #ifdef PADDLE_WITH_MKLML
+    // use MKL packed to speedup GEMM
     if (FLAGS_paddle_num_threads >= 4) {
       auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
       T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
