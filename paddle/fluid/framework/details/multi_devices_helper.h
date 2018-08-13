@@ -39,45 +39,19 @@ namespace details {
 typedef std::vector<
     std::unordered_map<std::string, std::vector<std::unique_ptr<VarHandle>>>>
     GraphVars;
+const char kGraphVars[] = "vars";
 
 // aux variables to represent dependency. Useful to resolve data hazard.
 typedef std::unordered_set<std::unique_ptr<VarHandleBase>> GraphDepVars;
+const char kGraphDepVars[] = "dep_vars";
 
 // all operators. NOTE that even we use a vector here, the operators is
 // unordered.
 typedef std::vector<std::unique_ptr<OpHandleBase>> GraphOps;
+const char kGraphOps[] = "ops";
 
-class SSAGraphBuilder : public ir::Pass {
- public:
-  SSAGraphBuilder() {}
-  virtual ~SSAGraphBuilder() {}
-
-  virtual int GetVarDeviceID(const std::string &var_name) const = 0;
-
-  DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
-
- protected:
-  /**
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
-   *
-   * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
-   */
-  static void PolishGraphToSupportDataHazards(Graph *graph);
-
-  static VarHandle *CreateOrGetLatestVarHandle(Graph *graph, ir::Node *node,
-                                               const platform::Place &place,
-                                               size_t place_offset);
-
-  // Add an output variable (each_var_name, place, place_offset) to op_handle,
-  // which belongs to graph
-  static void CreateOpOutput(Graph *graph, OpHandleBase *op_handle,
-                             ir::Node *new_node, const platform::Place &place,
-                             size_t place_offset);
-
-  static void AddOutputToLeafOps(Graph *graph);
-};
+typedef std::unordered_map<std::string, int> ShardedVarDevice;
+const char kShardedVarDevice[] = "sharded_var_device";
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

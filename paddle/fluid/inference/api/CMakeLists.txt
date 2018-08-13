@@ -19,6 +19,7 @@ endif(APPLE)
 
 
 set(inference_deps paddle_inference_api paddle_fluid_api)
+
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
 endif()
@@ -42,35 +43,8 @@ function(inference_api_test TARGET_NAME)
     endif(WITH_TESTING)
 endfunction(inference_api_test)
 
-cc_library(paddle_inference_api
-    SRCS api.cc api_impl.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
-if(NOT APPLE)
-  set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/api.sym")
-  set_target_properties(paddle_inference_api PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-endif()
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
 
-# Here the shared library doesn't depend on other fluid libraries, or double free will occur.
-cc_library(paddle_inference_api_shared SHARED
-    SRCS api.cc api_impl.cc)
-add_dependencies(paddle_inference_api_shared ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
-set_target_properties(paddle_inference_api_shared PROPERTIES OUTPUT_NAME paddle_inference_api)
-
-if(NOT APPLE)
-  set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/api.map")
-  set_target_properties(paddle_inference_api_shared PROPERTIES LINK_FLAGS "${LINK_FLAGS}")
-  FILE(WRITE ${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake
-    "execute_process(COMMAND bash -c \"${CMAKE_CURRENT_SOURCE_DIR}/check_symbol.sh"
-    " ${CMAKE_CURRENT_BINARY_DIR}/libpaddle_inference_api.so\" RESULT_VARIABLE symbol_res)\n"
-    "if(NOT \"\${symbol_res}\" STREQUAL \"0\")\n"
-    "  message(FATAL_ERROR \"Check symbol failed.\")\n"
-    "endif()\n")
-  add_custom_command(
-    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol"
-    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/check_symbol.cmake"
-    DEPENDS paddle_inference_api_shared)
-  add_custom_target(check_symbol ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/.check_symbol")
-endif()
 
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
@@ -90,6 +64,8 @@ endif()
 if (WITH_ANAKIN) # only needed in CI
     # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
     # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
+    # compile the libinference_anakin_api.a and compile with anakin.so.
+    fetch_include_recursively(${ANAKIN_INCLUDE})
     # compile the libinference_anakin_api.a and anakin.so.
     nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
     nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
@@ -98,9 +74,10 @@ if (WITH_ANAKIN) # only needed in CI
     target_link_libraries(inference_anakin_api anakin anakin_saber_common)
     target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
     if (WITH_TESTING)
-        cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                                  ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                                  DEPS inference_anakin_api)
-        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+        # this test is unstable, disable it first.
+        #cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
+                                  #ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
+                                  #DEPS inference_anakin_api_shared)
+        #target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
      endif(WITH_TESTING)
 endif()
