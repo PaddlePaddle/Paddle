@@ -150,18 +150,15 @@ class TestDistMnist(unittest.TestCase):
         os.kill(pid, signal.SIGTERM)
 
     def test_with_place(self):
-        role = os.getenv('PADDLE_ROLE')
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-        if role == "pserver":
-            pserver_pid = self.start_pserver(self._ps_endpoints)
-            self._wait_ps_ready(pserver_pid)
-            print "pserver started"
-            time.sleep(1800)
-            self.stop_pserver(pserver_pid)
-        else:
-            print "start trainer"
-            self.run_trainer(p, 0)
+
+        pserver_pid = self.start_pserver(self._ps_endpoints)
+        self._wait_ps_ready(pserver_pid)
+
+        self.run_trainer(p, 0)
+
+        self.stop_pserver(pserver_pid)
 
     def run_trainer(self, place, trainer_id):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = get_model(
@@ -173,7 +170,7 @@ class TestDistMnist(unittest.TestCase):
         trainer_prog = t.get_trainer_program()
 
         exe = fluid.Executor(place)
-        outs = exe.run(fluid.default_startup_program())
+        exe.run(fluid.default_startup_program())
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
