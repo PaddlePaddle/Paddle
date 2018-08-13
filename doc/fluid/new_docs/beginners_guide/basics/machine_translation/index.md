@@ -157,139 +157,152 @@ decoder_size = hidden_dim
 
 然后如下实现编码器框架：
 
-```python
-def encoder(is_sparse):
-src_word_id = pd.data(
-name="src_word_id", shape=[1], dtype='int64', lod_level=1)
-src_embedding = pd.embedding(
-input=src_word_id,
-size=[dict_size, word_dim],
-dtype='float32',
-is_sparse=is_sparse,
-param_attr=fluid.ParamAttr(name='vemb'))
+   ```python
+   def encoder(is_sparse):
+    src_word_id = pd.data(
+        name="src_word_id", shape=[1], dtype='int64', lod_level=1)
+    src_embedding = pd.embedding(
+        input=src_word_id,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=is_sparse,
+        param_attr=fluid.ParamAttr(name='vemb'))
 
-fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
-lstm_hidden0, lstm_0 = pd.dynamic_lstm(input=fc1, size=hidden_dim * 4)
-encoder_out = pd.sequence_last_step(input=lstm_hidden0)
-return encoder_out
-```
+    fc1 = pd.fc(input=src_embedding, size=hidden_dim * 4, act='tanh')
+    lstm_hidden0, lstm_0 = pd.dynamic_lstm(input=fc1, size=hidden_dim * 4)
+    encoder_out = pd.sequence_last_step(input=lstm_hidden0)
+    return encoder_out
+   ```
 
 再实现训练模式下的解码器：
 
 ```python
-def train_decoder(context, is_sparse):
-trg_language_word = pd.data(
-name="target_language_word", shape=[1], dtype='int64', lod_level=1)
-trg_embedding = pd.embedding(
-input=trg_language_word,
-size=[dict_size, word_dim],
-dtype='float32',
-is_sparse=is_sparse,
-param_attr=fluid.ParamAttr(name='vemb'))
+   def train_decoder(context, is_sparse):
+    trg_language_word = pd.data(
+        name="target_language_word", shape=[1], dtype='int64', lod_level=1)
+    trg_embedding = pd.embedding(
+        input=trg_language_word,
+        size=[dict_size, word_dim],
+        dtype='float32',
+        is_sparse=is_sparse,
+        param_attr=fluid.ParamAttr(name='vemb'))
 
-rnn = pd.DynamicRNN()
-with rnn.block():
-current_word = rnn.step_input(trg_embedding)
-pre_state = rnn.memory(init=context)
-current_state = pd.fc(input=[current_word, pre_state],
-size=decoder_size,
-act='tanh')
+    rnn = pd.DynamicRNN()
+    with rnn.block():
+        current_word = rnn.step_input(trg_embedding)
+        pre_state = rnn.memory(init=context)
+        current_state = pd.fc(input=[current_word, pre_state],
+                              size=decoder_size,
+                              act='tanh')
 
-current_score = pd.fc(input=current_state,
-size=target_dict_dim,
-act='softmax')
-rnn.update_memory(pre_state, current_state)
-rnn.output(current_score)
+        current_score = pd.fc(input=current_state,
+                              size=target_dict_dim,
+                              act='softmax')
+        rnn.update_memory(pre_state, current_state)
+        rnn.output(current_score)
 
-return rnn()
+    return rnn()
 ```
 
 实现推测模式下的解码器：
 
 ```python
 def decode(context, is_sparse):
-init_state = context
-array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
-counter = pd.zeros(shape=[1], dtype='int64', force_cpu=True)
+    init_state = context
+    array_len = pd.fill_constant(shape=[1], dtype='int64', value=max_length)
+    counter = pd.zeros(shape=[1], dtype='int64', force_cpu=True)
 
-# fill the first element with init_state
-state_array = pd.create_array('float32')
-pd.array_write(init_state, array=state_array, i=counter)
+    # fill the first element with init_state
+    state_array = pd.create_array('float32')
+    pd.array_write(init_state, array=state_array, i=counter)
 
-# ids, scores as memory
-ids_array = pd.create_array('int64')
-scores_array = pd.create_array('float32')
+    # ids, scores as memory
+    ids_array = pd.create_array('int64')
+    scores_array = pd.create_array('float32')
 
-init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=2)
-init_scores = pd.data(
-name="init_scores", shape=[1], dtype="float32", lod_level=2)
+    init_ids = pd.data(name="init_ids", shape=[1], dtype="int64", lod_level=2)
+    init_scores = pd.data(
+        name="init_scores", shape=[1], dtype="float32", lod_level=2)
 
-pd.array_write(init_ids, array=ids_array, i=counter)
-pd.array_write(init_scores, array=scores_array, i=counter)
+    pd.array_write(init_ids, array=ids_array, i=counter)
+    pd.array_write(init_scores, array=scores_array, i=counter)
 
-cond = pd.less_than(x=counter, y=array_len)
+    cond = pd.less_than(x=counter, y=array_len)
 
-while_op = pd.While(cond=cond)
-with while_op.block():
-pre_ids = pd.array_read(array=ids_array, i=counter)
-pre_state = pd.array_read(array=state_array, i=counter)
-pre_score = pd.array_read(array=scores_array, i=counter)
+    while_op = pd.While(cond=cond)
+    with while_op.block():
+        pre_ids = pd.array_read(array=ids_array, i=counter)
+        pre_state = pd.array_read(array=state_array, i=counter)
+        pre_score = pd.array_read(array=scores_array, i=counter)
 
-# expand the lod of pre_state to be the same with pre_score
-pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
+        # expand the lod of pre_state to be the same with pre_score
+        pre_state_expanded = pd.sequence_expand(pre_state, pre_score)
 
-pre_ids_emb = pd.embedding(
-input=pre_ids,
-size=[dict_size, word_dim],
-dtype='float32',
-is_sparse=is_sparse)
+        pre_ids_emb = pd.embedding(
+            input=pre_ids,
+            size=[dict_size, word_dim],
+            dtype='float32',
+            is_sparse=is_sparse)
 
-# use rnn unit to update rnn
-current_state = pd.fc(input=[pre_state_expanded, pre_ids_emb],
-size=decoder_size,
-act='tanh')
-current_state_with_lod = pd.lod_reset(x=current_state, y=pre_score)
-# use score to do beam search
-current_score = pd.fc(input=current_state_with_lod,
-size=target_dict_dim,
-act='softmax')
-topk_scores, topk_indices = pd.topk(current_score, k=topk_size)
-selected_ids, selected_scores = pd.beam_search(
-pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
+        # use rnn unit to update rnn
+        current_state = pd.fc(input=[pre_state_expanded, pre_ids_emb],
+                              size=decoder_size,
+                              act='tanh')
+        current_state_with_lod = pd.lod_reset(x=current_state, y=pre_score)
+        # use score to do beam search
+        current_score = pd.fc(input=current_state_with_lod,
+                              size=target_dict_dim,
+                              act='softmax')
+        topk_scores, topk_indices = pd.topk(current_score, k=beam_size)
+        # calculate accumulated scores after topk to reduce computation cost
+        accu_scores = pd.elementwise_add(
+            x=pd.log(topk_scores), y=pd.reshape(pre_score, shape=[-1]), axis=0)
+        selected_ids, selected_scores = pd.beam_search(
+            pre_ids,
+            pre_score,
+            topk_indices,
+            accu_scores,
+            beam_size,
+            end_id=10,
+            level=0)
 
-pd.increment(x=counter, value=1, in_place=True)
+        pd.increment(x=counter, value=1, in_place=True)
 
-# update the memories
-pd.array_write(current_state, array=state_array, i=counter)
-pd.array_write(selected_ids, array=ids_array, i=counter)
-pd.array_write(selected_scores, array=scores_array, i=counter)
+        # update the memories
+        pd.array_write(current_state, array=state_array, i=counter)
+        pd.array_write(selected_ids, array=ids_array, i=counter)
+        pd.array_write(selected_scores, array=scores_array, i=counter)
 
-pd.less_than(x=counter, y=array_len, cond=cond)
+        # update the break condition: up to the max length or all candidates of
+        # source sentences have ended.
+        length_cond = pd.less_than(x=counter, y=array_len)
+        finish_cond = pd.logical_not(pd.is_empty(x=selected_ids))
+        pd.logical_and(x=length_cond, y=finish_cond, out=cond)
 
-translation_ids, translation_scores = pd.beam_search_decode(
-ids=ids_array, scores=scores_array)
+    translation_ids, translation_scores = pd.beam_search_decode(
+        ids=ids_array, scores=scores_array, beam_size=beam_size, end_id=10)
 
-return translation_ids, translation_scores
+    return translation_ids, translation_scores
 ```
 
 进而，我们定义一个`train_program`来使用`inference_program`计算出的结果，在标记数据的帮助下来计算误差。我们还定义了一个`optimizer_func`来定义优化器。
 
 ```python
 def train_program(is_sparse):
-context = encoder(is_sparse)
-rnn_out = train_decoder(context, is_sparse)
-label = pd.data(
-name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
-cost = pd.cross_entropy(input=rnn_out, label=label)
-avg_cost = pd.mean(cost)
-return avg_cost
+    context = encoder(is_sparse)
+    rnn_out = train_decoder(context, is_sparse)
+    label = pd.data(
+        name="target_language_next_word", shape=[1], dtype='int64', lod_level=1)
+    cost = pd.cross_entropy(input=rnn_out, label=label)
+    avg_cost = pd.mean(cost)
+    return avg_cost
 
 
 def optimizer_func():
-return fluid.optimizer.Adagrad(
-learning_rate=1e-4,
-regularization=fluid.regularizer.L2DecayRegularizer(
-regularization_coeff=0.1))
+    return fluid.optimizer.Adagrad(
+        learning_rate=1e-4,
+        regularization=fluid.regularizer.L2DecayRegularizer(
+            regularization_coeff=0.1))
 ```
 
 ## 训练模型
@@ -307,9 +320,9 @@ place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
 ```python
 train_reader = paddle.batch(
-paddle.reader.shuffle(
-paddle.dataset.wmt14.train(dict_size), buf_size=1000),
-batch_size=batch_size)
+        paddle.reader.shuffle(
+            paddle.dataset.wmt14.train(dict_size), buf_size=1000),
+        batch_size=batch_size)
 ```
 
 ### 构造训练器(trainer)
@@ -318,9 +331,9 @@ batch_size=batch_size)
 ```python
 is_sparse = False
 trainer = fluid.Trainer(
-train_func=partial(train_program, is_sparse),
-place=place,
-optimizer_func=optimizer_func)
+        train_func=partial(train_program, is_sparse),
+        place=place,
+        optimizer_func=optimizer_func)
 ```
 
 ### 提供数据
@@ -329,8 +342,8 @@ optimizer_func=optimizer_func)
 
 ```python
 feed_order = [
-'src_word_id', 'target_language_word', 'target_language_next_word'
-]
+        'src_word_id', 'target_language_word', 'target_language_next_word'
+    ]
 ```
 
 ### 事件处理器
@@ -338,12 +351,12 @@ feed_order = [
 
 ```python
 def event_handler(event):
-if isinstance(event, fluid.EndStepEvent):
-if event.step % 10 == 0:
-print('pass_id=' + str(event.epoch) + ' batch=' + str(event.step))
+    if isinstance(event, fluid.EndStepEvent):
+        if event.step % 10 == 0:
+            print('pass_id=' + str(event.epoch) + ' batch=' + str(event.step))
 
-if event.step == 20:
-trainer.stop()
+        if event.step == 20:
+            trainer.stop()
 ```
 
 ### 开始训练
@@ -353,10 +366,10 @@ trainer.stop()
 EPOCH_NUM = 1
 
 trainer.train(
-reader=train_reader,
-num_epochs=EPOCH_NUM,
-event_handler=event_handler,
-feed_order=feed_order)
+        reader=train_reader,
+        num_epochs=EPOCH_NUM,
+        event_handler=event_handler,
+        feed_order=feed_order)
 ```
 
 ## 应用模型
@@ -377,7 +390,7 @@ translation_ids, translation_scores = decode(context, is_sparse)
 ```python
 init_ids_data = np.array([1 for _ in range(batch_size)], dtype='int64')
 init_scores_data = np.array(
-[1. for _ in range(batch_size)], dtype='float32')
+    [1. for _ in range(batch_size)], dtype='float32')
 init_ids_data = init_ids_data.reshape((batch_size, 1))
 init_scores_data = init_scores_data.reshape((batch_size, 1))
 init_lod = [1] * batch_size
@@ -387,14 +400,14 @@ init_ids = fluid.create_lod_tensor(init_ids_data, init_lod, place)
 init_scores = fluid.create_lod_tensor(init_scores_data, init_lod, place)
 
 test_data = paddle.batch(
-paddle.reader.shuffle(
-paddle.dataset.wmt14.test(dict_size), buf_size=1000),
-batch_size=batch_size)
+    paddle.reader.shuffle(
+        paddle.dataset.wmt14.test(dict_size), buf_size=1000),
+    batch_size=batch_size)
 
 feed_order = ['src_word_id']
 feed_list = [
-framework.default_main_program().global_block().var(var_name)
-for var_name in feed_order
+    framework.default_main_program().global_block().var(var_name)
+    for var_name in feed_order
 ]
 feeder = fluid.DataFeeder(feed_list, place)
 
@@ -409,27 +422,30 @@ exe = Executor(place)
 exe.run(framework.default_startup_program())
 
 for data in test_data():
-feed_data = map(lambda x: [x[0]], data)
-feed_dict = feeder.feed(feed_data)
-feed_dict['init_ids'] = init_ids
-feed_dict['init_scores'] = init_scores
+    feed_data = map(lambda x: [x[0]], data)
+    feed_dict = feeder.feed(feed_data)
+    feed_dict['init_ids'] = init_ids
+    feed_dict['init_scores'] = init_scores
 
-results = exe.run(
-framework.default_main_program(),
-feed=feed_dict,
-fetch_list=[translation_ids, translation_scores],
-return_numpy=False)
+    results = exe.run(
+        framework.default_main_program(),
+        feed=feed_dict,
+        fetch_list=[translation_ids, translation_scores],
+        return_numpy=False)
 
-result_ids = np.array(results[0])
-result_scores = np.array(results[1])
+    result_ids = np.array(results[0])
+    result_scores = np.array(results[1])
 
-print("Original sentence:")
-print(" ".join([src_dict[w] for w in feed_data[0][0]]))
-print("Translated sentence:")
-print(" ".join([trg_dict[w] for w in result_ids]))
-print("Corresponding score: ", result_scores)
+    print("Original sentence:")
+    print(" ".join([src_dict[w] for w in feed_data[0][0][1:-1]]))
+    print("Translated score and sentence:")
+    for i in xrange(beam_size):
+        start_pos = result_ids_lod[1][i] + 1
+        end_pos = result_ids_lod[1][i+1]
+        print("%d\t%.4f\t%s\n" % (i+1, result_scores[end_pos-1],
+                " ".join([trg_dict[w] for w in result_ids[start_pos:end_pos]])))
 
-break
+    break
 ```
 
 ## 总结
