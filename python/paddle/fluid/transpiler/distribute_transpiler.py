@@ -1198,7 +1198,7 @@ class DistributeTranspiler(object):
             if key == "Grad":
                 new_inputs[key] = merged_var
             # For RMSProp optimizer
-            if key == "Moment" or key == "MeanSquare":
+            elif key == "Moment" or key == "MeanSquare":
                 param_block = _get_param_block(opt_op)
                 if not param_block:
                     return
