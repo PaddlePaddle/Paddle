@@ -21,7 +21,7 @@ from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program, program_guard, Program
+    default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
@@ -206,7 +206,7 @@ class ListenAndServ(object):
             })
 
 
-def Send(endpoints, send_vars, sync=True):
+def Send(endpoints, send_vars, dummy_output=None, sync=True):
     """
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
@@ -220,6 +220,13 @@ def Send(endpoints, send_vars, sync=True):
     """
     assert (type(send_vars) == list)
 
+    if dummy_output is None:
+        dummy_output = []
+    elif isinstance(dummy_output, Variable):
+        dummy_output = [dummy_output]
+
+    assert (type(dummy_output) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
@@ -229,6 +236,7 @@ def Send(endpoints, send_vars, sync=True):
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
+        outputs={"Out": dummy_output},
         attrs={
             "endpoints": endpoints,
             "epmap": epmap,
@@ -238,7 +246,7 @@ def Send(endpoints, send_vars, sync=True):
         helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
 
 
-def Recv(endpoints, get_vars, sync=True):
+def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     """
     Receive variables from server side
 
@@ -253,13 +261,20 @@ def Recv(endpoints, get_vars, sync=True):
     """
     assert (type(get_vars) == list)
 
+    if dummy_input is None:
+        dummy_output = []
+    elif isinstance(dummy_input, Variable):
+        dummy_output = [dummy_input]
+
+    assert (type(dummy_input) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Recv", **locals())
     helper.append_op(
         type="recv",
-        inputs={"X": get_vars},
+        inputs={"X": dummy_input},
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
