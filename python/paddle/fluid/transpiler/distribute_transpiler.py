@@ -368,8 +368,8 @@ class DistributeTranspiler(object):
         send_vars = []
 
         for orig_varname, splited_vars in self.grad_var_mapping.items():
-            print("name:", orig_varname)
             for _, var in enumerate(splited_vars):
+                #print("send_vars:", var.name)
                 send_vars.append(var)
 
         recv_vars = []
@@ -390,6 +390,7 @@ class DistributeTranspiler(object):
             splited_var_in_startup_prog = []
             # create splited_var with remote initializer
             for var in splited_var:
+                #print("init_var:", var.name)
                 var_in_startup_prog = orig_s_prog.global_block().create_var(
                     name=var.name,
                     shape=var.shape,

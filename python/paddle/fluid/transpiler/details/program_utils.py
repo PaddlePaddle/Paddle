@@ -64,6 +64,9 @@ def op_to_code(op):
         for n in o:
             outputs_str += "{name}".format(name=n)
 
+            if n != o[len(o) - 1]:
+                outputs_str += ", "
+
         if i != len(op.output_names) - 1:
             outputs_str += ", "
 
@@ -72,6 +75,9 @@ def op_to_code(op):
         o = op.input(op.input_names[i])
         for n in o:
             inputs_str += "{name}".format(name=n)
+
+            if n != o[len(o) - 1]:
+                inputs_str += ", "
 
         if i != len(op.input_names) - 1:
             inputs_str += ", "
