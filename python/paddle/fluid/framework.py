@@ -1417,7 +1417,7 @@ class Program(object):
         """
         return self.desc
 
-    def clone(self, for_test=False):
+    def clone(self, for_test=False, export_for_deployment=True):
         """
         Create a new, duplicated program.
 
@@ -1440,6 +1440,8 @@ class Program(object):
         Args:
             for_test(bool): True if change the :code:`is_test` attribute of
                 operators to :code:`True`.
+            export_for_deployment(bool): remove the read ops that are added by py_reader
+                or cpp inference lib. Default True
 
         Returns:
             Program: The new, duplicated Program object.
@@ -1497,7 +1499,8 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize(keep_read_op=True)
+            p = self.inference_optimize(
+                export_for_deployment=export_for_deployment)
         else:
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
@@ -1557,7 +1560,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self, keep_read_op=False):
+    def inference_optimize(self, export_for_deployment=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1569,9 +1572,8 @@ class Program(object):
         information will be lost.
 
         Args:
-            keep_read_op(bool): keep the read ops that are added by py_reader so user can
-                                use load_inference_model Python api to load an inference
-                                program and run with py_reader, default is False.
+            export_for_deployment(bool): remove the read ops that are added by py_reader
+                                        for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1587,7 +1589,7 @@ class Program(object):
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        if not keep_read_op:
+        if export_for_deployment:
             while True:
                 if read_op_idx >= root_block.op_size() or root_block.op(
                         read_op_idx).type() == 'read':

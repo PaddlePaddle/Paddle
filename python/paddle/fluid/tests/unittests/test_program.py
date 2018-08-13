@@ -121,15 +121,16 @@ class TestProgram(unittest.TestCase):
         with fluid.program_guard(main_program, startup_program):
             net()
         no_read_program = main_program.inference_optimize()
-        keep_read_program = main_program.inference_optimize(keep_read_op=True)
-        no_read_nos = no_read_program.global_block().ops
+        keep_read_program = main_program.inference_optimize(
+            export_for_deployment=False)
+        no_read_ops = no_read_program.global_block().ops
         keep_read_ops = keep_read_program.global_block().ops
-        self.assertEqual(len(keep_read_ops) - len(no_read_nos), 2)
+        self.assertEqual(len(keep_read_ops) - len(no_read_ops), 2)
         self.assertEqual(keep_read_ops[0].type, 'create_double_buffer_reader')
         self.assertEqual(keep_read_ops[1].type, 'read')
 
-        for i in range(len(no_read_nos)):
-            self.assertEqual(no_read_nos[i].type, keep_read_ops[i + 2].type)
+        for i in range(len(no_read_ops)):
+            self.assertEqual(no_read_ops[i].type, keep_read_ops[i + 2].type)
 
 
 if __name__ == '__main__':
