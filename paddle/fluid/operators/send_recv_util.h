@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include "paddle/fluid/framework/ir/node.h"
 
 namespace paddle {
 namespace operators {
@@ -22,7 +23,10 @@ inline bool NeedSend(const framework::Scope& scope,
                      const std::string& varname) {
   // dummy variable is only used in parallel executor to represent
   // some dependency relationship, we don't need to send/recv it.
-  if (varname == "dummy") return false;
+  // TODO(paddle-dev): Why would parallel executor logic leaked into here?
+  if (varname.find(framework::ir::Node::kControlDepVarName) !=
+      std::string::npos)
+    return false;
   auto* var = scope.FindVar(varname);
   PADDLE_ENFORCE_NOT_NULL(var, "Can not find variable '%s' in the send side.",
                           varname);

@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid.layers import lod_rank_table, data
+from paddle.fluid.layers import data
+from paddle.fluid.layers.control_flow import lod_rank_table
 from paddle.fluid.executor import Executor
 import paddle.fluid.core as core
 import numpy
@@ -35,7 +36,7 @@ class TestLoDRankTable(unittest.TestCase):
         exe.run(scope=scope, feed={'x': tensor})
         var = scope.find_var(rank_table.name)
         table = var.get_lod_rank_table()
-        self.assertEqual([(0, 5), (1, 1), (2, 1)], table.items())
+        self.assertEqual([(0, 5), (1, 1), (2, 1)], list(table.items()))
 
 
 if __name__ == '__main__':

@@ -95,9 +95,10 @@ void default_elementwise_add_grad(const framework::ExecutionContext& ctx,
                                   framework::Tensor* dy) {
   int axis = ctx.Attr<int>("axis");
 
-  ElemwiseGradCompute<DeviceContext, T, IdentityGrad<T>, IdentityGrad<T>>(
-      ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
-      IdentityGrad<T>());
+  ElemwiseExplicitGradCompute<DeviceContext, T, IdentityGrad<T>,
+                              IdentityGrad<T>>(ctx, *x, *y, *out, *dout, axis,
+                                               dx, dy, IdentityGrad<T>(),
+                                               IdentityGrad<T>());
 }
 
 template <typename DeviceContext, typename T>
@@ -140,14 +141,15 @@ class ElementwiseAddGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
+    // skip out, x, y
+    auto* out = dout;
+    auto *x = dout, *y = dout;
 
-    if (platform::is_cpu_place(ctx.GetPlace()) && (x->dims() == y->dims())) {
+    if (platform::is_cpu_place(ctx.GetPlace()) && dx != nullptr &&
+        dy != nullptr && (dx->dims() == dy->dims())) {
       elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx, dy);
     } else {
       default_elementwise_add_grad<DeviceContext, T>(ctx, x, y, out, dout, dx,

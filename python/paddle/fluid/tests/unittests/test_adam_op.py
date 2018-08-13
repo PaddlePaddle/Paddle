@@ -273,7 +273,7 @@ class TestSparseAdamOp(unittest.TestCase):
         self.setup(scope, place)
 
         op_args = dict()
-        for key, np_array in self.dense_inputs.iteritems():
+        for key, np_array in self.dense_inputs.items():
             var = scope.var(key).get_tensor()
             var.set(np_array, place)
             op_args[key] = key
@@ -290,7 +290,7 @@ class TestSparseAdamOp(unittest.TestCase):
         adam_op = Operator("adam", **op_args)
         adam_op.run(scope, place)
 
-        for key, np_array in self.outputs.iteritems():
+        for key, np_array in self.outputs.items():
             out_var = scope.var(key).get_tensor()
             actual = np.array(out_var)
             actual = actual.reshape([actual.size])

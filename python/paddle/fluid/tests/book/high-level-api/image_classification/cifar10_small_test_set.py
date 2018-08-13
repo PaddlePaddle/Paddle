@@ -28,11 +28,12 @@ images per class.
 
 """
 
-import cPickle
 import itertools
 import numpy
 import paddle.v2.dataset.common
 import tarfile
+from six.moves import cPickle as pickle
+from six.moves import zip
 
 __all__ = ['train10']
 
@@ -46,7 +47,7 @@ def reader_creator(filename, sub_name, batch_size=None):
         data = batch['data']
         labels = batch.get('labels', batch.get('fine_labels', None))
         assert labels is not None
-        for sample, label in itertools.izip(data, labels):
+        for sample, label in zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():
@@ -56,7 +57,7 @@ def reader_creator(filename, sub_name, batch_size=None):
 
             batch_count = 0
             for name in names:
-                batch = cPickle.load(f.extractfile(name))
+                batch = pickle.load(f.extractfile(name))
                 for item in read_batch(batch):
                     if isinstance(batch_size, int) and batch_count > batch_size:
                         break

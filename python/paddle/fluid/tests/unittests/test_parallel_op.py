@@ -18,6 +18,7 @@ import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
 import paddle.fluid.profiler as profiler
 import numpy
+import six
 
 
 class BaseParallelForTest(unittest.TestCase):
@@ -25,20 +26,20 @@ class BaseParallelForTest(unittest.TestCase):
         """
         Run the unittest for parallel.for
         Args:
-            callback(callable): A callable function returns a generator. There 
-                are two yields in the generator function. The first yield 
-                returns the data layers, and the second yield returns the loss. 
-                The modified data variables will be sent back during the first 
+            callback(callable): A callable function returns a generator. There
+                are two yields in the generator function. The first yield
+                returns the data layers, and the second yield returns the loss.
+                The modified data variables will be sent back during the first
                 yield.
 
             feed(dict): The executor feeding dictionary.
-            fetch(list|basestr): The fetch name lists. 
+            fetch(list|basestr): The fetch name lists.
 
         Returns:
             None
 
         Raises:
-            AssertionError when the computation of cpu, parallel.for in cpu, 
+            AssertionError when the computation of cpu, parallel.for in cpu,
                 gpu, parallel.for in gpu are different.
 
         """
@@ -95,14 +96,14 @@ class BaseParallelForTest(unittest.TestCase):
         """
         Run a single test, returns the fetch values
         Args:
-            place(Place): the computation place. 
-            use_parallel(bool): Whether use parallel.for or not. 
+            place(Place): the computation place.
+            use_parallel(bool): Whether use parallel.for or not.
 
         Returns:
             Fetched numpy arrays.
 
         """
-        if isinstance(fetch, basestring):
+        if isinstance(fetch, six.string_types):
             fetch = [fetch]
         main = fluid.Program()
         startup = fluid.Program()
@@ -120,11 +121,11 @@ class BaseParallelForTest(unittest.TestCase):
                 pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
                 data = next(generator)
 
-                if isinstance(data, fluid.Variable):
+                if isinstance(data, fluid.framework.Variable):
                     data = [data]
 
                 with pd.do():
-                    ins = map(pd.read_input, data)
+                    ins = list(map(pd.read_input, data))
                     if len(ins) == 1:
                         ins = ins[0]
                     loss = generator.send(ins)  # patch input
@@ -156,7 +157,7 @@ class BaseParallelForTest(unittest.TestCase):
 
         Returns:
             None
-            
+
         Raises:
             AssertionError
 

@@ -14,7 +14,8 @@
 
 import numpy as np
 import contextlib
-from framework import Program, default_main_program, Variable
+import six
+from .framework import Program, default_main_program, Variable
 from . import core
 
 __all__ = [
@@ -204,19 +205,19 @@ def fetch_var(name, scope=None, return_numpy=True):
 
 
 def _get_program_cache_key(feed, fetch_list):
-    feed_var_names = feed.keys()
+    feed_var_names = list(feed.keys())
 
     def to_name_str(var):
         if isinstance(var, Variable):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, basestring):
+        elif isinstance(var, six.string_types):
             return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
 
-    fetch_var_names = map(to_name_str, fetch_list)
+    fetch_var_names = list(map(to_name_str, fetch_list))
 
     return str(feed_var_names + fetch_var_names)
 
@@ -229,8 +230,8 @@ class Executor(object):
     to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
     the variables(or names) that user want to get after program run. Note: the executor will run all
     operators in the program but not only the operators dependent by the fetch_list.
-    It store the global variables into the global scope, and create a local scope for the temporary 
-    variables. The local scope contents will be discarded after every minibatch forward/backward finished. 
+    It store the global variables into the global scope, and create a local scope for the temporary
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished.
     But the global scope variables will be persistent through different runs.
     All of ops in program will be running in sequence.
 
@@ -247,6 +248,7 @@ class Executor(object):
         p.set_place(place)
         self.executor = core.Executor(p)
         self.program_caches = dict()
+        self._closed = False
 
     def as_lodtensor(self, data):
         """
@@ -344,15 +346,27 @@ class Executor(object):
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in xrange(len(fetch_list))
+            for i in range(len(fetch_list))
         ]
         return outs
 
-    def begin_pass(self):
-        self.executor.begin_pass()
+    def close(self):
+        """
+        Close this executor.
 
-    def end_pass(self):
-        self.executor.end_pass()
+        You can no long use this executor after calling this method.
+        For the distributed training, this method would free the resource on PServers related to
+        the current Trainer.
+
+        Example:
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> ...
+            >>> exe.close()
+        """
+        if not self._closed:
+            self.executor.close()
+            self._closed = True
 
     def run(self,
             program=None,
@@ -405,6 +419,10 @@ class Executor(object):
             >>>     feed={'X': x},
             >>>     fetch_list=[loss.name])
         """
+
+        if self._closed:
+            raise RuntimeError("Attempted to use a closed Executor")
+
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):

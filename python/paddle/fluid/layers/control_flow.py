@@ -13,35 +13,29 @@
 # limitations under the License.
 import contextlib
 
-from layer_function_generator import autodoc, templatedoc
-from tensor import assign, fill_constant
+from .layer_function_generator import autodoc, templatedoc
+from .tensor import assign, fill_constant
 from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from ops import logical_and, logical_not, logical_or
+from .ops import logical_and, logical_not, logical_or
 import numpy
+import warnings
+from functools import reduce
 
 __all__ = [
-    'split_lod_tensor',
-    'merge_lod_tensor',
     'While',
     'Switch',
-    'lod_rank_table',
-    'max_sequence_len',
-    'lod_tensor_to_array',
-    'array_to_lod_tensor',
     'increment',
     'array_write',
     'create_array',
     'less_than',
     'equal',
     'array_read',
-    'shrink_memory',
     'array_length',
     'IfElse',
     'DynamicRNN',
-    'ConditionalBlock',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
     'ParallelDo',
@@ -283,11 +277,14 @@ class ParallelDo(object):
           avg_cost = fluid.layers.mean(x=cost)
 
     .. warning::
-    
+
        It will be soon deprecated, please use ParallelExecutor instead.
     """
 
     def __init__(self, places, use_nccl=False, name=None):
+        warnings.warn(
+            "API ParallelDo is deprecated since 0.15.0. Please use ParallelExecutor instead.",
+            Warning)
         self.helper = LayerHelper("parallel_do", name=name)
         self.inputs = []
         self.places = places
@@ -346,7 +343,7 @@ class ParallelDo(object):
 
         return [parent_block.var(name) for name in params]
 
-    def complete_op(self):
+    def _complete_op(self):
         main_program = self.helper.main_program
         current_block = main_program.current_block()
         parent_block = self.parent_block()
@@ -402,7 +399,7 @@ class BlockGuardWithCompletion(BlockGuard):
         if exc_type is not None:
             return False
         self.rnn.status = StaticRNN.AFTER_RNN_BLOCK
-        self.rnn.complete_op()
+        self.rnn._complete_op()
         return super(BlockGuardWithCompletion, self).__exit__(exc_type, exc_val,
                                                               exc_tb)
 
@@ -478,7 +475,7 @@ class StaticRNN(object):
             if shape is None or batch_ref is None:
                 raise ValueError(
                     "if init is None, memory at least need shape and batch_ref")
-            parent_block = self.parent_block()
+            parent_block = self._parent_block()
             var_name = unique_name.generate("@".join(
                 [self.helper.name, "memory_boot"]))
             boot_var = parent_block.create_var(
@@ -535,7 +532,7 @@ class StaticRNN(object):
             outputs={'Out': tmp_o},
             attrs={'dtype': o.dtype})
 
-        out_var = self.parent_block().create_var(
+        out_var = self._parent_block().create_var(
             name=tmp_o.name,
             shape=[self.seq_len] + list(tmp_o.shape),
             dtype=tmp_o.dtype)
@@ -551,7 +548,7 @@ class StaticRNN(object):
             raise TypeError("update memory should take variables")
         self.memories[mem.name].mem = var
 
-    def parent_block(self):
+    def _parent_block(self):
         prog = self.helper.main_program
         parent_idx = prog.current_block().parent_idx
         assert parent_idx >= 0
@@ -568,10 +565,10 @@ class StaticRNN(object):
         else:
             return self.outputs
 
-    def complete_op(self):
+    def _complete_op(self):
         main_program = self.helper.main_program
         rnn_block = main_program.current_block()
-        parent_block = self.parent_block()
+        parent_block = self._parent_block()
 
         local_inputs = set()
 
@@ -605,7 +602,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in self.memories.iteritems():
+        for _, mem in list(self.memories.items()):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
@@ -651,7 +648,7 @@ class WhileGuard(BlockGuard):
         if exc_type is not None:
             return False
         self.while_op.status = While.AFTER_WHILE_BLOCK
-        self.while_op.complete()
+        self.while_op._complete()
         return super(WhileGuard, self).__exit__(exc_type, exc_val, exc_tb)
 
 
@@ -698,7 +695,7 @@ class While(object):
     def block(self):
         return WhileGuard(self)
 
-    def complete(self):
+    def _complete(self):
         main_program = self.helper.main_program
         while_block = main_program.current_block()
         parent_block = main_program.block(main_program.current_block()
@@ -823,21 +820,21 @@ def max_sequence_len(rank_table):
 
 
 def lod_tensor_to_array(x, table):
-    """ 
+    """
     Convert a LoDTensor to a LoDTensorArray.
 
-    This function split a LoDTesnor to a LoDTensorArray according to its LoD 
-    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in 
-    PaddlePaddle. The generated LoDTensorArray of this function can be further read 
-    or written by `read_from_array()` and `write_to_array()` operators. However, 
-    this function is generally an internal component of PaddlePaddle `DynamicRNN`. 
+    This function split a LoDTesnor to a LoDTensorArray according to its LoD
+    information. LoDTensorArray is an alias of C++ std::vector<LoDTensor> in
+    PaddlePaddle. The generated LoDTensorArray of this function can be further read
+    or written by `read_from_array()` and `write_to_array()` operators. However,
+    this function is generally an internal component of PaddlePaddle `DynamicRNN`.
     Users should not use it directly.
 
     Args:
         x (Variable|list): The LoDTensor to be converted to a LoDTensorArray.
         table (ParamAttr|list): The variable that stores the level of lod
                                 which is ordered by sequence length in
-                                descending order. It is generally generated 
+                                descending order. It is generally generated
                                 by `layers.lod_rank_table()` API.
 
     Returns:
@@ -1071,9 +1068,9 @@ def array_read(array, i):
         Given:
 
         array = [0.6, 0.1, 0.3, 0.1]
-        
+
         And:
-        
+
         i = 2
 
         Then:
@@ -1180,9 +1177,9 @@ def array_length(array):
 
 class ConditionalBlockGuard(BlockGuard):
     """
-    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for 
-    holding a ConditionalBlock, and helping users entering and exiting the 
-    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard 
+    ConditionalBlockGuard is derived from BlockGuard. It is dedicated for
+    holding a ConditionalBlock, and helping users entering and exiting the
+    ConditionalBlock via Python's 'with' keyword. However, ConditionalBlockGuard
     is generally an internal component of IfElse, users should not use it directly.
     """
 
@@ -1457,7 +1454,7 @@ class IfElse(object):
         if self.status == IfElse.OUT_IF_ELSE_BLOCKS:
             raise ValueError("input must in true/false blocks")
         if id(x) not in self.input_table:
-            parent_block = self.parent_block()
+            parent_block = self._parent_block()
             out_true = parent_block.create_var(
                 name=unique_name.generate('ifelse_input' + self.helper.name),
                 dtype=x.dtype)
@@ -1483,7 +1480,7 @@ class IfElse(object):
         else:
             return out_false
 
-    def parent_block(self):
+    def _parent_block(self):
         current_block = self.helper.main_program.current_block()
         return self.helper.main_program.block(current_block.parent_idx)
 
@@ -1499,7 +1496,7 @@ class IfElse(object):
 
         out_table = self.output_table[1 if self.status ==
                                       self.IN_IF_ELSE_TRUE_BLOCKS else 0]
-        parent_block = self.parent_block()
+        parent_block = self._parent_block()
         for each_out in outs:
             if not isinstance(each_out, Variable):
                 raise TypeError("Each output should be a variable")
@@ -1516,7 +1513,7 @@ class IfElse(object):
     def __call__(self):
         if self.status != self.OUT_IF_ELSE_BLOCKS:
             raise ValueError("IfElse::__call__ must be out of sub-block")
-        false_len, true_len = map(len, self.output_table)
+        false_len, true_len = list(map(len, self.output_table))
         if false_len == 0 and true_len == 0:
             raise ValueError("Must invoke true_block/false_block before "
                              "__call__")
@@ -1936,7 +1933,7 @@ def is_empty(x, cond=None, **ignored):
 
     Args:
         x (Variable): The Variable to be tested.
-        cond (Variable|None): Output parameter. Returns the test result 
+        cond (Variable|None): Output parameter. Returns the test result
                               of given 'x'. Default: None
 
     Returns:
