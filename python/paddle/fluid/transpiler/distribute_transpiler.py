@@ -198,14 +198,6 @@ class DistributeTranspiler(object):
         self.origin_program = program
         self.origin_startup_program = default_startup_program().clone()
 
-        #print("origin_startup_program:")
-        #for op in self.origin_startup_program.global_block().ops:
-        #    print("op_name:", op.type, "attrs:", op.attrs, "op_outputs", op.output)
-
-        #print("default_startup_program:")
-        #for op in default_startup_program().global_block().ops:
-        #    print("op_name:", op.type, "attrs:", op.attrs, "op_outputs", op.output)
-
         self.startup_program = default_startup_program()
         self.trainer_num = trainers
         self.sync_mode = sync_mode
@@ -369,7 +361,6 @@ class DistributeTranspiler(object):
 
         for orig_varname, splited_vars in self.grad_var_mapping.items():
             for _, var in enumerate(splited_vars):
-                #print("send_vars:", var.name)
                 send_vars.append(var)
 
         recv_vars = []
@@ -379,7 +370,6 @@ class DistributeTranspiler(object):
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
-        #print("param_var_mapping:", self.param_var_mapping)
         for varname, splited_var in self.param_var_mapping.iteritems():
             # Get the eplist of recv vars
             eps = []
@@ -647,7 +637,6 @@ class DistributeTranspiler(object):
         """
         s_prog = Program()
         orig_s_prog = self.origin_startup_program
-        #print("orig_s_prog:", orig_s_prog)
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 

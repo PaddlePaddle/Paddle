@@ -199,13 +199,6 @@ bool VariableResponse::ProcSerializedField(
       return false;
     }
 
-    /*
-    std::string var_name = "conv2d_4.w_0.block1";
-    if (meta_.varname() == var_name) {
-      std::cout << "dims 1 " << dims << std::endl;
-    }
-    */
-
     return true;
   }
 

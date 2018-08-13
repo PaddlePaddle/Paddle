@@ -127,33 +127,6 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 }
 
-std::string OperatorBase::DebugInputsStrings(const Scope& scope) {
-  std::stringstream ss;
-  ss << "before run operator" << type_ << std::endl;
-  for (auto t : inputs_) {
-    for (auto name : t.second) {
-      ss << paddle::framework::GetVariableReadableData(scope, t.first, name)
-         << std::endl;
-    }
-  }
-
-  return ss.str();
-}
-
-std::string OperatorBase::DebugOutputsStrings(const Scope& scope) {
-  std::stringstream ss;
-  ss << "after run operator" << type_ << std::endl;
-  for (auto t : outputs_) {
-    for (auto name : t.second) {
-      ss << paddle::framework::GetVariableReadableData(scope, t.first, name)
-         << std::endl;
-    }
-  }
-  ss << "end run operator" << type_ << std::endl;
-
-  return ss.str();
-}
-
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
@@ -164,41 +137,11 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
-  // God bless you not need to open it to compare the float data.
-  // std::cout << DebugInputsStrings(scope) << std::endl;
-  /*
-  if (type_ == "fetch_barrier") {
-    std::cout << "before fetch_barrier" << std::endl;
-    auto var = scope.FindVar("conv2d_4.w_0.block1");
-    auto& in_tensor = var->Get<LoDTensor>();
-
-    if (!in_tensor.IsInitialized()) {
-      std::cout << "conv2d_4.w_0.block1 not initialized" << std::endl;
-    } else {
-      std::cout << in_tensor.dims() << std::endl;
-    }
-  }
-  */
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
 
-  /*
-  if (type_ == "fetch_barrier") {
-    std::cout << "after fetch_barrier" << std::endl;
-    auto var = scope.FindVar("conv2d_4.w_0.block1");
-    auto& in_tensor = var->Get<LoDTensor>();
-
-    if (!in_tensor.IsInitialized()) {
-      std::cout << "conv2d_4.w_0.block1 not initialized" << std::endl;
-    } else {
-      std::cout << in_tensor.dims() << std::endl;
-    }
-  }
-  */
-
-  // std::cout << DebugOutputsStrings(scope) << std::endl << std::endl;
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 

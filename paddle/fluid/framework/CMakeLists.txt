@@ -70,7 +70,7 @@ cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
-    shape_inference data_transform lod_tensor profiler print_utils)
+    shape_inference data_transform lod_tensor profiler) 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 

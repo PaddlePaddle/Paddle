@@ -113,8 +113,6 @@ def run_pserver(pserver_endpoints, trainers, current_endpoint):
     pserver_prog = t.get_pserver_program(current_endpoint)
     startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
 
-    #print "pserver_startup_prog:", startup_prog
-
     place = fluid.CPUPlace()
     exe = fluid.Executor(place)
     exe.run(startup_prog)
@@ -175,11 +173,8 @@ class TestDistMnist(unittest.TestCase):
         fetch_list = ["conv2d_0.w_0"]
         trainer_prog = t.get_trainer_program()
 
-        #print "trainer_startup_prog:", fluid.default_startup_program()
-
         exe = fluid.Executor(place)
         outs = exe.run(fluid.default_startup_program(), fetch_list=fetch_list)
-        #print "outs conv2d_0.w_0:", outs[0]
 
         #return
 

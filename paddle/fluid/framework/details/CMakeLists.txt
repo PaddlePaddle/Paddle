@@ -10,7 +10,6 @@ cc_library(multi_devices_graph_print_pass SRCS multi_devices_graph_print_pass.cc
 cc_library(multi_devices_graph_check_pass SRCS multi_devices_graph_check_pass.cc DEPS multi_devices_helper)
 
 cc_library(variable_visitor SRCS variable_visitor.cc DEPS lod_tensor selected_rows)
-cc_library(print_utils SRCS print_utils.cc DEPS lod_tensor scope ddim memory)
 
 if(WITH_GPU)
     nv_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
