@@ -379,7 +379,7 @@ class DistributeTranspiler(object):
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
-        splited_param_mapping = {}
+        #splited_param_mapping = {}
         for varname, splited_var in self.param_var_mapping.iteritems():
             # Get the eplist of recv vars
             eps = []
@@ -387,10 +387,11 @@ class DistributeTranspiler(object):
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
 
-            splited_var_in_startup_prog = []
+            #splited_var_in_startup_prog = []
             # create splited_var with remote initializer
             for var in splited_var:
                 #print("init_var:", var.name)
+                """
                 var_in_startup_prog = orig_s_prog.global_block().create_var(
                     name=var.name,
                     shape=var.shape,
@@ -400,11 +401,31 @@ class DistributeTranspiler(object):
                     persistable=True,
                     is_data=var.is_data,
                     initializer=RemoteInitializer(eps))
+                """
+                if len(splited_var) <= 1:
+                    continue
 
-                # var with remote initializer
-                splited_var_in_startup_prog.append(var_in_startup_prog)
+                orig_s_prog.global_block().create_var(
+                    name=var.name,
+                    persistable=False,
+                    type=var.type,
+                    dtype=var.dtype,
+                    shape=var.shape,
+                    lod_level=var.lod_level)
 
-            splited_param_mapping[varname] = splited_var_in_startup_prog
+            op = orig_s_prog.global_block().append_op(
+                type="recv",
+                inputs={},
+                outputs={"Out": splited_var},
+                attrs={
+                    "epmap": eps,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
+            # var with remote initializer
+            #splited_var_in_startup_prog.append(var)
+
+        #splited_param_mapping[varname] = splited_var_in_startup_prog
 
         orig_s_prog.global_block().append_op(
             type="fetch_barrier",
@@ -419,11 +440,11 @@ class DistributeTranspiler(object):
             # append concat_op to concat all splited params rather than prepend
             if len(splited_var) <= 1:
                 continue
-            splited_var_in_startup_prog = splited_param_mapping[varname]
+            #splited_var_in_startup_prog = splited_param_mapping[varname]
             orig_param = orig_s_prog.global_block().vars[varname]
             orig_s_prog.global_block().append_op(
                 type="concat",
-                inputs={"X": splited_var_in_startup_prog},
+                inputs={"X": splited_var},
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 

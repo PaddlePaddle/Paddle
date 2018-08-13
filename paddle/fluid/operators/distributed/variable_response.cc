@@ -190,12 +190,20 @@ bool VariableResponse::ProcSerializedField(
 #endif
   }
 
+  VLOG(7) << "ProcSerializedField:" << meta_.varname()
+          << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
     PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");
     if (!CopyLodTensorData(input, *dev_ctx_, dims, num_bytes)) {
       return false;
     }
+
+    std::string var_name = "conv2d_4.w_0.block1";
+    if (meta_.varname() == var_name) {
+      std::cout << "dims 1 " << dims << std::endl;
+    }
+
     return true;
   }
 
@@ -205,6 +213,8 @@ bool VariableResponse::ProcSerializedField(
     }
     return true;
   }
+
+  PADDLE_ENFORCE("not supported var types:", meta_.varname(), meta_.type());
 
   return true;
 }

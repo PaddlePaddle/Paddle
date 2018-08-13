@@ -166,10 +166,33 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   }
   // God bless you not need to open it to compare the float data.
   // std::cout << DebugInputsStrings(scope) << std::endl;
+  if (type_ == "fetch_barrier") {
+    std::cout << "before fetch_barrier" << std::endl;
+    auto var = scope.FindVar("conv2d_4.w_0.block1");
+    auto& in_tensor = var->Get<LoDTensor>();
+
+    if (!in_tensor.IsInitialized()) {
+      std::cout << "conv2d_4.w_0.block1 not initialized" << std::endl;
+    } else {
+      std::cout << in_tensor.dims() << std::endl;
+    }
+  }
 
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
+
+  if (type_ == "fetch_barrier") {
+    std::cout << "after fetch_barrier" << std::endl;
+    auto var = scope.FindVar("conv2d_4.w_0.block1");
+    auto& in_tensor = var->Get<LoDTensor>();
+
+    if (!in_tensor.IsInitialized()) {
+      std::cout << "conv2d_4.w_0.block1 not initialized" << std::endl;
+    } else {
+      std::cout << in_tensor.dims() << std::endl;
+    }
+  }
 
   // std::cout << DebugOutputsStrings(scope) << std::endl << std::endl;
   VLOG(3) << place << " " << DebugStringEx(&scope);

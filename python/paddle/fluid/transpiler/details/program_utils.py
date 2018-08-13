@@ -48,7 +48,7 @@ def get_indent_space(indent, space_num=4):
 
 
 def variable_to_code(var):
-    var_str = "var {name} = fluid.{type}.shape{shape}.astype({dtype})".\
+    var_str = "var {name} : fluid.{type}.shape{shape}.astype({dtype})".\
         format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
 
     if var.persistable:
@@ -70,7 +70,7 @@ def op_to_code(op):
         if i != len(op.output_names) - 1:
             outputs_str += ", "
 
-    inputs_str = "("
+    inputs_str = "["
     for i in range(0, len(op.input_names)):
         o = op.input(op.input_names[i])
         for n in o:
@@ -82,7 +82,7 @@ def op_to_code(op):
         if i != len(op.input_names) - 1:
             inputs_str += ", "
 
-    inputs_str += ")"
+    inputs_str += "]"
 
     attrs_str = ""
     for i in range(0, len(op.attr_names)):
