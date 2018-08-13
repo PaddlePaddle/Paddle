@@ -27,7 +27,6 @@ from multiprocessing import Process
 import os
 import sys
 import signal
-from paddle.fluid.transpiler.details import program_to_code
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
