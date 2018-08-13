@@ -128,6 +128,7 @@ class FCMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     PADDLE_ENFORCE(input->dims().size() == 2 || input->dims().size() == 4,
                    "Input must be with 2 or 4 dimensions, i.e. NCHW");
+    // TODO(intel): the src weight is io and mkldnn weight need be transposed !
     PADDLE_ENFORCE(w->dims().size() == 2 || w->dims().size() == 4,
                    "Weights must be with 2 or 4 dimensions, i.e. OI or OIHW");
 
