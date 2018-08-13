@@ -31,13 +31,13 @@ __all__ = ['test, get_dict', 'get_embedding', 'convert']
 
 DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
-WORDDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/wordDict.txt'
+WORDDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st%2FwordDict.txt'
 WORDDICT_MD5 = 'ea7fb7d4c75cc6254716f0177a506baa'
-VERBDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/verbDict.txt'
+VERBDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st%2FverbDict.txt'
 VERBDICT_MD5 = '0d2977293bbb6cbefab5b0f97db1e77c'
-TRGDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/targetDict.txt'
+TRGDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st%2FtargetDict.txt'
 TRGDICT_MD5 = 'd8c7f03ceb5fc2e5a0fa7503a4353751'
-EMB_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/emb'
+EMB_URL = 'http://paddlemodels.bj.bcebos.com/conll05st%2Femb'
 EMB_MD5 = 'bf436eb0faa1f6f9103017f8be57cdb7'
 
 UNK_IDX = 0

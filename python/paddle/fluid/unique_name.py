@@ -70,6 +70,8 @@ def switch(new_generator=None):
 def guard(new_generator=None):
     if isinstance(new_generator, six.string_types):
         new_generator = UniqueNameGenerator(new_generator)
+    elif isinstance(new_generator, six.binary_type):
+        new_generator = UniqueNameGenerator(new_generator.decode())
     old = switch(new_generator)
     yield
     switch(old)

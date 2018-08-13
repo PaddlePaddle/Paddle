@@ -401,6 +401,8 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, six.string_types):
             act = {'type': act}
+        else:
+            raise TypeError(str(act) + " should be unicode or str")
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
