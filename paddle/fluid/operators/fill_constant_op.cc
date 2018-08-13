@@ -28,6 +28,13 @@ class FillConstantOp : public framework::OperatorWithKernel {
     auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
+        ctx.device_context());
+  }
 };
 
 class FillConstantOpMaker : public framework::OpProtoAndCheckerMaker {
