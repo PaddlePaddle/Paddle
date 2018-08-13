@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/gru_op.h"
 #include <string>
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
+#include "paddle/fluid/operators/math/detail/gru_kernel.h"
+
+DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {
@@ -264,76 +269,94 @@ class GRUCPUKernel : public framework::OpKernel<T> {
       gru_value.prev_out_value = nullptr;
     }
     auto batch_starts = batch_gate->lod()[0];
-    size_t num_batch = batch_starts.size() - 1;
+    size_t seq_len = batch_starts.size() - 1;
     auto active_node = math::detail::GetActivationType(
         context.Attr<std::string>("activation"));
     auto active_gate = math::detail::GetActivationType(
         context.Attr<std::string>("gate_activation"));
 
 #ifdef PADDLE_WITH_MKLML
-    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    // TODO(TJ): make a class
-    T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
-                                     frame_size * 2 /*width of weight*/,
-                                     frame_size /*height of height*/);
-    PADDLE_ENFORCE(packed_gate);
-    blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size * 2,
-                   frame_size, T(1.0), gru_value.gate_weight, frame_size * 2,
-                   packed_gate);
-    T* packed_state = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
-                                      frame_size /*width of weight*/,
-                                      frame_size /*height of height*/);
-    PADDLE_ENFORCE(packed_state);
-    blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size,
-                   frame_size, T(1.0), gru_value.state_weight, frame_size,
-                   packed_state);
+    if (FLAGS_paddle_num_threads >= 4) {
+      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+      T* packed_gate = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
+                                       frame_size * 2 /*width of weight*/,
+                                       frame_size /*height of height*/);
+      PADDLE_ENFORCE(packed_gate);
+      blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size * 2,
+                     frame_size, T(1.0), gru_value.gate_weight, frame_size * 2,
+                     packed_gate);
+      T* packed_state = blas.GEMM_ALLOC(CblasBMatrix, 1 /*height of C*/,
+                                        frame_size /*width of weight*/,
+                                        frame_size /*height of height*/);
+      PADDLE_ENFORCE(packed_state);
+      blas.GEMM_PACK(CblasBMatrix, CblasNoTrans, 1 /*cur bs?*/, frame_size,
+                     frame_size, T(1.0), gru_value.state_weight, frame_size,
+                     packed_state);
+      for (size_t n = 0; n < seq_len; n++) {
+        int bstart = static_cast<int>(batch_starts[n]);
+        int bend = static_cast<int>(batch_starts[n + 1]);
+        int cur_batch_size = bend - bstart;
+
+        Tensor gate_t = batch_gate->Slice(bstart, bend);
+        Tensor reset_hidden_prev_t =
+            batch_reset_hidden_prev->Slice(bstart, bend);
+        Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+        gru_value.output_value = hidden_t.data<T>();
+        gru_value.gate_value = gate_t.data<T>();
+        gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
+
+        if (gru_value.prev_out_value) {
+          blas.GEMM_COMPUTE(
+              CblasNoTrans, CblasPacked, cur_batch_size, frame_size * 2,
+              frame_size, gru_value.prev_out_value, frame_size, packed_gate,
+              frame_size * 2, T(1), gru_value.gate_value, frame_size * 3);
+        }
+
+        math::detail::forward_reset_output(
+            math::detail::forward::gru_resetOutput<T>(), gru_value, frame_size,
+            cur_batch_size, active_gate);
+
+        if (gru_value.prev_out_value) {
+          blas.GEMM_COMPUTE(
+              CblasNoTrans, CblasPacked, cur_batch_size, frame_size, frame_size,
+              gru_value.reset_output_value, frame_size, packed_state,
+              frame_size, T(1), gru_value.gate_value + frame_size * 2,
+              frame_size * 3);
+        }
+
+        math::detail::forward_final_output(
+            math::detail::forward::gru_finalOutput<T>(), gru_value, frame_size,
+            cur_batch_size, active_node);
+
+        gru_value.prev_out_value = gru_value.output_value;
+      }
+
+      blas.GEMM_FREE(packed_gate);
+      blas.GEMM_FREE(packed_state);
+    } else {
 #endif
-    for (size_t n = 0; n < num_batch; n++) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
-      int cur_batch_size = bend - bstart;
+      for (size_t n = 0; n < seq_len; n++) {
+        int bstart = static_cast<int>(batch_starts[n]);
+        int bend = static_cast<int>(batch_starts[n + 1]);
+        int cur_batch_size = bend - bstart;
 
-      Tensor gate_t = batch_gate->Slice(bstart, bend);
-      Tensor reset_hidden_prev_t = batch_reset_hidden_prev->Slice(bstart, bend);
-      Tensor hidden_t = batch_hidden->Slice(bstart, bend);
-      gru_value.output_value = hidden_t.data<T>();
-      gru_value.gate_value = gate_t.data<T>();
-      gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
+        Tensor gate_t = batch_gate->Slice(bstart, bend);
+        Tensor reset_hidden_prev_t =
+            batch_reset_hidden_prev->Slice(bstart, bend);
+        Tensor hidden_t = batch_hidden->Slice(bstart, bend);
+        gru_value.output_value = hidden_t.data<T>();
+        gru_value.gate_value = gate_t.data<T>();
+        gru_value.reset_output_value = reset_hidden_prev_t.data<T>();
 
+        math::GRUUnitFunctor<DeviceContext, T>::compute(
+            dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
+            active_gate);
+
+        gru_value.prev_out_value = gru_value.output_value;
+      }
 #ifdef PADDLE_WITH_MKLML
-      if (gru_value.prev_out_value) {
-        blas.GEMM_COMPUTE(CblasNoTrans, CblasPacked, cur_batch_size,
-                          frame_size * 2, frame_size, gru_value.prev_out_value,
-                          frame_size, packed_gate, frame_size * 2, T(1),
-                          gru_value.gate_value, frame_size * 3);
-      }
-
-      math::detail::forward_reset_output(
-          math::detail::forward::gru_resetOutput<T>(), gru_value, frame_size,
-          cur_batch_size, active_gate);
-
-      if (gru_value.prev_out_value) {
-        blas.GEMM_COMPUTE(
-            CblasNoTrans, CblasPacked, cur_batch_size, frame_size, frame_size,
-            gru_value.reset_output_value, frame_size, packed_state, frame_size,
-            T(1), gru_value.gate_value + frame_size * 2, frame_size * 3);
-      }
-
-      math::detail::forward_final_output(
-          math::detail::forward::gru_finalOutput<T>(), gru_value, frame_size,
-          cur_batch_size, active_node);
-#else
-      math::GRUUnitFunctor<DeviceContext, T>::compute(
-          dev_ctx, gru_value, frame_size, cur_batch_size, active_node,
-          active_gate);
-#endif
-      gru_value.prev_out_value = gru_value.output_value;
     }
-#ifdef PADDLE_WITH_MKLML
-    blas.GEMM_FREE(packed_gate);
-    blas.GEMM_FREE(packed_state);
 #endif
-
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batch_hidden->set_lod(batch_gate->lod());
     to_seq(dev_ctx, *batch_hidden, hidden);

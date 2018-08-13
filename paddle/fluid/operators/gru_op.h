@@ -16,10 +16,7 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/detail/gru_cpu_kernel.h"
-#include "paddle/fluid/operators/math/detail/gru_kernel.h"
 #include "paddle/fluid/operators/math/gru_compute.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
