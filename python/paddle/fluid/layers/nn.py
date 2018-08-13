@@ -5364,19 +5364,18 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
-def prelu(x, mode):
+def prelu(x, mode, name=None):
     """
     Equation:
 
-        f(x) =
-        \begin{cases}
-        \alpha * x, \quad  \text{if} \ x < 0 \\
-        x,         \qquad  \text{if} \ x >= 0
-        \end{cases}
+        y = \max(0, x) + alpha \min(0, x)
 
     Args:
         x (Variable): The input tensor.
         mode (string): The mode for weight sharing
+		       all: all elements share same weight
+ 		       channel:elements in a channel share same weight
+ 		       element:each element has a weight 
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -5384,10 +5383,11 @@ def prelu(x, mode):
     Examples:
 
         .. code-block:: python
-
+	    x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+	    mode = 'channel'
             output = fluid.layers.prelu(x,mode)
     """
-    helper = LayerHelper('relu', **locals())
+    helper = LayerHelper('prelu', **locals())
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
