@@ -65,6 +65,7 @@ option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better d
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
+option(WITH_INFERENCE    "Compile fluid inference library"              ON)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 
@@ -72,6 +73,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
 endif()
+set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -158,6 +160,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
@@ -174,6 +177,7 @@ include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
+include(external/cub)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
