@@ -170,31 +170,31 @@ VGG核心模块的输入是数据层，`vgg_bn_drop` 定义了16层VGG结构，�
 
 ```python
 def vgg_bn_drop(input):
-def conv_block(ipt, num_filter, groups, dropouts):
-return fluid.nets.img_conv_group(
-input=ipt,
-pool_size=2,
-pool_stride=2,
-conv_num_filter=[num_filter] * groups,
-conv_filter_size=3,
-conv_act='relu',
-conv_with_batchnorm=True,
-conv_batchnorm_drop_rate=dropouts,
-pool_type='max')
+    def conv_block(ipt, num_filter, groups, dropouts):
+        return fluid.nets.img_conv_group(
+            input=ipt,
+            pool_size=2,
+            pool_stride=2,
+            conv_num_filter=[num_filter] * groups,
+            conv_filter_size=3,
+            conv_act='relu',
+            conv_with_batchnorm=True,
+            conv_batchnorm_drop_rate=dropouts,
+            pool_type='max')
 
-conv1 = conv_block(input, 64, 2, [0.3, 0])
-conv2 = conv_block(conv1, 128, 2, [0.4, 0])
-conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0])
-conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
-conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
+    conv1 = conv_block(input, 64, 2, [0.3, 0])
+    conv2 = conv_block(conv1, 128, 2, [0.4, 0])
+    conv3 = conv_block(conv2, 256, 3, [0.4, 0.4, 0])
+    conv4 = conv_block(conv3, 512, 3, [0.4, 0.4, 0])
+    conv5 = conv_block(conv4, 512, 3, [0.4, 0.4, 0])
 
-drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
-fc1 = fluid.layers.fc(input=drop, size=512, act=None)
-bn = fluid.layers.batch_norm(input=fc1, act='relu')
-drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
-fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
-predict = fluid.layers.fc(input=fc2, size=10, act='softmax')
-return predict
+    drop = fluid.layers.dropout(x=conv5, dropout_prob=0.5)
+    fc1 = fluid.layers.fc(input=drop, size=512, act=None)
+    bn = fluid.layers.batch_norm(input=fc1, act='relu')
+    drop2 = fluid.layers.dropout(x=bn, dropout_prob=0.5)
+    fc2 = fluid.layers.fc(input=drop2, size=512, act=None)
+    predict = fluid.layers.fc(input=fc2, size=10, act='softmax')
+    return predict
 ```
 
 1. 首先定义了一组卷积网络，即conv_block。卷积核大小为3x3，池化窗口大小为2x2，窗口滑动大小为2，groups决定每组VGG模块是几次连续的卷积操作，dropouts指定Dropout操作的概率。所使用的`img_conv_group`是在`paddle.networks`中预定义的模块，由若干组 Conv->BN->ReLu->Dropout 和 一组 Pooling 组成。
@@ -219,42 +219,42 @@ ResNet模型的第1、3、4步和VGG模型相同，这里不再介绍。主要�
 
 ```python
 def conv_bn_layer(input,
-ch_out,
-filter_size,
-stride,
-padding,
-act='relu',
-bias_attr=False):
-tmp = fluid.layers.conv2d(
-input=input,
-filter_size=filter_size,
-num_filters=ch_out,
-stride=stride,
-padding=padding,
-act=None,
-bias_attr=bias_attr)
-return fluid.layers.batch_norm(input=tmp, act=act)
+                  ch_out,
+                  filter_size,
+                  stride,
+                  padding,
+                  act='relu',
+                  bias_attr=False):
+    tmp = fluid.layers.conv2d(
+        input=input,
+        filter_size=filter_size,
+        num_filters=ch_out,
+        stride=stride,
+        padding=padding,
+        act=None,
+        bias_attr=bias_attr)
+    return fluid.layers.batch_norm(input=tmp, act=act)
 
 
 def shortcut(input, ch_in, ch_out, stride):
-if ch_in != ch_out:
-return conv_bn_layer(input, ch_out, 1, stride, 0, None)
-else:
-return input
+    if ch_in != ch_out:
+        return conv_bn_layer(input, ch_out, 1, stride, 0, None)
+    else:
+        return input
 
 
 def basicblock(input, ch_in, ch_out, stride):
-tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
-tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
-short = shortcut(input, ch_in, ch_out, stride)
-return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
+    tmp = conv_bn_layer(input, ch_out, 3, stride, 1)
+    tmp = conv_bn_layer(tmp, ch_out, 3, 1, 1, act=None, bias_attr=True)
+    short = shortcut(input, ch_in, ch_out, stride)
+    return fluid.layers.elementwise_add(x=tmp, y=short, act='relu')
 
 
 def layer_warp(block_func, input, ch_in, ch_out, count, stride):
-tmp = block_func(input, ch_in, ch_out, stride)
-for i in range(1, count):
-tmp = block_func(tmp, ch_out, ch_out, 1)
-return tmp
+    tmp = block_func(input, ch_in, ch_out, stride)
+    for i in range(1, count):
+        tmp = block_func(tmp, ch_out, ch_out, 1)
+    return tmp
 ```
 
 `resnet_cifar10` 的连接结构主要有以下几个过程。
@@ -267,18 +267,18 @@ return tmp
 
 ```python
 def resnet_cifar10(ipt, depth=32):
-# depth should be one of 20, 32, 44, 56, 110, 1202
-assert (depth - 2) % 6 == 0
-n = (depth - 2) / 6
-nStages = {16, 64, 128}
-conv1 = conv_bn_layer(ipt, ch_out=16, filter_size=3, stride=1, padding=1)
-res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
-res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
-res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
-pool = fluid.layers.pool2d(
-input=res3, pool_size=8, pool_type='avg', pool_stride=1)
-predict = fluid.layers.fc(input=pool, size=10, act='softmax')
-return predict
+    # depth should be one of 20, 32, 44, 56, 110, 1202
+    assert (depth - 2) % 6 == 0
+    n = (depth - 2) / 6
+    nStages = {16, 64, 128}
+    conv1 = conv_bn_layer(ipt, ch_out=16, filter_size=3, stride=1, padding=1)
+    res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
+    res2 = layer_warp(basicblock, res1, 16, 32, n, 2)
+    res3 = layer_warp(basicblock, res2, 32, 64, n, 2)
+    pool = fluid.layers.pool2d(
+        input=res3, pool_size=8, pool_type='avg', pool_stride=1)
+    predict = fluid.layers.fc(input=pool, size=10, act='softmax')
+    return predict
 ```
 
 ## Infererence Program 配置
@@ -287,13 +287,13 @@ return predict
 
 ```python
 def inference_program():
-# The image is 32 * 32 with RGB representation.
-data_shape = [3, 32, 32]
-images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
+    # The image is 32 * 32 with RGB representation.
+    data_shape = [3, 32, 32]
+    images = fluid.layers.data(name='pixel', shape=data_shape, dtype='float32')
 
-predict = resnet_cifar10(images, 32)
-# predict = vgg_bn_drop(images) # un-comment to use vgg net
-return predict
+    predict = resnet_cifar10(images, 32)
+    # predict = vgg_bn_drop(images) # un-comment to use vgg net
+    return predict
 ```
 
 ## Train Program 配置
@@ -306,13 +306,13 @@ return predict
 
 ```python
 def train_program():
-predict = inference_program()
+    predict = inference_program()
 
-label = fluid.layers.data(name='label', shape=[1], dtype='int64')
-cost = fluid.layers.cross_entropy(input=predict, label=label)
-avg_cost = fluid.layers.mean(cost)
-accuracy = fluid.layers.accuracy(input=predict, label=label)
-return [avg_cost, accuracy]
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    avg_cost = fluid.layers.mean(cost)
+    accuracy = fluid.layers.accuracy(input=predict, label=label)
+    return [avg_cost, accuracy]
 ```
 
 ## Optimizer Function 配置
@@ -321,7 +321,7 @@ return [avg_cost, accuracy]
 
 ```python
 def optimizer_program():
-return fluid.optimizer.Adam(learning_rate=0.001)
+    return fluid.optimizer.Adam(learning_rate=0.001)
 ```
 
 ## 训练模型
@@ -334,9 +334,9 @@ return fluid.optimizer.Adam(learning_rate=0.001)
 use_cuda = False
 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 trainer = fluid.Trainer(
-train_func=train_program,
-optimizer_func=optimizer_program,
-place=place)
+    train_func=train_program,
+    optimizer_func=optimizer_program,
+    place=place)
 ```
 
 ### Data Feeders 配置
@@ -349,12 +349,12 @@ BATCH_SIZE = 128
 
 # Reader for training
 train_reader = paddle.batch(
-paddle.reader.shuffle(paddle.dataset.cifar.train10(), buf_size=50000),
-batch_size=BATCH_SIZE)
+    paddle.reader.shuffle(paddle.dataset.cifar.train10(), buf_size=50000),
+    batch_size=BATCH_SIZE)
 
 # Reader for testing. A separated data set for testing.
 test_reader = paddle.batch(
-paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+    paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
 ```
 
 ### Event Handler
@@ -376,21 +376,21 @@ cost_ploter = Ploter(train_title, test_title)
 
 step = 0
 def event_handler_plot(event):
-global step
-if isinstance(event, fluid.EndStepEvent):
-if step % 1 == 0:
-cost_ploter.append(train_title, step, event.metrics[0])
-cost_ploter.plot()
-step += 1
-if isinstance(event, fluid.EndEpochEvent):
-avg_cost, accuracy = trainer.test(
-reader=test_reader,
-feed_order=['pixel', 'label'])
-cost_ploter.append(test_title, step, avg_cost)
+    global step
+    if isinstance(event, fluid.EndStepEvent):
+        if step % 1 == 0:
+            cost_ploter.append(train_title, step, event.metrics[0])
+            cost_ploter.plot()
+        step += 1
+    if isinstance(event, fluid.EndEpochEvent):
+        avg_cost, accuracy = trainer.test(
+            reader=test_reader,
+            feed_order=['pixel', 'label'])
+        cost_ploter.append(test_title, step, avg_cost)
 
-# save parameters
-if params_dirname is not None:
-trainer.save_params(params_dirname)
+        # save parameters
+        if params_dirname is not None:
+            trainer.save_params(params_dirname)
 ```
 
 `event_handler` 用来在训练过程中输出文本日志
@@ -400,25 +400,25 @@ params_dirname = "image_classification_resnet.inference.model"
 
 # event handler to track training and testing process
 def event_handler(event):
-if isinstance(event, fluid.EndStepEvent):
-if event.step % 100 == 0:
-print("\nPass %d, Batch %d, Cost %f, Acc %f" %
-(event.step, event.epoch, event.metrics[0],
-event.metrics[1]))
-else:
-sys.stdout.write('.')
-sys.stdout.flush()
+    if isinstance(event, fluid.EndStepEvent):
+        if event.step % 100 == 0:
+            print("\nPass %d, Batch %d, Cost %f, Acc %f" %
+                  (event.step, event.epoch, event.metrics[0],
+                   event.metrics[1]))
+        else:
+            sys.stdout.write('.')
+            sys.stdout.flush()
 
-if isinstance(event, fluid.EndEpochEvent):
-# Test against with the test dataset to get accuracy.
-avg_cost, accuracy = trainer.test(
-reader=test_reader, feed_order=['pixel', 'label'])
+    if isinstance(event, fluid.EndEpochEvent):
+        # Test against with the test dataset to get accuracy.
+        avg_cost, accuracy = trainer.test(
+            reader=test_reader, feed_order=['pixel', 'label'])
 
-print('\nTest with Pass {0}, Loss {1:2.2}, Acc {2:2.2}'.format(event.epoch, avg_cost, accuracy))
+        print('\nTest with Pass {0}, Loss {1:2.2}, Acc {2:2.2}'.format(event.epoch, avg_cost, accuracy))
 
-# save parameters
-if params_dirname is not None:
-trainer.save_params(params_dirname)
+        # save parameters
+        if params_dirname is not None:
+            trainer.save_params(params_dirname)
 ```
 
 ### 训练
@@ -429,10 +429,10 @@ trainer.save_params(params_dirname)
 
 ```python
 trainer.train(
-reader=train_reader,
-num_epochs=2,
-event_handler=event_handler,
-feed_order=['pixel', 'label'])
+    reader=train_reader,
+    num_epochs=2,
+    event_handler=event_handler,
+    feed_order=['pixel', 'label'])
 ```
 
 一轮训练log示例如下所示，经过1个pass， 训练集上平均 Accuracy 为0.59 ，测试集上平均  Accuracy 为0.6 。
@@ -471,19 +471,19 @@ import numpy as np
 import os
 
 def load_image(file):
-im = Image.open(file)
-im = im.resize((32, 32), Image.ANTIALIAS)
+    im = Image.open(file)
+    im = im.resize((32, 32), Image.ANTIALIAS)
 
-im = np.array(im).astype(np.float32)
-# The storage order of the loaded image is W(width),
-# H(height), C(channel). PaddlePaddle requires
-# the CHW order, so transpose them.
-im = im.transpose((2, 0, 1))  # CHW
-im = im / 255.0
+    im = np.array(im).astype(np.float32)
+    # The storage order of the loaded image is W(width),
+    # H(height), C(channel). PaddlePaddle requires
+    # the CHW order, so transpose them.
+    im = im.transpose((2, 0, 1))  # CHW
+    im = im / 255.0
 
-# Add one dimension to mimic the list format.
-im = numpy.expand_dims(im, axis=0)
-return im
+    # Add one dimension to mimic the list format.
+    im = numpy.expand_dims(im, axis=0)
+    return im
 
 cur_dir = os.getcwd()
 img = load_image(cur_dir + '/image/dog.png')
@@ -497,11 +497,11 @@ img = load_image(cur_dir + '/image/dog.png')
 
 ```python
 inferencer = fluid.Inferencer(
-infer_func=inference_program, param_path=params_dirname, place=place)
-
+    infer_func=inference_program, param_path=params_dirname, place=place)
+label_list = ["airplane", "automobile", "bird", "cat", "deer", "dog", "frog", "horse", "ship", "truck"]
 # inference
 results = inferencer.infer({'pixel': img})
-print("infer results: ", results)
+print("infer results: %s" % label_list[np.argmax(results[0])])
 ```
 
 ## 总结
