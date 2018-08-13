@@ -58,16 +58,15 @@ static std::vector<int> GetOffsets(const framework::ExecutionContext& ctx) {
   return res;
 }
 
-template <typename T>
-class CropKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
+template <typename DeviceContext, typename T, size_t D>
+void CropFunction(const framework::ExecutionContext& context) {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
-    const T* x_data = x->data<T>();
     auto out_dims = out->dims();
-    out_dims[0] = x->dims()[0];
-    T* out_data = out->mutable_data<T>(out_dims, context.GetPlace());
+    if (out_dims[0] == -1) {
+      out_dims[0] = x->dims()[0];
+    }
+    out->mutable_data<T>(out_dims, context.GetPlace());
     auto x_stride = framework::stride(x->dims());
     auto out_stride = framework::stride(out->dims());
     auto offsets = GetOffsets(context);
@@ -75,8 +74,50 @@ class CropKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < offsets.size(); ++i) {
       offset += (x_stride[i] * offsets[i]);
     }
-    StridedMemcpy<T>(context.device_context(), x_data + offset, x_stride,
-                     out->dims(), out_stride, out_data);
+
+    auto x_tensor = EigenTensor<T, D>::From(*x);
+    auto out_tensor = EigenTensor<T, D>::From(*out);
+    Eigen::array<int, D> e_offsets;
+    Eigen::array<int, D> e_shape;
+    for (size_t i=0; i<D; ++i) {
+      e_offsets[i] = offsets[i];
+      e_shape[i] = out->dims()[i];
+    }
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    out_tensor.device(place) = x_tensor.slice(e_offsets, e_shape);
+}
+
+template <typename DeviceContext, typename T>
+class CropKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    int rank = context.Input<Tensor>("X")->dims().size();
+    switch (rank) {
+      case 1:
+        CropFunction<DeviceContext, T, 1>(context);
+        break;
+      case 2:
+        CropFunction<DeviceContext, T, 2>(context);
+        break;
+      case 3:
+        CropFunction<DeviceContext, T, 3>(context);
+        break;
+      case 4:
+        CropFunction<DeviceContext, T, 4>(context);
+        break;
+      case 5:
+        CropFunction<DeviceContext, T, 5>(context);
+        break;
+      case 6:
+        CropFunction<DeviceContext, T, 6>(context);
+        break;
+      default:
+        PADDLE_THROW(
+            "CropOp only support tensors with no more than 6 dimensions.");
+    }
+
+
   }
 };
 
