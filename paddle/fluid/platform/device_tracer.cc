@@ -318,11 +318,12 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void Disable() {
-    std::lock_guard<std::mutex> l(trace_mu_);
 #ifdef PADDLE_WITH_CUPTI
     // flush might cause additional calls to DeviceTracker.
     dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED);
-
+#endif  // PADDLE_WITH_CUPTI
+    std::lock_guard<std::mutex> l(trace_mu_);
+#ifdef PADDLE_WITH_CUPTI
     DisableActivity();
     dynload::cuptiUnsubscribe(subscriber_);
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
