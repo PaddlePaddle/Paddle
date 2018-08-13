@@ -21,10 +21,27 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+size_t PDPattern::id_ = 0UL;
+
 PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
+  if (!name.empty()) {
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+                      "PDNode's name should be unique, get duplicate [%s]",
+                      name);
+  }
+
   nodes_.emplace_back(new PDNode(std::move(teller), name));
   auto* cur = nodes_.back().get();
   return cur;
+}
+
+PDNode* PDPattern::RetriveNode(const std::string& id) const {
+  auto it = node_map_.find(id);
+  if (it == node_map_.end()) {
+    return nullptr;
+  }
+
+  return it->second;
 }
 
 void PDPattern::AddEdge(PDNode* a, PDNode* b) {
