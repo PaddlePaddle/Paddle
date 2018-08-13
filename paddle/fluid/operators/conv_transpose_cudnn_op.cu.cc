@@ -87,7 +87,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     // Get the algorithm
-    PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
+    CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
         handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
         // dxDesc: Handle to the previously initialized output tensor
         // descriptor.
@@ -95,7 +95,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
         workspace_size_limit, &algo));
 
     // get workspace size able to allocate
-    PADDLE_ENFORCE(
+    CUDNN_ENFORCE(
         platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
             handle, cudnn_filter_desc, cudnn_input_desc, cudnn_conv_desc,
             cudnn_output_desc, algo, &workspace_size_in_bytes));
@@ -110,7 +110,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int filter_offset = filter->numel() / groups;
     T alpha = 1.0f, beta = 0.0f;
     for (int g = 0; g < groups; g++) {
-      PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
+      CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
           handle, &alpha, cudnn_filter_desc, filter_data + filter_offset * g,
           cudnn_input_desc, input_data + input_offset * g, cudnn_conv_desc,
           algo, cudnn_workspace, workspace_size_in_bytes, &beta,
@@ -178,11 +178,11 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
     auto handle = dev_ctx.cudnn_handle();
     if (input_grad) {
       // choose backward algorithm for data
-      PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
           handle, cudnn_output_desc, cudnn_filter_desc, cudnn_conv_desc,
           cudnn_input_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
           workspace_size_limit, &data_algo));
-      PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
+      CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
           handle, cudnn_output_desc, cudnn_filter_desc, cudnn_conv_desc,
           cudnn_input_desc, data_algo, &fwd_ws_size));
       workspace_size_in_bytes = std::max(workspace_size_in_bytes, fwd_ws_size);
@@ -190,7 +190,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
 
     if (filter_grad) {
       // choose backward algorithm for filter
-      PADDLE_ENFORCE(
+      CUDNN_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
               handle, cudnn_output_desc, cudnn_input_desc, cudnn_conv_desc,
               cudnn_filter_desc,
@@ -198,7 +198,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
               workspace_size_limit, &filter_algo));
 
       // get workspace for backwards filter algorithm
-      PADDLE_ENFORCE(
+      CUDNN_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
               handle, cudnn_output_desc, cudnn_input_desc, cudnn_conv_desc,
               cudnn_filter_desc, filter_algo, &bwd_filter_ws_size));
@@ -222,7 +222,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
       for (int g = 0; g < groups; g++) {
-        PADDLE_ENFORCE(platform::dynload::cudnnConvolutionForward(
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
             handle, &alpha, cudnn_output_desc,
             output_grad_data + output_grad_offset * g, cudnn_filter_desc,
             filter_data + filter_offset * g, cudnn_conv_desc, data_algo,
@@ -237,7 +237,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       // Because beta is zero, it is unnecessary to reset filter_grad.
       // Gradient with respect to the filter
       for (int g = 0; g < groups; g++) {
-        PADDLE_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
+        CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
             handle, &alpha, cudnn_output_desc,
             output_grad_data + output_grad_offset * g, cudnn_input_desc,
             input_data + input_offset * g, cudnn_conv_desc, filter_algo,

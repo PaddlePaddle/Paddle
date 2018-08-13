@@ -18,7 +18,11 @@ else()
 endif()
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
-cc_library(cpu_info SRCS cpu_info.cc DEPS gflags glog enforce)
+set(CPU_INFO_DEPS gflags glog enforce)
+IF(WITH_XBYAK)
+    list(APPEND CPU_INFO_DEPS xbyak)
+ENDIF()
+cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
@@ -60,3 +64,7 @@ cc_test(profiler_test SRCS profiler_test.cc DEPS profiler)
 
 nv_test(float16_gpu_test SRCS float16_test.cu DEPS lod_tensor)
 cc_test(float16_test SRCS float16_test.cc DEPS lod_tensor)
+
+IF(WITH_GPU)
+  nv_test(cuda_helper_test SRCS cuda_helper_test.cu)
+ENDIF()

@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #include <sys/time.h>
-#include <time.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -97,12 +96,6 @@ inline uint64_t GetTimeInNsec() {
       .count();
 }
 
-inline uint64_t PosixInNsec() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
-}
-
 Event::Event(EventType type, std::string name, uint32_t thread_id,
              const DeviceContext* dev_ctx)
     : type_(type), name_(name), thread_id_(thread_id), has_cuda_(false) {
@@ -110,6 +103,8 @@ Event::Event(EventType type, std::string name, uint32_t thread_id,
   has_cuda_ = dev_ctx ? platform::is_gpu_place(dev_ctx->GetPlace()) : false;
   if (has_cuda_) {
     auto* cuda_dev_ctx = static_cast<const CUDADeviceContext*>(dev_ctx);
+    PADDLE_ENFORCE(cudaSetDevice(
+        boost::get<platform::CUDAPlace>(cuda_dev_ctx->GetPlace()).device));
     PADDLE_ENFORCE(cudaGetDevice(&device_));
     PADDLE_ENFORCE(cudaEventCreate(&event_));
     auto stream = cuda_dev_ctx->stream();
@@ -176,6 +171,7 @@ void PopEvent(const std::string& name, const DeviceContext* dev_ctx) {
 
 RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   dev_ctx_ = dev_ctx;
@@ -186,11 +182,12 @@ RecordEvent::RecordEvent(const std::string& name, const DeviceContext* dev_ctx)
 }
 
 RecordEvent::~RecordEvent() {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     tracer->AddCPURecords(CurAnnotation(), start_ns_, PosixInNsec(),
-                          BlockDepth(), CurThread());
+                          BlockDepth(), g_thread_id);
   }
   ClearCurAnnotation();
   PopEvent(name_, dev_ctx_);
@@ -198,6 +195,7 @@ RecordEvent::~RecordEvent() {
 
 RecordBlock::RecordBlock(int block_id)
     : is_enabled_(false), start_ns_(PosixInNsec()) {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled) return;
   is_enabled_ = true;
   SetCurBlock(block_id);
@@ -205,25 +203,16 @@ RecordBlock::RecordBlock(int block_id)
 }
 
 RecordBlock::~RecordBlock() {
+  std::lock_guard<std::mutex> l(profiler_mu);
   if (g_state == ProfilerState::kDisabled || !is_enabled_) return;
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer) {
     // We try to put all blocks at the same nested depth in the
     // same timeline lane. and distinguish the using thread_id.
     tracer->AddCPURecords(name_, start_ns_, PosixInNsec(), BlockDepth(),
-                          CurThread());
+                          g_thread_id);
   }
   ClearCurBlock();
-}
-
-RecordThread::RecordThread(int thread_id) {
-  if (g_state == ProfilerState::kDisabled) return;
-  SetCurThread(thread_id);
-}
-
-RecordThread::~RecordThread() {
-  if (g_state == ProfilerState::kDisabled) return;
-  ClearCurThread();
 }
 
 void EnableProfiler(ProfilerState state) {

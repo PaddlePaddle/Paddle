@@ -15,6 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "glog/logging.h"
 
+DEFINE_bool(free_idle_memory, false,
+            "If it is true, Paddle will try to free idle memory trunks during "
+            "running time.");
+
 namespace paddle {
 namespace memory {
 namespace detail {
@@ -152,13 +156,14 @@ void BuddyAllocator::Free(void* p) {
   pool_.insert(
       IndexSizeAddress(block->index(cache_), block->total_size(cache_), block));
 
-  // Clean up if existing too much free memory
+  if (FLAGS_free_idle_memory) {
+    // Clean up if existing too much free memory
+    // Prefer freeing fallback allocation first
+    CleanIdleFallBackAlloc();
 
-  // Prefer freeing fallback allocation first
-  CleanIdleFallBackAlloc();
-
-  // Free normal allocation
-  CleanIdleNormalAlloc();
+    // Free normal allocation
+    CleanIdleNormalAlloc();
+  }
 }
 
 size_t BuddyAllocator::Used() { return total_used_; }
