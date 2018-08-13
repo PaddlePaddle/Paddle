@@ -215,7 +215,8 @@ def max_job_id():
     Get the maximum value of job id.
     """
     __initialize_meta_info__()
-    return six.moves.reduce(__max_job_id_impl__, list(USER_INFO.values())).job_id
+    return six.moves.reduce(__max_job_id_impl__,
+                            list(USER_INFO.values())).job_id
 
 
 def movie_categories():

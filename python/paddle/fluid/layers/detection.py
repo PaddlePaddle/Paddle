@@ -1104,9 +1104,8 @@ def multi_box_head(inputs,
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
         new_shape = [
-            mbox_loc.shape[0],
-            mbox_loc.shape[1] * mbox_loc.shape[2] * cpt.floor_division(mbox_loc.shape[3], 4),
-            4
+            mbox_loc.shape[0], mbox_loc.shape[1] * mbox_loc.shape[2] *
+            cpt.floor_division(mbox_loc.shape[3], 4), 4
         ]
         mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
         mbox_locs.append(mbox_loc_flatten)
@@ -1121,9 +1120,8 @@ def multi_box_head(inputs,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
         new_shape = [
-            conf_loc.shape[0],
-            conf_loc.shape[1] * conf_loc.shape[2] * cpt.floor_division(conf_loc.shape[3], num_classes),
-            num_classes
+            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
+            cpt.floor_division(conf_loc.shape[3], num_classes), num_classes
         ]
         conf_loc_flatten = nn.reshape(conf_loc, shape=new_shape)
         mbox_confs.append(conf_loc_flatten)

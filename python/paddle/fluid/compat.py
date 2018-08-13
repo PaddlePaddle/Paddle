@@ -23,6 +23,7 @@ __all__ = [
     'get_exception_message',
 ]
 
+
 #  str and bytes related functions
 def to_literal_str(obj, encoding='utf-8', inplace=False):
     """
@@ -181,10 +182,10 @@ def round(x, d=0):
         # The official walkaround of round in Python3 is incorrect
         # we implement accroding this answer: https://www.techforgeek.info/round_python.html
         if x > 0.0:
-            p = 10 ** d
+            p = 10**d
             return float(math.floor((x * p) + math.copysign(0.5, x))) / p
         elif x < 0.0:
-            p = 10 ** d
+            p = 10**d
             return float(math.ceil((x * p) + math.copysign(0.5, x))) / p
         else:
             return math.copysign(0.0, x)
@@ -208,6 +209,7 @@ def floor_division(x, y):
     """
     return x // y
 
+
 # exception related functions
 def get_exception_message(exc):
     """
@@ -225,4 +227,3 @@ def get_exception_message(exc):
         return exc.message
     else:
         return str(exc)
-
