@@ -895,7 +895,7 @@ class DistributeTranspiler(object):
             if 'Param' in op.input_names and op.input("Param")[0] ==
             self.table_name
         ][0]
-        table_opt_block = pserver_program.create_block(pre_block_idx)
+        table_opt_block = pserver_program._create_block(pre_block_idx)
 
         if self.sync_mode:
             # create grad vars in pserver program
