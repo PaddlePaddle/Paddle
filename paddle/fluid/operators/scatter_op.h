@@ -36,7 +36,7 @@ class ScatterOpKernel : public framework::OpKernel<T> {
 
     // In place output: Out = X, Out[Ids] += Updates
 	framework::TensorCopy(*X, ctx.GetPlace(), Out);
-	// Apply ScatterUpdate: Out[index] += Updates[:]
+    // Apply ScatterUpdate: Out[index] += Updates[:]
     ScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
   }
 };
