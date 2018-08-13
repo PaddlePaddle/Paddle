@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
-#include "paddle/fluid/framework/details/ssa_graph_builder.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
@@ -30,7 +30,7 @@ namespace framework {
 class Scope;
 namespace details {
 
-class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
+class MultiDevSSAGraphBuilder : public ir::Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;

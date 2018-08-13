@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
-#include "paddle/fluid/framework/details/ssa_graph_builder.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
