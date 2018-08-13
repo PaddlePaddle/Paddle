@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -71,6 +72,13 @@ class SGDOpKernel : public framework::OpKernel<T> {
         auto *grad_data = grad_value.data<T>();
         auto *out_data = param_out->data<T>();
         auto *lr = learning_rate->data<T>();
+#if !defined(__APPLE__) && !defined(__OSX__)
+        for (int i = 0; i < grad_rows.size(); ++i) {
+          math::paddle_sse_axpy<T>(grad_data + i * grad_row_numel,
+                                   out_data + grad_rows[i] * grad_row_numel,
+                                   grad_row_numel, -lr[0]);
+        }
+#else
         for (size_t i = 0; i < grad_rows.size(); i++) {
           PADDLE_ENFORCE(grad_rows[i] < grad_height,
                          "Input rows index should less than height");
@@ -79,6 +87,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
                 lr[0] * grad_data[i * grad_row_numel + j];
           }
         }
+#endif
       } else {
         PADDLE_THROW("Unsupported Variable Type of Grad");
       }

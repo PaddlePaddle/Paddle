@@ -17,7 +17,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
+#if !defined(__APPLE__) && !defined(__OSX__)
 #include <immintrin.h>
+#include <tmmintrin.h>
+#include <xmmintrin.h>
+#endif
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
@@ -79,6 +83,7 @@ struct RowwiseMean {
                   framework::Tensor* vec);
 };
 
+#if !defined(__APPLE__) && !defined(__OSX__)
 static const unsigned int SSE_STEP_SIZE = 4;
 static const unsigned int SSE_CUT_LEN_MASK = 3U;
 #define __m256x __m256
@@ -109,6 +114,7 @@ template <typename T>
 inline T paddle_uniform_real(T min, T max) {
   return ((T)rand() / (RAND_MAX)) * (max - min) + min;
 }
+#endif
 
 }  // namespace math
 }  // namespace operators
