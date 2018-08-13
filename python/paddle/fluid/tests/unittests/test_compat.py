@@ -63,7 +63,6 @@ class TestCompatible(unittest.TestCase):
             for i in l2:
                 self.assertTrue(isinstance(i, unicode))
 
-
             # check list types, inplace
             l = [""]
             l2 = cpt.to_literal_str(l, inplace=True)
@@ -272,7 +271,6 @@ class TestCompatible(unittest.TestCase):
             for i in l2:
                 self.assertTrue(isinstance(i, bytes))
 
-
             # check list types, inplace
             l = [""]
             l2 = cpt.to_bytes(l, inplace=True)
@@ -461,30 +459,35 @@ class TestCompatible(unittest.TestCase):
         exception_message = "test_message"
         self.assertRaises(AssertionError, cpt.get_exception_message, None)
         if six.PY2:
-            self.assertRaises(AttributeError, cpt.get_exception_message, exception_message)
+            self.assertRaises(AttributeError, cpt.get_exception_message,
+                              exception_message)
             try:
                 raise RuntimeError(exception_message)
             except Exception as e:
-                self.assertEqual(exception_message, cpt.get_exception_message(e))
+                self.assertEqual(exception_message,
+                                 cpt.get_exception_message(e))
                 self.assertIsNotNone(e)
 
             try:
                 raise Exception(exception_message)
             except Exception as e:
-                self.assertEqual(exception_message, cpt.get_exception_message(e))
+                self.assertEqual(exception_message,
+                                 cpt.get_exception_message(e))
                 self.assertIsNotNone(e)
 
         if six.PY3:
             try:
                 raise RuntimeError(exception_message)
             except Exception as e:
-                self.assertEqual(exception_message, cpt.get_exception_message(e))
+                self.assertEqual(exception_message,
+                                 cpt.get_exception_message(e))
                 self.assertIsNotNone(e)
 
             try:
                 raise Exception(exception_message)
             except Exception as e:
-                self.assertEqual(exception_message, cpt.get_exception_message(e))
+                self.assertEqual(exception_message,
+                                 cpt.get_exception_message(e))
                 self.assertIsNotNone(e)
 
 
