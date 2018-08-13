@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #include <sys/time.h>
+#include <time.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -94,6 +95,12 @@ inline uint64_t GetTimeInNsec() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
              clock::now().time_since_epoch())
       .count();
+}
+
+inline uint64_t PosixInNsec() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 
 Event::Event(EventType type, std::string name, uint32_t thread_id,
