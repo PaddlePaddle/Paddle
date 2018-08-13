@@ -160,6 +160,7 @@ def get_model():
     avg_cost = transformer(use_feed=False)
     optimizer = fluid.optimizer.Adam()
     optimizer.minimize(avg_cost)
+    fluid.memory_optimize(fluid.default_main_program())
     return avg_cost
 
 
