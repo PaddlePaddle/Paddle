@@ -21,6 +21,9 @@ from paddle.fluid.framework import default_main_program, switch_main_program
 from paddle.fluid.framework import Program
 import numpy as np
 
+from paddle.fluid.layers.control_flow import shrink_memory
+from paddle.fluid.layers.control_flow import lod_rank_table
+
 
 class TestShrinkRNNMemoryBase(unittest.TestCase):
     def setUp(self):
@@ -30,22 +33,22 @@ class TestShrinkRNNMemoryBase(unittest.TestCase):
         x.stop_gradient = False
         rank_table_tensor = layers.data(
             'rank_table_tensor', shape=[1], dtype='float32', lod_level=1)
-        table = layers.lod_rank_table(x=rank_table_tensor)
+        table = lod_rank_table(x=rank_table_tensor)
         i = layers.zeros(dtype='int64', shape=[1])
-        self.mem1 = layers.shrink_memory(x=x, i=i, table=table)
+        self.mem1 = shrink_memory(x=x, i=i, table=table)
         i = layers.increment(x=i)
         i.stop_gradient = True
-        self.mem2 = layers.shrink_memory(x=self.mem1, i=i, table=table)
+        self.mem2 = shrink_memory(x=self.mem1, i=i, table=table)
         i = layers.increment(x=i)
         i.stop_gradient = True
-        self.mem3 = layers.shrink_memory(x=self.mem2, i=i, table=table)
+        self.mem3 = shrink_memory(x=self.mem2, i=i, table=table)
         mem3_mean = layers.mean(self.mem3)
         append_backward(loss=mem3_mean)
         self.x_grad = self.main_program.global_block().var('x@GRAD')
 
     def sum_lodtensor(self, tensor):
         sum_res = 0.0
-        for i in xrange(np.product(tensor.shape())):
+        for i in range(np.product(tensor.shape())):
             sum_res += tensor._get_float_element(i)
         return sum_res
 

@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import framework
+from . import framework
 import numpy as np
 import contextlib
-from framework import convert_np_dtype_to_dtype_
-from core import VarDesc
+from .framework import convert_np_dtype_to_dtype_
+from .core import VarDesc
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
@@ -148,7 +148,7 @@ class ConstantInitializer(Initializer):
         assert isinstance(var, framework.Variable)
         assert isinstance(block, framework.Block)
         # Initialization Ops should be prepended and not appended
-        op = block.prepend_op(
+        op = block._prepend_op(
             type="fill_constant",
             outputs={"Out": var},
             attrs={
@@ -202,7 +202,7 @@ class UniformInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
-        op = block.prepend_op(
+        op = block._prepend_op(
             type="uniform_random",
             outputs={"Out": var},
             attrs={
@@ -256,7 +256,7 @@ class NormalInitializer(Initializer):
         # Initialization Ops should be prepended and not appended
         if self._seed == 0:
             self._seed = block.program.random_seed
-        op = block.prepend_op(
+        op = block._prepend_op(
             type="gaussian_random",
             outputs={"Out": var},
             attrs={
@@ -346,7 +346,7 @@ class XavierInitializer(Initializer):
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in + fan_out))
-            op = block.prepend_op(
+            op = block._prepend_op(
                 type="uniform_random",
                 outputs={"Out": var},
                 attrs={
@@ -359,7 +359,7 @@ class XavierInitializer(Initializer):
 
         else:
             std = np.sqrt(2.0 / float(fan_in + fan_out))
-            op = block.prepend_op(
+            op = block._prepend_op(
                 type="gaussian_random",
                 outputs={"Out": var},
                 attrs={
@@ -444,7 +444,7 @@ class MSRAInitializer(Initializer):
 
         if self._uniform:
             limit = np.sqrt(6.0 / float(fan_in))
-            op = block.prepend_op(
+            op = block._prepend_op(
                 type="uniform_random",
                 outputs={"Out": var},
                 attrs={
@@ -457,7 +457,7 @@ class MSRAInitializer(Initializer):
 
         else:
             std = np.sqrt(2.0 / float(fan_in))
-            op = block.prepend_op(
+            op = block._prepend_op(
                 type="gaussian_random",
                 outputs={"Out": var},
                 attrs={

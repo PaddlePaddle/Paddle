@@ -85,9 +85,11 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
-                map(pd.read_input, [
-                    first_word, second_word, third_word, forth_word, next_word
-                ]))
+                list(
+                    map(pd.read_input, [
+                        first_word, second_word, third_word, forth_word,
+                        next_word
+                    ])))
             pd.write_output(avg_cost)
 
         avg_cost = fluid.layers.mean(pd())
@@ -167,11 +169,11 @@ def infer(use_cuda, save_dirname=None):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
-        # is simply an index to look up for the corresponding word vector and hence 
-        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths, 
-        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]] 
-        # meaning there is only one level of detail and there is only one sequence of 
+        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
+        # is simply an index to look up for the corresponding word vector and hence
+        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths,
+        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]]
+        # meaning there is only one level of detail and there is only one sequence of
         # one word on this level.
         # Note that recursive_sequence_lengths should be a list of lists.
         recursive_seq_lens = [[1]]
@@ -245,7 +247,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if use_cuda and is_sparse:
+    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server

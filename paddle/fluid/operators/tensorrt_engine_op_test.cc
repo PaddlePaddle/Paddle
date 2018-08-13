@@ -64,36 +64,37 @@ TEST(TensorRTEngineOp, manual) {
 
   LOG(INFO) << "create block desc";
   framework::BlockDesc block_desc(&program, block_);
-  LOG(INFO) << "create mul op";
-  auto* mul = block_desc.AppendOp();
-  mul->SetType("mul");
-  mul->SetInput("X", std::vector<std::string>({"x"}));     // 2 x 4
-  mul->SetInput("Y", std::vector<std::string>({"y"}));     // 4 x 6
-  mul->SetOutput("Out", std::vector<std::string>({"z"}));  // 2 x 6
+  LOG(INFO) << "create fc op";
+  auto* fc0 = block_desc.AppendOp();
+  fc0->SetType("fc");
+  fc0->SetInput("X", std::vector<std::string>({"x"}));     // 4 x 1 x 1
+  fc0->SetInput("Y", std::vector<std::string>({"y"}));     // 4 x 6
+  fc0->SetOutput("Out", std::vector<std::string>({"z"}));  // 6 x 1 x 1
 
   LOG(INFO) << "create fc op";
-  auto* fc = block_desc.AppendOp();
-  fc->SetType("mul");
-  fc->SetInput("X", std::vector<std::string>({"z"}));
-  fc->SetInput("Y", std::vector<std::string>({"y0"}));     // 6 x 8
-  fc->SetOutput("Out", std::vector<std::string>({"z0"}));  // 2 x 8
+  auto* fc1 = block_desc.AppendOp();
+  fc1->SetType("fc");
+  fc1->SetInput("X", std::vector<std::string>({"z"}));
+  fc1->SetInput("Y", std::vector<std::string>({"y0"}));     // 6 x 8
+  fc1->SetOutput("Out", std::vector<std::string>({"z0"}));  // 8 x 1 x 1
 
   // Set inputs' variable shape in BlockDesc
-  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4}));
+  // the batch size is 2, so the dims of 'x' is {2, 4, 1, 1}
+  AddTensorToBlockDesc(block_, "x", std::vector<int64_t>({2, 4, 1, 1}));
   AddTensorToBlockDesc(block_, "y", std::vector<int64_t>({4, 6}));
   AddTensorToBlockDesc(block_, "y0", std::vector<int64_t>({6, 8}));
   AddTensorToBlockDesc(block_, "z", std::vector<int64_t>({2, 6}));
 
   // It is wired, need to copy manually.
-  *block_->add_ops() = *mul->Proto();
-  *block_->add_ops() = *fc->Proto();
+  *block_->add_ops() = *fc0->Proto();
+  *block_->add_ops() = *fc1->Proto();
 
   ASSERT_EQ(block_->ops_size(), 2);
 
   LOG(INFO) << "create tensorrt desc";
   framework::OpDesc engine_op_desc(nullptr);
   engine_op_desc.SetType("tensorrt_engine");
-  engine_op_desc.SetInput("Xs", std::vector<std::string>({"x", "y", "y0"}));
+  engine_op_desc.SetInput("Xs", std::vector<std::string>({"x"}));
   engine_op_desc.SetOutput("Ys", std::vector<std::string>({"z0"}));
   SetAttr<std::string>(engine_op_desc.Proto(), "subgraph",
                        block_->SerializeAsString());
@@ -102,6 +103,9 @@ TEST(TensorRTEngineOp, manual) {
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "a_engine");
   SetAttr<std::vector<std::string>>(engine_op_desc.Proto(), "parameters",
                                     std::vector<std::string>({}));
+  SetAttr<std::vector<std::string>>(engine_op_desc.Proto(),
+                                    "output_name_mapping",
+                                    std::vector<std::string>({"z0"}));
 
   LOG(INFO) << "create engine op";
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());
@@ -195,6 +199,10 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
       std::vector<std::string>({"y0", "y1", "y2", "y3"}));
   SetAttr<std::string>(engine_op_desc.Proto(), "engine_uniq_key", "b_engine");
 
+  SetAttr<std::vector<std::string>>(engine_op_desc.Proto(),
+                                    "output_name_mapping",
+                                    std::vector<std::string>({"z3"}));
+
   auto engine_op = framework::OpRegistry::CreateOp(*engine_op_desc.Proto());
 
   // Execute them.
@@ -207,5 +215,4 @@ TEST(TensorRTEngineOp, fc) { Execute(40, 28, 28); }
 }  // namespace operators
 }  // namespace paddle
 
-USE_TRT_CONVERTER(mul)
 USE_TRT_CONVERTER(fc)

@@ -40,8 +40,6 @@ class RecvOp : public framework::OperatorBase {
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
@@ -51,7 +49,7 @@ class RecvOp : public framework::OperatorBase {
       rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
     }
     if (sync_mode) {
-      rpc_client->Wait();
+      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     }
   }
 };

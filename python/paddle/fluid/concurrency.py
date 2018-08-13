@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from layers.control_flow import BlockGuard, equal
+from .layers.control_flow import BlockGuard, equal
 from .framework import Operator
-from layer_helper import LayerHelper, unique_name
-from layers import fill_constant
-import core
+from .layer_helper import LayerHelper, unique_name
+from .layers import fill_constant
+from . import core
 
 __all__ = [
     'Go', 'make_channel', 'channel_send', 'channel_recv', 'channel_close',
@@ -69,8 +69,10 @@ class Go(BlockGuard):
         parent_block.append_op(
             type='go',
             inputs={
-                'X':
-                [parent_block.var_recursive(x_name) for x_name in x_name_list]
+                'X': [
+                    parent_block._var_recursive(x_name)
+                    for x_name in x_name_list
+                ]
             },
             outputs={},
             attrs={'sub_block': go_block})
@@ -259,7 +261,7 @@ class Select(BlockGuard):
             if var_name in intermediate
         ]
 
-        X = [select_block.var_recursive(x_name) for x_name in params]
+        X = [select_block._var_recursive(x_name) for x_name in params]
 
         # Needs to be used by `equal` inside the cases block.
         X.append(self.case_to_execute)

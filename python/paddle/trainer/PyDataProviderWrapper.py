@@ -42,7 +42,7 @@ except ImportError:
 try:
     import cPickle as pickle
 except ImportError:
-    import pickle
+    import six.moves.cPickle as pickle
 
 import io
 
