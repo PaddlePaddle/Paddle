@@ -291,7 +291,7 @@ class DistSeResneXt2x2:
             #block = fluid.default_startup_program().block(0)
             #v0 = sorted(block.vars.iteritems(), key=lambda x: x[0])
             #print(v0)
-            program_to_code(fluid.default_startup_program())
+            #program_to_code(fluid.default_startup_program())
         else:
             trainer_prog = fluid.default_main_program()
             #print("2", fluid.default_startup_program())

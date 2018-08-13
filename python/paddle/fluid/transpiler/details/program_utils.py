@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid import core
+import paddle
 
 
 def delete_ops(block, ops):
@@ -48,8 +49,16 @@ def get_indent_space(indent, space_num=4):
 
 
 def variable_to_code(var):
-    var_str = "var {name} : fluid.{type}.shape{shape}.astype({dtype})".\
+    var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
         format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+
+    if type(var) == paddle.fluid.framework.Parameter:
+        if var.trainable:
+            var_str = "trainable parameter " + var_str
+        else:
+            var_str = "parameter " + var_str
+    else:
+        var_str = "var " + var_str
 
     if var.persistable:
         var_str = "persist " + var_str
@@ -97,31 +106,36 @@ def op_to_code(op):
             attr_map[name] = op.blocks_attr_ids(name)
             continue
 
-        #a = "{name}=({type}){value}".format(name=name, type=attr_type, value=op.desc.attr(name))
         a = "{name} = {value}".format(
             name=name, type=attr_type, value=op.desc.attr(name))
         attrs_str += a
         if i != len(op.attr_names) - 1:
             attrs_str += ", "
 
-
-
-    op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
-        format(outputs = outputs_str, op_type=op.type, inputs=inputs_str, attrs=attrs_str)
+    if outputs_str != "":
+        op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
+            format(outputs = outputs_str, op_type=op.type, inputs=inputs_str, attrs=attrs_str)
+    else:
+        op_str = "{op_type}(inputs={inputs}, {attrs})".\
+            format(op_type=op.type, inputs=inputs_str, attrs=attrs_str)
     return op_str
 
 
 def program_to_code(prog):
     indent = 0
+    block_idx = 0
     for block in prog.blocks:
-        print "{0}{1}".format(get_indent_space(indent), '{')
+        print "{0}{1} // block {2}".format(
+            get_indent_space(indent), '{', block_idx)
         indent += 1
         # sort all vars
         all_vars = sorted(block.vars.iteritems(), key=lambda x: x[0])
         for var in all_vars:
             print "{}{}".format(
                 get_indent_space(indent), variable_to_code(var[1]))
+        print ""
         for op in block.ops:
             print "{}{}".format(get_indent_space(indent), op_to_code(op))
         indent -= 1
         print "{0}{1}".format(get_indent_space(indent), '}')
+        block_idx += 1

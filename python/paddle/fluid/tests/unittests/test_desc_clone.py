@@ -193,7 +193,7 @@ class TestDistMnist(unittest.TestCase):
         self.assertTrue(program_equal(main, pserver_prog))
         self.assertTrue(program_equal(startup, startup_prog))
 
-        program_to_code(startup)
+        #program_to_code(startup)
 
 
 if __name__ == "__main__":

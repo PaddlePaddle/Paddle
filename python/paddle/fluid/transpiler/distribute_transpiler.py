@@ -361,7 +361,8 @@ class DistributeTranspiler(object):
         #delete initialize operators.
         assert (orig_s_prog.num_blocks == 1)
         # FIXME(gongwb): delete not need ops.
-        #delete_ops(orig_s_prog.global_block(), orig_s_prog.global_block().ops)
+        # note that: some parameter is not trainable and they ops can't be deleted.
+        # delete_ops(orig_s_prog.global_block(), orig_s_prog.global_block().ops)
 
         # add concat ops to origin parameters in startup program to
         # let the origin parameters initialized by the spilited parameters
@@ -379,7 +380,7 @@ class DistributeTranspiler(object):
         ps_dispatcher.reset()
         eplist = ps_dispatcher.dispatch(recv_vars)
 
-        #splited_param_mapping = {}
+        #print("param_var_mapping:", self.param_var_mapping)
         for varname, splited_var in self.param_var_mapping.iteritems():
             # Get the eplist of recv vars
             eps = []
@@ -387,22 +388,8 @@ class DistributeTranspiler(object):
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
 
-            #splited_var_in_startup_prog = []
-            # create splited_var with remote initializer
             for var in splited_var:
-                #print("init_var:", var.name)
-                """
-                var_in_startup_prog = orig_s_prog.global_block().create_var(
-                    name=var.name,
-                    shape=var.shape,
-                    dtype=var.dtype,
-                    type=var.type,
-                    lod_level=var.lod_level,
-                    persistable=True,
-                    is_data=var.is_data,
-                    initializer=RemoteInitializer(eps))
-                """
-                if len(splited_var) <= 1:
+                if orig_s_prog.global_block().has_var(var.name):
                     continue
 
                 orig_s_prog.global_block().create_var(
@@ -421,11 +408,6 @@ class DistributeTranspiler(object):
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
-
-            # var with remote initializer
-            #splited_var_in_startup_prog.append(var)
-
-        #splited_param_mapping[varname] = splited_var_in_startup_prog
 
         orig_s_prog.global_block().append_op(
             type="fetch_barrier",
