@@ -126,23 +126,23 @@ USE_GPU = False
 
 ```python
 def convolution_net(data, input_dim, class_dim, emb_dim, hid_dim):
-emb = fluid.layers.embedding(
-input=data, size=[input_dim, emb_dim], is_sparse=True)
-conv_3 = fluid.nets.sequence_conv_pool(
-input=emb,
-num_filters=hid_dim,
-filter_size=3,
-act="tanh",
-pool_type="sqrt")
-conv_4 = fluid.nets.sequence_conv_pool(
-input=emb,
-num_filters=hid_dim,
-filter_size=4,
-act="tanh",
-pool_type="sqrt")
-prediction = fluid.layers.fc(
-input=[conv_3, conv_4], size=class_dim, act="softmax")
-return prediction
+    emb = fluid.layers.embedding(
+        input=data, size=[input_dim, emb_dim], is_sparse=True)
+    conv_3 = fluid.nets.sequence_conv_pool(
+        input=emb,
+        num_filters=hid_dim,
+        filter_size=3,
+        act="tanh",
+        pool_type="sqrt")
+    conv_4 = fluid.nets.sequence_conv_pool(
+        input=emb,
+        num_filters=hid_dim,
+        filter_size=4,
+        act="tanh",
+        pool_type="sqrt")
+    prediction = fluid.layers.fc(
+        input=[conv_3, conv_4], size=class_dim, act="softmax")
+    return prediction
 ```
 
 网络的输入`input_dim`表示的是词典的大小，`class_dim`表示类别数。这里，我们使用[`sequence_conv_pool`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/trainer_config_helpers/networks.py) API实现了卷积和池化操作。
@@ -154,27 +154,26 @@ return prediction
 ```python
 def stacked_lstm_net(data, input_dim, class_dim, emb_dim, hid_dim, stacked_num):
 
-emb = fluid.layers.embedding(
-input=data, size=[input_dim, emb_dim], is_sparse=True)
+    emb = fluid.layers.embedding(
+        input=data, size=[input_dim, emb_dim], is_sparse=True)
 
-fc1 = fluid.layers.fc(input=emb, size=hid_dim)
-lstm1, cell1 = fluid.layers.dynamic_lstm(input=fc1, size=hid_dim)
+    fc1 = fluid.layers.fc(input=emb, size=hid_dim)
+    lstm1, cell1 = fluid.layers.dynamic_lstm(input=fc1, size=hid_dim)
 
-inputs = [fc1, lstm1]
+    inputs = [fc1, lstm1]
 
-for i in range(2, stacked_num + 1):
-fc = fluid.layers.fc(input=inputs, size=hid_dim)
-lstm, cell = fluid.layers.dynamic_lstm(
-input=fc, size=hid_dim, is_reverse=(i % 2) == 0)
-inputs = [fc, lstm]
+    for i in range(2, stacked_num + 1):
+        fc = fluid.layers.fc(input=inputs, size=hid_dim)
+        lstm, cell = fluid.layers.dynamic_lstm(
+            input=fc, size=hid_dim, is_reverse=(i % 2) == 0)
+        inputs = [fc, lstm]
 
-fc_last = fluid.layers.sequence_pool(input=inputs[0], pool_type='max')
-lstm_last = fluid.layers.sequence_pool(input=inputs[1], pool_type='max')
+    fc_last = fluid.layers.sequence_pool(input=inputs[0], pool_type='max')
+    lstm_last = fluid.layers.sequence_pool(input=inputs[1], pool_type='max')
 
-prediction = fluid.layers.fc(input=[fc_last, lstm_last],
-size=class_dim,
-act='softmax')
-return prediction
+    prediction = fluid.layers.fc(
+        input=[fc_last, lstm_last], size=class_dim, act='softmax')
+    return prediction
 ```
 以上的栈式双向LSTM抽象出了高级特征并把其映射到和分类类别数同样大小的向量上。`paddle.activation.Softmax`函数用来计算分类属于某个类别的概率。
 
@@ -184,12 +183,13 @@ return prediction
 
 ```python
 def inference_program(word_dict):
-data = fluid.layers.data(
-name="words", shape=[1], dtype="int64", lod_level=1)
+    data = fluid.layers.data(
+        name="words", shape=[1], dtype="int64", lod_level=1)
 
-dict_dim = len(word_dict)
-net = convolution_net(data, dict_dim, CLASS_DIM, EMB_DIM, HID_DIM)
-return net
+    dict_dim = len(word_dict)
+    net = convolution_net(data, dict_dim, CLASS_DIM, EMB_DIM, HID_DIM)
+    # net = stacked_lstm_net(data, dict_dim, CLASS_DIM, EMB_DIM, HID_DIM, STACKED_NUM)
+    return net
 ```
 
 我们这里定义了`training_program`。它使用了从`inference_program`返回的结果来计算误差。我们同时定义了优化函数`optimizer_func`。
@@ -200,16 +200,16 @@ return net
 
 ```python
 def train_program(word_dict):
-prediction = inference_program(word_dict)
-label = fluid.layers.data(name="label", shape=[1], dtype="int64")
-cost = fluid.layers.cross_entropy(input=prediction, label=label)
-avg_cost = fluid.layers.mean(cost)
-accuracy = fluid.layers.accuracy(input=prediction, label=label)
-return [avg_cost, accuracy]
+    prediction = inference_program(word_dict)
+    label = fluid.layers.data(name="label", shape=[1], dtype="int64")
+    cost = fluid.layers.cross_entropy(input=prediction, label=label)
+    avg_cost = fluid.layers.mean(cost)
+    accuracy = fluid.layers.accuracy(input=prediction, label=label)
+    return [avg_cost, accuracy]
 
 
 def optimizer_func():
-return fluid.optimizer.Adagrad(learning_rate=0.002)
+    return fluid.optimizer.Adagrad(learning_rate=0.002)
 ```
 
 ## 训练模型
@@ -236,9 +236,9 @@ word_dict = paddle.dataset.imdb.word_dict()
 
 print ("Reading training data....")
 train_reader = paddle.batch(
-paddle.reader.shuffle(
-paddle.dataset.imdb.train(word_dict), buf_size=25000),
-batch_size=BATCH_SIZE)
+    paddle.reader.shuffle(
+        paddle.dataset.imdb.train(word_dict), buf_size=25000),
+    batch_size=BATCH_SIZE)
 ```
 
 ### 构造训练器(trainer)
@@ -246,9 +246,9 @@ batch_size=BATCH_SIZE)
 
 ```python
 trainer = fluid.Trainer(
-train_func=partial(train_program, word_dict),
-place=place,
-optimizer_func=optimizer_func)
+    train_func=partial(train_program, word_dict),
+    place=place,
+    optimizer_func=optimizer_func)
 ```
 
 ### 提供数据
@@ -268,13 +268,13 @@ feed_order = ['words', 'label']
 params_dirname = "understand_sentiment_conv.inference.model"
 
 def event_handler(event):
-if isinstance(event, fluid.EndStepEvent):
-print("Step {0}, Epoch {1} Metrics {2}".format(
-event.step, event.epoch, map(np.array, event.metrics)))
+    if isinstance(event, fluid.EndStepEvent):
+        print("Step {0}, Epoch {1} Metrics {2}".format(
+                event.step, event.epoch, map(np.array, event.metrics)))
 
-if event.step == 10:
-trainer.save_params(params_dirname)
-trainer.stop()
+        if event.step == 10:
+            trainer.save_params(params_dirname)
+            trainer.stop()
 ```
 
 ### 开始训练
@@ -283,10 +283,10 @@ trainer.stop()
 
 ```python
 trainer.train(
-num_epochs=1,
-event_handler=event_handler,
-reader=train_reader,
-feed_order=feed_order)
+    num_epochs=1,
+    event_handler=event_handler,
+    reader=train_reader,
+    feed_order=feed_order)
 ```
 
 ## 应用模型
@@ -297,7 +297,7 @@ feed_order=feed_order)
 
 ```python
 inferencer = fluid.Inferencer(
-inference_program, param_path=params_dirname, place=place)
+        infer_func=partial(inference_program, word_dict), param_path=params_dirname, place=place)
 ```
 
 ### 生成测试用输入数据
@@ -307,14 +307,14 @@ inference_program, param_path=params_dirname, place=place)
 
 ```python
 reviews_str = [
-'read the book forget the movie', 'this is a great movie', 'this is very bad'
+    'read the book forget the movie', 'this is a great movie', 'this is very bad'
 ]
 reviews = [c.split() for c in reviews_str]
 
 UNK = word_dict['<unk>']
 lod = []
 for c in reviews:
-lod.append([word_dict.get(words, UNK) for words in c])
+    lod.append([word_dict.get(words, UNK) for words in c])
 
 base_shape = [[len(c) for c in lod]]
 
@@ -329,7 +329,7 @@ tensor_words = fluid.create_lod_tensor(lod, base_shape, place)
 results = inferencer.infer({'words': tensor_words})
 
 for i, r in enumerate(results[0]):
-print("Predict probability of ", r[0], " to be positive and ", r[1], " to be negative for review \'", reviews_str[i], "\'")
+    print("Predict probability of ", r[0], " to be positive and ", r[1], " to be negative for review \'", reviews_str[i], "\'")
 
 ```
 
