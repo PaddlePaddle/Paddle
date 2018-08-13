@@ -17,7 +17,6 @@ limitations under the License. */
 #include <algorithm>
 
 #include "paddle/fluid/framework/data_transform.h"
-#include "paddle/fluid/framework/details/print_utils.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
@@ -137,11 +136,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
-
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
-
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 

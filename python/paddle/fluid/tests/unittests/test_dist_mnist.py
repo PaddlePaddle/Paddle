@@ -170,13 +170,10 @@ class TestDistMnist(unittest.TestCase):
                            fluid.default_main_program(), self._ps_endpoints,
                            self._trainers)
 
-        fetch_list = ["conv2d_0.w_0"]
         trainer_prog = t.get_trainer_program()
 
         exe = fluid.Executor(place)
-        outs = exe.run(fluid.default_startup_program(), fetch_list=fetch_list)
-
-        #return
+        outs = exe.run(fluid.default_startup_program())
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
