@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -57,7 +58,11 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
+    return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
       return var->Get<SelectedRows>().value().dims();
@@ -66,6 +71,26 @@ static DDim GetDims(const Scope& scope, const std::string& name,
     }
   } else {
     return DDim({-1});
+  }
+}
+
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(ToDataType(tensor.type()));
+  } else if (var->IsType<SelectedRows>()) {
+    return DataTypeToString(
+        ToDataType(var->Get<SelectedRows>().value().type()));
+  } else {
+    return "";
   }
 }
 
@@ -91,14 +116,18 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
+    return tensor.lod();
   } else {
     return default_lod;
   }
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(10) << "- " << DebugStringEx(&scope);
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -107,8 +136,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
-  VLOG(10) << "+ " << DebugStringEx(&scope);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -172,6 +203,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
         if (row_size >= 0) {
           ss << "[row_size=" << row_size << "]";
         }
+        std::string dtype = GetDtype(*scope, input.second[i]);
+        ss << ":" << dtype;
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
@@ -608,9 +641,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  // For profiling, don't move out of this function because that will result
-  // in the failure of multi-GPU profiling.
-  platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -679,6 +709,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
         CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
       }
     }
   }
@@ -746,6 +778,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
+  std::string last_input_name;
   for (auto& input : this->inputs_) {
     for (auto& ipt_name : input.second) {
       auto* var = scope.FindVar(ipt_name);
@@ -762,9 +795,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           int tmp = static_cast<int>(ToDataType(t->type()));
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
-              "DataType of Paddle Op %s must be the same. Get %d != %d", Type(),
-              data_type, tmp);
+              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
+              Type(), last_input_name, data_type, ipt_name, tmp);
           data_type = tmp;
+          last_input_name = ipt_name;
         }
       }
     }

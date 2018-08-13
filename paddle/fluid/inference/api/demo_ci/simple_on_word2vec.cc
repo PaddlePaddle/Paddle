@@ -47,10 +47,10 @@ void Main(bool use_gpu) {
     //# 2. Prepare input.
     int64_t data[4] = {1, 2, 3, 4};
 
-    PaddleTensor tensor{.name = "",
-                        .shape = std::vector<int>({4, 1}),
-                        .data = PaddleBuf(data, sizeof(data)),
-                        .dtype = PaddleDType::INT64};
+    PaddleTensor tensor;
+    tensor.shape = std::vector<int>({4, 1});
+    tensor.data = PaddleBuf(data, sizeof(data));
+    tensor.dtype = PaddleDType::INT64;
 
     // For simplicity, we set all the slots with the same data.
     std::vector<PaddleTensor> slots(4, tensor);
@@ -94,10 +94,11 @@ void MainThreads(int num_threads, bool use_gpu) {
       for (int batch_id = 0; batch_id < num_batches; ++batch_id) {
         // 2. Dummy Input Data
         int64_t data[4] = {1, 2, 3, 4};
-        PaddleTensor tensor{.name = "",
-                            .shape = std::vector<int>({4, 1}),
-                            .data = PaddleBuf(data, sizeof(data)),
-                            .dtype = PaddleDType::INT64};
+        PaddleTensor tensor;
+        tensor.shape = std::vector<int>({4, 1});
+        tensor.data = PaddleBuf(data, sizeof(data));
+        tensor.dtype = PaddleDType::INT64;
+
         std::vector<PaddleTensor> inputs(4, tensor);
         std::vector<PaddleTensor> outputs;
         // 3. Run

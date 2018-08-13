@@ -186,8 +186,9 @@ def train(use_cuda, train_program, params_dirname):
                 trainer.save_params(params_dirname)
                 trainer.stop()
             else:
-                print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
-                                                              float(avg_cost)))
+                print(
+                    ('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                                                             float(avg_cost))))
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
 

@@ -25,12 +25,42 @@ TEST(OpConverter, ConvertBlock) {
   framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);
   auto* conv2d_op = block->AppendOp();
+
+  // init trt engine
+  cudaStream_t stream_;
+  std::unique_ptr<TensorRTEngine> engine_;
+  engine_.reset(new TensorRTEngine(5, 1 << 15, &stream_));
+  engine_->InitNetwork();
+  PADDLE_ENFORCE_EQ(cudaStreamCreate(&stream_), 0);
+
+  engine_->DeclareInput("conv2d-X", nvinfer1::DataType::kFLOAT,
+                        nvinfer1::Dims3(2, 5, 5));
+
   conv2d_op->SetType("conv2d");
+  conv2d_op->SetInput("Input", {"conv2d-X"});
+  conv2d_op->SetInput("Filter", {"conv2d-Y"});
+  conv2d_op->SetOutput("Output", {"conv2d-Out"});
+
+  const std::vector<int> strides({1, 1});
+  const std::vector<int> paddings({1, 1});
+  const std::vector<int> dilations({1, 1});
+  const int groups = 1;
+
+  conv2d_op->SetAttr("strides", strides);
+  conv2d_op->SetAttr("paddings", paddings);
+  conv2d_op->SetAttr("dilations", dilations);
+  conv2d_op->SetAttr("groups", groups);
+
+  // init scope
+  framework::Scope scope;
+  std::vector<int> dim_vec = {3, 2, 3, 3};
+  auto* x = scope.Var("conv2d-Y");
+  auto* x_tensor = x->GetMutable<framework::LoDTensor>();
+  x_tensor->Resize(framework::make_ddim(dim_vec));
 
   OpConverter converter;
-  framework::Scope scope;
-  converter.ConvertBlock(*block->Proto(), {}, scope,
-                         nullptr /*TensorRTEngine*/);
+  converter.ConvertBlock(*block->Proto(), {"conv2d-Y"}, scope,
+                         engine_.get() /*TensorRTEngine*/);
 }
 
 }  // namespace tensorrt

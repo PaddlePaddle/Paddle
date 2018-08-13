@@ -31,38 +31,26 @@ class Scope;
 namespace details {
 
 class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
- public:
-#ifdef PADDLE_WITH_CUDA
-  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
-                          const std::string &loss_var_name,
-                          const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes,
-                          platform::NCCLContextMap *nccl_ctxs,
-                          const BuildStrategy &strategy);
-#else
-  MultiDevSSAGraphBuilder(const std::vector<platform::Place> &places,
-                          const std::string &loss_var_name,
-                          const std::unordered_set<std::string> &params,
-                          const std::vector<Scope *> &local_scopes,
-                          const BuildStrategy &strategy);
-#endif
-  std::unique_ptr<ir::Graph> Apply(
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
-  int GetVarDeviceID(const std::string &varname) const override;
 
  private:
   void CreateOpHandleIOs(ir::Graph *result, ir::Node *node,
                          size_t device_id) const;
+  void Init() const;
 
  private:
-  std::string loss_var_name_;
-  const std::vector<platform::Place> &places_;
-  const std::vector<Scope *> &local_scopes_;
-  std::unordered_set<std::string> grad_names_;
+  mutable std::string loss_var_name_;
+  mutable std::vector<platform::Place> places_;
+  mutable std::vector<Scope *> local_scopes_;
+  mutable std::unordered_set<std::string> grad_names_;
 
 #ifdef PADDLE_WITH_CUDA
-  platform::NCCLContextMap *nccl_ctxs_;
+  mutable platform::NCCLContextMap *nccl_ctxs_;
 #endif
+
+  int GetVarDeviceID(const ir::Graph &graph, const std::string &varname) const;
 
   bool IsScaleLossOp(ir::Node *node) const;
 
@@ -87,7 +75,9 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
-  void CreateScaleLossGradOp(ir::Graph *result) const;
+  void CreateScaleLossGradOp(ir::Graph *result,
+                             const std::string &loss_grad_name) const;
+
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
@@ -97,7 +87,7 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::string &og,
       std::unordered_set<std::string> *og_has_been_broadcast) const;
 
-  int GetOpDeviceID(ir::Node *node) const;
+  int GetOpDeviceID(const ir::Graph &graph, ir::Node *node) const;
 
   void InsertAllReduceOp(ir::Graph *result, const std::string &og) const;
 
@@ -113,9 +103,8 @@ class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
       const std::vector<std::string> &var_names) const;
 
  private:
-  BuildStrategy strategy_;
+  mutable BuildStrategy strategy_;
   mutable std::unordered_map<std::string, VarDesc *> all_vars_;
-  mutable std::unordered_map<std::string, int> var_name_on_devices_;
   mutable std::vector<int64_t> balance_vars_;
 
   void SetCommunicationContext(OpHandleBase *op_handle,

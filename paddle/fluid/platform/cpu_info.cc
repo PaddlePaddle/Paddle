@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_info.h"
+#include "xbyak/xbyak.h"
+#include "xbyak/xbyak_util.h"
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
@@ -98,5 +100,39 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
+#ifdef PADDLE_WITH_XBYAK
+namespace jit {
+
+static Xbyak::util::Cpu cpu;
+bool MayIUse(const cpu_isa_t cpu_isa) {
+  using namespace Xbyak::util;  // NOLINT
+  switch (cpu_isa) {
+    case sse42:
+      return cpu.has(Cpu::tSSE42);
+    case avx2:
+      return cpu.has(Cpu::tAVX2);
+    case avx512_common:
+      return cpu.has(Cpu::tAVX512F);
+    case avx512_core:
+      return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
+             cpu.has(Cpu::tAVX512VL) && cpu.has(Cpu::tAVX512DQ);
+    case avx512_core_vnni:
+      return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
+             cpu.has(Cpu::tAVX512VL) && cpu.has(Cpu::tAVX512DQ) &&
+             cpu.has(Cpu::tAVX512_VNNI);
+    case avx512_mic:
+      return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512CD) &&
+             cpu.has(Cpu::tAVX512ER) && cpu.has(Cpu::tAVX512PF);
+    case avx512_mic_4ops:
+      return true && MayIUse(avx512_mic) && cpu.has(Cpu::tAVX512_4FMAPS) &&
+             cpu.has(Cpu::tAVX512_4VNNIW);
+    case isa_any:
+      return true;
+  }
+  return false;
+}
+
+}  // namespace jit
+#endif
 }  // namespace platform
 }  // namespace paddle

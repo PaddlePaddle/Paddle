@@ -40,7 +40,7 @@ URL_TRAIN = ('http://paddlepaddle.cdn.bcebos.com/demo/'
              'wmt_shrinked_data/wmt14.tgz')
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
-URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
+URL_MODEL = 'http://paddlemodels.bj.bcebos.com/wmt%2Fwmt14.tgz'
 MD5_MODEL = '0cb4a5366189b6acba876491c8724fa3'
 
 START = "<s>"
@@ -154,8 +154,8 @@ def get_dict(dict_size, reverse=True):
     tar_file = paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
     if reverse:
-        src_dict = {v: k for k, v in src_dict.items()}
-        trg_dict = {v: k for k, v in trg_dict.items()}
+        src_dict = {v: k for k, v in list(src_dict.items())}
+        trg_dict = {v: k for k, v in list(trg_dict.items())}
     return src_dict, trg_dict
 
 

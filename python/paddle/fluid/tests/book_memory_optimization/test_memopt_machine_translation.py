@@ -118,7 +118,7 @@ def main():
     feeder = fluid.DataFeeder(feed_list, place)
 
     batch_id = 0
-    for pass_id in xrange(10):
+    for pass_id in range(10):
         for data in train_data():
             outs = exe.run(fluid.default_main_program(),
                            feed=feeder.feed(data),

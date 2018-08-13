@@ -24,6 +24,68 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+std::vector<std::string> FindDistTrainSendVars(
+    const std::vector<ir::Node *> &nodes) {
+  std::vector<std::string> send_vars;
+  // since parameters are all in block 0,
+  // it's enough to only scan send ops in block 0
+  for (auto &node : nodes) {
+    auto op_vars = node->Op()->InputArgumentNames();
+    send_vars.reserve(send_vars.size() +
+                      std::distance(op_vars.begin(), op_vars.end()));
+    send_vars.insert(send_vars.end(), op_vars.begin(), op_vars.end());
+  }
+  return send_vars;
+}
+
+std::vector<std::string> FindDistTrainRecvVars(
+    const std::vector<ir::Node *> &nodes) {
+  std::vector<std::string> recv_vars;
+  for (auto &node : nodes) {
+    auto op_vars = node->Op()->OutputArgumentNames();
+    recv_vars.reserve(recv_vars.size() +
+                      std::distance(op_vars.begin(), op_vars.end()));
+    recv_vars.insert(recv_vars.end(), op_vars.begin(), op_vars.end());
+  }
+  return recv_vars;
+}
+
+bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
+                   const std::vector<std::string> &recv_vars) {
+  if (send_vars.size() == 0 || recv_vars.size() == 0) {
+    return false;
+  }
+
+  /**
+   * Check any of opvars contains `.block` and in sendvars
+   */
+  auto checker = [](const std::vector<std::string> &opvars,
+                    const std::vector<std::string> &rpc_vars) -> bool {
+    for (auto &var : opvars) {
+      // a variable name with the suffix `.block` means it's a splited
+      // variable by (DistributeTranspiler)
+      // [python/paddle/fluid/transpiler/distribute_transpiler.py]
+      if (var.find(".block") != std::string::npos &&
+          std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  std::vector<std::string> input_var_names;
+  std::vector<std::string> output_var_names;
+  for (ir::Node *input : node->inputs) {
+    input_var_names.push_back(input->Name());
+  }
+  for (ir::Node *output : node->outputs) {
+    output_var_names.push_back(output->Name());
+  }
+
+  return checker(output_var_names, send_vars) ||
+         checker(input_var_names, recv_vars);
+}
+
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
@@ -61,10 +123,70 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       var->inputs.push_back(node);
     }
   }
+
+  std::vector<ir::Node *> send_ops;
+  ir::Node *send_bar = nullptr;
+  std::vector<ir::Node *> recv_ops;
+  ir::Node *fetch_bar = nullptr;
+  for (ir::Node *node : Nodes()) {
+    if (node->Name() == "send") {
+      send_ops.push_back(node);
+    } else if (node->Name() == "send_barrier") {
+      PADDLE_ENFORCE(!send_bar, "only has one send barrier");
+      send_bar = node;
+    } else if (node->Name() == "recv") {
+      recv_ops.push_back(node);
+    } else if (node->Name() == "fetch_barrier") {
+      PADDLE_ENFORCE(!fetch_bar, "only has one fetch barrier");
+      fetch_bar = node;
+    }
+  }
+  if (send_bar) {
+    for (ir::Node *send : send_ops) {
+      ir::Node *dep_var = CreateControlDepVar();
+      send->outputs.push_back(dep_var);
+      dep_var->inputs.push_back(send);
+      send_bar->inputs.push_back(dep_var);
+      dep_var->outputs.push_back(send_bar);
+    }
+    for (ir::Node *recv : recv_ops) {
+      ir::Node *dep_var = CreateControlDepVar();
+      recv->inputs.push_back(dep_var);
+      dep_var->outputs.push_back(recv);
+      send_bar->outputs.push_back(dep_var);
+      dep_var->inputs.push_back(send_bar);
+    }
+  }
+  if (fetch_bar) {
+    for (ir::Node *recv : recv_ops) {
+      ir::Node *dep_var = CreateControlDepVar();
+      recv->outputs.push_back(dep_var);
+      dep_var->inputs.push_back(recv);
+      fetch_bar->inputs.push_back(dep_var);
+      dep_var->outputs.push_back(fetch_bar);
+    }
+  }
+
+  std::vector<std::string> send_vars = FindDistTrainSendVars(send_ops);
+  std::vector<std::string> recv_vars = FindDistTrainRecvVars(recv_ops);
+  for (ir::Node *node : Nodes()) {
+    if (IsDistTrainOp(node, send_vars, recv_vars)) {
+      if (fetch_bar && node->Name() == "concat") {
+        ir::Node *dep_var = CreateControlDepVar();
+        fetch_bar->outputs.push_back(dep_var);
+        dep_var->inputs.push_back(fetch_bar);
+        node->inputs.push_back(dep_var);
+        dep_var->outputs.push_back(node);
+      }
+    }
+  }
+
   /**
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
+   * We should handle write after read(WAR) and write after write(WAW) here.
+   * Because some of the operators of the program can be executed parallelly.
+   * So, to make the program running in the right order, we should add the
+   * dependence of WAR and WAW.
+   *
    *
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
@@ -80,6 +202,19 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
+
+      PADDLE_ENFORCE(write_op, "The write_op should not be empty.");
+
+      // Add write after write dependence
+      ir::Node *upstream_op =
+          (*it_old)->inputs.empty() ? nullptr : (*it_old)->inputs[0];
+      if (upstream_op) {
+        ir::Node *dep_var = CreateControlDepVar();
+        write_op->inputs.push_back(dep_var);
+        upstream_op->outputs.push_back(dep_var);
+        dep_var->outputs.push_back(write_op);
+        dep_var->inputs.push_back(upstream_op);
+      }
 
       for (auto *read_op : read_ops) {
         // Manually add a dependency var from read_op to write_op;
