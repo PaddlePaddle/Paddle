@@ -106,6 +106,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
 
       auto param_row_width = param.value().dims()[1];
       auto grad_row_width = grad.value().dims()[1];
+      size_t grad_row_numel = grad.value().numel() / grad.rows().size();
       VLOG(4) << " param rows: " << param.rows().size()
               << " param memory rows: " << param.value().dims()[0]
               << " grad rows: " << grad.rows().size()
