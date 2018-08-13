@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_info.h"
+
+#ifdef PADDLE_WITH_XBYAK
 #include "xbyak/xbyak.h"
 #include "xbyak/xbyak_util.h"
+#endif
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
