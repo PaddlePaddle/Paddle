@@ -223,7 +223,7 @@ class MKLDNNHandler {
   static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
                              const std::string& suffix) {
     return dims2str(operand_dims) + suffix;
-  };
+  }
 
  protected:
   static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
@@ -249,6 +249,18 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
     return mkldnn::memory::format::nc;
   }
   return data_format;
+}
+
+inline mkldnn::memory::format data_format_to_memory_format(
+    const std::string& data_format) {
+  switch (framework::StringToDataLayout(data_format)) {
+    case framework::DataLayout::kNHWC:
+      return mkldnn::memory::format::nhwc;
+    case framework::DataLayout::kNCHW:
+      return mkldnn::memory::format::nchw;
+    default:
+      return mkldnn::memory::format::any;
+  }
 }
 
 }  // namespace platform

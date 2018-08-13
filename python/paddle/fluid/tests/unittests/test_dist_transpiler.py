@@ -189,7 +189,7 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
                          ["fill_constant", "fill_constant"])
         # the variable #fc_w will be split into two blocks
         fc_w_var = startup2.global_block().var("fc_w")
-        self.assertEqual(fc_w_var.shape, (1000L, 1000L))
+        self.assertEqual(fc_w_var.shape, (1000, 1000))
         # all parameters should be optimized on pserver
 
         pserver_params = []
@@ -222,9 +222,9 @@ class TestNoSliceVar(TranspilerTest):
         _, startup = self.get_pserver(self.pserver1_ep, config)
         _, startup2 = self.get_pserver(self.pserver2_ep, config)
 
-        if startup.global_block().vars.has_key("fc_w"):
+        if "fc_w" in startup.global_block().vars:
             fc_w_var = startup.global_block().vars["fc_w"]
-        elif startup2.global_block().vars.has_key("fc_w"):
+        elif "fc_w" in startup2.global_block().vars:
             fc_w_var = startup2.global_block().vars["fc_w"]
 
         self.assertEqual(fc_w_var.shape, (1000, 1000))
