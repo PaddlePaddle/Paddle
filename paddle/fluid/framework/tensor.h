@@ -89,22 +89,24 @@ class Tensor {
    * @note    If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(platform::Place place);
+  T* mutable_data(platform::Place place, int64_t requested_size = 0);
 
-  void* mutable_data(platform::Place place, std::type_index type);
+  void* mutable_data(platform::Place place, std::type_index type,
+                     int64_t requested_size = 0);
 
-  void* mutable_data(platform::Place place);
+  void* mutable_data(platform::Place place, int64_t requested_size = 0);
 
   /**
    * @brief     Return a pointer to mutable memory block.
    *
-   * @param[in] dims    The dimensions of the memory block.
-   * @param[in] place   The place of the memory block.
+   * @param[in] dims           The dimensions of the memory block.
+   * @param[in] place          The place of the memory block.
+   * @param[in] requested_size The size of the block in bytes.
    *
    * @note      If not exist, then allocation.
    */
   template <typename T>
-  T* mutable_data(DDim dims, platform::Place place);
+  T* mutable_data(DDim dims, platform::Place place, int64_t requested_size = 0);
 
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;

@@ -46,16 +46,17 @@ inline T* Tensor::data() {
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(DDim dims, platform::Place place) {
+inline T* Tensor::mutable_data(DDim dims, platform::Place place,
+                               int64_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
   Resize(dims);
-  return mutable_data<T>(place);
+  return mutable_data<T>(place, requested_size);
 }
 
 template <typename T>
-inline T* Tensor::mutable_data(platform::Place place) {
+inline T* Tensor::mutable_data(platform::Place place, int64_t requested_size) {
   static_assert(std::is_pod<T>::value, "T must be POD");
-  return reinterpret_cast<T*>(mutable_data(place, typeid(T)));
+  return reinterpret_cast<T*>(mutable_data(place, typeid(T), requested_size));
 }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
