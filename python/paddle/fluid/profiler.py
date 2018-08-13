@@ -218,7 +218,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     """The profiler interface.
     Different from cuda_profiler, this profiler can be used to profile both CPU
-    and GPU program. By default, it records the CPU and GPU operator kernels,
+    and GPU program. By defalut, it records the CPU and GPU operator kernels,
     if you want to profile other program, you can refer the profiling tutorial
     to add more records in C++ code.
 
@@ -231,7 +231,7 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
         state (string) : The profiling state, which should be 'CPU' or 'GPU',
             telling the profiler to use CPU timer or GPU timer for profiling.
             Although users may have already specified the execution place
-            (CPUPlace/CUDAPlace) in the beginning, for flexibility the profiler
+            (CPUPlace/CUDAPlace) in the begining, for flexibility the profiler
             would not inherit this place.
         sorted_key (string) : If None, the profiling results will be printed
             in the order of first end time of events. Otherwise, the profiling
