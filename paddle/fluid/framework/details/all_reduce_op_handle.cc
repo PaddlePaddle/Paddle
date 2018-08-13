@@ -17,6 +17,7 @@
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/reduce_and_gather.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -45,6 +46,7 @@ AllReduceOpHandle::AllReduceOpHandle(ir::Node *node,
 #endif
 
 void AllReduceOpHandle::RunImpl() {
+  platform::RecordEvent r("all_reduce", nullptr);
   if (NoDummyInputSize() == 1) {
     return;  // No need to all reduce when GPU count = 1;
   } else {

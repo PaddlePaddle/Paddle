@@ -24,7 +24,7 @@
 
 namespace paddle {
 
-DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
+DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, true,
             "Enable subgraph to TensorRT engine for acceleration");
 
 DEFINE_string(inference_analysis_graphviz_log_root, "./",
@@ -42,10 +42,19 @@ class DfgPassManagerImpl final : public DfgPassManager {
     // TODO(Superjomn) set the key with pass reprs.
     AddPass("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
     if (FLAGS_inference_analysis_enable_tensorrt_subgraph_engine) {
-      auto trt_teller = [](const Node* node) {
+      auto trt_teller = [&](const Node* node) {
+        std::unordered_set<std::string> teller_set(
+            {"elementwise_add", "mul", "conv2d", "pool2d", "relu"});
         if (!node->IsFunction()) return false;
-        return static_cast<const Function*>(node)->func_type() == "mul";
+
+        const auto* func = static_cast<const Function*>(node);
+        if (teller_set.count(func->func_type())) {
+          return true;
+        } else {
+          return false;
+        }
       };
+
       AddPass("tensorrt-subgraph-marker",
               new TensorRTSubgraphNodeMarkPass(trt_teller));
       AddPass("tensorrt-subgraph", new TensorRTSubGraphPass(trt_teller));

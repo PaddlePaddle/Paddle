@@ -41,7 +41,7 @@ URL_TRAIN = ('http://paddlepaddle.cdn.bcebos.com/demo/'
              'wmt_shrinked_data/wmt14.tgz')
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
-URL_MODEL = 'http://paddlepaddle.bj.bcebos.com/demo/wmt_14/wmt14_model.tar.gz'
+URL_MODEL = 'http://paddlemodels.bj.bcebos.com/wmt%2Fwmt14.tgz'
 MD5_MODEL = '0cb4a5366189b6acba876491c8724fa3'
 
 START = "<s>"
