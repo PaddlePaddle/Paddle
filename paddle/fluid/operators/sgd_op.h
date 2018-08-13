@@ -72,22 +72,21 @@ class SGDOpKernel : public framework::OpKernel<T> {
         auto *grad_data = grad_value.data<T>();
         auto *out_data = param_out->data<T>();
         auto *lr = learning_rate->data<T>();
-#if !defined(__APPLE__) && !defined(__OSX__)
+
         for (int i = 0; i < grad_rows.size(); ++i) {
+          PADDLE_ENFORCE(grad_rows[i] < grad_height,
+                         "Input rows index should less than height");
+#if !defined(__APPLE__) && !defined(__OSX__)
           math::paddle_sse_axpy<T>(grad_data + i * grad_row_numel,
                                    out_data + grad_rows[i] * grad_row_numel,
                                    grad_row_numel, -lr[0]);
-        }
 #else
-        for (size_t i = 0; i < grad_rows.size(); i++) {
-          PADDLE_ENFORCE(grad_rows[i] < grad_height,
-                         "Input rows index should less than height");
           for (size_t j = 0; j < grad_row_numel; j++) {
             out_data[grad_rows[i] * grad_row_numel + j] -=
                 lr[0] * grad_data[i * grad_row_numel + j];
           }
-        }
 #endif
+        }
       } else {
         PADDLE_THROW("Unsupported Variable Type of Grad");
       }
@@ -123,10 +122,16 @@ class SGDOpKernel : public framework::OpKernel<T> {
         int64_t id_index = param.Index(grad.rows()[i]);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
+#if !defined(__APPLE__) && !defined(__OSX__)
+        math::paddle_sse_axpy<T>(grad_data + i * grad_row_numel,
+                                 out_data + id_index * grad_row_numel,
+                                 grad_row_numel, -lr[0]);
+#else
         for (int64_t j = 0; j < grad_row_width; j++) {
           out_data[id_index * grad_row_width + j] -=
               lr[0] * grad_data[i * grad_row_width + j];
         }
+#endif
       }
     } else {
       PADDLE_THROW("Unsupported Variable Type of Parameter");
