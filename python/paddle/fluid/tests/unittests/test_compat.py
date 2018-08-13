@@ -18,6 +18,14 @@ import six
 
 
 class TestCompatible(unittest.TestCase):
+    def test_type(self):
+        if six.PY2:
+            self.assertEqual(cpt.int_type, int)
+            self.assertEqual(cpt.long_type, long)
+        else:
+            self.assertEqual(cpt.int_type, int)
+            self.assertEqual(cpt.long_type, int)
+
     def test_to_literal_str(self):
         # Only support python2.x and python3.x now
         self.assertTrue(six.PY2 | six.PY3)

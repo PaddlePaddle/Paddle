@@ -16,12 +16,20 @@ import six
 import math
 
 __all__ = [
+    'long_type',
     'to_literal_str',
     'to_bytes',
     'round',
     'floor_division',
     'get_exception_message',
 ]
+
+if six.PY2:
+    int_type = int
+    long_type = long
+else:
+    int_type = int
+    long_type = int
 
 
 #  str and bytes related functions
