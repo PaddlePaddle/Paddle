@@ -126,6 +126,15 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
                                pipeline);
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireBiasMemoryFromPrimitive(
+      const std::shared_ptr<mkldnn::memory> user_bias_memory_p,
+      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+    auto user_bias_pd = user_bias_memory_p->get_primitive_desc();
+    auto bias_pd = conv_pd_->bias_primitive_desc();
+    return this->AcquireMemory(bias_pd, user_bias_pd, user_bias_memory_p,
+                               "@bias_mem_p", pipeline);
+  }
+
   std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
       std::shared_ptr<mkldnn::memory> src_memory_p,
       std::shared_ptr<mkldnn::memory> weights_memory_p,
@@ -139,6 +148,28 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
       conv_p = std::make_shared<mkldnn::convolution_forward>(
           *conv_pd_, *(src_memory_p), *(weights_memory_p.get()),
           *(dst_memory_p.get()));
+
+      dev_ctx_.SetBlob(prim_key, conv_p);
+    } else {
+      is_reusing_ = true;
+    }
+    return conv_p;
+  }
+
+  std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
+      std::shared_ptr<mkldnn::memory> src_memory_p,
+      std::shared_ptr<mkldnn::memory> weights_memory_p,
+      std::shared_ptr<mkldnn::memory> bias_memory_p,
+      std::shared_ptr<mkldnn::memory> dst_memory_p) {
+    auto prim_key = key_ + "@conv_p";
+    auto conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
+        dev_ctx_.GetBlob(prim_key));
+    PADDLE_ENFORCE((conv_p != nullptr) || (is_reusing_ == false),
+                   "Fail to find convolution primitive in device context");
+    if (conv_p == nullptr) {
+      conv_p = std::make_shared<mkldnn::convolution_forward>(
+          *conv_pd_, *(src_memory_p), *(weights_memory_p.get()),
+          *(bias_memory_p.get()), *(dst_memory_p.get()));
 
       dev_ctx_.SetBlob(prim_key, conv_p);
     } else {
@@ -229,6 +260,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
+    auto* bias = ctx.Input<Tensor>("Bias");
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
@@ -237,6 +269,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
                        filter->format() != memory::format::format_undef,
                    "Wrong layout/format set for Filter tensor");
+    if (bias) {
+      PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
+                         bias->format() != memory::format::format_undef,
+                     "Wrong layout/format set for Bias tensor");
+    }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -251,16 +288,24 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
+    const T* bias_data = bias ? bias->data<T>() : nullptr;
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
 
     PADDLE_ENFORCE(input->dims().size() == 4,
                    "Input must be with 4 dimensions, i.e. NCHW");
     PADDLE_ENFORCE(filter->dims().size() == 4,
                    "Filter must be with 4 dimensions, i.e. OIHW");
+    if (bias) {
+      PADDLE_ENFORCE(bias->dims().size() == 1,
+                     "Bias must only have 1 dimension, i.e. X");
+    }
 
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> weights_tz =
         paddle::framework::vectorize2int(filter->dims());
+    std::vector<int> bias_tz =
+        bias ? paddle::framework::vectorize2int(bias->dims())
+             : std::vector<int>();
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get unique name for storing MKLDNN primitives
@@ -271,6 +316,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<primitive> pipeline;
 
+    // User bias memory descriptor is handled later
     auto user_src_md = platform::MKLDNNMemDesc(
         {src_tz}, platform::MKLDNNGetDataType<T>(), input->format());
     auto user_weights_md = platform::MKLDNNMemDesc(
@@ -288,13 +334,22 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
+    auto bias_md = platform::MKLDNNMemDesc(
+        bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
     // create a conv primitive descriptor and save it for usage in backward
-    std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd =
-        ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
-                             mkldnn_engine);
+    std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
+    if (bias) {
+      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
+                                     strides, paddings, mkldnn_engine);
+    } else {
+      conv_pd = ConvFwdPrimitiveDesc(
+          src_md, weights_md, dst_md,
+          strides,
+          paddings, mkldnn_engine);
+    }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
 
@@ -315,8 +370,21 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
 
     // create convolution op primitive
-    auto conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
-                                             dst_memory_p);
+    std::shared_ptr<mkldnn::convolution_forward> conv_p;
+    if (bias) {
+      auto user_bias_md = platform::MKLDNNMemDesc(
+          {bias_tz}, platform::MKLDNNGetDataType<T>(), memory::format::x);
+      auto user_bias_memory_p =
+          handler.AcquireBiasMemory(user_bias_md, to_void_cast<T>(bias_data));
+
+      auto bias_memory_p =
+          handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
+      conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
+                                          bias_memory_p, dst_memory_p);
+    } else {
+      conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
+                                          dst_memory_p);
+    }
 
     // push primitive to stream and wait until it's executed
     pipeline.push_back(*conv_p);
@@ -338,6 +406,27 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto conv_desc = mkldnn::convolution_forward::desc(
         mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
         dst, stride_dims, padding_dims, padding_dims,
+        mkldnn::padding_kind::zero);
+
+    auto p_conv_pd =
+        new mkldnn::convolution_forward::primitive_desc(conv_desc, engine);
+
+    return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
+        p_conv_pd);
+  }
+
+  std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
+  ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
+                       const memory::desc& bias, const memory::desc& dst,
+                       const std::vector<int>& strides,
+                       const std::vector<int>& paddings,
+                       const mkldnn::engine& engine) const {
+    memory::dims stride_dims = {strides[0], strides[1]};
+    memory::dims padding_dims = {paddings[0], paddings[1]};
+
+    auto conv_desc = mkldnn::convolution_forward::desc(
+        mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+        bias, dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
     auto p_conv_pd =
