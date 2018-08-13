@@ -370,6 +370,7 @@ def load_vars(executor,
         load_vars(
             executor,
             dirname=dirname,
+            main_program=main_program,
             vars=list(filter(predicate, main_program.list_vars())),
             filename=filename)
     else:
