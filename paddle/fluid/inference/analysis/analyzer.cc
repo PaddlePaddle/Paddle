@@ -44,7 +44,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
     if (FLAGS_inference_analysis_enable_tensorrt_subgraph_engine) {
       auto trt_teller = [&](const Node* node) {
         std::unordered_set<std::string> teller_set(
-            {"elementwise_add", "mul", "conv2d", "pool2d", "relu"});
+            {"elementwise_add", "mul", "conv2d", "pool2d", "relu", "softmax"});
         if (!node->IsFunction()) return false;
 
         const auto* func = static_cast<const Function*>(node);
