@@ -80,7 +80,7 @@ class TestMeanIOUOp(OpTest):
             'InCorrects': in_corrects,
             'InMeanIou': in_mean_ious
         }
-        self.attrs = {'num_classes': long(self.num_classes)}
+        self.attrs = {'num_classes': int(self.num_classes)}
         mean_iou, out_wrong, out_correct = compute_mean_iou(
             predictions, labels, self.num_classes, in_wrongs, in_corrects,
             in_mean_ious)
