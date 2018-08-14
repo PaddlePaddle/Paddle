@@ -41,7 +41,7 @@ def parse_args():
         default='resnet_imagenet',
         help='The model architecture.')
     parser.add_argument(
-        '--batch_size', type=int, default=32, help='The minibatch size.')
+        '--batch_size', type=int, default=16, help='The minibatch size.')
     parser.add_argument(
         '--use_fake_data',
         action='store_true',
@@ -158,7 +158,9 @@ def resnet_imagenet(input, class_dim, depth=50, data_format='NCHW'):
         pool_type='avg',
         pool_stride=1,
         global_pooling=True)
+    pool2 = fluid.layers.cast(pool2, dtype=np.float32)
     out = fluid.layers.fc(input=pool2, size=class_dim, act='softmax')
+    out = fluid.layers.cast(out, dtype=np.float16)
     return out
 
 
@@ -247,7 +249,7 @@ def run_benchmark(model, args):
         return test_accuracy.eval()
 
     place = core.CPUPlace() if args.device == 'CPU' else core.CUDAPlace(0)
-    exe = fluid.Executor(place, log_level=0)
+    exe = fluid.Executor(place, log_level=10)
     exe.run(fluid.default_startup_program())
     accuracy = fluid.average.WeightedAverage()
     if args.use_fake_data:
