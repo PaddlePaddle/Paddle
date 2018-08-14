@@ -30,15 +30,6 @@ struct LargeInt {
     }
   }
 
-  HOSTDEVICE inline LargeInt(const LargeInt<N>& o) { (*this) = o; }
-
-  HOSTDEVICE LargeInt<N>& operator=(const LargeInt<N>& o) {
-    for (size_t i = 0; i < N; ++i) {
-      data_[i] = o.data_[i];
-    }
-    return *this;
-  }
-
   HOSTDEVICE inline const uint32_t& operator[](int index) const {
     return data_[index];
   }

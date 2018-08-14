@@ -13,6 +13,7 @@
 // limitations under the License.
 #include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/random/normal_distribution.h"
 #include "paddle/fluid/platform/random/random_sequence.h"
 #include "paddle/fluid/platform/random/uniform_distribution.h"
 #include "thrust/device_vector.h"
@@ -27,30 +28,42 @@ struct FillValue {
   HOSTDEVICE void operator()(size_t i, T val) { val_[i] = val; }
 };
 
-TEST(RandomSequence, UniformSame) {
+template <typename Dist>
+void TestMain(Dist dist) {
+  using T = typename Dist::ResultType;
   constexpr size_t length = 65536;
-  std::vector<float> cpu(length);
+  std::vector<T> cpu(length);
 
   {
     RandomSequence<CPUDeviceContext> rand_seq;
-    FillValue<float> fill_value;
+    FillValue<T> fill_value;
     fill_value.val_ = cpu.data();
-    rand_seq(CPUDeviceContext(), 0, length,
-             UniformRealDistribution<float>(-1, 1), fill_value);
+    auto tmp = dist;
+    rand_seq(CPUDeviceContext(), 0, length, dist, fill_value);
   }
 
-  thrust::device_vector<float> gpu(length);
+  thrust::device_vector<T> gpu(length);
   {
     RandomSequence<CUDADeviceContext> rand_seq;
-    FillValue<float> fill_value;
+    FillValue<T> fill_value;
     fill_value.val_ = gpu.data().get();
     CUDADeviceContext ctx(CUDAPlace(0));
-    rand_seq(ctx, 0, length, UniformRealDistribution<float>(-1, 1), fill_value);
+    rand_seq(ctx, 0, length, dist, fill_value);
     ctx.Wait();
   }
   for (size_t i = 0; i < length; ++i) {
     ASSERT_NEAR(cpu[i], gpu[i], 1e-5);
   }
+}
+
+TEST(RandomSequence, UniformSame) {
+  TestMain(UniformRealDistribution<float>(-1, 1));
+  TestMain(UniformRealDistribution<double>(-1, 1));
+}
+
+TEST(RandomSequence, NormalSame) {
+  TestMain(NormalDistribution<float>(0, 1));
+  TestMain(NormalDistribution<double>(0, 1));
 }
 
 }  // namespace random

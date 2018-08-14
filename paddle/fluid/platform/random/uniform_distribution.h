@@ -25,6 +25,7 @@ class UniformRealDistribution;
 template <>
 class UniformRealDistribution<float> {
  public:
+  using ResultType = float;
   static constexpr size_t N = 4;
 
   inline HOSTDEVICE UniformRealDistribution(float min, float max)
@@ -52,6 +53,7 @@ class UniformRealDistribution<float> {
 template <>
 class UniformRealDistribution<double> {
  public:
+  using ResultType = double;
   static constexpr size_t N = 2;
 
   inline HOSTDEVICE UniformRealDistribution(double min, double max)
