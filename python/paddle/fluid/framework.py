@@ -782,7 +782,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            (int): the block index.
+            int: the block index.
         """
         return self.desc.block_attr_id(name)
 
@@ -794,7 +794,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            (block): the block attribute.
+            block: the block attribute.
         """
 
         id = self.block_attr_id(name)
@@ -809,7 +809,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            attrs(list[block]): the blocks attribute.
+            list: list of the blocks attribute.
         """
         attrs = []
         for i in self.blocks_attr_ids(name):
@@ -826,7 +826,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            (list[int]): the blocks index.
+            list: list of the blocks ids.
         """
 
         return self.desc.blocks_attr_ids(name)
