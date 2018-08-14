@@ -50,6 +50,10 @@ cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)
 
+cc_test(test_paddle_inference_helper
+        SRCS paddle_inference_helper_tester.cc
+        DEPS paddle_inference_api)
+
 inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
 
