@@ -30,15 +30,18 @@ class PReluTest(OpTest):
         x_np = x_np_sign * np.maximum(x_np, .005)
 
         if self.attrs == {'mode': "all"}:
-            alpha_np = np.array([.1], dtype="float32")
+            #alpha_np = np.array([.1], dtype="float32")
+            alpha_np = np.random.rand(1).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
         elif self.attrs == {'mode': "channel"}:
-            alpha_np = np.array([.1, .2], dtype="float32").reshape([1, 2, 1])
+            #alpha_np = np.array([.1, .2], dtype="float32").reshape([1, 2, 1])
+            alpha_np = np.random.rand(1, x_np.shape[1], 1).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
         else:
-            alpha_np = np.array(
-                [.1, .2, .1, .2, .1, .2, .1, .2],
-                dtype="float32").reshape([2, 2, 2])
+            #alpha_np = np.array(
+            #    [.1, .2, .1, .2, .1, .2, .1, .2],
+            #    dtype="float32").reshape(x_np.shape)
+            alpha_np = np.random.rand(*x_np.shape).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         out_np = np.maximum(self.inputs['X'], 0.)

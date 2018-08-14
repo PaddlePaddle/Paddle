@@ -5364,7 +5364,7 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
-def prelu(x, param_attr=None, mode, name=None):
+def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
 
@@ -5392,6 +5392,8 @@ def prelu(x, param_attr=None, mode, name=None):
             output = fluid.layers.prelu(x,mode)
     """
     helper = LayerHelper('prelu', **locals())
+    if mode not in ['all', 'channel', 'element']:
+        raise ValueError('mode should be one of all, channel, element.')
     alpha_shape = [1]
     if mode == 'channel':
         alpha_shape = [1, x.shape[1], 1, 1]
@@ -5399,7 +5401,11 @@ def prelu(x, param_attr=None, mode, name=None):
         alpha_shape = x.shape
     dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
-        attr=param_attr, shape=alpha_shape, dtype=dtype, is_bias=False)
+        attr=param_attr,
+        shape=alpha_shape,
+        dtype='float32',
+        is_bias=False,
+        default_initializer=Constant(1.0))
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="prelu",

@@ -21,9 +21,11 @@ import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
 import decorators
+from paddle.fluid.initializer import Constant
 
 
 class TestBook(unittest.TestCase):
+    """
     def test_fit_a_line(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
@@ -471,6 +473,21 @@ class TestBook(unittest.TestCase):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
             out = layers.shape(input, name="shape")
+            self.assertIsNotNone(out)
+        print(str(program))
+    """
+
+    def test_prelu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[5, 200, 100, 100], dtype="float32")
+            mode = 'channel'
+            out = layers.prelu(
+                input,
+                mode,
+                param_attr=ParamAttr(initializer=Constant(1.0)),
+                name='prelu')
             self.assertIsNotNone(out)
         print(str(program))
 
