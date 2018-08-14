@@ -17,7 +17,7 @@ import multiprocessing
 from . import core
 from . import framework
 from . import executor
-from . import compat as cpt
+from .. import compat as cpt
 import warnings
 import sys
 import six

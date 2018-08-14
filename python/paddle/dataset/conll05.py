@@ -24,7 +24,7 @@ import tarfile
 import gzip
 import itertools
 import paddle.dataset.common
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 from six.moves import zip, range
 
 __all__ = ['test, get_dict', 'get_embedding', 'convert']

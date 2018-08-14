@@ -124,7 +124,7 @@ def runtime_main(test_class):
         model.run_trainer(p, endpoints, trainer_id, trainers, is_dist)
 
 
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 
 
 class TestDistBase(unittest.TestCase):

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 import paddle.fluid.core as core
 import unittest
 

@@ -20,7 +20,7 @@ from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 from . import tensor
 from . import nn
-from .. import compat as cpt
+from ... import compat as cpt
 import math
 import six
 from functools import reduce

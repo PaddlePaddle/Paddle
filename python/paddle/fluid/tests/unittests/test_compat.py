@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import unittest
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 import six
 
 

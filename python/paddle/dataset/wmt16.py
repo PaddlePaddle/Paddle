@@ -35,7 +35,7 @@ import gzip
 from collections import defaultdict
 
 import paddle.dataset.common
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 
 __all__ = [
     "train",

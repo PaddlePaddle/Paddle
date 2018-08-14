@@ -14,7 +14,7 @@
 
 from collections import defaultdict
 from .. import core
-from .. import compat as cpt
+from ... import compat as cpt
 from ..framework import Program, default_main_program, Parameter
 from ..backward import _rename_arg_
 from functools import reduce
