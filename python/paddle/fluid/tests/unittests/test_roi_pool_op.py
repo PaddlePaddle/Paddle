@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import math
 import sys
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 from op_test import OpTest
 
 

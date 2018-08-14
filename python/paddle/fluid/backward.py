@@ -17,7 +17,7 @@ from . import core
 import collections
 import copy
 import six
-from . import compat as cpt
+from .. import compat as cpt
 from . import unique_name
 
 __all__ = ['append_backward']

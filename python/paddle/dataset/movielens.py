@@ -28,7 +28,7 @@ import re
 import random
 import functools
 import six
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 
 __all__ = [
     'train', 'test', 'get_movie_title_dict', 'max_movie_id', 'max_user_id',

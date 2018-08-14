@@ -17,7 +17,7 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 
 
 class TestLookupTableOp(OpTest):

@@ -27,7 +27,7 @@ from six.moves import zip
 import itertools
 import random
 import zlib
-import paddle.fluid.compat as cpt
+import paddle.compat as cpt
 
 
 def map_readers(func, *readers):

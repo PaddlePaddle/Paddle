@@ -19,7 +19,7 @@ import six
 
 import numpy as np
 
-from . import compat as cpt
+from .. import compat as cpt
 from .proto import framework_pb2
 try:
     from . import core
