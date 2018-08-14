@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/framework/attribute_type.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/type_defs.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -128,7 +129,8 @@ struct ExtractAttribute {
       attr_value = &boost::get<T>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type %s, its type is %s",
-                   attr_name_, typeid(T).name(), attr.type().name());
+                   attr_name_, paddle::framework::demangle(typeid(T).name()),
+                   paddle::framework::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -160,7 +162,7 @@ struct ExtractAttribute<bool> {
       attr_value = &boost::get<bool>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type bool, its type is %s",
-                   attr_name_, attr.type().name());
+                   attr_name_, paddle::framework::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -186,7 +188,7 @@ struct ExtractAttribute<int64_t> {
       attr_value = &boost::get<int64_t>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
-                   attr_name_, attr.type().name());
+                   attr_name_, paddle::framework::demangle(attr.type().name()));
     }
     return attr_value;
   }
