@@ -23,7 +23,9 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/api/api_impl.h"
 
-DEFINE_bool(verbose, false, "Verbose for some initial information (not affect the performance).");
+DEFINE_bool(
+    verbose, false,
+    "Verbose for some initial information (not affect the performance).");
 
 namespace paddle {
 namespace {
@@ -58,14 +60,13 @@ std::string num2str(T a) {
 struct RuntimeState {
   bool is_init_phase{true};
 
-  static RuntimeState& Instance() {
+  static RuntimeState &Instance() {
     static RuntimeState x;
     return x;
   }
 };
 
 }  // namespace
-
 
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
@@ -176,15 +177,20 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
+
+  if (FLAGS_verbose && RuntimeState::Instance().is_init_phase) {
+    for (auto &name : feed_target_names_) {
+      LOG(INFO) << "Parse Inputs " << name;
+    }
+    RuntimeState::Instance().is_init_phase = false;
+  }
+
   if (inputs.size() != feed_target_names_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size. " << inputs.size()
+               << " != " << feed_target_names_.size() << ", which is required.";
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
-    if (FLAGS_verbose && RuntimeState::Instance().is_init_phase) {
-      LOG(INFO) << "Parse Input " << feed_target_names_[i];
-      RuntimeState::Instance().is_init_phase = false;
-    }
     framework::LoDTensor input;
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
