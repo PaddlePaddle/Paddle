@@ -15,14 +15,15 @@
 All layers just related to the detection neural network.
 """
 
-from layer_function_generator import generate_layer_fn
-from layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import generate_layer_fn
+from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-import ops
-import tensor
-import nn
+from . import tensor
+from . import nn
+from . import ops
 import math
 import numpy
+from functools import reduce
 
 __all__ = [
     'prior_box',
@@ -165,7 +166,7 @@ def rpn_target_assign(loc,
         })
 
     # 4. Reshape and gather the target entry
-    scores = nn.reshape(x=scores, shape=(-1, 1))
+    scores = nn.reshape(x=scores, shape=(-1, 2))
     loc = nn.reshape(x=loc, shape=(-1, 4))
     target_label = nn.reshape(x=target_label, shape=(-1, 1))
     target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
@@ -729,7 +730,7 @@ def ssd_loss(location,
         },
         attrs={
             'neg_pos_ratio': neg_pos_ratio,
-            'neg_dist_threshold': neg_pos_ratio,
+            'neg_dist_threshold': neg_overlap,
             'mining_type': mining_type,
             'sample_size': sample_size,
         })
@@ -1038,7 +1039,7 @@ def multi_box_head(inputs,
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-        for ratio in xrange(min_ratio, max_ratio + 1, step):
+        for ratio in range(min_ratio, max_ratio + 1, step):
             min_sizes.append(base_size * ratio / 100.)
             max_sizes.append(base_size * (ratio + step) / 100.)
         min_sizes = [base_size * .10] + min_sizes

@@ -44,7 +44,7 @@ class TestSequenceExpand(OpTest):
             out_lod = [[]]
 
         offset = 0
-        for i in xrange(len(y_lod[ref_level])):
+        for i in range(len(y_lod[ref_level])):
             repeat_num = y_lod[ref_level][i]
             x_len = x_idx[i]
 
@@ -55,7 +55,7 @@ class TestSequenceExpand(OpTest):
                     stacked_x_sub = np.vstack((stacked_x_sub, x_sub))
                 out = np.vstack((out, stacked_x_sub))
                 if x_lod is not None:
-                    for j in xrange(repeat_num):
+                    for j in range(repeat_num):
                         out_lod[0].append(x_len)
             offset += x_len
 
