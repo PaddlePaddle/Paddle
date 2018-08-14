@@ -14,12 +14,14 @@
 
 import copy
 import itertools
+import six
 
-from framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
-import unique_name
+from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
+from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
-from param_attr import ParamAttr, WeightNormParamAttr
-import core
+from .param_attr import ParamAttr, WeightNormParamAttr
+from . import core
+from six.moves import zip
 
 
 class LayerHelper(object):
@@ -68,11 +70,11 @@ class LayerHelper(object):
 
     @property
     def param_attr(self):
-        return ParamAttr.to_attr(self.kwargs.get('param_attr', None))
+        return ParamAttr._to_attr(self.kwargs.get('param_attr', None))
 
     @property
     def bias_attr(self):
-        return ParamAttr.to_attr(self.kwargs.get('bias_attr', None))
+        return ParamAttr._to_attr(self.kwargs.get('bias_attr', None))
 
     def multiple_param_attr(self, length):
         param_attr = self.param_attr
@@ -83,7 +85,7 @@ class LayerHelper(object):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in xrange(length):
+            for i in range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -91,7 +93,7 @@ class LayerHelper(object):
     def iter_inputs_and_params(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
-        for ipt, param_attr in itertools.izip(inputs, param_attrs):
+        for ipt, param_attr in zip(inputs, param_attrs):
             yield ipt, param_attr
 
     def input_dtype(self, input_param_name='input'):
@@ -218,7 +220,7 @@ class LayerHelper(object):
                 norm = __norm_op(reshape, dim=0, block=block)
                 __reshape_op(norm, out=out, shape=out_shape, block=block)
             else:
-                perm = range(len(x.shape))
+                perm = list(range(len(x.shape)))
                 perm[0], perm[dim] = dim, 0
                 transpose = __transpose_op(x, perm, block=block)
                 norm = __norm_op(transpose, dim=0, block=block)
@@ -262,11 +264,11 @@ class LayerHelper(object):
         g_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=g_param_shape,
-            **g_param_attr.to_kwargs(with_initializer=False))
+            **g_param_attr._to_kwargs(with_initializer=False))
         v_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=v_param_shape,
-            **v_param_attr.to_kwargs(with_initializer=True))
+            **v_param_attr._to_kwargs(with_initializer=True))
         __norm_except_dim(
             x=v_param,
             out=g_param,
@@ -275,9 +277,9 @@ class LayerHelper(object):
 
         # Add weight normalization to main_program
         g_param = self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=g_param_shape, **g_param_attr.to_kwargs())
+            dtype=dtype, shape=g_param_shape, **g_param_attr._to_kwargs())
         v_param = self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=v_param_shape, **v_param_attr.to_kwargs())
+            dtype=dtype, shape=v_param_shape, **v_param_attr._to_kwargs())
         w_param = __weight_normalize(g_param, v_param, dim=attr.dim)
         return w_param
 
@@ -296,11 +298,11 @@ class LayerHelper(object):
 
         if default_initializer is None and attr.initializer is None:
             if is_bias:
-                attr.set_default_bias_initializer()
+                attr._set_default_bias_initializer()
             else:
-                attr.set_default_param_initializer()
+                attr._set_default_param_initializer()
         else:
-            attr.set_default_initializer(default_initializer)
+            attr._set_default_initializer(default_initializer)
 
         # If weight normalization is set, insert extra parameters and ops.
         # Refer to https://arxiv.org/pdf/1602.07868.pdf
@@ -310,9 +312,9 @@ class LayerHelper(object):
             return param
 
         self.startup_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr.to_kwargs(with_initializer=True))
+            dtype=dtype, shape=shape, **attr._to_kwargs(with_initializer=True))
         return self.main_program.global_block().create_parameter(
-            dtype=dtype, shape=shape, **attr.to_kwargs())
+            dtype=dtype, shape=shape, **attr._to_kwargs())
 
     def get_parameter(self, name):
         param = self.main_program.global_block().var(name)
@@ -397,8 +399,10 @@ class LayerHelper(object):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
-        if isinstance(act, basestring):
+        if isinstance(act, six.string_types):
             act = {'type': act}
+        else:
+            raise TypeError(str(act) + " should be unicode or str")
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')

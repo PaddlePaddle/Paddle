@@ -19,11 +19,12 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
+#include "gflags/gflags.h"
+
 #include "paddle/fluid/operators/detail/macros.h"
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -61,6 +62,8 @@ static void ParallelExecuteBlocks(
         framework::Async([&executor, &prepared, &program, &scope, idx]() {
           int run_block = idx;  // thread local
           try {
+            VLOG(3) << "running server block: " << run_block
+                    << "pointer: " << prepared[run_block].get();
             executor->RunPreparedContext(prepared[run_block].get(), scope);
           } catch (const std::exception &e) {
             LOG(ERROR) << "run sub program error " << e.what();
@@ -101,24 +104,29 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
+  VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
   PADDLE_ENFORCE_GE(num_blocks, 2,
                     "server program should have at least 2 blocks");
 
-  std::vector<int> optimize_blocks_idx;
-  for (auto blk : optimize_blocks) {
-    optimize_blocks_idx.push_back(blk->ID());
+  // Prepare all the server block
+  std::vector<int> optimize_blocks_list;
+  for (size_t i = 1; i < program->Size(); ++i) {
+    optimize_blocks_list.push_back(i);
   }
-  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_idx);
-  // Insert placeholder for block0 which holds current op itself.
+  auto optimize_prepared = executor->Prepare(*program, optimize_blocks_list);
+  // Insert placeholder for block0 which holds current op itself,
+  // NOTE the first block in `optimize_prepared` should never be ran.
   optimize_prepared.insert(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->ResetBarrierCounter();
+
   while (true) {
+    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -166,6 +174,7 @@ void ListenAndServOp::RunSyncLoop(
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
+  VLOG(2) << "RunAsyncLoop";
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;

@@ -1,4 +1,5 @@
 add_subdirectory(details)
+add_subdirectory(ir)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -6,10 +7,11 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
+cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
-  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type)
+  nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context)
 else()
-  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type)
+  cc_library(tensor SRCS tensor.cc tensor_util.cc DEPS place memory data_type device_context)
 endif()
 
 cc_test(tensor_test SRCS tensor_test.cc DEPS tensor)
@@ -21,7 +23,12 @@ endif()
 
 cc_test(eigen_test SRCS eigen_test.cc DEPS tensor)
 
-nv_test(mixed_vector_test SRCS mixed_vector_test.cu DEPS place memory device_context tensor)
+if(WITH_GPU)
+  nv_test(mixed_vector_test SRCS mixed_vector_test.cc mixed_vector_test.cu DEPS place memory device_context tensor)
+else()
+  cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
+endif()
+
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
@@ -93,7 +100,7 @@ else()
 endif()
 
 
-cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor)
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS threaded_ssa_graph_executor scope_buffered_ssa_graph_executor graph graph_viz_pass multi_devices_graph_pass multi_devices_graph_print_pass multi_devices_graph_check_pass)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
@@ -104,7 +111,7 @@ cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
-      
+
 # cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 

@@ -15,6 +15,8 @@
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 
 
 class TestSplitIdsOp(OpTest):
@@ -29,6 +31,56 @@ class TestSplitIdsOp(OpTest):
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestSpliteIds(unittest.TestCase):
+    def get_places(self):
+        places = [core.CPUPlace()]
+        return places
+
+    def test_check_output(self):
+        for place in self.get_places():
+            self.check_with_place(place)
+
+    def check_with_place(self, place):
+        scope = core.Scope()
+        rows = [0, 5, 7, 4, 9]
+        height = 20
+        row_numel = 2
+
+        # initialize input variable X
+        x = scope.var('X').get_selected_rows()
+        x.set_rows(rows)
+        x.set_height(height)
+        np_array = np.ones((len(rows), row_numel)).astype("float32")
+        for i in range(len(rows)):
+            for j in range(row_numel):
+                np_array[i, j] = rows[i] + j
+        x_tensor = x.get_tensor()
+        x_tensor.set(np_array, place)
+
+        outs_name = ["out%d" % i for i in xrange(3)]
+        outs = [
+            scope.var(var_name).get_selected_rows() for var_name in outs_name
+        ]
+
+        # expected output selected rows
+        expected_out_rows = [[0, 9], [7, 4], [5]]
+
+        op = Operator("split_ids", Ids="X", Out=outs_name)
+
+        for _ in range(3):
+            op.run(scope, place)
+
+            for i in range(len(outs)):
+                expected_rows = expected_out_rows[i]
+                self.assertEqual(outs[i].rows(), expected_rows)
+                for j in range(len(expected_rows)):
+                    row = expected_rows[j]
+                    self.assertAlmostEqual(
+                        float(row), np.array(outs[i].get_tensor())[j, 0])
+                    self.assertAlmostEqual(
+                        float(row + 1), np.array(outs[i].get_tensor())[j, 1])
 
 
 if __name__ == '__main__':

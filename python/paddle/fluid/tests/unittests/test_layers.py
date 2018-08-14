@@ -279,7 +279,7 @@ class TestBook(unittest.TestCase):
     def test_nce(self):
         window_size = 5
         words = []
-        for i in xrange(window_size):
+        for i in range(window_size):
             words.append(
                 layers.data(
                     name='word_{0}'.format(i), shape=[1], dtype='int64'))
@@ -288,7 +288,7 @@ class TestBook(unittest.TestCase):
         label_word = int(window_size / 2) + 1
 
         embs = []
-        for i in xrange(window_size):
+        for i in range(window_size):
             if i == label_word:
                 continue
 
@@ -441,6 +441,37 @@ class TestBook(unittest.TestCase):
             out, ids = layers.argsort(input=data, axis=1)
             self.assertIsNotNone(out)
             self.assertIsNotNone(ids)
+        print(str(program))
+
+    def test_rank_loss(self):
+        program = Program()
+        with program_guard(program):
+            label = layers.data(
+                name='label',
+                append_batch_size=False,
+                shape=[16, 1],
+                dtype="float32")
+            left = layers.data(
+                name='left',
+                append_batch_size=False,
+                shape=[16, 1],
+                dtype="float32")
+            right = layers.data(
+                name='right',
+                append_batch_size=False,
+                shape=[16, 1],
+                dtype="float32")
+            out = layers.rank_loss(label, left, right, name="rank_loss")
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_shape(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.shape(input, name="shape")
+            self.assertIsNotNone(out)
         print(str(program))
 
 

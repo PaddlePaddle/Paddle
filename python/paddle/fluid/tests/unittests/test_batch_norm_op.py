@@ -129,7 +129,6 @@ def create_or_get_tensor(scope, var_name, var, place):
     if var is not None:
         assert isinstance(var, np.ndarray)
         tensor.set_recursive_sequence_lengths([])
-        tensor.set_dims(var.shape)
         tensor.set(var, place)
     return tensor
 
@@ -416,7 +415,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             self.__assert_close(scale_grad, out[6], "scale_grad")
             self.__assert_close(bias_grad, out[7], "bias_grad")
 
-            print "op test forward passed: ", str(place), data_layout
+            print("op test forward passed: ", str(place), data_layout)
 
         places = [core.CPUPlace()]
 

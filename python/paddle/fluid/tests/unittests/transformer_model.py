@@ -118,8 +118,9 @@ def multi_head_attention(queries,
         # FIXME(guosheng): Decouple the program desc with batch_size.
         return layers.reshape(
             x=trans_x,
-            shape=map(int,
-                      [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]]))
+            shape=list(
+                map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]
+                          ])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """
@@ -403,7 +404,7 @@ def transformer(
         trg_pad_idx,
         pos_pad_idx, ):
     file_obj = fluid.layers.open_recordio_file(
-        filename='./wmt16.recordio',
+        filename='/tmp/wmt16.recordio',
         shapes=[
             [batch_size * max_length, 1],
             [batch_size * max_length, 1],

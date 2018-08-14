@@ -15,6 +15,7 @@
 import paddle.dataset.flowers as flowers
 import math
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import unittest
 import numpy as np
 import paddle
@@ -70,7 +71,7 @@ class TestFetchOp(unittest.TestCase):
 
             fetch_list = []
             all_vars = main.global_block().vars
-            for k, v in all_vars.iteritems():
+            for k, v in all_vars.items():
                 if 'tmp' not in k and k[0] is not '_' or v.persistable:
                     fetch_list.append(k)
 
@@ -89,10 +90,11 @@ class TestFetchOp(unittest.TestCase):
         iters = 3
         train_inputs = []
         for i in range(iters):
-            train_inputs.append(tst_reader_iter.next())
+            train_inputs.append(next(tst_reader_iter))
 
         os.environ['CPU_NUM'] = str(4)
-        self.parallel_exe(train_inputs, seed=1, use_cuda=True)
+        if core.is_compiled_with_cuda():
+            self.parallel_exe(train_inputs, seed=1, use_cuda=True)
         self.parallel_exe(train_inputs, seed=1, use_cuda=False)
 
 
@@ -131,13 +133,14 @@ class TestFeedParallel(unittest.TestCase):
 
         for batch_id, data in enumerate(reader()):
             loss_np = pe.run(feed=data, fetch_list=[loss.name])[0]
-            print batch_id, loss_np
+            print(batch_id, loss_np)
             if batch_id == 2:
                 break
 
     def test_feed_op(self):
         os.environ['CPU_NUM'] = str(4)
-        self.parallel_exe(use_cuda=True, seed=1)
+        if core.is_compiled_with_cuda():
+            self.parallel_exe(use_cuda=True, seed=1)
         self.parallel_exe(use_cuda=False, seed=1)
 
 

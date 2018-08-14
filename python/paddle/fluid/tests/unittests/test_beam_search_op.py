@@ -59,8 +59,7 @@ class BeamSearchOpTester(unittest.TestCase):
             np.allclose(
                 np.array(selected_scores),
                 np.array([0.5, 0.6, 0.9, 0.7])[:, np.newaxis]))
-        self.assertEqual(selected_ids.lod(),
-                         [[0L, 2L, 4L], [0L, 1L, 2L, 3L, 4L]])
+        self.assertEqual(selected_ids.lod(), [[0, 2, 4], [0, 1, 2, 3, 4]])
 
     def _create_pre_ids(self):
         np_data = np.array([[1, 2, 3, 4]], dtype='int64')

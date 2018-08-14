@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from initializer import Initializer, Xavier, Constant
-from regularizer import WeightDecayRegularizer
+import six
+
+from .initializer import Initializer, Xavier, Constant
+from .regularizer import WeightDecayRegularizer
 
 __all__ = [
     'ParamAttr',
@@ -67,7 +69,7 @@ class ParamAttr(object):
         self.gradient_clip = gradient_clip
         self.model_average = do_model_average
 
-    def set_default_initializer(self, initializer):
+    def _set_default_initializer(self, initializer):
         """
         Set the default initializer, the initializer should be Constant,
         Uniform, Normal, Xavier, MSRA.
@@ -88,7 +90,7 @@ class ParamAttr(object):
 
         self.initializer = initializer
 
-    def set_default_param_initializer(self):
+    def _set_default_param_initializer(self):
         """
         Set the default initializer for the parameter with Xavier.
 
@@ -98,9 +100,9 @@ class ParamAttr(object):
         Returns:
             None.
         """
-        self.set_default_initializer(Xavier())
+        self._set_default_initializer(Xavier())
 
-    def set_default_bias_initializer(self):
+    def _set_default_bias_initializer(self):
         """
         Set the default initializer for the bias with Constant(0.0).
 
@@ -110,10 +112,10 @@ class ParamAttr(object):
         Returns:
             None.
         """
-        self.set_default_initializer(Constant(0.0))
+        self._set_default_initializer(Constant(0.0))
 
     @staticmethod
-    def to_attr(arg):
+    def _to_attr(arg):
         """
         Create ParamAttr[s].
 
@@ -131,21 +133,21 @@ class ParamAttr(object):
         if arg is None:
             return ParamAttr()
         elif isinstance(arg, list) or isinstance(arg, tuple):
-            return [ParamAttr.to_attr(a) for a in arg]
+            return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
-        elif isinstance(arg, str) or isinstance(arg, unicode):
+        elif isinstance(arg, six.string_types):
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)
         elif isinstance(arg, WeightDecayRegularizer):
             return ParamAttr(regularizer=arg)
         elif isinstance(arg, bool):
-            return ParamAttr.to_attr(None) if arg else False
+            return ParamAttr._to_attr(None) if arg else False
         else:
             raise TypeError("{0} cast to ParamAttr".format(type(arg)))
 
-    def to_kwargs(self, with_initializer=False):
+    def _to_kwargs(self, with_initializer=False):
         """
         Returns the attributes of this parameter.
 

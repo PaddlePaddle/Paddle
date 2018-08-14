@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import unittest
 import os
@@ -24,7 +25,7 @@ def simple_fc_net():
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
-    for _ in xrange(4):
+    for _ in range(4):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
@@ -70,7 +71,7 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 share_vars_from=train_exe,
                 build_strategy=build_strategy)
 
-            for i in xrange(5):
+            for i in range(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
@@ -92,16 +93,18 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
-        self.check_network_convergence(
-            use_cuda=True, build_strategy=build_strategy)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(
+                use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-        self.check_network_convergence(
-            use_cuda=True, build_strategy=build_strategy)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(
+                use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 

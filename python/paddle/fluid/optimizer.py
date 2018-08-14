@@ -14,15 +14,15 @@
 import re
 from collections import defaultdict
 from paddle.fluid.framework import Program, Variable
-import framework
-import layers
-from backward import append_backward
-from framework import program_guard
-import unique_name
-from initializer import Constant
-from layer_helper import LayerHelper
-from regularizer import append_regularization_ops
-from clip import append_gradient_clip_ops, error_clip_callback
+from . import framework
+from . import layers
+from .backward import append_backward
+from .framework import program_guard
+from . import unique_name
+from .initializer import Constant
+from .layer_helper import LayerHelper
+from .regularizer import append_regularization_ops
+from .clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
 
 __all__ = [
@@ -123,7 +123,7 @@ class Optimizer(object):
         """
         pass
 
-    def _finish_update(self, block, parameters):
+    def _finish_update(self, block, parameters_and_grads):
         """Finish any custom updates needed
            before completing an optimization step
 
@@ -226,21 +226,21 @@ class Optimizer(object):
 
             optimize_ops = []
             for param_and_grad in parameters_and_grads:
+                if param_and_grad[1] is None:
+                    continue
                 with param_and_grad[0].block.program.optimized_guard(
-                        param_and_grad[0]):
-                    if param_and_grad[0].trainable is True and param_and_grad[
-                            1] is not None:
+                        param_and_grad):
+                    if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
                                                                param_and_grad)
                         optimize_ops.append(optimize_op)
 
             # Get custom finish ops for subclasses
             # FIXME: Need to fix this once we figure out how to handle dependencies
-            self._finish_update(loss.block,
-                                [p[0] for p in parameters_and_grads])
+            self._finish_update(loss.block, parameters_and_grads)
 
             end = len(global_block.ops)
-            return global_block.slice_ops(start, end)
+            return global_block._slice_ops(start, end)
 
     def minimize(self,
                  loss,
@@ -324,7 +324,7 @@ class MomentumOptimizer(Optimizer):
 
         & if (use\_nesterov):
 
-        &\quad   param = param - gradient * learning\_rate + mu * velocity * learning\_rate
+        &\quad   param = param - (gradient + mu * velocity) * learning\_rate
 
         & else:
 
@@ -564,13 +564,15 @@ class AdamOptimizer(Optimizer):
 
         return adam_op
 
-    def _finish_update(self, block, parameters):
+    def _finish_update(self, block, param_and_grads):
         """Update Beta1 and Beta2 Power accumulators
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        for param in parameters:
-            with param.block.program.optimized_guard(param):
+        for param, grad in param_and_grads:
+            if grad is None:
+                continue
+            with param.block.program.optimized_guard([param, grad]):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
@@ -691,13 +693,15 @@ class AdamaxOptimizer(Optimizer):
 
         return adamax_op
 
-    def _finish_update(self, block, parameters):
+    def _finish_update(self, block, parameters_and_grads):
         """Update Beta1 Power accumulator
         """
         assert isinstance(block, framework.Block)
         main_block = block.program.global_block()
-        for param in parameters:
-            with param.block.program.optimized_guard(param):
+        for param, grad in parameters_and_grads:
+            if grad is None:
+                continue
+            with param.block.program.optimized_guard([param, grad]):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 main_block.append_op(
@@ -1158,7 +1162,9 @@ class ModelAverage(Optimizer):
                 self.params_grads.append((param, grad))
 
         for param, grad in self.params_grads:
-            with param.block.program.optimized_guard(param):
+            if grad is None:
+                continue
+            with param.block.program.optimized_guard([param, grad]):
                 self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
@@ -1174,16 +1180,16 @@ class ModelAverage(Optimizer):
                 self._add_average_restore_op(block, param_grad)
 
     def _add_average_apply_op(self, block, param_grad):
-        param = block.clone_variable(param_grad[0])
-        grad = block.clone_variable(param_grad[1])
-        sum_1 = block.clone_variable(self._get_accumulator('sum_1', param))
-        sum_2 = block.clone_variable(self._get_accumulator('sum_2', param))
-        sum_3 = block.clone_variable(self._get_accumulator('sum_3', param))
-        num_accumulates = block.clone_variable(
+        param = block._clone_variable(param_grad[0])
+        grad = block._clone_variable(param_grad[1])
+        sum_1 = block._clone_variable(self._get_accumulator('sum_1', param))
+        sum_2 = block._clone_variable(self._get_accumulator('sum_2', param))
+        sum_3 = block._clone_variable(self._get_accumulator('sum_3', param))
+        num_accumulates = block._clone_variable(
             self._get_accumulator('num_accumulates', param))
-        old_num_accumulates = block.clone_variable(
+        old_num_accumulates = block._clone_variable(
             self._get_accumulator('old_num_accumulates', param))
-        num_updates = block.clone_variable(
+        num_updates = block._clone_variable(
             self._get_accumulator('num_updates', param))
         # backup param value to grad
         layers.assign(input=param, output=grad)
@@ -1197,8 +1203,8 @@ class ModelAverage(Optimizer):
         layers.elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):
-        param = block.clone_variable(param_grad[0])
-        grad = block.clone_variable(param_grad[1])
+        param = block._clone_variable(param_grad[0])
+        grad = block._clone_variable(param_grad[1])
         layers.assign(input=grad, output=param)
 
     def _append_average_accumulate_op(self, param):
