@@ -123,6 +123,7 @@ def runtime_main(test_class):
         ) else fluid.CPUPlace()
         model.run_trainer(p, endpoints, trainer_id, trainers, is_dist)
 
+
 import paddle.fluid.compat as cpt
 
 
