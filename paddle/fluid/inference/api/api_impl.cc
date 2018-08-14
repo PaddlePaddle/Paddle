@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/paddle_inference_helper.h"
 
 DEFINE_bool(
     verbose, false,
@@ -30,41 +31,12 @@ DEFINE_bool(
 namespace paddle {
 namespace {
 
-// Timer for timer
-class Timer {
- public:
-  double start;
-  double startu;
-  void tic() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    start = tp.tv_sec;
-    startu = tp.tv_usec;
-  }
-  double toc() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    double used_time_ms =
-        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
-    return used_time_ms;
-  }
-};
-
 template <class T>
 std::string num2str(T a) {
   std::stringstream istr;
   istr << a;
   return istr.str();
 }
-
-struct RuntimeState {
-  bool is_init_phase{true};
-
-  static RuntimeState &Instance() {
-    static RuntimeState x;
-    return x;
-  }
-};
 
 }  // namespace
 
@@ -112,6 +84,23 @@ bool NativePaddlePredictor::Init(
   // Get the feed_target_names and fetch_target_names
   feed_target_names_ = inference_program_->GetFeedTargetNames();
   fetch_target_names_ = inference_program_->GetFetchTargetNames();
+
+  if (FLAGS_verbose) {
+    std::stringstream ss;
+    ss << "Inference Inputs:" << '\n';
+    for (auto &name : feed_target_names_) {
+      ss << " - " << name << '\n';
+    }
+    LOG(INFO) << '\n' << ss.str();
+
+    ss.str("");
+    ss << "Inference Outputs:" << '\n';
+    for (auto &name : fetch_target_names_) {
+      ss << " - " << name << '\n';
+    }
+    LOG(INFO) << '\n' << ss.str();
+  }
+
   return true;
 }
 
@@ -125,7 +114,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
   VLOG(3) << "Predictor::predict";
-  Timer timer;
+  helper::Timer timer;
   timer.tic();
   // set feed variable
   std::map<std::string, const framework::LoDTensor *> feed_targets;
@@ -177,13 +166,6 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     std::vector<framework::LoDTensor> *feeds) {
   VLOG(3) << "Predictor::set_feed";
-
-  if (FLAGS_verbose && RuntimeState::Instance().is_init_phase) {
-    for (auto &name : feed_target_names_) {
-      LOG(INFO) << "Parse Inputs " << name;
-    }
-    RuntimeState::Instance().is_init_phase = false;
-  }
 
   if (inputs.size() != feed_target_names_.size()) {
     LOG(ERROR) << "wrong feed input size. " << inputs.size()
