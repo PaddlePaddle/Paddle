@@ -45,7 +45,6 @@ endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
 
-
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)
