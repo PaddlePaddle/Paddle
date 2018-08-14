@@ -809,7 +809,7 @@ def _endpoints_replacement(program, endpoints):
     for op in program.global_block().ops:
         if op.has_attr(ENDPOINT_MAP):
             op.set_attr(ENDPOINT_MAP, endpoints)
-    program = program.clone()
+    program._sync_with_cpp()
     return program
 
 
@@ -877,7 +877,7 @@ def get_parameter_value_by_name(name, executor, program=None):
 
 
 def _load_slice_up_vars(executor, dirname, slice_vars_and_atts):
-    if slice_vars_and_atts == None or len(slice_vars_and_atts) == 0:
+    if not slice_vars_and_atts:
         return
 
     load_prog = Program()
