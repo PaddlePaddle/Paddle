@@ -235,7 +235,12 @@ else()
 endif()
 
 op_library(cross_entropy_op DEPS cross_entropy)
-op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+if(WITH_GPU)
+  op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax cub)
+else()
+  op_library(softmax_with_cross_entropy_op DEPS cross_entropy softmax)
+endif()
+
 op_library(softmax_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 if (WITH_GPU AND TENSORRT_FOUND)
