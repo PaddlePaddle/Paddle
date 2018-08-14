@@ -391,9 +391,9 @@ class PipeReader:
             buff = self.process.stdout.read(self.bufsize)
             if buff:
                 if self.file_type == "gzip":
-                    decomp_buff = cpt.to_literal_str(self.dec.decompress(buff))
+                    decomp_buff = cpt.to_text(self.dec.decompress(buff))
                 elif self.file_type == "plain":
-                    decomp_buff = cpt.to_literal_str(buff)
+                    decomp_buff = cpt.to_text(buff)
                 else:
                     raise TypeError("file_type %s is not allowed" %
                                     self.file_type)

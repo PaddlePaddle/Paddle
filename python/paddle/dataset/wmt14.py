@@ -55,7 +55,7 @@ def __read_to_dict(tar_file, dict_size):
         out_dict = dict()
         for line_count, line in enumerate(fd):
             if line_count < size:
-                out_dict[cpt.to_literal_str(line.strip())] = line_count
+                out_dict[cpt.to_text(line.strip())] = line_count
             else:
                 break
         return out_dict

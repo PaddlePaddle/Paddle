@@ -89,9 +89,9 @@ def __load_dict(tar_file, dict_size, lang, reverse=False):
     with open(dict_path, "rb") as fdict:
         for idx, line in enumerate(fdict):
             if reverse:
-                word_dict[idx] = cpt.to_literal_str(line.strip())
+                word_dict[idx] = cpt.to_text(line.strip())
             else:
-                word_dict[cpt.to_literal_str(line.strip())] = idx
+                word_dict[cpt.to_text(line.strip())] = idx
     return word_dict
 
 

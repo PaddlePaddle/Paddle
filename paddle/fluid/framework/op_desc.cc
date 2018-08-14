@@ -208,49 +208,44 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
   if (attr_type == proto::AttrType::INTS &&
       boost::get<std::vector<int>>(v).size() == 0u) {
-    proto::OpProto proto = OpInfoMap::Instance().Get(Type()).Proto();
     // Find current attr via attr name and set the correct attribute value
-    for (int i = 0; i != proto.attrs_size(); ++i) {
-      const proto::OpProto::Attr &attr = proto.attrs(i);
-      if (attr.name() == name) {
-        switch (attr.type()) {
-          case proto::AttrType::BOOLEANS: {
-            VLOG(11) << "SetAttr: " << Type() << ", " << name
-                     << " from INTS to BOOLEANS";
-            this->attrs_[name] = std::vector<bool>();
-            break;
-          }
-          case proto::AttrType::INTS: {
-            VLOG(11) << "SetAttr: " << Type() << ", " << name
-                     << " from INTS to INTS";
-            this->attrs_[name] = std::vector<int>();
-            break;
-          }
-          case proto::AttrType::FLOATS: {
-            VLOG(11) << "SetAttr: " << Type() << ", " << name
-                     << " from INTS to FLOATS";
-            this->attrs_[name] = std::vector<float>();
-            break;
-          }
-          case proto::AttrType::STRINGS: {
-            VLOG(11) << "SetAttr: " << Type() << ", " << name
-                     << " from INTS to STRINGS";
-            this->attrs_[name] = std::vector<std::string>();
-            break;
-          }
-          case proto::AttrType::BLOCKS: {
-            VLOG(11) << "SetAttr: " << Type() << ", " << name
-                     << " from INTS to BLOCKS";
-            this->SetBlocksAttr(name, std::vector<BlockDesc *>());
-            return;
-          }
-          default:
-            PADDLE_THROW("Wrong attr type %d", attr.type());
-        }
-        need_update_ = true;
+    const proto::OpProto::Attr& attr = GetProtoAttr(name);
+    switch (attr.type()) {
+      case proto::AttrType::BOOLEANS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BOOLEANS";
+        this->attrs_[name] = std::vector<bool>();
+        break;
+      }
+      case proto::AttrType::INTS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to INTS";
+        this->attrs_[name] = std::vector<int>();
+        break;
+      }
+      case proto::AttrType::FLOATS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to FLOATS";
+        this->attrs_[name] = std::vector<float>();
+        break;
+      }
+      case proto::AttrType::STRINGS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to STRINGS";
+        this->attrs_[name] = std::vector<std::string>();
+        break;
+      }
+      case proto::AttrType::BLOCKS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BLOCKS";
+        this->SetBlocksAttr(name, std::vector<BlockDesc *>());
         return;
       }
+      default:
+        PADDLE_THROW("Wrong attr type %d", attr.type());
     }
+    need_update_ = true;
+    return;
   }
 
   this->attrs_[name] = v;
@@ -278,6 +273,18 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return it->second;
+}
+
+const proto::OpProto::Attr& OpDesc::GetProtoAttr(const std::string &name) {
+  proto::OpProto& proto = OpInfoMap::Instance().Get(Type()).Proto();
+  for (int i = 0; i != proto.attrs_size(); ++i) {
+    const proto::OpProto::Attr &attr = proto.attrs(i);
+    if (attr.name() == name) {
+      return attr;
+    }
+  }
+
+  PADDLE_THROW("Attribute %s is not found in proto %s", name, proto.type());
 }
 
 Attribute OpDesc::GetNullableAttr(const std::string &name) const {

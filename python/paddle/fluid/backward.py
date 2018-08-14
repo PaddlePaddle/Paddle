@@ -103,8 +103,8 @@ def _some_in_set_(cands, s):
     """
     if len(cands) == 0:
         return False
-    literal_set = cpt.to_literal_str(s)
-    literal_cands = cpt.to_literal_str(cands)
+    literal_set = cpt.to_text(s)
+    literal_cands = cpt.to_text(cands)
     for c in literal_cands:
         if c in literal_set:
             return True
@@ -117,7 +117,7 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    name = cpt.to_literal_str(name)
+    name = cpt.to_text(name)
     pos = name.find(core.grad_var_suffix())
     return name[:pos] if pos != -1 else name
 
@@ -127,7 +127,7 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    return cpt.to_literal_str(name) + core.grad_var_suffix()
+    return cpt.to_text(name) + core.grad_var_suffix()
 
 
 def _addup_repetitive_outputs_(op_descs):
@@ -365,7 +365,7 @@ def _append_backward_ops_(block,
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
             op.desc,
-            cpt.to_literal_str(no_grad_dict[block.idx]), grad_sub_block_list)
+            cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
 
         grad_op_descs.extend(grad_op_desc)
         grad_to_var.update(op_grad_to_var)
@@ -600,7 +600,7 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     params_and_grads = []
     for param in parameters:
-        if cpt.to_literal_str(param) not in grad_info_map:
+        if cpt.to_text(param) not in grad_info_map:
             continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]

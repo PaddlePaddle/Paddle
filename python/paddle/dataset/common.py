@@ -20,7 +20,6 @@ import shutil
 import sys
 import importlib
 import paddle.dataset
-import paddle.fluid.compat as cpt
 import six.moves.cPickle as pickle
 import glob
 

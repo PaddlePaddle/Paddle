@@ -90,8 +90,8 @@ def corpus_reader(data_path, words_name, props_name):
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = cpt.to_literal_str(word.strip())
-                label = cpt.to_literal_str(label.strip().split())
+                word = cpt.to_text(word.strip())
+                label = cpt.to_text(label.strip().split())
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):
