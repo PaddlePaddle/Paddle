@@ -5375,7 +5375,9 @@ def prelu(x, mode, name=None):
         mode (string): The mode for weight sharing
 		       all: all elements share same weight
  		       channel:elements in a channel share same weight
- 		       element:each element has a weight 
+ 		       element:each element has a weight
+	name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
 
     Returns:
         Variable: The output tensor with the same shape as input.
