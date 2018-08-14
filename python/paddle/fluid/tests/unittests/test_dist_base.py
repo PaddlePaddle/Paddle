@@ -48,7 +48,11 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps0_pipe)
         ps1_proc = subprocess.Popen(
             ps1_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps1_pipe)
-        return ps0_proc, ps1_proc
+
+        if not check_error_log:
+            return ps0_proc, ps1_proc, None, None
+        else:
+            return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _wait_ps_ready(self, pid):
         retry_times = 50
@@ -107,7 +111,8 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stderr: %s\n' % err)
 
         # Run dist train to compare with local results
-        ps0, ps1 = self.start_pserver(model_file, check_error_log)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model_file,
+                                                          check_error_log)
         self._wait_ps_ready(ps0.pid)
         self._wait_ps_ready(ps1.pid)
 
@@ -160,6 +165,14 @@ class TestDistBase(unittest.TestCase):
 
         self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
         self.assertAlmostEqual(local_last_loss, dist_last_loss, delta=delta)
+
+        # close trainer file
+        if check_error_log:
+            tr0_pipe.close()
+            tr1_pipe.close()
+
+            ps0_pipe.close()
+            ps1_pipe.close()
 
         # check tr0_out
         # FIXME: ensure the server process is killed
