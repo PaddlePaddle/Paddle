@@ -5397,9 +5397,9 @@ def prelu(x, param_attr=None, mode, name=None):
         alpha_shape = [1, x.shape[1], 1, 1]
     elif mode == 'element':
         alpha_shape = x.shape
+    dtype = helper.input_dtype(input_param_name='x')
     alpha = helper.create_parameter(
         attr=param_attr, shape=alpha_shape, dtype=dtype, is_bias=False)
-    dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="prelu",
