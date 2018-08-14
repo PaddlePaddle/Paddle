@@ -17,7 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #if !defined(__APPLE__) && !defined(__OSX__)
-#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/sse_function.h"
 #endif
 
 namespace paddle {
