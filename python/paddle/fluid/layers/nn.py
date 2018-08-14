@@ -5364,7 +5364,7 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
-def prelu(x, mode='all', name=None):
+def prelu(x, param_attr=None, mode, name=None):
     """
     Equation:
 
@@ -5372,6 +5372,8 @@ def prelu(x, mode='all', name=None):
 
     Args:
         x (Variable): The input tensor.
+	param_attr(ParamAttr|None): The parameter attribute for the learnable
+                                    weight (alpha).
         mode (string): The mode for weight sharing
 		       all: all elements share same weight
  		       channel:elements in a channel share same weight
@@ -5390,9 +5392,19 @@ def prelu(x, mode='all', name=None):
             output = fluid.layers.prelu(x,mode)
     """
     helper = LayerHelper('prelu', **locals())
+    alpha_shape = [1]
+    if mode == 'channel':
+        alpha_shape = [1, x.shape[1], 1, 1]
+    elif mode == 'element':
+        alpha_shape = x.shape
+    alpha = helper.create_parameter(
+        attr=param_attr, shape=alpha_shape, dtype=dtype, is_bias=False)
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type="prelu", inputs={"X": x,
-                              "mode": mode}, outputs={"Out": out})
+        type="prelu",
+        inputs={"X": x,
+                'Alpha': alpha},
+        attrs={"mode": mode},
+        outputs={"Out": out})
     return out
