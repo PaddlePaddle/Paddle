@@ -52,33 +52,6 @@ const char kGraphOps[] = "ops";
 
 typedef std::unordered_map<std::string, int> ShardedVarDevice;
 const char kShardedVarDevice[] = "sharded_var_device";
-
-class SSAGraphBuilder : public ir::Pass {
- public:
-  SSAGraphBuilder() {}
-  virtual ~SSAGraphBuilder() {}
-
-  DISABLE_COPY_AND_ASSIGN(SSAGraphBuilder);
-
- protected:
-  /*
-    Dependency graph has been constructed. However, there are still data
-    hazards need to be handled.
-  */
-  static void PolishGraphToSupportDataHazards(ir::Graph *graph);
-
-  static VarHandle *CreateOrGetLatestVarHandle(ir::Graph *graph, ir::Node *node,
-                                               const platform::Place &place,
-                                               size_t place_offset);
-
-  // Add an output variable (each_var_name, place, place_offset) to op_handle,
-  // which belongs to graph
-  static void CreateOpOutput(ir::Graph *graph, OpHandleBase *op_handle,
-                             ir::Node *new_node, const platform::Place &place,
-                             size_t place_offset);
-
-  static void AddOutputToLeafOps(ir::Graph *graph);
-};
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

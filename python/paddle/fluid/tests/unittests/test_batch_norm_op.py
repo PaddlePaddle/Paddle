@@ -415,7 +415,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             self.__assert_close(scale_grad, out[6], "scale_grad")
             self.__assert_close(bias_grad, out[7], "bias_grad")
 
-            print "op test forward passed: ", str(place), data_layout
+            print("op test forward passed: ", str(place), data_layout)
 
         places = [core.CPUPlace()]
 
