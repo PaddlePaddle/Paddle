@@ -680,8 +680,6 @@ def load_inference_model(dirname,
                          executor,
                          model_filename=None,
                          params_filename=None,
-                         training_role=None,
-                         role_id=None,
                          pserver_endpoints=None):
     """
     Load inference model from a directory
@@ -732,9 +730,6 @@ def load_inference_model(dirname,
     """
     if not os.path.isdir(dirname):
         raise ValueError("There is no directory named '%s'", dirname)
-
-    if training_role == "PSERVER":
-        _load_lookup_table_vars(executor, dirname, program, role_id)
 
     if model_filename is not None:
         model_filename = os.path.basename(model_filename)
@@ -800,7 +795,7 @@ def _save_lookup_tables_by_notify(executor, dirname, lookup_table,
     pserver_notify_block = pserver_notify_program.global_block()
 
     attrs = {}
-    attrs['epmap'] = pserver_endpoints.split(",")
+    attrs['epmap'] = pserver_endpoints
     attrs['dir'] = dirname
     attrs['lookup_table'] = lookup_table
 
