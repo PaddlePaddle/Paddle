@@ -40,7 +40,7 @@ class FillConstantOpKernel : public framework::OpKernel<T> {
     }
 
     math::set_constant(ctx.template device_context<DeviceContext>(), out,
-                       static_cast<T>(value));
+                       value);
   }
 };
 
