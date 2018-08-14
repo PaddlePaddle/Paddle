@@ -22,7 +22,6 @@ limitations under the License. */
 #endif
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
-
 #endif
 
 namespace paddle {
@@ -124,7 +123,6 @@ void Conv2DOpMaker::Make() {
       "and W is the width of the feature.");
   AddInput("Filter",
            "(Tensor) The filter tensor of convolution operator. "
-
            "The format of the filter tensor is MCHW, where M is the number of "
            "output image channels, C is the number of input image channels, "
            "H is the height of the filter, and W is the width of the filter. "
@@ -139,7 +137,6 @@ void Conv2DOpMaker::Make() {
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.")
       .Reuse("Input");
-
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "

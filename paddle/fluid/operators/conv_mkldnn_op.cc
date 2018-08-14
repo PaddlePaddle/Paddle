@@ -269,10 +269,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     PADDLE_ENFORCE(filter->layout() == DataLayout::kMKLDNN &&
                        filter->format() != memory::format::format_undef,
                    "Wrong layout/format set for Filter tensor");
+    PADDLE_ENFORCE(input->dims().size() == 4,
+                   "Input must be with 4 dimensions, i.e. NCHW");
+    PADDLE_ENFORCE(filter->dims().size() == 4,
+                   "Filter must be with 4 dimensions, i.e. OIHW");
     if (bias) {
       PADDLE_ENFORCE(bias->layout() == DataLayout::kMKLDNN &&
                          bias->format() != memory::format::format_undef,
                      "Wrong layout/format set for Bias tensor");
+      PADDLE_ENFORCE(bias->dims().size() == 1,
+                     "Bias must only have 1 dimension, i.e. X");
     }
 
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
@@ -288,24 +294,11 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     const T* input_data = input->data<T>();
     const T* filter_data = filter->data<T>();
-    const T* bias_data = bias ? bias->data<T>() : nullptr;
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
-
-    PADDLE_ENFORCE(input->dims().size() == 4,
-                   "Input must be with 4 dimensions, i.e. NCHW");
-    PADDLE_ENFORCE(filter->dims().size() == 4,
-                   "Filter must be with 4 dimensions, i.e. OIHW");
-    if (bias) {
-      PADDLE_ENFORCE(bias->dims().size() == 1,
-                     "Bias must only have 1 dimension, i.e. X");
-    }
 
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> weights_tz =
         paddle::framework::vectorize2int(filter->dims());
-    std::vector<int> bias_tz =
-        bias ? paddle::framework::vectorize2int(bias->dims())
-             : std::vector<int>();
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
     // Get unique name for storing MKLDNN primitives
@@ -316,7 +309,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     std::vector<primitive> pipeline;
 
-    // User bias memory descriptor is handled later
     auto user_src_md = platform::MKLDNNMemDesc(
         {src_tz}, platform::MKLDNNGetDataType<T>(), input->format());
     auto user_weights_md = platform::MKLDNNMemDesc(
@@ -334,21 +326,23 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-    auto bias_md = platform::MKLDNNMemDesc(
-        bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
+    std::vector<int> bias_tz; // TODO(mgallus): avoid empty vector creation.
+                              // Currently used whenever bias is != nullptr.
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
     // create a conv primitive descriptor and save it for usage in backward
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
     if (bias) {
+      bias_tz =
+        paddle::framework::vectorize2int(bias->dims());
+      auto bias_md = platform::MKLDNNMemDesc(
+        bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
       conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
                                      strides, paddings, mkldnn_engine);
     } else {
-      conv_pd = ConvFwdPrimitiveDesc(
-          src_md, weights_md, dst_md,
-          strides,
-          paddings, mkldnn_engine);
+      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
+                                     paddings, mkldnn_engine);
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -372,6 +366,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // create convolution op primitive
     std::shared_ptr<mkldnn::convolution_forward> conv_p;
     if (bias) {
+      const T* bias_data = bias->data<T>();
       auto user_bias_md = platform::MKLDNNMemDesc(
           {bias_tz}, platform::MKLDNNGetDataType<T>(), memory::format::x);
       auto user_bias_memory_p =
