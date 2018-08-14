@@ -202,6 +202,17 @@ def _fetch_var(name, scope=None, return_numpy=True):
     return tensor
 
 
+def _var_to_name(var):
+    if isinstance(var, Variable):
+        return var.desc.name()
+    elif isinstance(var, str):
+        return var
+    elif isinstance(var, basestring):
+        return str(var)
+    else:
+        raise TypeError(str(var) + " should be Variable or str")
+
+
 def _get_program_cache_key(feed, fetch_list):
     feed_var_names = list(feed.keys())
 
@@ -271,8 +282,9 @@ class Executor(object):
     They has the exactly same arguments, and expected the same results.
     """
 
-    def __init__(self, place):
+    def __init__(self, place, log_level=0):
         self.place = place
+        self.log_level = log_level
         p = core.Place()
         p.set_place(place)
         self.executor = core.Executor(p)
@@ -442,6 +454,18 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
+        loggings = []
+        if self.log_level >= 5:
+            user_fetch_list = fetch_list
+            fetch_list = []
+            for op in program.block(0).ops:
+                outputs = set(op.output_arg_names)
+                for var_name in outputs:
+                    fetch_list.append(str(var_name))
+                    var = program.block(0).vars[var_name]
+                    loggings.append((op, var))
+            fetch_list = map(_var_to_name, fetch_list)
+
         cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
             cached_program = self._get_program_cache(cache_key)
@@ -468,4 +492,21 @@ class Executor(object):
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
         if return_numpy:
             outs = as_numpy(outs)
+
+        if self.log_level >= 5:
+            assert len(outs) == len(loggings), "unmatched outs and logging"
+            for (op, var), fetch_var_name, fetch_var_value in zip(
+                    loggings, fetch_list, outs):
+                print "{0}->({1}:{3})->{2}".format(op.type, fetch_var_name,
+                                                   fetch_var_value, var.dtype)
+            print "\n\n\n"
+            #NOTE(dzhwinter): The input should be avoided in
+            # return the user configured outputs.
+            if len(user_fetch_list) != 0:
+                user_fetch_list = map(_var_to_name, user_fetch_list)
+                user_outs = [
+                    var_value for var_name, var_value in zip(fetch_list, outs)
+                    if var_name in user_fetch_list
+                ]
+                return user_outs
         return outs
