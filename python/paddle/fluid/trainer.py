@@ -434,8 +434,10 @@ class Trainer(object):
 
         Args:
             param_path(str): The path to save parameters.
-            feeded_var_names(list(str)):
-            target_var_indexes(list(int)):
+            feeded_var_names(list(str)): The name of the vars that you
+                need to feed in before run program.
+            target_var_indexes(list(int)): the index of target var that
+                you need to return in trainer.train_func.
         Returns:
             None
         """
