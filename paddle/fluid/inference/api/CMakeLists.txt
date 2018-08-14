@@ -49,6 +49,8 @@ cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)
 
+cc_binary(text_classification SRCS text_classification_tester.cc DEPS "${inference_deps}")
+
 inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
 
