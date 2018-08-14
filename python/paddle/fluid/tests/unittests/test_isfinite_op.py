@@ -26,10 +26,9 @@ class TestInf(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         x[0] = np.inf
         x[-1] = np.inf
-        out = np.isinf(x)
 
         self.inputs = {'X': x}
-        self.outputs = {'Out': out}
+        self.outputs = {'Out': np.array(True).astype(self.dtype)}
 
     def init_dtype(self):
         pass
@@ -38,7 +37,7 @@ class TestInf(OpTest):
         self.check_output()
 
 
-class TestFP16Inf(OpTest):
+class TestFP16Inf(TestInf):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -52,10 +51,9 @@ class TestNAN(OpTest):
         x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
         x[0] = np.nan
         x[-1] = np.nan
-        out = np.isnan(x)
 
         self.inputs = {'X': x}
-        self.outputs = {'Out': out}
+        self.outputs = {'Out': np.array(True).astype(self.dtype)}
 
     def init_dtype(self):
         pass
@@ -64,7 +62,7 @@ class TestNAN(OpTest):
         self.check_output()
 
 
-class TestFP16NAN(OpTest):
+class TestFP16NAN(TestNAN):
     def init_dtype(self):
         self.dtype = np.float16
 
@@ -81,7 +79,7 @@ class TestIsfinite(OpTest):
         out = np.isinf(x) | np.isnan(x)
 
         self.inputs = {'X': x}
-        self.outputs = {'Out': out}
+        self.outputs = {'Out': np.array(False).astype(self.dtype)}
 
     def init_dtype(self):
         pass
@@ -90,7 +88,7 @@ class TestIsfinite(OpTest):
         self.check_output()
 
 
-class TestFP16Isfinite(OpTest):
+class TestFP16Isfinite(TestIsfinite):
     def init_dtype(self):
         self.dtype = np.float16
 
