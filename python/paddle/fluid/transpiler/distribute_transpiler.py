@@ -205,6 +205,12 @@ class DistributeTranspiler(object):
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
 
+        # add distributed attrs to program
+        self.origin_program._is_distributed = True
+        self.origin_program._endpoints = self.pserver_endpoints
+        self.origin_program._is_chief = self.trainer_id == 0
+        self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
+
         # split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars()
 
@@ -532,10 +538,6 @@ class DistributeTranspiler(object):
         # add distributed attrs
         pserver_program._slice_vars_and_atts = self._get_slice_vars_and_atts(
             endpoint)
-        pserver_program._is_distributed = True
-        pserver_program._endpoints = self.pserver_endpoints
-        pserver_program._is_chief = self.trainer_id == 0
-        pserver_program._distributed_lookup_table = self.table_name if self.table_name else None
 
         pserver_program._sync_with_cpp()
         return pserver_program
