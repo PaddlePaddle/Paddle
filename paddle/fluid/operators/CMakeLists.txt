@@ -273,9 +273,9 @@ op_library(squeeze_op DEPS reshape_op)
 op_library(extract_rows_op DEPS memory)
 op_library(flatten_op DEPS reshape_op)
 
-
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
+    op_library(layer_norm_op DEPS cub)
 else()
     op_library(conv_op DEPS vol2col im2col)
 endif()
