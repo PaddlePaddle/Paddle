@@ -804,65 +804,6 @@ def _save_lookup_tables_by_notify(executor, dirname, lookup_table,
     executor.run(pserver_notify_program)
 
 
-def _load_lookup_table_vars(executor, dirname, program, pserver_id):
-    """
-    The parameter server will load lookup table's local file in
-    selectedrows variable.
-
-    Args:
-        executor(Executor): The executor to run for loading persistable variables
-        dirname(str): The directory path
-        main_program(Program): Find the variable named table_name in main_program
-        pserver_id(int): the serial number in pserver_endpoints list
-        table_name(str): lookup table name
-
-    Returns:
-        None
-
-    Examples:
-        .. code-block:: python
-
-            exe = fluid.Executor(fluid.CPUPlace())
-            dirname = "./checkpoints/checkpoint_9/"
-            prog = fluid.default_main_program()
-            pserver_id = 1
-            table_name = "share_w"
-            _load_lookup_table_vars(executor=exe,
-                    dirname=dirname, program=prog, pserver_id=pserver_id,
-                    table_name=table_name)
-    """
-
-    LOOKUP_TABLE_TYPE = "lookup_table"
-    lookup_table_var_name = None
-
-    for op in program.global_block().ops:
-        if op.type == LOOKUP_TABLE_TYPE:
-            if op.attrs['is_distributed'] is True:
-                if lookup_table_var_name is None:
-                    lookup_table_var_name = op.input("W")[0]
-                if lookup_table_var_name != op.input("W")[0]:
-                    raise RuntimeError("all distributed lookup_table_ops"
-                                       " should have only one table")
-
-    lookup_table_var = program.global_block().vars[lookup_table_var_name]
-    if lookup_table_var is None:
-        return
-
-    lookup_table_dir = os.path.join(dirname, "__lookup_table__")
-    table_file = "{}.{}".format(lookup_table_var.name, pserver_id)
-
-    load_prog = Program()
-    load_block = load_prog.global_block()
-
-    load_block.append_op(
-        type='load',
-        inputs={},
-        outputs={'Out': [lookup_table_var]},
-        attrs={'file_path': os.path.join(lookup_table_dir, table_file)})
-
-    executor.run(load_prog)
-
-
 def _endpoints_replacement(program, endpoints):
     ENDPOINT_MAP = "epmap"
     for op in program.global_block().ops:
