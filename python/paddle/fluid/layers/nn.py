@@ -5364,7 +5364,7 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
-def prelu(x, mode, name=None):
+def prelu(x, mode='all', name=None):
     """
     Equation:
 
