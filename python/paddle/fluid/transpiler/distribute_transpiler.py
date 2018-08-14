@@ -501,6 +501,8 @@ class DistributeTranspiler(object):
             checkpoint_block_id = self._create_checkpoint_save_block(
                 pserver_program, table_opt_block.idx)
 
+            pserver_program._distributed_lookup_table = self.table_name
+
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
         if self.has_distributed_lookup_table:
@@ -527,9 +529,13 @@ class DistributeTranspiler(object):
             outputs={},
             attrs=attrs)
 
-        # add slice vars
-        slice_vars_and_atts = self._get_slice_vars_and_atts(endpoint)
-        pserver_program._slice_vars_and_atts = slice_vars_and_atts
+        # add distributed attrs
+        pserver_program._slice_vars_and_atts = self._get_slice_vars_and_atts(
+            endpoint)
+        pserver_program._is_distributed = True
+        pserver_program._endpoints = self.pserver_endpoints
+        pserver_program._is_chief = self.trainer_id == 0
+        pserver_program._distributed_lookup_table = self.table_name if self.table_name else None
 
         pserver_program._sync_with_cpp()
         return pserver_program
