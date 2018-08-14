@@ -427,6 +427,26 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
+    def save_inference_model(self, param_path, feeded_var_names,
+                             target_var_indexes):
+        """
+        Save all parameters into :code:`param_path`.
+
+        Args:
+            param_path(str): The path to save parameters.
+            feeded_var_names(list(str)):
+            target_var_indexes(list(int)):
+        Returns:
+            None
+        """
+        with self._prog_and_scope_guard():
+            exe = executor.Executor(self.place)
+            target_vars = [
+                self.train_func_outputs[index] for index in target_var_indexes
+            ]
+            io.save_inference_model(param_path, feeded_var_names, target_vars,
+                                    exe)
+
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
         with framework.program_guard(
