@@ -45,11 +45,9 @@ class CrossEntropyOp : public framework::OperatorWithKernel {
                         "Input(Label) should be 1.");
     }
 
-    auto out_dim_vec =
-        framework::vectorize(framework::slice_ddim(x_dims, 0, rank - 1));
-    out_dim_vec.push_back(1);
-
-    ctx->SetOutputDim("Y", framework::make_ddim(out_dim_vec));
+    auto y_dims = x_dims;
+    y_dims[rank - 1] = 1;
+    ctx->SetOutputDim("Y", y_dims);
     ctx->ShareLoD("X", /*->*/ "Y");
   }
 
