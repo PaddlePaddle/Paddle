@@ -22,21 +22,10 @@ from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor',
-    'create_parameter',
-    'create_global_var',
-    'cast',
-    'concat',
-    'sums',
-    'assign',
-    'fill_constant_batch_size_like',
-    'fill_constant',
-    'argmin',
-    'argmax',
-    'argsort',
-    'ones',
-    'zeros',
-    'reverse',
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
+    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
+    'argmin', 'argmax', 'argsort', 'ones', 'zeros', 'reverse', 'has_inf',
+    'has_nan', 'isfinite'
 ]
 
 
@@ -650,3 +639,33 @@ def load_combine(out, file_path):
         inputs={},
         output={"Out": out},
         args={"file_path": file_path})
+
+
+def has_inf(x):
+    """
+    Test if any of x contains a infinity number
+    """
+    helper = LayerHelper("isinf", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def has_nan(x):
+    """
+    Test if any of x contains a NAN
+    """
+    helper = LayerHelper("isnan", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def isfinite(x):
+    """
+    Test if any of x contains a infinity number
+    """
+    helper = LayerHelper("isfinite", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
+    return out
