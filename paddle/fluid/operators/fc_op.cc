@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fc_op.h"
 #include <vector>
+#include "paddle/fluid/operators/math/blas.h"
 
 DECLARE_int32(paddle_num_threads);
 
@@ -127,13 +128,13 @@ class FCOpKernel : public framework::OpKernel<T> {
                    "It must use CPUPlace.");
     auto input = ctx.Input<Tensor>("Input");
     auto w = ctx.Input<Tensor>("W");
-    auto b = ctx.Input<Tensor>("Bias");
+    auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
-    auto in_dims = ctx->GetInputDim("Input");
-    auto w_dims = ctx->GetInputDim("W");
+    auto in_dims = input->dims();
+    auto w_dims = w->dims();
 
-    auto& dev_ctx = ctx.template device_context<CPUDeviceContext>();
-    auto blas = math::GetBlas<CPUDeviceContext, T>(dev_ctx);
+    auto& dev_ctx = ctx.template device_context<platform::CPUDeviceContext>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(dev_ctx);
     const T* input_data = input->data<T>();
     const T* w_data = w->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
@@ -147,7 +148,7 @@ class FCOpKernel : public framework::OpKernel<T> {
 #pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
       for (int bs = 0; bs < in_dims[0]; bs++) {
         blas.AXPY(w_dims[1], static_cast<T>(1), bias_data,
-                  output_data + bs * w_dimws[1]);
+                  output_data + bs * w_dims[1]);
       }
     }
   }

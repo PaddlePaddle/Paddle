@@ -295,12 +295,6 @@ op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 
-# The fully connected layer is deleted when the WITH_MKLDNN flag is OFF
-# Because the fully connected layer has only one MKLDNN's operator
-if(NOT WITH_MKLDNN)
-    list(REMOVE_ITEM GENERAL_OPS fc_op)
-endif(NOT WITH_MKLDNN)
-
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
