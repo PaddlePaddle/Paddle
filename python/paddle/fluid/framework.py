@@ -1417,7 +1417,7 @@ class Program(object):
         """
         return self.desc
 
-    def clone(self, for_test=False, export_for_deployment=True):
+    def clone(self, for_test=False):
         """
         Create a new, duplicated program.
 
@@ -1440,8 +1440,6 @@ class Program(object):
         Args:
             for_test(bool): True if change the :code:`is_test` attribute of
                 operators to :code:`True`.
-            export_for_deployment(bool): remove the read ops that are added by py_reader
-                or cpp inference lib. Default True
 
         Returns:
             Program: The new, duplicated Program object.
@@ -1499,8 +1497,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize(
-                export_for_deployment=export_for_deployment)
+            p = self.inference_optimize(export_for_deployment=False)
         else:
             p = Program()
             p.desc = core.ProgramDesc(self.desc)
