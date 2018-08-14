@@ -313,9 +313,9 @@ class TestAbs(OpTest):
         self.init_dtype()
 
         x = np.random.uniform(-1, 1, [4, 4]).astype(self.dtype)
-        # Because we set delta = 0.005 in caculating numeric gradient,
+        # Because we set delta = 0.005 in calculating numeric gradient,
         # if x is too small, such as 0.002, x_neg will be -0.003
-        # x_pos will be 0.007, so the numeric gradient is unaccurate.
+        # x_pos will be 0.007, so the numeric gradient is inaccurate.
         # we should avoid this
         x[np.abs(x) < 0.005] = 0.02
         out = np.abs(x)

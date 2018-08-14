@@ -16,28 +16,23 @@ limitations under the License. */
 
 /*
  * This file contains Analyzer, an class that exposed as a library that analyze
- * and optimize
- * Fluid ProgramDesc for inference. Similar to LLVM, it has multiple flags to
- * control whether
- * an process is applied on the program.
+ * and optimize Fluid ProgramDesc for inference. Similar to LLVM, it has
+ * multiple flags to
+ * control whether an process is applied on the program.
  *
  * The processes are called Passes in analysis, the Passes are placed in a
- * pipeline, the first
- * Pass is the FluidToDataFlowGraphPass which transforms a Fluid ProgramDesc to
- * a data flow
- * graph, the last Pass is DataFlowGraphToFluidPass which transforms a data flow
- * graph to a
- * Fluid ProgramDesc. The passes in the middle of the pipeline can be any Passes
- * which take a
- * node or data flow graph as input.
+ * pipeline, the first Pass is the FluidToDataFlowGraphPass which transforms a
+ * Fluid ProgramDesc to
+ * a data flow graph, the last Pass is DataFlowGraphToFluidPass which transforms
+ * a data flow graph to a Fluid ProgramDesc. The passes in the middle of the
+ * pipeline can be any Passes
+ * which take a node or data flow graph as input.
  *
  * The Analyzer can be used in two methods, the first is a executable file which
- * can be used to
- * pre-process the inference model and can be controlled by passing difference
- * command flags;
+ * can be used to pre-process the inference model and can be controlled by
+ * passing difference command flags;
  * the other way is to compose inside the inference API as a runtime pre-process
- * phase in the
- * inference service.
+ * phase in the inference service.
  */
 
 #include <gflags/gflags.h>
@@ -50,6 +45,7 @@ namespace paddle {
 // flag if not available.
 DECLARE_bool(inference_analysis_enable_tensorrt_subgraph_engine);
 DECLARE_string(inference_analysis_graphviz_log_root);
+DECLARE_string(inference_analysis_output_storage_path);
 
 namespace inference {
 namespace analysis {

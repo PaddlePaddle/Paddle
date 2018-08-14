@@ -35,8 +35,8 @@ def max_pool2D_forward_naive(x,
              ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
                                                    paddings[1]) / strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
-    for i in xrange(H_out):
-        for j in xrange(W_out):
+    for i in range(H_out):
+        for j in range(W_out):
             r_start = np.max((i * strides[0] - paddings[0], 0))
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
             c_start = np.max((j * strides[1] - paddings[1], 0))
@@ -63,8 +63,8 @@ def avg_pool2D_forward_naive(x,
              ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
                                                    paddings[1]) / strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
-    for i in xrange(H_out):
-        for j in xrange(W_out):
+    for i in range(H_out):
+        for j in range(W_out):
             r_start = np.max((i * strides[0] - paddings[0], 0))
             r_end = np.min((i * strides[0] + ksize[0] - paddings[0], H))
             c_start = np.max((j * strides[1] - paddings[1], 0))

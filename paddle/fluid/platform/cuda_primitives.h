@@ -79,41 +79,41 @@ CUDA_ATOMIC_WRAPPER(Add, double) {
 
 // convert the value into float and do the add arithmetic.
 // then store the result into a uint32.
-inline __device__ uint32_t add_to_low_half(uint32_t val, float x) {
+inline static __device__ uint32_t add_to_low_half(uint32_t val, float x) {
   float16 low_half;
   // the float16 in lower 16bits
-  low_half.x = static_cast<uint16_t>(val & 0xffffu);
+  low_half.x = static_cast<uint16_t>(val & 0xFFFFu);
   low_half = static_cast<float16>(static_cast<float>(low_half) + x);
-  return (val & 0xffff0000u) | low_half.x;
+  return (val & 0xFFFF0000u) | low_half.x;
 }
 
-inline __device__ uint32_t add_to_high_half(uint32_t val, float x) {
+inline static __device__ uint32_t add_to_high_half(uint32_t val, float x) {
   float16 high_half;
   // the float16 in higher 16bits
   high_half.x = static_cast<uint16_t>(val >> 16);
   high_half = static_cast<float16>(static_cast<float>(high_half) + x);
-  return (val & 0xffffu) | (static_cast<uint32_t>(high_half.x) << 16);
+  return (val & 0xFFFFu) | (static_cast<uint32_t>(high_half.x) << 16);
 }
 
 CUDA_ATOMIC_WRAPPER(Add, float16) {
   // concrete packed float16 value may exsits in lower or higher 16bits
   // of the 32bits address.
-  uint32_t *address_as_ui =
-      reinterpret_cast<uint32_t *>(reinterpret_cast<char *>(address) -
-                                   (reinterpret_cast<size_t>(address) & 2));
+  uint32_t *address_as_ui = reinterpret_cast<uint32_t *>(
+      reinterpret_cast<char *>(address) -
+      (reinterpret_cast<uintptr_t>(address) & 0x02));
   float val_f = static_cast<float>(val);
   uint32_t old = *address_as_ui;
   uint32_t sum;
   uint32_t newval;
   uint32_t assumed;
-  if (((size_t)address & 2) == 0) {
+  if (((uintptr_t)address & 0x02) == 0) {
     // the float16 value stay at lower 16 bits of the address.
     do {
       assumed = old;
       old = atomicCAS(address_as_ui, assumed, add_to_low_half(assumed, val_f));
     } while (old != assumed);
     float16 ret;
-    ret.x = old & 0xffffu;
+    ret.x = old & 0xFFFFu;
     return ret;
   } else {
     // the float16 value stay at higher 16 bits of the address.

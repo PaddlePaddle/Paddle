@@ -22,10 +22,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/float16.h"
 
-DEFINE_bool(cudnn_deterministic, true,
+DEFINE_bool(cudnn_deterministic, false,
             "Whether allow using an autotuning algorithm for convolution "
             "operator. The autotuning algorithm may be non-deterministic. If "
-            "false, the algorithm is deterministic.");
+            "true, the algorithm is deterministic.");
 
 namespace paddle {
 namespace operators {
@@ -288,7 +288,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     if (input_grad) {
-      if (FLAGS_cudnn_deterministic) {
+      if (!FLAGS_cudnn_deterministic) {
         CUDNN_ENFORCE(
             platform::dynload::cudnnGetConvolutionBackwardDataAlgorithm(
                 handle, cudnn_filter_desc,
@@ -317,7 +317,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     }
 
     if (filter_grad) {
-      if (FLAGS_cudnn_deterministic) {
+      if (!FLAGS_cudnn_deterministic) {
         CUDNN_ENFORCE(
             platform::dynload::cudnnGetConvolutionBackwardFilterAlgorithm(
                 handle, cudnn_input_desc, cudnn_output_grad_desc,

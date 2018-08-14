@@ -419,6 +419,25 @@ EOF
     linkchecker doc/v2/en/html/index.html
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
+
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+
+    # Deploy to the the content server if its a "develop" or "release/version" branch
+    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
+    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
+        PPO_SCRIPT_BRANCH=develop
+    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
+        PPO_SCRIPT_BRANCH=master
+    else
+        # Early exit, this branch doesn't require documentation build
+        return 0;
+    fi
+     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
+    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
+    cd ..
+    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
+    cd -
 }
 
 function gen_html() {
@@ -534,7 +553,7 @@ EOF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
         cp -r fluid_install_dir fluid
-        tar -cf fluid.tgz fluid
+        tar -czf fluid.tgz fluid
       fi
 }
 

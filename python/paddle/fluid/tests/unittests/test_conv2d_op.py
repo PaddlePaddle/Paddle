@@ -66,7 +66,8 @@ class TestConv2dOp(OpTest):
         self.op_type = "conv2d"
         self.use_cudnn = True
         self.use_mkldnn = False
-        self.dtype = np.float16
+        self.data_format = "AnyLayout"
+        self.dtype = np.float32
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
@@ -90,7 +91,8 @@ class TestConv2dOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn
+            'use_mkldnn': self.use_mkldnn,
+            'data_format': self.data_format
         }
         self.outputs = {'Output': output}
 
@@ -101,59 +103,35 @@ class TestConv2dOp(OpTest):
         return core.is_cuda9_cudnn7() and core.is_float16_supported()
 
     def test_check_output(self):
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
-        else:
-            self.check_output()
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16 and not self.testfp16grad():
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place,
-                set(['Input', 'Filter']),
-                'Output',
-                max_relative_error=0.02)
-        else:
-            self.check_grad(
-                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16 and not self.testfp16grad():
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
-        else:
-            self.check_grad(
-                ['Input'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Filter']))
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Input'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16 and not self.testfp16grad():
             return
-        if self.testcudnn():
-            place = core.CUDAPlace(0)
-            self.check_grad_with_place(
-                place, ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
-        else:
-            self.check_grad(
-                ['Filter'],
-                'Output',
-                max_relative_error=0.02,
-                no_grad_set=set(['Input']))
+        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        self.check_grad_with_place(
+            place, ['Filter'],
+            'Output',
+            max_relative_error=0.02,
+            no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]

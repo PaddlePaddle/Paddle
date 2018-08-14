@@ -23,8 +23,8 @@ class TestElementwiseOp(OpTest):
         self.init_dtype()
 
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+            'X': np.random.uniform(0.1, 1, [2, 3]).astype(self.dtype),
+            'Y': np.random.uniform(0.1, 1, [2, 3]).astype(self.dtype)
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 
