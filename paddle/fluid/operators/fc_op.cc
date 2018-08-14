@@ -145,7 +145,9 @@ class FCOpKernel : public framework::OpKernel<T> {
 
     if (bias) {
       const T* bias_data = bias->data<T>();
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
+#endif
       for (int bs = 0; bs < in_dims[0]; bs++) {
         blas.AXPY(w_dims[1], static_cast<T>(1), bias_data,
                   output_data + bs * w_dims[1]);
