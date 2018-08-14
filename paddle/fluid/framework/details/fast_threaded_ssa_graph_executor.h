@@ -34,6 +34,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
                                const std::vector<platform::Place> &places,
                                std::unique_ptr<ir::Graph> &&graph);
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
+  const ir::Graph &Graph() const override;
 
  private:
   ExecutionStrategy strategy_;
@@ -56,6 +57,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   std::future<
       std::unique_ptr<std::unordered_map<OpHandleBase *, std::atomic<int>>>>
       atomic_op_deps_;
+  ExceptionHolder exception_;
 };
 }  // namespace details
 }  // namespace framework

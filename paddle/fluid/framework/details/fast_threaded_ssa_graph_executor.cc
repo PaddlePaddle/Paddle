@@ -105,7 +105,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
       for (int i = 0; i < remaining; ++i) {
         complete_q.Pop();
       }
-      LOG(FATAL) << "On exception thrown, not implemented";
+      exception_.ReThrow();
     }
     num_complete += num_comp;
   }
@@ -127,6 +127,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
         op_to_run->Run(strategy_.use_cuda_);
         ++complete;
       } catch (...) {
+        exception_.Catch(std::current_exception());
         --remaining_;
         complete_q->Push(-1UL);
         return;
@@ -161,6 +162,8 @@ void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {
         std::unordered_map<OpHandleBase *, std::atomic<int>>>(op_deps);
   });
 }
+
+const ir::Graph &FastThreadedSSAGraphExecutor::Graph() const { return *graph_; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
