@@ -878,7 +878,7 @@ class DistributeTranspiler(object):
         origin_param_var = self.origin_program.global_block().vars[
             self.table_name]
 
-        zero_dim = long(
+        zero_dim = int(
             math.ceil(origin_param_var.shape[0] / len(self.pserver_endpoints)))
         table_shape = list(origin_param_var.shape)
         table_shape[0] = zero_dim
