@@ -17,7 +17,7 @@ import math
 
 __all__ = [
     'long_type',
-    'to_literal_str',
+    'to_text',
     'to_bytes',
     'round',
     'floor_division',
@@ -33,7 +33,7 @@ else:
 
 
 #  str and bytes related functions
-def to_literal_str(obj, encoding='utf-8', inplace=False):
+def to_text(obj, encoding='utf-8', inplace=False):
     """
       All string in PaddlePaddle should be represented as a literal string.
     This function will convert object to a literal string without any encoding.
@@ -60,23 +60,23 @@ def to_literal_str(obj, encoding='utf-8', inplace=False):
     if isinstance(obj, list):
         if inplace:
             for i in six.moves.xrange(len(obj)):
-                obj[i] = _to_literal_str(obj[i], encoding)
+                obj[i] = _to_text(obj[i], encoding)
             return obj
         else:
-            return [_to_literal_str(item, encoding) for item in obj]
+            return [_to_text(item, encoding) for item in obj]
     elif isinstance(obj, set):
         if inplace:
             for item in obj:
                 obj.remove(item)
-                obj.add(_to_literal_str(item, encoding))
+                obj.add(_to_text(item, encoding))
             return obj
         else:
-            return set([_to_literal_str(item, encoding) for item in obj])
+            return set([_to_text(item, encoding) for item in obj])
     else:
-        return _to_literal_str(obj, encoding)
+        return _to_text(obj, encoding)
 
 
-def _to_literal_str(obj, encoding):
+def _to_text(obj, encoding):
     """
     In Python3:
         Decode the bytes type object to str type with specific encoding

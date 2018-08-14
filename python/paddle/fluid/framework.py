@@ -199,7 +199,7 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        name = cpt.to_literal_str(name)
+        name = cpt.to_text(name)
         self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
         if self.desc is None:
@@ -326,7 +326,7 @@ class Variable(object):
 
     @property
     def name(self):
-        return cpt.to_literal_str(self.desc.name())
+        return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
@@ -530,7 +530,7 @@ class Operator(object):
                         elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            in_arg_names.append(cpt.to_literal_str(arg.name))
+                            in_arg_names.append(cpt.to_text(arg.name))
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -559,7 +559,7 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    out_arg_names.append(cpt.to_literal_str(arg.name))
+                    out_arg_names.append(cpt.to_text(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -986,8 +986,8 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
-        name = cpt.to_literal_str(name)
-        new_name = cpt.to_literal_str(new_name)
+        name = cpt.to_text(name)
+        new_name = cpt.to_text(new_name)
 
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)

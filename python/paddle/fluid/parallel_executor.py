@@ -155,13 +155,13 @@ class ParallelExecutor(object):
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                cpt.to_literal_str(p.name)
+                cpt.to_text(p.name)
                 for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(cpt.to_literal_str(var)
+            set(cpt.to_text(var)
                 for var in self.persistable_vars), main.desc,
-            cpt.to_literal_str(loss_name)
+            cpt.to_text(loss_name)
             if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
@@ -275,7 +275,7 @@ class ParallelExecutor(object):
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
         self.executor.run(
-            cpt.to_literal_str(fetch_list), cpt.to_literal_str(fetch_var_name))
+            cpt.to_text(fetch_list), cpt.to_text(fetch_var_name))
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:

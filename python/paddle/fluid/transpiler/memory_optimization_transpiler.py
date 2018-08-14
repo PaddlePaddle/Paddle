@@ -260,7 +260,7 @@ class ControlFlowGraph(object):
                         # memory allocated in order to reuse the memory.
                         _rename_arg_(self._ops, x, cache_var, begin_idx=i)
                         self._program.block(block_desc.id).var(
-                            cpt.to_literal_str(x)).desc = self._find_var(
+                            cpt.to_text(x)).desc = self._find_var(
                                 block_desc, cache_var, is_forward)
                         self._update_graph(x, cache_var, begin_idx=i)
                         break

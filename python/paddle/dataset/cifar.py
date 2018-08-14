@@ -55,9 +55,8 @@ def reader_creator(filename, sub_name, cycle=False):
 
     def reader():
         with tarfile.open(filename, mode='r') as f:
-            names = [
-                each_item.name for each_item in f if sub_name in each_item.name
-            ]
+            names = (each_item.name for each_item in f
+                     if sub_name in each_item.name)
 
             while True:
                 for name in names:
