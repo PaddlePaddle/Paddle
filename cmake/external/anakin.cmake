@@ -37,7 +37,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     # TODO(luotao): use PaddlePaddle/Anakin later
     GIT_REPOSITORY      "https://github.com/luotao1/Anakin"
-    GIT_TAG             "3957ae9263eaa0b1986758dac60a88852afb09be"
+    GIT_TAG             "842a89ae3747ede25d8acbc29030d2eb602ced1f"
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DUSE_GPU_PLACE=YES
