@@ -159,8 +159,7 @@ class ParallelExecutor(object):
                 for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(cpt.to_text(var)
-                for var in self.persistable_vars), main.desc,
+            set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
             cpt.to_text(loss_name)
             if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
@@ -274,8 +273,7 @@ class ParallelExecutor(object):
             self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
-        self.executor.run(
-            cpt.to_text(fetch_list), cpt.to_text(fetch_var_name))
+        self.executor.run(cpt.to_text(fetch_list), cpt.to_text(fetch_var_name))
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:

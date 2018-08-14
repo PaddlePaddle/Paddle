@@ -209,7 +209,7 @@ void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
   if (attr_type == proto::AttrType::INTS &&
       boost::get<std::vector<int>>(v).size() == 0u) {
     // Find current attr via attr name and set the correct attribute value
-    const proto::OpProto::Attr& attr = GetProtoAttr(name);
+    const proto::OpProto::Attr &attr = GetProtoAttr(name);
     switch (attr.type()) {
       case proto::AttrType::BOOLEANS: {
         VLOG(11) << "SetAttr: " << Type() << ", " << name
@@ -275,8 +275,8 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
-const proto::OpProto::Attr& OpDesc::GetProtoAttr(const std::string &name) {
-  proto::OpProto& proto = OpInfoMap::Instance().Get(Type()).Proto();
+const proto::OpProto::Attr &OpDesc::GetProtoAttr(const std::string &name) {
+  proto::OpProto &proto = OpInfoMap::Instance().Get(Type()).Proto();
   for (int i = 0; i != proto.attrs_size(); ++i) {
     const proto::OpProto::Attr &attr = proto.attrs(i);
     if (attr.name() == name) {
