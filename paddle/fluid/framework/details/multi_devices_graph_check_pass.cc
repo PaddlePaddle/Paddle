@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/ssa_graph_checker.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -86,7 +86,7 @@ bool SSAGraghBuilderWithChecker::IsValidGraph(const ir::Graph *graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(multi_device_check_pass,
+REGISTER_PASS(multi_devices_check_pass,
               paddle::framework::details::SSAGraghBuilderWithChecker)
     .RequireGraphAttr(paddle::framework::details::kGraphVars)
     .RequireGraphAttr(paddle::framework::details::kGraphDepVars)
