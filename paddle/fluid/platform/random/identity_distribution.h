@@ -13,22 +13,40 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/platform/random/identity_distribution.h"
-#include "paddle/fluid/platform/random/normal_distribution.h"
+#include <stdint.h>
 #include "paddle/fluid/platform/random/philox_engine.h"
-#include "paddle/fluid/platform/random/random_sequence.h"
-#include "paddle/fluid/platform/random/uniform_distribution.h"
 
 namespace paddle {
 namespace platform {
+namespace random {
 
-using random::IdentityDistribution;
-using random::NormalDistribution;
-using random::Philox32x4;
-using random::RandomFill;
-using random::RandomSequence;
-using random::UniformRealDistribution;
-using DefaultRandomEngine = random::Philox32x4;
+// Return the random engine value directly.
+template <typename T>
+class IdentityDistribution;
 
+template <>
+class IdentityDistribution<uint32_t> {
+ public:
+  using ResultType = uint32_t;
+  constexpr static size_t N = 4;
+  constexpr static ResultType Max = UINT32_MAX;
+  constexpr static ResultType Min = 0;
+
+  inline HOSTDEVICE uint32_t operator()(Philox32x4& eng) {  // NOLINT
+    if (pos_ == result_.size) {
+      // regenerate from engine
+      result_ = eng();
+      pos_ = 0;
+    }
+    uint32_t result = result_[pos_++];
+    return result;
+  }
+
+ private:
+  Philox32x4::ResultType result_;
+  size_t pos_{result_.size};
+};
+
+}  // namespace random
 }  // namespace platform
 }  // namespace paddle

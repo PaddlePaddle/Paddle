@@ -14,20 +14,42 @@ limitations under the License. */
 #pragma once
 
 #include <random>
-
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/random.h"
 
 namespace paddle {
 namespace operators {
-
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
+template <typename T, typename ProbType>
+class FillMaskAndY {
+ public:
+  FillMaskAndY(T* mask, const T* x, T* y, ProbType prob)
+      : mask_(mask), x_(x), y_(y), prob_(prob) {}
+
+  HOSTDEVICE inline void operator()(size_t i, ProbType prob) {
+    if (prob < prob_) {
+      mask_[i] = 0;
+      y_[i] = 0;
+    } else {
+      mask_[i] = 1;
+      y_[i] = x_[i];
+    }
+  }
+
+ private:
+  T* mask_;
+  const T* x_;
+  T* y_;
+  ProbType prob_;
+};
+
 template <typename DeviceContext, typename T>
-class CPUDropoutKernel : public framework::OpKernel<T> {
+class DropoutKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
@@ -42,29 +64,22 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
 
       // NOTE: fixed seed should only be used in unittest or for debug.
       // Guarantee to use random seed in training.
-      std::random_device rnd;
-      std::minstd_rand engine;
-      int seed =
-          context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
-      engine.seed(seed);
+      int seed = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
+                                                : std::random_device()();
 
-      std::uniform_real_distribution<float> dist(0, 1);
-      size_t size = framework::product(mask->dims());
-      for (size_t i = 0; i < size; ++i) {
-        if (dist(engine) < dropout_prob) {
-          mask_data[i] = 0;
-          y_data[i] = 0;
-        } else {
-          mask_data[i] = 1;
-          y_data[i] = x_data[i];
-        }
-      }
+      uint32_t uint32_prob = static_cast<uint32_t>(UINT32_MAX * dropout_prob);
+      FillMaskAndY<T, uint32_t> fill_functor(mask_data, x_data, y_data,
+                                             uint32_prob);
+      platform::RandomSequence<DeviceContext> rand_seq;
+      platform::IdentityDistribution<uint32_t> dist;
+      rand_seq(context.template device_context<DeviceContext>(), seed,
+               x->numel(), dist, fill_functor);
     } else {
-      auto X = EigenMatrix<T>::Reshape(*x, 1);
-      auto Y = EigenMatrix<T>::Reshape(*y, 1);
       auto& place =
           *context.template device_context<DeviceContext>().eigen_device();
-      Y.device(place) = X * (1.0f - dropout_prob);
+      auto X = EigenMatrix<T>::Reshape(*x, 1);
+      auto Y = EigenMatrix<T>::Reshape(*y, 1);
+      Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
   }
 };

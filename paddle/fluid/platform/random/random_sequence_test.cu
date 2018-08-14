@@ -13,6 +13,7 @@
 // limitations under the License.
 #include <vector>
 #include "gtest/gtest.h"
+#include "paddle/fluid/platform/random/identity_distribution.h"
 #include "paddle/fluid/platform/random/normal_distribution.h"
 #include "paddle/fluid/platform/random/random_sequence.h"
 #include "paddle/fluid/platform/random/uniform_distribution.h"
@@ -64,6 +65,10 @@ TEST(RandomSequence, UniformSame) {
 TEST(RandomSequence, NormalSame) {
   TestMain(NormalDistribution<float>(0, 1));
   TestMain(NormalDistribution<double>(0, 1));
+}
+
+TEST(RandomSequence, IdentitySame) {
+  TestMain(IdentityDistribution<uint32_t>());
 }
 
 }  // namespace random

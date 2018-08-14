@@ -104,7 +104,7 @@ REGISTER_OPERATOR(dropout, ops::DropoutOp, ops::DropoutOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(dropout_grad, ops::DropoutOpGrad);
 REGISTER_OP_CPU_KERNEL(
-    dropout, ops::CPUDropoutKernel<paddle::platform::CPUDeviceContext, float>);
+    dropout, ops::DropoutKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
     dropout_grad,
     ops::DropoutGradKernel<paddle::platform::CPUDeviceContext, float>);
