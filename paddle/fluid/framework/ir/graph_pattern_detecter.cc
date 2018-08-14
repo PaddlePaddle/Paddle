@@ -15,8 +15,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -100,6 +100,8 @@ GraphPatternDetecter::DetectPatterns() {
   std::array<std::vector<HitGroup>, 2> bi_records;
   bi_records[0] = std::move(init_groups);
 
+  // Extend a PDNode to subgraphs by deducing the connection relations defined
+  // in edges of PDNodes.
   for (const auto& edge : pattern_.edges()) {
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
