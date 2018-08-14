@@ -17,12 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
 
-#if !defined(__APPLE__) && !defined(__OSX__)
-#include <immintrin.h>
-#include <tmmintrin.h>
-#include <xmmintrin.h>
-#endif
-
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
 #endif
@@ -82,39 +76,6 @@ struct RowwiseMean {
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   framework::Tensor* vec);
 };
-
-#if !defined(__APPLE__) && !defined(__OSX__)
-static const unsigned int SSE_STEP_SIZE = 4;
-static const unsigned int SSE_CUT_LEN_MASK = 3U;
-#define __m256x __m256
-#define __m128x __m128
-#define _mm_load_px _mm_loadu_ps
-#define _mm_load1_px _mm_load1_ps
-#define _mm_store_px _mm_storeu_ps
-#define _mm_add_px _mm_add_ps
-#define _mm_mul_px _mm_mul_ps
-
-template <typename T>
-inline void paddle_sse_axpy(const T* x, T* y, size_t len, const T alpha) {
-  unsigned int jjj, lll;
-  jjj = lll = 0;
-  lll = len & ~SSE_CUT_LEN_MASK;
-  __m128x mm_alpha = _mm_load1_px(&alpha);
-  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
-    _mm_store_px(y + jjj,
-                 _mm_add_px(_mm_load_px(y + jjj),
-                            _mm_mul_px(mm_alpha, _mm_load_px(x + jjj))));
-  }
-  for (; jjj < len; jjj++) {
-    y[jjj] += alpha * x[jjj];
-  }
-}
-
-template <typename T>
-inline T paddle_uniform_real(T min, T max) {
-  return ((T)rand() / (RAND_MAX)) * (max - min) + min;
-}
-#endif
 
 }  // namespace math
 }  // namespace operators
