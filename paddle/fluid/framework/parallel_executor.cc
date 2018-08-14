@@ -18,17 +18,17 @@ limitations under the License. */
 #include <tuple>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/fuse_adjacent_nodes_pass.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/op_fusion_pass.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/ssa_graph_checker.h"
-#include "paddle/fluid/framework/details/ssa_graph_printer.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -72,39 +72,39 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
   }
 
   // Convert graph to run on multi-devices.
-  auto multi_device_pass =
-      ir::PassRegistry::Instance().Get("multi_device_pass");
-  multi_device_pass->SetNotOwned<const std::vector<platform::Place>>("places",
-                                                                     &places);
-  multi_device_pass->SetNotOwned<const std::string>("loss_var_name",
-                                                    &loss_var_name);
-  multi_device_pass->SetNotOwned<const std::unordered_set<std::string>>(
+  auto multi_devices_pass =
+      ir::PassRegistry::Instance().Get("multi_devices_pass");
+  multi_devices_pass->SetNotOwned<const std::vector<platform::Place>>("places",
+                                                                      &places);
+  multi_devices_pass->SetNotOwned<const std::string>("loss_var_name",
+                                                     &loss_var_name);
+  multi_devices_pass->SetNotOwned<const std::unordered_set<std::string>>(
       "params", &param_names);
-  multi_device_pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
-                                                             &local_scopes);
-  multi_device_pass->SetNotOwned<const BuildStrategy>("strategy", &strategy);
+  multi_devices_pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
+                                                              &local_scopes);
+  multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy", &strategy);
 
 #ifdef PADDLE_WITH_CUDA
   platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
-  multi_device_pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
+  multi_devices_pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
 #endif
-  graph = multi_device_pass->Apply(std::move(graph));
+  graph = multi_devices_pass->Apply(std::move(graph));
 
   // Apply a graph print pass to record a graph with device info.
   if (!strategy.debug_graphviz_path_.empty()) {
-    auto multi_device_print_pass =
-        ir::PassRegistry::Instance().Get("multi_device_print_pass");
-    multi_device_print_pass->SetNotOwned<const std::string>(
+    auto multi_devices_print_pass =
+        ir::PassRegistry::Instance().Get("multi_devices_print_pass");
+    multi_devices_print_pass->SetNotOwned<const std::string>(
         "debug_graphviz_path", &strategy.debug_graphviz_path_);
-    multi_device_print_pass->Set<details::GraphvizSSAGraphPrinter>(
+    multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
         "graph_printer", new details::GraphvizSSAGraphPrinter);
-    graph = multi_device_print_pass->Apply(std::move(graph));
+    graph = multi_devices_print_pass->Apply(std::move(graph));
   }
 
   // Verify that the graph is correct for multi-device executor.
-  auto multi_device_check_pass =
-      ir::PassRegistry::Instance().Get("multi_device_check_pass");
-  graph = multi_device_check_pass->Apply(std::move(graph));
+  auto multi_devices_check_pass =
+      ir::PassRegistry::Instance().Get("multi_devices_check_pass");
+  graph = multi_devices_check_pass->Apply(std::move(graph));
   return graph;
 }
 
@@ -370,6 +370,6 @@ ParallelExecutor::~ParallelExecutor() {
 
 USE_PASS(op_fusion_pass);
 USE_PASS(graph_viz_pass);
-USE_PASS(multi_device_pass);
-USE_PASS(multi_device_check_pass);
-USE_PASS(multi_device_print_pass);
+USE_PASS(multi_devices_pass);
+USE_PASS(multi_devices_check_pass);
+USE_PASS(multi_devices_print_pass);

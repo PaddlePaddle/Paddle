@@ -99,12 +99,10 @@ else()
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method)
 endif()
 
-
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS threaded_ssa_graph_executor
         scope_buffered_ssa_graph_executor
         graph graph_viz_pass op_fusion_pass
-        multi_devices_graph_builder ssa_graph_printer ssa_graph_checker)
-
+        multi_devices_graph_pass multi_devices_graph_print_pass multi_devices_graph_check_pass)
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
 cc_test(var_type_inference_test SRCS var_type_inference_test.cc DEPS op_registry
