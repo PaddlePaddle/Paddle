@@ -445,8 +445,8 @@ class Executor(object):
         if scope is None:
             scope = global_scope()
 
+        loggings = []
         if self.log_level >= 5:
-            loggings = []
             user_fetch_list = fetch_list
             fetch_list = []
             for op in program.block(0).ops:
@@ -481,13 +481,11 @@ class Executor(object):
         self._feed_data(program, feed, feed_var_name, scope)
         self.executor.run(program.desc, scope, 0, True, True)
         outs = self._fetch_data(fetch_list, fetch_var_name, scope)
-        print(len(outs))
-        print(len(loggings))
-        assert len(outs) == len(loggings), "unmatched outs and logging"
         if return_numpy:
             outs = as_numpy(outs)
 
         if self.log_level >= 5:
+            assert len(outs) == len(loggings), "unmatched outs and logging"
             for (op, var), fetch_var_name, fetch_var_value in zip(
                     loggings, fetch_list, outs):
                 print "{0}->({1}:{3})->{2}".format(op.type, fetch_var_name,

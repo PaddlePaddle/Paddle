@@ -164,6 +164,13 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         framework::ToDataType(ctx.Input<Tensor>("X")->type());
+    if (input_data_type == framework::proto::VarType::FP16 &&
+        (ctx.Input<Tensor>("X")->dims() != ctx.Input<Tensor>("Y")->dims())) {
+      PADDLE_THROW(
+          "The X, Y shape is unmatched, elementwise_grad will do a reduce on "
+          "the non-exsits axis, so compute the gradient will lead to a "
+          "overflow. Please cast to fp32 before the specific layer.");
+    }
 
 #ifdef PADDLE_WITH_MKLDNN
     if (platform::CanMKLDNNBeUsed(ctx)) {
