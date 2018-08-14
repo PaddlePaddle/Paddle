@@ -66,14 +66,15 @@ struct NodesDFSIterator
  */
 struct GraphTraits {
   static iterator_range<NodesDFSIterator> DFS(const Graph &g) {
-    auto start_points = InferenceStartPoints(g);
+    auto start_points = ExtractStartPoints(g);
     NodesDFSIterator x(start_points);
     return iterator_range<NodesDFSIterator>(NodesDFSIterator(start_points),
                                             NodesDFSIterator());
   }
 
  private:
-  static std::vector<Node *> InferenceStartPoints(const Graph &g) {
+  // The nodes those have no input will be treated as start points.
+  static std::vector<Node *> ExtractStartPoints(const Graph &g) {
     std::vector<Node *> result;
     for (auto *node : g.Nodes()) {
       if (node->inputs.empty()) {

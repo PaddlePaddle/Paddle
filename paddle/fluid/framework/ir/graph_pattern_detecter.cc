@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
@@ -36,9 +39,10 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
 
 void GraphPatternDetecter::operator()(Graph* graph,
                                       GraphPatternDetecter::handle_t handler) {
-  MarkPDNodesInGraph(*graph);
+  if (!MarkPDNodesInGraph(*graph)) return;
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
+  RemoveOverlappedMatch(&subgraphs);
 
   for (auto& g : subgraphs) {
     handler(g, graph);
@@ -83,6 +87,7 @@ GraphPatternDetecter::DetectPatterns() {
   // Init empty subgraphs.
   std::vector<GraphPatternDetecter::subgraph_t> result;
   std::vector<HitGroup> init_groups;
+  PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
   auto* first_pnode = pattern_.edges().front().first;
   if (!pdnodes2nodes_.count(first_pnode)) return result;
   for (auto* node : pdnodes2nodes_[first_pnode]) {
@@ -146,6 +151,29 @@ void GraphPatternDetecter::UniquePatterns(
     if (!set.count(key)) {
       result.emplace_back(g);
       set.insert(key);
+    }
+  }
+  *subgraphs = result;
+}
+
+void GraphPatternDetecter::RemoveOverlappedMatch(
+    std::vector<subgraph_t>* subgraphs) {
+  std::vector<subgraph_t> result;
+  std::unordered_set<Node*> node_set;
+
+  for (const auto& subgraph : *subgraphs) {
+    bool valid = true;
+    for (auto& item : subgraph) {
+      if (node_set.count(item.second)) {
+        break;
+        valid = false;
+      }
+    }
+    if (valid) {
+      for (auto& item : subgraph) {
+        node_set.insert(item.second);
+      }
+      result.push_back(subgraph);
     }
   }
   *subgraphs = result;

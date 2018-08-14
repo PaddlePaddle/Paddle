@@ -45,7 +45,6 @@ NodesDFSIterator &NodesDFSIterator::operator++() {
   for (auto *x : cur->outputs) {
     if (!visited_.count(x)) {
       stack_.push(x);
-      visited_.insert(x);
     }
   }
   return *this;
