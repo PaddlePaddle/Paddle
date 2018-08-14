@@ -38,7 +38,7 @@ struct Array {
     return data_[index];
   }
 
-  constexpr inline size_t size() const { return ElementCount; }
+  HOSTDEVICE constexpr inline size_t size() const { return ElementCount; }
 
   template <typename VectorLikeType>
   static inline Array<T, ElementCount> From(const VectorLikeType& vec) {
@@ -53,23 +53,16 @@ struct Array {
   T data_[ElementCount];
 };
 
-struct IdentityFunctor {
-  template <typename T>
-  HOSTDEVICE inline T operator()(const T& x) {
-    return x;
-  }
-};
-
-template <typename TypeX, typename TypeY, typename ReduceOp,
-          typename TransformOp, int BlockDim, int Rank, int ReduceRank>
-__global__ void ReduceKernel(const TypeX* x, TypeY* y, ReduceOp reducer,
-                             TransformeOp transformer, TypeY init,
-                             int reduce_num, Array<int, Rank> x_strides,
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
+          int BlockDim, int Rank, int ReduceRank>
+__global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
+                             TransformOp transformer, Ty init, int reduce_num,
+                             Array<int, Rank> x_strides,
                              Array<int, ReduceRank> reduce_dim,
                              Array<int, ReduceRank> reduce_strides,
                              Array<int, Rank - ReduceRank> left_dim,
                              Array<int, Rank - ReduceRank> left_strides) {
-  __shared__ cub::BlockReduce<T, BlockDim>::TempStorage temp_storage;
+  __shared__ typename cub::BlockReduce<Ty, BlockDim>::TempStorage temp_storage;
   Array<int, Rank> sub_index;
   int left_idx = blockIdx.x;
   for (int i = 0; i < Rank - ReduceRank; ++i) {
@@ -84,8 +77,8 @@ __global__ void ReduceKernel(const TypeX* x, TypeY* y, ReduceOp reducer,
   }
 
   int idx_x = 0;
-  for (int k = 0; k < Rank; ++i) idx_x += (sub_index[k] * x_strides[k]);
-  TypeY reduce_var = static_cast<TypeY>(transformer(x[idx_x]));
+  for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
+  Ty reduce_var = static_cast<Ty>(transformer(x[idx_x]));
 
   for (int i = threadIdx.x + BlockDim; i < reduce_num; i += BlockDim) {
     int reduce_idx = i;
@@ -96,11 +89,11 @@ __global__ void ReduceKernel(const TypeX* x, TypeY* y, ReduceOp reducer,
 
     int idx_x = 0;
     for (int k = 0; k < Rank; ++k) idx_x += (sub_index[k] * x_strides[k]);
-    reduce_var = static_cast<TypeY>(reducer(reduce_var, transformer(x[idx_x])));
+    reduce_var = static_cast<Ty>(reducer(reduce_var, transformer(x[idx_x])));
   }
 
   reduce_var =
-      cub::BlockReduce<T, BlockDim>(temp_storage).Reduce(reduce_var, reducer);
+      cub::BlockReduce<Ty, BlockDim>(temp_storage).Reduce(reduce_var, reducer);
 
   if (threadIdx.x == 0) {
     y[blockIdx.x] = reducer(init, reduce_var);
@@ -134,52 +127,57 @@ constexpr int kMaxBlockDim = 512;
 
 static inline int GetDesiredBlockDim(int block_dim) {
   return block_dim >= kMaxBlockDim
-             ? block_dim
+             ? kMaxBlockDim
              : (1 << static_cast<int>(std::log2(block_dim)));
 }
 
 template <typename Tx, typename Ty, int BlockDim, typename ReduceOp,
-          typename InputTransformOp>
-void TensorReduceImpl(const Tx* x_data, Ty* y_data, ReduceOp reducer,
-                      TransformeOp transformer, const Ty& init, int reduce_num,
-                      const std::vector<int>& x_strides,
-                      const std::vector<int>& reduce_dim,
-                      const std::vector<int>& reduce_strides,
-                      const std::vector<int>& left_dim,
-                      const std::vector<int>& left_strides,
-                      cudaStream_t stream) {
-#define CUB_RANK_CASE(i, ...) \
-  case i: {                   \
-    constexpr auto kRank = i; \
-    { __VA_ARGS__; }          \
+          typename TransformOp>
+static void TensorReduceImpl(
+    const Tx* x_data, Ty* y_data, const platform::Place& place,
+    const ReduceOp& reducer, const TransformOp& transformer, const Ty& init,
+    int left_num, int reduce_num, const std::vector<int>& x_strides,
+    const std::vector<int>& reduce_dim, const std::vector<int>& reduce_strides,
+    const std::vector<int>& left_dim, const std::vector<int>& left_strides,
+    cudaStream_t stream) {
+#define CUB_RANK_CASE(i, ...)             \
+  case i: {                               \
+    constexpr auto kRank = i;             \
+    switch (reduce_rank) { __VA_ARGS__; } \
   } break
 
-#define CUB_REDUCE_RANK_CASE(i, ...)                                  \
-  case i: {                                                           \
-    constexpr auto kReduceRank = i;                                   \
-    ReduceKernel<Tx, Ty, ReduceOp, InputTransformOp, BlockDim, kRank, \
-                 kReduceRank><<<left_num, BlockDim, 0, stream>>>(     \
-        x_data, y_data, reducer, transformer, init, reduce_num,       \
-        Array<int, kRank>::From(x_strides),                           \
-        Array<int, kReduceRank>::From(reduce_dim),                    \
-        Array<int, kReduceRank>::From(reduce_strides),                \
-        Array<int, kRank - kReduceRank>::From(left_dim),              \
-        Array<int, kRank - kReduceRank>::From(left_strides));         \
+#define CUB_REDUCE_RANK_CASE(i, ...)                              \
+  case i: {                                                       \
+    constexpr auto kReduceRank = i;                               \
+    ReduceKernel<Tx, Ty, ReduceOp, TransformOp, BlockDim, kRank,  \
+                 kReduceRank><<<left_num, BlockDim, 0, stream>>>( \
+        x_data, y_data, reducer, transformer, init, reduce_num,   \
+        Array<int, kRank>::From(x_strides),                       \
+        Array<int, kReduceRank>::From(reduce_dim),                \
+        Array<int, kReduceRank>::From(reduce_strides),            \
+        Array<int, kRank - kReduceRank>::From(left_dim),          \
+        Array<int, kRank - kReduceRank>::From(left_strides));     \
   } break
 
   int rank = x_strides.size();
   int reduce_rank = reduce_strides.size();
   if (rank == reduce_rank) {
-    cub::TransformInputIterator<Ty, TransformeOp, const Tx*> trans_x(
+    cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
         x_data, transformer);
-    void* temp_storage = nullptr;
     size_t temp_storage_bytes = 0;
-    cub::DeviceReduce()::Reduce(temp_storage, trans_x, y_data, reduce_num,
-                                reducer, init, stream);
+    cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
+                              reduce_num, reducer, init, stream);
+    framework::Tensor tmp;
+    auto* temp_storage = tmp.mutable_data<uint8_t>(
+        framework::make_ddim({static_cast<int64_t>(temp_storage_bytes)}),
+        place);
+    cub::DeviceReduce::Reduce(temp_storage, temp_storage_bytes, trans_x, y_data,
+                              reduce_num, reducer, init, stream);
+    return;
   }
 
   switch (rank) {
-    CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1));
+    CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
 
     CUB_RANK_CASE(3, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2););
 
@@ -213,12 +211,11 @@ void TensorReduceImpl(const Tx* x_data, Ty* y_data, ReduceOp reducer,
 
 }  // namespace detail
 
-template <typename Tx, typename Ty, typename ReduceOp,
-          typename InputTransformOp>
-void TensorReduce(const Tensor& x, Tensor* y,
-                  const std::vector<int>& origin_reduce_dims,
-                  cudaStream_t stream, ReduceOp reducer,
-                  InputTransformOp transformer, const T& init) {
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
+void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
+                  const std::vector<int>& origin_reduce_dims, const Ty& init,
+                  const ReduceOp& reducer, const TransformOp& transformer,
+                  cudaStream_t stream) {
   auto x_dim = framework::vectorize2int(x.dims());
   int x_rank = static_cast<int>(x_dim.size());
   std::set<int> left_set, reduce_set;
@@ -243,19 +240,20 @@ void TensorReduce(const Tensor& x, Tensor* y,
   for (int i = 0; i < left_dim.size(); ++i) {
     y_dim[i] = x_dim[left_dim[i]];
   }
-  auto x_data = x->data<Tx>();
-  auto y_data = y->mutable_data<Ty>(x.place(), framework::make_ddim(y_dim));
+  auto x_data = x.data<Tx>();
+  auto y_data = y->mutable_data<Ty>(framework::make_ddim(y_dim), x.place());
   if (reduce_num == 1) return;
 
-#define CUB_BLOCK_DIM_CASE(block_dim)                                        \
-  case block_dim: {                                                          \
-    constexpr auto kBlockDim = block_dim;                                    \
-    detail::TensorReduceImpl<Tx, Ty, block_dim, ReduceOp, InputTransformOp>( \
-        x_data, y_data, reducer, transformer, init, reduce_num, x_strides,   \
-        reduce_dim, reduce_strides, left_dim, left_strides, stream);         \
+#define CUB_BLOCK_DIM_CASE(block_dim)                                    \
+  case block_dim: {                                                      \
+    constexpr auto kBlockDim = block_dim;                                \
+    detail::TensorReduceImpl<Tx, Ty, block_dim, ReduceOp, TransformOp>(  \
+        x_data, y_data, x.place(), reducer, transformer, init, left_num, \
+        reduce_num, x_strides, reduce_dim, reduce_strides, left_dim,     \
+        left_strides, stream);                                           \
   } break
 
-  switch (GetDesiredBlockDim(reduce_num)) {
+  switch (detail::GetDesiredBlockDim(reduce_num)) {
     CUB_BLOCK_DIM_CASE(512);
     CUB_BLOCK_DIM_CASE(256);
     CUB_BLOCK_DIM_CASE(128);
@@ -264,9 +262,9 @@ void TensorReduce(const Tensor& x, Tensor* y,
     CUB_BLOCK_DIM_CASE(16);
     CUB_BLOCK_DIM_CASE(8);
     CUB_BLOCK_DIM_CASE(4);
-    CUB_BLOCK_DIM_CASE(3);
     CUB_BLOCK_DIM_CASE(2);
   }
+#undef CUB_BLOCK_DIM_CASE
 }
 
 }  // namespace operators
