@@ -94,6 +94,7 @@ void SoftmaxGradCUDNNFunctor<T>::operator()(
 template class SoftmaxCUDNNFunctor<platform::float16>;
 template class SoftmaxCUDNNFunctor<float>;
 template class SoftmaxCUDNNFunctor<double>;
+template class SoftmaxGradCUDNNFunctor<platform::float16>;
 template class SoftmaxGradCUDNNFunctor<float>;
 template class SoftmaxGradCUDNNFunctor<double>;
 

@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/softmax.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -78,4 +79,5 @@ REGISTER_OP_KERNEL(softmax, CUDNN, plat::CUDAPlace,
                    ops::SoftmaxCUDNNKernel<float>,
                    ops::SoftmaxCUDNNKernel<plat::float16>);
 REGISTER_OP_KERNEL(softmax_grad, CUDNN, plat::CUDAPlace,
-                   ops::SoftmaxGradCUDNNKernel<float>);
+                   ops::SoftmaxGradCUDNNKernel<float>,
+                   ops::SoftmaxGradCUDNNKernel<plat::float16>);
