@@ -12,9 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/operators/batch_size_like.h"
+#include "paddle/fluid/operators/gaussian_random_op.h"
 
 namespace paddle {
 namespace operators {
@@ -73,3 +72,11 @@ REGISTER_OP_WITHOUT_GRADIENT(
     paddle::operators::GaussianRandomBatchSizeLikeOp,
     paddle::operators::GaussianRandomBatchSizeLikeOpMaker);
 // Kernels are registered in gaussian_random_op.cc and gaussian_random_op.cu
+template <typename T>
+using CPUGaussianRandomKernel =
+    paddle::operators::GaussianRandomKernel<paddle::platform::CPUDeviceContext,
+                                            T>;
+
+REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
+                       CPUGaussianRandomKernel<float>,
+                       CPUGaussianRandomKernel<double>);

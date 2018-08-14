@@ -27,6 +27,11 @@ struct RandomSequence {
   void operator()(const DeviceContext& ctx, uint64_t seed, size_t length,
                   Distribution dist, Callback callback);
 };
+
+template <typename DeviceContext, typename Distribution, typename T>
+inline void RandomFill(const DeviceContext& ctx, uint64_t seed,
+                       Distribution dist, T* data, size_t length);
+
 }  // namespace random
 }  // namespace platform
 }  // namespace paddle

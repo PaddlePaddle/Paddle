@@ -29,6 +29,22 @@ struct RandomSequence<CPUDeviceContext> {
     }
   }
 };
+
+namespace details {
+template <typename T>
+struct CopyValue {
+  T* val_;
+  HOSTDEVICE inline void operator()(size_t i, T val) { val_[i] = val; }
+};
+}  // namespace details
+
+template <typename DeviceContext, typename Distribution, typename T>
+inline void RandomFill(const DeviceContext& ctx, uint64_t seed,
+                       Distribution dist, T* data, size_t length) {
+  RandomSequence<DeviceContext> rand_seq;
+  rand_seq(ctx, seed, length, dist, details::CopyValue<T>{data});
+}
+
 }  // namespace random
 }  // namespace platform
 }  // namespace paddle
