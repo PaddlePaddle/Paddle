@@ -34,10 +34,9 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     y->mutable_data<T>(ctx.GetPlace());
 
     int rank = x->dims().size();
-    Tensor x_2d = rank > 2 ? framework::ReshapeToMatrix(*x, rank - 1) : *x;
-    Tensor labels_2d =
-        rank > 2 ? framework::ReshapeToMatrix(*labels, rank - 1) : *labels;
-    Tensor y_2d = rank > 2 ? framework::ReshapeToMatrix(*y, rank - 1) : *y;
+    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
+    Tensor labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
+    Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
 
     math::CrossEntropyFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &y_2d, &x_2d, &labels_2d,
