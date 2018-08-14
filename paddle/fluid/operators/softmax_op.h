@@ -37,6 +37,12 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     framework::LoDTensor flattened_out;
     flattened_x.ShareDataWith(*X).Resize(flattened_dims);
     flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    if (std::type_index(typeid(T)) ==
+        std::type_index(typeid(paddle::float16))) {
+      PADDLE_THROW(
+          "Softmax contains sum, which will lead to overflow in flaot16, "
+          "please use the softmax_cudnn");
+    }
 
     math::SoftmaxFunctor<DeviceContext, T>()(
         context.template device_context<DeviceContext>(), &flattened_x,
@@ -63,6 +69,13 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
     flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
     flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
+
+    if (std::type_index(typeid(T)) ==
+        std::type_index(typeid(paddle::float16))) {
+      PADDLE_THROW(
+          "Softmax contains sum, which will lead to overflow in flaot16, "
+          "please use the softmax_cudnn");
+    }
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
         context.template device_context<DeviceContext>(), &flattened_out,
