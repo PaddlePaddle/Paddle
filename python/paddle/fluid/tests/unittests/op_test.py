@@ -362,14 +362,10 @@ class OpTest(unittest.TestCase):
 
     def check_output_customized(self, checker):
         places = self._get_places()
-        import sys
-        print('places', places)
         for place in places:
             outs = self.calc_output(place)
             outs = [np.array(out) for out in outs]
-            import sys
-            print('outs', outs)
-            sys.stdout.flush()
+            outs.sort(key=len)
             checker(outs)
 
     def __assert_is_close(self, numeric_grads, analytic_grads, names,
