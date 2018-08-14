@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/softmax.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -38,7 +39,7 @@ class SoftmaxKernel : public framework::OpKernel<T> {
     flattened_x.ShareDataWith(*X).Resize(flattened_dims);
     flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
     if (std::type_index(typeid(T)) ==
-        std::type_index(typeid(paddle::float16))) {
+        std::type_index(typeid(platform::float16))) {
       PADDLE_THROW(
           "Softmax contains sum, which will lead to overflow in flaot16, "
           "please use the softmax_cudnn");
@@ -71,7 +72,7 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
 
     if (std::type_index(typeid(T)) ==
-        std::type_index(typeid(paddle::float16))) {
+        std::type_index(typeid(platform::float16))) {
       PADDLE_THROW(
           "Softmax contains sum, which will lead to overflow in flaot16, "
           "please use the softmax_cudnn");
