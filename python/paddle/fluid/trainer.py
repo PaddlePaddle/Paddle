@@ -430,7 +430,7 @@ class Trainer(object):
     def save_inference_model(self, param_path, feeded_var_names,
                              target_var_indexes):
         """
-        Save all parameters into :code:`param_path`.
+        Save model for cpp inference into :code:`param_path`.
 
         Args:
             param_path(str): The path to save parameters.
