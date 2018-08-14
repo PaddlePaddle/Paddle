@@ -23,4 +23,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext,
-                              platform::float16>)
+                              paddle::platform::float16>)
