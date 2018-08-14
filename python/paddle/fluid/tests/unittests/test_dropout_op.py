@@ -90,7 +90,7 @@ class TestFP16DropoutOp(OpTest):
 
         x = np.random.random(self.input_size).astype("float16")
         out = x * (1.0 - self.prob)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.attrs = {
             'dropout_prob': self.prob,
             'fix_seed': self.fix_seed,

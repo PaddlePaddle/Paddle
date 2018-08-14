@@ -23,7 +23,10 @@ import paddle.fluid.framework as framework
 class TestAssignValueOp(op_test.OpTest):
     def setUp(self):
         self.op_type = "assign_value"
-        x = numpy.random.random(size=(2, 5)).astype(numpy.float32)
+        self.dtype = numpy.float32
+        self.init_dtype()
+
+        x = numpy.random.random(size=(2, 5)).astype(self.dtype)
         self.inputs = {}
         self.outputs = {'Out': x}
         self.attrs = {
@@ -32,13 +35,16 @@ class TestAssignValueOp(op_test.OpTest):
             'fp32_values': [float(v) for v in x.flat]
         }
 
+    def init_dtype(self):
+        pass
+
     def test_forward(self):
         self.check_output()
 
     def test_assign(self):
         val = (
             -100 + 200 * numpy.random.random(size=(2, 5))).astype(numpy.int32)
-        x = layers.create_tensor(dtype="float32")
+        x = layers.create_tensor(dtype=self.dtype)
         layers.assign(input=val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         fetched_x = exe.run(fluid.default_main_program(),
@@ -48,6 +54,11 @@ class TestAssignValueOp(op_test.OpTest):
             numpy.array_equal(fetched_x, val),
             "fetch_x=%s val=%s" % (fetched_x, val))
         self.assertEqual(fetched_x.dtype, val.dtype)
+
+
+class TestAssignValueFP16Op(TestAssignValueOp):
+    def init_dtype(self):
+        self.dtype = numpy.float16
 
 
 if __name__ == '__main__':

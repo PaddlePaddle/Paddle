@@ -56,7 +56,7 @@ class TestMKLDNNReluDim4(TestRelu):
         x[np.abs(x) < 0.005] = 0.02
         out = np.maximum(x, 0)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': x}
         self.outputs = {'Out': out}
         self.attrs = {"use_mkldnn": True}
 

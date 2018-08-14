@@ -58,8 +58,10 @@ def get_numeric_gradient(place,
         for output_name in output_names:
             op.run(scope, place)
             sum.append(
-                np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).mean()
+                np.array(scope.find_var(output_name).get_tensor()).astype(
+                    np.float32).mean())
+        #NOTE(dzhwinter): mean will cause underflow error in float16
+        return np.array(sum).astype(np.float32).mean()
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -110,14 +112,15 @@ def get_numeric_gradient(place,
         # get one input element throw it's index i.
         origin = __get_elem__(tensor_to_check, i)
         # add delta to it, run op and then get the sum of the result tensor.
-        x_pos = origin + delta
+        # set delta as np.float16, will automatic convert to float32, flaot64
+        x_pos = origin + np.array(delta).astype(np.float16)
         __set_elem__(tensor_to_check, i, x_pos)
         y_pos = get_output()
 
         if in_place:
             set_input(scope, op, inputs, place)
 
-        x_neg = origin - delta
+        x_neg = origin - np.array(delta).astype(np.float16)
         __set_elem__(tensor_to_check, i, x_neg)
         y_neg = get_output()
 
