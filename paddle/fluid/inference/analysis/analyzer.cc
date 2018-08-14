@@ -48,9 +48,9 @@ class DfgPassManagerImpl final : public DfgPassManager {
         if (!node->IsFunction()) return false;
 
         const auto* func = static_cast<const Function*>(node);
-        if (teller_set.count(func->func_type()))
+        if (teller_set.count(func->func_type())) {
           return true;
-        else {
+        } else {
           return false;
         }
       };
