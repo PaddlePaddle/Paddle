@@ -836,7 +836,7 @@ class Operator(object):
         Get the attribute dict.
 
         Returns:
-            attr_map(dict(name->attr)): The Operator's attribute dict.
+            dict: The Operator's attribute dict, name->attr.
         """
         attr_names = self.attr_names
         attr_map = {}
