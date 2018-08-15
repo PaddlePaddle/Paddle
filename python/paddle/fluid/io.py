@@ -559,7 +559,8 @@ def save_inference_model(dirname,
                          executor,
                          main_program=None,
                          model_filename=None,
-                         params_filename=None):
+                         params_filename=None,
+                         export_for_deployment=True):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -581,6 +582,8 @@ def save_inference_model(dirname,
         params_filename(str|None): The name of file to save all related parameters.
                                    If it is setted None, parameters will be saved
                                    in separate files .
+        export_for_deployment(bool): remove the read ops that are added by py_reader
+                                    for cpp inference lib. Default True
 
     Returns:
         None
@@ -647,7 +650,8 @@ def save_inference_model(dirname,
     copy_program.desc.flush()
 
     pruned_program = copy_program.prune(targets=target_vars)
-    inference_program = pruned_program.inference_optimize()
+    inference_program = pruned_program.inference_optimize(
+        export_for_deployment=export_for_deployment)
     fetch_var_names = [v.name for v in target_vars]
 
     prepend_feed_ops(inference_program, feeded_var_names)
