@@ -70,7 +70,9 @@ def __build_dict(tar_file, dict_size, save_path, lang):
         fout.write("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK))
         for idx, word in enumerate(
                 sorted(
-                    word_dict.iteritems(), key=lambda x: x[1], reverse=True)):
+                    iter(list(word_dict.items())),
+                    key=lambda x: x[1],
+                    reverse=True)):
             if idx + 3 == dict_size: break
             fout.write("%s\n" % (word[0]))
 
@@ -96,7 +98,7 @@ def __get_dict_size(src_dict_size, trg_dict_size, src_lang):
     src_dict_size = min(src_dict_size, (TOTAL_EN_WORDS if src_lang == "en" else
                                         TOTAL_DE_WORDS))
     trg_dict_size = min(trg_dict_size, (TOTAL_DE_WORDS if src_lang == "en" else
-                                        TOTAL_ENG_WORDS))
+                                        TOTAL_EN_WORDS))
     return src_dict_size, trg_dict_size
 
 

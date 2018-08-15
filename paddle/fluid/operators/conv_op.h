@@ -60,12 +60,12 @@ inline bool IsExpand(const std::vector<int64_t>& filter_dim,
 // operator implementations can reuse the code.
 class Conv2DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv2DOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class Conv3DOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Conv3DOpMaker(OpProto* proto, OpAttrChecker* op_checker);
+  void Make() override;
 };
 
 class ConvOp : public framework::OperatorWithKernel {

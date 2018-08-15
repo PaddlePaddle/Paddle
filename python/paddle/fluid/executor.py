@@ -14,21 +14,27 @@
 
 import numpy as np
 import contextlib
-from framework import Program, default_main_program, Variable
+import six
+from .framework import Program, default_main_program, Variable
 from . import core
 
-__all__ = [
-    'Executor', 'global_scope', 'scope_guard', 'switch_scope', 'fetch_var'
-]
+__all__ = ['Executor', 'global_scope', 'scope_guard', '_switch_scope']
 
 g_scope = core.Scope()
 
 
 def global_scope():
+    """
+    Get the global/default scope instance. There are a lot of APIs use
+    :code:`global_scope` as its default value, e.g., :code:`Executor.run`
+
+    Returns:
+        Scope: The global/default scope instance.
+    """
     return g_scope
 
 
-def switch_scope(scope):
+def _switch_scope(scope):
     global g_scope
     ex = g_scope
     g_scope = scope
@@ -37,12 +43,42 @@ def switch_scope(scope):
 
 @contextlib.contextmanager
 def scope_guard(scope):
-    ex = switch_scope(scope)
+    """
+    Change the global/default scope instance by Python `with` statement. All
+    variable in runtime will assigned to the new scope.
+
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> new_scope = fluid.Scope()
+        >>> with fluid.scope_guard(new_scope):
+        >>>     ...
+
+    Args:
+        scope: The new global/default scope.
+    """
+    ex = _switch_scope(scope)
     yield
-    switch_scope(ex)
+    _switch_scope(ex)
 
 
 def as_numpy(tensor):
+    """
+    Convert a Tensor to a numpy.ndarray, its only support Tensor without LoD information.
+    For higher dimensional sequence data, please use LoDTensor directly.
+    Examples:
+        >>> import paddle.fluid as fluid
+        >>> outs = executor.run(...)
+        >>> np_outs = map(lambda x: as_numpy(x), outs)
+        >>>     ...
+
+    Args:
+       tensor(Variable): a instance of Tensor
+
+    Returns:
+        numpy.ndarray
+    """
+    if isinstance(tensor, core.LoDTensorArray):
+        return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
@@ -133,16 +169,20 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
     return fetch_count > 0
 
 
-def fetch_var(name, scope=None, return_numpy=True):
+def _fetch_var(name, scope=None, return_numpy=True):
     """
-    Fetch the value of the variable with the given name from the given scope
+    Fetch the value of the variable with the given name from the
+    given scope.
+
     Args:
         name(str): name of the variable. Typically, only persistable variables
             can be found in the scope used for running the program.
         scope(core.Scope|None): scope object. It should be the scope where
             you pass to Executor.run() when running your program.
-            If None, global_scope() will be used.
-        return_numpy(bool): whether convert the tensor to numpy.ndarray
+            If None, global_scope() will be used. Default None.
+        return_numpy(bool): whether convert the tensor to numpy.ndarray.
+            Default True.
+
     Returns:
        LodTensor|numpy.ndarray
     """
@@ -162,41 +202,82 @@ def fetch_var(name, scope=None, return_numpy=True):
     return tensor
 
 
-def get_program_cache_key(feed, fetch_list):
-    feed_var_names = feed.keys()
+def _get_program_cache_key(feed, fetch_list):
+    feed_var_names = list(feed.keys())
 
     def to_name_str(var):
         if isinstance(var, Variable):
             return var.desc.name()
         elif isinstance(var, str):
             return var
+        elif isinstance(var, six.string_types):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
 
-    fetch_var_names = map(to_name_str, fetch_list)
+    fetch_var_names = list(map(to_name_str, fetch_list))
 
     return str(feed_var_names + fetch_var_names)
 
 
+def _as_lodtensor(data, place):
+    """
+        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
+        For higher dimensional sequence data, please use LoDTensor directly.
+
+        Examples:
+            >>> import paddle.fluid as fluid
+            >>> place = fluid.CPUPlace()
+            >>> exe = fluid.executor(place)
+            >>> data = np.array(size=(100, 200, 300))
+            >>> np_outs = map(lambda x: fluid.executor._as_lodtensor(x, place), data)
+            >>>     ...
+
+        Args:
+            data(numpy.ndarray): a instance of array
+
+        Returns:
+            LoDTensor
+        """
+    if isinstance(data, list):
+        raise RuntimeError("Some of your feed data hold LoD information. \
+                They can not be completely cast from a list of Python \
+                ndarray to LoDTensor. Please convert data to LoDTensor \
+                directly before feeding the data.\
+                ")
+    # single tensor case
+    tensor = core.LoDTensor()
+    tensor.set(data, place)
+    return tensor
+
+
 class Executor(object):
+    """
+    An Executor in Python, only support the single-GPU running. For multi-cards, please refer to
+    ParallelExecutor.
+    Python executor takes a program, add feed operators and fetch operators to this program according
+    to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
+    the variables(or names) that user want to get after program run. Note: the executor will run all
+    operators in the program but not only the operators dependent by the fetch_list.
+    It store the global variables into the global scope, and create a local scope for the temporary
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished.
+    But the global scope variables will be persistent through different runs.
+    All of ops in program will be running in sequence.
+
+    Args:
+        place(core.CPUPlace|core.CUDAPlace(n)): indicate the executor run on which device
+
+    Note: For debugging complicated network in parallel-GPUs, you can test it on the executor.
+    They has the exactly same arguments, and expected the same results.
+    """
+
     def __init__(self, place):
         self.place = place
         p = core.Place()
         p.set_place(place)
         self.executor = core.Executor(p)
         self.program_caches = dict()
-
-    def as_lodtensor(self, data):
-        if isinstance(data, list):
-            raise RuntimeError("Some of your feed data hold LoD information. \
-                They can not be completely cast from a list of Python \
-                ndarray to LoDTensor. Please convert data to LoDTensor \
-                directly before feeding the data.\
-                ")
-        # single tensor case
-        tensor = core.LoDTensor()
-        tensor.set(data, self.place)
-        return tensor
+        self._closed = False
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -230,7 +311,7 @@ class Executor(object):
         if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
-                global_block.prepend_op(
+                global_block._prepend_op(
                     type='feed',
                     inputs={'X': [feed_var]},
                     outputs={'Out': [out]},
@@ -256,7 +337,7 @@ class Executor(object):
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.as_lodtensor(cur_feed)
+                    cur_feed = _as_lodtensor(cur_feed, self.place)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -265,9 +346,27 @@ class Executor(object):
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in xrange(len(fetch_list))
+            for i in range(len(fetch_list))
         ]
         return outs
+
+    def close(self):
+        """
+        Close this executor.
+
+        You can no long use this executor after calling this method.
+        For the distributed training, this method would free the resource on PServers related to
+        the current Trainer.
+
+        Example:
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> ...
+            >>> exe.close()
+        """
+        if not self._closed:
+            self.executor.close()
+            self._closed = True
 
     def run(self,
             program=None,
@@ -278,40 +377,72 @@ class Executor(object):
             scope=None,
             return_numpy=True,
             use_program_cache=False):
-        """ Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
-
+        """
+        Run program by this Executor. Feed data by feed map, fetch result by fetch_list.
         Python executor takes a program, add feed operators and fetch operators to this program according
         to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
-        the variables(or names) that user want to get after program run. Note: the executor will run all
+        the variables(or names) that user want to get after program run.
+
+        Note: the executor will run all
         operators in the program but not only the operators dependent by the fetch_list
 
-        :param program: the program that need to run, if not provied, then default_main_program will be used.
-        :param feed: feed variable map, e.g. {"image": ImageData, "label": LableData}
-        :param fetch_list: a list of variable or variable names that user want to get, run will return them according
-        to this list.
-        :param feed_var_name: the name for the input variable of feed Operator.
-        :param fetch_var_name: the name for the output variable of feed Operator.
-        :param scope: the scope used to run this program, you can switch it to different scope. default is global_scope
-        :param return_numpy: if convert the fetched tensor to numpy
-        :param use_program_cache: set use_program_cache to true if program not changed compare to the last step.
-        :return: result according to fetch_list.
+        Args:
+            program(Program): the program that need to run, if not provied, then default_main_program will be used.
+            feed(dict): feed variable map, e.g. {"image": ImageData, "label": LableData}
+            fetch_list(list): a list of variable or variable names that user want to get, run will return them according to this list.
+            feed_var_name(str): the name for the input variable of feed Operator.
+            fetch_var_name(str): the name for the output variable of fetch Operator.
+            scope(Scope): the scope used to run this program, you can switch it to different scope. default is global_scope
+            return_numpy(bool): if convert the fetched tensor to numpy
+            use_program_cache(bool): set use_program_cache to true if program not changed compare to the last step.
+
+        Returns:
+
+            list(numpy.array): fetch result according to fetch_list.
+
+
+        Examples:
+
+            >>> data = layers.data(name='X', shape=[1], dtype='float32')
+            >>> hidden = layers.fc(input=data, size=10)
+            >>> layers.assign(hidden, out)
+            >>> loss = layers.mean(out)
+            >>> adam = fluid.optimizer.Adam()
+            >>> adam.minimize(loss)
+
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> exe.run(default_startup_program())
+
+            >>> x = numpy.random.random(size=(10, 1)).astype('float32')
+            >>> outs = exe.run(
+            >>>     feed={'X': x},
+            >>>     fetch_list=[loss.name])
         """
+
+        if self._closed:
+            raise RuntimeError("Attempted to use a closed Executor")
+
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):
-            raise TypeError("feed should be a map")
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s" %
+                (type(feed)))
         if fetch_list is None:
             fetch_list = []
         if program is None:
             program = default_main_program()
 
         if not isinstance(program, Program):
-            raise TypeError()
+            raise TypeError(
+                "Executor requires Program as its Parameter. But you passed in %s"
+                % (type(program)))
 
         if scope is None:
             scope = global_scope()
 
-        cache_key = get_program_cache_key(feed, fetch_list)
+        cache_key = _get_program_cache_key(feed, fetch_list)
         if use_program_cache:
             cached_program = self._get_program_cache(cache_key)
             if cached_program is None:

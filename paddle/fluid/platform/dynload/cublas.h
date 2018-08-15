@@ -45,7 +45,7 @@ extern void *cublas_dso_handle;
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(cublas_dso_handle, #__name);                  \
+      static void *p_##__name = dlsym(cublas_dso_handle, #__name);           \
       return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
     }                                                                        \
   };                                                                         \

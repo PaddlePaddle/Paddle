@@ -13,10 +13,11 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/framework/details/var_handle.h"
+#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/macros.h"
 
@@ -26,9 +27,11 @@ namespace details {
 
 constexpr char kLocalExecScopeName[] = "@LCOAL_SCOPE@";
 
+// Wraps ir::Node and provide helper utilities.
+// It's responsible for populating necessary fields of ir::Node.
 class OpHandleBase {
  public:
-  OpHandleBase() {}
+  explicit OpHandleBase(ir::Node *node) : node_(node) {}
 
   virtual ~OpHandleBase();
 
@@ -36,13 +39,25 @@ class OpHandleBase {
 
   virtual std::string Name() const = 0;
 
-  void Run(bool use_event);
+  void Run(bool use_cuda);
 
-  virtual void Wait(platform::DeviceContext *waited_dev);
+  virtual void RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx);
 
   void AddInput(VarHandleBase *in);
 
   void AddOutput(VarHandleBase *out);
+
+  // This method adds the wait events of all the input on all the device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated();
+
+  // This method adds the wait events of all the input on the specified device
+  // context.
+  // NODE: This Wait is asynchronous operation.
+  virtual void WaitInputVarGenerated(const platform::Place &place);
+
+  virtual bool NeedWait(VarHandleBase *in_var);
 
   // If the Op involves data transfer of multiple devices that
   // will likely block other computations.
@@ -58,7 +73,19 @@ class OpHandleBase {
 
   const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
 
+  size_t NoDupInputSize() const {
+    std::unordered_set<VarHandleBase *> res;
+    for (auto *var : inputs_) {
+      res.emplace(var);
+    }
+    return res.size();
+  }
+
   const std::vector<VarHandleBase *> &Outputs() const { return outputs_; }
+
+  size_t NoDummyInputSize() const;
+
+  ir::Node *Node() { return node_; }
 
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
@@ -68,11 +95,10 @@ class OpHandleBase {
 
   virtual void RunImpl() = 0;
 
+  ir::Node *node_;
   std::vector<VarHandleBase *> inputs_;
   std::vector<VarHandleBase *> outputs_;
-  std::unordered_map<platform::Place, platform::DeviceContext *,
-                     platform::PlaceHash>
-      dev_ctxes_;
+  std::map<platform::Place, platform::DeviceContext *> dev_ctxes_;
 
 #ifdef PADDLE_WITH_CUDA
   std::unordered_map<int, cudaEvent_t> events_;

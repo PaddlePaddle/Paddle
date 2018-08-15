@@ -28,11 +28,12 @@ images per class.
 
 """
 
-import cPickle
 import itertools
 import numpy
 import paddle.dataset.common
 import tarfile
+from six.moves import zip
+from six.moves import cPickle as pickle
 
 __all__ = ['train100', 'test100', 'train10', 'test10', 'convert']
 
@@ -43,12 +44,12 @@ CIFAR100_URL = URL_PREFIX + 'cifar-100-python.tar.gz'
 CIFAR100_MD5 = 'eb9058c3a382ffc7106e4002c42a8d85'
 
 
-def reader_creator(filename, sub_name):
+def reader_creator(filename, sub_name, cycle=False):
     def read_batch(batch):
         data = batch['data']
         labels = batch.get('labels', batch.get('fine_labels', None))
         assert labels is not None
-        for sample, label in itertools.izip(data, labels):
+        for sample, label in zip(data, labels):
             yield (sample / 255.0).astype(numpy.float32), int(label)
 
     def reader():
@@ -56,10 +57,13 @@ def reader_creator(filename, sub_name):
             names = (each_item.name for each_item in f
                      if sub_name in each_item.name)
 
-            for name in names:
-                batch = cPickle.load(f.extractfile(name))
-                for item in read_batch(batch):
-                    yield item
+            while True:
+                for name in names:
+                    batch = pickle.load(f.extractfile(name))
+                    for item in read_batch(batch):
+                        yield item
+                if not cycle:
+                    break
 
     return reader
 
@@ -94,34 +98,40 @@ def test100():
         'test')
 
 
-def train10():
+def train10(cycle=False):
     """
     CIFAR-10 training set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].
 
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: Training reader creator
     :rtype: callable
     """
     return reader_creator(
         paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'data_batch')
+        'data_batch',
+        cycle=cycle)
 
 
-def test10():
+def test10(cycle=False):
     """
     CIFAR-10 test set creator.
 
     It returns a reader creator, each sample in the reader is image pixels in
     [0, 1] and label in [0, 9].
 
+    :param cycle: whether to cycle through the dataset
+    :type cycle: bool
     :return: Test reader creator.
     :rtype: callable
     """
     return reader_creator(
         paddle.dataset.common.download(CIFAR10_URL, 'cifar', CIFAR10_MD5),
-        'test_batch')
+        'test_batch',
+        cycle=cycle)
 
 
 def fetch():

@@ -40,8 +40,7 @@ class LoDArrayLengthOp : public framework::OperatorBase {
 
 class LoDArrayLengthProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDArrayLengthProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensorArray) The input tensor array.");
     AddOutput("Out", "(Tensor) 1x1 CPU Tensor of length, int64_t");
     AddComment(R"DOC(

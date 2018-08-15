@@ -14,8 +14,10 @@
 
 from collections import defaultdict
 from .. import core
-from ..framework import Program, default_main_program, Parameter, Variable
+from ..framework import Program, default_main_program, Parameter
 from ..backward import _rename_arg_
+from functools import reduce
+from six.moves import range
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -24,7 +26,8 @@ dtype_to_size = {
     core.VarDesc.VarType.INT16: 2,
     core.VarDesc.VarType.INT32: 4,
     core.VarDesc.VarType.INT64: 8,
-    core.VarDesc.VarType.BOOL: 1
+    core.VarDesc.VarType.BOOL: 1,
+    core.VarDesc.VarType.UINT8: 1,
 }
 
 SUB_BLOCK_OPS = [
@@ -106,7 +109,7 @@ class ControlFlowGraph(object):
         # Repeatedly apply liveness updates until the algorithm stablize
         # on a complete set live input vars and live output vars.
         while True:
-            for i in range(self.op_size, 0, -1):
+            for i in reversed(list(range(self.op_size))):
                 live_in[i] = set(self._live_in[i])
                 live_out[i] = set(self._live_out[i])
                 for s in self._successors[i]:
@@ -156,9 +159,11 @@ class ControlFlowGraph(object):
             if op.type() == "fill_constant" and op.attr("force_cpu") == True:
                 self._skip_opt.update(op.output_arg_names())
 
-    def release_memory(self):
+    def release_memory(self, skip_opt_set=None):
         self._dataflow_analyze()
         self._update_skip_opt_set()
+        if skip_opt_set:
+            self._skip_opt.update(skip_opt_set)
         fwd_id = 0
         bwd_id = 0
         for i in range(self.op_size):
@@ -169,12 +174,13 @@ class ControlFlowGraph(object):
             is_forward = i < self._forward_num
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
-            can_optimize = filter(
-                lambda x: self._check_var_validity(block_desc, x, is_forward),
-                in_diff)
+            can_optimize = [
+                x for x in in_diff
+                if self._check_var_validity(block_desc, x, is_forward)
+            ]
             if can_optimize:
                 index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
-                delete_op = block_desc.insert_op(index)
+                delete_op = block_desc._insert_op(index)
                 delete_op.set_type("delete_var")
                 delete_op.set_input("X", can_optimize)
                 if is_forward:
@@ -182,7 +188,7 @@ class ControlFlowGraph(object):
                 else:
                     bwd_id += 1
 
-    def memory_optimize(self, level=0):
+    def memory_optimize(self, skip_opt_set=None, level=0):
         def compare_shape(x_shape, cache_shape, opt_level):
             if opt_level == 0:
                 return x_shape == cache_shape
@@ -199,6 +205,9 @@ class ControlFlowGraph(object):
 
         self._dataflow_analyze()
         self._update_skip_opt_set()
+        # update skip set to meet users' demand
+        if skip_opt_set:
+            self._skip_opt.update(skip_opt_set)
         self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
@@ -207,9 +216,10 @@ class ControlFlowGraph(object):
             block_desc = op.block()
             is_forward = i < self._forward_num
             if self.pool:
-                defs_can_optimize = filter(
-                    lambda x: self._check_var_validity(block_desc, x, is_forward),
-                    self._defs[i])
+                defs_can_optimize = [
+                    x for x in self._defs[i]
+                    if self._check_var_validity(block_desc, x, is_forward)
+                ]
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
                     for x in defs_can_optimize
@@ -255,9 +265,10 @@ class ControlFlowGraph(object):
                         break
 
             in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
-            can_optimize = filter(
-                lambda x: self._check_var_validity(block_desc, x, is_forward),
-                in_diff)
+            can_optimize = [
+                x for x in in_diff
+                if self._check_var_validity(block_desc, x, is_forward)
+            ]
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
@@ -318,6 +329,8 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
+            sub_op_output.update(sub_op_dict[grad_id].input_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
 
         # Process rest fwd_op block ops
@@ -329,6 +342,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
                 sub_block_ops.append(sub_block.op(i))
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
             ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
     return ops_list
 
@@ -343,13 +357,17 @@ def _get_cfgs(input_program):
     pdesc = input_program.get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
-    # Get global block ops
-    ops_list.append(
-        ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     # Only process one level of nested subblock.
     ops_list.extend(_process_sub_block_pair(pdesc, SUB_BLOCK_PAIR))
 
+    skip_opt_set = set()
+    for _, _, skip_opt in ops_list:
+        skip_opt_set.update(skip_opt)
+
+    # Get global block ops
+    ops_list.insert(
+        0, ([block_desc.op(i) for i in range(op_size)], op_size, skip_opt_set))
     cfgs = [
         ControlFlowGraph(input_program, ops, forward_num, skip_opt)
         for ops, forward_num, skip_opt in ops_list
@@ -357,7 +375,7 @@ def _get_cfgs(input_program):
     return cfgs
 
 
-def memory_optimize(input_program, print_log=False, level=0):
+def memory_optimize(input_program, skip_opt_set=None, print_log=False, level=0):
     """Optimize memory by reusing var memory.
 
       Note: it doesn't not support subblock nested in subblock.
@@ -373,10 +391,20 @@ def memory_optimize(input_program, print_log=False, level=0):
     PRINT_LOG = print_log
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.memory_optimize(level)
+        cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
 
 
-def release_memory(input_program):
+def release_memory(input_program, skip_opt_set=None):
+    """
+    Modify the input program and insert :code:`delete_op` to early drop not used
+    variables. The modification will be performed inplace.
+
+    Notes: This is an experimental API and could be removed in next few
+    releases. Users should not use this API.
+
+    Args:
+        input_program(Program): The program will be inserted :code:`delete_op`.
+    """
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.release_memory()
+        cfg.release_memory(skip_opt_set=skip_opt_set)

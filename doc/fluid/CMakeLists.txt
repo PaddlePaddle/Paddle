@@ -15,6 +15,9 @@ set(SPHINX_CACHE_DIR_EN "${CMAKE_CURRENT_BINARY_DIR}/en/_doctrees")
 # HTML output director
 set(SPHINX_HTML_DIR_EN "${CMAKE_CURRENT_BINARY_DIR}/en/html")
 
+set(IMPORT_PADDLE_STRING "")
+set(IMPORT_PADDLEV2_STRING "")
+
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/../templates/conf.py.en.in"
     "${BINARY_BUILD_DIR_EN}/conf.py"
@@ -26,8 +29,6 @@ sphinx_add_target(paddle_fluid_docs
                   ${SPHINX_CACHE_DIR_EN}
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_EN})
-
-add_dependencies(paddle_fluid_docs gen_proto_py paddle_python)
 
 # configured documentation tools and intermediate build results
 set(BINARY_BUILD_DIR_CN "${CMAKE_CURRENT_BINARY_DIR}/cn/_build")
@@ -49,7 +50,5 @@ sphinx_add_target(paddle_fluid_docs_cn
                   ${SPHINX_CACHE_DIR_CN}
                   ${CMAKE_CURRENT_SOURCE_DIR}
                   ${SPHINX_HTML_DIR_CN})
-
-add_dependencies(paddle_fluid_docs_cn gen_proto_py paddle_python)
 
 add_subdirectory(api)

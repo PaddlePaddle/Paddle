@@ -23,9 +23,7 @@ namespace operators {
 class ReorderLoDTensorByRankTableOpProtoMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  ReorderLoDTensorByRankTableOpProtoMaker(OpProto *proto,
-                                          OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor), the input lod tensor to be reordered according to "
              "Input(RankTable).");

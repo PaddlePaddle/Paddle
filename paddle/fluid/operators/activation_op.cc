@@ -19,19 +19,20 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)                  \
-  class OP_NAME##OpMaker                                                   \
-      : public ::paddle::framework::OpProtoAndCheckerMaker {               \
-   public:                                                                 \
-    OP_NAME##OpMaker(OpProto *proto, OpAttrChecker *op_checker)            \
-        : ::paddle::framework::OpProtoAndCheckerMaker(proto, op_checker) { \
-      AddInput("X", "Input of " #OP_NAME "operator");                      \
-      AddOutput("Out", "Output of" #OP_NAME "operator");                   \
-      AddAttr<bool>("use_mkldnn",                                          \
-                    "(bool, default false) Only used in mkldnn kernel")    \
-          .SetDefault(false);                                              \
-      AddComment(#OP_COMMENT);                                             \
-    }                                                                      \
+using paddle::framework::Tensor;
+
+#define REGISTER_ACTIVATION_OP_MAKER(OP_NAME, OP_COMMENT)               \
+  class OP_NAME##OpMaker                                                \
+      : public ::paddle::framework::OpProtoAndCheckerMaker {            \
+   public:                                                              \
+    void Make() override {                                              \
+      AddInput("X", "Input of " #OP_NAME " operator");                  \
+      AddOutput("Out", "Output of " #OP_NAME " operator").Reuse("X");   \
+      AddAttr<bool>("use_mkldnn",                                       \
+                    "(bool, default false) Only used in mkldnn kernel") \
+          .SetDefault(false);                                           \
+      AddComment(#OP_COMMENT);                                          \
+    }                                                                   \
   }
 
 #define REGISTER_ACTIVATION_OP_GRAD_MAKER(OP_NAME, KERNEL_TYPE)              \
@@ -42,7 +43,7 @@ namespace operators {
                                                                              \
    protected:                                                                \
     std::unique_ptr<::paddle::framework::OpDesc> Apply() const override {    \
-      auto *op = new ::paddle::framework::OpDesc();                          \
+      auto* op = new ::paddle::framework::OpDesc();                          \
       op->SetType(#KERNEL_TYPE "_grad");                                     \
       op->SetInput("Out", Output("Out"));                                    \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
@@ -55,13 +56,37 @@ namespace operators {
     }                                                                        \
   }
 
+framework::OpKernelType GetKernelType(const framework::ExecutionContext& ctx,
+                                      const framework::OperatorWithKernel& oper,
+                                      const std::string& name) {
+  framework::LibraryType library{framework::LibraryType::kPlain};
+  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+#ifdef PADDLE_WITH_MKLDNN
+  auto it = oper.Attrs().find("use_mkldnn");
+  if (library == framework::LibraryType::kPlain && it != oper.Attrs().end() &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library = framework::LibraryType::kMKLDNN;
+    layout = framework::DataLayout::kMKLDNN;
+  }
+#endif
+  return framework::OpKernelType(
+      framework::ToDataType(ctx.Input<framework::Tensor>(name)->type()),
+      ctx.GetPlace(), layout, library);
+}
+
 class ActivationOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
     ctx->ShareLoD("X", /*->*/ "Out");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "X");
   }
 };
 
@@ -69,8 +94,14 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "Out");
   }
 };
 
@@ -84,7 +115,7 @@ $$out = \frac{1}{1 + e^{-x}}$$
 __attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
-$$out = \log \frac{1}{1 + e^{-x}}$$
+$$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
@@ -105,14 +136,14 @@ $out = \max(x, 0)$
 __attribute__((unused)) constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
-$$out = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
 __attribute__((unused)) constexpr char TanhShrinkDoc[] = R"DOC(
 TanhShrink Activation Operator.
 
-$$out = x - \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
+$$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
@@ -168,7 +199,7 @@ $out = [x]$
 __attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
-$$out = \frac{1}{x}$$
+$$out = \\frac{1}{x}$$
 
 )DOC";
 
@@ -204,8 +235,7 @@ $$out = \frac{x}{1 + |x|}$$
 
 class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LeakyReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of LeakyRelu operator");
     AddOutput("Out", "Output of LeakyRelu operator");
     AddAttr<float>("alpha", "The small negative slope").SetDefault(0.02f);
@@ -220,21 +250,19 @@ $out = \max(x, \alpha * x)$
 
 class SoftShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of Softshrink operator");
     AddOutput("Out", "Output of Softshrink operator");
     AddAttr<float>("lambda", "non-negative offset").SetDefault(0.5f);
     AddComment(R"DOC(
-Softshrink Activation Operator.
+:strong:`Softshrink Activation Operator`
 
-$$
-out = \begin{cases} 
-    x - \lambda, \text{if } x > \lambda \\
-    x + \lambda, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases} 
+         x - \lambda, \text{if } x > \lambda \\
+         x + \lambda, \text{if } x < -\lambda \\
+         0,  \text{otherwise}
+         \end{cases}
 
 )DOC");
   }
@@ -242,22 +270,21 @@ $$
 
 class HardShrinkOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HardShrinkOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of HardShrink operator");
     AddOutput("Out", "Output of HardShrink operator");
-    AddAttr<float>("threshold", "The value of threshold for HardShrink")
+    AddAttr<float>("threshold",
+                   "The value of threshold for HardShrink. [default: 0.5]")
         .SetDefault(0.5f);
     AddComment(R"DOC(
-HardShrink Activation Operator.
+:strong:`HardShrink activation operator`
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > \lambda \\
-    x, \text{if } x < -\lambda \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
+    out = \begin{cases}
+            x, \text{if } x > \lambda \\
+            x, \text{if } x < -\lambda \\
+            0,  \text{otherwise}
+          \end{cases}
 
 )DOC");
   }
@@ -265,8 +292,7 @@ $$
 
 class BReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  BReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of BRelu operator");
     AddOutput("Out", "Output of BRelu operator");
     AddAttr<float>("t_min", "The min marginal value of BRelu")
@@ -284,8 +310,7 @@ $out = \max(\min(x, t_{min}), t_{max})$
 
 class SoftReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SoftReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of SoftRelu operator");
     AddOutput("Out", "Output of SoftRelu operator");
     AddAttr<float>("threshold", "The threshold value of SoftRelu")
@@ -301,8 +326,7 @@ $out = \ln(1 + \exp(\max(\min(x, threshold), threshold))$
 
 class ELUOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ELUOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of ELU operator");
     AddOutput("Out", "Output of ELU operator");
     AddAttr<float>("alpha", "The alpha value of ELU").SetDefault(1.0f);
@@ -320,8 +344,7 @@ $out = \max(0, x) + \min(0, \alpha * (e^x - 1))$
 
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Relu6OpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of Relu6 operator");
     AddOutput("Out", "Output of Relu6 operator");
     AddAttr<float>("threshold", "The threshold value of Relu6")
@@ -337,8 +360,7 @@ $out = \min(\max(0, x), 6)$
 
 class PowOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PowOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of Pow operator");
     AddOutput("Out", "Output of Pow operator");
     AddAttr<float>("factor", "The exponential factor of Pow").SetDefault(1.0f);
@@ -353,8 +375,7 @@ $out = x^{factor}$
 
 class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  STanhOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of STanh operator");
     AddOutput("Out", "Output of STanh operator");
     AddAttr<float>("scale_a", "The scale parameter of a for the input")
@@ -364,7 +385,7 @@ class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 STanh Activation Operator.
 
-$$out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
+$$out = b * \\frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 )DOC");
   }
@@ -372,30 +393,28 @@ $$out = b * \frac{e^{a * x} - e^{-a * x}}{e^{a * x} + e^{-a * x}}$$
 
 class ThresholdedReluOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ThresholdedReluOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of ThresholdedRelu operator");
     AddOutput("Out", "Output of ThresholdedRelu operator");
-    AddAttr<float>("threshold", "The threshold location of activation")
+    AddAttr<float>("threshold",
+                   "The threshold location of activation. [default 1.0].")
         .SetDefault(1.0f);
     AddComment(R"DOC(
-ThresholdedRelu Activation Operator.
+:strong:`ThresholdedRelu activation operator`
 
-$$
-out = \begin{cases} 
-    x, \text{if } x > threshold \\
-    0,  \text{otherwise}
-    \end{cases}
-$$
+..  math::
 
+    out = \begin{cases}
+             x,  \text{if } x > threshold \\
+             0,  \text{otherwise}
+          \end{cases}
 )DOC");
   }
 };
 
 class HardSigmoidOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  HardSigmoidOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of HardSigmoid operator");
     AddOutput("Out", "Output of HardSigmoid operator");
     AddAttr<float>("slope", "Slope for linear approximation of sigmoid")
@@ -420,15 +439,14 @@ It is recommended to use the defaults for this activation.
 
 class SwishOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SwishOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "Input of Swish operator");
     AddOutput("Out", "Output of Swish operator");
     AddAttr<float>("beta", "Constant beta of swish operator").SetDefault(1.0f);
     AddComment(R"DOC(
 Swish Activation Operator.
 
-$$out = \frac{x}{1 + e^{- \beta x}}$$
+$$out = \\frac{x}{1 + e^{- \beta x}}$$
 
 )DOC");
   }

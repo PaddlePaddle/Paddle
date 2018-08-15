@@ -100,8 +100,7 @@ class MaxPoolWithIndexOpGrad : public framework::OperatorWithKernel {
 
 class MaxPool2dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxPool2dWithIndexOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of pooling operator. "
@@ -177,8 +176,7 @@ Example:
 
 class MaxPool3dWithIndexOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MaxPool3dWithIndexOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor) The input tensor of pooling operator. "
              "The format of input tensor is NCDHW, where N is batch size, C is "

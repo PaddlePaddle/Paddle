@@ -75,8 +75,7 @@ class ConvShiftGradOp : public framework::OperatorWithKernel {
 
 class ConvShiftOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConvShiftOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>), a 2-D tensor with shape B x M, "
              "where B is the batch size and M is the data dimension.");

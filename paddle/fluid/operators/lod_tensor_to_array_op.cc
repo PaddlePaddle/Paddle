@@ -105,8 +105,7 @@ class LoDTensorToArrayOp : public framework::OperatorBase {
 
 class LoDTensorToArrayOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LoDTensorToArrayOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "");
     AddInput("RankTable", "");
     AddOutput("Out", "");

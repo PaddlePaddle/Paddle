@@ -91,8 +91,7 @@ class ChannelCreateOpOpInferShape : public framework::InferShapeBase {
 
 class ChannelCreateOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChannelCreateOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput(kOutput,
               "The object of a Channel type created by ChannelCreate Op.");
     AddAttr<int>("capacity", "The size of the buffer of Channel.")

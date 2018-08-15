@@ -111,21 +111,24 @@ class Generator(object):
 
 
 # Generate test cases for all possibilities
-for dim_X in [1, 2, 3]:
-    for dim_Y in [1, 2, 3]:
-        for transpose_X in [False, True]:
-            for transpose_Y in [False, True]:
-                test_name = (
-                    'TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
-                        dim_X, dim_Y, transpose_X, transpose_Y))
-                shape_X, shape_Y = generate_compatible_shapes(
-                    dim_X, dim_Y, transpose_X, transpose_Y)
-                globals()[test_name] = type(test_name, (Generator, OpTest), {
-                    'shape_X': shape_X,
-                    'shape_Y': shape_Y,
-                    'transpose_X': transpose_X,
-                    'transpose_Y': transpose_Y,
-                })
+def inject_test(dim_x, dim_y, trans_x, trans_y):
+    test_name = ('TestMatMulOp_dimX_{}_dim_Y_{}_transX_{}_transY_{}'.format(
+        dim_x, dim_y, trans_x, trans_y))
+    shape_x, shape_y = generate_compatible_shapes(dim_x, dim_y, trans_x,
+                                                  trans_y)
+    globals()[test_name] = type(test_name, (Generator, OpTest), {
+        'shape_X': shape_x,
+        'shape_Y': shape_y,
+        'transpose_X': trans_x,
+        'transpose_Y': trans_y,
+    })
+
+
+for dim_X in (1, 2, 3):
+    for dim_Y in (1, 2, 3):
+        for transose_x in (False, True):
+            for transose_y in (False, True):
+                inject_test(dim_X, dim_Y, transose_x, transose_y)
 
 
 # Test case n-dim
@@ -149,7 +152,7 @@ def generate_compatible_shapes(dim, transpose_X, transpose_Y):
     return shape_X, shape_Y
 
 
-# Test case n-dim
+# # Test case n-dim
 for dim in [4]:
     for transpose_X in [False, True]:
         for transpose_Y in [False, True]:

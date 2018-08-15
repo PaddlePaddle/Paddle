@@ -68,7 +68,7 @@ class TestOpDesc(unittest.TestCase):
         self.assertEqual(8, len(op.attr_names()))
 
         op.set_block_attr("block_attr", program_desc.block(0))
-        self.assertEqual(0, op.block_attr("block_attr"))
+        self.assertEqual(0, op.block_attr_id("block_attr"))
 
         mul_op = block.append_op()
         mul_op.set_type("mul")
@@ -181,13 +181,13 @@ class TestBlockDesc(unittest.TestCase):
         self.assertIsNotNone(block)
         op1 = block.append_op()
         op2 = block.append_op()
-        op0 = block.prepend_op()
+        op0 = block._prepend_op()
         all_ops = []
-        for idx in xrange(0, block.op_size()):
+        for idx in range(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op1, op2])
 
-    def test_remove_op(self):
+    def test__remove_op(self):
         program = Program()
         program_desc = program.desc
         self.assertIsNotNone(program_desc)
@@ -201,11 +201,11 @@ class TestBlockDesc(unittest.TestCase):
         op1.set_type("test")
         op2.set_type("test")
 
-        block.remove_op(1, 2)
-        program.sync_with_cpp()
+        block._remove_op(1, 2)
+        program._sync_with_cpp()
 
         all_ops = []
-        for idx in xrange(0, block.op_size()):
+        for idx in range(0, block.op_size()):
             all_ops.append(block.op(idx))
         self.assertEqual(all_ops, [op0, op2])
 

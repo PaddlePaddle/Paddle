@@ -14,6 +14,7 @@ limitations under the License. */
 #include <algorithm>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace operators {
@@ -47,7 +48,7 @@ class ConditionalOp : public framework::OperatorBase {
     if (!(ips.size() == 1UL && ips[0]->IsInitialized())) {
       PADDLE_THROW("should have one initialized input as condition");
     }
-    if (!(ips[0]->type().hash_code() == typeid(bool).hash_code() &&  // NOLINT
+    if (!(framework::IsType<bool>(ips[0]->type()) &&  // NOLINT
           ips[0]->numel() == 1)) {
       PADDLE_THROW(
           "condition input's data type should be bool, "
@@ -108,8 +109,7 @@ class ConditionalBlockOp : public ConditionalOp {
 
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ConditionalBlockOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The conditional variable of this operator. If X is empty, the "
              "whole sub-block will not be executed.")
@@ -205,9 +205,10 @@ class ConditionalBlockGradInferShape : public framework::InferShapeBase {
       context->SetOutputsDim(framework::GradVarName("Params"),
                              context->GetInputsDim("Params"));
     }
-    PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("X")));
-    context->SetOutputsDim(framework::GradVarName("X"),
-                           context->GetInputsDim("X"));
+    if (context->HasOutputs(framework::GradVarName("X"))) {
+      context->SetOutputsDim(framework::GradVarName("X"),
+                             context->GetInputsDim("X"));
+    }
   }
 };
 

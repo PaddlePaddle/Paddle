@@ -43,7 +43,7 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType FCOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library{framework::LibraryType::kMKLDNN};
-  framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+  framework::DataLayout layout{framework::DataLayout::kMKLDNN};
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
@@ -65,15 +65,14 @@ void FCOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 framework::OpKernelType FCOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library{framework::LibraryType::kMKLDNN};
-  framework::DataLayout layout{framework::DataLayout::kAnyLayout};
+  framework::DataLayout layout{framework::DataLayout::kMKLDNN};
 
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
       layout, library);
 }
 
-FCOpMaker::FCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(proto, op_checker) {
+void FCOpMaker::Make() {
   AddInput("Input", "(Tensor) The input tensor of fully connected operator. ");
   AddInput("W", "(Tensor), The second input tensor of fc op.");
   AddOutput("Out", "(Tensor) The output tensor of fully connected operator. ");

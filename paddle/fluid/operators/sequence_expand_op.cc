@@ -94,8 +94,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
 
 class SequenceExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor, default LoDTensor<float>) A 2-D LoDTensor whose lod "
              "level is at most 1.");

@@ -90,8 +90,7 @@ class PrecisionRecallOp : public framework::OperatorWithKernel {
 
 class PrecisionRecallOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  PrecisionRecallOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("MaxProbs",
              "(Tensor, default Tensor<float>) A 2-D tensor with shape N x 1, "
              "where N is the batch size. Each row contains the max probability "
