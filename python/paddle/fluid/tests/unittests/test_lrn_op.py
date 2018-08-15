@@ -34,7 +34,7 @@ class TestLRNOp(OpTest):
         return x + 1
 
     def get_out(self):
-        start = -(self.n - 1) // 2
+        start = -(self.n - 1) / 2
         end = start + self.n
 
         mid = np.empty((self.N, self.C, self.H, self.W)).astype("float32")

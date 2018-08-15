@@ -62,8 +62,7 @@ class TestPyReader(unittest.TestCase):
                     next_data = np.random.uniform(
                         low=0, high=1000,
                         size=(batch_size, ) + shape[1:]).astype(dtype)
-                    in_data.append(
-                        fluid.executor._as_lodtensor(next_data, place))
+                    in_data.append(executor.as_lodtensor(next_data))
 
                 self.inputs.append(in_data)
 

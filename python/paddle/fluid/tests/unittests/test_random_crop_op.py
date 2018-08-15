@@ -21,12 +21,11 @@ from op_test import OpTest
 class TestRandomCropOp(OpTest):
     def setUp(self):
         to_crop = np.array([[[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]]] *
-                           5).astype(np.int32)
+                           5).astype("float32")
         self.possible_res = [
-            np.array([[1, 2, 3], [5, 6, 7]]).astype(np.int32),
-            np.array([[2, 3, 4], [6, 7, 8]]).astype(np.int32),
-            np.array([[5, 6, 7], [9, 10, 11]]).astype(np.int32),
-            np.array([[6, 7, 8], [10, 11, 12]]).astype(np.int32)
+            np.array([[1, 2, 3], [5, 6, 7]]), np.array([[2, 3, 4], [6, 7, 8]]),
+            np.array([[5, 6, 7], [9, 10, 11]]),
+            np.array([[6, 7, 8], [10, 11, 12]])
         ]
         self.op_type = "random_crop"
         self.inputs = {'X': to_crop, 'Seed': np.array([10])}

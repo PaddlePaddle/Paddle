@@ -143,7 +143,7 @@ if (WITH_ANAKIN AND WITH_GPU)
     copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
         SRCS
         ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
-        ${ANAKIN_INSTALL_DIR} # anakin release
+        ${PADDLE_BINARY_DIR}/third_party/install/anakin/*.tar.gz # anakin release
         DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
      list(APPEND inference_deps anakin_inference_lib)
 endif()

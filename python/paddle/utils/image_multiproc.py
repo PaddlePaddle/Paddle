@@ -15,8 +15,7 @@
 import os, sys
 import numpy as np
 from PIL import Image
-import six
-from six.moves import cStringIO as StringIO
+from cStringIO import StringIO
 import multiprocessing
 import functools
 import itertools
@@ -188,8 +187,7 @@ class PILTransformer(ImageTransformer):
         return self.transform(im)
 
 
-def job(is_img_string, transformer, data_label_pack):
-    (data, label) = data_label_pack
+def job(is_img_string, transformer, (data, label)):
     if is_img_string:
         return transformer.transform_from_string(data), label
     else:
@@ -210,7 +208,7 @@ class MultiProcessImageTransformer(object):
         """
         Processing image with multi-process. If it is used in PyDataProvider,
         the simple usage for CNN is as follows:
-
+       
         .. code-block:: python
 
             def hool(settings, is_train,  **kwargs):
@@ -231,7 +229,7 @@ class MultiProcessImageTransformer(object):
             @provider(init_hook=hook, pool_size=20480)
             def process(settings, file_list):
                 with open(file_list, 'r') as fdata:
-                    for line in fdata:
+                    for line in fdata: 
                         data_dic = np.load(line.strip()) # load the data batch pickled by Pickle.
                         data = data_dic['data']
                         labels = data_dic['label']
@@ -251,10 +249,10 @@ class MultiProcessImageTransformer(object):
         :type channel_swap: tuple or list
         :param mean: the mean values of image, per-channel mean or element-wise mean.
         :type mean: array, The dimension is 1 for per-channel mean.
-                    The dimension is 3 for element-wise mean.
+                    The dimension is 3 for element-wise mean. 
         :param is_train: training peroid or testing peroid.
         :type is_train: bool.
-        :param is_color: the image is color or gray.
+        :param is_color: the image is color or gray. 
         :type is_color: bool.
         :param is_img_string: The input can be the file name of image or image string.
         :type is_img_string: bool.
@@ -275,4 +273,4 @@ class MultiProcessImageTransformer(object):
     def run(self, data, label):
         fun = functools.partial(job, self.is_img_string, self.transformer)
         return self.pool.imap_unordered(
-            fun, six.moves.zip(data, label), chunksize=100 * self.procnum)
+            fun, itertools.izip(data, label), chunksize=100 * self.procnum)

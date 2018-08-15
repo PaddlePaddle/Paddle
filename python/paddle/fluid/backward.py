@@ -17,7 +17,6 @@ from . import core
 import collections
 import copy
 import six
-from .. import compat as cpt
 from . import unique_name
 
 __all__ = ['append_backward']
@@ -46,13 +45,13 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     """
     op_desc = core.OpDesc()
     op_desc.set_type(op_type)
-    for para, args in six.iteritems(inputs):
+    for para, args in list(inputs.items()):
         op_desc.set_input(
             para,
             list(
                 map(lambda arg: arg.decode() if isinstance(arg, six.binary_type) else arg,
                     args)))
-    for para, args in six.iteritems(outputs):
+    for para, args in list(outputs.items()):
         op_desc.set_output(
             para,
             list(
@@ -64,7 +63,7 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     if op_role_attr_name not in attrs:
         attrs[
             op_role_attr_name] = core.op_proto_and_checker_maker.OpRole.Backward
-    for name, val in six.iteritems(attrs):
+    for name, val in list(attrs.items()):
         if isinstance(val, framework.Block):
             op_desc.set_block_attr(name, val.desc)
         else:
@@ -76,10 +75,10 @@ def _infer_var_data_type_(grad_var_name, block):
     """
     Infer the data type of given grad variable
     """
-    grad_var = block.desc.find_var(cpt.to_bytes(grad_var_name))
-    fwd_name = _strip_grad_suffix_(grad_var_name)
-    if block.desc.has_var_recursive(cpt.to_bytes(fwd_name)):
-        fwd_var = block.desc.find_var_recursive(cpt.to_bytes(fwd_name))
+    grad_var = block.desc.find_var(grad_var_name.encode("ascii"))
+    fwd_name = _strip_grad_suffix_(grad_var_name.encode("ascii"))
+    if block.desc.has_var_recursive(fwd_name):
+        fwd_var = block.desc.find_var_recursive(fwd_name.encode("ascii"))
         grad_var.set_dtype(fwd_var.dtype())
     else:
         grad_var.set_dtype(core.VarDesc.VarType.FP32)
@@ -103,10 +102,8 @@ def _some_in_set_(cands, s):
     """
     if len(cands) == 0:
         return False
-    literal_set = cpt.to_text(s)
-    literal_cands = cpt.to_text(cands)
-    for c in literal_cands:
-        if c in literal_set:
+    for c in cands:
+        if c in s:
             return True
     return False
 
@@ -117,8 +114,9 @@ def _strip_grad_suffix_(name):
     e.g. x@GRAD ==> x
          y@GRAD@RENAME@1 ==> y
     """
-    name = cpt.to_text(name)
-    pos = name.find(core.grad_var_suffix())
+    if isinstance(name, six.text_type):
+        name = name.encode()
+    pos = name.find(six.b(core.grad_var_suffix()))
     return name[:pos] if pos != -1 else name
 
 
@@ -127,7 +125,9 @@ def _append_grad_suffix_(name):
     Append grad suffix to the given variable name
     e.g. x ==> x@GRAD
     """
-    return cpt.to_text(name) + core.grad_var_suffix()
+    if isinstance(name, six.text_type):
+        name = name.encode()
+    return name + six.b(core.grad_var_suffix())
 
 
 def _addup_repetitive_outputs_(op_descs):
@@ -187,7 +187,7 @@ def _addup_repetitive_outputs_(op_descs):
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
 
-    for var_name, inputs in six.iteritems(renamed_vars):
+    for var_name, inputs in list(renamed_vars.items()):
         if len(inputs) > 1:
             pending_sum_ops.append(
                 (_create_op_desc_("sum", {"X": inputs}, {"Out": [var_name]},
@@ -243,7 +243,7 @@ from .proto import framework_pb2
 
 def serialize_op_decs(op_desc):
     protostr = op_desc.serialize_to_string()
-    proto = framework_pb2.OpDesc.FromString(six.binary_type(protostr))
+    proto = framework_pb2.OpDesc.FromString(str(protostr))
     return proto.__str__()
 
 
@@ -344,7 +344,7 @@ def _append_backward_ops_(block,
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
         if op.has_attr("sub_block"):
-            sub_block = program.block(op.block_attr_id("sub_block"))
+            sub_block = program.block(op.block_attr("sub_block"))
             grad_sub_block = program.create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
@@ -364,7 +364,7 @@ def _append_backward_ops_(block,
 
         # Getting op's corresponding grad_op
         grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
-            op.desc, cpt.to_text(no_grad_dict[block.idx]), grad_sub_block_list)
+            op.desc, no_grad_dict[block.idx], grad_sub_block_list)
 
         grad_op_descs.extend(grad_op_desc)
         grad_to_var.update(op_grad_to_var)
@@ -406,15 +406,16 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
-            sub_block = block.program.block(op_desc.block_attr_id("sub_block"))
+            sub_block = block.program.block(op_desc.block_attr("sub_block"))
             _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
         new_vars = set()
         # create new gradient variables
         for grad_var_name in op_desc.output_arg_names():
-            if block.desc.has_var_recursive(cpt.to_bytes(
-                    grad_var_name)) or grad_var_name == core.empty_var_name():
+            grad_var_name = grad_var_name.encode("ascii")
+            if block.desc.has_var_recursive(
+                    grad_var_name) or grad_var_name == core.empty_var_name():
                 continue
-            block.desc.var(cpt.to_bytes(grad_var_name))
+            block.desc.var(grad_var_name)
             new_vars.add(grad_var_name)
             if grad_var_name not in grad_to_var:
                 continue
@@ -444,7 +445,7 @@ def _rename_grad_(block, start_op_idx, grad_to_var, target_grad_map):
                 op_desc.rename_output(name, new_name)
                 var_map[name] = new_name
 
-    for g, ng in six.iteritems(var_map):
+    for g, ng in list(var_map.items()):
         if g in grad_to_var:
             grad_to_var[ng] = grad_to_var[g]
             grad_to_var.pop(g)
@@ -589,17 +590,18 @@ def append_backward(loss, parameter_list=None, no_grad_set=None,
 
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
+    # FIXME(zcd): prevent loss.grad optimized by mem_opt.
+    loss.block.var(_append_grad_suffix_(loss.name)).persistable = True
 
     if parameter_list is not None:
         parameters = parameter_list
     else:
         params = program.global_block().all_parameters()
-        program.global_block().iter_parameters()
         parameters = [param.name for param in params]
 
     params_and_grads = []
     for param in parameters:
-        if cpt.to_text(param) not in grad_info_map:
+        if param not in grad_info_map:
             continue
         grad_info = grad_info_map[param]
         grad_block = grad_info[1]

@@ -24,12 +24,12 @@ def conv2d_forward_naive(input, filter, group, conv_param):
     out_c, f_c, f_h, f_w = filter.shape
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
-    sub_out_c = out_c // group
+    sub_out_c = out_c / group
 
     stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
         'dilation']
-    out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) // stride[0]
-    out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) // stride[1]
+    out_h = 1 + (in_h + 2 * pad[0] - (dilation[0] * (f_h - 1) + 1)) / stride[0]
+    out_w = 1 + (in_w + 2 * pad[1] - (dilation[1] * (f_w - 1) + 1)) / stride[1]
     out = np.zeros((in_n, out_c, out_h, out_w))
 
     d_bolck_h = (dilation[0] * (f_h - 1) + 1)
@@ -66,7 +66,6 @@ class TestConv2dOp(OpTest):
         self.op_type = "conv2d"
         self.use_cudnn = False
         self.use_mkldnn = False
-        self.data_format = "AnyLayout"
         self.dtype = np.float32
         self.init_kernel_type()
         self.init_group()
@@ -94,8 +93,7 @@ class TestConv2dOp(OpTest):
             'groups': self.groups,
             'dilations': self.dilations,
             'use_cudnn': self.use_cudnn,
-            'use_mkldnn': self.use_mkldnn,
-            'data_format': self.data_format
+            'use_mkldnn': self.use_mkldnn
         }
         self.outputs = {'Output': output}
 
@@ -103,42 +101,66 @@ class TestConv2dOp(OpTest):
         return core.is_compiled_with_cuda() and self.use_cudnn
 
     def test_check_output(self):
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        if self.testcudnn():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, atol=1e-5)
+        else:
+            self.check_output()
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
-        self.check_grad_with_place(
-            place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
+        if self.testcudnn():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place,
+                set(['Input', 'Filter']),
+                'Output',
+                max_relative_error=0.02)
+        else:
+            self.check_grad(
+                set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
-        self.check_grad_with_place(
-            place, ['Input'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set=set(['Filter']))
+        if self.testcudnn():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Input'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Filter']))
+        else:
+            self.check_grad(
+                ['Input'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Filter']))
 
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
-        self.check_grad_with_place(
-            place, ['Filter'],
-            'Output',
-            max_relative_error=0.02,
-            no_grad_set=set(['Input']))
+        if self.testcudnn():
+            place = core.CUDAPlace(0)
+            self.check_grad_with_place(
+                place, ['Filter'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Input']))
+        else:
+            self.check_grad(
+                ['Filter'],
+                'Output',
+                max_relative_error=0.02,
+                no_grad_set=set(['Input']))
 
     def init_test_case(self):
         self.pad = [0, 0]
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_dilation(self):
@@ -157,7 +179,7 @@ class TestWithPad(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
 
 
@@ -167,7 +189,7 @@ class TestWithStride(TestConv2dOp):
         self.stride = [2, 2]
         self.input_size = [2, 3, 6, 6]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
 
 
@@ -182,7 +204,7 @@ class TestWith1x1(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 1, 1]
 
     def init_group(self):
@@ -195,7 +217,7 @@ class TestWithDilation(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 10, 10]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
 
     def init_dilation(self):
@@ -211,7 +233,7 @@ class TestWithInput1x1Filter1x1(TestConv2dOp):
         self.stride = [1, 1]
         self.input_size = [2, 3, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 1, 1]
 
     def init_group(self):
@@ -328,7 +350,7 @@ class TestDepthwiseConv(TestConv2dOp):
         self.input_size = [2, 3, 5, 5]  # NCHW
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 
@@ -340,7 +362,7 @@ class TestDepthwiseConv2(TestConv2dOp):
         self.input_size = [2, 3, 5, 5]  # NCHW
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] // self.groups
+        f_c = self.input_size[1] / self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
 

@@ -25,7 +25,7 @@ namespace analysis {
 
 DEFINE_string(dot_dir, "./", "");
 
-TEST(TensorRTSubGraphPass, main) {
+TEST_F(DFG_Tester, tensorrt_single_pass) {
   std::unordered_set<std::string> teller_set(
       {"elementwise_add", "mul", "sigmoid"});
   SubGraphSplitter::NodeInsideSubgraphTeller teller = [&](const Node* node) {
@@ -35,8 +35,7 @@ TEST(TensorRTSubGraphPass, main) {
     return false;
   };
 
-  Argument argument(FLAGS_inference_model_dir);
-
+  LOG(INFO) << "init";
   DFG_GraphvizDrawPass::Config config{FLAGS_dot_dir, "origin"};
   DFG_GraphvizDrawPass::Config config1{FLAGS_dot_dir, "fusion"};
 
@@ -45,11 +44,13 @@ TEST(TensorRTSubGraphPass, main) {
   FluidToDataFlowGraphPass pass0;
   TensorRTSubGraphPass trt_pass(std::move(teller));
 
+  LOG(INFO) << "Initialize";
   dfg_pass.Initialize(&argument);
   dfg_pass1.Initialize(&argument);
   pass0.Initialize(&argument);
   trt_pass.Initialize(&argument);
 
+  LOG(INFO) << "Run";
   argument.main_dfg.reset(new DataFlowGraph);
   pass0.Run(argument.main_dfg.get());
   dfg_pass.Run(argument.main_dfg.get());

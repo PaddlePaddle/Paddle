@@ -17,8 +17,6 @@ import numpy as np
 import math
 from op_test import OpTest
 
-np.random.seed(100)
-
 
 def find_latest_set(num):
     return 1 + int(math.floor(math.log(num, 2)))
