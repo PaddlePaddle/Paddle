@@ -651,6 +651,7 @@ class DistributeTranspiler(object):
             new_outputs = dict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
+            # TODO(gongwb): remove this line.
             if op.type not in ["recv", "fetch_barrier", "concat"]:
                 for key in op.output_names:
                     newname, _ = _get_splited_name_and_shape(op.output(key)[0])
