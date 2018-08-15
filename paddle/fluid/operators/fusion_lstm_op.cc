@@ -16,9 +16,9 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
+#include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
-DECLARE_int32(paddle_num_threads);
 
 namespace paddle {
 namespace operators {
@@ -205,23 +205,6 @@ inline void ReorderInitState(const DeviceContext& ctx,
   row_shuffle(ctx, src, index_lod, dst, indexed_src);
 }
 
-// TODO(TJ): can move to math::details
-template <typename DeviceContext, typename T>
-inline void SimpleFC(const math::BlasT<DeviceContext, T>& blas, const int M,
-                     const int N, const int K, const T* A, const T* B, T* C,
-                     const T* bias_data = NULL) {
-  blas.GEMM(CblasNoTrans, CblasNoTrans, M, N, K, static_cast<T>(1), A, B,
-            static_cast<T>(0), C);
-  if (bias_data) {
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
-#endif
-    for (int i = 0; i < M; i++) {
-      blas.AXPY(N, static_cast<T>(1), bias_data, C + i * N);
-    }
-  }
-}
-
 template <typename DeviceContext, typename T>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
@@ -253,14 +236,15 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
     if (x_dims[1] > wx_dims[1]) {
-      SimpleFC<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1], x_data,
-                                 wx_data, xx_data, bias->data<T>());
+      math::FCCompute<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1],
+                                        x_data, wx_data, xx_data,
+                                        bias->data<T>());
       to_batch(dev_ctx, *xx, batched_gate, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
-      SimpleFC<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1],
-                                 xx_data, wx_data, batched_gate_data,
-                                 bias->data<T>());
+      math::FCCompute<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1],
+                                        xx_data, wx_data, batched_gate_data,
+                                        bias->data<T>());
     }
 
     int frame_size = static_cast<int>(wx_dims[1] / 4);
