@@ -66,11 +66,6 @@ inline void paddle_sse_axpy<double>(const double* x, double* y, size_t len,
   }
 }
 
-template <typename T>
-inline T paddle_uniform_real(T min, T max) {
-  return ((T)rand() / (RAND_MAX)) * (max - min) + min;
-}
-
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
