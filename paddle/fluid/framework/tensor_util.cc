@@ -290,10 +290,12 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
   return !Any(tensor, pred_inf) && !Any(tensor, pred_nan);
 }
 
+#ifdef PADDLE_WITH_CUDA
 template <typename T>
 static inline void __global__ EqualAssign(const T* cmp, T* out) {
   out[0] = (!cmp[0]) && (!out[0]);
 }
+#endif
 
 struct EqualAssignVisitor : public boost::static_visitor<> {
   const framework::Tensor& in_;
@@ -307,9 +309,11 @@ struct EqualAssignVisitor : public boost::static_visitor<> {
   }
 
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
+#ifdef PADDLE_WITH_CUDA
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
     EqualAssign<bool><<<1, 1, 0, ctx->stream()>>>(
         in_.data<bool>(), out_->mutable_data<bool>(gpu));
+#endif
   }
 
   void VisitorImpl(const platform::CPUPlace& cpu) const {
