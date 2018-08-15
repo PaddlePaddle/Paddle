@@ -62,31 +62,52 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
 TEST_F(SelectedRowsTester, SparseTable) {
   platform::CPUPlace cpu;
   SelectedRows table;
+
+  int64_t table_size = 100;
+  int64_t embedding_width = 8;
   // initialize a sparse table
-  table.mutable_value()->Resize(framework::make_ddim({100, 8}));
-  table.mutable_value()->mutable_data<float>(cpu);
-  table.mutable_rows()->push_back(1);
+  table.mutable_value()->Resize(
+      framework::make_ddim({table_size, embedding_width}));
+  auto* data = table.mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+  ASSERT_EQ(table.AutoGrownIndex(10), 0);
+  ASSERT_EQ(table.AutoGrownIndex(8), 1);
+  ASSERT_EQ(table.AutoGrownIndex(8), 1);
+  ASSERT_EQ(table.AutoGrownIndex(6), 2);
+  ASSERT_TRUE(table.HasKey(10));
+  ASSERT_TRUE(table.HasKey(8));
+  ASSERT_TRUE(table.HasKey(6));
+  ASSERT_EQ(table.rows().size(), 3);
 
-  int64_t key = 10000;
-  // int64_t non_key = 999;
-  framework::Tensor value;
-  value.Resize(framework::make_ddim({1, 100}));
-  auto ptr = value.mutable_data<float>(cpu);
-  ptr[0] = static_cast<float>(10);
-
-  ASSERT_EQ(table.rows().size(), static_cast<size_t>(1));
-  ASSERT_EQ(table.HasKey(key), false);
-
-  ASSERT_EQ(table.rows().size(), static_cast<size_t>(2));
-  ASSERT_EQ(table.HasKey(key), true);
-  // check re-allocate
-  ASSERT_EQ(table.value().dims()[0], static_cast<int64_t>(4));
+  framework::Tensor ids;
+  ids.Resize(framework::make_ddim({4}));
+  auto* ids_data = ids.mutable_data<int64_t>(cpu);
+  ids_data[0] = static_cast<int64_t>(6);
+  ids_data[1] = static_cast<int64_t>(6);
+  ids_data[2] = static_cast<int64_t>(8);
+  ids_data[3] = static_cast<int64_t>(10);
 
   framework::Tensor get_value;
-  get_value.mutable_data<float>(framework::make_ddim({2, 100}), cpu);
-  // table.Get(keys, &get_value);
+  auto* value_data = get_value.mutable_data<float>(
+      framework::make_ddim({4, embedding_width}), cpu);
+  table.Get(ids, &get_value);
 
-  ASSERT_EQ(get_value.data<float>()[100], static_cast<float>(10));
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[0 * embedding_width + j], 2);
+  }
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[1 * embedding_width + j], 2);
+  }
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[2 * embedding_width + j], 1);
+  }
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[3 * embedding_width + j], 0);
+  }
 }
 
 }  // namespace framework
