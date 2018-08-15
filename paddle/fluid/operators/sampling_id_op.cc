@@ -25,7 +25,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class SamplingIdKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -48,7 +48,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
 
     std::vector<T> ids(batch_size);
     for (size_t i = 0; i < batch_size; ++i) {
-      double r = dist(engine);
+      T r = dist(engine);
       int idx = width - 1;
       for (int j = 0; j < width; ++j) {
         if ((r -= ins_vector[i * width + j]) < 0) {
