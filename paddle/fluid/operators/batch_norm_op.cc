@@ -22,22 +22,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using LoDTensor = framework::LoDTensor;
-using DataLayout = framework::DataLayout;
-
-template <typename T>
-using EigenArrayMap =
-    Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using ConstEigenArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
-template <typename T>
-using EigenVectorArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, 1>>;
-template <typename T>
-using ConstEigenVectorArrayMap =
-    Eigen::Map<const Eigen::Array<T, Eigen::Dynamic, 1>>;
-
 class BatchNormOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -110,17 +94,19 @@ class BatchNormOp : public framework::OperatorWithKernel {
                                          ctx.Input<Tensor>("Variance")->type()),
                       "Variance input should be of float type");
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
+    if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
-                                   library_);
+                                   library);
   }
 };
 
@@ -149,13 +135,15 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Variance",
              "The global variance (for training) "
              "or estimated Variance (for testing)");
-    AddOutput("Y", "result after normalization");
+    AddOutput("Y", "result after normalization").Reuse("X");
     AddOutput("MeanOut",
               "Share memory with Mean. "
-              "Store the global mean when training");
+              "Store the global mean when training")
+        .Reuse("Mean");
     AddOutput("VarianceOut",
               "Share memory with Variance. "
-              "Store the global Variance when training");
+              "Store the global Variance when training")
+        .Reuse("Variance");
     AddOutput("SavedMean",
               "Mean of the current mini batch, "
               "will apply to output when training")
@@ -165,6 +153,9 @@ class BatchNormOpMaker : public framework::OpProtoAndCheckerMaker {
               "will apply to output when training")
         .AsIntermediate();
     AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false);
+    AddAttr<bool>("fuse_with_relu",
                   "(bool, default false) Only used in mkldnn kernel")
         .SetDefault(false);
     AddComment(R"DOC(
@@ -225,6 +216,18 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       saved_mean_e.setZero();
       saved_variance_e.setZero();
 
+      EigenVectorArrayMap<T> running_mean_arr(
+          mean_out->mutable_data<T>(ctx.GetPlace()), C);
+      EigenVectorArrayMap<T> running_var_arr(
+          variance_out->mutable_data<T>(ctx.GetPlace()), C);
+
+      if ((N * sample_size) == 1) {
+        LOG(WARNING) << "Only 1 element in normalization dimension, "
+                     << "we skip the batch norm calculation, let y = x.";
+        framework::TensorCopySync(*x, ctx.GetPlace(), y);
+        return;
+      }
+
       switch (data_layout) {
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
@@ -256,10 +259,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           PADDLE_THROW("Unknown storage order: %s", data_layout_str);
       }
 
-      EigenVectorArrayMap<T> running_mean_arr(
-          mean_out->mutable_data<T>(ctx.GetPlace()), C);
-      EigenVectorArrayMap<T> running_var_arr(
-          variance_out->mutable_data<T>(ctx.GetPlace()), C);
       running_mean_arr =
           running_mean_arr * momentum + saved_mean_e * (1. - momentum);
       running_var_arr =
@@ -366,18 +365,21 @@ class BatchNormGradOp : public framework::OperatorWithKernel {
       PADDLE_THROW("can't find Y@GRAD");
     }
 
-    framework::LibraryType library_{framework::LibraryType::kPlain};
+    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
 #ifdef PADDLE_WITH_MKLDNN
-    if (library_ == framework::LibraryType::kPlain &&
+    if (library == framework::LibraryType::kPlain &&
         platform::CanMKLDNNBeUsed(ctx)) {
-      library_ = framework::LibraryType::kMKLDNN;
+      library = framework::LibraryType::kMKLDNN;
+      layout = framework::DataLayout::kMKLDNN;
     }
 #endif
-    // TODO(pzelazko-intel): enable MKLDNN layout when it's ready
-    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library_);
+        layout, library);
   }
 };
 
@@ -432,6 +434,11 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
 
     d_bias_arr.setZero();
     d_scale_arr.setZero();
+
+    if ((N * sample_size) == 1) {
+      framework::TensorCopySync(*d_y, ctx.GetPlace(), d_x);
+      return;
+    }
 
     const auto scale_inv_var_nhw = scale_arr * inv_var_arr / (N * sample_size);
 

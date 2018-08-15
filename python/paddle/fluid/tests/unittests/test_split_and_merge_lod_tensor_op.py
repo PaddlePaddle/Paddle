@@ -19,6 +19,8 @@ import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.layers.control_flow import split_lod_tensor
+from paddle.fluid.layers.control_flow import merge_lod_tensor
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -56,7 +58,7 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
     def test_split_and_merge_lod_tensor_level_0(self):
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('int32'), self.place())
-        tensor.set_lod([[0, 3, 9, 10]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)
@@ -68,15 +70,15 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect_true_tensor = np.expand_dims(expect_true_tensor, axis=1)
         expect_true = core.LoDTensor()
         expect_true.set(expect_true_tensor, self.place())
-        expect_true.set_lod([[0, 6]])
+        expect_true.set_recursive_sequence_lengths([[6]])
 
         expect_false_tensor = np.array([0, 1, 2, 9]).astype('int32')
         expect_false_tensor = np.expand_dims(expect_false_tensor, axis=1)
-        expect_false_lod = [[0, 3, 4]]
+        expect_false_lod = [[3, 1]]
 
         expect_false = core.LoDTensor()
         expect_false.set(expect_false_tensor, self.place())
-        expect_false.set_lod(expect_false_lod)
+        expect_false.set_recursive_sequence_lengths(expect_false_lod)
 
         self.main(
             tensor=tensor,
@@ -96,12 +98,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             y = layers.data(name='y', shape=[1])
             y.persistable = True
 
-            out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
+            out_true, out_false = split_lod_tensor(input=x, mask=y, level=level)
             out_true.persistable = True
             out_false.persistable = True
 
-            out = layers.merge_lod_tensor(
+            out = merge_lod_tensor(
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
 
             out.persistable = True
@@ -126,7 +127,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
 
     def check_tensor_same(self, actual, expect):
         self.assertTrue(np.allclose(np.array(actual), np.array(expect)))
-        self.assertEqual(actual.lod(), expect.lod())
+        self.assertEqual(actual.recursive_sequence_lengths(),
+                         expect.recursive_sequence_lengths())
 
 
 class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
@@ -141,9 +143,8 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
             level = 0
 
-            out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-            out = layers.merge_lod_tensor(
+            out_true, out_false = split_lod_tensor(input=x, mask=y, level=level)
+            out = merge_lod_tensor(
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
             mean = layers.mean(out)
 
@@ -151,7 +152,7 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
         tensor = core.LoDTensor()
         tensor.set(np.arange(10).reshape(10, 1).astype('float32'), place)
-        tensor.set_lod([[0, 3, 9, 10]])
+        tensor.set_recursive_sequence_lengths([[3, 6, 1]])
 
         mask_np = np.array([0, 1, 0]).astype('bool')
         mask_np = np.expand_dims(mask_np, axis=1)

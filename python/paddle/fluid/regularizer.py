@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import framework
+from . import framework
 from . import core
 
-__all__ = [
-    'append_regularization_ops', 'WeightDecayRegularizer', 'L1Decay', 'L2Decay',
-    'L1DecayRegularizer', 'L2DecayRegularizer'
-]
+__all__ = ['L1Decay', 'L2Decay', 'L1DecayRegularizer', 'L2DecayRegularizer']
 
 
 def append_regularization_ops(parameters_and_grads, regularization=None):
@@ -36,19 +33,19 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
                         set. It will be applied with regularizer.
 
     Returns:
-        list of (parameters, gradients) pair with the regularized gradient
+        list[(Variable, Variable)]: list of (parameters, gradients) \
+        pair with the regularized gradient
 
     Raises:
         Exception: Unknown regularization type
     """
     params_and_grads = []
     for param, grad in parameters_and_grads:
-        with param.block.program.optimized_guard(param):
-            # If no gradient then we don't need to do anything
-            if grad is None:
-                params_and_grads.append((param, grad))
-                continue
-
+        # If no gradient then we don't need to do anything
+        if grad is None:
+            params_and_grads.append((param, grad))
+            continue
+        with param.block.program.optimized_guard([param, grad]):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
@@ -100,6 +97,24 @@ class WeightDecayRegularizer(object):
 
 class L2DecayRegularizer(WeightDecayRegularizer):
     """Implements the L2 Weight Decay Regularization
+
+    Small values of L2 can help prevent over fitting the training data.
+
+    .. math::
+
+        L2WeightDecay = reg\_coeff * parameter
+
+    Args:
+        regularization_coeff(float): regularization coeff
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Adagrad(
+                learning_rate=1e-4,
+                regularization=fluid.regularizer.L2DecayRegularizer(
+                    regularization_coeff=0.1))
+            optimizer.minimize(avg_cost)
     """
 
     def __init__(self, regularization_coeff=0.0):
@@ -127,14 +142,20 @@ class L2DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            idx = block.create_var(
+                dtype="int64",
+                shape=param.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
                 type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
+                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
+            block.append_op(
                 type='lookup_table',
                 inputs={'W': param,
-                        'Ids': grad},
+                        'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
             param = decay
@@ -154,6 +175,27 @@ class L2DecayRegularizer(WeightDecayRegularizer):
 
 class L1DecayRegularizer(WeightDecayRegularizer):
     """Implements the L1 Weight Decay Regularization
+
+    L1 regularization encourages sparsity.
+
+    .. math::
+
+        L1WeightDecay = reg\_coeff * sign(parameter)
+
+    Args:
+        regularization_coeff(float): regularization coeff
+
+    Examples:
+        .. code-block:: python
+
+            program = fluid.framework.Program()
+            block = program.global_block()
+            mul_x = block.create_parameter(
+                dtype="float32",
+                shape=[5, 10],
+                lod_level=0,
+                name="mul.x",
+                regularizer=fluid.regularizer.L1DecayRegularizer(0.5))
     """
 
     def __init__(self, regularization_coeff=0.0):
@@ -180,14 +222,20 @@ class L1DecayRegularizer(WeightDecayRegularizer):
             dtype="float32", shape=param.shape, lod_level=param.lod_level)
 
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
+            idx = block.create_var(
+                dtype="int64",
+                shape=param.shape,
+                type=core.VarDesc.VarType.LOD_TENSOR)
             decay = block.create_var(
                 dtype="float32",
                 shape=param.shape,
                 type=core.VarDesc.VarType.SELECTED_ROWS)
             block.append_op(
+                type='extract_rows', inputs={'X': grad}, outputs={'Out': idx})
+            block.append_op(
                 type='lookup_table',
                 inputs={'W': param,
-                        'Ids': grad},
+                        'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
 

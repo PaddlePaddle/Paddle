@@ -14,105 +14,20 @@ limitations under the License. */
 
 #pragma once
 
+#include <algorithm>
+#include <string>
 #include <vector>
-#include "glog/logging.h"
-#include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/framework/op_registry.h"
+
+#include "paddle/fluid/operators/reduce_op_function.h"
 
 namespace paddle {
 namespace operators {
 
-using Tensor = framework::Tensor;
-using DDim = framework::DDim;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-struct SumFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->sum(dim);
-  }
-};
-
-struct SumGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    dx->device(place) = dy->broadcast(dim);
-  }
-};
-
-struct MeanFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->mean(dim);
-  }
-};
-
-struct MeanGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    dx->device(place) = dy->broadcast(dim) / dx->constant(size);
-  }
-};
-
-struct MaxFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->maximum(dim);
-  }
-};
-
-struct MinFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->minimum(dim);
-  }
-};
-
-struct MaxOrMinGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    auto equals = (*x) == y->broadcast(dim);
-    auto ones = dx->constant(1);
-    auto zeros = dx->constant(0);
-    // If there are multiple minimum or maximum elements, the subgradient of
-    // each is the set [0, 1], and we pass gradient to all of them here.
-    dx->device(place) = dy->broadcast(dim) * equals.select(ones, zeros);
-  }
-};
-
-struct ProdFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->prod(dim);
-  }
-};
-
-struct ProdGradFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename DX,
-            typename DY, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, DX* dx, DY* dy,
-                  const Dim& dim, int size) {
-    dx->device(place) = dy->broadcast(dim) * y->broadcast(dim) * x->inverse();
-  }
-};
-
-#define HANDLE_DIM(NDIM, RDIM)          \
-  if (ndim == NDIM && rdim == RDIM) {   \
-    ReduceCompute<NDIM, RDIM>(context); \
+#define HANDLE_DIM(NDIM, RDIM)                                            \
+  if (ndim == NDIM && rdim == RDIM) {                                     \
+    ReduceFunctor<DeviceContext, T, NDIM, RDIM, Functor>(                 \
+        context.template device_context<DeviceContext>(), *input, output, \
+        dims, keep_dim);                                                  \
   }
 
 template <typename DeviceContext, typename T, typename Functor>
@@ -120,11 +35,15 @@ class ReduceKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     bool reduce_all = context.Attr<bool>("reduce_all");
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
+    output->mutable_data<T>(context.GetPlace());
+
+    auto dims = context.Attr<std::vector<int>>("dim");
+    bool keep_dim = context.Attr<bool>("keep_dim");
+
     if (reduce_all) {
       // Flatten and reduce 1-D tensor
-      auto* input = context.Input<Tensor>("X");
-      auto* output = context.Output<Tensor>("Out");
-      output->mutable_data<T>(context.GetPlace());
       auto x = EigenVector<T>::Flatten(*input);
       auto out = EigenScalar<T>::From(*output);
       auto& place =
@@ -133,17 +52,18 @@ class ReduceKernel : public framework::OpKernel<T> {
       Functor functor;
       functor(place, &x, &out, reduce_dim);
     } else {
-      int ndim = context.Input<Tensor>("X")->dims().size();
-      int rdim = context.Attr<std::vector<int>>("dim").size();
-      HANDLE_DIM(6, 5);
-      HANDLE_DIM(6, 4);
-      HANDLE_DIM(6, 3);
-      HANDLE_DIM(6, 2);
-      HANDLE_DIM(6, 1);
-      HANDLE_DIM(5, 4);
-      HANDLE_DIM(5, 3);
-      HANDLE_DIM(5, 2);
-      HANDLE_DIM(5, 1);
+      int ndim = input->dims().size();
+      int rdim = dims.size();
+      // comments for accelerating compiling temporarily.
+      //      HANDLE_DIM(6, 5);
+      //      HANDLE_DIM(6, 4);
+      //      HANDLE_DIM(6, 3);
+      //      HANDLE_DIM(6, 2);
+      //      HANDLE_DIM(6, 1);
+      //      HANDLE_DIM(5, 4);
+      //      HANDLE_DIM(5, 3);
+      //      HANDLE_DIM(5, 2);
+      //      HANDLE_DIM(5, 1);
       HANDLE_DIM(4, 3);
       HANDLE_DIM(4, 2);
       HANDLE_DIM(4, 1);
@@ -153,48 +73,6 @@ class ReduceKernel : public framework::OpKernel<T> {
       HANDLE_DIM(1, 1);
     }
   }
-
- private:
-  template <size_t D, size_t R_D>
-  void ReduceCompute(const framework::ExecutionContext& context) const {
-    auto* input = context.Input<Tensor>("X");
-    auto* output = context.Output<Tensor>("Out");
-    output->mutable_data<T>(context.GetPlace());
-
-    auto x = EigenTensor<T, D>::From(*input);
-    auto x_rank = static_cast<int>(x.dimensions().size());
-    auto dims = context.Attr<std::vector<int>>("dim");
-    auto reduce_dim = Eigen::array<int, R_D>();
-    for (size_t i = 0; i < dims.size(); ++i) {
-      if (dims[i] < 0) dims[i] = x_rank + dims[i];
-      reduce_dim[i] = dims[i];
-    }
-    // construct the squeezed output tensor
-    bool keep_dim = context.Attr<bool>("keep_dim");
-    DDim out_dims = output->dims();
-    if (keep_dim && x_rank > 1) {
-      const int kDelFlag = -2;
-      auto dims_vector = vectorize(out_dims);
-      for (size_t i = 0; i < dims.size(); ++i) {
-        dims_vector[dims[i]] = kDelFlag;
-      }
-      dims_vector.erase(
-          remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
-          dims_vector.end());
-      out_dims = framework::make_ddim(dims_vector);
-    }
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    Functor functor;
-
-    if (D == 1) {
-      auto out = EigenScalar<T>::From(*output);
-      functor(place, &x, &out, reduce_dim);
-    } else {
-      auto out = EigenTensor<T, (D - R_D)>::From(*output, out_dims);
-      functor(place, &x, &out, reduce_dim);
-    }
-  }
 };
 
 template <typename DeviceContext, typename T, typename Functor>
@@ -202,12 +80,15 @@ class ReduceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     bool reduce_all = context.Attr<bool>("reduce_all");
+    auto dims = context.Attr<std::vector<int>>("dim");
+
+    auto* input0 = context.Input<Tensor>("X");
+    auto* input1 = context.Input<Tensor>("Out");
+    auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
+    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
+    output->mutable_data<T>(context.GetPlace());
+
     if (reduce_all) {
-      auto* input0 = context.Input<Tensor>("X");
-      auto* input1 = context.Input<Tensor>("Out");
-      auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
-      auto* output = context.Output<Tensor>(framework::GradVarName("X"));
-      output->mutable_data<T>(context.GetPlace());
       auto x = EigenVector<T>::Flatten(*input0);
       auto x_reduce = EigenVector<T>::From(*input1);
       auto x_reduce_grad = EigenVector<T>::From(*input2);
@@ -220,74 +101,172 @@ class ReduceGradKernel : public framework::OpKernel<T> {
       functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
               broadcast_dim[0]);
     } else {
-      int rank = context.Input<Tensor>("X")->dims().size();
+      int rank = input0->dims().size();
       switch (rank) {
         case 1:
-          ReduceGradCompute<1>(context);
+          ReduceGradFunctor<DeviceContext, T, 1, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
         case 2:
-          ReduceGradCompute<2>(context);
+          ReduceGradFunctor<DeviceContext, T, 2, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
         case 3:
-          ReduceGradCompute<3>(context);
+          ReduceGradFunctor<DeviceContext, T, 3, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
         case 4:
-          ReduceGradCompute<4>(context);
+          ReduceGradFunctor<DeviceContext, T, 4, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
         case 5:
-          ReduceGradCompute<5>(context);
+          ReduceGradFunctor<DeviceContext, T, 5, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
         case 6:
-          ReduceGradCompute<6>(context);
+          ReduceGradFunctor<DeviceContext, T, 6, Functor>(
+              context.template device_context<DeviceContext>(), *input0,
+              *input1, *input2, output, dims);
           break;
       }
     }
   }
+};
 
- private:
-  template <size_t D>
-  void ReduceGradCompute(const framework::ExecutionContext& context) const {
-    auto* input0 = context.Input<Tensor>("X");
-    auto* input1 = context.Input<Tensor>("Out");
-    auto* input2 = context.Input<Tensor>(framework::GradVarName("Out"));
-    auto* output = context.Output<Tensor>(framework::GradVarName("X"));
+class ReduceOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
-    output->mutable_data<T>(context.GetPlace());
-    auto x = EigenTensor<T, D>::From(*input0);
-    auto x_grad = EigenTensor<T, D>::From(*output);
-    auto x_rank = static_cast<int>(x.dimensions().size());
-    auto dims = context.Attr<std::vector<int>>("dim");
-    auto x_dims = input0->dims();
-    auto reduced_dims_v = vectorize(x_dims);
-    Eigen::array<int, D> broadcast_dim;
-    for (size_t i = 0; i < D; ++i) broadcast_dim[i] = 1;
-
-    int broad_cats_times = 1;
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of ReduceOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of ReduceOp should not be null.");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_rank = x_dims.size();
+    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
+    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
     for (size_t i = 0; i < dims.size(); ++i) {
       if (dims[i] < 0) dims[i] = x_rank + dims[i];
-      reduced_dims_v[dims[i]] = 1;
-      broadcast_dim[dims[i]] = x_dims[dims[i]];
-      broad_cats_times *= x_dims[dims[i]];
+      PADDLE_ENFORCE_LT(
+          dims[i], x_rank,
+          "The dim should be in the range [-rank(input), rank(input)).");
     }
-    auto reduced_dims = framework::make_ddim(reduced_dims_v);
-    auto x_reduce = EigenTensor<T, D>::From(*input1, reduced_dims);
-    auto x_reduce_grad = EigenTensor<T, D>::From(*input2, reduced_dims);
-
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-
-    Functor functor;
-    functor(place, &x, &x_reduce, &x_grad, &x_reduce_grad, broadcast_dim,
-            broad_cats_times);
+    sort(dims.begin(), dims.end());
+    bool reduce_all = ctx->Attrs().Get<bool>("reduce_all");
+    bool keep_dim = ctx->Attrs().Get<bool>("keep_dim");
+    if (reduce_all) {
+      if (keep_dim)
+        ctx->SetOutputDim(
+            "Out", framework::make_ddim(std::vector<int64_t>(x_rank, 1)));
+      else
+        ctx->SetOutputDim("Out", {1});
+    } else {
+      auto dims_vector = vectorize(x_dims);
+      if (keep_dim) {
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = 1;
+        }
+      } else {
+        const int kDelFlag = -2;
+        for (size_t i = 0; i < dims.size(); ++i) {
+          dims_vector[dims[i]] = kDelFlag;
+        }
+        dims_vector.erase(
+            remove(dims_vector.begin(), dims_vector.end(), kDelFlag),
+            dims_vector.end());
+      }
+      auto out_dims = framework::make_ddim(dims_vector);
+      ctx->SetOutputDim("Out", out_dims);
+      if (dims[0] != 0) {
+        // Only pass LoD when not reducing on the first dim.
+        ctx->ShareLoD("X", /*->*/ "Out");
+      }
+    }
   }
+};
+
+class ReduceGradOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) should not be null.");
+    auto x_dims = ctx->GetInputDim("X");
+    auto x_rank = x_dims.size();
+    PADDLE_ENFORCE_LE(x_rank, 6, "Tensors with rank at most 6 are supported.");
+    auto dims = ctx->Attrs().Get<std::vector<int>>("dim");
+    for (size_t i = 0; i < dims.size(); ++i) {
+      if (dims[i] < 0) dims[i] = x_rank + dims[i];
+      PADDLE_ENFORCE_LT(
+          dims[i], x_rank,
+          "The dim should be in the range [-rank(input), rank(input)).");
+    }
+    sort(dims.begin(), dims.end());
+    auto x_grad_name = framework::GradVarName("X");
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, x_dims);
+      ctx->ShareLoD("X", /*->*/ x_grad_name);
+    }
+  }
+};
+
+class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() final {
+    AddInput("X",
+             "(Tensor) The input tensor. Tensors with rank at most 6 are "
+             "supported.");
+    AddOutput("Out", "(Tensor) The result tensor.");
+    AddAttr<std::vector<int>>(
+        "dim",
+        "(list<int>, default {0}) The dimensions to reduce. "
+        "Must be in the range [-rank(input), rank(input)). "
+        "If `dim[i] < 0`, the dims[i] to reduce is `rank + dims[i]`. "
+        "Note that reducing on the first dim will make the LoD info lost.")
+        .SetDefault({0});
+    AddAttr<bool>("keep_dim",
+                  "(bool, default false) "
+                  "If true, retain the reduced dimension with length 1.")
+        .SetDefault(false);
+    AddAttr<bool>("reduce_all",
+                  "(bool, default false) "
+                  "If true, output a scalar reduced along all dimensions.")
+        .SetDefault(false);
+    AddComment(string::Sprintf(R"DOC(
+%s Operator.
+
+This operator computes the %s of input tensor along the given dimension.
+The result tensor has 1 fewer dimension than the input unless keep_dim is true.
+If reduce_all is true, just reduce along all dimensions and output a scalar.
+
+)DOC",
+                               GetOpType(), GetName()));
+  }
+
+ protected:
+  virtual std::string GetName() const = 0;
+  virtual std::string GetOpType() const = 0;
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-#define FOR_EACH_KERNEL_FUNCTOR(__macro)                \
-  __macro(reduce_sum, SumFunctor, SumGradFunctor);      \
-  __macro(reduce_mean, MeanFunctor, MeanGradFunctor);   \
-  __macro(reduce_max, MaxFunctor, MaxOrMinGradFunctor); \
-  __macro(reduce_min, MinFunctor, MaxOrMinGradFunctor); \
-  __macro(reduce_prod, ProdFunctor, ProdGradFunctor);
+namespace ops = paddle::operators;
+
+#define REGISTER_REDUCE_OP(op_name)                                      \
+  class __##op_name##Maker__ : public ops::ReduceOpMaker {               \
+   protected:                                                            \
+    virtual std::string GetName() const { return #op_name; }             \
+    virtual std::string GetOpType() const { return "Reduce " #op_name; } \
+  };                                                                     \
+  REGISTER_OPERATOR(op_name, ops::ReduceOp, __##op_name##Maker__,        \
+                    paddle::framework::DefaultGradOpDescMaker<true>);    \
+  REGISTER_OPERATOR(op_name##_grad, ops::ReduceGradOp)

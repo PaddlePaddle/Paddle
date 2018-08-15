@@ -44,6 +44,12 @@ class Executor {
 
   explicit Executor(const platform::Place& place);
 
+  /*
+   * Close this Executor.
+   * Calling this method will send complete messages to all pserver instances.
+   */
+  void Close();
+
   /* @Brief
    * Runtime evaluation of the given ProgramDesc under certain Scope
    *
@@ -71,7 +77,7 @@ class Executor {
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           bool create_local_scope = true,
-                          bool create_vars = true);
+                          bool create_vars = true, bool keep_kids = false);
 
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
@@ -80,6 +86,8 @@ class Executor {
                           bool create_vars = true,
                           const std::string& feed_holder_name = "feed",
                           const std::string& fetch_holder_name = "fetch");
+
+  void EnableMKLDNN(const ProgramDesc& program);
 
  private:
   const platform::Place place_;

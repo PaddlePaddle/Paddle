@@ -12,10 +12,15 @@ endif(NOT WITH_MKLDNN)
 
 if(NOT WITH_DISTRIBUTE)
     list(REMOVE_ITEM TEST_OPS test_recv_op)
+    list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
+    list(REMOVE_ITEM TEST_OPS test_simple_dist_transpiler)
+    list(REMOVE_ITEM TEST_OPS test_listen_and_serv_op)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_mnist)
+    LIST(REMOVE_ITEM TEST_OPS test_dist_word2vec)
 endif(NOT WITH_DISTRIBUTE)
 
 list(REMOVE_ITEM TEST_OPS test_seq_concat_op) # FIXME(helin): https://github.com/PaddlePaddle/Paddle/issues/8290
-list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184 
+list(REMOVE_ITEM TEST_OPS test_modified_huber_loss_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5184
 list(REMOVE_ITEM TEST_OPS test_lstm_unit_op) # # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5185
 list(REMOVE_ITEM TEST_OPS test_nce) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/7778
 list(REMOVE_ITEM TEST_OPS test_recurrent_op) # FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/6152
@@ -35,7 +40,7 @@ function(py_test_modules TARGET_NAME)
              ${PYTHON_EXECUTABLE} ${PADDLE_SOURCE_DIR}/tools/test_runner.py ${py_test_modules_MODULES}
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (py_test_modules_SERIAL)
-        set_property(TEST ${TARGET_NAME} PROPERTY SERIAL 1)
+        set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
     endif()
   endif()
 endfunction()
@@ -43,10 +48,23 @@ list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
+list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
+list(REMOVE_ITEM TEST_OPS test_dist_transformer)
+list(REMOVE_ITEM TEST_OPS test_parallel_executor_transformer)
+list(REMOVE_ITEM TEST_OPS test_image_classification_resnet)
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP})
 endforeach(TEST_OP)
 py_test_modules(test_warpctc_op MODULES test_warpctc_op ENVS FLAGS_warpctc_dir=${WARPCTC_LIB_DIR} SERIAL)
-py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
-# tests that need to be done in fixed timeout
-set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
+if(WITH_DISTRIBUTE)
+    py_test_modules(test_dist_train MODULES test_dist_train SERIAL)
+    set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
+    set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
+    set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
+endif()
+py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
+py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
+py_test_modules(test_dist_transformer MODULES test_dist_transformer SERIAL)
+py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext SERIAL)
+py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
+py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)

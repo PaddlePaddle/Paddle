@@ -17,6 +17,8 @@
 #include <string>
 #include <unordered_map>
 
+using float16 = paddle::platform::float16;
+
 namespace paddle {
 namespace framework {
 
@@ -28,6 +30,9 @@ struct DataTypeMap {
 };
 
 static DataTypeMap* InitDataTypeMap();
+// C++11 removes the need for manual locking. Concurrent execution shall wait if
+// a static local variable is already being initialized.
+// https://stackoverflow.com/questions/11711920/how-to-implement-multithread-safe-singleton-in-c11-without-using-mutex
 static DataTypeMap& gDataTypeMap() {
   static DataTypeMap* g_data_type_map_ = InitDataTypeMap();
   return *g_data_type_map_;
@@ -50,7 +55,7 @@ static DataTypeMap* InitDataTypeMap() {
   RegisterType<cc_type>(retv, proto_type, #cc_type)
 
   // NOTE: Add your customize type here.
-  RegType(platform::float16, proto::VarType::FP16);
+  RegType(float16, proto::VarType::FP16);
   RegType(float, proto::VarType::FP32);
   RegType(double, proto::VarType::FP64);
   RegType(int, proto::VarType::INT32);

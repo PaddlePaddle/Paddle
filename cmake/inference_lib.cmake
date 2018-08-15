@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set_property(GLOBAL PROPERTY FLUID_MODULES "")
-# find all fluid modules is used for paddle fluid static library
-function(find_fluid_modules TARGET_NAME)
-  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
-  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
-  string(FIND "${__target_path}" "fluid" pos)
-  if(pos GREATER 1)
-    get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-    set(fluid_modules ${fluid_modules} ${TARGET_NAME})
-    set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
-  endif()
-endfunction(find_fluid_modules)
-
 # make package for paddle fluid shared and static library
 function(copy TARGET)
     set(options "")
@@ -39,7 +26,7 @@ function(copy TARGET)
         message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
     endif()
     math(EXPR len "${copy_lib_SRCS_len} - 1")
-    
+
     add_custom_target(${TARGET} DEPENDS ${copy_lib_DEPS})
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
@@ -149,10 +136,23 @@ copy(memory_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
 )
 
+set(inference_deps paddle_fluid_shared paddle_fluid)
+
+set(module "inference/api")
+if (WITH_ANAKIN AND WITH_GPU)
+    copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
+        SRCS
+        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
+        ${ANAKIN_INSTALL_DIR} # anakin release
+        DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
+     list(APPEND inference_deps anakin_inference_lib)
+endif()
+
 set(module "inference")
-copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
+copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}
+       ${src_dir}/${module}/api/paddle_inference_api.h ${src_dir}/${module}/api/demo_ci
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
 set(module "platform")
