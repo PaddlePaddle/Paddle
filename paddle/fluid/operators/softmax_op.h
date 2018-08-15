@@ -31,23 +31,18 @@ class SoftmaxKernel : public framework::OpKernel<T> {
 
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
-
-    auto dims = X->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_x;
-    framework::LoDTensor flattened_out;
-    flattened_x.ShareDataWith(*X).Resize(flattened_dims);
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
+    int rank = X->dims().size();
+    Tensor X_2d = framework::ReshapeToMatrix(*X, rank - 1);
+    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
     if (std::type_index(typeid(T)) ==
         std::type_index(typeid(platform::float16))) {
       PADDLE_THROW(
-          "Softmax contains sum, which will lead to overflow in float16, "
-          "please use the softmax_cudnn");
+                   "Softmax contains sum, which will lead to overflow in float16, "
+                   "please use the softmax_cudnn");
     }
 
     math::SoftmaxFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), &flattened_x,
-        &flattened_out);
+        context.template device_context<DeviceContext>(), &X_2d, &Out_2d);
   }
 };
 
@@ -62,14 +57,10 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    auto dims = Out->dims();
-    auto flattened_dims = framework::flatten_to_2d(dims, dims.size() - 1);
-    framework::LoDTensor flattened_out;
-    framework::LoDTensor flattened_d_out;
-    framework::LoDTensor flattened_d_x;
-    flattened_out.ShareDataWith(*Out).Resize(flattened_dims);
-    flattened_d_out.ShareDataWith(*dOut).Resize(flattened_dims);
-    flattened_d_x.ShareDataWith(*dX).Resize(flattened_dims);
+    int rank = Out->dims().size();
+    Tensor Out_2d = framework::ReshapeToMatrix(*Out, rank - 1);
+    Tensor dOut_2d = framework::ReshapeToMatrix(*dOut, rank - 1);
+    Tensor dX_2d = framework::ReshapeToMatrix(*dX, rank - 1);
 
     if (std::type_index(typeid(T)) ==
         std::type_index(typeid(platform::float16))) {
@@ -79,8 +70,8 @@ class SoftmaxGradKernel : public framework::OpKernel<T> {
     }
 
     math::SoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), &flattened_out,
-        &flattened_d_out, &flattened_d_x);
+        context.template device_context<DeviceContext>(), &Out_2d, &dOut_2d,
+        &dX_2d);
   }
 };
 
