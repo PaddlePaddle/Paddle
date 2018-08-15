@@ -46,7 +46,7 @@ def squeeze_excitation(input, num_channels, reduction_ratio):
     pool = fluid.layers.reduce_mean(input=reshape, dim=2)
 
     squeeze = fluid.layers.fc(input=pool,
-                              size=num_channels / reduction_ratio,
+                              size=num_channels // reduction_ratio,
                               act='relu')
     excitation = fluid.layers.fc(input=squeeze,
                                  size=num_channels,
@@ -62,7 +62,7 @@ def conv_bn_layer(input, num_filters, filter_size, stride=1, groups=1,
         num_filters=num_filters,
         filter_size=filter_size,
         stride=stride,
-        padding=(filter_size - 1) / 2,
+        padding=(filter_size - 1) // 2,
         groups=groups,
         act=None,
         bias_attr=False)

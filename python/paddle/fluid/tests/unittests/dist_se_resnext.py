@@ -173,7 +173,7 @@ class SE_ResNeXt():
             num_filters=num_filters,
             filter_size=filter_size,
             stride=stride,
-            padding=(filter_size - 1) / 2,
+            padding=(filter_size - 1) // 2,
             groups=groups,
             act=None,
             # avoid pserver CPU init differs from GPU
@@ -187,7 +187,7 @@ class SE_ResNeXt():
             input=input, pool_size=0, pool_type='avg', global_pooling=True)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
         squeeze = fluid.layers.fc(input=pool,
-                                  size=num_channels / reduction_ratio,
+                                  size=num_channels // reduction_ratio,
                                   act='relu')
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
         excitation = fluid.layers.fc(input=squeeze,
