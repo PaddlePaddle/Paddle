@@ -34,7 +34,6 @@ import numpy as np
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
-from ..initializer import RemoteInitializer
 from ..framework import Program, default_main_program, \
                         default_startup_program, Block, \
                         Parameter, grad_var_name
