@@ -123,6 +123,7 @@ class DistributeTranspilerConfig(object):
     slice_var_up = True
     split_method = None
     min_block_size = 8192
+    enable_dc_asgd = False
 
 
 class DistributeTranspiler(object):
@@ -478,6 +479,20 @@ class DistributeTranspiler(object):
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
+        if self.config.enable_dc_asgd == True and self.sync_mode == False:
+            # add param_bak for each trainer
+            for p, _ in self.param_grad_ep_mapping[endpoint]["param"]:
+                # each parameter should have w_bak for each trainer id
+                for i in range(self.trainer_num):
+                    pserver_program.global_block().create_var(
+                        # NOTE: this var name format is used in `request_get_handler`
+                        name="%s.trainer_%d" % (p.name, i),
+                        type=p.type,
+                        shape=p.shape,
+                        dtype=p.dtype)
+        else:
+            raise Exception(
+                "enable_dc_asgd must be used together with sync_mode=False")
         # dedup grad to ids list
         grad_to_block_id = list(set(grad_to_block_id))
         # append global ops

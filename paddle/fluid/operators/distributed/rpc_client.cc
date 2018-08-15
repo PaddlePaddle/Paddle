@@ -24,6 +24,7 @@ namespace distributed {
 
 std::once_flag RPCClient::init_flag_;
 std::unique_ptr<RPCClient> RPCClient::rpc_client_(nullptr);
+int RPCClient::trainer_id_ = 0;
 
 }  // namespace distributed
 }  // namespace operators

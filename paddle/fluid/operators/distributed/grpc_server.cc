@@ -102,9 +102,10 @@ class RequestSend final : public RequestBase {
 
     auto scope = request_->GetMutableLocalScope();
     auto invar = request_->GetVar();
+    int trainer_id = request_->GetTrainerId();
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
     Finish(reply_, &responder_);
   }
 
@@ -133,13 +134,14 @@ class RequestGet final : public RequestBase {
   void Process() override {
     // proc request.
     std::string varname = request_.varname();
+    int trainer_id = request_.trainer_id();
     VLOG(4) << "RequestGet " << varname;
 
     auto scope = request_handler_->scope();
     auto invar = scope->FindVar(varname);
     framework::Variable* outvar = nullptr;
 
-    request_handler_->Handle(varname, scope, invar, &outvar);
+    request_handler_->Handle(varname, scope, invar, &outvar, trainer_id);
 
     if (outvar) {
       SerializeToByteBuffer(varname, outvar, *request_handler_->dev_ctx(),
@@ -179,6 +181,7 @@ class RequestPrefetch final : public RequestBase {
     // prefetch process...
     std::string in_var_name = request_->Varname();
     std::string out_var_name = request_->OutVarname();
+    int trainer_id = request_->GetTrainerId();
     VLOG(4) << "RequestPrefetch, in_var_name: " << in_var_name
             << " out_var_name: " << out_var_name;
 
@@ -187,7 +190,8 @@ class RequestPrefetch final : public RequestBase {
     // out var must be created in local scope!
     framework::Variable* outvar = scope->Var(out_var_name);
 
-    request_handler_->Handle(in_var_name, scope, invar, &outvar, out_var_name);
+    request_handler_->Handle(in_var_name, scope, invar, &outvar, trainer_id,
+                             out_var_name);
 
     SerializeToByteBuffer(out_var_name, outvar, *request_handler_->dev_ctx(),
                           &reply_);
@@ -225,12 +229,13 @@ class RequestCheckpointNotify final : public RequestBase {
 
     std::string checkpoint_notify = request_->Varname();
     std::string checkpoint_dir = request_->OutVarname();
+    int trainer_id = request_->GetTrainerId();
 
     VLOG(4) << "RequestCheckpointNotify notify: " << checkpoint_notify
             << ", dir: " << checkpoint_dir;
 
     request_handler_->Handle(checkpoint_notify, scope, nullptr, nullptr,
-                             checkpoint_dir);
+                             trainer_id, checkpoint_dir);
     Finish(reply_, &responder_);
   }
 

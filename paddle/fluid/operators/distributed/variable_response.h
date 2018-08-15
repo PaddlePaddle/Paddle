@@ -92,6 +92,8 @@ class VariableResponse {
     return scope_->FindVar(meta_.varname());
   }
 
+  int GetTrainerId() { return static_cast<int>(meta_.trainer_id()); }
+
  protected:
   bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
                const platform::DeviceContext& dev_ctx, platform::Place place,

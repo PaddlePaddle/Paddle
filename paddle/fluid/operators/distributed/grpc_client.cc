@@ -78,7 +78,7 @@ bool GRPCClient::AsyncSendVar(const std::string& ep,
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
-    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req);
+    SerializeToByteBuffer(var_name_val, var, *p_ctx, &req, "", trainer_id_);
 
     // varhandle
     VarHandle var_h;
@@ -108,7 +108,10 @@ bool GRPCClient::AsyncSendVar(const std::string& ep,
 void ProcGetResponse(const VarHandle& var_h,
                      const ::grpc::ByteBuffer& ret_msg) {
   framework::Variable* outvar = nullptr;
-  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar);
+  // get response's trainer_id is not useful
+  int trainer_id;
+  DeserializeFromByteBuffer(ret_msg, *var_h.ctx, var_h.scope, &outvar,
+                            &trainer_id);
 }
 
 template <typename T>
@@ -134,6 +137,7 @@ bool GRPCClient::AsyncGetVar(const std::string& ep,
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
+    req.set_trainer_id(trainer_id_);
     ::grpc::ByteBuffer buf;
     RequestToByteBuffer<sendrecv::VariableMessage>(req, &buf);
 

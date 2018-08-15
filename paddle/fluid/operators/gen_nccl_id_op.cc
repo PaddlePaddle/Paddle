@@ -61,7 +61,7 @@ class GenNCCLIdOp : public framework::OperatorBase {
     std::vector<std::string> endpoint_list =
         Attr<std::vector<std::string>>("endpoint_list");
     distributed::RPCClient* client =
-        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
     for (auto& ep : endpoint_list) {
       VLOG(3) << "sending nccl id to " << ep;

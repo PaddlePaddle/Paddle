@@ -92,7 +92,7 @@ TEST(SendNcclId, RPCServer) {
   std::string ep = string::Sprintf("127.0.0.1:%d", port);
 
   distributed::RPCClient* client =
-      distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>(0);
 
   LOG(INFO) << "connect to server" << ep;
   client->AsyncSendVar(ep, dev_ctx, scope, NCCL_ID_VARNAME);
