@@ -53,7 +53,7 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     // In place gradient: dX = dO
-    dX->ShareDataWith(*dOut);
+    framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
     dUpdates->mutable_data<T>(ctx.GetPlace());
     // Gradient by Gather: dUpdates += dO[Ids]
     CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
