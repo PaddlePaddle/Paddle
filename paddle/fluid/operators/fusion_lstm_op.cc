@@ -112,26 +112,22 @@ framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
 
 void FusionLSTMOpMaker::Make() {
   AddInput("X",
-           "(LoDTensor) the first input is a LodTensor, which support "
+           "(LoDTensor) the input is a LodTensor, which support "
            "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X 4D), where T is the "
-           "total time steps in this mini-batch, D is the hidden size.");
-  AddInput("H0",
-           "(Tensor, optional) the initial hidden state is an optional "
-           "input. This is a tensor with shape (N x D), where N is the "
-           "batch size and D is the hidden size.")
-      .AsDispensable();
-  AddInput("C0",
-           "(Tensor, optional) the initial cell state is an optional "
-           "input. This is a tensor with shape (N x D), where N is the "
-           "batch size. `H0` and `C0` can be NULL but only at the same time.")
-      .AsDispensable();
-  AddInput("Weight",
-           "(Tensor) the learnable hidden-hidden weights."
+           "this LoDTensor is a matrix with shape (T X M), where T is the "
+           "total time steps in this mini-batch, M is the dim size of x.");
+  AddInput("WeightX",
+           "(Tensor) the learnable weights of X."
+           " - The shape is (M x 4D), where M is the dim size of x, D is the "
+           "hidden size. "
+           " - Weight = {W_cx, W_ix, W_fx, W_ox}");
+  AddInput("WeightH",
+           "(Tensor) same as LSTMOp, the learnable hidden-hidden weights."
            " - The shape is (D x 4D), where D is the hidden size. "
            " - Weight = {W_ch, W_ih, W_fh, W_oh}");
   AddInput("Bias",
-           "(Tensor) the learnable weights, which contains two parts: "
+           "(Tensor) the learnable weights. Almost same as LSTMOp"
+           "Note: we should add the fc bias into this (1x4D) in bias."
            "input-hidden bias weight and peephole connections weight if "
            "setting `use_peepholes` True. "
            "1. `use_peepholes = False` "
@@ -140,29 +136,31 @@ void FusionLSTMOpMaker::Make() {
            "2. `use_peepholes = True` "
            " - The shape is (1 x 7D). "
            " - Bias = {b_c, b_i, b_f, b_o, W_ic, W_fc, W_oc}.");
+  AddInput("H0",
+           "(Tensor, optional) (same as LSTMOp) the initial hidden state is an "
+           "optional "
+           "input. This is a tensor with shape (N x D), where N is the "
+           "batch size and D is the hidden size.")
+      .AsDispensable();
+  AddInput("C0",
+           "(Tensor, optional) (same as LSTMOp) (the initial cell state is an "
+           "optional "
+           "input. This is a tensor with shape (N x D), where N is the "
+           "batch size. `H0` and `C0` can be NULL but only at the same time.")
+      .AsDispensable();
   AddOutput("Hidden",
-            "(LoDTensor) the hidden state of LSTM operator. "
+            "(LoDTensor) (same as LSTMOp) the hidden state of LSTM operator. "
             "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("Cell",
-            "(LoDTensor) the cell state of LSTM operator. "
+            "(LoDTensor) (same as LSTMOp) the cell state of LSTM operator. "
             "The shape is (T x D), and lod is the same with the `Input`.");
   AddOutput("XX",
-            "(LoDTensor) the first input is a LodTensor, which support "
-            "variable-time length input sequence. The underlying tensor in "
-            "this LoDTensor is a matrix with shape (T X 4D), where T is the "
-            "total time steps in this mini-batch, D is the hidden size.");
-  AddOutput("BatchedGate",
-            "(LoDTensor) This LoDTensor contains input gate, forget gate "
-            "and output gate after the nonlinear computation. This "
-            "LoDTensor has the same shape as the reorganized input, which "
-            "is also be called batch input. The LoD size is 2. The first "
-            "LoD is the batch offsets and the second LoD contains the "
-            "indexes, which denote the position of reorganized sequence "
-            "in the raw input.")
-      .AsIntermediate();
-  AddOutput("BatchCellPreAct",
-            "(LoDTensor) This LoDTensor is obtained in the forward and used "
-            "in the backward.")
+            "(LoDTensor) the result after X * WeightX (size is T x 4D)"
+            " or batched_X (size is T x M), this will be automatically chosen,"
+            " where T is the total time steps in this mini-batch,"
+            " D is the hidden size, M is the dim size of x input.");
+  AddOutput("BatchedGate", "(LoDTensor) (same as LSTMOp).").AsIntermediate();
+  AddOutput("BatchCellPreAct", "(LoDTensor) (same as LSTMOp).")
       .AsIntermediate();
   AddAttr<bool>("use_peepholes",
                 "(bool, defalut: True) "
@@ -190,46 +188,8 @@ void FusionLSTMOpMaker::Make() {
       .SetDefault("tanh")
       .InEnum({"sigmoid", "tanh", "relu", "identity"});
   AddComment(R"DOC(
-Long-Short Term Memory (LSTM) Operator.
-
-The defalut implementation is diagonal/peephole connection
-(https://arxiv.org/pdf/1402.1128.pdf), the formula is as follows:
-
-$$ i_t = \\sigma(W_{ix}x_{t} + W_{ih}h_{t-1} + W_{ic}c_{t-1} + b_i) $$
-
-$$ f_t = \\sigma(W_{fx}x_{t} + W_{fh}h_{t-1} + W_{fc}c_{t-1} + b_f) $$
-
-$$ \\tilde{c_t} = act_g(W_{cx}x_t + W_{ch}h_{t-1} + b_c) $$
-
-$$ o_t = \\sigma(W_{ox}x_{t} + W_{oh}h_{t-1} + W_{oc}c_t + b_o) $$
-
-$$ c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c_t} $$
-
-$$ h_t = o_t \\odot act_h(c_t) $$
-
-- W terms denote weight matrices (e.g. $W_{xi}$ is the matrix
-  of weights from the input gate to the input), $W_{ic}, W_{fc}, W_{oc}$
-  are diagonal weight matrices for peephole connections. In our implementation,
-  we use vectors to reprenset these diagonal weight matrices.
-- The b terms denote bias vectors ($b_i$ is the input gate bias vector).
-- $\sigma$ is the non-line activations, such as logistic sigmoid function.
-- $i, f, o$ and $c$ are the input gate, forget gate, output gate,
-  and cell activation vectors, respectively, all of which have the same size as
-  the cell output activation vector $h$.
-- The $\odot$ is the element-wise product of the vectors.
-- $act_g$ and $act_h$ are the cell input and cell output activation functions
-  and `tanh` is usually used for them.
-- $\tilde{c_t}$ is also called candidate hidden state,
-  which is computed based on the current input and the previous hidden state.
-
-Set `use_peepholes` False to disable peephole connection. The formula
-is omitted here, please refer to the paper
-http://www.bioinf.jku.at/publications/older/2604.pdf for details.
-
-Note that these $W_{xi}x_{t}, W_{xf}x_{t}, W_{xc}x_{t}, W_{xo}x_{t}$
-operations on the input $x_{t}$ are NOT included in this operator.
-Users can choose to use fully-connect operator before LSTM operator.
-
+Fusion Long-Short Term Memory (LSTM) Operator.
+This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
@@ -266,14 +226,12 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* x = ctx.Input<LoDTensor>("X");
-    auto* wx = ctx.Input<Tensor>("WeightX");  // x*4D
-    auto* wh = ctx.Input<Tensor>("WeightH");  // D*4D
+    auto* wx = ctx.Input<Tensor>("WeightX");
+    auto* wh = ctx.Input<Tensor>("WeightH");
     auto* bias = ctx.Input<Tensor>("Bias");
     auto* hidden_t0 = ctx.Input<Tensor>("H0");
     auto* cell_t0 = ctx.Input<Tensor>("C0");
 
-    // the result after x*Wx (size: sum_words*4D) or batched_x (size:
-    // sum_words*x)
     auto* xx = ctx.Output<LoDTensor>("XX");
     auto* batched_gate = ctx.Output<LoDTensor>("BatchedGate");
     auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
@@ -312,7 +270,6 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     lstm_value.check_ig = nullptr;
     lstm_value.check_fg = nullptr;
     lstm_value.check_og = nullptr;
-
     lstm_value.prev_state_value = nullptr;
     Tensor ordered_c0;
 
