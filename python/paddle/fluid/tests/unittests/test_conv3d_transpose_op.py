@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -25,7 +27,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     groups = attrs['groups']
     assert in_c == f_c
     out_c = f_out_c * groups
-    sub_in_c = in_c / groups
+    sub_in_c = in_c // groups
 
     stride, pad, dilations = attrs['strides'], attrs['paddings'], attrs[
         'dilations']

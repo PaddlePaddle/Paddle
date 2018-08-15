@@ -28,6 +28,9 @@ Graphics and Image Processing (2008)
 http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
+
+from __future__ import print_function
+
 import itertools
 import functools
 from .common import download
@@ -116,8 +119,8 @@ def reader_creator(data_file,
             for file in open(file_list):
                 file = file.strip()
                 batch = None
-                with open(file, 'r') as f:
-                    batch = pickle.load(f)
+                with open(file, 'rb') as f:
+                    batch = pickle.loads(f.read())
                 data = batch['data']
                 labels = batch['label']
                 for sample, label in zip(data, batch['label']):
