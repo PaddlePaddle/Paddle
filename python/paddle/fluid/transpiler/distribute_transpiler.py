@@ -605,7 +605,10 @@ class DistributeTranspiler(object):
         pserver_program._sync_with_cpp()
         return pserver_program
 
-    def get_startup_program(self, endpoint, pserver_program):
+    def get_startup_program(self,
+                            endpoint,
+                            pserver_program,
+                            startup_program=None):
         """
         Get startup program for current parameter server.
         Modify operator input variables if there are variables that
@@ -615,12 +618,17 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): call get_pserver_program first and
                 pass the result here.
+            startup_program (Program): if pass None, will use
+                default_startup_program
 
         Returns:
             Program: parameter server side startup program.
         """
         s_prog = Program()
-        orig_s_prog = self.origin_startup_program
+        if not startup_program:
+            orig_s_prog = default_startup_program()
+        else:
+            orig_s_prog = startup_program
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
