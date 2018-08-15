@@ -1111,7 +1111,7 @@ def multi_box_head(inputs,
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
         compile_shape = [
             mbox_loc.shape[0], cpt.floor_division(
-                box_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
+                mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
         ]
         run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
         mbox_loc_flatten = nn.reshape(
