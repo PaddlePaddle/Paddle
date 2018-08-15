@@ -301,7 +301,8 @@ void BindOpDesc(pybind11::module *m) {
              std::string ser(seriralized);
              self.SetAttr(name, ser);
            })
-      .def("block_attr", &pd::OpDesc::GetBlockAttr)
+      .def("block_attr_id", &pd::OpDesc::GetBlockAttrId)
+      .def("blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)
