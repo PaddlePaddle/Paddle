@@ -19,6 +19,9 @@ http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
 parse training set and test set into paddle reader creators.
 
 """
+
+from __future__ import print_function
+
 import six
 import tarfile
 import gzip
