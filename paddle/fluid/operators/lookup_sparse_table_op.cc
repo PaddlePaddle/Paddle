@@ -56,22 +56,17 @@ class LookupSparseTableOp : public framework::OperatorBase {
     auto &ids_t = ids_var->Get<framework::LoDTensor>();
     auto out_t = out_var->GetMutable<framework::LoDTensor>();
     auto w_t = w_var->GetMutable<framework::SelectedRows>();
-    std::vector<int64_t> keys;
-    keys.resize(ids_t.numel());
-    for (int64_t i = 0; i < ids_t.numel(); ++i) {
-      keys[i] = ids_t.data<int64_t>()[i];
-    }
 
     // TODO(Yancey1989): support CUDA Place for the sparse table
     platform::CPUPlace cpu;
     auto out_shape = w_t->value().dims();
-    out_shape[0] = keys.size();
+    out_shape[0] = ids_t.numel();
     out_t->Resize(out_shape);
     out_t->mutable_data(cpu, w_t->value().type());
     PADDLE_ENFORCE_EQ(framework::ToDataType(w_t->value().type()),
                       framework::proto::VarType::FP32,
                       "The sparse table only support FP32");
-    w_t->Get(keys, out_t, true);
+    w_t->Get(ids_t, out_t, true);
   }
 };
 

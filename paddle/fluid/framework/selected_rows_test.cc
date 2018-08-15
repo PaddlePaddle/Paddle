@@ -63,12 +63,12 @@ TEST_F(SelectedRowsTester, SparseTable) {
   platform::CPUPlace cpu;
   SelectedRows table;
   // initialize a sparse table
-  table.mutable_value()->Resize(framework::make_ddim({1, 100}));
+  table.mutable_value()->Resize(framework::make_ddim({100, 8}));
   table.mutable_value()->mutable_data<float>(cpu);
   table.mutable_rows()->push_back(1);
 
   int64_t key = 10000;
-  int64_t non_key = 999;
+  // int64_t non_key = 999;
   framework::Tensor value;
   value.Resize(framework::make_ddim({1, 100}));
   auto ptr = value.mutable_data<float>(cpu);
@@ -77,8 +77,6 @@ TEST_F(SelectedRowsTester, SparseTable) {
   ASSERT_EQ(table.rows().size(), static_cast<size_t>(1));
   ASSERT_EQ(table.HasKey(key), false);
 
-  table.Set(key, value);
-
   ASSERT_EQ(table.rows().size(), static_cast<size_t>(2));
   ASSERT_EQ(table.HasKey(key), true);
   // check re-allocate
@@ -86,8 +84,7 @@ TEST_F(SelectedRowsTester, SparseTable) {
 
   framework::Tensor get_value;
   get_value.mutable_data<float>(framework::make_ddim({2, 100}), cpu);
-  std::vector<int64_t> keys({non_key, key});
-  table.Get(keys, &get_value);
+  // table.Get(keys, &get_value);
 
   ASSERT_EQ(get_value.data<float>()[100], static_cast<float>(10));
 }

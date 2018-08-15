@@ -116,29 +116,85 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
 }
 
 bool SelectedRows::HasKey(int64_t key) const {
-  return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false
-                                                                   : true;
+  pthread_rwlock_rdlock(&rwlock_.get()->lock);
+  auto iter = id_to_index.find(key);
+  bool has_key = iter != id_to_index.end();
+  pthread_rwlock_unlock(&rwlock_.get()->lock);
+  return has_key;
 }
 
-void SelectedRows::Get(const std::vector<int64_t>& keys,
-                       framework::Tensor* value, bool auto_grown) {
+int64_t SelectedRows::AutoIndex(int64_t key) const {
+  pthread_rwlock_rdlock(&rwlock_.get()->lock);
+  auto iter = id_to_index.find(key);
+  bool has_key = iter != id_to_index.end();
+  if (!has_key) {
+    pthread_rwlock_unlock(&rwlock_.get()->lock);
+    PADDLE_THROW("Id %s not in table", key);
+  }
+  auto ret = iter->second;
+  pthread_rwlock_unlock(&rwlock_.get()->lock);
+  return ret;
+}
+
+int64_t SelectedRows::AutoGrownIndex(int64_t key) {
+  pthread_rwlock_rdlock(&rwlock_.get()->lock);
+  auto iter = id_to_index.find(key);
+  if (iter == id_to_index.end()) {
+    pthread_rwlock_unlock(&rwlock_.get()->lock);
+    pthread_rwlock_wrlock(&rwlock_.get()->lock);
+    PADDLE_ENFORCE(id_to_index.size() == rows_.size(),
+                   "id_to_index should have the same size with rows_");
+    auto write_iter = id_to_index.find(key);
+    if (write_iter == id_to_index.end()) {
+      size_t row_num = rows_.size();
+      if (row_num == value_->dims()[1]) {
+        pthread_rwlock_unlock(&rwlock_.get()->lock);
+        PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
+      }
+      rows_.push_back(key);
+      auto index = static_cast<int64_t>(rows_.size() - 1);
+      id_to_index[key] = index;
+      pthread_rwlock_unlock(&rwlock_.get()->lock);
+      return index;
+    } else {
+      auto index = write_iter->second;
+      pthread_rwlock_unlock(&rwlock_.get()->lock);
+      return index;
+    }
+  } else {
+    auto index = iter->second;
+    pthread_rwlock_unlock(&rwlock_.get()->lock);
+    return index;
+  }
+}
+
+void SelectedRows::SyncIndex() {
+  pthread_rwlock_wrlock(&rwlock_.get()->lock);
+  id_to_index.clear();
+  for (size_t i = 0; i < rows_.size(); ++i) {
+    id_to_index[rows_[i]] = i;
+  }
+  pthread_rwlock_unlock(&rwlock_.get()->lock);
+}
+
+void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
+                       bool auto_grown) {
   PADDLE_ENFORCE(value->IsInitialized(),
                  "The value tensor should be initialized.");
-  if (keys.empty()) {
+  if (ids.numel() == 0) {
     VLOG(3) << "keys is empty, please check data!";
   } else {
     int64_t value_width = value_->numel() / value_->dims()[0];
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
-
-    for (size_t i = 0; i < keys.size(); ++i) {
-      int64_t id = keys[i];
+    for (size_t i = 0; i < ids.numel(); ++i) {
+      int64_t id = ids.data<int64_t>()[i];
       int64_t index;
       if (auto_grown) {
         index = AutoGrownIndex(id);
       } else {
-        index = Index(id);
+        index = AutoIndex(id);
       }
       framework::VisitDataType(
           framework::ToDataType(value_->type()),
@@ -146,40 +202,6 @@ void SelectedRows::Get(const std::vector<int64_t>& keys,
                             index * value_width, value_width));
     }
   }
-}
-
-bool SelectedRows::Set(int64_t key, const framework::Tensor& value) {
-  PADDLE_ENFORCE(value.IsInitialized(), "The value should be initialized.");
-  if (value_->IsInitialized()) {
-    PADDLE_ENFORCE_EQ(
-        value.type(), value_->type(),
-        "The type of the value should be same with the original value");
-  }
-  PADDLE_ENFORCE_EQ(value.dims()[0], static_cast<size_t>(1),
-                    "The first dim of value should be 1.");
-  std::lock_guard<std::mutex> lock(*auto_grown_mutex_.get());
-  auto index = Index(key);
-  bool is_new_key = false;
-  if (index == -1) {
-    rows_.push_back(key);
-    index = rows_.size() - 1;
-    is_new_key = true;
-    // whether need to resize the table
-    if (static_cast<int64_t>(rows_.size()) > value_->dims()[0]) {
-      VLOG(3) << "rows is full, needs to reallocate a bigger one";
-      auto dims = value_->dims();
-      dims[0] = (dims[0] + 1) << 1;
-      framework::VisitDataType(framework::ToDataType(value.type()),
-                               ReAllocateVisitor(dims, value_.get()));
-    }
-  }
-
-  framework::VisitDataType(
-      framework::ToDataType(value.type()),
-      TensorCopyVisitor(value_.get(),
-                        index * value_->numel() / value_->dims()[0], value,
-                        static_cast<int64_t>(0), value.numel()));
-  return is_new_key;
 }
 
 }  // namespace framework

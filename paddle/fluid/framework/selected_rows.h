@@ -86,36 +86,6 @@ class SelectedRows {
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
   /*
-   * @brief wheter has the specified key in the table.
-   *
-   * @return true if the key is exists.
-   */
-  bool HasKey(int64_t key) const;
-
-  /*
-   * @brief Get value by the key list, if the
-   *
-   * @return a list of pair which contains the non-exists key and the index in
-   * the value
-   */
-  void Get(const std::vector<int64_t>& keys, framework::Tensor* value,
-           bool auto_grown = false);
-
-  /*
-   * @brief Set a key-value pair into the table.
-   *  This function will double the value memory if it's not engouth.
-   *
-   * @note:
-   *    1. The first dim of the value should be 1
-   *    2. The value should be initialized and the data type
-   *       should be the same with the table.
-   *
-   * @return true if the key is a new one, otherwise false
-   *
-   */
-  bool Set(int64_t key, const Tensor& value);
-
-  /*
    * @brief Get the index of key in rows
    *
    * @return -1 if the key does not exists.
@@ -128,38 +98,34 @@ class SelectedRows {
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
 
-  int64_t AutoGrownIndex(int64_t key) {
-    pthread_rwlock_rdlock(&rwlock_.get()->lock);
-    auto iter = id_to_index.find(key);
-    if (iter == id_to_index.end()) {
-      pthread_rwlock_unlock(&rwlock_.get()->lock);
-      pthread_rwlock_wrlock(&rwlock_.get()->lock);
-      auto write_iter = id_to_index.find(key);
-      if (write_iter == id_to_index.end()) {
-        rows_.push_back(key);
-        auto index = static_cast<int64_t>(rows_.size() - 1);
-        id_to_index[key] = index;
-        pthread_rwlock_unlock(&rwlock_.get()->lock);
-        return index;
-      } else {
-        auto index = write_iter->second;
-        pthread_rwlock_unlock(&rwlock_.get()->lock);
-        return index;
-      }
-    } else {
-      auto index = iter->second;
-      pthread_rwlock_unlock(&rwlock_.get()->lock);
-      return index;
-    }
-  }
+  /*
+   * @brief wheter has the specified key in the table.
+   *
+   * @return true if the key is exists.
+   */
+  bool HasKey(int64_t key) const;
 
-  int64_t AutoIndex(int64_t key) const {
-    auto iter = id_to_index.find(key);
-    if (iter == id_to_index.end()) {
-      PADDLE_THROW("Id %s not in table", key);
-    }
-    return iter->second;
-  }
+  /*
+   * @brief Get value by the key list, the interface is use when selected_rows
+   * is
+   * used as embedding parameters.
+   *
+   * @return a list of pair which contains the non-exists key and the index in
+   * the value
+   */
+  void Get(const framework::Tensor& ids, framework::Tensor* value,
+           bool auto_grown = false);
+
+  /*
+   * @brief Get the index of key in id_to_index map. Used with auto grown index.
+   *
+   * @return index of the key.
+   */
+  int64_t AutoIndex(int64_t key) const;
+
+  int64_t AutoGrownIndex(int64_t key);
+
+  void SyncIndex();
 
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
