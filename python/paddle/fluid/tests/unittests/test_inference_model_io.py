@@ -14,6 +14,7 @@
 
 import unittest
 
+import six
 import numpy as np
 import paddle.fluid.core as core
 
@@ -48,7 +49,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
-        for i in range(100):
+        for i in six.moves.xrange(100):
             tensor_x = np.array(
                 [[1, 1], [1, 2], [3, 4], [5, 2]]).astype("float32")
             tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")
@@ -64,7 +65,7 @@ class TestBook(unittest.TestCase):
                                  'y': tensor_y},
                            fetch_list=[avg_cost])[0]
 
-        reload(executor)  # reload to build a new scope
+        six.moves.reload_module(executor)  # reload to build a new scope
         exe = executor.Executor(place)
 
         [infer_prog, feed_var_names, fetch_vars] = load_inference_model(

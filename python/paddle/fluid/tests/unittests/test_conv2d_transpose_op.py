@@ -25,7 +25,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     groups = attrs['groups']
     assert in_c == f_c
     out_c = f_out_c * groups
-    sub_in_c = in_c / groups
+    sub_in_c = in_c // groups
 
     stride, pad, dilations = attrs['strides'], attrs['paddings'], attrs[
         'dilations']
@@ -258,7 +258,7 @@ class TestDepthwiseConvTranspose(TestConv2dTransposeOp):
         self.input_size = [2, 8, 16, 16]  # NCHW
         self.groups = 8
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [self.input_size[1], f_c, 4, 4]
         self.op_type = "depthwise_conv2d_transpose"
 

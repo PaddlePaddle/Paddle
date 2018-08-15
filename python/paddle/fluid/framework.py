@@ -19,6 +19,7 @@ import six
 
 import numpy as np
 
+from .. import compat as cpt
 from .proto import framework_pb2
 try:
     from . import core
@@ -27,7 +28,7 @@ except ImportError as e:
         """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + e.message)
+    directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -87,7 +88,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     else:
-        raise ValueError("Not supported numpy dtype " + six.binary_type(dtype))
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -198,11 +199,11 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        name = name if isinstance(name, six.binary_type) else name.encode()
-        self.desc = self.block.desc.find_var(name)
+        name = cpt.to_text(name)
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
         if self.desc is None:
-            self.desc = self.block.desc.var(name)
+            self.desc = self.block.desc.var(cpt.to_bytes(name))
             is_new_var = True
 
         if is_new_var:
@@ -325,7 +326,7 @@ class Variable(object):
 
     @property
     def name(self):
-        return self.desc.name()
+        return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
@@ -476,23 +477,25 @@ class Operator(object):
                  attrs=None):
         self.block = block
         self.desc = desc
-        self.attrs = attrs
-        if self.attrs is None:
-            self.attrs = dict()
+        # note: not add self.attrs here:
+        # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
+        op_attrs = attrs
+        if op_attrs is None:
+            op_attrs = dict()
         del attrs
 
         op_maker = core.op_proto_and_checker_maker
 
-        if op_maker.kOpRoleAttrName() not in self.attrs:
-            self.attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
+        if op_maker.kOpRoleAttrName() not in op_attrs:
+            op_attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
 
         role_var_name = op_maker.kOpRoleVarAttrName()
         if len(self.block.program.
-               op_role_var) != 0 and role_var_name not in self.attrs:
-            self.attrs[role_var_name] = self.block.program.op_role_var
+               op_role_var) != 0 and role_var_name not in op_attrs:
+            op_attrs[role_var_name] = self.block.program.op_role_var
 
-        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
-            del self.attrs[role_var_name]
+        if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
+            del op_attrs[role_var_name]
 
         if len(self.desc.type()) != 0:
             return
@@ -529,10 +532,7 @@ class Operator(object):
                         elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            if isinstance(arg.name, six.string_types):
-                                in_arg_names.append(arg.name)
-                            elif isinstance(arg.name, six.binary_type):
-                                in_arg_names.append(arg.name.decode())
+                            in_arg_names.append(cpt.to_text(arg.name))
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -561,24 +561,18 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    if isinstance(arg.name, six.string_types):
-                        out_arg_names.append(arg.name)
-                    elif isinstance(arg.name, six.binary_type):
-                        out_arg_names.append(arg.name.decode())
-                    else:
-                        out_arg_names.append(six.u(arg.name))
+                    out_arg_names.append(cpt.to_text(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        if self.attrs is not None:
-            if not isinstance(self.attrs, dict):
+        if op_attrs is not None:
+            if not isinstance(op_attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (attr_name not in self.attrs) or (
-                        self.attrs[attr_name] is None):
+                if (attr_name not in op_attrs) or (op_attrs[attr_name] is None):
                     continue
-                attr_val = self.attrs[attr_name]
+                attr_val = op_attrs[attr_name]
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
@@ -726,7 +720,6 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        self.attrs[name] = val
         self._update_desc_attr(name, val)
 
     def _update_desc_attr(self, name, val):
@@ -768,9 +761,9 @@ class Operator(object):
         """
         return self.desc.attr(name)
 
-    def block_attr(self, name):
+    def block_attr_id(self, name):
         """
-        Get the block attribute by name.
+        Get the block attribute's id by name.
 
         Args:
             name(str): the attribute name.
@@ -778,22 +771,74 @@ class Operator(object):
         Returns:
             int: the block index.
         """
-        return self.desc.block_attr(name)
+        return self.desc.block_attr_id(name)
+
+    def block_attr(self, name):
+        """
+        Get the block attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            block: the block attribute.
+        """
+
+        id = self.block_attr_id(name)
+        assert (id >= 0 and id < len(self.block.program.blocks))
+        return self.block.program.blocks[id]
+
+    def blocks_attr(self, name):
+        """
+        Get the blocks attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            list: list of the blocks attribute.
+        """
+        attrs = []
+        for i in self.blocks_attr_ids(name):
+            assert (i >= 0 and i < len(self.block.program.blocks))
+            attrs.append(self.block.program.blocks[i])
+
+        return attrs
+
+    def blocks_attr_ids(self, name):
+        """
+        Get the blocks attribute's ids by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            list: list of the blocks ids.
+        """
+
+        return self.desc.blocks_attr_ids(name)
 
     def all_attrs(self):
         """
         Get the attribute dict.
 
         Returns:
-            dict: The Operator's attribute dict.
+            dict: The Operator's attribute dict, name->attr.
         """
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            if n == 'sub_block':
+            attr_type = self.desc.attr_type(n)
+            if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self.block_attr(n)
-            else:
-                attr_map[n] = self.attr(n)
+                continue
+
+            if attr_type == core.AttrType.BLOCKS:
+                attr_map[n] = self.blocks_attr(n)
+                continue
+
+            attr_map[n] = self.attr(n)
+
         return attr_map
 
 
@@ -912,10 +957,9 @@ class Block(object):
             Variable: the Variable with the giving name.
         """
         if not isinstance(name, six.string_types):
-            if not isinstance(name, six.binary_type):
-                raise TypeError(
-                    "var require string as parameter, but get %s instead." %
-                    (type(name)))
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
@@ -966,7 +1010,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in list(self.vars.items())
+        return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
@@ -994,6 +1038,9 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
+        name = cpt.to_text(name)
+        new_name = cpt.to_text(new_name)
+
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
         v = self.var(name)
@@ -1012,9 +1059,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(name, new_name)
+        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(new_name)
+        d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
             var = Parameter(
                 self,
@@ -1045,14 +1092,33 @@ class Block(object):
 
     def _remove_var(self, name):
         self._sync_with_cpp()
-        self.desc._remove_var(name)
+        self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
         global_block = self.program.global_block()
         param = Parameter(global_block, *args, **kwargs)
         if 'initializer' in kwargs:
-            kwargs['initializer'](param, self)
+
+            def _is_inited_by(block, var):
+                init_ops = []
+                for op in block.ops:
+                    if var.name in op.output_arg_names:
+                        init_ops.append(op)
+                return init_ops
+
+            initializer = kwargs['initializer']
+            init_ops = _is_inited_by(global_block, param)
+            init_ops_len = len(init_ops)
+            if init_ops_len > 1:
+                raise RuntimeError("param " + param.name +
+                                   " is inited by multiple init ops " + str(
+                                       init_ops))
+            elif init_ops_len == 1:
+                #TODO already inited, do nothing, should log a warning
+                pass
+            else:
+                initializer(param, self)
         return param
 
     def append_op(self, *args, **kwargs):
@@ -1128,7 +1194,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(var):
+            if not self.desc.find_var(cpt.to_bytes(var)):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -1493,11 +1559,19 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize()
+            p = self.inference_optimize(export_for_deployment=False)
         else:
             p = Program()
+            p.current_block_idx = self.current_block_idx
+            p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [Block(p, i) for i in range(self.desc.num_blocks())]
+            p.blocks = [
+                Block(p, i) for i in six.moves.range(self.desc.num_blocks())
+            ]
+
+            p._current_role = self._current_role
+            p._op_role_var = self._op_role_var
+
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
@@ -1549,11 +1623,13 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self):
+    def inference_optimize(self, export_for_deployment=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1563,6 +1639,10 @@ class Program(object):
         3. change the :code:`is_test`
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
+
+        Args:
+            export_for_deployment(bool): remove the read ops that are added by py_reader
+                                        for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1578,25 +1658,28 @@ class Program(object):
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        while True:
-            if read_op_idx >= root_block.op_size() or root_block.op(
-                    read_op_idx).type() == 'read':
-                break
-            read_op_idx += 1
-        if read_op_idx < root_block.op_size():
-            root_block._remove_op(0, read_op_idx + 1)
-        for var in root_block.all_vars():
-            if var.type() == core.VarDesc.VarType.READER:
-                root_block._remove_var(var.name())
+        if export_for_deployment:
+            while True:
+                if read_op_idx >= root_block.op_size() or root_block.op(
+                        read_op_idx).type() == 'read':
+                    break
+                read_op_idx += 1
+            if read_op_idx < root_block.op_size():
+                root_block._remove_op(0, read_op_idx + 1)
+            for var in root_block.all_vars():
+                if var.type() == core.VarDesc.VarType.READER:
+                    root_block._remove_var(cpt.to_bytes(var.name()))
 
         # change all `is_test` attributes to True
-        for i in range(res.desc.num_blocks()):
+        for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
-            for j in range(block.op_size()):
+            for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op.set_attr('is_test', True)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
@@ -1616,7 +1699,7 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
-        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
 

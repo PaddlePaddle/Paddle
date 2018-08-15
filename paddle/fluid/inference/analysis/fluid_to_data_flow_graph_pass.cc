@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
 #include <string>
 #include <vector>
 
@@ -25,8 +26,20 @@ namespace analysis {
 
 bool FluidToDataFlowGraphPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
-  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc);
-  PADDLE_ENFORCE(argument);
+  if (argument->origin_program_desc) {
+    LOG(WARNING) << "argument's origin_program_desc is already set, might "
+                    "duplicate called";
+  }
+  if (!argument->fluid_model_program_path) {
+    ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_dir);
+    argument->fluid_model_program_path.reset(
+        new std::string(*argument->fluid_model_dir + "/__model__"));
+  }
+  ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_program_path);
+  auto program = LoadProgramDesc(*argument->fluid_model_program_path);
+  argument->origin_program_desc.reset(
+      new framework::proto::ProgramDesc(program));
+
   if (!argument->main_dfg) {
     argument->main_dfg.reset(new DataFlowGraph);
   }
@@ -40,6 +53,8 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
   PADDLE_ENFORCE(graph);
   PADDLE_ENFORCE(desc_);
   // insert vars
+  // The `var2id` keeps a map from a variable's name to its Node-id, the Node-id
+  // will keep updating to its latest alias during the graph-building.
   std::unordered_map<std::string, size_t> var2id;
   auto &main_block = desc_->blocks(framework::kRootBlockIndex);
   for (int i = 0; i < main_block.vars_size(); i++) {
@@ -51,6 +66,15 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     var2id[var.name()] = v->id();
   }
 
+  // The variables in a SSA can only write once, so if a variable is written
+  // multiple times(quite common in our ProgramDesc design), multiple alias
+  // Nodes of this variable will be created, and each will just write once.
+
+  // An set that keep all the names of the variables(the original, not alias)
+  // that have been written(as outputs). Once an Op's output variable hit the
+  // set, it should create a new alias and update the global alias for this
+  // variable. And that make a Data Flow Graph a SSA.
+  std::unordered_set<Node *> unique_written_vars;
   for (int i = 0; i < main_block.ops_size(); i++) {
     const auto &op = main_block.ops(i);
     auto *o = graph->nodes.Create(Node::Type::kFunction);
@@ -62,33 +86,33 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
     o->SetPbMsg(op.SerializeAsString());
 
     // set inputs and outputs
-    std::unordered_set<Node *> inlinks;
     for (int j = 0; j < op.inputs_size(); j++) {
       auto &in_var = op.inputs(j);
       for (int k = 0; k < in_var.arguments_size(); k++) {
         auto *in = graph->nodes.GetMutable(var2id.at(in_var.arguments(k)));
         in->outlinks.push_back(o);
         o->inlinks.push_back(in);
-        inlinks.insert(in);
       }
     }
     for (int j = 0; j < op.outputs_size(); j++) {
       auto &out_var = op.outputs(j);
       for (int k = 0; k < out_var.arguments_size(); k++) {
         auto *out = graph->nodes.GetMutable(var2id[out_var.arguments(k)]);
-        if (inlinks.count(out)) {
+        if (unique_written_vars.count(out)) {
           // Loop found, for example, a = op(a), use SSA, change to a1 = op(a).
           auto *out_alias = graph->nodes.Create(Node::Type::kValue);
           out_alias->SetName(out->name());
           out_alias->SetPbDesc(out->pb_desc());
           out_alias->SetPbMsg(out->pb_msg());
-          var2id[out_alias->name()] = out_alias->id();  // update a -> a0
+          var2id[out_alias->name()] =
+              out_alias->id();  // update variable's alias Node
           LOG(INFO) << "loop found in graph, create SSA alias node ["
                     << out_alias->repr() << "] for [" << out->repr() << "]";
           out = out_alias;
         }
         out->inlinks.push_back(o);
         o->outlinks.push_back(out);
+        unique_written_vars.insert(out);
       }
     }
   }

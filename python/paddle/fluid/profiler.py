@@ -15,6 +15,7 @@
 from . import core
 from contextlib import contextmanager
 import os
+import six
 
 __all__ = [
     'cuda_profiler', 'reset_profiler', 'profiler', 'start_profiler',
@@ -88,7 +89,7 @@ def cuda_profiler(output_file, output_mode=None, config=None):
     config = NVPROF_CONFIG if config is None else config
     config_file = 'nvprof_config_file'
     with open(config_file, 'wb') as fp:
-        fp.writelines(["%s\n" % item for item in config])
+        fp.writelines([six.b("%s\n" % item) for item in config])
     core.nvprof_init(output_file, output_mode, config_file)
     # Enables profiler collection by the active CUDA profiling tool.
     core.nvprof_start()
@@ -218,7 +219,7 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     """The profiler interface.
     Different from cuda_profiler, this profiler can be used to profile both CPU
-    and GPU program. By defalut, it records the CPU and GPU operator kernels,
+    and GPU program. By default, it records the CPU and GPU operator kernels,
     if you want to profile other program, you can refer the profiling tutorial
     to add more records in C++ code.
 
@@ -231,7 +232,7 @@ def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
         state (string) : The profiling state, which should be 'CPU' or 'GPU',
             telling the profiler to use CPU timer or GPU timer for profiling.
             Although users may have already specified the execution place
-            (CPUPlace/CUDAPlace) in the begining, for flexibility the profiler
+            (CPUPlace/CUDAPlace) in the beginning, for flexibility the profiler
             would not inherit this place.
         sorted_key (string) : If None, the profiling results will be printed
             in the order of first end time of events. Otherwise, the profiling

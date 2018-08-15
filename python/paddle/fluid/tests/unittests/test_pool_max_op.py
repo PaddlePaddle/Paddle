@@ -24,9 +24,9 @@ def max_pool3D_forward_naive(x, ksize, strides, paddings, global_pool=False):
         ksize = [D, H, W]
         paddings = [0, 0, 0]
 
-    D_out = (D - ksize[0] + 2 * paddings[0]) / strides[0] + 1
-    H_out = (H - ksize[1] + 2 * paddings[1]) / strides[1] + 1
-    W_out = (W - ksize[2] + 2 * paddings[2]) / strides[2] + 1
+    D_out = (D - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+    H_out = (H - ksize[1] + 2 * paddings[1]) // strides[1] + 1
+    W_out = (W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
     mask = np.zeros((N, C, D_out, H_out, W_out))
     for k in range(D_out):
@@ -63,8 +63,8 @@ def max_pool2D_forward_naive(x, ksize, strides, paddings, global_pool=False):
         ksize = [H, W]
         paddings = [0, 0]
 
-    H_out = (H - ksize[0] + 2 * paddings[0]) / strides[0] + 1
-    W_out = (W - ksize[1] + 2 * paddings[1]) / strides[1] + 1
+    H_out = (H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
+    W_out = (W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     out = np.zeros((N, C, H_out, W_out))
     mask = np.zeros((N, C, H_out, W_out))
     for i in range(H_out):
