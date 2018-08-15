@@ -85,7 +85,7 @@ class LayerHelper(object):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in range(length):
+            for i in six.moves.range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr

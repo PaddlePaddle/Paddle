@@ -21,7 +21,9 @@ from ..layer_helper import LayerHelper
 from . import tensor
 from . import nn
 from . import ops
+from ... import compat as cpt
 import math
+import six
 import numpy
 from functools import reduce
 
@@ -104,7 +106,7 @@ def rpn_target_assign(loc,
             examples.
 
     Returns:
-        tuple: 
+        tuple:
                A tuple(predicted_scores, predicted_location, target_label,
                target_bbox) is returned. The predicted_scores and
                predicted_location is the predicted result of the RPN.
@@ -115,7 +117,7 @@ def rpn_target_assign(loc,
                anchors. The predicted_scores is a 2D Tensor with shape
                [F + B, 1], and the shape of target_label is same as the shape
                of the predicted_scores, B is the number of the background
-               anchors, the F and B is depends on the input of this operator. 
+               anchors, the F and B is depends on the input of this operator.
 
     Examples:
         .. code-block:: python
@@ -232,8 +234,8 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable: 
-        
+        Variable:
+
             The detection outputs is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
@@ -504,7 +506,7 @@ def target_assign(input,
 
     Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
     for i-th instance and each `id` of neg_indices in this instance:
-    
+
     .. code-block:: text
 
         out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
@@ -522,11 +524,11 @@ def target_assign(input,
        mismatch_value (float32): Fill this value to the mismatched location.
 
     Returns:
-        tuple: 
-               A tuple(out, out_weight) is returned. out is a 3D Tensor with 
-               shape [N, P, K], N and P is the same as they are in 
-               `neg_indices`, K is the same as it in input of X. If 
-               `match_indices[i][j]`. out_weight is the weight for output with 
+        tuple:
+               A tuple(out, out_weight) is returned. out is a 3D Tensor with
+               shape [N, P, K], N and P is the same as they are in
+               `neg_indices`, K is the same as it in input of X. If
+               `match_indices[i][j]`. out_weight is the weight for output with
                the shape of [N, P, 1].
 
     Examples:
@@ -834,7 +836,7 @@ def prior_box(input,
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
-            in order of [min, max, aspect_ratios], which is consistent with 
+            in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
             detection results. Default: False.
@@ -977,7 +979,7 @@ def multi_box_head(inputs,
        stride(int|list|tuple): The stride of conv2d. Default:1,
        name(str): Name of the prior box layer. Default: None.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
-            in order of [min, max, aspect_ratios], which is consistent with 
+            in order of [min, max, aspect_ratios], which is consistent with
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the fininal
             detection results. Default: False.
@@ -1039,7 +1041,7 @@ def multi_box_head(inputs,
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-        for ratio in range(min_ratio, max_ratio + 1, step):
+        for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
             min_sizes.append(base_size * ratio / 100.)
             max_sizes.append(base_size * (ratio + step) / 100.)
         min_sizes = [base_size * .10] + min_sizes
@@ -1108,8 +1110,8 @@ def multi_box_head(inputs,
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
         compile_shape = [
-            mbox_loc.shape[0],
-            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
+            mbox_loc.shape[0], cpt.floor_division(
+                mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
         ]
         run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
         mbox_loc_flatten = nn.reshape(
@@ -1127,8 +1129,9 @@ def multi_box_head(inputs,
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
         new_shape = [0, -1, num_classes]
         compile_shape = [
-            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
-            conf_loc.shape[3] / num_classes, num_classes
+            conf_loc.shape[0],
+            cpt.floor_division(conf_loc.shape[1] * conf_loc.shape[2] *
+                               conf_loc.shape[3], num_classes), num_classes
         ]
         run_shape = tensor.assign(
             numpy.array([0, -1, num_classes]).astype("int32"))

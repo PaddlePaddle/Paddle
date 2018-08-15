@@ -70,4 +70,4 @@ def merge_v2_model(net, param_file, output_file):
         for pname in param_names:
             params.serialize(pname, f)
 
-    print 'Generate  %s  success!' % (output_file)
+    print('Generate  %s  success!' % (output_file))

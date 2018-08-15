@@ -31,6 +31,7 @@ Steps to transpile pserver:
 import math
 import random
 import numpy as np
+import collections
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -217,9 +218,10 @@ class DistributeTranspiler(object):
         #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
-        grad_var_mapping_items = list(self.grad_var_mapping.items())
+        grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
+
         if not self.config.slice_var_up:
-            random.seed(self.trainer_num)
+            random.seed(self.origin_program.random_seed)
             random.shuffle(grad_var_mapping_items)
 
         for orig_varname, splited_vars in grad_var_mapping_items:
@@ -277,7 +279,7 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
         # step4: Concat the parameters splits together after recv.
-        for varname, splited_var in list(self.param_var_mapping.items()):
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
@@ -302,7 +304,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        for varname, splited_var in list(self.param_var_mapping.items()):
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[varname]
@@ -566,14 +568,14 @@ class DistributeTranspiler(object):
 
         # 1. create vars in pserver program to startup program
         pserver_vars = pserver_program.global_block().vars
-        created_var_map = dict()
-        for _, var in list(pserver_vars.items()):
+        created_var_map = collections.OrderedDict()
+        for _, var in six.iteritems(pserver_vars):
             tmpvar = s_prog.global_block()._clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
-            new_outputs = dict()
+            new_outputs = collections.OrderedDict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
             for key in op.output_names:
@@ -712,7 +714,7 @@ class DistributeTranspiler(object):
             self.origin_program,
             grad_blocks,
             add_trainer_suffix=self.trainer_num > 1)
-        self.grad_param_mapping = dict()
+        self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
             p_name, p_bid, _ = p.split(":")
@@ -720,7 +722,7 @@ class DistributeTranspiler(object):
                     self.param_var_mapping[p_name][int(p_bid)]
 
         # create mapping of endpoint -> split var to create pserver side program
-        self.param_grad_ep_mapping = dict()
+        self.param_grad_ep_mapping = collections.OrderedDict()
         [
             self.param_grad_ep_mapping.update({
                 ep: {
@@ -995,21 +997,21 @@ class DistributeTranspiler(object):
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
         Returns:
-            var_mapping (dict(varname->[new_varname_variable])):A dict mapping
+            var_mapping (collections.OrderedDict(varname->[new_varname_variable])):A dict mapping
                 from original var name to each var split.
         """
 
         # varname->[(block_id, current_block_size)]
-        block_map = dict()
+        block_map = collections.OrderedDict()
 
-        var_mapping = dict()
+        var_mapping = collections.OrderedDict()
         for block_str in block_list:
             varname, offset, size = block_str.split(":")
             if varname not in block_map:
                 block_map[varname] = []
             block_map[varname].append((int(offset), int(size)))
 
-        for varname, splited in list(block_map.items()):
+        for varname, splited in six.iteritems(block_map):
             orig_var = program.global_block().var(varname)
             if len(splited) == 1:
                 if self.sync_mode and add_trainer_suffix:
@@ -1031,7 +1033,7 @@ class DistributeTranspiler(object):
 
             for i, block in enumerate(splited):
                 size = block[1]
-                rows = size / orig_dim1_flatten
+                rows = size // orig_dim1_flatten
                 splited_shape = [rows]
                 if len(orig_shape) >= 2:
                     splited_shape.extend(orig_shape[1:])
@@ -1195,7 +1197,7 @@ class DistributeTranspiler(object):
                             grad_to_block_id, origin_program, merged_var):
         program = optimize_block.program
         pserver_block = program.global_block()
-        new_inputs = dict()
+        new_inputs = collections.OrderedDict()
 
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
@@ -1281,9 +1283,7 @@ class DistributeTranspiler(object):
 
     def _is_splited_grad_var(self, var, var_dict):
         grad_block = None
-        # TODO(minqiyang): replace these items() with six.iteritems() to
-        # improve memory
-        for _, g in list(var_dict.items()):
+        for _, g in six.iteritems(var_dict):
             if self._orig_varname(g.name) == self._orig_varname(var.name):
                 if g.name.find(".trainer_") == -1:
                     grad_block = g
@@ -1293,7 +1293,7 @@ class DistributeTranspiler(object):
     def _clone_lr_op(self, program, block, op):
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, op)
-        for key, varlist in list(inputs.items()):
+        for key, varlist in six.iteritems(inputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1302,7 +1302,7 @@ class DistributeTranspiler(object):
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, op)
-        for key, varlist in list(outputs.items()):
+        for key, varlist in six.iteritems(outputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1317,7 +1317,7 @@ class DistributeTranspiler(object):
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for key, varlist in list(inputs.items()):
+        for key, varlist in six.iteritems(inputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1336,7 +1336,7 @@ class DistributeTranspiler(object):
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for key, varlist in list(outputs.items()):
+        for key, varlist in six.iteritems(outputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1394,7 +1394,7 @@ class DistributeTranspiler(object):
 
     def _get_input_map_from_op(self, varmap, op):
         """Returns a dict from op input name to the vars in varmap."""
-        iomap = dict()
+        iomap = collections.OrderedDict()
         for key in op.input_names:
             vars = []
             for varname in op.input(key):
@@ -1407,7 +1407,7 @@ class DistributeTranspiler(object):
 
     def _get_output_map_from_op(self, varmap, op):
         """Returns a dict from op output name to the vars in varmap."""
-        iomap = dict()
+        iomap = collections.OrderedDict()
         for key in op.output_names:
             vars = []
             for varname in op.output(key):
