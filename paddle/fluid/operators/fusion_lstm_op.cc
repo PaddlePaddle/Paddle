@@ -158,7 +158,8 @@ void FusionLSTMOpMaker::Make() {
             "(LoDTensor) the result after X * WeightX (size is T x 4D)"
             " or batched_X (size is T x M), this will be automatically chosen,"
             " where T is the total time steps in this mini-batch,"
-            " D is the hidden size, M is the dim size of x input.");
+            " D is the hidden size, M is the dim size of x input.")
+      .AsIntermediate();
   AddOutput("BatchedGate", "(LoDTensor) (same as LSTMOp).").AsIntermediate();
   AddOutput("BatchCellPreAct", "(LoDTensor) (same as LSTMOp).")
       .AsIntermediate();
@@ -251,7 +252,6 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    // TODO(TJ): op test these two cases
     if (x_dims[1] > wx_dims[1]) {
       SimpleFC<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1], x_data,
                                  wx_data, xx_data, bias->data<T>());
