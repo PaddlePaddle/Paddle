@@ -24,14 +24,14 @@ def conv3d_forward_naive(input, filter, group, conv_param):
     out_c, f_c, f_d, f_h, f_w = filter.shape
     assert f_c * group == in_c
     assert np.mod(out_c, group) == 0
-    sub_out_c = out_c / group
+    sub_out_c = out_c // group
 
     stride, pad, dilation = conv_param['stride'], conv_param['pad'], conv_param[
         'dilations']
 
-    out_d = 1 + (in_d + 2 * pad[0] - (dilation[0] * (f_d - 1) + 1)) / stride[0]
-    out_h = 1 + (in_h + 2 * pad[1] - (dilation[1] * (f_h - 1) + 1)) / stride[1]
-    out_w = 1 + (in_w + 2 * pad[2] - (dilation[2] * (f_w - 1) + 1)) / stride[2]
+    out_d = 1 + (in_d + 2 * pad[0] - (dilation[0] * (f_d - 1) + 1)) // stride[0]
+    out_h = 1 + (in_h + 2 * pad[1] - (dilation[1] * (f_h - 1) + 1)) // stride[1]
+    out_w = 1 + (in_w + 2 * pad[2] - (dilation[2] * (f_w - 1) + 1)) // stride[2]
 
     out = np.zeros((in_n, out_c, out_d, out_h, out_w))
 
@@ -166,7 +166,7 @@ class TestConv3dOp(OpTest):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3, 3]
 
     def init_dilation(self):
@@ -185,7 +185,7 @@ class TestCase1(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3, 3]
 
 
@@ -205,7 +205,7 @@ class TestWith1x1(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 4, 4, 4]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1, 1]
 
     def init_dilation(self):
@@ -221,7 +221,7 @@ class TestWithInput1x1Filter1x1(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 1, 1, 1]  # NCHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 1, 1, 1]
 
     def init_dilation(self):
@@ -237,7 +237,7 @@ class TestWithDilation(TestConv3dOp):
         self.stride = [1, 1, 1]
         self.input_size = [2, 3, 6, 6, 6]  # NCDHW
         assert np.mod(self.input_size[1], self.groups) == 0
-        f_c = self.input_size[1] / self.groups
+        f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 2, 2, 2]
 
     def init_dilation(self):

@@ -177,8 +177,8 @@ graph = PassRegistry::Instance().Get("op_fuse_pass").Apply(std::move(grah));
 auto mem_opt_pass = PassRegistry::Instance().Get("memory_optimization_pass");
 mem_opt_pass.SetNotOwned<int>("optimize_level", 1);
 mem_opt_pass->Apply(std::move(graph));
-graph = PassRegistry::Instance().Get("multi_device_pass").Apply(std::move(grah));
-graph = PassRegistry::Instance().Get("multi_device_check_pass").Apply(std::move(grah));
+graph = PassRegistry::Instance().Get("multi_devices_pass").Apply(std::move(grah));
+graph = PassRegistry::Instance().Get("multi_devices_check_pass").Apply(std::move(grah));
 Executor exe;
 exe.Run(graph);
 

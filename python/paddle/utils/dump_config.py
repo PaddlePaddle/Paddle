@@ -37,9 +37,9 @@ if __name__ == '__main__':
     assert isinstance(conf, TrainerConfig_pb2.TrainerConfig)
 
     if whole_conf:
-        print conf
+        print(conf)
     else:
         if binary:
             sys.stdout.write(conf.model_config.SerializeToString())
         else:
-            print conf.model_config
+            print(conf.model_config)

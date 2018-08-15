@@ -27,7 +27,7 @@ def unpool2dmax_forward_naive(input, indices, ksize, strides, paddings):
             for h in range(s2):
                 for w in range(s3):
                     index = indices[nidx, cidx, h, w]
-                    hidx = (index - index % out_wsize) / out_wsize
+                    hidx = (index - index % out_wsize) // out_wsize
                     widx = index % out_wsize
                     out[nidx, cidx, int(hidx), int(widx)] = \
                             input[nidx, cidx, h, w]
@@ -41,9 +41,9 @@ class TestUnpoolOp(OpTest):
         self.init_test_case()
         pre_input = np.random.random(self.shape).astype("float32")
         nsize, csize, hsize, wsize = pre_input.shape
-        hsize_out = (hsize - self.ksize[0] + 2 * self.paddings[0]) / \
+        hsize_out = (hsize - self.ksize[0] + 2 * self.paddings[0]) // \
                 self.strides[0] + 1
-        wsize_out = (wsize - self.ksize[1] + 2 * self.paddings[1]) / \
+        wsize_out = (wsize - self.ksize[1] + 2 * self.paddings[1]) // \
                 self.strides[1] + 1
         input = np.zeros((nsize, csize, hsize_out, wsize_out))
         indices = np.zeros((nsize, csize, hsize_out, wsize_out))
@@ -62,7 +62,7 @@ class TestUnpoolOp(OpTest):
                         input[nidx, cidx, i, j] = x_masked.max()
                         arg = x_masked.argmax()
                         indices[nidx, cidx, i, j] = \
-                                (r_start + arg / self.ksize[1]) * wsize + \
+                                (r_start + arg // self.ksize[1]) * wsize + \
                                 c_start + arg % self.ksize[1]
         output = self.unpool2d_forward_naive(input, indices, self.ksize, \
                 self.strides, self.paddings).astype("float32")

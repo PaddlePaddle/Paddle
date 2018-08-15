@@ -40,11 +40,12 @@ class PaddleBuf {
   // Copy only available when memory is managed externally.
   explicit PaddleBuf(const PaddleBuf&);
   PaddleBuf& operator=(const PaddleBuf&);
+  PaddleBuf& operator=(PaddleBuf&&);
   // Do not own the memory.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  PaddleBuf(size_t length)
+  explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -67,9 +68,9 @@ struct PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
-  // TODO(Superjomn) for LoD support, add a vector<vector<int>> field if needed.
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
+  std::vector<std::vector<uint64_t>> lod;  // lod data
 };
 
 enum class PaddleEngineKind {
@@ -126,9 +127,11 @@ struct NativeConfig : public PaddlePredictor::Config {
 
 // Configurations for Anakin engine.
 struct AnakinConfig : public PaddlePredictor::Config {
+  enum TargetType { NVGPU = 0, X86 };
   int device;
   std::string model_file;
   int max_batch_size{-1};
+  TargetType target_type;
 };
 
 struct TensorRTConfig : public NativeConfig {

@@ -20,7 +20,7 @@ namespace inference {
 namespace analysis {
 
 TEST(DataFlowGraph, BFS) {
-  auto desc = LoadProgramDesc();
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
   dfg.Build();
 
@@ -44,7 +44,7 @@ TEST(DataFlowGraph, BFS) {
 }
 
 TEST(DataFlowGraph, DFS) {
-  auto desc = LoadProgramDesc();
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
   dfg.Build();
   GraphTraits<DataFlowGraph> trait(&dfg);
