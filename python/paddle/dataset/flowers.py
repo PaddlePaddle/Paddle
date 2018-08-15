@@ -28,6 +28,9 @@ Graphics and Image Processing (2008)
 http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
+
+from __future__ import print_function
+
 import itertools
 import functools
 from .common import download

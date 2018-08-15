@@ -11,23 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#   Copyright (c ) 2018 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """
 All layers just related to the neural network.
 """
+
+from __future__ import print_function
 
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
@@ -1319,15 +1307,15 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     """
-    The input of the softmax operator is a tensor of any rank. The output tensor 
+    The input of the softmax operator is a tensor of any rank. The output tensor
     has the same shape as the input.
 
-    The input tensor will first be logically flattened to a 2-D matrix. The matrix's 
-    second dimension(row length) is as same as the last dimension of the input 
-    tensor, and the first dimension(column length) is the product of all other 
-    dimensions of the input tensor. For each row of the matrix, the softmax operator 
-    squashes the K-dimensional(K is the width of the matrix, which is also the size 
-    of the input tensor's last dimension) vector of arbitrary real values to a 
+    The input tensor will first be logically flattened to a 2-D matrix. The matrix's
+    second dimension(row length) is as same as the last dimension of the input
+    tensor, and the first dimension(column length) is the product of all other
+    dimensions of the input tensor. For each row of the matrix, the softmax operator
+    squashes the K-dimensional(K is the width of the matrix, which is also the size
+    of the input tensor's last dimension) vector of arbitrary real values to a
     K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
@@ -5377,7 +5365,7 @@ def flatten(x, axis=1, name=None):
         axis = 2
       We get:
         Out.shape = (3 * 100, 4 * 100)
-    
+
     Case 2:
       Given
         X.shape = (3, 100, 100, 4)
@@ -5388,8 +5376,8 @@ def flatten(x, axis=1, name=None):
 
     Args:
         x (Variable): A tensor of rank >= axis.
-        axis (int): Indicate up to which input dimensions (exclusive) should 
-                    be flattened to the outer dimension of the output. 
+        axis (int): Indicate up to which input dimensions (exclusive) should
+                    be flattened to the outer dimension of the output.
                     The value for axis must be in the range [0, R], where R
                     is the rank of the input tensor. When axis = 0, the shape
                     of the output tensor is (1, (d_0 X d_1 ... d_n), where the
@@ -5405,7 +5393,7 @@ def flatten(x, axis=1, name=None):
 
     Raises:
         ValueError: If x is not a variable.
-        ValueError: If axis is not in range [0, rank(x)]. 
+        ValueError: If axis is not in range [0, rank(x)].
 
     Examples:
 
