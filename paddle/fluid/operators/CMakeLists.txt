@@ -158,6 +158,11 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(relu, MKLDNN);\n")
       else()
         file(APPEND ${pybind_file} "USE_OP_DEVICE_KERNEL(${TARGET}, MKLDNN);\n")
+        # HACK: fc only have cpu kernel
+        if (${MKLDNN_FILE} STREQUAL "fc_mkldnn_op")
+            file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
+            set(pybind_flag 1)
+        endif()
       endif()
     endif()
 
