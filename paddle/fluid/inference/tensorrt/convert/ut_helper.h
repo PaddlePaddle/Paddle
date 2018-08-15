@@ -79,6 +79,12 @@ class TRTConvertValidation {
   }
 
   // Declare a Variable as input with random initialization.
+  void DeclInputVar(const std::string& name, const std::vector<int> tensor_dims,
+                    const nvinfer1::Dims& trt_dims) {
+    DeclVar(name, tensor_dims);
+    engine_->DeclareInput(name, nvinfer1::DataType::kFLOAT, trt_dims);
+  }
+
   void DeclInputVar(const std::string& name, const nvinfer1::Dims& dims) {
     DeclVar(name, dims);
     // Declare TRT inputs.
@@ -94,12 +100,18 @@ class TRTConvertValidation {
     DeclVar(name, dims);
   }
 
-  // Declare a variable in a fluid Scope.
-  void DeclVar(const std::string& name, const nvinfer1::Dims& dims,
-               bool is_param = false) {
+  void DeclVar(const std::string& name, const std::vector<int> dim_vec) {
     platform::CPUPlace place;
     platform::CPUDeviceContext ctx(place);
 
+    auto* x = scope_.Var(name);
+    auto* x_tensor = x->GetMutable<framework::LoDTensor>();
+    x_tensor->Resize(framework::make_ddim(dim_vec));
+    RandomizeTensor(x_tensor, place, ctx);
+  }
+  // Declare a variable in a fluid Scope.
+  void DeclVar(const std::string& name, const nvinfer1::Dims& dims,
+               bool is_param = false) {
     // Init Fluid tensor.
     std::vector<int> dim_vec(dims.d, dims.d + dims.nbDims);
     // There is no batchsize in ITensor's shape, but We should add it to
@@ -107,10 +119,8 @@ class TRTConvertValidation {
     // if_add_batch_ flag is true, add the max batchsize to dim_vec.
     if (is_param != true && if_add_batch_ == true)
       dim_vec.insert(dim_vec.begin(), max_batch_size_);
-    auto* x = scope_.Var(name);
-    auto* x_tensor = x->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(dim_vec));
-    RandomizeTensor(x_tensor, place, ctx);
+
+    DeclVar(name, dim_vec);
   }
 
   void SetOp(const framework::proto::OpDesc& desc) {
@@ -149,7 +159,7 @@ class TRTConvertValidation {
     cudaStreamSynchronize(*engine_->stream());
 
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
-    const size_t output_space_size = 2000;
+    const size_t output_space_size = 3000;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
       std::vector<float> fluid_out;
       std::vector<float> trt_out(output_space_size);

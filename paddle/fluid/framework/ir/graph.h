@@ -28,6 +28,38 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * The graph is a Directed Acyclic Single Static Assignment Graph.
+ *
+ * In more detail, the following properties must hold:
+ *
+ *   The graph shouldn't contain cycle. Each node is a black-box to the graph
+ *   so the node itself could be a loop operator.
+ *
+ *   Each Variable-type node has only one input (thus single static assignment).
+ *
+ *   The output/input of operator is variable and the output/input of variable
+ *   is operator.
+ *
+ * The following data harzards in Program are addressed in the Graph:
+ *
+ *   Write-After-Read
+ *     a = op1(x)
+ *     x = op2(b)
+ *     A control-dependency connection is created bettwen op1 and op2 such that
+ *     op1->op2, so as to ensure correct order.
+ *
+ *   Write-After-Write
+ *     x = op1(a)
+ *     x = op2(b)
+ *     A control-dependency connection is created between op1 and op2 such that
+ *     op1->op2, so as to ensure correct order.
+ *
+ * Other properties currently hold, but is not enforced yet:
+ *
+ *   Variable-type node (not control dep) with the same variable name share
+ *   the same underlying VarDesc.
+ */
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
@@ -40,14 +72,21 @@ class Graph {
     attr_dels_.clear();
   }
 
+  bool Has(const std::string &attr_name) const {
+    return attrs_.find(attr_name) != attrs_.end();
+  }
+
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
+    PADDLE_ENFORCE(Has(attr_name), "%s attr not registered for graph.",
+                   attr_name);
     return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
   }
 
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
-    PADDLE_ENFORCE(attrs_.count(attr_name) == 0);
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
+                   attr_name);
     attrs_[attr_name] = attr;
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;

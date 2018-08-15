@@ -26,7 +26,7 @@ http://research.microsoft.com/en-us/um/beijing/projects/letor/LETOR4.0/Data/MQ20
 import os
 import functools
 import rarfile
-from common import download
+from .common import download
 import numpy as np
 
 # URL = "http://research.microsoft.com/en-us/um/beijing/projects/letor/LETOR4.0/Data/MQ2007.rar"
@@ -53,7 +53,7 @@ class Query(object):
   ----------
   query_id : int
     query_id in dataset, mapping from query to relevance documents
-  relevance_score : int 
+  relevance_score : int
     relevance score of query and document pair
   feature_vector : array, dense feature
     feature in vector format
@@ -92,7 +92,7 @@ class Query(object):
             sys.stdout.write("expect 48 space split parts, get %d" %
                              (len(parts)))
             return None
-        # format : 0 qid:10 1:0.000272 2:0.000000 .... 
+        # format : 0 qid:10 1:0.000272 2:0.000000 ....
         self.relevance_score = int(parts[0])
         self.query_id = int(parts[1].split(':')[1])
         for p in parts[2:]:
@@ -295,7 +295,7 @@ def __reader__(filepath, format="pairwise", shuffle=False, fill_missing=-1):
   --------
   filename : string
   fill_missing : fill the missing value. default in MQ2007 is -1
-  
+
   Returns
   ------
   yield
@@ -330,4 +330,4 @@ if __name__ == "__main__":
     mytest = functools.partial(
         __reader__, filepath="MQ2007/MQ2007/Fold1/sample", format="listwise")
     for label, query in mytest():
-        print label, query
+        print(label, query)

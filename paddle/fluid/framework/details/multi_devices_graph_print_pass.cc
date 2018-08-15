@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/ssa_graph_printer.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -22,7 +22,7 @@ namespace details {
 
 template <typename Callback>
 static inline void IterAllVar(const ir::Graph &graph, Callback callback) {
-  for (auto &each : graph.Get<GraphVars>("vars")) {
+  for (auto &each : graph.Get<GraphVars>(kGraphVars)) {
     for (auto &pair1 : each) {
       for (auto &pair2 : pair1.second) {
         callback(*pair2);
@@ -30,7 +30,7 @@ static inline void IterAllVar(const ir::Graph &graph, Callback callback) {
     }
   }
 
-  for (auto &var : graph.Get<GraphDepVars>("dep_vars")) {
+  for (auto &var : graph.Get<GraphDepVars>(kGraphDepVars)) {
     callback(*var);
   }
 }
@@ -61,7 +61,7 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
   });
 
   size_t op_id = 0;
-  for (auto &op : graph.Get<GraphOps>("ops")) {
+  for (auto &op : graph.Get<GraphOps>(kGraphOps)) {
     std::string op_name = "op_" + std::to_string(op_id++);
     sout << op_name << " [label=\"" << op->Name() << "\", shape=rect]"
          << std::endl;
@@ -81,3 +81,6 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
+
+REGISTER_PASS(multi_devices_print_pass,
+              paddle::framework::details::SSAGraghBuilderWithPrinter);

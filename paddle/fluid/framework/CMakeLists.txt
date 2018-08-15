@@ -7,6 +7,7 @@ cc_library(ddim SRCS ddim.cc DEPS eigen3 boost)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 nv_test(dim_test SRCS dim_test.cu DEPS ddim)
 cc_library(data_type SRCS data_type.cc DEPS framework_proto ddim device_context)
+cc_test(data_type_test SRCS data_type_test.cc DEPS data_type place tensor)
 if(WITH_GPU)
   nv_library(tensor SRCS tensor.cc tensor_util.cu DEPS place memory data_type device_context)
 else()
@@ -99,7 +100,7 @@ else()
 endif()
 
 
-cc_library(parallel_executor SRCS parallel_executor.cc DEPS ssa_graph_builder_factory threaded_ssa_graph_executor scope_buffered_ssa_graph_executor graph)
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS threaded_ssa_graph_executor scope_buffered_ssa_graph_executor graph graph_viz_pass multi_devices_graph_pass multi_devices_graph_print_pass multi_devices_graph_check_pass)
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
