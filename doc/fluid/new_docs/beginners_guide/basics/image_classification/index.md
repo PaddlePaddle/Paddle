@@ -20,7 +20,7 @@
 
 图像分类包括通用图像分类、细粒度图像分类等。图1展示了通用图像分类效果，即模型可以正确识别图像上的主要物体。
 
-![dogCatClassification](./image/dog_cat.png)
+<p align="center"><img src="./image/dog_cat.png" width="40%"></p>
 <p align="center">
 图1. 通用图像分类展示
 </p>
@@ -28,7 +28,7 @@
 
 图2展示了细粒度图像分类-花卉识别的效果，要求模型可以正确识别花的类别。
 
-![flowersClassification](./image/flowers.png)
+<p align="center"><img src="./image/flowers.png"></p>
 <p align="center">
 图2. 细粒度图像分类展示
 </p>
@@ -36,7 +36,7 @@
 
 一个好的模型既要对不同类别识别正确，同时也应该能够对不同视角、光照、背景、变形或部分遮挡的图像正确识别(这里我们统一称作图像扰动)。图3展示了一些图像的扰动，较好的模型会像聪明的人类一样能够正确识别。
 
-![imageVariations](https://raw.githubusercontent.com/PaddlePaddle/book/develop/03.image_classification/image/variations.png)
+<p align="center"><img src="https://raw.githubusercontent.com/PaddlePaddle/book/develop/03.image_classification/image/variations.png" width="70%"></p>
 <p align="center">
 图3. 扰动图片展示[22]
 </p>
@@ -55,7 +55,7 @@
 
 Alex Krizhevsky在2012年ILSVRC提出的CNN模型 \[[9](#参考文献)\] 取得了历史性的突破，效果大幅度超越传统方法，获得了ILSVRC2012冠军，该模型被称作AlexNet。这也是首次将深度学习用于大规模图像分类中。从AlexNet之后，涌现了一系列CNN模型，不断地在ImageNet上刷新成绩，如图4展示。随着模型变得越来越深以及精妙的结构设计，Top-5的错误率也越来越低，降到了3.5%附近。而在同样的ImageNet数据集上，人眼的辨识错误率大概在5.1%，也就是目前的深度学习模型的识别能力已经超过了人眼。
 
-![ilsvrc](./image/ilsvrc.png)
+<p align="center"><img src="./image/ilsvrc.png" width="60%"></p>
 <p align="center">
 图4. ILSVRC图像分类Top-5错误率
 </p>
@@ -120,7 +120,7 @@ ResNet(Residual Network) \[[15](#参考文献)\] 是2015年ImageNet图像分类�
 
 残差模块如图9所示，左边是基本模块连接方式，由两个输出通道数相同的3x3卷积组成。右边是瓶颈模块(Bottleneck)连接方式，之所以称为瓶颈，是因为上面的1x1卷积用来降维(图示例即256->64)，下面的1x1卷积用来升维(图示例即64->256)，这样中间3x3卷积的输入和输出通道数都较小(图示例即64->64)。
 
-![ResNetBlock](./image/resnet_block.jpg)
+<p align="center"><img src="./image/resnet_block.jpg" width="40%"></p>
 <p align="center">
 图9. 残差模块
 </p>
@@ -139,7 +139,7 @@ ResNet(Residual Network) \[[15](#参考文献)\] 是2015年ImageNet图像分类�
 
 由于ImageNet数据集较大，下载和训练较慢，为了方便大家学习，我们使用[CIFAR10](<https://www.cs.toronto.edu/~kriz/cifar.html>)数据集。CIFAR10数据集包含60,000张32x32的彩色图片，10个类别，每个类包含6,000张。其中50,000张图片作为训练集，10000张作为测试集。图11从每个类别中随机抽取了10张图片，展示了所有的类别。
 
-![CIFAR](https://raw.githubusercontent.com/PaddlePaddle/book/develop/03.image_classification/image/cifar.png)
+<p align="center"><img src="https://raw.githubusercontent.com/PaddlePaddle/book/develop/03.image_classification/image/cifar.png" width="70%"></p>
 <p align="center">
 图11. CIFAR10数据集[21]
 </p>
@@ -363,7 +363,7 @@ test_reader = paddle.batch(
 
 `event_handler_plot`可以用来利用回调数据来打点画图:
 
-![png](./image/train_and_test.png)
+<p align="center"><img src="./image/train_and_test.png"></p>
 
 ```python
 params_dirname = "image_classification_resnet.inference.model"

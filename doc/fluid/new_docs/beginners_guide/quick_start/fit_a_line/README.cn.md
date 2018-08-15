@@ -18,7 +18,7 @@ $$y_i = \omega_1x_{i1} + \omega_2x_{i2} + \ldots + \omega_dx_{id} + b,  i=1,\ldo
 ## 效果展示
 我们使用从[UCI Housing Data Set](https://archive.ics.uci.edu/ml/datasets/Housing)获得的波士顿房价数据集进行模型的训练和预测。下面的散点图展示了使用模型对部分房屋价格进行的预测。其中，每个点的横坐标表示同一类房屋真实价格的中位数，纵坐标表示线性回归模型根据特征预测的结果，当二者值完全相等的时候就会落在虚线上。所以模型预测得越准确，则点离虚线越近。
 
-![BostonHousePricePredictions](./image/predictions.png)
+<p align="center"><img src="./image/predictions.png" width="60%"></p>
 <p align="center">图1. 预测值 V.S. 真实值</p>
 
 ## 模型概览
@@ -148,7 +148,7 @@ $$MSE=\frac{1}{n}\sum_{i=1}^{n}{(\hat{Y_i}-Y_i)}^2$$
 - 不同的数值范围会导致不同属性对模型的重要性不同（至少在训练的初始阶段如此），而这个隐含的假设常常是不合理的。这会对优化的过程造成困难，使训练时间大大的加长。
 - 很多的机器学习技巧/模型（例如L1，L2正则项，向量空间模型-Vector Space Model）都基于这样的假设：所有的属性取值都差不多是以0为均值且取值范围相近的。
 
-![featureScale](./image/ranges.png)
+<p align="center"><img src="./image/ranges.png"></p>
 <p align="center">图2. 各维属性的取值范围</p>
 
 #### 整理训练集与测试集
@@ -285,7 +285,7 @@ trainer.train(
     feed_order=feed_order)
 ```
 
-![trainTestCost](./image/train_and_test.png)
+<p align="center"><img src="./image/train_and_test.png"></p>
 
 ## 预测
 提供一个`inference_program`和一个`params_dirname`来初始化预测器。`params_dirname`用来存储我们的参数。
