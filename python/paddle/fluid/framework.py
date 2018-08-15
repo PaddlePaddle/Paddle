@@ -477,23 +477,25 @@ class Operator(object):
                  attrs=None):
         self.block = block
         self.desc = desc
-        self.attrs = attrs
-        if self.attrs is None:
-            self.attrs = dict()
+        # note: not add self.attrs here:
+        # https://github.com/PaddlePaddle/Paddle/pull/12583#pullrequestreview-145093173
+        op_attrs = attrs
+        if op_attrs is None:
+            op_attrs = dict()
         del attrs
 
         op_maker = core.op_proto_and_checker_maker
 
-        if op_maker.kOpRoleAttrName() not in self.attrs:
-            self.attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
+        if op_maker.kOpRoleAttrName() not in op_attrs:
+            op_attrs[op_maker.kOpRoleAttrName()] = self.block.program.op_role
 
         role_var_name = op_maker.kOpRoleVarAttrName()
         if len(self.block.program.
-               op_role_var) != 0 and role_var_name not in self.attrs:
-            self.attrs[role_var_name] = self.block.program.op_role_var
+               op_role_var) != 0 and role_var_name not in op_attrs:
+            op_attrs[role_var_name] = self.block.program.op_role_var
 
-        if role_var_name in self.attrs and len(self.attrs[role_var_name]) == 0:
-            del self.attrs[role_var_name]
+        if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
+            del op_attrs[role_var_name]
 
         if len(self.desc.type()) != 0:
             return
@@ -563,15 +565,14 @@ class Operator(object):
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
-        if self.attrs is not None:
-            if not isinstance(self.attrs, dict):
+        if op_attrs is not None:
+            if not isinstance(op_attrs, dict):
                 raise TypeError("'attrs' should be a dict.")
             for attr in proto.attrs:
                 attr_name = attr.name
-                if (attr_name not in self.attrs) or (
-                        self.attrs[attr_name] is None):
+                if (attr_name not in op_attrs) or (op_attrs[attr_name] is None):
                     continue
-                attr_val = self.attrs[attr_name]
+                attr_val = op_attrs[attr_name]
                 self._update_desc_attr(attr_name, attr_val)
 
         self.desc.check_attrs()
@@ -719,7 +720,6 @@ class Operator(object):
         Raises:
             ValueError: If the type of value doesn't match with desc.attr_type(name).
         """
-        self.attrs[name] = val
         self._update_desc_attr(name, val)
 
     def _update_desc_attr(self, name, val):
@@ -761,9 +761,9 @@ class Operator(object):
         """
         return self.desc.attr(name)
 
-    def block_attr(self, name):
+    def block_attr_id(self, name):
         """
-        Get the block attribute by name.
+        Get the block attribute's id by name.
 
         Args:
             name(str): the attribute name.
@@ -771,22 +771,74 @@ class Operator(object):
         Returns:
             int: the block index.
         """
-        return self.desc.block_attr(name)
+        return self.desc.block_attr_id(name)
+
+    def block_attr(self, name):
+        """
+        Get the block attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            block: the block attribute.
+        """
+
+        id = self.block_attr_id(name)
+        assert (id >= 0 and id < len(self.block.program.blocks))
+        return self.block.program.blocks[id]
+
+    def blocks_attr(self, name):
+        """
+        Get the blocks attribute  by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            list: list of the blocks attribute.
+        """
+        attrs = []
+        for i in self.blocks_attr_ids(name):
+            assert (i >= 0 and i < len(self.block.program.blocks))
+            attrs.append(self.block.program.blocks[i])
+
+        return attrs
+
+    def blocks_attr_ids(self, name):
+        """
+        Get the blocks attribute's ids by name.
+
+        Args:
+            name(str): the attribute name.
+
+        Returns:
+            list: list of the blocks ids.
+        """
+
+        return self.desc.blocks_attr_ids(name)
 
     def all_attrs(self):
         """
         Get the attribute dict.
 
         Returns:
-            dict: The Operator's attribute dict.
+            dict: The Operator's attribute dict, name->attr.
         """
         attr_names = self.attr_names
         attr_map = {}
         for n in attr_names:
-            if n == 'sub_block':
+            attr_type = self.desc.attr_type(n)
+            if attr_type == core.AttrType.BLOCK:
                 attr_map[n] = self.block_attr(n)
-            else:
-                attr_map[n] = self.attr(n)
+                continue
+
+            if attr_type == core.AttrType.BLOCKS:
+                attr_map[n] = self.blocks_attr(n)
+                continue
+
+            attr_map[n] = self.attr(n)
+
         return attr_map
 
 
@@ -1507,13 +1559,19 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize()
+            p = self.inference_optimize(export_for_deployment=False)
         else:
             p = Program()
+            p.current_block_idx = self.current_block_idx
+            p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
             p.blocks = [
                 Block(p, i) for i in six.moves.range(self.desc.num_blocks())
             ]
+
+            p._current_role = self._current_role
+            p._op_role_var = self._op_role_var
+
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
@@ -1571,7 +1629,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self):
+    def inference_optimize(self, export_for_deployment=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1581,6 +1639,10 @@ class Program(object):
         3. change the :code:`is_test`
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
+
+        Args:
+            export_for_deployment(bool): remove the read ops that are added by py_reader
+                                        for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1596,16 +1658,17 @@ class Program(object):
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        while True:
-            if read_op_idx >= root_block.op_size() or root_block.op(
-                    read_op_idx).type() == 'read':
-                break
-            read_op_idx += 1
-        if read_op_idx < root_block.op_size():
-            root_block._remove_op(0, read_op_idx + 1)
-        for var in root_block.all_vars():
-            if var.type() == core.VarDesc.VarType.READER:
-                root_block._remove_var(var.name())
+        if export_for_deployment:
+            while True:
+                if read_op_idx >= root_block.op_size() or root_block.op(
+                        read_op_idx).type() == 'read':
+                    break
+                read_op_idx += 1
+            if read_op_idx < root_block.op_size():
+                root_block._remove_op(0, read_op_idx + 1)
+            for var in root_block.all_vars():
+                if var.type() == core.VarDesc.VarType.READER:
+                    root_block._remove_var(var.name())
 
         # change all `is_test` attributes to True
         for i in six.moves.range(res.desc.num_blocks()):

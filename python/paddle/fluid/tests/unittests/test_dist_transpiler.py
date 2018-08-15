@@ -260,7 +260,7 @@ class TestLRDecayConditional(TranspilerTest):
         serv_op = pserver.blocks[0].ops[0]
         sub_blocks = []
         optimize_blocks = []
-        for b in serv_op.attrs["optimize_blocks"]:
+        for b in serv_op.all_attrs()["optimize_blocks"]:
             optimize_blocks.append(b.idx)
         for b in pserver.blocks:
             if b.idx not in optimize_blocks:
