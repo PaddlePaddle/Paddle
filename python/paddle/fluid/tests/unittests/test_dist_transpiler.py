@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
@@ -259,7 +261,7 @@ class TestLRDecayConditional(TranspilerTest):
         serv_op = pserver.blocks[0].ops[0]
         sub_blocks = []
         optimize_blocks = []
-        for b in serv_op.attrs["optimize_blocks"]:
+        for b in serv_op.all_attrs()["optimize_blocks"]:
             optimize_blocks.append(b.idx)
         for b in pserver.blocks:
             if b.idx not in optimize_blocks:
@@ -362,12 +364,13 @@ class TestL2DecayWithPiecewise(TranspilerTest):
 
 class TestDistLookupTableBase(TranspilerTest):
     def network_with_table(self, is_sparse, is_distributed):
+        self.table_size = 1000
+        self.emb_size = 64
+
         def emb_pool(ids):
-            table_size = 1000
-            emb_size = 64
             emb = fluid.layers.embedding(
                 input=ids,
-                size=[table_size, emb_size],
+                size=[self.table_size, self.emb_size],
                 dtype='float32',
                 param_attr='shared_w',  # share parameter
                 is_sparse=is_sparse,
@@ -534,6 +537,52 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
             'sum', 'split_ids', 'send', 'recv', 'recv'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+class TestDistLookupTableSliceSize(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=True)
+
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep, config)
+
+        self.assertTrue(self.transpiler.has_distributed_lookup_table)
+        lookup_table_var = pserver1.global_block().vars[
+            self.transpiler.table_name]
+        row_size = lookup_table_var.shape[0]
+        calc_row_size = int(math.ceil(self.table_size / self.pservers))
+        self.assertEqual(row_size, calc_row_size)
+
+
+class TestRMSPropOptimizer(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=fluid.ParamAttr(name='fc_b'))
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+        optimizer.minimize(avg_cost)
+        return
+
+    def transpiler_test_impl(self):
+        pserver, startup = self.get_pserver(self.pserver1_ep)
+        pserver2, startup2 = self.get_pserver(self.pserver2_ep)
+
+        self.assertEqual(len(pserver.blocks), 3)
+        # block1~2: optimize pass
+        self.assertEqual([op.type for op in pserver.blocks[1].ops],
+                         ["sum", "scale", "rmsprop"])
+        # the variable #fc_w will be split into two blocks
+        fc_w_var = startup.global_block().var("fc_w.block1")
+        self.assertEqual(fc_w_var.shape, (500, 1000))
+        moment_var = startup.global_block().var("momentum_1")
+        self.assertEqual(moment_var.shape, (500, 1000))
 
 
 if __name__ == "__main__":
