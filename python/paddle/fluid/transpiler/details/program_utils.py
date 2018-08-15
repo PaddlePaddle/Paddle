@@ -49,6 +49,16 @@ def get_indent_space(indent, space_num=4):
 
 
 def variable_to_code(var):
+    """
+    Get readable codes of fluid variable.
+
+    Args:
+        var: A fluid operator.
+
+    Returns:
+        string: The formatted string.
+    """
+
     var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
         format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
 
@@ -67,6 +77,16 @@ def variable_to_code(var):
 
 
 def op_to_code(op):
+    """
+    Get readable codes of fluid operator.
+
+    Args:
+        op: A fluid operator.
+
+    Returns:
+        string: The foramtted string.
+    """
+
     outputs_str = ""
     for i in range(0, len(op.output_names)):
         o = op.output(op.output_names[i])
@@ -126,6 +146,15 @@ def op_to_code(op):
 
 
 def program_to_code(prog):
+    """
+    Print readable codes of fluid program.
+
+    Args:
+        prog : A fluid program.
+
+    An example result like bellow:
+    https://github.com/PaddlePaddle/Paddle/pull/12673
+    """
     indent = 0
     block_idx = 0
     for block in prog.blocks:
