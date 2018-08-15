@@ -315,7 +315,7 @@ class DistributeTranspiler(object):
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
-        self._get_trainer_startup_program()
+        self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
         if self.has_distributed_lookup_table:
             self._replace_lookup_table_op_with_prefetch(program,
@@ -336,38 +336,24 @@ class DistributeTranspiler(object):
 
         return self.origin_program
 
-    def _get_trainer_startup_program(self, program=None):
+    def _get_trainer_startup_program(self,
+                                     recv_vars,
+                                     eplist,
+                                     startup_program=None):
         """
         Get transpiled trainer side startup program.
+
+        Args:
+            startup_program(Program): Startup program.
 
         Returns:
             Program: trainer side startup program.
         """
-        if program is None:
-            program = self.startup_program
+        if startup_program is None:
+            startup_program = self.startup_program
 
-        orig_s_prog = program
-
-        #delete initialize operators.
-        assert (orig_s_prog.num_blocks == 1)
         # FIXME(gongwb): delete not need ops.
-        # note that: some parameter is not trainable and they ops can't be deleted.
-        # delete_ops(orig_s_prog.global_block(), orig_s_prog.global_block().ops)
-
-        # add concat ops to origin parameters in startup program to
-        # let the origin parameters initialized by the spilited parameters
-        send_vars = []
-
-        for orig_varname, splited_vars in self.grad_var_mapping.items():
-            for _, var in enumerate(splited_vars):
-                send_vars.append(var)
-
-        recv_vars = []
-        for _, var in enumerate(send_vars):
-            recv_vars.append(self.grad_param_mapping[var])
-        ps_dispatcher = self.config.split_method(self.pserver_endpoints)
-        ps_dispatcher.reset()
-        eplist = ps_dispatcher.dispatch(recv_vars)
+        # note that: some parameter is not trainable and those ops can't be deleted.
 
         for varname, splited_var in self.param_var_mapping.iteritems():
             # Get the eplist of recv vars
@@ -377,10 +363,10 @@ class DistributeTranspiler(object):
                 eps.append(eplist[index])
 
             for var in splited_var:
-                if orig_s_prog.global_block().has_var(var.name):
+                if startup_program.global_block().has_var(var.name):
                     continue
 
-                orig_s_prog.global_block().create_var(
+                startup_program.global_block().create_var(
                     name=var.name,
                     persistable=False,
                     type=var.type,
@@ -388,7 +374,7 @@ class DistributeTranspiler(object):
                     shape=var.shape,
                     lod_level=var.lod_level)
 
-            op = orig_s_prog.global_block().append_op(
+            op = startup_program.global_block().append_op(
                 type="recv",
                 inputs={},
                 outputs={"Out": splited_var},
@@ -397,7 +383,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        orig_s_prog.global_block().append_op(
+        startup_program.global_block().append_op(
             type="fetch_barrier",
             inputs={},
             outputs={},
@@ -407,18 +393,17 @@ class DistributeTranspiler(object):
             })
 
         for varname, splited_var in self.param_var_mapping.iteritems():
-            # append concat_op to concat all splited params rather than prepend
+            #add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
-            #splited_var_in_startup_prog = splited_param_mapping[varname]
-            orig_param = orig_s_prog.global_block().vars[varname]
-            orig_s_prog.global_block().append_op(
+            orig_param = startup_program.global_block().vars[varname]
+            startup_program.global_block().append_op(
                 type="concat",
                 inputs={"X": splited_var},
                 outputs={"Out": [orig_param]},
                 attrs={"axis": 0})
 
-        return orig_s_prog
+        return startup_program
 
     def get_pserver_program(self, endpoint):
         """
