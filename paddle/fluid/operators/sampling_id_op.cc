@@ -36,15 +36,15 @@ class SamplingIdKernel : public framework::OpKernel<T> {
     std::vector<T> ins_vector;
     framework::TensorToVector(*input, context.device_context(), &ins_vector);
 
-    unsigned int seed = static_cast<unsigned int>(ctx.Attr<int>("seed"));
+    unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }
     engine.seed(seed);
     std::uniform_real_distribution<T> dist(
-        static_cast<T>(ctx.Attr<float>("min")),
-        static_cast<T>(ctx.Attr<float>("max")));
+        static_cast<T>(context.Attr<float>("min")),
+        static_cast<T>(context.Attr<float>("max")));
 
     std::vector<T> ids(batch_size);
     for (size_t i = 0; i < batch_size; ++i) {
