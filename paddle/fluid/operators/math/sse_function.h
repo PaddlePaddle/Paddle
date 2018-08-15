@@ -18,6 +18,8 @@ limitations under the License. */
 #include <tmmintrin.h>
 #include <xmmintrin.h>
 
+#include "paddle/fluid/platform/enforce.h"
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -27,6 +29,12 @@ static const unsigned int SSE_CUT_LEN_MASK = 3U;
 
 template <typename T>
 inline void paddle_sse_axpy(const T* x, T* y, size_t len, const T alpha) {
+  PADDLE_THROW("paddle_sse_axpy do not support type %s", typeid(T).name());
+}
+
+template <>
+inline void paddle_sse_axpy<float>(const float* x, float* y, size_t len,
+                                   const float alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
   lll = len & ~SSE_CUT_LEN_MASK;
@@ -35,6 +43,23 @@ inline void paddle_sse_axpy(const T* x, T* y, size_t len, const T alpha) {
     _mm_storeu_ps(y + jjj,
                   _mm_add_ps(_mm_loadu_ps(y + jjj),
                              _mm_mul_ps(mm_alpha, _mm_loadu_ps(x + jjj))));
+  }
+  for (; jjj < len; jjj++) {
+    y[jjj] += alpha * x[jjj];
+  }
+}
+
+template <>
+inline void paddle_sse_axpy<double>(const double* x, double* y, size_t len,
+                                    const double alpha) {
+  unsigned int jjj, lll;
+  jjj = lll = 0;
+  lll = len & ~SSE_CUT_LEN_MASK;
+  __m128d mm_alpha = _mm_load1_pd(&alpha);
+  for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
+    _mm_storeu_pd(y + jjj,
+                  _mm_add_pd(_mm_loadu_pd(y + jjj),
+                             _mm_mul_pd(mm_alpha, _mm_loadu_pd(x + jjj))));
   }
   for (; jjj < len; jjj++) {
     y[jjj] += alpha * x[jjj];

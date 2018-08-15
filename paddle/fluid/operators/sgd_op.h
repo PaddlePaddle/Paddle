@@ -16,7 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#if !defined(__APPLE__) && !defined(__OSX__)
+#ifdef __SSE2__
 #include "paddle/fluid/operators/math/sse_function.h"
 #endif
 
@@ -78,7 +78,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
         for (int i = 0; i < grad_rows.size(); ++i) {
           PADDLE_ENFORCE(grad_rows[i] < grad_height,
                          "Input rows index should less than height");
-#if !defined(__APPLE__) && !defined(__OSX__)
+#ifdef __SSE2__
           math::paddle_sse_axpy<T>(grad_data + i * grad_row_numel,
                                    out_data + grad_rows[i] * grad_row_numel,
                                    grad_row_numel, -lr[0]);
@@ -125,7 +125,7 @@ class SGDOpKernel : public framework::OpKernel<T> {
         int64_t id_index = param.Index(grad.rows()[i]);
         PADDLE_ENFORCE_GE(id_index, static_cast<int64_t>(0),
                           "id should be in the table");
-#if !defined(__APPLE__) && !defined(__OSX__)
+#ifdef __SSE2__
         math::paddle_sse_axpy<T>(grad_data + i * grad_row_numel,
                                  out_data + id_index * grad_row_numel,
                                  grad_row_numel, -lr[0]);
