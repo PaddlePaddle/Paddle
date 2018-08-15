@@ -1668,7 +1668,7 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(var.name())
+                    root_block._remove_var(cpt.to_bytes(var.name()))
 
         # change all `is_test` attributes to True
         for i in six.moves.range(res.desc.num_blocks()):
