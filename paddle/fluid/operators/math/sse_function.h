@@ -24,24 +24,17 @@ namespace math {
 
 static const unsigned int SSE_STEP_SIZE = 4;
 static const unsigned int SSE_CUT_LEN_MASK = 3U;
-#define __m256x __m256
-#define __m128x __m128
-#define _mm_load_px _mm_loadu_ps
-#define _mm_load1_px _mm_load1_ps
-#define _mm_store_px _mm_storeu_ps
-#define _mm_add_px _mm_add_ps
-#define _mm_mul_px _mm_mul_ps
 
 template <typename T>
 inline void paddle_sse_axpy(const T* x, T* y, size_t len, const T alpha) {
   unsigned int jjj, lll;
   jjj = lll = 0;
   lll = len & ~SSE_CUT_LEN_MASK;
-  __m128x mm_alpha = _mm_load1_px(&alpha);
+  __m128 mm_alpha = _mm_load1_ps(&alpha);
   for (jjj = 0; jjj < lll; jjj += SSE_STEP_SIZE) {
-    _mm_store_px(y + jjj,
-                 _mm_add_px(_mm_load_px(y + jjj),
-                            _mm_mul_px(mm_alpha, _mm_load_px(x + jjj))));
+    _mm_storeu_ps(y + jjj,
+                  _mm_add_ps(_mm_loadu_ps(y + jjj),
+                             _mm_mul_ps(mm_alpha, _mm_loadu_ps(x + jjj))));
   }
   for (; jjj < len; jjj++) {
     y[jjj] += alpha * x[jjj];
