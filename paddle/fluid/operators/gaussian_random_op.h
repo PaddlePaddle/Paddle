@@ -15,6 +15,7 @@
 #pragma once
 #include <random>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/random.h"
 namespace paddle {
 namespace operators {
