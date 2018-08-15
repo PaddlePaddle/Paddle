@@ -14,5 +14,7 @@
 
 from . import decoder
 from .decoder import *
+from . import memory_usage_calc
+from .memory_usage_calc import *
 
-__all__ = decoder.__all__
+__all__ = decoder.__all__ + memory_usage_calc.__all__

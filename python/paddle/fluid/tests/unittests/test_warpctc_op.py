@@ -132,7 +132,7 @@ class CTCForward(object):
             for k in range(end - start):
                 j = k + start
                 if j & 1 == 1:
-                    label_idx = j / 2
+                    label_idx = j // 2
                     label_val = labels_a_sequence[label_idx, 0]
                     fv = self.log_add(forward_vars[i - 1, j],
                                       forward_vars[i - 1, j - 1])

@@ -14,7 +14,7 @@
 
 import numpy as np
 from PIL import Image
-from cStringIO import StringIO
+from six.moves import cStringIO as StringIO
 
 
 def resize_image(img, target_size):
@@ -34,7 +34,7 @@ def flip(im):
     """
     Return the flipped image.
     Flip an image along the horizontal direction.
-    im: input image, (H x W x K) ndarrays 
+    im: input image, (H x W x K) ndarrays
     """
     if len(im.shape) == 3:
         return im[:, :, ::-1]
@@ -132,7 +132,7 @@ def load_meta(meta_path, mean_img_size, crop_size, color=True):
 
 def load_image(img_path, is_color=True):
     """
-    Load image and return. 
+    Load image and return.
     img_path: image path.
     is_color: is color image or not.
     """
@@ -205,7 +205,7 @@ class ImageTransformer:
 
     def set_mean(self, mean):
         if mean is not None:
-            # mean value, may be one value per channel 
+            # mean value, may be one value per channel
             if mean.ndim == 1:
                 mean = mean[:, np.newaxis, np.newaxis]
             else:

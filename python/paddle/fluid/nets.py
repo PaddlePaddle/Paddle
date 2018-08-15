@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import six
 from . import layers
 
 __all__ = [
@@ -210,7 +211,7 @@ def img_conv_group(input,
     conv_with_batchnorm = __extend_list__(conv_with_batchnorm)
     conv_batchnorm_drop_rate = __extend_list__(conv_batchnorm_drop_rate)
 
-    for i in range(len(conv_num_filter)):
+    for i in six.moves.range(len(conv_num_filter)):
         local_conv_act = conv_act
         if conv_with_batchnorm[i]:
             local_conv_act = None

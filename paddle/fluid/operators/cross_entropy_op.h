@@ -33,8 +33,13 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
     auto* y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
+    int rank = x->dims().size();
+    Tensor x_2d = framework::ReshapeToMatrix(*x, rank - 1);
+    Tensor labels_2d = framework::ReshapeToMatrix(*labels, rank - 1);
+    Tensor y_2d = framework::ReshapeToMatrix(*y, rank - 1);
+
     math::CrossEntropyFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), y, x, labels,
+        ctx.template device_context<DeviceContext>(), &y_2d, &x_2d, &labels_2d,
         ctx.Attr<bool>("soft_label"));
   }
 };
@@ -98,9 +103,12 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     auto* dy = ctx.Input<Tensor>(framework::GradVarName("Y"));
     auto* label = ctx.Input<Tensor>("Label");
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto* dx_data = dx->mutable_data<T>(ctx.GetPlace());
+    T* dx_data = dx->mutable_data<T>(ctx.GetPlace());
 
-    int64_t class_num = x->dims()[1];
+    // Following computation only depends on the last dimension size. So it's
+    // unnecessary to convert tensors to 2-D views.
+    int rank = x->dims().size();
+    int64_t class_num = x->dims()[rank - 1];
     if (ctx.Attr<bool>("soft_label")) {
       XeSoftlabelGradFunctor<T> functor(dx_data, dy->data<T>(), x->data<T>(),
                                         label->data<T>(),
