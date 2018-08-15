@@ -16,6 +16,7 @@ import numpy as np
 import unittest
 import time
 import itertools
+import six
 
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -40,8 +41,8 @@ class BenchmarkSuite(OpTest):
             expect_t = np.array(item_cpu_out)
             actual = item_gpu_out
             actual_t = np.array(item_gpu_out)
-            var_name = variable if isinstance(variable,
-                                              basestring) else variable.name
+            var_name = variable if isinstance(
+                variable, six.string_types) else variable.name
             self.assertTrue(
                 np.allclose(
                     actual_t, expect_t, atol=atol),
@@ -53,7 +54,7 @@ class BenchmarkSuite(OpTest):
 
     def _get_input_names(self):
         inputs = []
-        for name, value in self.inputs.iteritems():
+        for name, value in list(self.inputs.items()):
             if isinstance(value, list):
                 inputs.extend([sub_name for sub_name, _ in value])
             inputs.append(name)
@@ -61,7 +62,7 @@ class BenchmarkSuite(OpTest):
 
     def _get_output_names(self):
         outputs = []
-        for var_name, var in self.outputs.iteritems():
+        for var_name, var in list(self.outputs.items()):
             if isinstance(var, list):
                 for sub_var_name, sub_var in var:
                     outputs.append(sub_var_name)

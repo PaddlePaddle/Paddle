@@ -14,12 +14,14 @@
 
 import copy
 import itertools
+import six
 
-from framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
-import unique_name
+from .framework import Variable, Parameter, default_main_program, default_startup_program, dtype_is_floating
+from . import unique_name
 from paddle.fluid.initializer import Constant, Xavier
-from param_attr import ParamAttr, WeightNormParamAttr
-import core
+from .param_attr import ParamAttr, WeightNormParamAttr
+from . import core
+from six.moves import zip
 
 
 class LayerHelper(object):
@@ -83,7 +85,7 @@ class LayerHelper(object):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in xrange(length):
+            for i in range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -91,7 +93,7 @@ class LayerHelper(object):
     def iter_inputs_and_params(self, input_param_name='input'):
         inputs = self.multiple_input(input_param_name)
         param_attrs = self.multiple_param_attr(len(inputs))
-        for ipt, param_attr in itertools.izip(inputs, param_attrs):
+        for ipt, param_attr in zip(inputs, param_attrs):
             yield ipt, param_attr
 
     def input_dtype(self, input_param_name='input'):
@@ -218,7 +220,7 @@ class LayerHelper(object):
                 norm = __norm_op(reshape, dim=0, block=block)
                 __reshape_op(norm, out=out, shape=out_shape, block=block)
             else:
-                perm = range(len(x.shape))
+                perm = list(range(len(x.shape)))
                 perm[0], perm[dim] = dim, 0
                 transpose = __transpose_op(x, perm, block=block)
                 norm = __norm_op(transpose, dim=0, block=block)
@@ -397,8 +399,10 @@ class LayerHelper(object):
         act = self.kwargs.get('act', None)
         if act is None:
             return input_var
-        if isinstance(act, basestring):
+        if isinstance(act, six.string_types):
             act = {'type': act}
+        else:
+            raise TypeError(str(act) + " should be unicode or str")
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')
