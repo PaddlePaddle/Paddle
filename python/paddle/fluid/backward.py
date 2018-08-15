@@ -344,7 +344,7 @@ def _append_backward_ops_(block,
         grad_sub_block_list = []
         # If the op has its own sub-block, deal with the sub-block first
         if op.has_attr("sub_block"):
-            sub_block = program.block(op.block_attr("sub_block"))
+            sub_block = program.block(op.block_attr_id("sub_block"))
             grad_sub_block = program._create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
@@ -406,7 +406,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     for op_idx in range(start_op_idx, block.desc.op_size()):
         op_desc = block.desc.op(op_idx)
         if op_desc.has_attr("sub_block"):
-            sub_block = block.program.block(op_desc.block_attr("sub_block"))
+            sub_block = block.program.block(op_desc.block_attr_id("sub_block"))
             _append_backward_vars_(sub_block, 0, grad_to_var, grad_info_map)
         new_vars = set()
         # create new gradient variables
