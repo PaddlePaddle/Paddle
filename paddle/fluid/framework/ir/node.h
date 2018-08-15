@@ -58,6 +58,9 @@ class Node {
     return op_desc_;
   }
 
+  bool IsOp() const { return type_ == Type::kOperation; }
+  bool IsVar() const { return type_ == Type::kVariable; }
+
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
 

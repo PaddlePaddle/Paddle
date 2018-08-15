@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
+
 import unittest
 import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
@@ -363,12 +365,13 @@ class TestL2DecayWithPiecewise(TranspilerTest):
 
 class TestDistLookupTableBase(TranspilerTest):
     def network_with_table(self, is_sparse, is_distributed):
+        self.table_size = 1000
+        self.emb_size = 64
+
         def emb_pool(ids):
-            table_size = 1000
-            emb_size = 64
             emb = fluid.layers.embedding(
                 input=ids,
-                size=[table_size, emb_size],
+                size=[self.table_size, self.emb_size],
                 dtype='float32',
                 param_attr='shared_w',  # share parameter
                 is_sparse=is_sparse,
@@ -535,6 +538,22 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
             'sum', 'split_ids', 'send', 'recv', 'recv'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+class TestDistLookupTableSliceSize(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=True)
+
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        pserver1, startup1 = self.get_pserver(self.pserver1_ep, config)
+
+        self.assertTrue(self.transpiler.has_distributed_lookup_table)
+        lookup_table_var = pserver1.global_block().vars[
+            self.transpiler.table_name]
+        row_size = lookup_table_var.shape[0]
+        calc_row_size = int(math.ceil(self.table_size / self.pservers))
+        self.assertEqual(row_size, calc_row_size)
 
 
 class TestRMSPropOptimizer(TranspilerTest):
