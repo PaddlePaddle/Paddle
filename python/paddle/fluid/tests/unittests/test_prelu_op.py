@@ -21,19 +21,17 @@ class PReluTest(OpTest):
     def setUp(self):
         self.op_type = "prelu"
         self.initTestCase()
-        x_np = np.random.normal(size=(2, 10, 8)).astype("float32")
+        x_np = np.random.normal(size=(3, 5, 5, 10)).astype("float32")
 
         # Since zero point in prelu is not differentiable, avoid randomize
         # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
-        x_np_sign = np.sign(x_np)
-        x_np = x_np_sign * np.maximum(x_np, .005)
 
         if self.attrs == {'mode': "all"}:
             alpha_np = np.random.rand(1).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
         elif self.attrs == {'mode': "channel"}:
-            alpha_np = np.random.rand(1, 10, 1).astype("float32")
+            alpha_np = np.random.rand(1, x_np.shape[1], 1, 1).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
         else:
             alpha_np = np.random.rand(*x_np.shape).astype("float32")
@@ -46,7 +44,7 @@ class PReluTest(OpTest):
         self.outputs = {'Out': out_np}
 
     def initTestCase(self):
-        self.attrs = {'mode': "all"}
+        self.attrs = {'mode': "channel"}
 
     def test_check_output(self):
         self.check_output()

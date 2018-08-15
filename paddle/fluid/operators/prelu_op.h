@@ -38,9 +38,11 @@ class PReluKernel : public framework::OpKernel<T> {
     auto dim = x->dims();
     int index = 0;
     int i = 0;
+    int temp = 0;
     if (mode == "channel") {
       for (i = 0; i < numel; i++) {
-        index = i / dim[0] % dim[1];
+        temp = numel / (dim[0] * dim[1]);
+        index = (i / temp) % dim[1];
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     } else if (mode == "element") {
@@ -65,7 +67,7 @@ class PReluGradKernel : public framework::OpKernel<T> {
     auto* dalpha = context.Output<Tensor>(framework::GradVarName("Alpha"));
     auto* out = context.Input<Tensor>("Out");
     auto* alpha = context.Input<Tensor>("Alpha");
-    auto* alpha_ptr = alpha->data<T>();
+    const T* alpha_ptr = alpha->data<T>();
     const T* x_ptr = x->data<T>();
     const T* dout_ptr = dout->data<T>();
     const T* out_ptr = out->data<T>();
@@ -74,11 +76,13 @@ class PReluGradKernel : public framework::OpKernel<T> {
     auto dim = x->dims();
     int index = 0;
     int i = 0;
+    int temp = 0;
     if (dx) {
       T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
       if (mode == "channel") {
         for (i = 0; i < numel; i++) {
-          index = i / dim[0] % dim[1];
+          temp = numel / (dim[0] * dim[1]);
+          index = (i / temp) % dim[1];
           dx_ptr[i] =
               out_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
         }
@@ -98,23 +102,22 @@ class PReluGradKernel : public framework::OpKernel<T> {
       T* dalpha_ptr = dalpha->mutable_data<T>(context.GetPlace());
       if (mode == "channel") {
         for (i = 0; i < numel; i++) {
-          index = i / dim[0] % dim[1];
+          temp = numel / (dim[0] * dim[1]);
+          index = (i / temp) % dim[1];
           dalpha_ptr[index] += out_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else if (mode == "element") {
         for (i = 0; i < numel; i++) {
-          index = i;
-          dalpha_ptr[index] += out_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
+          dalpha_ptr[i] += out_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else {
         for (i = 0; i < numel; i++) {
-          index = 0;
-          dalpha_ptr[index] += out_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
+          dalpha_ptr[0] += out_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       }
     }
 
-    // TODO(Zhuoyuan): add dalpha upgrade when GPU kernels ready
+    // TODO(Guanzhong): add GPU kernels
   }
 };
 
