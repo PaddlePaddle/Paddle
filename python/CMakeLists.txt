@@ -98,11 +98,10 @@ if(APPLE)
     message(FATAL_ERROR "install_name_tool not found, please check.\n")
   endif()
 endif()
-if(UNIX AND NOT APPLE)
-# except apple from nix*Os family
+if(LINUX)
   find_program(PATCHELF_EXECUTABLE patchelf)
   if(NOT PATCHELF_EXECUTABLE)
     message(FATAL_ERROR "patchelf not found, please install it.\n"
             "For Ubuntu, the command is: apt-get install -y patchelf.")
   endif()
-endif(UNIX AND NOT APPLE)
+endif(LINUX)
