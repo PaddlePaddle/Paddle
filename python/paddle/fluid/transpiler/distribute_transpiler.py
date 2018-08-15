@@ -586,12 +586,12 @@ class DistributeTranspiler(object):
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
-                    op.attrs["shape"] = new_outputs["Out"].shape
+                    op.set_attr("shape", list(new_outputs["Out"].shape))
                 s_prog.global_block().append_op(
                     type=op.type,
                     inputs=new_inputs,
                     outputs=new_outputs,
-                    attrs=op.attrs)
+                    attrs=op.all_attrs())
         return s_prog
 
     # ====================== private transpiler functions =====================
@@ -605,7 +605,7 @@ class DistributeTranspiler(object):
         self.table_name = None
         for op in self.origin_program.global_block().ops:
             if op.type == LOOKUP_TABLE_TYPE:
-                if op.attrs['is_distributed'] is True:
+                if op.attr('is_distributed') is True:
                     if self.table_name is None:
                         self.table_name = op.input("W")[0]
                     if self.table_name != op.input("W")[0]:
@@ -1265,7 +1265,7 @@ class DistributeTranspiler(object):
             type=opt_op.type,
             inputs=new_inputs,
             outputs=outputs,
-            attrs=opt_op.attrs)
+            attrs=opt_op.all_attrs())
 
     def _is_splited_grad_var(self, var, var_dict):
         grad_block = None
@@ -1296,7 +1296,7 @@ class DistributeTranspiler(object):
                     block._clone_variable(var)
 
         return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.attrs)
+            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
 
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
@@ -1337,7 +1337,7 @@ class DistributeTranspiler(object):
             type=opt_op.type,
             inputs=inputs,
             outputs=outputs,
-            attrs=opt_op.attrs)
+            attrs=opt_op.all_attrs())
 
     def _is_op_connected(self, op1, op2):
         # If one op's input is another op's output or
@@ -1442,8 +1442,8 @@ class DistributeTranspiler(object):
         # optimize
         op_maker = core.op_proto_and_checker_maker
         optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
             return True
         return False
 
@@ -1466,8 +1466,8 @@ class DistributeTranspiler(object):
                 # and op_role_var to get the pair.
                 for input_name in op.input_arg_names:
                     if input_name.find("@GRAD") != -1 and \
-                        op.attrs[RPC_OP_ROLE_ATTR_NAME]:
-                        param_name = op.attrs[OP_ROLE_VAR_ATTR_NAME][0]
+                        op.attr(RPC_OP_ROLE_ATTR_NAME):
+                        param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                         params_grads.append([
                             origin_var_dict[param_name],
                             origin_var_dict[input_name]
