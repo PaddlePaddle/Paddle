@@ -17,10 +17,8 @@ import multiprocessing
 from . import core
 from . import framework
 from . import executor
-from .. import compat as cpt
 import warnings
 import sys
-import six
 import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
@@ -97,7 +95,7 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in six.moves.range(core.get_cuda_device_count()):
+            for i in range(core.get_cuda_device_count()):
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
@@ -105,7 +103,7 @@ class ParallelExecutor(object):
         else:
             cpu_num = int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            for i in six.moves.range(cpu_num):
+            for i in range(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
@@ -124,7 +122,7 @@ class ParallelExecutor(object):
             else:
                 cpu_num = int(
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-                exec_strategy.num_threads = cpu_num * 2
+                exec_strategy.num_threads = cpu_num
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
@@ -155,13 +153,11 @@ class ParallelExecutor(object):
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                cpt.to_text(p.name)
-                for p in main.global_block().iter_parameters()
+                p.name for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
-            cpt.to_text(loss_name)
-            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
+            set(self.persistable_vars), main.desc, loss_name
+            if loss_name else '', scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
@@ -273,23 +269,23 @@ class ParallelExecutor(object):
             self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
-        self.executor.run(cpt.to_text(fetch_list), cpt.to_text(fetch_var_name))
+        self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:
-            self._bcast_params()
+            self.bcast_params()
 
         if return_numpy:
             return executor.as_numpy(arr)
 
         return [arr[i] for i in range(len(arr))]
 
-    def _bcast_params(self):
+    def bcast_params(self):
         """
         Broadcast the parameters to other devices. It is used during
         distributed training.
         """
-        self.executor._bcast_params(set(self.persistable_vars))
+        self.executor.bcast_params(set(self.persistable_vars))
 
     @property
     def device_count(self):

@@ -55,8 +55,18 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<int64_t> &shape) {
                     "TensorRT' tensor input requires at least 2 dimensions");
   PADDLE_ENFORCE_LE(shape.size(), 4UL,
                     "TensorRT' tensor input requires at most 4 dimensions");
-  PADDLE_ENFORCE_EQ(shape.size(), 4UL);
-  return nvinfer1::DimsCHW(shape[1], shape[2], shape[3]);
+
+  switch (shape.size()) {
+    case 2:
+      return nvinfer1::Dims2(1, shape[1]);
+    case 3:
+      return nvinfer1::Dims3(1, shape[1], shape[2]);
+    case 4:
+      return nvinfer1::Dims4(1, shape[1], shape[2], shape[3]);
+    default:
+      return nvinfer1::Dims();
+  }
+  return nvinfer1::Dims();
 }
 
 }  // namespace
@@ -76,9 +86,6 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
     parameters.insert(param);
   }
 
-  std::vector<std::string> output_maps =
-      context.Attr<std::vector<std::string>>("output_name_mapping");
-
   // TODO(Superjomn) replace this with a different stream
   auto *engine = Singleton<TRT_EngineManager>::Global().Create(
       max_batch, max_workspace, nullptr /*engine hold its own stream*/,
@@ -90,7 +97,6 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
   // Add inputs
   VLOG(4) << "declare inputs";
   for (auto &input : context.Inputs("Xs")) {
-    if (parameters.count(input)) continue;
     VLOG(4) << "declare input " << input;
     auto *var = block.FindVar(input);
     // TensorRT engine need to create parameters. The parameter's description
@@ -116,7 +122,7 @@ void TensorRTEngineKernel<DeviceContext, T>::Prepare(
       block_desc, parameters, context.scope(), engine);
 
   // Add outputs
-  for (auto &output : output_maps) {
+  for (auto &output : context.Outputs("Ys")) {
     engine->DeclareOutput(output);
   }
 

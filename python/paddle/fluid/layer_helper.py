@@ -85,7 +85,7 @@ class LayerHelper(object):
             raise ValueError("parameter number mismatch")
         elif len(param_attr) == 1 and length != 1:
             tmp = [None] * length
-            for i in six.moves.range(length):
+            for i in range(length):
                 tmp[i] = copy.deepcopy(param_attr[0])
             param_attr = tmp
         return param_attr
@@ -401,8 +401,6 @@ class LayerHelper(object):
             return input_var
         if isinstance(act, six.string_types):
             act = {'type': act}
-        else:
-            raise TypeError(str(act) + " should be unicode or str")
 
         if 'use_cudnn' in self.kwargs and self.kwargs.get('use_cudnn'):
             act['use_cudnn'] = self.kwargs.get('use_cudnn')

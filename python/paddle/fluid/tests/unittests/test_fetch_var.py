@@ -26,7 +26,7 @@ class TestFetchVar(op_test.OpTest):
         layers.assign(input=val, output=x)
         exe = fluid.Executor(fluid.CPUPlace())
         exe.run(fluid.default_main_program(), feed={}, fetch_list=[])
-        fetched_x = fluid.executor._fetch_var("x")
+        fetched_x = fluid.fetch_var("x")
         self.assertTrue(
             numpy.array_equal(fetched_x, val),
             "fetch_x=%s val=%s" % (fetched_x, val))

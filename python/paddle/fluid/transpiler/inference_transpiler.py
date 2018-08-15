@@ -57,10 +57,10 @@ class InferenceTranspiler(object):
             scope = global_scope()
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
-        self._fuse_batch_norm(program, place, scope)
-        self._fuse_relu_mkldnn(program)
+        self.fuse_batch_norm(program, place, scope)
+        self.fuse_relu_mkldnn(program)
 
-    def _fuse_relu_mkldnn(self, program):
+    def fuse_relu_mkldnn(self, program):
         '''
         Transpile the program by fused relu activation for MKLDNN program.
 
@@ -104,7 +104,7 @@ class InferenceTranspiler(object):
         # And a better solution will be considered later.
         program = program.clone()
 
-    def _fuse_batch_norm(self, program, place, scope):
+    def fuse_batch_norm(self, program, place, scope):
         '''
         Transpile the program by fused batch normalization.
 

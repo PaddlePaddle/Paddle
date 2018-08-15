@@ -27,13 +27,12 @@ class TestConstantInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.ConstantInitializer())
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.ConstantInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -44,13 +43,12 @@ class TestConstantInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.ConstantInitializer(2.3))
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.ConstantInitializer(2.3))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'fill_constant')
@@ -63,13 +61,12 @@ class TestUniformInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.UniformInitializer())
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.UniformInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -83,19 +80,18 @@ class TestUniformInitializer(unittest.TestCase):
         program = framework.Program()
         program.random_seed = 123
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param1",
-                initializer=initializer.UniformInitializer())
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param2",
-                initializer=initializer.UniformInitializer(seed=456))
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.UniformInitializer())
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.UniformInitializer(seed=456))
         init_op = block.ops[1]
         self.assertEqual(init_op.attr("seed"), 123)
         init_op1 = block.ops[0]
@@ -106,38 +102,18 @@ class TestUniformInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.UniformInitializer(-4.2, 3.1, 123))
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.UniformInitializer(-4.2, 3.1, 123))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
         self.assertAlmostEqual(init_op.attr('min'), -4.2, delta=DELTA)
         self.assertAlmostEqual(init_op.attr('max'), 3.1, delta=DELTA)
         self.assertEqual(init_op.attr('seed'), 123)
-
-    def test_uniform_initializer_two_op(self):
-        """Test uniform initializer with supplied attributes
-        """
-        program = framework.Program()
-        block = program.global_block()
-        for i in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.UniformInitializer(-4.2, float(i), 123))
-        self.assertEqual(len(block.ops), 1)
-        init_op0 = block.ops[0]
-        self.assertEqual(init_op0.type, 'uniform_random')
-        self.assertAlmostEqual(init_op0.attr('min'), -4.2, delta=DELTA)
-        self.assertAlmostEqual(init_op0.attr('max'), 0.0, delta=DELTA)
-        self.assertEqual(init_op0.attr('seed'), 123)
 
 
 class TestNormalInitializer(unittest.TestCase):
@@ -146,13 +122,12 @@ class TestNormalInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.NormalInitializer())
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.NormalInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -165,13 +140,12 @@ class TestNormalInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.NormalInitializer(2.3, 1.9, 123))
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.NormalInitializer(2.3, 1.9, 123))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -187,13 +161,12 @@ class TestXavierInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierInitializer())
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -208,13 +181,12 @@ class TestXavierInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierInitializer())
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -231,13 +203,12 @@ class TestXavierInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierInitializer(uniform=False))
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer(uniform=False))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -252,13 +223,12 @@ class TestXavierInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierInitializer(uniform=False))
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer(uniform=False))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -274,14 +244,13 @@ class TestXavierInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.XavierInitializer(
-                    fan_in=12, fan_out=23, seed=134))
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.XavierInitializer(
+                fan_in=12, fan_out=23, seed=134))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -298,13 +267,12 @@ class TestMSRAInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.MSRAInitializer())
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -319,13 +287,12 @@ class TestMSRAInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=initializer.MSRAInitializer())
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -341,13 +308,12 @@ class TestMSRAInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.MSRAInitializer(uniform=False))
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer(uniform=False))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -362,13 +328,12 @@ class TestMSRAInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            param = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10, 15, 20],
-                lod_level=0,
-                name="param",
-                initializer=initializer.MSRAInitializer(uniform=False))
+        param = block.create_parameter(
+            dtype="float32",
+            shape=[5, 10, 15, 20],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer(uniform=False))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'gaussian_random')
@@ -383,14 +348,13 @@ class TestMSRAInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="param",
-                initializer=initializer.MSRAInitializer(
-                    fan_in=12, seed=134))
+        block.create_parameter(
+            dtype="float32",
+            shape=[5, 10],
+            lod_level=0,
+            name="param",
+            initializer=initializer.MSRAInitializer(
+                fan_in=12, seed=134))
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'uniform_random')
@@ -406,13 +370,12 @@ class TestMSRAInitializer(unittest.TestCase):
         """
         program = framework.Program()
         block = program.global_block()
-        for _ in range(2):
-            block.create_parameter(
-                dtype="float32",
-                shape=[8, 1, 3, 3],
-                lod_level=0,
-                name="param",
-                initializer=initializer.BilinearInitializer())
+        block.create_parameter(
+            dtype="float32",
+            shape=[8, 1, 3, 3],
+            lod_level=0,
+            name="param",
+            initializer=initializer.BilinearInitializer())
         self.assertEqual(len(block.ops), 1)
         init_op = block.ops[0]
         self.assertEqual(init_op.type, 'assign_value')

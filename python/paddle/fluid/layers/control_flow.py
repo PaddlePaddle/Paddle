@@ -22,7 +22,6 @@ from ..initializer import force_init_on_cpu
 from .ops import logical_and, logical_not, logical_or
 import numpy
 import warnings
-import six
 from functools import reduce
 
 __all__ = [
@@ -603,7 +602,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in six.iteritems(self.memories):
+        for _, mem in list(self.memories.items()):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)

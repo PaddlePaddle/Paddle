@@ -66,7 +66,9 @@ __all__ = [
     'scatter',
     'sum',
     'slice',
+    'polygon_box_transform',
     'shape',
+    'iou_similarity',
     'maxout',
 ] + __activations__
 

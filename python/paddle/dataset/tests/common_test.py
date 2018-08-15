@@ -16,7 +16,6 @@ import paddle.dataset.common
 import unittest
 import tempfile
 import glob
-from six.moves import range
 
 
 class TestCommon(unittest.TestCase):

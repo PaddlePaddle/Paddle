@@ -41,9 +41,7 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
       std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
       std::unique_ptr<SSAGraphExecutor>&& underlying_executor);
 
-  const ir::Graph& Graph() const override {
-    return underlying_executor_->Graph();
-  }
+  const ir::Graph& Graph() const { return underlying_executor_->Graph(); }
 
   FeedFetchList Run(const std::vector<std::string>& fetch_tensors) override;
 

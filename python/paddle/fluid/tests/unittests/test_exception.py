@@ -12,21 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle.compat as cpt
 import paddle.fluid.core as core
 import unittest
 
 
 class TestException(unittest.TestCase):
     def test_exception(self):
-        exception = None
+        ex = None
         try:
             core.__unittest_throw_exception__()
         except core.EnforceNotMet as ex:
-            self.assertIn("test exception", cpt.get_exception_message(ex))
-            exception = ex
+            self.assertIn("test exception", ex.message)
 
-        self.assertIsNotNone(exception)
+        self.assertIsNotNone(ex)
 
 
 if __name__ == "__main__":

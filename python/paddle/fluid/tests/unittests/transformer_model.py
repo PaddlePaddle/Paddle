@@ -22,7 +22,7 @@ pos_enc_param_names = (
     "src_pos_enc_table",
     "trg_pos_enc_table", )
 
-batch_size = 2
+batch_size = 64
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -404,7 +404,7 @@ def transformer(
         trg_pad_idx,
         pos_pad_idx, ):
     file_obj = fluid.layers.open_recordio_file(
-        filename='/tmp/wmt16.recordio',
+        filename='./wmt16.recordio',
         shapes=[
             [batch_size * max_length, 1],
             [batch_size * max_length, 1],

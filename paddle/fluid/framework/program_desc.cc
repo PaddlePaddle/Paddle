@@ -58,7 +58,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
       for (const std::string &attr_name : op->AttrNames()) {
         if (op->GetAttrType(attr_name) == proto::AttrType::BLOCK) {
           int sub_block_id =
-              o.Block(block_id).Op(op_id)->GetBlockAttrId(attr_name);
+              o.Block(block_id).Op(op_id)->GetBlockAttr(attr_name);
           op->SetBlockAttr(attr_name, MutableBlock(sub_block_id));
         }
       }
