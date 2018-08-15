@@ -51,7 +51,7 @@ PDNode* PDPattern::RetriveNode(const std::string& id) const {
 void PDPattern::AddEdge(PDNode* a, PDNode* b) {
   PADDLE_ENFORCE(a);
   PADDLE_ENFORCE(b);
-  PADDLE_ENFORCE(a != b, "can't link between the same nodes.");
+  PADDLE_ENFORCE(a != b, "can't connect to the same nodes.");
   edges_.emplace_back(a, b);
 }
 
