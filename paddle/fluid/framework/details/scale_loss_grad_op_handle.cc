@@ -19,16 +19,21 @@
 namespace paddle {
 namespace framework {
 namespace details {
-ScaleLossGradOpHandle::ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
+ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node, size_t num_dev,
+                                             Scope *scope,
                                              platform::Place place,
                                              platform::DeviceContext *dev_ctx)
-    : coeff_(static_cast<float>(1.0 / num_dev)), scope_(scope), place_(place) {
+    : OpHandleBase(node),
+      coeff_(static_cast<float>(1.0 / num_dev)),
+      scope_(scope),
+      place_(place) {
   dev_ctxes_[place_] = dev_ctx;
 }
 
 ScaleLossGradOpHandle::~ScaleLossGradOpHandle() {}
 
 void ScaleLossGradOpHandle::RunImpl() {
+  // Doesn't wait any event
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name_;
   auto &local_scope = *scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
 

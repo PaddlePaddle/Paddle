@@ -48,7 +48,7 @@ class TestBook(unittest.TestCase):
 
         exe.run(init_program, feed={}, fetch_list=[])
 
-        for i in xrange(100):
+        for i in range(100):
             tensor_x = np.array(
                 [[1, 1], [1, 2], [3, 4], [5, 2]]).astype("float32")
             tensor_y = np.array([[-2], [-3], [-7], [-7]]).astype("float32")

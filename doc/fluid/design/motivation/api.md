@@ -77,8 +77,7 @@ print "The sematic-vector of testA: ", paddle.infer(fA, parameters, testA)
 
 ### Example 2. Sharing Parameters between "Models"
 
-We use [GAN](https://github.com/PaddlePaddle/book/tree/develop/gan) in
-this example.  In the following example program, `d0` and `d1`
+We use GAN in this example.  In the following example program, `d0` and `d1`
 correspond to the two networks in the following figure:
 
 <img src="https://github.com/wangyang59/book/raw/00036f4b0da5225041a6824587c1a01cf20159b1/gan/image/gan_ig.png" width=400 />

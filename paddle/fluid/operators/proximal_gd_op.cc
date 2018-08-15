@@ -54,8 +54,7 @@ class ProximalGDOp : public framework::OperatorWithKernel {
 
 class ProximalGDOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ProximalGDOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter value that has to be updated.");

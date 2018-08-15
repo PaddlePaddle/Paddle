@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -164,14 +163,11 @@ class ParallelDoOp : public framework::OperatorBase {
       auto &place = places[place_idx];
       auto *cur_scope = sub_scopes[place_idx];
 
-      workers.emplace_back(
-          framework::Async([program, cur_scope, place, block, place_idx] {
-            // Give the thread an id to distinguish parallel block with same id.
-            platform::RecordThread rt(static_cast<int>(place_idx) + 1);
-            framework::Executor executor(place);
-            executor.Run(*program, cur_scope, block->ID(),
-                         false /*create_local_scope*/);
-          }));
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
+        executor.Run(*program, cur_scope, block->ID(),
+                     false /*create_local_scope*/);
+      }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -196,8 +192,7 @@ class ParallelDoOp : public framework::OperatorBase {
 
 class ParallelDoOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ParallelDoOpProtoMaker(OpProto *proto, framework::OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kInputs, "").AsDuplicable();
     AddInput(kParameters, "").AsDuplicable();
     AddInput(kPlaces, "");
@@ -243,14 +238,11 @@ class ParallelDoGradOp : public framework::OperatorBase {
       auto *cur_scope = sub_scopes[i];
 
       // execute
-      workers.emplace_back(
-          framework::Async([program, cur_scope, place, block, i] {
-            // Give the thread an id to distinguish parallel block with same id.
-            platform::RecordThread rt(static_cast<int>(i) + 1);
-            framework::Executor executor(place);
-            executor.Run(*program, cur_scope, block->ID(),
-                         false /*create_local_scope*/);
-          }));
+      workers.emplace_back(framework::Async([program, cur_scope, place, block] {
+        framework::Executor executor(place);
+        executor.Run(*program, cur_scope, block->ID(),
+                     false /*create_local_scope*/);
+      }));
     }
     for (auto &worker : workers) {
       worker.wait();
@@ -296,7 +288,7 @@ class ParallelDoGradOp : public framework::OperatorBase {
 
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {s, tmp_name}}}, {{"Out", {s}}},
-            framework::AttributeMap{});
+            framework::AttributeMap{{"use_mkldnn", {false}}});
         VLOG(10) << sum_op->DebugStringEx(sub_scopes[0]);
         sum_op->Run(*sub_scopes[0], places[0]);
         WaitOnPlace(places[0]);

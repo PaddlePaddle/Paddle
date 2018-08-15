@@ -14,13 +14,13 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace framework {
@@ -32,8 +32,7 @@ struct AddFunctor {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input1 of test op");
     AddOutput("output", "output of test op");
     AddAttr<bool>("use_gpu", "force to use gpu kernel").SetDefault(false);

@@ -42,8 +42,7 @@ class MarginRankLossOp : public framework::OperatorWithKernel {
 template <typename T>
 class MarginRankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MarginRankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X1",
              "(2-D tensor with shape [batch_size x 1]) The score for "
              "one item X1 to be ranked, from pairwise ranking model.");

@@ -14,6 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/cpu_info.h"
 
+#ifdef PADDLE_WITH_XBYAK
+#include "xbyak/xbyak.h"
+#include "xbyak/xbyak_util.h"
+#endif
+
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
@@ -21,11 +26,22 @@ limitations under the License. */
 #include <unistd.h>
 #endif
 
+#include <algorithm>
 #include "gflags/gflags.h"
 
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
+
+DEFINE_uint64(initial_cpu_memory_in_mb,
+#ifdef PADDLE_WITH_MKLDNN
+              /* Aligned with mozga-intel, MKLDNN need at least 5000 MB
+               * to obtain the best performance*/
+              5000,
+#else
+              500,
+#endif
+              "Initial CPU memory for PaddlePaddle, in MD unit.");
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
@@ -63,8 +79,11 @@ size_t CpuMinChunkSize() {
 }
 
 size_t CpuMaxChunkSize() {
-  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory.
-  return CpuMaxAllocSize() / 32;
+  // Allow to allocate the maximum chunk size is roughly 3% of CPU memory,
+  // or the initial_cpu_memory_in_mb.
+  return std::min(
+      static_cast<size_t>(CpuMaxAllocSize() / 32),
+      static_cast<size_t>(FLAGS_initial_cpu_memory_in_mb * 1 << 20));
 }
 
 size_t CUDAPinnedMaxAllocSize() {
@@ -84,5 +103,39 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
+#ifdef PADDLE_WITH_XBYAK
+namespace jit {
+
+static Xbyak::util::Cpu cpu;
+bool MayIUse(const cpu_isa_t cpu_isa) {
+  using namespace Xbyak::util;  // NOLINT
+  switch (cpu_isa) {
+    case sse42:
+      return cpu.has(Cpu::tSSE42);
+    case avx2:
+      return cpu.has(Cpu::tAVX2);
+    case avx512_common:
+      return cpu.has(Cpu::tAVX512F);
+    case avx512_core:
+      return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
+             cpu.has(Cpu::tAVX512VL) && cpu.has(Cpu::tAVX512DQ);
+    case avx512_core_vnni:
+      return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512BW) &&
+             cpu.has(Cpu::tAVX512VL) && cpu.has(Cpu::tAVX512DQ) &&
+             cpu.has(Cpu::tAVX512_VNNI);
+    case avx512_mic:
+      return true && cpu.has(Cpu::tAVX512F) && cpu.has(Cpu::tAVX512CD) &&
+             cpu.has(Cpu::tAVX512ER) && cpu.has(Cpu::tAVX512PF);
+    case avx512_mic_4ops:
+      return true && MayIUse(avx512_mic) && cpu.has(Cpu::tAVX512_4FMAPS) &&
+             cpu.has(Cpu::tAVX512_4VNNIW);
+    case isa_any:
+      return true;
+  }
+  return false;
+}
+
+}  // namespace jit
+#endif
 }  // namespace platform
 }  // namespace paddle

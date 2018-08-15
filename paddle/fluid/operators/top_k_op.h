@@ -55,8 +55,12 @@ class TopkKernel : public framework::OpKernel<T> {
     // NOTE: eigen shape doesn't affect paddle tensor.
     eg_input.reshape(flat2dims);
 
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
     for (size_t i = 0; i < row; i++) {
       std::vector<std::pair<T, size_t>> vec;
+      vec.reserve(col);
       for (size_t j = 0; j < col; j++) {
         vec.push_back(std::pair<T, size_t>(eg_input(i, j), j));
       }

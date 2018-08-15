@@ -71,8 +71,7 @@ class GRUUnitOp : public framework::OperatorWithKernel {
 
 class GRUUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GRUUnitOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(Tensor) Matrix with shape [batch_size, frame_size * 3] for the "
              "input.");

@@ -56,8 +56,7 @@ class SquaredL2DistanceOp : public framework::OperatorWithKernel {
 
 class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquaredL2DistanceOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) Input of SquaredL2DistanceOp.");
     AddInput("Y", "(Tensor) Target of SquaredL2DistanceOp.");
     AddOutput("sub_result",

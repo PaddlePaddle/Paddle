@@ -39,7 +39,7 @@ class TestDefaultScopeFuncs(unittest.TestCase):
             self.assertTrue(i.is_int())
             self.assertEqual(10, i.get_int())
 
-        for _ in xrange(10):
+        for _ in range(10):
             scoped_function(__new_scope__)
 
 

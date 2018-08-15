@@ -14,27 +14,29 @@
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
-#include "paddle/fluid/framework/details/fetch_op_handle.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
-    size_t num_threads, bool use_event,
-    const std::vector<Scope *> &local_scopes,
+    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
-    std::unique_ptr<SSAGraph> &&graph, bool allow_op_delay)
-    : SSAGraphExecutor(std::move(graph)),
-      pool_(num_threads >= 2 ? new ::ThreadPool(num_threads) : nullptr),
+    std::unique_ptr<ir::Graph> &&graph)
+    : graph_(std::move(graph)),
+      pool_(strategy.num_threads_ >= 2 ? new ::ThreadPool(strategy.num_threads_)
+                                       : nullptr),
       local_scopes_(local_scopes),
       places_(places),
       fetch_ctxs_(places),
-      use_event_(use_event),
       running_ops_(0),
-      allow_op_delay_(allow_op_delay) {}
+      strategy_(strategy) {}
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare", nullptr));
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   BlockingQueue<VarHandleBase *> ready_vars;
@@ -45,73 +47,34 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   // Should revisit it if overlapping is available.
   std::unordered_set<OpHandleBase *> delayed_ops;
 
-  auto InsertPendingVar = [&pending_vars, &ready_vars](VarHandleBase &var) {
-    pending_vars.insert(&var);
-    if (var.generated_op_ == nullptr) {
-      ready_vars.Push(&var);
-    }
-  };
-
-  auto InsertPendingOp = [&pending_ops](OpHandleBase &op_instance) {
-    pending_ops.insert({&op_instance, op_instance.Inputs().size()});
-  };
-
   // Transform SSAGraph to pending_ops & pending_vars
-  for (auto &var_map : graph_->vars_) {
+  for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
     for (auto &name_pair : var_map) {
       for (auto &version_pair : name_pair.second) {
-        InsertPendingVar(*version_pair);
+        InsertPendingVar(&pending_vars, &ready_vars, version_pair.get());
       }
     }
   }
-  for (auto &var : graph_->dep_vars_) {
-    InsertPendingVar(*var);
+  for (auto &var : graph_->Get<details::GraphDepVars>(details::kGraphDepVars)) {
+    InsertPendingVar(&pending_vars, &ready_vars, var.get());
   }
 
-  for (auto &op : graph_->ops_) {
+  for (auto &op : graph_->Get<details::GraphOps>(details::kGraphOps)) {
     if (op->Inputs().empty()) {  // Special case, Op has no input.
       ready_ops.insert(op.get());
     } else {
-      InsertPendingOp(*op);
+      InsertPendingOp(&pending_ops, op.get());
     }
   }
 
   // Step 2. Insert FetchOps
   std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
+  std::vector<std::unique_ptr<ir::Node>> tmp_nodes;
+  std::unordered_set<std::unique_ptr<VarHandleBase>> fetch_dependencies;
   FeedFetchList fetch_data(fetch_tensors.size());
 
-  std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-
-  for (auto &fetch_var_name : fetch_tensors) {
-    for (auto &var_map : graph_->vars_) {
-      auto it = var_map.find(fetch_var_name);
-      if (it != var_map.end()) {
-        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
-      }
-    }
-  }
-
-  std::unordered_set<std::unique_ptr<VarHandleBase>> fetch_dependencies;
-  for (size_t i = 0; i < fetch_tensors.size(); ++i) {
-    auto &var_name = fetch_tensors[i];
-    auto &vars = fetched_vars.at(var_name);
-    auto *op = new FetchOpHandle(&fetch_data, i, &local_scopes_);
-    fetch_ops.emplace_back(op);
-
-    for (auto &p : places_) {
-      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
-    }
-
-    for (auto *var : vars) {
-      op->AddInput(var);
-    }
-
-    auto *fetch_dummy = new DummyVarHandle();
-    op->AddOutput(fetch_dummy);
-    fetch_dependencies.emplace(fetch_dummy);
-    InsertPendingVar(*fetch_dummy);
-    InsertPendingOp(*op);
-  }
+  InsertFetchOps(fetch_tensors, &fetch_ops, &tmp_nodes, &fetch_dependencies,
+                 &pending_ops, &pending_vars, &ready_vars, &fetch_data);
 
   auto run_all_ops = [&](std::unordered_set<OpHandleBase *> &set) {
     for (auto *op : set) {
@@ -121,6 +84,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     set.clear();
   };
 
+  // Clean run context
+  run_op_futures_.clear();
+  exception_holder_.Clear();
+  event.reset(nullptr);
+
   // Step 3. Execution
   while (!pending_vars.empty()) {
     // 1. Run All Ready ops
@@ -128,7 +96,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     //
     // NOTE: DelayedOps have a lower priority. It will be scheduled after all
     // ready_ops have been performed.
-    if (ready_ops.empty() && allow_op_delay_ && running_ops_ == 0) {
+    if (ready_ops.empty() && strategy_.allow_op_delay_ && running_ops_ == 0) {
       run_all_ops(delayed_ops);
     } else {
       run_all_ops(ready_ops);
@@ -139,10 +107,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
-      if (exception_) {
-        auto exp = *exception_;
-        exception_.reset();
-        throw exp;
+      if (exception_holder_.ExceptionCatched()) {
+        for (auto &run_op_future : run_op_futures_) {
+          run_op_future.wait();
+        }
+        exception_holder_.Throw();
       } else {
         continue;
       }
@@ -151,11 +120,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     // Find the ready_ops after the ready_var.
     for (auto ready_var : cur_ready_vars) {
       pending_vars.erase(ready_var);
-      for (auto *op : ready_var->pending_ops_) {
+      for (auto *op : ready_var->PendingOps()) {
         auto &deps = pending_ops[op];
         --deps;
         if (deps == 0) {
-          if (op->IsMultiDeviceTransfer() && allow_op_delay_) {
+          if (op->IsMultiDeviceTransfer() && strategy_.allow_op_delay_) {
             delayed_ops.insert(op);
           } else {
             ready_ops.insert(op);
@@ -174,24 +143,93 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   return fetch_data;
 }
 
+void ThreadedSSAGraphExecutor::InsertFetchOps(
+    const std::vector<std::string> &fetch_tensors,
+    std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
+    std::vector<std::unique_ptr<ir::Node>> *temp_nodes,
+    std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
+    std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+    std::unordered_set<VarHandleBase *> *pending_vars,
+    BlockingQueue<VarHandleBase *> *ready_vars, FeedFetchList *fetch_data) {
+  std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
+
+  for (auto &fetch_var_name : fetch_tensors) {
+    for (auto &var_map : graph_->Get<details::GraphVars>(details::kGraphVars)) {
+      auto it = var_map.find(fetch_var_name);
+      if (it != var_map.end()) {
+        fetched_vars[fetch_var_name].push_back(it->second.rbegin()->get());
+      }
+    }
+  }
+
+  for (size_t i = 0; i < fetch_tensors.size(); ++i) {
+    auto &var_name = fetch_tensors[i];
+    auto fetched_var_it = fetched_vars.find(var_name);
+    PADDLE_ENFORCE(fetched_var_it != fetched_vars.end(),
+                   "Cannot find fetched variable.(Perhaps the main_program "
+                   "is not set to ParallelExecutor)");
+
+    auto &vars = fetched_var_it->second;
+
+    temp_nodes->emplace_back(new ir::Node("fetch", ir::Node::Type::kOperation));
+    auto *op = new FetchOpHandle(temp_nodes->back().get(), fetch_data, i,
+                                 &local_scopes_);
+    fetch_ops->emplace_back(op);
+
+    for (auto &p : places_) {
+      op->SetDeviceContext(p, fetch_ctxs_.Get(p));
+    }
+
+    for (auto *var : vars) {
+      op->AddInput(var);
+    }
+
+    temp_nodes->emplace_back(new ir::Node("fetch", ir::Node::Type::kOperation));
+    auto *fetch_dummy = new DummyVarHandle(temp_nodes->back().get());
+    op->AddOutput(fetch_dummy);
+    fetch_dependencies->emplace(fetch_dummy);
+    this->InsertPendingVar(pending_vars, ready_vars, fetch_dummy);
+    this->InsertPendingOp(pending_ops, op);
+  }
+}
+
+void ThreadedSSAGraphExecutor::InsertPendingOp(
+    std::unordered_map<OpHandleBase *, size_t> *pending_ops,
+    OpHandleBase *op_instance) const {
+  pending_ops->insert({op_instance, op_instance->NoDupInputSize()});
+}
+
+void ThreadedSSAGraphExecutor::InsertPendingVar(
+    std::unordered_set<VarHandleBase *> *pending_vars,
+    BlockingQueue<VarHandleBase *> *ready_vars, VarHandleBase *var) const {
+  pending_vars->insert(var);
+  if (var->GeneratedOp() == nullptr) {
+    ready_vars->Push(var);
+  }
+}
+
 void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
     try {
-      VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
-      op->Run(use_event_);
+      if (VLOG_IS_ON(10)) {
+        VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();
+      }
+      op->Run(strategy_.use_cuda_);
       VLOG(10) << op << " " << op->Name() << " Done ";
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
+    } catch (platform::EOFException ex) {
+      exception_holder_.Catch(ex);
     } catch (platform::EnforceNotMet ex) {
-      exception_.reset(new platform::EnforceNotMet(ex));
+      exception_holder_.Catch(ex);
     } catch (...) {
       LOG(FATAL) << "Unknown exception catched";
     }
   };
   if (pool_) {
-    pool_->enqueue(op_run);
+    run_op_futures_.emplace_back(pool_->enqueue(op_run));
   } else {
     op_run();
   }

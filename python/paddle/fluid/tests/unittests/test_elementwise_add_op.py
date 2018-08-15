@@ -18,19 +18,23 @@ from op_test import OpTest
 
 
 class TestElementwiseAddOp(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
     def setUp(self):
         self.op_type = "elementwise_add"
         self.dtype = np.float32
         self.axis = -1
         self.init_dtype()
         self.init_input_output()
+        self.init_kernel_type()
         self.init_axis()
 
         self.inputs = {
             'X': OpTest.np_dtype_to_fluid_dtype(self.x),
             'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {'axis': self.axis}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
@@ -250,6 +254,26 @@ class TestFP16ElementwiseAddOp_rowwise_add_1(TestFP16ElementwiseAddOp):
 
     def init_axis(self):
         self.axis = 1
+
+
+class TestElementwiseAddOp_channelwise_add(TestElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(3, 20, 20).astype(self.dtype)
+        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
+
+
+class TestFP16ElementwiseAddOp_channelwise_add(TestFP16ElementwiseAddOp):
+    def init_input_output(self):
+        self.x = np.random.rand(3, 10, 20).astype(self.dtype)
+        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+        self.out = self.x + self.y
+
+    def init_axis(self):
+        self.axis = -1
 
 
 if __name__ == '__main__':

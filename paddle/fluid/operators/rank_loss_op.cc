@@ -46,8 +46,7 @@ class RankLossOp : public framework::OperatorWithKernel {
 
 class RankLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  RankLossOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Label",
              "(2-D Tensor with shape [batch_size x 1]) "
              "The label indicating A ranked higher than B or not.");

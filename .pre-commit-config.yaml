@@ -23,7 +23,7 @@ repos:
     -   id: clang-format-with-version-check
         name: clang-format
         description: Format files with ClangFormat.
-        entry: bash ./.clang_format.hook -i
+        entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: local
@@ -34,6 +34,14 @@ repos:
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+-   repo: local
+    hooks:
+    -   id: pylint-doc-string
+        name: pylint
+        description: Check python docstring style using docstring_checker.
+        entry: bash ./tools/codestyle/pylint_pre_commit.hook
+        language: system
+        files: \.(py)$
 -   repo: https://github.com/PaddlePaddle/pre-commit-golang
     sha: 8337620115c25ff8333f1b1a493bd031049bd7c0
     hooks:
@@ -44,7 +52,7 @@ repos:
     hooks:
     -   id: copyright_checker
         name: copyright_checker
-        entry: python ./.copyright.hook
+        entry: python ./tools/codestyle/copyright.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
         exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$

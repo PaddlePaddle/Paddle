@@ -47,8 +47,7 @@ class LabelSmoothOp : public framework::OperatorWithKernel {
 
 class LabelSmoothOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LabelSmoothOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor) The input labels of LabelSmooth operator. This "
              "input can be batched labels in one-hot encoding or output from "

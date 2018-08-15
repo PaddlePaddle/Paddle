@@ -1,12 +1,12 @@
 install and Compile
-==========
+======================
 
 .. _install_steps:
 
 PaddlePaddle provides various methods of installation for many different users
 
 Focus on Deep Learning Model Development
------------------
+----------------------------------------
 
 PaddlePaddle provides lots of packages of python wheel , that pip can install:
 
@@ -18,7 +18,7 @@ PaddlePaddle provides lots of packages of python wheel , that pip can install:
 This is the most convenient way of installation. Please choose the right installation package with machine configure and system.
 
 Follow the Bottom Frame
-----------
+------------------------
 
 PaddlePaddle also supports installation using Docker. Please refer to the tutorial below:
 

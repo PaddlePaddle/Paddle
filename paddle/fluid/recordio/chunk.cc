@@ -119,40 +119,56 @@ bool Chunk::Write(std::ostream& os, Compressor ct) const {
 }
 
 bool Chunk::Parse(std::istream& sin) {
-  Header hdr;
-  bool ok = hdr.Parse(sin);
-  if (!ok) {
-    return ok;
+  ChunkParser parser(sin);
+  if (!parser.Init()) {
+    return false;
   }
-  auto beg_pos = sin.tellg();
-  uint32_t crc = Crc32Stream(sin, hdr.CompressSize());
-  PADDLE_ENFORCE_EQ(hdr.Checksum(), crc);
   Clear();
-  sin.seekg(beg_pos, sin.beg);
-  std::unique_ptr<std::istream> compressed_stream;
-  switch (hdr.CompressType()) {
-    case Compressor::kNoCompress:
-      break;
-    case Compressor::kSnappy:
-      compressed_stream.reset(new snappy::iSnappyStream(sin));
-      break;
-    default:
-      PADDLE_THROW("Not implemented");
-  }
-
-  std::istream& stream = compressed_stream ? *compressed_stream : sin;
-
-  for (uint32_t i = 0; i < hdr.NumRecords(); ++i) {
-    uint32_t rec_len;
-    stream.read(reinterpret_cast<char*>(&rec_len), sizeof(uint32_t));
-    std::string buf;
-    buf.resize(rec_len);
-    stream.read(&buf[0], rec_len);
-    PADDLE_ENFORCE_EQ(rec_len, stream.gcount());
-    Add(buf);
+  while (parser.HasNext()) {
+    Add(parser.Next());
   }
   return true;
 }
 
+ChunkParser::ChunkParser(std::istream& sin) : in_(sin) {}
+bool ChunkParser::Init() {
+  pos_ = 0;
+  bool ok = header_.Parse(in_);
+  if (!ok) {
+    return ok;
+  }
+  auto beg_pos = in_.tellg();
+  uint32_t crc = Crc32Stream(in_, header_.CompressSize());
+  PADDLE_ENFORCE_EQ(header_.Checksum(), crc);
+  in_.seekg(beg_pos, in_.beg);
+
+  switch (header_.CompressType()) {
+    case Compressor::kNoCompress:
+      break;
+    case Compressor::kSnappy:
+      compressed_stream_.reset(new snappy::iSnappyStream(in_));
+      break;
+    default:
+      PADDLE_THROW("Not implemented");
+  }
+  return true;
+}
+
+bool ChunkParser::HasNext() const { return pos_ < header_.NumRecords(); }
+
+std::string ChunkParser::Next() {
+  if (!HasNext()) {
+    return "";
+  }
+  ++pos_;
+  std::istream& stream = compressed_stream_ ? *compressed_stream_ : in_;
+  uint32_t rec_len;
+  stream.read(reinterpret_cast<char*>(&rec_len), sizeof(uint32_t));
+  std::string buf;
+  buf.resize(rec_len);
+  stream.read(&buf[0], rec_len);
+  PADDLE_ENFORCE_EQ(rec_len, stream.gcount());
+  return buf;
+}
 }  // namespace recordio
 }  // namespace paddle

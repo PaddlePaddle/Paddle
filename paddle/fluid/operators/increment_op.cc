@@ -47,8 +47,7 @@ class IncrementOp : public framework::OperatorWithKernel {
 
 class IncrementOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  IncrementOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) The input tensor of increment operator");
     AddOutput("Out", "(Tensor) The output tensor of increment operator.");
     AddAttr<float>("step",

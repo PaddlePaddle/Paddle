@@ -380,8 +380,7 @@ class SelectOp : public framework::OperatorBase {
 
 class SelectOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SelectOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kX,
              "A set of variables, which are required by operators inside the "
              "cases of Select Op")

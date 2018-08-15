@@ -46,8 +46,7 @@ class LogLossOp : public framework::OperatorWithKernel {
 template <typename AttrType>
 class LogLossOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LogLossOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Predicted",
              "The input value (Predicted) of Log loss op."
              "Predicted is a 2-D tensor with shape [batch_size, 1].");

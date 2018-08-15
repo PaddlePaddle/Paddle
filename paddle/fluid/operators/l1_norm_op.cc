@@ -48,8 +48,7 @@ class L1NormGradOp : public framework::OperatorWithKernel {
 
 class L1NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  L1NormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) The input of l1_norm op.");
     AddOutput("Out", "(Scalar) The output of l1_norm op.");
     AddComment(R"DOC(
