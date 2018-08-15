@@ -167,8 +167,8 @@ void GraphPatternDetecter::RemoveOverlappedMatch(
     bool valid = true;
     for (auto& item : subgraph) {
       if (node_set.count(item.second)) {
-        break;
         valid = false;
+        break;
       }
     }
     if (valid) {
