@@ -112,6 +112,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'prelu',
     'flatten',
 ]
 
@@ -5361,6 +5362,59 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def prelu(x, mode, param_attr=None, name=None):
+    """
+    Equation:
+
+        y = \max(0, x) + alpha \min(0, x)
+
+    Args:
+        x (Variable): The input tensor.
+	  param_attr(ParamAttr|None): The parameter attribute for the learnable
+                                    weight (alpha).
+        mode (string): The mode for weight sharing
+		       all: all elements share same weight
+ 		       channel:elements in a channel share same weight
+ 		       element:each element has a weight
+	  name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            mode = 'channel'
+            output = fluid.layers.prelu(x,mode)
+    """
+    helper = LayerHelper('prelu', **locals())
+    if mode not in ['all', 'channel', 'element']:
+        raise ValueError('mode should be one of all, channel, element.')
+    alpha_shape = [1]
+    if mode == 'channel':
+        alpha_shape = [1, x.shape[1], 1, 1]
+    elif mode == 'element':
+        alpha_shape = x.shape
+    dtype = helper.input_dtype(input_param_name='x')
+    alpha = helper.create_parameter(
+        attr=param_attr,
+        shape=alpha_shape,
+        dtype='float32',
+        is_bias=False,
+        default_initializer=Constant(1.0))
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x,
+                'Alpha': alpha},
+        attrs={"mode": mode},
+        outputs={"Out": out})
     return out
 
 
