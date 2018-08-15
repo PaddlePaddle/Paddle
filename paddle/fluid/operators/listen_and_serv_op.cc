@@ -123,7 +123,6 @@ void ListenAndServOp::RunSyncLoop(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
-  int32_t profile_step = 0;
   // Trainers will get all parameters from pserver in the
   // startup program, so we will wait RequestGet first
   rpc_service_->SetCond(distributed::kRequestGet);

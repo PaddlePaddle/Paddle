@@ -27,7 +27,6 @@ from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 
 from paddle.fluid import core
-from paddle.fluid.transpiler.details import program_to_code
 
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
@@ -121,8 +120,6 @@ class TestSendOp(unittest.TestCase):
 
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
-
-        program_to_code(main)
 
         exe = fluid.Executor(place)
         self.dist_out = exe.run(main, fetch_list=o)  # o is a list

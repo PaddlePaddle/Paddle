@@ -211,7 +211,7 @@ bool VariableResponse::ProcSerializedField(
 
   PADDLE_ENFORCE("not supported var types:", meta_.varname(), meta_.type());
 
-  return true;
+  return false;
 }
 
 };  // namespace distributed

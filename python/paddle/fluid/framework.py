@@ -782,7 +782,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            attrs(list[block]): the blocks attribute.
+            int: the block index.
         """
         return self.desc.block_attr_id(name)
 

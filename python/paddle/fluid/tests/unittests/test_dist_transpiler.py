@@ -17,7 +17,6 @@ import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import traceback
 import collections
-from paddle.fluid.transpiler.details import program_to_code
 
 
 class TranspilerTest(unittest.TestCase):
@@ -114,10 +113,7 @@ class TestBasicModel(TranspilerTest):
         dst = ['fill_constant', 'fill_constant', 'uniform_random', 'recv', 'recv', \
                'fetch_barrier', 'concat']
 
-        if src != dst:
-            program_to_code(trainer_startup)
-            print("dst:", dst)
-            self.assertEqual(src, dst)
+        self.assertEqual(src, dst)
 
         self.assertEqual([op.type for op in trainer.global_block().ops], [
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',

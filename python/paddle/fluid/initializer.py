@@ -15,8 +15,6 @@
 from . import framework
 import numpy as np
 import contextlib
-from framework import convert_np_dtype_to_dtype_
-from core import VarDesc, op_proto_and_checker_maker
 from .core import VarDesc
 
 __all__ = [
