@@ -36,7 +36,7 @@ Prediction Score is 4.25
 
 YouTube是世界上最大的视频上传、分享和发现网站，YouTube推荐系统为超过10亿用户从不断增长的视频库中推荐个性化的内容。整个系统由两个神经网络组成：候选生成网络和排序网络。候选生成网络从百万量级的视频库中生成上百个候选，排序网络对候选进行打分排序，输出排名最高的数十个结果。系统结构如图1所示：
 
-![YouTube_Overview](./image/YouTube_Overview.png)
+<p align="center"><img src="./image/YouTube_Overview.png" width="70%"></p>
 <p align="center">
 图1. YouTube 推荐系统结构
 </p>
@@ -47,7 +47,7 @@ YouTube是世界上最大的视频上传、分享和发现网站，YouTube推荐
 
 首先，将观看历史及搜索词记录这类历史信息，映射为向量后取平均值得到定长表示；同时，输入人口学特征以优化新用户的推荐效果，并将二值特征和连续特征归一化处理到[0, 1]范围。接下来，将所有特征表示拼接为一个向量，并输入给非线形多层感知器（MLP，详见[识别数字](https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/README.cn.md)教程）处理。最后，训练时将MLP的输出给softmax做分类，预测时计算用户的综合特征（MLP的输出）与所有视频的相似度，取得分最高的$k$个作为候选生成网络的筛选结果。图2显示了候选生成网络结构。
 
-![Deep_candidate_generation_model_architecture](./image/Deep_candidate_generation_model_architecture.png)
+<p align="center"><img src="./image/Deep_candidate_generation_model_architecture.png" width="70%"></p>
 <p align="center">
 图2. 候选生成网络结构
 </p>
@@ -72,7 +72,7 @@ $$P(\omega=i|u)=\frac{e^{v_{i}u}}{\sum_{j \in V}e^{v_{j}u}}$$
 
 卷积神经网络主要由卷积（convolution）和池化（pooling）操作构成，其应用及组合方式灵活多变，种类繁多。本小结我们以如图3所示的网络进行讲解：
 
-![text_cnn](./image/text_cnn.png)
+<p align="center"><img src="./image/text_cnn.png" width="90%"></p>
 <p align="center">
 图3. 卷积神经网络文本分类模型
 </p>
@@ -141,7 +141,7 @@ movie_info = paddle.dataset.movielens.movie_info()
 print movie_info.values()[0]
 ```
 
-<MovieInfo id(1), title(Toy Story ), categories(['Animation', "Children's", 'Comedy'])>
+    <MovieInfo id(1), title(Toy Story ), categories(['Animation', "Children's", 'Comedy'])>
 
 
 这表示，电影的id是1，标题是《Toy Story》，该电影被分为到三个类别中。这三个类别是动画，儿童，喜剧。
@@ -152,7 +152,7 @@ user_info = paddle.dataset.movielens.user_info()
 print user_info.values()[0]
 ```
 
-<UserInfo id(1), gender(F), age(1), job(10)>
+    <UserInfo id(1), gender(F), age(1), job(10)>
 
 
 这表示，该用户ID是1，女性，年龄比18岁还年轻。职业ID是10。
@@ -203,7 +203,7 @@ mov_id = train_sample[len(user_info[uid].value())]
 print "User %s rates Movie %s with Score %s"%(user_info[uid], movie_info[mov_id], train_sample[-1])
 ```
 
-User <UserInfo id(1), gender(F), age(1), job(10)> rates Movie <MovieInfo id(1193), title(One Flew Over the Cuckoo's Nest ), categories(['Drama'])> with Score [5.0]
+    User <UserInfo id(1), gender(F), age(1), job(10)> rates Movie <MovieInfo id(1193), title(One Flew Over the Cuckoo's Nest ), categories(['Drama'])> with Score [5.0]
 
 
 即用户1对电影1193的评价为5分。
@@ -214,6 +214,7 @@ User <UserInfo id(1), gender(F), age(1), job(10)> rates Movie <MovieInfo id(1193
 
 
 ```python
+from __future__ import print_function
 import math
 import sys
 import numpy as np
@@ -232,59 +233,59 @@ BATCH_SIZE = 256
 ```python
 def get_usr_combined_features():
 
-USR_DICT_SIZE = paddle.dataset.movielens.max_user_id() + 1
+    USR_DICT_SIZE = paddle.dataset.movielens.max_user_id() + 1
 
-uid = layers.data(name='user_id', shape=[1], dtype='int64')
+    uid = layers.data(name='user_id', shape=[1], dtype='int64')
 
-usr_emb = layers.embedding(
-input=uid,
-dtype='float32',
-size=[USR_DICT_SIZE, 32],
-param_attr='user_table',
-is_sparse=IS_SPARSE)
+    usr_emb = layers.embedding(
+        input=uid,
+        dtype='float32',
+        size=[USR_DICT_SIZE, 32],
+        param_attr='user_table',
+        is_sparse=IS_SPARSE)
 
-usr_fc = layers.fc(input=usr_emb, size=32)
+    usr_fc = layers.fc(input=usr_emb, size=32)
 
-USR_GENDER_DICT_SIZE = 2
+    USR_GENDER_DICT_SIZE = 2
 
-usr_gender_id = layers.data(name='gender_id', shape=[1], dtype='int64')
+    usr_gender_id = layers.data(name='gender_id', shape=[1], dtype='int64')
 
-usr_gender_emb = layers.embedding(
-input=usr_gender_id,
-size=[USR_GENDER_DICT_SIZE, 16],
-param_attr='gender_table',
-is_sparse=IS_SPARSE)
+    usr_gender_emb = layers.embedding(
+        input=usr_gender_id,
+        size=[USR_GENDER_DICT_SIZE, 16],
+        param_attr='gender_table',
+        is_sparse=IS_SPARSE)
 
-usr_gender_fc = layers.fc(input=usr_gender_emb, size=16)
+    usr_gender_fc = layers.fc(input=usr_gender_emb, size=16)
 
-USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
-usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
+    USR_AGE_DICT_SIZE = len(paddle.dataset.movielens.age_table)
+    usr_age_id = layers.data(name='age_id', shape=[1], dtype="int64")
 
-usr_age_emb = layers.embedding(
-input=usr_age_id,
-size=[USR_AGE_DICT_SIZE, 16],
-is_sparse=IS_SPARSE,
-param_attr='age_table')
+    usr_age_emb = layers.embedding(
+        input=usr_age_id,
+        size=[USR_AGE_DICT_SIZE, 16],
+        is_sparse=IS_SPARSE,
+        param_attr='age_table')
 
-usr_age_fc = layers.fc(input=usr_age_emb, size=16)
+    usr_age_fc = layers.fc(input=usr_age_emb, size=16)
 
-USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
-usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
+    USR_JOB_DICT_SIZE = paddle.dataset.movielens.max_job_id() + 1
+    usr_job_id = layers.data(name='job_id', shape=[1], dtype="int64")
 
-usr_job_emb = layers.embedding(
-input=usr_job_id,
-size=[USR_JOB_DICT_SIZE, 16],
-param_attr='job_table',
-is_sparse=IS_SPARSE)
+    usr_job_emb = layers.embedding(
+        input=usr_job_id,
+        size=[USR_JOB_DICT_SIZE, 16],
+        param_attr='job_table',
+        is_sparse=IS_SPARSE)
 
-usr_job_fc = layers.fc(input=usr_job_emb, size=16)
+    usr_job_fc = layers.fc(input=usr_job_emb, size=16)
 
-concat_embed = layers.concat(
-input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1)
+    concat_embed = layers.concat(
+        input=[usr_fc, usr_gender_fc, usr_age_fc, usr_job_fc], axis=1)
 
-usr_combined_features = layers.fc(input=concat_embed, size=200, act="tanh")
+    usr_combined_features = layers.fc(input=concat_embed, size=200, act="tanh")
 
-return usr_combined_features
+    return usr_combined_features
 ```
 
 如上述代码所示，对于每个用户，我们输入4维特征。其中包括user_id,gender_id,age_id,job_id。这几维特征均是简单的整数值。为了后续神经网络处理这些特征方便，我们借鉴NLP中的语言模型，将这几维离散的整数值，变换成embedding取出。分别形成usr_emb, usr_gender_emb, usr_age_emb, usr_job_emb。
@@ -297,51 +298,51 @@ return usr_combined_features
 ```python
 def get_mov_combined_features():
 
-MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
+    MOV_DICT_SIZE = paddle.dataset.movielens.max_movie_id() + 1
 
-mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
+    mov_id = layers.data(name='movie_id', shape=[1], dtype='int64')
 
-mov_emb = layers.embedding(
-input=mov_id,
-dtype='float32',
-size=[MOV_DICT_SIZE, 32],
-param_attr='movie_table',
-is_sparse=IS_SPARSE)
+    mov_emb = layers.embedding(
+        input=mov_id,
+        dtype='float32',
+        size=[MOV_DICT_SIZE, 32],
+        param_attr='movie_table',
+        is_sparse=IS_SPARSE)
 
-mov_fc = layers.fc(input=mov_emb, size=32)
+    mov_fc = layers.fc(input=mov_emb, size=32)
 
-CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
+    CATEGORY_DICT_SIZE = len(paddle.dataset.movielens.movie_categories())
 
-category_id = layers.data(
-name='category_id', shape=[1], dtype='int64', lod_level=1)
+    category_id = layers.data(
+        name='category_id', shape=[1], dtype='int64', lod_level=1)
 
-mov_categories_emb = layers.embedding(
-input=category_id, size=[CATEGORY_DICT_SIZE, 32], is_sparse=IS_SPARSE)
+    mov_categories_emb = layers.embedding(
+        input=category_id, size=[CATEGORY_DICT_SIZE, 32], is_sparse=IS_SPARSE)
 
-mov_categories_hidden = layers.sequence_pool(
-input=mov_categories_emb, pool_type="sum")
+    mov_categories_hidden = layers.sequence_pool(
+        input=mov_categories_emb, pool_type="sum")
 
-MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
+    MOV_TITLE_DICT_SIZE = len(paddle.dataset.movielens.get_movie_title_dict())
 
-mov_title_id = layers.data(
-name='movie_title', shape=[1], dtype='int64', lod_level=1)
+    mov_title_id = layers.data(
+        name='movie_title', shape=[1], dtype='int64', lod_level=1)
 
-mov_title_emb = layers.embedding(
-input=mov_title_id, size=[MOV_TITLE_DICT_SIZE, 32], is_sparse=IS_SPARSE)
+    mov_title_emb = layers.embedding(
+        input=mov_title_id, size=[MOV_TITLE_DICT_SIZE, 32], is_sparse=IS_SPARSE)
 
-mov_title_conv = nets.sequence_conv_pool(
-input=mov_title_emb,
-num_filters=32,
-filter_size=3,
-act="tanh",
-pool_type="sum")
+    mov_title_conv = nets.sequence_conv_pool(
+        input=mov_title_emb,
+        num_filters=32,
+        filter_size=3,
+        act="tanh",
+        pool_type="sum")
 
-concat_embed = layers.concat(
-input=[mov_fc, mov_categories_hidden, mov_title_conv], axis=1)
+    concat_embed = layers.concat(
+        input=[mov_fc, mov_categories_hidden, mov_title_conv], axis=1)
 
-mov_combined_features = layers.fc(input=concat_embed, size=200, act="tanh")
+    mov_combined_features = layers.fc(input=concat_embed, size=200, act="tanh")
 
-return mov_combined_features
+    return mov_combined_features
 ```
 
 电影标题名称(title)是一个序列的整数，整数代表的是这个词在索引序列中的下标。这个序列会被送入 `sequence_conv_pool` 层，这个层会在时间维度上使用卷积和池化。因为如此，所以输出会是固定长度，尽管输入的序列长度各不相同。
@@ -350,13 +351,13 @@ return mov_combined_features
 
 ```python
 def inference_program():
-usr_combined_features = get_usr_combined_features()
-mov_combined_features = get_mov_combined_features()
+    usr_combined_features = get_usr_combined_features()
+    mov_combined_features = get_mov_combined_features()
 
-inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
-scale_infer = layers.scale(x=inference, scale=5.0)
+    inference = layers.cos_sim(X=usr_combined_features, Y=mov_combined_features)
+    scale_infer = layers.scale(x=inference, scale=5.0)
 
-return scale_infer
+    return scale_infer
 ```
 
 进而，我们定义一个`train_program`来使用`inference_program`计算出的结果，在标记数据的帮助下来计算误差。我们还定义了一个`optimizer_func`来定义优化器。
@@ -364,17 +365,17 @@ return scale_infer
 ```python
 def train_program():
 
-scale_infer = inference_program()
+    scale_infer = inference_program()
 
-label = layers.data(name='score', shape=[1], dtype='float32')
-square_cost = layers.square_error_cost(input=scale_infer, label=label)
-avg_cost = layers.mean(square_cost)
+    label = layers.data(name='score', shape=[1], dtype='float32')
+    square_cost = layers.square_error_cost(input=scale_infer, label=label)
+    avg_cost = layers.mean(square_cost)
 
-return [avg_cost, scale_infer]
+    return [avg_cost, scale_infer]
 
 
 def optimizer_func():
-return fluid.optimizer.SGD(learning_rate=0.2)
+    return fluid.optimizer.SGD(learning_rate=0.2)
 ```
 
 
@@ -393,12 +394,12 @@ place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
 ```python
 train_reader = paddle.batch(
-paddle.reader.shuffle(
-paddle.dataset.movielens.train(), buf_size=8192),
-batch_size=BATCH_SIZE)
+    paddle.reader.shuffle(
+        paddle.dataset.movielens.train(), buf_size=8192),
+    batch_size=BATCH_SIZE)
 
 test_reader = paddle.batch(
-paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
+    paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
 ```
 
 ### 构造训练器(trainer)
@@ -406,7 +407,7 @@ paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
 
 ```python
 trainer = fluid.Trainer(
-train_func=train_program, place=place, optimizer_func=optimizer_func)
+    train_func=train_program, place=place, optimizer_func=optimizer_func)
 ```
 
 ### 提供数据
@@ -415,8 +416,8 @@ train_func=train_program, place=place, optimizer_func=optimizer_func)
 
 ```python
 feed_order = [
-'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id', 'category_id',
-'movie_title', 'score'
+    'user_id', 'gender_id', 'age_id', 'job_id', 'movie_id', 'category_id',
+    'movie_title', 'score'
 ]
 ```
 
@@ -433,23 +434,23 @@ plot_cost = Ploter(test_title)
 
 
 def event_handler(event):
-if isinstance(event, fluid.EndStepEvent):
-avg_cost_set = trainer.test(
-reader=test_reader, feed_order=feed_order)
+    if isinstance(event, fluid.EndStepEvent):
+        avg_cost_set = trainer.test(
+            reader=test_reader, feed_order=feed_order)
 
-# get avg cost
-avg_cost = np.array(avg_cost_set).mean()
+        # get avg cost
+        avg_cost = np.array(avg_cost_set).mean()
 
-plot_cost.append(test_title, event.step, avg_cost_set[0])
-plot_cost.plot()
+        plot_cost.append(test_title, event.step, avg_cost_set[0])
+        plot_cost.plot()
 
-print("avg_cost: %s" % avg_cost)
-print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
-float(avg_cost)))
+        print("avg_cost: %s" % avg_cost)
+        print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                                                          float(avg_cost)))
 
-if event.step == 20: # Adjust this number for accuracy
-trainer.save_params(params_dirname)
-trainer.stop()
+        if event.step == 20: # Adjust this number for accuracy
+            trainer.save_params(params_dirname)
+            trainer.stop()
 ```
 
 ### 开始训练
@@ -457,10 +458,10 @@ trainer.stop()
 
 ```python
 trainer.train(
-num_epochs=1,
-event_handler=event_handler,
-reader=train_reader,
-feed_order=feed_order)
+    num_epochs=1,
+    event_handler=event_handler,
+    reader=train_reader,
+    feed_order=feed_order)
 ```
 
 ## 应用模型
@@ -470,7 +471,7 @@ feed_order=feed_order)
 
 ```python
 inferencer = fluid.Inferencer(
-inference_program, param_path=params_dirname, place=place)
+        inference_program, param_path=params_dirname, place=place)
 ```
 
 ### 生成测试用输入数据
@@ -488,7 +489,7 @@ job_id = fluid.create_lod_tensor([[10]], [[1]], place)
 movie_id = fluid.create_lod_tensor([[783]], [[1]], place) # Hunchback of Notre Dame
 category_id = fluid.create_lod_tensor([[10, 8, 9]], [[3]], place) # Animation, Children's, Musical
 movie_title = fluid.create_lod_tensor([[1069, 4140, 2923, 710, 988]], [[5]],
-place) # 'hunchback','of','notre','dame','the'
+                                      place) # 'hunchback','of','notre','dame','the'
 ```
 
 ### 测试
@@ -497,16 +498,21 @@ place) # 'hunchback','of','notre','dame','the'
 
 ```python
 results = inferencer.infer(
-{
-'user_id': user_id,
-'gender_id': gender_id,
-'age_id': age_id,
-'job_id': job_id,
-'movie_id': movie_id,
-'category_id': category_id,
-'movie_title': movie_title
-},
-return_numpy=False)
+    {
+        'user_id': user_id,
+        'gender_id': gender_id,
+        'age_id': age_id,
+        'job_id': job_id,
+        'movie_id': movie_id,
+        'category_id': category_id,
+        'movie_title': movie_title
+    },
+    return_numpy=False)
+
+predict_rating = np.array(results[0])
+print("Predict Rating of user id 1 on movie \"" + infer_movie_name + "\" is " + str(predict_rating[0][0]))
+print("Actual Rating of user id 1 on movie \"" + infer_movie_name + "\" is 4.")
+
 ```
 
 ## 总结

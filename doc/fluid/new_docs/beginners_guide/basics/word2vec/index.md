@@ -31,7 +31,7 @@ $$X = USV^T$$
 
 本章中，当词向量训练好后，我们可以用数据可视化算法t-SNE\[[4](#参考文献)\]画出词语特征在二维上的投影（如下图所示）。从图中可以看出，语义相关的词语（如a, the, these; big, huge）在投影上距离很近，语意无关的词（如say, business; decision, japan）在投影上的距离很远。
 
-![2d_similarity](./image/2d_similarity.png)
+<p align="center"><img src="./image/2d_similarity.png" width="50%"></p>
 <p align="center">
 图1. 词向量的二维投影
 </p>
@@ -85,7 +85,7 @@ $$\frac{1}{T}\sum_t f(w_t, w_{t-1}, ..., w_{t-n+1};\theta) + R(\theta)$$
 
 其中$f(w_t, w_{t-1}, ..., w_{t-n+1})$表示根据历史n-1个词得到当前词$w_t$的条件概率，$R(\theta)$表示参数正则项。
 
-![nnlm](./image/nnlm.png)
+<p align="center"><img src="./image/nnlm.png" width="50%"></p>
 <p align="center">
 图2. N-gram神经网络模型
 </p>
@@ -117,7 +117,7 @@ $$J(\theta) = -\sum_{i=1}^N\sum_{c=1}^{|V|}y_k^{i}log(softmax(g_k^i))$$
 
 CBOW模型通过一个词的上下文（各N个词）预测当前词。当N=2时，模型如下图所示：
 
-![cbow](./image/cbow.png)
+<p align="center"><img src="./image/cbow.png" width="40%"></p>
 <p align="center">
 图3. CBOW模型
 </p>
@@ -132,7 +132,7 @@ $$context = \frac{x_{t-1} + x_{t-2} + x_{t+1} + x_{t+2}}{4}$$
 
 CBOW的好处是对上下文词语的分布在词向量上进行了平滑，去掉了噪声，因此在小数据集上很有效。而Skip-gram的方法中，用一个词预测其上下文，得到了当前词上下文的很多样本，因此可用于更大的数据集。
 
-![skipgram](./image/skipgram.png)
+<p align="center"><img src="./image/skipgram.png" width="40%"></p>
 <p align="center">
 图4. Skip-gram模型
 </p>
@@ -189,7 +189,7 @@ dream that one day <e>
 
 本配置的模型结构如下图所示：
 
-![ngram](./image/ngram.png)
+<p align="center"><img src="./image/ngram.png" width="40%"></p>
 <p align="center">
 图5. 模型配置中的N-gram神经网络模型
 </p>
@@ -226,57 +226,57 @@ dict_size = len(word_dict)
 
 ```python
 def inference_program(is_sparse):
-first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
-second_word = fluid.layers.data(name='secondw', shape=[1], dtype='int64')
-third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
-fourth_word = fluid.layers.data(name='fourthw', shape=[1], dtype='int64')
+    first_word = fluid.layers.data(name='firstw', shape=[1], dtype='int64')
+    second_word = fluid.layers.data(name='secondw', shape=[1], dtype='int64')
+    third_word = fluid.layers.data(name='thirdw', shape=[1], dtype='int64')
+    fourth_word = fluid.layers.data(name='fourthw', shape=[1], dtype='int64')
 
-embed_first = fluid.layers.embedding(
-input=first_word,
-size=[dict_size, EMBED_SIZE],
-dtype='float32',
-is_sparse=is_sparse,
-param_attr='shared_w')
-embed_second = fluid.layers.embedding(
-input=second_word,
-size=[dict_size, EMBED_SIZE],
-dtype='float32',
-is_sparse=is_sparse,
-param_attr='shared_w')
-embed_third = fluid.layers.embedding(
-input=third_word,
-size=[dict_size, EMBED_SIZE],
-dtype='float32',
-is_sparse=is_sparse,
-param_attr='shared_w')
-embed_fourth = fluid.layers.embedding(
-input=fourth_word,
-size=[dict_size, EMBED_SIZE],
-dtype='float32',
-is_sparse=is_sparse,
-param_attr='shared_w')
+    embed_first = fluid.layers.embedding(
+        input=first_word,
+        size=[dict_size, EMBED_SIZE],
+        dtype='float32',
+        is_sparse=is_sparse,
+        param_attr='shared_w')
+    embed_second = fluid.layers.embedding(
+        input=second_word,
+        size=[dict_size, EMBED_SIZE],
+        dtype='float32',
+        is_sparse=is_sparse,
+        param_attr='shared_w')
+    embed_third = fluid.layers.embedding(
+        input=third_word,
+        size=[dict_size, EMBED_SIZE],
+        dtype='float32',
+        is_sparse=is_sparse,
+        param_attr='shared_w')
+    embed_fourth = fluid.layers.embedding(
+        input=fourth_word,
+        size=[dict_size, EMBED_SIZE],
+        dtype='float32',
+        is_sparse=is_sparse,
+        param_attr='shared_w')
 
-concat_embed = fluid.layers.concat(
-input=[embed_first, embed_second, embed_third, embed_fourth], axis=1)
-hidden1 = fluid.layers.fc(input=concat_embed,
-size=HIDDEN_SIZE,
-act='sigmoid')
-predict_word = fluid.layers.fc(input=hidden1, size=dict_size, act='softmax')
-return predict_word
+    concat_embed = fluid.layers.concat(
+        input=[embed_first, embed_second, embed_third, embed_fourth], axis=1)
+    hidden1 = fluid.layers.fc(input=concat_embed,
+                              size=HIDDEN_SIZE,
+                              act='sigmoid')
+    predict_word = fluid.layers.fc(input=hidden1, size=dict_size, act='softmax')
+    return predict_word
 ```
 
 - 基于以上的神经网络结构，我们可以如下定义我们的`训练`方法
 
 ```python
 def train_program(is_sparse):
-# The declaration of 'next_word' must be after the invoking of inference_program,
-# or the data input order of train program would be [next_word, firstw, secondw,
-# thirdw, fourthw], which is not correct.
-predict_word = inference_program(is_sparse)
-next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
-cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
-avg_cost = fluid.layers.mean(cost)
-return avg_cost
+    # The declaration of 'next_word' must be after the invoking of inference_program,
+    # or the data input order of train program would be [next_word, firstw, secondw,
+    # thirdw, fourthw], which is not correct.
+    predict_word = inference_program(is_sparse)
+    next_word = fluid.layers.data(name='nextw', shape=[1], dtype='int64')
+    cost = fluid.layers.cross_entropy(input=predict_word, label=next_word)
+    avg_cost = fluid.layers.mean(cost)
+    return avg_cost
 ```
 
 - 现在我们可以开始训练啦。如今的版本较之以前就简单了许多。我们有现成的训练和测试集：`paddle.dataset.imikolov.train()`和`paddle.dataset.imikolov.test()`。两者都会返回一个读取器。在PaddlePaddle中，读取器是一个Python的函数，每次调用，会读取下一条数据。它是一个Python的generator。
@@ -285,59 +285,59 @@ return avg_cost
 
 ```python
 def optimizer_func():
-# Note here we need to choose more sophisticated optimizers
-# such as AdaGrad with a decay rate. The normal SGD converges
-# very slowly.
-# optimizer=fluid.optimizer.SGD(learning_rate=0.001),
-return fluid.optimizer.AdagradOptimizer(
-learning_rate=3e-3,
-regularization=fluid.regularizer.L2DecayRegularizer(8e-4))
+    # Note here we need to choose more sophisticated optimizers
+    # such as AdaGrad with a decay rate. The normal SGD converges
+    # very slowly.
+    # optimizer=fluid.optimizer.SGD(learning_rate=0.001),
+    return fluid.optimizer.AdagradOptimizer(
+        learning_rate=3e-3,
+        regularization=fluid.regularizer.L2DecayRegularizer(8e-4))
 
 
 def train(use_cuda, train_program, params_dirname):
-train_reader = paddle.batch(
-paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
-test_reader = paddle.batch(
-paddle.dataset.imikolov.test(word_dict, N), BATCH_SIZE)
+    train_reader = paddle.batch(
+        paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE)
+    test_reader = paddle.batch(
+        paddle.dataset.imikolov.test(word_dict, N), BATCH_SIZE)
 
-place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-def event_handler(event):
-if isinstance(event, fluid.EndStepEvent):
-# We output cost every 10 steps.
-if event.step % 10 == 0:
-outs = trainer.test(
-reader=test_reader,
-feed_order=['firstw', 'secondw', 'thirdw', 'fourthw', 'nextw'])
-avg_cost = outs[0]
+    def event_handler(event):
+        if isinstance(event, fluid.EndStepEvent):
+            # We output cost every 10 steps.
+            if event.step % 10 == 0:
+                outs = trainer.test(
+                    reader=test_reader,
+                    feed_order=['firstw', 'secondw', 'thirdw', 'fourthw', 'nextw'])
+                avg_cost = outs[0]
 
-print "Step %d: Average Cost %f" % (event.step, avg_cost)
+                print("Step %d: Average Cost %f" % (event.step, avg_cost))
 
-# If average cost is lower than 5.8, we consider the model good enough to stop.
-# Note 5.8 is a relatively high value. In order to get a better model, one should
-# aim for avg_cost lower than 3.5. But the training could take longer time.
-if avg_cost < 5.8:
-trainer.save_params(params_dirname)
-trainer.stop()
+                # If average cost is lower than 5.8, we consider the model good enough to stop.
+                # Note 5.8 is a relatively high value. In order to get a better model, one should
+                # aim for avg_cost lower than 3.5. But the training could take longer time.
+                if avg_cost < 5.8:
+                    trainer.save_params(params_dirname)
+                    trainer.stop()
 
-if math.isnan(avg_cost):
-sys.exit("got NaN loss, training failed.")
+                if math.isnan(avg_cost):
+                    sys.exit("got NaN loss, training failed.")
 
-trainer = fluid.Trainer(
-train_func=train_program,
-optimizer_func=optimizer_func,
-place=place)
+    trainer = fluid.Trainer(
+        train_func=train_program,
+        optimizer_func=optimizer_func,
+        place=place)
 
-trainer.train(
-reader=train_reader,
-num_epochs=1,
-event_handler=event_handler,
-feed_order=['firstw', 'secondw', 'thirdw', 'fourthw', 'nextw'])
+    trainer.train(
+        reader=train_reader,
+        num_epochs=1,
+        event_handler=event_handler,
+        feed_order=['firstw', 'secondw', 'thirdw', 'fourthw', 'nextw'])
 ```
 
 - `trainer.train`将会开始训练。从`event_handler`返回的监控情况如下：
 
-```python
+```text
 Step 0: Average Cost 7.337213
 Step 10: Average Cost 6.136128
 Step 20: Average Cost 5.766995
@@ -352,50 +352,49 @@ Step 20: Average Cost 5.766995
 
 ```python
 def infer(use_cuda, inference_program, params_dirname=None):
-place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-inferencer = fluid.Inferencer(
-infer_func=inference_program, param_path=params_dirname, place=place)
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    inferencer = fluid.Inferencer(
+        infer_func=inference_program, param_path=params_dirname, place=place)
 
-# Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
-# is simply an index to look up for the corresponding word vector and hence
-# the shape of word (base_shape) should be [1]. The length-based level of
-# detail (lod) info of each LoDtensor should be [[1]] meaning there is only
-# one lod_level and there is only one sequence of one word on this level.
-# Note that lod info should be a list of lists.
+    # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
+    # is simply an index to look up for the corresponding word vector and hence
+    # the shape of word (base_shape) should be [1]. The length-based level of
+    # detail (lod) info of each LoDtensor should be [[1]] meaning there is only
+    # one lod_level and there is only one sequence of one word on this level.
+    # Note that lod info should be a list of lists.
 
-data1 = [[211]]  # 'among'
-data2 = [[6]]    # 'a'
-data3 = [[96]]   # 'group'
-data4 = [[4]]    # 'of'
-lod = [[1]]
+    data1 = [[211]]  # 'among'
+    data2 = [[6]]    # 'a'
+    data3 = [[96]]   # 'group'
+    data4 = [[4]]    # 'of'
+    lod = [[1]]
 
-first_word  = fluid.create_lod_tensor(data1, lod, place)
-second_word = fluid.create_lod_tensor(data2, lod, place)
-third_word  = fluid.create_lod_tensor(data3, lod, place)
-fourth_word = fluid.create_lod_tensor(data4, lod, place)
+    first_word  = fluid.create_lod_tensor(data1, lod, place)
+    second_word = fluid.create_lod_tensor(data2, lod, place)
+    third_word  = fluid.create_lod_tensor(data3, lod, place)
+    fourth_word = fluid.create_lod_tensor(data4, lod, place)
 
-result = inferencer.infer(
-{
-'firstw': first_word,
-'secondw': second_word,
-'thirdw': third_word,
-'fourthw': fourth_word
-},
-return_numpy=False)
+    result = inferencer.infer(
+        {
+            'firstw': first_word,
+            'secondw': second_word,
+            'thirdw': third_word,
+            'fourthw': fourth_word
+        },
+        return_numpy=False)
 
-print(numpy.array(result[0]))
-most_possible_word_index = numpy.argmax(result[0])
-print(most_possible_word_index)
-print([
-key for key, value in word_dict.iteritems()
-if value == most_possible_word_index
-][0])
+    print(numpy.array(result[0]))
+    most_possible_word_index = numpy.argmax(result[0])
+    print(most_possible_word_index)
+    print([
+        key for key, value in word_dict.iteritems()
+        if value == most_possible_word_index
+    ][0])
 ```
 
 在经历3分钟的短暂训练后，我们得到如下的预测。我们的模型预测 `among a group of` 的下一个词是`a`。这比较符合文法规律。如果我们训练时间更长，比如几个小时，那么我们会得到的下一个预测是 `workers`。
 
-
-```python
+```text
 [[0.00106646 0.0007907  0.00072041 ... 0.00049024 0.00041355 0.00084464]]
 6
 a
@@ -405,20 +404,20 @@ a
 
 ```python
 def main(use_cuda, is_sparse):
-if use_cuda and not fluid.core.is_compiled_with_cuda():
-return
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
 
-params_dirname = "word2vec.inference.model"
+    params_dirname = "word2vec.inference.model"
 
-train(
-use_cuda=use_cuda,
-train_program=partial(train_program, is_sparse),
-params_dirname=params_dirname)
+    train(
+        use_cuda=use_cuda,
+        train_program=partial(train_program, is_sparse),
+        params_dirname=params_dirname)
 
-infer(
-use_cuda=use_cuda,
-inference_program=partial(inference_program, is_sparse),
-params_dirname=params_dirname)
+    infer(
+        use_cuda=use_cuda,
+        inference_program=partial(inference_program, is_sparse),
+        params_dirname=params_dirname)
 
 
 main(use_cuda=use_cuda, is_sparse=True)
