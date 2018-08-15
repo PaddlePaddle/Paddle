@@ -73,6 +73,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
 endif()
+set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -159,6 +160,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
@@ -202,12 +204,11 @@ include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
 
+set(WITH_ANAKIN OFF CACHE STRING "Disable Anakin first, will add it later." FORCE)
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
     include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
 endif()
 
 include(cudnn)              # set cudnn libraries, must before configure
