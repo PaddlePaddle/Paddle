@@ -782,7 +782,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            (int): the block index.
+            attrs(list[block]): the blocks attribute.
         """
         return self.desc.block_attr_id(name)
 
@@ -794,7 +794,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            (block): the block attribute.
+            block: the block attribute.
         """
 
         id = self.block_attr_id(name)
@@ -809,7 +809,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            attrs(list[block]): the blocks attribute.
+            list: list of the blocks attribute.
         """
         attrs = []
         for i in self.blocks_attr_ids(name):
@@ -826,7 +826,7 @@ class Operator(object):
             name(str): the attribute name.
 
         Returns:
-            (list[int]): the blocks index.
+            list: list of the blocks ids.
         """
 
         return self.desc.blocks_attr_ids(name)
@@ -836,7 +836,7 @@ class Operator(object):
         Get the attribute dict.
 
         Returns:
-            attr_map(dict(name->attr)): The Operator's attribute dict.
+            dict: The Operator's attribute dict, name->attr.
         """
         attr_names = self.attr_names
         attr_map = {}
@@ -1570,7 +1570,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize()
+            p = self.inference_optimize(export_for_deployment=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -1636,7 +1636,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self):
+    def inference_optimize(self, export_for_deployment=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1646,6 +1646,10 @@ class Program(object):
         3. change the :code:`is_test`
         attribute of operators to :code:`True`. All the :code:`Parameter`
         information will be lost.
+
+        Args:
+            export_for_deployment(bool): remove the read ops that are added by py_reader
+                                        for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1661,16 +1665,17 @@ class Program(object):
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        while True:
-            if read_op_idx >= root_block.op_size() or root_block.op(
-                    read_op_idx).type() == 'read':
-                break
-            read_op_idx += 1
-        if read_op_idx < root_block.op_size():
-            root_block._remove_op(0, read_op_idx + 1)
-        for var in root_block.all_vars():
-            if var.type() == core.VarDesc.VarType.READER:
-                root_block._remove_var(var.name())
+        if export_for_deployment:
+            while True:
+                if read_op_idx >= root_block.op_size() or root_block.op(
+                        read_op_idx).type() == 'read':
+                    break
+                read_op_idx += 1
+            if read_op_idx < root_block.op_size():
+                root_block._remove_op(0, read_op_idx + 1)
+            for var in root_block.all_vars():
+                if var.type() == core.VarDesc.VarType.READER:
+                    root_block._remove_var(var.name())
 
         # change all `is_test` attributes to True
         for i in range(res.desc.num_blocks()):

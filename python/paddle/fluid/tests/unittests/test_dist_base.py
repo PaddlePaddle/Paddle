@@ -18,6 +18,109 @@ import os
 import sys
 import signal
 import subprocess
+import six
+
+
+class TestDistRunnerBase(object):
+    def get_model(self, batch_size=2):
+        raise NotImplementedError(
+            "get_model should be implemented by child classes.")
+
+    def get_transpiler(self, trainer_id, main_program, pserver_endpoints,
+                       trainers):
+        # NOTE: import fluid until runtime, or else forking processes will cause error.
+        import paddle
+        import paddle.fluid as fluid
+        t = fluid.DistributeTranspiler()
+        t.transpile(
+            trainer_id=trainer_id,
+            program=main_program,
+            pservers=pserver_endpoints,
+            trainers=trainers)
+        return t
+
+    def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
+                    trainer_id):
+        import paddle
+        import paddle.fluid as fluid
+        self.get_model(batch_size=2)
+        t = self.get_transpiler(trainer_id,
+                                fluid.default_main_program(), pserver_endpoints,
+                                trainers)
+        pserver_prog = t.get_pserver_program(current_endpoint)
+        startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(startup_prog)
+        exe.run(pserver_prog)
+
+    def run_trainer(self, place, endpoints, trainer_id, trainers, is_dist=True):
+        import paddle
+        import paddle.fluid as fluid
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+        self.get_model(batch_size=2)
+        if is_dist:
+            t = self.get_transpiler(trainer_id,
+                                    fluid.default_main_program(), endpoints,
+                                    trainers)
+            trainer_prog = t.get_trainer_program()
+        else:
+            trainer_prog = fluid.default_main_program()
+
+        startup_exe = fluid.Executor(place)
+        startup_exe.run(fluid.default_startup_program())
+
+        strategy = fluid.ExecutionStrategy()
+        strategy.num_threads = 1
+        strategy.allow_op_delay = False
+        exe = fluid.ParallelExecutor(
+            True, loss_name=avg_cost.name, exec_strategy=strategy)
+
+        feed_var_list = [
+            var for var in trainer_prog.global_block().vars.values()
+            if var.is_data
+        ]
+
+        feeder = fluid.DataFeeder(feed_var_list, place)
+        reader_generator = test_reader()
+
+        data = next(reader_generator)
+        first_loss, = exe.run(fetch_list=[avg_cost.name],
+                              feed=feeder.feed(data))
+        print(first_loss)
+
+        for i in six.moves.xrange(5):
+            data = next(reader_generator)
+            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+
+        data = next(reader_generator)
+        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+        print(last_loss)
+
+
+def runtime_main(test_class):
+    import paddle
+    import paddle.fluid as fluid
+    import paddle.fluid.core as core
+
+    if len(sys.argv) != 7:
+        print(
+            "Usage: python dist_se_resnext.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist]"
+        )
+    role = sys.argv[1]
+    endpoints = sys.argv[2]
+    trainer_id = int(sys.argv[3])
+    current_endpoint = sys.argv[4]
+    trainers = int(sys.argv[5])
+    is_dist = True if sys.argv[6] == "TRUE" else False
+
+    model = test_class()
+    if role == "pserver":
+        model.run_pserver(endpoints, trainers, current_endpoint, trainer_id)
+    else:
+        p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
+        ) else fluid.CPUPlace()
+        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist)
 
 
 class TestDistBase(unittest.TestCase):
@@ -48,7 +151,11 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps0_pipe)
         ps1_proc = subprocess.Popen(
             ps1_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps1_pipe)
-        return ps0_proc, ps1_proc
+
+        if not check_error_log:
+            return ps0_proc, ps1_proc, None, None
+        else:
+            return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _wait_ps_ready(self, pid):
         retry_times = 50
@@ -107,7 +214,8 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stderr: %s\n' % err)
 
         # Run dist train to compare with local results
-        ps0, ps1 = self.start_pserver(model_file, check_error_log)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model_file,
+                                                          check_error_log)
         self._wait_ps_ready(ps0.pid)
         self._wait_ps_ready(ps1.pid)
 
@@ -158,12 +266,17 @@ class TestDistBase(unittest.TestCase):
         local_first_loss = eval(local_lines[0])[0]
         local_last_loss = eval(local_lines[1])[0]
 
-        self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
-        self.assertAlmostEqual(local_last_loss, dist_last_loss, delta=delta)
+        # close trainer file
+        if check_error_log:
+            tr0_pipe.close()
+            tr1_pipe.close()
 
-        # check tr0_out
-        # FIXME: ensure the server process is killed
-        # replace with ps0.terminate()
+            ps0_pipe.close()
+            ps1_pipe.close()
+        # FIXME: use terminate() instead of sigkill.
         os.kill(ps0.pid, signal.SIGKILL)
         os.kill(ps1.pid, signal.SIGKILL)
         FNULL.close()
+
+        self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
+        self.assertAlmostEqual(local_last_loss, dist_last_loss, delta=delta)

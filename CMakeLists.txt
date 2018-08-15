@@ -204,12 +204,11 @@ include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
 
+set(WITH_ANAKIN OFF CACHE STRING "Disable Anakin first, will add it later." FORCE)
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
     include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
 endif()
 
 include(cudnn)              # set cudnn libraries, must before configure
