@@ -46,9 +46,9 @@ std::string DFG_GraphvizDrawPass::Draw(DataFlowGraph *graph) {
   for (size_t i = 0; i < graph->nodes.size(); i++) {
     const Node &node = graph->nodes.Get(i);
     if (!config_.display_deleted_node && node.deleted()) continue;
-    for (auto &in : node.inlinks) {
-      if (!config_.display_deleted_node && in->deleted()) continue;
-      dot.AddEdge(in->repr(), node.repr(), {});
+    for (auto &out : node.outlinks) {
+      if (!config_.display_deleted_node && out->deleted()) continue;
+      dot.AddEdge(node.repr(), out->repr(), {});
     }
   }
   return dot.Build();

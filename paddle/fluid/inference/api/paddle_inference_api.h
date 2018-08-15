@@ -40,6 +40,7 @@ class PaddleBuf {
   // Copy only available when memory is managed externally.
   explicit PaddleBuf(const PaddleBuf&);
   PaddleBuf& operator=(const PaddleBuf&);
+  PaddleBuf& operator=(PaddleBuf&&);
   // Do not own the memory.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
