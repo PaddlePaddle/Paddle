@@ -130,7 +130,7 @@ class TestDistBase(unittest.TestCase):
         self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
         self._python_interp = "python"
 
-    def start_pserver(self, model_file):
+    def start_pserver(self, model_file, check_error_log):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps0_cmd = "%s %s pserver %s 0 %s %d TRUE" % \
             (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
@@ -139,11 +139,23 @@ class TestDistBase(unittest.TestCase):
             (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
              self._trainers)
 
+        ps0_pipe = subprocess.PIPE
+        ps1_pipe = subprocess.PIPE
+        if check_error_log:
+            print("ps0_cmd:", ps0_cmd)
+            print("ps1_cmd:", ps1_cmd)
+            ps0_pipe = open("/tmp/ps0_err.log", "wb")
+            ps1_pipe = open("/tmp/ps1_err.log", "wb")
+
         ps0_proc = subprocess.Popen(
-            ps0_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ps0_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps0_pipe)
         ps1_proc = subprocess.Popen(
-            ps1_cmd.split(" "), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        return ps0_proc, ps1_proc
+            ps1_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps1_pipe)
+
+        if not check_error_log:
+            return ps0_proc, ps1_proc, None, None
+        else:
+            return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _wait_ps_ready(self, pid):
         retry_times = 50
@@ -160,7 +172,7 @@ class TestDistBase(unittest.TestCase):
                                  (e, retry_times))
                 retry_times -= 1
 
-    def check_with_place(self, model_file, delta=1e-3):
+    def check_with_place(self, model_file, delta=1e-3, check_error_log=False):
         # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
@@ -169,17 +181,32 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1"
         }
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_logtostderr"] = "1"
+
         # Run local to get a base line
         env_local = {"CUDA_VISIBLE_DEVICES": "0"}
         env_local.update(required_envs)
         local_cmd = "%s %s trainer %s 0 %s %d FLASE" % \
             (self._python_interp, model_file,
              "127.0.0.1:1234", "127.0.0.1:1234", 1)
-        local_proc = subprocess.Popen(
-            local_cmd.split(" "),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            env=env_local)
+        if not check_error_log:
+            local_proc = subprocess.Popen(
+                local_cmd.split(" "),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env_local)
+        else:
+            print("trainer cmd:", local_cmd)
+            err_log = open("/tmp/trainer.err.log", "wb")
+            local_proc = subprocess.Popen(
+                local_cmd.split(" "),
+                stdout=subprocess.PIPE,
+                stderr=err_log,
+                env=env_local)
+
         local_proc.wait()
         out, err = local_proc.communicate()
         local_ret = out
@@ -187,7 +214,8 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stderr: %s\n' % err)
 
         # Run dist train to compare with local results
-        ps0, ps1 = self.start_pserver(model_file)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model_file,
+                                                          check_error_log)
         self._wait_ps_ready(ps0.pid)
         self._wait_ps_ready(ps1.pid)
 
@@ -205,15 +233,23 @@ class TestDistBase(unittest.TestCase):
         env1.update(required_envs)
         FNULL = open(os.devnull, 'w')
 
+        tr0_pipe = subprocess.PIPE
+        tr1_pipe = subprocess.PIPE
+        if check_error_log:
+            print("tr0_cmd:", tr0_cmd)
+            print("tr1_cmd:", tr1_cmd)
+            tr0_pipe = open("/tmp/tr0_err.log", "wb")
+            tr1_pipe = open("/tmp/tr1_err.log", "wb")
+
         tr0_proc = subprocess.Popen(
             tr0_cmd.split(" "),
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=tr0_pipe,
             env=env0)
         tr1_proc = subprocess.Popen(
             tr1_cmd.split(" "),
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=tr1_pipe,
             env=env1)
 
         tr0_proc.wait()
@@ -230,6 +266,13 @@ class TestDistBase(unittest.TestCase):
         local_first_loss = eval(local_lines[0])[0]
         local_last_loss = eval(local_lines[1])[0]
 
+        # close trainer file
+        if check_error_log:
+            tr0_pipe.close()
+            tr1_pipe.close()
+
+            ps0_pipe.close()
+            ps1_pipe.close()
         # FIXME: use terminate() instead of sigkill.
         os.kill(ps0.pid, signal.SIGKILL)
         os.kill(ps1.pid, signal.SIGKILL)
