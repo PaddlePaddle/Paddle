@@ -18,9 +18,7 @@ import six
 from .framework import Program, default_main_program, Variable
 from . import core
 
-__all__ = [
-    'Executor', 'global_scope', 'scope_guard', '_switch_scope', 'fetch_var'
-]
+__all__ = ['Executor', 'global_scope', 'scope_guard', '_switch_scope']
 
 g_scope = core.Scope()
 
@@ -171,7 +169,7 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
     return fetch_count > 0
 
 
-def fetch_var(name, scope=None, return_numpy=True):
+def _fetch_var(name, scope=None, return_numpy=True):
     """
     Fetch the value of the variable with the given name from the
     given scope.
@@ -222,6 +220,37 @@ def _get_program_cache_key(feed, fetch_list):
     return str(feed_var_names + fetch_var_names)
 
 
+def _as_lodtensor(data, place):
+    """
+        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
+        For higher dimensional sequence data, please use LoDTensor directly.
+
+        Examples:
+            >>> import paddle.fluid as fluid
+            >>> place = fluid.CPUPlace()
+            >>> exe = fluid.executor(place)
+            >>> data = np.array(size=(100, 200, 300))
+            >>> np_outs = map(lambda x: fluid.executor._as_lodtensor(x, place), data)
+            >>>     ...
+
+        Args:
+            data(numpy.ndarray): a instance of array
+
+        Returns:
+            LoDTensor
+        """
+    if isinstance(data, list):
+        raise RuntimeError("Some of your feed data hold LoD information. \
+                They can not be completely cast from a list of Python \
+                ndarray to LoDTensor. Please convert data to LoDTensor \
+                directly before feeding the data.\
+                ")
+    # single tensor case
+    tensor = core.LoDTensor()
+    tensor.set(data, place)
+    return tensor
+
+
 class Executor(object):
     """
     An Executor in Python, only support the single-GPU running. For multi-cards, please refer to
@@ -249,35 +278,6 @@ class Executor(object):
         self.executor = core.Executor(p)
         self.program_caches = dict()
         self._closed = False
-
-    def as_lodtensor(self, data):
-        """
-        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
-        For higher dimensional sequence data, please use LoDTensor directly.
-
-        Examples:
-            >>> import paddle.fluid as fluid
-            >>> exe = fluid.executor(fluid.CPUPlace())
-            >>> data = np.array(size=(100, 200, 300))
-            >>> np_outs = map(lambda x: exe.as_lodtensor(x), data)
-            >>>     ...
-
-        Args:
-            data(numpy.ndarray): a instance of array
-
-        Returns:
-            LoDTensor
-        """
-        if isinstance(data, list):
-            raise RuntimeError("Some of your feed data hold LoD information. \
-                They can not be completely cast from a list of Python \
-                ndarray to LoDTensor. Please convert data to LoDTensor \
-                directly before feeding the data.\
-                ")
-        # single tensor case
-        tensor = core.LoDTensor()
-        tensor.set(data, self.place)
-        return tensor
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -337,7 +337,7 @@ class Executor(object):
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.as_lodtensor(cur_feed)
+                    cur_feed = _as_lodtensor(cur_feed, self.place)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
