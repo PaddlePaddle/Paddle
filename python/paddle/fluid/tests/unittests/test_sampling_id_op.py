@@ -29,14 +29,19 @@ class TestSamplingIdOp(OpTest):
         self.inputs = {"X": self.X}
         self.Y = np.random.random(8).astype('float32')
         self.outputs = {'Out': self.Y}
-        self.attrs = {'use_mkldnn': self.use_mkldnn}
+        self.attrs = {'max': 1.0, 'min': 0.0, 'seed': 1}
 
     def test_check_output(self):
         self.check_output_customized(self.verify_output)
+        y1 = self.out
+        self.check_output_customized(self.verify_output)
+        y2 = self.out
+        self.assertTrue(np.array_equal(y1, y2))
+        self.assertEqual(len(y1), len(self.Y))
 
     def verify_output(self, outs):
         out = np.array(outs[0])
-        self.assertEqual(len(out), len(self.Y))
+        self.out = out
 
     def init_kernel_type(self):
         pass
