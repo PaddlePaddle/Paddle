@@ -25,7 +25,6 @@ from paddle.fluid.initializer import Constant
 
 
 class TestBook(unittest.TestCase):
-    """
     def test_fit_a_line(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
@@ -475,7 +474,6 @@ class TestBook(unittest.TestCase):
             out = layers.shape(input, name="shape")
             self.assertIsNotNone(out)
         print(str(program))
-    """
 
     def test_prelu(self):
         program = Program()

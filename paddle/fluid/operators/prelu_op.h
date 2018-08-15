@@ -31,7 +31,7 @@ class PReluKernel : public framework::OpKernel<T> {
     const T* x_ptr = x->data<T>();
     T* o_ptr = out->mutable_data<T>(context.GetPlace());
 
-    auto* alpha_ptr = alpha->data<T>();
+    const T* alpha_ptr = alpha->data<T>();
     std::string mode = context.Attr<std::string>("mode");
 
     int numel = x->numel();
