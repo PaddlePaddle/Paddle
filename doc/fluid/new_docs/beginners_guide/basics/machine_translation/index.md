@@ -11,7 +11,7 @@
 为解决以上问题，统计机器翻译（Statistical Machine Translation, SMT）技术应运而生。在统计机器翻译技术中，转化规则是由机器自动从大规模的语料中学习得到的，而非我们人主动提供规则。因此，它克服了基于规则的翻译系统所面临的知识获取瓶颈的问题，但仍然存在许多挑战：1）人为设计许多特征（feature），但永远无法覆盖所有的语言现象；2）难以利用全局的特征；3）依赖于许多预处理环节，如词语对齐、分词或符号化（tokenization）、规则抽取、句法分析等，而每个环节的错误会逐步累积，对翻译的影响也越来越大。
 
 近年来，深度学习技术的发展为解决上述挑战提供了新的思路。将深度学习应用于机器翻译任务的方法大致分为两类：1）仍以统计机器翻译系统为框架，只是利用神经网络来改进其中的关键模块，如语言模型、调序模型等（见图1的左半部分）；2）不再以统计机器翻译系统为框架，而是直接用神经网络将源语言映射到目标语言，即端到端的神经网络机器翻译（End-to-End Neural Machine Translation, End-to-End NMT）（见图1的右半部分），简称为NMT模型。
-![nmt](./image/nmt.png)
+<p align="center"><img src="./image/nmt.png" width="40%"></p>
 <p align="center">
 图1. 基于神经网络的机器翻译系统
 </p>
@@ -43,17 +43,17 @@
 
 具体来说，该双向循环神经网络分别在时间维以顺序和逆序——即前向（forward）和后向（backward）——依次处理输入序列，并将每个时间步RNN的输出拼接成为最终的输出层。这样每个时间步的输出节点，都包含了输入序列中当前时刻完整的过去和未来的上下文信息。下图展示的是一个按时间步展开的双向循环神经网络。该网络包含一个前向和一个后向RNN，其中有六个权重矩阵：输入到前向隐层和后向隐层的权重矩阵（`$W_1, W_3$`），隐层到隐层自己的权重矩阵（`$W_2,W_5$`），前向隐层和后向隐层到输出层的权重矩阵（`$W_4, W_6$`）。注意，该网络的前向隐层和后向隐层之间没有连接。
 
-![bi_rnn](./image/bi_rnn.png)
+<p align="center"><img src="./image/bi_rnn.png" width="50%"></p>
 <p align="center">
-图3. 按时间步展开的双向循环神经网络
+图2. 按时间步展开的双向循环神经网络
 </p>
 
 ### 编码器-解码器框架
 
 编码器-解码器（Encoder-Decoder）\[[2](#参考文献)\]框架用于解决由一个任意长度的源序列到另一个任意长度的目标序列的变换问题。即编码阶段将整个源序列编码成一个向量，解码阶段通过最大化预测序列概率，从中解码出整个目标序列。编码和解码的过程通常都使用RNN实现。
-![encoder_decoder](./image/encoder_decoder.png)
+<p align="center"><img src="./image/encoder_decoder.png" width="90%"></p>
 <p align="center">
-图4. 编码器-解码器框架
+图3. 编码器-解码器框架
 </p>
 
 #### 编码器
@@ -68,9 +68,9 @@
 
 第3步也可以使用双向循环神经网络实现更复杂的句编码表示，具体可以用双向GRU实现。前向GRU按照词序列`$(x_1,x_2,...,x_T)$`的顺序依次编码源语言端词，并得到一系列隐层状态`$(\overrightarrow{h_1},\overrightarrow{h_2},...,\overrightarrow{h_T})$`。类似的，后向GRU按照`$(x_T,x_{T-1},...,x_1)$`的顺序依次编码源语言端词，得到`$(\overleftarrow{h_1},\overleftarrow{h_2},...,\overleftarrow{h_T})$`。最后对于词`$x_i$`，通过拼接两个GRU的结果得到它的隐层状态，即`$h_i=\left [ \overrightarrow{h_i^T},\overleftarrow{h_i^T} \right ]^{T}$`。
 
-![encoder_attention](./image/encoder_attention.png)
+<p align="center"><img src="./image/encoder_attention.png"></p>
 <p align="center">
-图5. 使用双向GRU的编码器
+图4. 使用双向GRU的编码器
 </p>
 
 #### 解码器

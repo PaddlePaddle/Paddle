@@ -31,7 +31,7 @@ $$X = USV^T$$
 
 本章中，当词向量训练好后，我们可以用数据可视化算法t-SNE\[[4](#参考文献)\]画出词语特征在二维上的投影（如下图所示）。从图中可以看出，语义相关的词语（如a, the, these; big, huge）在投影上距离很近，语意无关的词（如say, business; decision, japan）在投影上的距离很远。
 
-![2d_similarity](./image/2d_similarity.png)
+<p align="center"><img src="./image/2d_similarity.png" width="50%"></p>
 <p align="center">
 图1. 词向量的二维投影
 </p>
@@ -85,7 +85,7 @@ $$\frac{1}{T}\sum_t f(w_t, w_{t-1}, ..., w_{t-n+1};\theta) + R(\theta)$$
 
 其中`$f(w_t, w_{t-1}, ..., w_{t-n+1})$`表示根据历史n-1个词得到当前词`$w_t$`的条件概率，`$R(\theta)$`表示参数正则项。
 
-![nnlm](./image/nnlm.png)
+<p align="center"><img src="./image/nnlm.png" width="50%"></p>
 <p align="center">
 图2. N-gram神经网络模型
 </p>
@@ -117,7 +117,7 @@ $$J(\theta) = -\sum_{i=1}^N\sum_{c=1}^{|V|}y_k^{i}log(softmax(g_k^i))$$
 
 CBOW模型通过一个词的上下文（各N个词）预测当前词。当N=2时，模型如下图所示：
 
-![cbow](./image/cbow.png)
+<p align="center"><img src="./image/cbow.png" width="40%"></p>
 <p align="center">
 图3. CBOW模型
 </p>
@@ -132,7 +132,7 @@ $$context = \frac{x_{t-1} + x_{t-2} + x_{t+1} + x_{t+2}}{4}$$
 
 CBOW的好处是对上下文词语的分布在词向量上进行了平滑，去掉了噪声，因此在小数据集上很有效。而Skip-gram的方法中，用一个词预测其上下文，得到了当前词上下文的很多样本，因此可用于更大的数据集。
 
-![skipgram](./image/skipgram.png)
+<p align="center"><img src="./image/skipgram.png" width="40%"></p>
 <p align="center">
 图4. Skip-gram模型
 </p>
@@ -189,7 +189,7 @@ dream that one day <e>
 
 本配置的模型结构如下图所示：
 
-![ngram](./image/ngram.png)
+<p align="center"><img src="./image/ngram.png" width="40%"></p>
 <p align="center">
 图5. 模型配置中的N-gram神经网络模型
 </p>

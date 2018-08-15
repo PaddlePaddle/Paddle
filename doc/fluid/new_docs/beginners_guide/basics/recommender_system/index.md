@@ -36,7 +36,7 @@ Prediction Score is 4.25
 
 YouTube是世界上最大的视频上传、分享和发现网站，YouTube推荐系统为超过10亿用户从不断增长的视频库中推荐个性化的内容。整个系统由两个神经网络组成：候选生成网络和排序网络。候选生成网络从百万量级的视频库中生成上百个候选，排序网络对候选进行打分排序，输出排名最高的数十个结果。系统结构如图1所示：
 
-![YouTube_Overview](./image/YouTube_Overview.png)
+<p align="center"><img src="./image/YouTube_Overview.png" width="70%"></p>
 <p align="center">
 图1. YouTube 推荐系统结构
 </p>
@@ -47,7 +47,7 @@ YouTube是世界上最大的视频上传、分享和发现网站，YouTube推荐
 
 首先，将观看历史及搜索词记录这类历史信息，映射为向量后取平均值得到定长表示；同时，输入人口学特征以优化新用户的推荐效果，并将二值特征和连续特征归一化处理到[0, 1]范围。接下来，将所有特征表示拼接为一个向量，并输入给非线形多层感知器（MLP，详见[识别数字](https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/README.cn.md)教程）处理。最后，训练时将MLP的输出给softmax做分类，预测时计算用户的综合特征（MLP的输出）与所有视频的相似度，取得分最高的`$k$`个作为候选生成网络的筛选结果。图2显示了候选生成网络结构。
 
-![Deep_candidate_generation_model_architecture](./image/Deep_candidate_generation_model_architecture.png)
+<p align="center"><img src="./image/Deep_candidate_generation_model_architecture.png" width="70%"></p>
 <p align="center">
 图2. 候选生成网络结构
 </p>
@@ -72,7 +72,7 @@ $$P(\omega=i|u)=\frac{e^{v_{i}u}}{\sum_{j \in V}e^{v_{j}u}}$$
 
 卷积神经网络主要由卷积（convolution）和池化（pooling）操作构成，其应用及组合方式灵活多变，种类繁多。本小结我们以如图3所示的网络进行讲解：
 
-![text_cnn](./image/text_cnn.png)
+<p align="center"><img src="./image/text_cnn.png" width="90%"></p>
 <p align="center">
 图3. 卷积神经网络文本分类模型
 </p>

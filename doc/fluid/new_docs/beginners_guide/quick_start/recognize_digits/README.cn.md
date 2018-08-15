@@ -42,7 +42,7 @@ $$  \text{crossentropy}(label, y) = -\sum_i label_ilog(y_i) $$
 
 图2为softmax回归的网络图，图中权重用蓝线表示、偏置用红线表示、+1代表偏置参数的系数为1。
 
-![softmaxRegression](./image/softmax_regression.png)
+<p align="center"><img src="./image/softmax_regression.png" width="40%"></p>
 <p align="center">图2. softmax回归网络结构图</p>
 
 ### 多层感知器(Multilayer Perceptron, MLP)
@@ -56,7 +56,7 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 
 图3为多层感知器的网络结构图，图中权重用蓝线表示、偏置用红线表示、+1代表偏置参数的系数为1。
 
-![multilayerPerceptron](./image/mlp.png)
+<p align="center"><img src="./image/mlp.png" width="60%"></p>
 <p align="center">图3. 多层感知器网络结构图</p>
 
 ### 卷积神经网络(Convolutional Neural Network, CNN)
@@ -85,7 +85,7 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 
 #### 池化层
 
-![pooling](./image/max_pooling.png)
+<p align="center"><img src="./image/max_pooling.png" width="40%"></p>
 <p align="center">图6. 池化层图片</p>
 
 池化是非线性下采样的一种形式，主要作用是通过减少网络的参数来减小计算量，并且能够在一定程度上控制过拟合。通常在卷积层的后面会加上一个池化层。池化包括最大池化、平均池化等。其中最大池化是用不重叠的矩形框将输入层分成不同的区域，对于每个矩形框的数取最大值作为输出层，如图6所示。
@@ -320,7 +320,7 @@ def event_handler(event):
 
 `event_handler_plot` 可以用来在训练过程中画图如下：
 
-![png](./image/train_and_test.png)
+<p align="center"><img src="./image/train_and_test.png"></p>
 
 ```python
 from paddle.v2.plot import Ploter
