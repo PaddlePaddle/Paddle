@@ -621,13 +621,14 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
           });
-  py::enum_<ExecutionStrategy::ExecutorType>(exec_strategy, "ExecutorType")
-      .value("Default", ExecutionStrategy::kDefault)
-      .value("Experimental", ExecutionStrategy::kExperimental);
   exec_strategy.def_property(
-      "type", [](const ExecutionStrategy &self) { return self.type_; },
-      [](ExecutionStrategy &self, ExecutionStrategy::ExecutorType type) {
-        self.type_ = type;
+      "use_experimental_executor",
+      [](const ExecutionStrategy &self) {
+        return self.type_ == ExecutionStrategy::kExperimental;
+      },
+      [](ExecutionStrategy &self, bool experimental) {
+        self.type_ = experimental ? ExecutionStrategy::kExperimental
+                                  : ExecutionStrategy::kDefault;
       });
 
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
