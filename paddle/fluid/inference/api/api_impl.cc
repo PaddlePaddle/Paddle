@@ -22,6 +22,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/platform/profiler.h"
+
+DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
 namespace paddle {
 namespace {
@@ -57,6 +60,15 @@ std::string num2str(T a) {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
+
+  if (FLAGS_profile) {
+    LOG(WARNING) << "Profiler is actived, might affect the performance";
+    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+
+    auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
+                                           : platform::ProfilerState::kCPU;
+    platform::EnableProfiler(tracking_device);
+  }
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -102,6 +114,10 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
+  if (FLAGS_profile) {
+    platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                              "./profile.log");
+  }
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
