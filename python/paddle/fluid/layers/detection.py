@@ -164,7 +164,7 @@ def rpn_target_assign(loc,
         })
 
     # 4. Reshape and gather the target entry
-    scores = nn.reshape(x=scores, shape=(-1, 1))
+    scores = nn.reshape(x=scores, shape=(-1, 2))
     loc = nn.reshape(x=loc, shape=(-1, 4))
     target_label = nn.reshape(x=target_label, shape=(-1, 1))
     target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
@@ -722,7 +722,7 @@ def ssd_loss(location,
         },
         attrs={
             'neg_pos_ratio': neg_pos_ratio,
-            'neg_dist_threshold': neg_pos_ratio,
+            'neg_dist_threshold': neg_overlap,
             'mining_type': mining_type,
             'sample_size': sample_size,
         })
