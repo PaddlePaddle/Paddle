@@ -30,7 +30,7 @@ random.seed(0)
 DATA_DIM = 224
 
 THREAD = int(os.getenv("PREPROCESS_THREADS", "10"))
-BUF_SIZE = 100000
+BUF_SIZE = 5120
 
 DATA_DIR = '/mnt/ImageNet'
 TRAIN_LIST = '/mnt/ImageNet/train.txt'

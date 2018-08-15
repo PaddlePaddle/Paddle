@@ -222,7 +222,11 @@ def get_model(args, is_train, main_prog, startup_prog):
                 lr = []
                 lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
                 optimizer = fluid.optimizer.Momentum(
-                    learning_rate=base_lr, momentum=0.9)
+                    #learning_rate=base_lr,
+                    learning_rate=fluid.layers.piecewise_decay(
+                        boundaries=bd, values=lr),
+                    momentum=0.9,
+                    regularization=fluid.regularizer.L2Decay(1e-4))
                 optimizer.minimize(avg_cost)
 
                 if args.memory_optimize:

@@ -26,6 +26,8 @@ ADD https://raw.githubusercontent.com/PaddlePaddle/cloud/develop/docker/paddle_k
 ADD https://raw.githubusercontent.com/PaddlePaddle/cloud/develop/docker/k8s_tools.py /root
 RUN chmod +x /usr/bin/paddle_k8s
 
+ENV http_proxy=http://172.19.57.47:8899/
+ENV https_proxy=http://172.19.57.47:8899/
 ADD *.whl /
 RUN pip install /*.whl && rm -f /*.whl 
 

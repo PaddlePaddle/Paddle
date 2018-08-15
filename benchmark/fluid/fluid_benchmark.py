@@ -60,7 +60,7 @@ def append_nccl2_prepare(trainer_id, startup_prog):
                         "nccl-based dist train.")
 
 
-def dist_transpile(trainer_id, args):
+def dist_transpile(trainer_id, args, train_prog, startup_prog):
     if trainer_id < 0:
         return None, None
 
@@ -81,22 +81,25 @@ def dist_transpile(trainer_id, args):
     # the role, should be either PSERVER or TRAINER
     training_role = os.getenv("PADDLE_TRAINING_ROLE")
 
-    t = distribute_transpiler.DistributeTranspiler(
-        condig=distribute_transpiler.DistributeTranspilerConfig(
-            slice_var_up=not args.no_split_var))
+    config = distribute_transpiler.DistributeTranspilerConfig()
+    config.slice_var_up = not args.no_split_var
+    t = distribute_transpiler.DistributeTranspiler(config=config)
     t.transpile(
         trainer_id,
+        # NOTE: *MUST* use train_prog, for we are using with guard to
+        # generate different program for train and test.
+        program=train_prog,
         pservers=pserver_endpoints,
         trainers=trainers,
         sync_mode=not args.async_mode)
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
-        pserver_startup_program = t.get_startup_program(current_endpoint,
-                                                        pserver_program)
+        pserver_startup_program = t.get_startup_program(
+            current_endpoint, pserver_program, startup_program=startup_prog)
         return pserver_program, pserver_startup_program
     elif training_role == "TRAINER":
         train_program = t.get_trainer_program()
-        return train_program, fluid.default_startup_program()
+        return train_program, startup_prog
     else:
         raise ValueError(
             'PADDLE_TRAINING_ROLE environment variable must be either TRAINER or PSERVER'
@@ -184,12 +187,13 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         trainer_id=trainer_id)
 
     if not args.no_test:
+        if args.update_method == "pserver":
+            test_scope = None
+        else:
+            # NOTE: use an empty scope to avoid test exe using NCCLID
+            test_scope = fluid.Scope()
         test_exe = fluid.ParallelExecutor(
-            True,
-            main_program=test_prog,
-            share_vars_from=exe,
-            scope=fluid.Scope(
-            ))  # NOTE: use an empty scope to avoid test exe using NCCLID
+            True, main_program=test_prog, share_vars_from=exe, scope=test_scope)
 
     for pass_id in range(args.pass_num):
         num_samples = 0
@@ -206,12 +210,11 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 data = next(reader_generator, None)
                 if data == None:
                     break
-
-            if args.profile and batch_id == args.skip_batch_num:
+            if args.profile and batch_id == 5:
                 profiler.start_profiler("All")
                 profiler.reset_profiler()
-            elif args.profile and batch_id == args.iterations:
-                print("profiling total time: ", start_time)
+            elif args.profile and batch_id == 10:
+                print("profiling total time: ", time.time() - start_time)
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
             if iters == args.iterations:
@@ -226,6 +229,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             if args.use_fake_data or args.use_reader_op:
                 try:
+
                     fetch_ret = exe.run(fetch_list)
                 except fluid.core.EOFException as eof:
                     break
@@ -240,7 +244,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 num_samples += len(data)
 
             iters += 1
-            if batch_id % 10 == 0:
+            if batch_id % 1 == 0:
                 fetched_data = [np.mean(np.array(d)) for d in fetch_ret]
                 print("Pass %d, batch %d, loss %s, accucacys: %s" %
                       (pass_id, batch_id, fetched_data[0], fetched_data[1:]))
@@ -320,7 +324,8 @@ def main():
     all_args = [train_args, test_args, args]
 
     if args.update_method == "pserver":
-        train_prog, startup_prog = dist_transpile(trainer_id, args)
+        train_prog, startup_prog = dist_transpile(trainer_id, args, train_prog,
+                                                  startup_prog)
         if not train_prog:
             raise Exception(
                 "Must configure correct environments to run dist train.")
