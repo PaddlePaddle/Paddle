@@ -33,11 +33,12 @@ from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-from layer_function_generator import autodoc, templatedoc
-from tensor import concat
-import utils
+from .layer_function_generator import autodoc, templatedoc
+from .tensor import concat
+from . import utils
 import random
 from .. import unique_name
+from functools import reduce
 
 __all__ = [
     'fc',
@@ -111,6 +112,8 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'prelu',
+    'flatten',
 ]
 
 
@@ -4849,7 +4852,7 @@ def dice_loss(input, label, epsilon=0.00001):
             loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
     """
     label = one_hot(label, depth=input.shape[-1])
-    reduce_dim = range(1, len(input.shape))
+    reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(
         input, dim=reduce_dim) + reduce_sum(
@@ -5359,4 +5362,124 @@ def rank_loss(label, left, right, name=None):
                 "Left": left,
                 "Right": right},
         outputs={'Out': out})
+    return out
+
+
+def prelu(x, mode, param_attr=None, name=None):
+    """
+    Equation:
+
+        y = \max(0, x) + alpha \min(0, x)
+
+    Args:
+        x (Variable): The input tensor.
+	  param_attr(ParamAttr|None): The parameter attribute for the learnable
+                                    weight (alpha).
+        mode (string): The mode for weight sharing
+		       all: all elements share same weight
+ 		       channel:elements in a channel share same weight
+ 		       element:each element has a weight
+	  name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            mode = 'channel'
+            output = fluid.layers.prelu(x,mode)
+    """
+    helper = LayerHelper('prelu', **locals())
+    if mode not in ['all', 'channel', 'element']:
+        raise ValueError('mode should be one of all, channel, element.')
+    alpha_shape = [1]
+    if mode == 'channel':
+        alpha_shape = [1, x.shape[1], 1, 1]
+    elif mode == 'element':
+        alpha_shape = x.shape
+    dtype = helper.input_dtype(input_param_name='x')
+    alpha = helper.create_parameter(
+        attr=param_attr,
+        shape=alpha_shape,
+        dtype='float32',
+        is_bias=False,
+        default_initializer=Constant(1.0))
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x,
+                'Alpha': alpha},
+        attrs={"mode": mode},
+        outputs={"Out": out})
+    return out
+
+
+def flatten(x, axis=1, name=None):
+    """
+    **Flatten layer**
+    Flattens the input tensor into a 2D matrix.
+
+    Examples:
+    Case 1:
+      Given
+        X.shape = (3, 100, 100, 4)
+      and
+        axis = 2
+      We get:
+        Out.shape = (3 * 100, 4 * 100)
+    
+    Case 2:
+      Given
+        X.shape = (3, 100, 100, 4)
+      and
+        axis = 0
+      We get:
+        Out.shape = (1, 3 * 100 * 100 * 4)
+
+    Args:
+        x (Variable): A tensor of rank >= axis.
+        axis (int): Indicate up to which input dimensions (exclusive) should 
+                    be flattened to the outer dimension of the output. 
+                    The value for axis must be in the range [0, R], where R
+                    is the rank of the input tensor. When axis = 0, the shape
+                    of the output tensor is (1, (d_0 X d_1 ... d_n), where the
+                    shape of the input tensor is (d_0, d_1, ... d_n).
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: A 2D tensor with the contents of the input tensor, with input
+                  dimensions up to axis flattened to the outer dimension of
+                  the output and remaining input dimensions flattened into the
+                  inner dimension of the output.
+
+    Raises:
+        ValueError: If x is not a variable.
+        ValueError: If axis is not in range [0, rank(x)]. 
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[4, 4, 3], dtype="float32")
+            out = fluid.layers.flatten(x=x, axis=2)
+    """
+    helper = LayerHelper('flatten', **locals())
+
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Variable")
+
+    if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
+        raise ValueError("The axis should be a int, and in range [0, rank(x)]")
+
+    out = helper.create_tmp_variable(x.dtype)
+    helper.append_op(
+        type='flatten',
+        inputs={"X": x},
+        outputs={'Out': out},
+        attrs={"axis": axis})
     return out

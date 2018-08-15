@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import core
+from . import core
 from contextlib import contextmanager
 import os
 
@@ -218,20 +218,20 @@ def stop_profiler(sorted_key=None, profile_path='/tmp/profile'):
 def profiler(state, sorted_key=None, profile_path='/tmp/profile'):
     """The profiler interface.
     Different from cuda_profiler, this profiler can be used to profile both CPU
-    and GPU program. By defalut, it records the CPU and GPU operator kernels,
+    and GPU program. By default, it records the CPU and GPU operator kernels,
     if you want to profile other program, you can refer the profiling tutorial
     to add more records in C++ code.
 
     If the state == 'All', a profile proto file will be written to
     `profile_path`. This file records timeline information during the execution.
-    Then users can visualize this file to see the timeline, please refer 
+    Then users can visualize this file to see the timeline, please refer
     https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/howto/optimization/timeline.md
 
     Args:
         state (string) : The profiling state, which should be 'CPU' or 'GPU',
             telling the profiler to use CPU timer or GPU timer for profiling.
             Although users may have already specified the execution place
-            (CPUPlace/CUDAPlace) in the begining, for flexibility the profiler
+            (CPUPlace/CUDAPlace) in the beginning, for flexibility the profiler
             would not inherit this place.
         sorted_key (string) : If None, the profiling results will be printed
             in the order of first end time of events. Otherwise, the profiling

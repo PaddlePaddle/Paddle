@@ -189,6 +189,8 @@ void CUPTIAPI bufferCompleted(CUcontext ctx, uint32_t streamId, uint8_t *buffer,
 }
 }  // namespace
 
+#endif  // PADDLE_WITH_CUPTI
+
 class DeviceTracerImpl : public DeviceTracer {
  public:
   DeviceTracerImpl() : enabled_(false) {}
@@ -244,6 +246,8 @@ class DeviceTracerImpl : public DeviceTracer {
     if (enabled_) {
       return;
     }
+
+#ifdef PADDLE_WITH_CUPTI
     EnableActivity();
 
     // Register callbacks for buffer requests and completed by CUPTI.
@@ -262,6 +266,7 @@ class DeviceTracerImpl : public DeviceTracer {
         dynload::cuptiEnableCallback(1, subscriber_, CUPTI_CB_DOMAIN_DRIVER_API,
                                      CUPTI_DRIVER_TRACE_CBID_cuLaunchKernel));
     CUPTI_CALL(dynload::cuptiGetTimestamp(&start_ns_));
+#endif  // PADDLE_WITH_CUPTI
     enabled_ = true;
   }
 
@@ -313,16 +318,21 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   void Disable() {
+#ifdef PADDLE_WITH_CUPTI
     // flush might cause additional calls to DeviceTracker.
     dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED);
+#endif  // PADDLE_WITH_CUPTI
     std::lock_guard<std::mutex> l(trace_mu_);
+#ifdef PADDLE_WITH_CUPTI
     DisableActivity();
     dynload::cuptiUnsubscribe(subscriber_);
     CUPTI_CALL(dynload::cuptiGetTimestamp(&end_ns_));
+#endif  // PADDLE_WITH_CUPTI
     enabled_ = false;
   }
 
  private:
+#ifdef PADDLE_WITH_CUPTI
   static void CUPTIAPI ApiCallback(void *userdata, CUpti_CallbackDomain domain,
                                    CUpti_CallbackId cbid, const void *cbdata) {
     auto *cbInfo = reinterpret_cast<const CUpti_CallbackData *>(cbdata);
@@ -340,7 +350,8 @@ class DeviceTracerImpl : public DeviceTracer {
       VLOG(1) << "Unhandled API Callback for " << domain << " " << cbid;
     }
   }
-
+  CUpti_SubscriberHandle subscriber_;
+#endif  // PADDLE_WITH_CUPTI
   std::mutex trace_mu_;
   bool enabled_;
   uint64_t start_ns_;
@@ -349,45 +360,9 @@ class DeviceTracerImpl : public DeviceTracer {
   std::vector<MemRecord> mem_records_;
   std::vector<CPURecord> cpu_records_;
   std::unordered_map<uint32_t, std::string> correlations_;
-  CUpti_SubscriberHandle subscriber_;
 };
 
-#endif  // PADDLE_WITH_CUPTI
-
-class DeviceTracerDummy : public DeviceTracer {
- public:
-  DeviceTracerDummy() {}
-
-  void AddAnnotation(uint64_t id, const std::string &anno) {}
-
-  void AddCPURecords(const std::string &anno, uint64_t start_ns,
-                     uint64_t end_ns, int64_t device_id, int64_t thread_id) {}
-
-  void AddMemRecords(const std::string &name, uint64_t start_ns,
-                     uint64_t end_ns, int64_t device_id, int64_t stream_id,
-                     uint32_t correlation_id, uint64_t bytes) {}
-
-  void AddKernelRecords(uint64_t start, uint64_t end, int64_t device_id,
-                        int64_t stream_id, uint32_t correlation_id) {}
-
-  bool IsEnabled() { return false; }
-
-  void Enable() {}
-
-  proto::Profile GenProfile(const std::string &profile_path) {
-    return proto::Profile();
-  }
-
-  void Disable() {}
-};
-
-void CreateTracer(DeviceTracer **t) {
-#ifdef PADDLE_WITH_CUPTI
-  *t = new DeviceTracerImpl();
-#else
-  *t = new DeviceTracerDummy();
-#endif  // PADDLE_WITH_CUPTI
-}
+void CreateTracer(DeviceTracer **t) { *t = new DeviceTracerImpl(); }
 
 DeviceTracer *GetDeviceTracer() {
   std::call_once(tracer_once_flag, CreateTracer, &tracer);
