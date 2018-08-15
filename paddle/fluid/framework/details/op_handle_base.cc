@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/details/op_handle_base.h"
+#include <map>
 
 namespace paddle {
 namespace framework {
@@ -39,9 +39,9 @@ OpHandleBase::~OpHandleBase() {
 #endif
 }
 
-void OpHandleBase::Run(bool use_event) {
+void OpHandleBase::Run(bool use_cuda) {
 #ifdef PADDLE_WITH_CUDA
-  if (events_.empty() && use_event) {
+  if (events_.empty() && use_cuda) {
     for (auto &p : dev_ctxes_) {
       int dev_id = boost::get<platform::CUDAPlace>(p.first).device;
       PADDLE_ENFORCE(cudaSetDevice(dev_id));
@@ -50,7 +50,7 @@ void OpHandleBase::Run(bool use_event) {
     }
   }
 #else
-  PADDLE_ENFORCE(!use_event);
+  PADDLE_ENFORCE(!use_cuda);
 #endif
 
   RunImpl();
@@ -58,8 +58,10 @@ void OpHandleBase::Run(bool use_event) {
 
 void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 #ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_NOT_NULL(waited_ctx);
   if (platform::is_cpu_place(waited_ctx->GetPlace()) || events_.empty()) {
     for (auto &dev_ctx : dev_ctxes_) {
+      PADDLE_ENFORCE_NOT_NULL(dev_ctx.second);
       dev_ctx.second->Wait();
     }
   } else {
@@ -78,19 +80,21 @@ void OpHandleBase::RecordWaitEventOnCtx(platform::DeviceContext *waited_ctx) {
 
 void OpHandleBase::AddInput(VarHandleBase *in) {
   this->inputs_.emplace_back(in);
-  in->pending_ops_.insert(this);
+  node_->inputs.push_back(in->Node());
+  in->AddOutput(this, this->Node());
 }
 
 void OpHandleBase::AddOutput(VarHandleBase *out) {
   outputs_.emplace_back(out);
-  out->generated_op_ = this;
+  node_->outputs.push_back(out->Node());
+  out->AddInput(this, this->Node());
 }
 
 void OpHandleBase::WaitInputVarGenerated() {
   for (auto in_var : inputs_) {
     if (NeedWait(in_var)) {
       for (auto &pair : dev_ctxes_) {
-        in_var->generated_op_->RecordWaitEventOnCtx(pair.second);
+        in_var->GeneratedOp()->RecordWaitEventOnCtx(pair.second);
       }
     }
   }
@@ -99,20 +103,29 @@ void OpHandleBase::WaitInputVarGenerated() {
 void OpHandleBase::WaitInputVarGenerated(const platform::Place &place) {
   for (auto *in : inputs_) {
     if (NeedWait(in)) {
-      in->generated_op_->RecordWaitEventOnCtx(dev_ctxes_[place]);
+      in->GeneratedOp()->RecordWaitEventOnCtx(dev_ctxes_[place]);
     }
   }
 }
 
+size_t OpHandleBase::NoDummyInputSize() const {
+  size_t cnt = 0;
+  for (auto *in : inputs_) {
+    if (dynamic_cast<DummyVarHandle *>(in) == nullptr) {
+      ++cnt;
+    }
+  }
+  return cnt;
+}
+
 bool OpHandleBase::NeedWait(VarHandleBase *in_var) {
-  return in_var && in_var->generated_op_;
+  return in_var && in_var->GeneratedOp();
 }
 
 void OpHandleBase::RunAndRecordEvent(const std::function<void()> &callback) {
 #ifdef PADDLE_WITH_CUDA
   if (!events_.empty()) {  // Use event
     std::function<void()> method = callback;
-
     for (auto &p : dev_ctxes_) {
       method = [method, p, this]() {
         static_cast<platform::CUDADeviceContext *>(p.second)->RecordEvent(

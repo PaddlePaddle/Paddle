@@ -19,10 +19,12 @@
 #                   Utils
 #=================================================
 
+set -ex
+
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
-    
+
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
     ${BLUE}build_android${NONE}: run build for android platform
@@ -37,6 +39,7 @@ function print_usage() {
     ${BLUE}fluid_inference_lib${NONE}: deploy fluid inference library
     ${BLUE}check_style${NONE}: run code style check
     ${BLUE}cicheck${NONE}: run CI tasks
+    ${BLUE}assert_api_not_changed${NONE}: check api compability
     "
 }
 
@@ -78,6 +81,12 @@ function cmake_gen() {
             PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
         -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
         -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+        elif [ "$1" == "cp35-cp35m" ]; then
+            export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
+            export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
+            export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
         fi
     fi
 
@@ -106,6 +115,9 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
+        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
+        -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -132,7 +144,10 @@ EOF
         -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-        -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
+        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON} \
+        -DPY_VERSION=${PY_VERSION:-2.7}
 }
 
 function abort(){
@@ -145,19 +160,17 @@ function check_style() {
     trap 'abort' 0
     set -e
 
-    # install glide
-    curl https://glide.sh/get | bash
-    eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    if [ -x "$(command -v gimme)" ]; then
+    	eval "$(GIMME_GO_VERSION=1.8.3 gimme)"
+    fi
 
     # set up go environment for running gometalinter
     mkdir -p $GOPATH/src/github.com/PaddlePaddle/
     ln -sf ${PADDLE_ROOT} $GOPATH/src/github.com/PaddlePaddle/Paddle
-    cd  $GOPATH/src/github.com/PaddlePaddle/Paddle/go; glide install; cd -
+    mkdir -p ./build/go
+    cp go/glide.* build/go
+    cd build/go; glide install; cd -
 
-    go get github.com/alecthomas/gometalinter
-    gometalinter --install
-
-    cd ${PADDLE_ROOT}
     export PATH=/usr/bin:$PATH
     pre-commit install
     clang-format --version
@@ -183,6 +196,7 @@ function build() {
     ============================================
 EOF
     make clean
+    make -j `nproc`
     make install -j `nproc`
 }
 
@@ -198,7 +212,7 @@ function build_android() {
     fi
 
     ANDROID_STANDALONE_TOOLCHAIN=$ANDROID_TOOLCHAINS_DIR/$ANDROID_ARCH-android-$ANDROID_API
-    
+
     cat <<EOF
     ============================================
     Generating the standalone toolchain ...
@@ -212,13 +226,13 @@ EOF
           --arch=$ANDROID_ARCH \
           --platform=android-$ANDROID_API \
           --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-    
+
     BUILD_ROOT=${PADDLE_ROOT}/build_android
     DEST_ROOT=${PADDLE_ROOT}/install_android
-    
+
     mkdir -p $BUILD_ROOT
     cd $BUILD_ROOT
-    
+
     if [ $ANDROID_ABI == "armeabi-v7a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
             -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
@@ -286,7 +300,7 @@ function build_ios() {
           -DWITH_TESTING=OFF \
           -DWITH_SWIG_PY=OFF \
           -DCMAKE_BUILD_TYPE=Release
-    
+
     make -j 2
 }
 
@@ -308,6 +322,31 @@ EOF
         fi
     fi
 }
+
+function assert_api_not_changed() {
+    mkdir -p ${PADDLE_ROOT}/build/.check_api_workspace
+    cd ${PADDLE_ROOT}/build/.check_api_workspace
+    virtualenv .env
+    source .env/bin/activate
+    pip install ${PADDLE_ROOT}/build/python/dist/*whl
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+    deactivate
+
+    API_CHANGE=`git diff --name-only upstream/develop | grep "paddle/fluid/API.spec" || true`
+    echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
+    if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
+        # TODO: curl -H 'Authorization: token ${TOKEN}'
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
+        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+        if [ "${APPROVALS}" == "FALSE" ]; then
+            echo "You must have at least 2 approvals for the api change!"
+        exit 1
+        fi
+    fi
+}
+
 
 function single_test() {
     TEST_NAME=$1
@@ -331,14 +370,14 @@ EOF
 function bind_test() {
     # the number of process to run tests
     NUM_PROC=6
-    
+
     # calculate and set the memory usage for each process
     MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
-    
+
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-    
+
     for (( i = 0; i < $NUM_PROC; i++ )); do
         cuda_list=()
         for (( j = 0; j < $CUDA_DEVICE_COUNT; j++ )); do
@@ -380,6 +419,25 @@ EOF
     linkchecker doc/v2/en/html/index.html
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
+
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+
+    # Deploy to the the content server if its a "develop" or "release/version" branch
+    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
+    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
+        PPO_SCRIPT_BRANCH=develop
+    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
+        PPO_SCRIPT_BRANCH=master
+    else
+        # Early exit, this branch doesn't require documentation build
+        return 0;
+    fi
+     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
+    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
+    cd ..
+    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
+    cd -
 }
 
 function gen_html() {
@@ -449,7 +507,7 @@ EOF
     # run paddle version to install python packages first
     RUN apt-get update &&\
         ${NCCL_DEPS}\
-        apt-get install -y wget python-pip dmidecode python-tk && easy_install -U pip && \
+        apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \
@@ -491,15 +549,28 @@ function gen_fluid_inference_lib() {
     Deploying fluid inference library ...
     ========================================
 EOF
+        cmake .. -DWITH_DISTRIBUTE=OFF
         make -j `nproc` inference_lib_dist
         cd ${PADDLE_ROOT}/build
-        mv fluid_install_dir fluid
-        tar -cf fluid.tgz fluid
+        cp -r fluid_install_dir fluid
+        tar -czf fluid.tgz fluid
+      fi
+}
+
+function test_fluid_inference_lib() {
+    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+        cat <<EOF
+    ========================================
+    Testing fluid inference library ...
+    ========================================
+EOF
+        cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF}
+        ./clean.sh
       fi
 }
 
 function main() {
-    set -e
     local CMD=$1
     init
     case $CMD in
@@ -540,6 +611,7 @@ function main() {
       fluid_inference_lib)
         cmake_gen ${PYTHON_ABI:-""}
         gen_fluid_inference_lib
+        test_fluid_inference_lib
         ;;
       check_style)
         check_style
@@ -550,6 +622,8 @@ function main() {
         run_test
         gen_capi_package
         gen_fluid_inference_lib
+        test_fluid_inference_lib
+        assert_api_not_changed
         ;;
       *)
         print_usage

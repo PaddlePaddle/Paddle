@@ -18,9 +18,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace inference {

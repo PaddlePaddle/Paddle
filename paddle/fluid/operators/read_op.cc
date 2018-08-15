@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -65,10 +66,26 @@ class ReadOp : public framework::OperatorBase {
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
+
+    // For profiling
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(dev_place);
+    platform::RecordEvent record_event(Type(), &ctx);
+
     reader->ReadNext(&ins);
-    PADDLE_ENFORCE(!ins.empty(), "There is no next data.");
+    if (ins.empty()) {
+      if (Attr<bool>("throw_eof_exp")) {
+        PADDLE_THROW_EOF();
+      } else {
+        ins.resize(out_arg_names.size());
+        for (auto& tensor : ins) {
+          // data type is not important for subsequent DataBalanceOpHandle
+          tensor.mutable_data<float>(framework::make_ddim({0}), dev_place);
+        }
+      }
+    }
     PADDLE_ENFORCE_EQ(ins.size(), out_arg_names.size());
-    for (size_t i = 0; i < ins.size(); ++i) {
+    for (size_t i = 0; i < out_arg_names.size(); ++i) {
       auto* out =
           scope.FindVar(out_arg_names[i])->GetMutable<framework::LoDTensor>();
       out->ShareDataWith(ins[i]);
@@ -82,6 +99,14 @@ class ReadOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Reader", "(ReaderHolder) The executed reader.");
     AddOutput("Out", "(LoDTensor) The output data.").AsDuplicable();
+    AddAttr<bool>(
+        "throw_eof_exp",
+        "If set true, an exception will be thrown when the Reader "
+        "yields empty (which means there is no next data).\n"
+        "NOTES: This flag must be true always. It will be set to false"
+        " only when the data-balance is enabled in ParallelExecutor"
+        " and it is set by ParallelExecutor instance, not users.")
+        .SetDefault(true);
     AddComment(R"DOC(
       Read Operator
 

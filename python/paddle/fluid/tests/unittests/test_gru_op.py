@@ -20,8 +20,8 @@ from test_lstm_op import identity, sigmoid, tanh, relu
 
 
 class TestGRUOp(OpTest):
-    lod = [[0, 2, 6, 9]]
-    batch_size = lod[0][-1]
+    lod = [[2, 4, 3]]
+    batch_size = sum(lod[0])
     frame_size = 5
     activate = {
         'identity': identity,
@@ -33,12 +33,12 @@ class TestGRUOp(OpTest):
     @staticmethod
     def seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
-        seq_starts = lod[0]
-        seq_lens = []
-        for i in range(len(seq_starts) - 1):
-            seq_lens.append(seq_starts[i + 1] - seq_starts[i])
+        seq_lens = lod[0]
+        seq_starts = [0]
+        for i in range(len(seq_lens)):
+            seq_starts.append(seq_starts[-1] + seq_lens[i])
         sorted_seqs = sorted(
-            range(len(seq_lens)), lambda x, y: seq_lens[y] - seq_lens[x])
+            list(range(len(seq_lens))), lambda x, y: seq_lens[y] - seq_lens[x])
         num_batch = seq_lens[sorted_seqs[0]]
         for batch_idx in range(num_batch):
             idx_in_seq = []
@@ -74,15 +74,16 @@ class TestGRUOp(OpTest):
     def gru(self):
         input, lod = self.inputs['Input']
         w = self.inputs['Weight']
-        b = self.inputs['Bias'] if self.inputs.has_key('Bias') else np.zeros(
+        b = self.inputs['Bias'] if 'Bias' in self.inputs else np.zeros(
             (1, self.frame_size * 3))
         batch_gate = self.outputs['BatchGate']
         batch_reset_hidden_prev = self.outputs['BatchResetHiddenPrev']
         batch_hidden = self.outputs['BatchHidden']
         hidden = self.outputs['Hidden']
         idx_in_seq_list = self.idx_in_seq_list
-        h_p = self.inputs['H0'][self.sorted_seqs] if self.inputs.has_key(
-            'H0') else np.zeros((len(idx_in_seq_list[0]), self.frame_size))
+        h_p = self.inputs['H0'][
+            self.sorted_seqs] if 'H0' in self.inputs else np.zeros(
+                (len(idx_in_seq_list[0]), self.frame_size))
         num_batch = len(idx_in_seq_list)
         end_idx = 0
         for batch_idx in range(num_batch):

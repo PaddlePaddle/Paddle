@@ -22,6 +22,7 @@
 | jczaja | Jacek Czaja |
 | JiayiFeng | Jia-Yi Feng |
 | kbinias | Krzysztof Binias |
+| kexinzhao | Ke-Xin Zhao |
 | kuke | Yi-Bing Liu |
 | lcy-seso | Ying Cao |
 | lipeng-unisound | Peng Li |
@@ -45,6 +46,7 @@
 | tianbingsz | Tian-Bing Xu |
 | tpatejko | Tomasz Patejko |
 | typhoonzero | Yi Wu |
+| velconia | Qi-Yang Min |
 | wanghaoshuang | Hao-Shuang Wang |
 | wangyang59 | Yang Wang |
 | wangzhen-nlp | Zhen Wang |

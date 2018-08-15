@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import core
+from __future__ import print_function
 import multiprocessing
-import framework
-import executor
+from . import core
+from . import framework
+from . import executor
 import warnings
 import sys
+import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
 
@@ -26,6 +28,40 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 
 class ParallelExecutor(object):
+    """
+    ParallelExecutor can run program in parallel.
+
+    Args:
+        use_cuda (bool): Whether to use CUDA or not.
+        loss_name (str): The loss name must set in training. Default None.
+        main_program (Program): The program that need to run, if not provided,
+            then default_main_program will be used. Default None.
+        share_vars_from(ParallelExecutor): If provied, it will share variables
+            from the specified ParallelExecutor. Default None.
+        num_trainers(int): If greater than 1, NCCL will be initialized with
+            multiple rank of nodes, each node should have same number of GPUs.
+            Distributed training will be enabled then. Default 1.
+        trainer_id(int: Must use together with num_trainers. trainer_id is the
+            "rank" of current node starts from 0. Default 0.
+
+    Returns:
+        ParallelExecutor: The initialized ParallelExecutor object.
+
+    Raises:
+        TypeError: If share_vars_from is provided, but not ParallelExecutor object.
+
+    Examples:
+        .. code-block:: python
+
+          train_exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
+          test_exe = fluid.ParallelExecutor(use_cuda=True,
+                                            main_program=test_program,
+                                            share_vars_from=train_exe)
+
+          train_loss, = train_exe.run([loss.name], feed=feed_dict)
+          test_loss, = test_exe.run([loss.name], feed=feed_dict)
+    """
+
     def __init__(self,
                  use_cuda,
                  loss_name=None,
@@ -36,42 +72,6 @@ class ParallelExecutor(object):
                  num_trainers=1,
                  trainer_id=0,
                  **kwargs):
-        """
-        ParallelExecutor can run program in parallel.
-
-        Args:
-            use_cuda(bool): Whether to use CUDA or not.
-            loss_name(str, default None): The loss name must set in training.
-            main_program(Program, default None): The program that need to run,
-                if not provided, then default_main_program will be used.
-            share_vars_from(ParallelExecutor, default None): If provied,
-                it will share variables from the specified ParallelExecutor.
-            num_trainers(int, default 1): If greater than 1, NCCL will be
-                initialized with multpile rank of nodes, each node should have
-                same number of GPUs. Distributed training will be enabled then.
-            trainer_id(int, default 0): Must use together with num_trainers.
-                trainer_id is the "rank" of current node starts from 0.
-
-        Returns:
-            A ParallelExecutor object.
-
-        Raises:
-            TypeError: If share_vars_from is provided, but not ParallelExecutor
-                object.
-
-        Examples:
-            .. code-block:: python
-
-              train_exe = fluid.ParallelExecutor(
-                  use_cuda=True, loss_name=loss.name)
-              test_exe = fluid.ParallelExecutor(
-                  use_cuda=True,
-                  main_program=test_program,
-                  share_vars_from=train_exe)
-
-              train_loss, = train_exe.run([loss.name], feed=feed_dict)
-              test_loss, = test_exe.run([loss.name], feed=feed_dict)
-        """
         if len(kwargs) != 0:
             err_msg = ""
             for key in kwargs:
@@ -95,13 +95,15 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in xrange(core.get_cuda_device_count()):
+            for i in range(core.get_cuda_device_count()):
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
                 self._places.append(p)
         else:
-            for i in xrange(multiprocessing.cpu_count()):
+            cpu_num = int(
+                os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+            for i in range(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
@@ -110,19 +112,17 @@ class ParallelExecutor(object):
 
         if exec_strategy is None:
             exec_strategy = ExecutionStrategy()
-            if use_cuda:
-                exec_strategy.use_event = True
-            else:
-                exec_strategy.use_event = False
+        exec_strategy.use_cuda = use_cuda
 
         if exec_strategy.num_threads == 0:
             if use_cuda:
                 # Experiments on se-resnext shows that too many threads hurt
                 # performance. Worth tunning for other models in the future.
-                exec_strategy.num_threads = len(self._places) * 2
+                exec_strategy.num_threads = len(self._places) * 4
             else:
-                exec_strategy.num_threads = min(
-                    len(self._places) * 2, multiprocessing.cpu_count())
+                cpu_num = int(
+                    os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
+                exec_strategy.num_threads = cpu_num * 2
 
         if build_strategy is None:
             build_strategy = BuildStrategy()
@@ -130,18 +130,24 @@ class ParallelExecutor(object):
         main = main_program
         main = main if main else framework.default_main_program()
         scope = executor.global_scope()
+        # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
+        # train program, call self.bcast_param() at the end of each mini-batch.
+        self.is_dist = True if "recv" in [
+            op.type for op in main.global_block().ops
+        ] else False
 
         if share_vars_from and not isinstance(share_vars_from,
                                               ParallelExecutor):
             raise TypeError("share_vars_from must be ParallelExecutor.")
+
         local_scopes = share_vars_from.executor.local_scopes(
         ) if share_vars_from else []
 
         self.persistable_vars = [
-            v.name
-            for v in filter(
-                lambda var: var.persistable and var.type != core.VarDesc.VarType.RAW,
-                main.list_vars())
+            v.name for v in [
+                var for var in main.list_vars()
+                if var.persistable and var.type != core.VarDesc.VarType.RAW
+            ]
         ]
 
         self.executor = core.ParallelExecutor(
@@ -155,7 +161,7 @@ class ParallelExecutor(object):
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
-    def run(self, fetch_list, feed=None, feed_dict=None):
+    def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
         """
         Run a parallel executor with fetch_list.
 
@@ -165,12 +171,14 @@ class ParallelExecutor(object):
         element in the list will be copied to each device directly.
 
         For example, if the feed is a dict:
+
         >>> exe = ParallelExecutor()
         >>> # the image will be splitted into devices. If there is two devices
         >>> # each device will process an image with shape (24, 1, 28, 28)
         >>> exe.run(feed={'image': numpy.random.random(size=(48, 1, 28, 28))})
 
         For example, if the feed is a list:
+
         >>> exe = ParallelExecutor()
         >>> # each device will process each element in the list.
         >>> # the 1st device will process an image with shape (48, 1, 28, 28)
@@ -181,22 +189,48 @@ class ParallelExecutor(object):
         >>>               {"image": numpy.random.random(size=(32, 1, 28, 28))},
         >>>              ])
 
-
         Args:
             fetch_list(list): The fetched variable names
             feed(list|dict|None): The feed variables. If the feed is a dict,
                 tensors in that dict will be splitted into each devices. If
                 the feed is a list, each element of the list will be copied
-                to each device.
+                to each device. Default None.
             feed_dict: Alias for feed parameter, for backward compatibility.
-                This parameter is deprecated.
+                This parameter has been deprecated. Default None.
+            return_numpy(bool): Whether converts the fetched tensor to numpy.
+                Default: True.
 
-        Returns: fetched result list.
+        Returns:
+            List: The fetched result list.
 
+        Raises:
+            ValueError: If the feed is a list, but its length is not equal the
+                length of active places, or its element's is not dict.
+
+        NOTES:
+            1. If the feed's type is dict, the number of data that feeds to
+               ParallelExecutor must be bigger than active places. Otherwise,
+               it will throw exception from C++ side. Special attention should be
+               paid to check whether the last batch of the dataset is bigger
+               than active places.
+            2. If active places are more than one, the fetch results for each
+               variable is a list, and each element of this list is the variable of
+               respective active place.
+
+        Examples:
+            .. code-block:: python
+
+                pe = fluid.ParallelExecutor(use_cuda=use_cuda,
+                                            loss_name=avg_cost.name,
+                                            main_program=fluid.default_main_program())
+                loss = pe.run(feed=feeder.feed(cur_batch),
+                              fetch_list=[avg_cost.name]))
         """
         if feed is None and feed_dict is not None:
             feed = feed_dict
-            print >> sys.stderr, "`feed_dict` is deprecated. Please use `feed=`"
+            print(
+                "`feed_dict` is deprecated. Please use `feed=`",
+                file=sys.stderr)
 
         if isinstance(feed, dict):
             feed_tensor_dict = dict()
@@ -237,10 +271,21 @@ class ParallelExecutor(object):
         fetch_var_name = '@FETCHED_VAR_NAME@'
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
+
+        if self.is_dist:
+            self._bcast_params()
+
+        if return_numpy:
+            return executor.as_numpy(arr)
+
         return [arr[i] for i in range(len(arr))]
 
-    def bcast_params(self):
-        self.executor.bcast_params(set(self.persistable_vars))
+    def _bcast_params(self):
+        """
+        Broadcast the parameters to other devices. It is used during
+        distributed training.
+        """
+        self.executor._bcast_params(set(self.persistable_vars))
 
     @property
     def device_count(self):

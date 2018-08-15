@@ -34,7 +34,7 @@ extern void *curand_dso_handle;
       std::call_once(curand_dso_flag, []() {                                 \
         curand_dso_handle = paddle::platform::dynload::GetCurandDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(curand_dso_handle, #__name);                  \
+      static void *p_##__name = dlsym(curand_dso_handle, #__name);           \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);              \
     }                                                                        \
   };                                                                         \

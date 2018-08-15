@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -57,7 +58,11 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
+    return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
       return var->Get<SelectedRows>().value().dims();
@@ -69,6 +74,39 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(ToDataType(tensor.type()));
+  } else if (var->IsType<SelectedRows>()) {
+    return DataTypeToString(
+        ToDataType(var->Get<SelectedRows>().value().type()));
+  } else {
+    return "";
+  }
+}
+
+static int GetRowSize(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return -1;
+  }
+
+  if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().rows().size();
+  }
+
+  return -1;
+}
+
 static LoD GetLoD(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   auto default_lod = LoD({{}});
@@ -78,13 +116,18 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
+    return tensor.lod();
   } else {
     return default_lod;
   }
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -93,7 +136,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::RecordEvent record_event(Type(), pool.Get(place));
   RunImpl(scope, place);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -153,6 +199,12 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < input.second.size(); ++i) {
       ss << input.second[i];
       if (scope) {
+        int row_size = GetRowSize(*scope, input.second[i]);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
+        std::string dtype = GetDtype(*scope, input.second[i]);
+        ss << ":" << dtype;
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
@@ -173,6 +225,10 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     for (size_t i = 0; i < output.second.size(); ++i) {
       ss << output.second[i];
       if (scope) {
+        int row_size = GetRowSize(*scope, output.second[i]);
+        if (row_size >= 0) {
+          ss << "[row_size=" << row_size << "]";
+        }
         ss << "[" << GetDims(*scope, output.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
@@ -291,6 +347,38 @@ static Tensor* GetMutableTensorFromVar(Variable* var) {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
                  var->Type().name());
   }
+}
+
+bool ExecutionContext::HasInput(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
+  }
+  auto& ins = Inputs(name);
+  size_t length = ins.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input %s should not have more than one inputs", name);
+  auto arg = ins[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
+}
+
+bool ExecutionContext::HasOutput(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto& outs = Outputs(name);
+  size_t length = outs.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output %s should not have more than one inputs", name);
+  auto arg = outs[0];
+  auto* var = arg == kEmptyVarName ? nullptr : scope_.FindVar(arg);
+  return var != nullptr;
 }
 
 template <>
@@ -444,10 +532,25 @@ class RuntimeInferShapeContext : public InferShapeContext {
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_lod(in_tensor.lod());
 
-    // TODO(dzhwinter) : reuse ShareLoD in most operators.
-    // Need to call ShareLayout explicitly in sequence related ops.
-    // Shall we have a better method to shared info between in/out Tensor?
-    out_tensor->set_layout(in_tensor.layout());
+// TODO(dzhwinter) : reuse ShareLoD in most operators.
+// Need to call ShareLayout explicitly in sequence related ops.
+// Shall we have a better method to shared info between in/out Tensor?
+#ifdef PADDLE_WITH_MKLDNN
+    // Fix me: ugly workaround below
+    // Correct solution:
+    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+    //    layout of output tensor should be set "manually" in Compute()
+    //    of each OPKernel. The reason layout should NOT be shared between
+    //    input and output "automatically" (now by InferShape()->ShareLoD())
+    //    is that layout transform may occur after InferShape().
+    // Workaround:
+    //    Skip set_layout() when input layout is kMKLDNN
+    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+    //    in Compute()
+    if (in_tensor.layout() != DataLayout::kMKLDNN)
+#endif
+      out_tensor->set_layout(in_tensor.layout());
   }
 
   void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
@@ -522,8 +625,7 @@ static void CheckTensorNANOrInf(const std::string& name,
   if (tensor.memory_size() == 0) {
     return;
   }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
+  if (!IsType<float>(tensor.type()) && !IsType<double>(tensor.type())) {
     return;
   }
   PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
@@ -539,9 +641,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  // For profiling, don't move out of this function because that will result
-  // in the failure of multi-GPU profiling.
-  platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -549,8 +648,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     PADDLE_THROW(
         "There are no kernels which are registered in the %s operator.", type_);
   }
-
-  ExecutionContext ctx(*this, scope, *dev_ctx);
 
   OpKernelMap& kernels = kernels_iter->second;
 
@@ -561,77 +658,127 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   //   Do selection
   // }
 
-  auto expected_kernel_key = this->GetExpectedKernelType(ctx);
+  auto expected_kernel_key =
+      this->GetExpectedKernelType(ExecutionContext(*this, scope, *dev_ctx));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_MKLDNN
+  // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
+  if (kernel_iter == kernels.end() &&
+      expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
+    VLOG(3) << "missing MKLDNN kernel: fallbacking to PLAIN one";
+    expected_kernel_key.library_type_ = LibraryType::kPlain;
+    expected_kernel_key.data_layout_ = DataLayout::kAnyLayout;
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
   if (kernel_iter == kernels.end()) {
     PADDLE_THROW("op %s does not have kernel for %s", type_,
                  KernelTypeToString(expected_kernel_key));
   }
 
-  // do data transform
-  Scope& new_scope = scope.NewScope();
+  // do data transformScope &transfer_scope;
+  std::vector<std::string> transfered_inplace_vars;
+  auto* transfer_scope =
+      TryTransferData(scope, expected_kernel_key, &transfered_inplace_vars);
 
-  std::vector<std::string> inplace_vars;
-  for (auto& var_name_item : this->Inputs()) {
-    for (auto& var_name : var_name_item.second) {
-      auto* var = scope.FindVar(var_name);
-      if (var && VarIsTensor(var)) {
-        auto* tensor_in = GetTensorFromVar(var);
-        if (tensor_in->IsInitialized()) {
-          auto kernel_type_for_var = this->GetKernelTypeForVar(
-              var_name_item.first, *tensor_in, expected_kernel_key);
-          if (TransFromNeeded(kernel_type_for_var, expected_kernel_key)) {
-            auto out_var_names = OutputVars(true);
-            if (std::find(out_var_names.begin(), out_var_names.end(),
-                          var_name) != out_var_names.end()) {
-              inplace_vars.push_back(var_name);
-            }
-            VLOG(3) << "Transform Variable " << var_name << " from "
-                    << kernel_type_for_var << " to " << expected_kernel_key;
-            auto* trans_var = new_scope.Var(var_name);
-            std::shared_ptr<Tensor> out(new Tensor);
-            DataTransform(expected_kernel_key, kernel_type_for_var, *tensor_in,
-                          out.get());
-            CopyVariableWithTensor(*var, *(out.get()), trans_var);
-          }
-        }
-      }
-    }
+  // exec scope is the scope that kernel actually executed on.
+  const Scope& exec_scope =
+      (transfer_scope == nullptr ? scope : *transfer_scope);
+
+  if (!(expected_kernel_key.place_ == dev_ctx->GetPlace())) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
   }
 
-  auto* new_dev_ctx = pool.Get(expected_kernel_key.place_);
-  kernel_iter->second->Compute(
-      ExecutionContext(*this, new_scope, *new_dev_ctx));
+  kernel_iter->second(ExecutionContext(*this, exec_scope, *dev_ctx));
 
-  for (auto& var_name : inplace_vars) {
-    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
-    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
-    auto* transformed_tensor = GetTensorFromVar(new_scope.FindVar(var_name));
-    original_tensor->ShareDataWith(*transformed_tensor);
+  if (!transfered_inplace_vars.empty()) {
+    // there is inplace variable has been transfered.
+    TransferInplaceVarsBack(scope, transfered_inplace_vars, *transfer_scope);
   }
 
   /*For profiling/benchmark only*/
   if (FLAGS_benchmark) {
-    new_dev_ctx->Wait();
+    dev_ctx->Wait();
   }
 
   if (FLAGS_check_nan_inf) {
     for (auto& vname : OutputVars(true)) {
-      auto* var = new_scope.FindVar(vname);
+      auto* var = exec_scope.FindVar(vname);
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
         CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
       }
     }
   }
+}
+void OperatorWithKernel::TransferInplaceVarsBack(
+    const Scope& scope, const std::vector<std::string>& inplace_vars,
+    const Scope& transfer_scope) const {
+  for (auto& var_name : inplace_vars) {
+    VLOG(3) << "share inplace var " + var_name + " back to it's original scope";
+    auto* original_tensor = GetMutableTensorFromVar(scope.FindVar(var_name));
+    auto* transformed_tensor =
+        GetTensorFromVar(transfer_scope.FindVar(var_name));
+    original_tensor->ShareDataWith(*transformed_tensor);
+  }
+}
+
+Scope* OperatorWithKernel::TryTransferData(
+    const Scope& scope, const OpKernelType& expected_kernel_key,
+    std::vector<std::string>* transfered_inplace_vars) const {
+  Scope* new_scope = nullptr;
+  for (auto& var_name_item : Inputs()) {
+    for (auto& var_name : var_name_item.second) {
+      auto* var = scope.FindVar(var_name);
+      // Only tensor can be tranfer to another device.
+      if (var == nullptr || !VarIsTensor(var)) {
+        continue;
+      }
+
+      auto* tensor_in = GetTensorFromVar(var);
+      if (!tensor_in->IsInitialized()) {
+        continue;
+      }
+
+      auto kernel_type_for_var = GetKernelTypeForVar(
+          var_name_item.first, *tensor_in, expected_kernel_key);
+
+      if (!NeedTransform(kernel_type_for_var, expected_kernel_key)) {
+        continue;
+      }
+
+      auto out_var_names = OutputVars(true);
+      if (std::find(out_var_names.begin(), out_var_names.end(), var_name) !=
+          out_var_names.end()) {
+        transfered_inplace_vars->emplace_back(var_name);
+      }
+
+      VLOG(3) << "Transform Variable " << var_name << " from "
+              << kernel_type_for_var << " to " << expected_kernel_key;
+
+      if (new_scope == nullptr) {
+        new_scope = &scope.NewScope();
+      }
+
+      auto* trans_var = new_scope->Var(var_name);
+      Tensor out;
+      TransformData(expected_kernel_key, kernel_type_for_var, *tensor_in, &out);
+      SetTensorToVariable(*var, out, trans_var);
+    }
+  }
+
+  return new_scope;
 }
 
 proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
+  std::string last_input_name;
   for (auto& input : this->inputs_) {
     for (auto& ipt_name : input.second) {
       auto* var = scope.FindVar(ipt_name);
@@ -646,9 +793,12 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
         }
         if (t != nullptr) {
           int tmp = static_cast<int>(ToDataType(t->type()));
-          PADDLE_ENFORCE(tmp == data_type || data_type == -1,
-                         "DataType of Paddle Op %s must be the same.", Type());
+          PADDLE_ENFORCE(
+              tmp == data_type || data_type == -1,
+              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
+              Type(), last_input_name, data_type, ipt_name, tmp);
           data_type = tmp;
+          last_input_name = ipt_name;
         }
       }
     }
@@ -665,7 +815,8 @@ OpKernelType OperatorWithKernel::GetExpectedKernelType(
 OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name, const Tensor& tensor,
     const OpKernelType& expected_kernel_type) const {
-  return OpKernelType(expected_kernel_type.data_type_, tensor.place());
+  return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
+                      tensor.layout());
 }
 
 }  // namespace framework

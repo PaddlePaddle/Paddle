@@ -21,13 +21,9 @@ using LoDTensor = paddle::framework::LoDTensor;
 using LoDTensorArray = paddle::framework::LoDTensorArray;
 
 template <typename T>
-using BeamNode = paddle::operators::BeamNode<T>;
-template <typename T>
 using BeamSearchDecoder = paddle::operators::BeamSearchDecoder<T>;
 template <typename T>
 using Sentence = paddle::operators::Sentence<T>;
-template <typename T>
-using BeamNodeVector = paddle::operators::BeamNodeVector<T>;
 template <typename T>
 using SentenceVector = paddle::operators::SentenceVector<T>;
 
@@ -77,138 +73,50 @@ void GenerateExample(const std::vector<size_t>& level_0,
 }  // namespace test
 }  // namespace paddle
 
-TEST(BeamSearchDecodeOp, DeleteBeamNode) {
-  auto* root = new BeamNode<float>(0, 0);
-  auto* b1 = new BeamNode<float>(1, 1);
-  auto* b2 = new BeamNode<float>(2, 2);
-  auto* b3 = new BeamNode<float>(3, 3);
-
-  b1->AppendTo(root);
-  b2->AppendTo(root);
-  b3->AppendTo(b1);
-
-  delete b3;
-  delete b2;
-}
-
-TEST(BeamSearchDecodeOp, MakeSentence) {
-  auto* root = new BeamNode<float>(0, 0);
-  auto* b1 = new BeamNode<float>(1, 1);
-  auto* end = new BeamNode<float>(2, 2);
-  b1->AppendTo(root);
-  end->AppendTo(b1);
-
-  BeamSearchDecoder<float> helper;
-  Sentence<float> sentence = helper.MakeSentence(end);
-  delete end;
-
-  std::vector<int64_t> expect_ids = {0, 1, 2};
-  ASSERT_EQ(sentence.word_ids, expect_ids);
-
-  std::vector<float> expect_scores = {0, 1, 2};
-  ASSERT_EQ(sentence.scores, expect_scores);
-}
-
-TEST(BeamSearchDecodeOp, PackTwoStepsFistStep) {
+TEST(BeamSearchDecodeOp, Backtrace) {
   CPUPlace place;
 
+  // Construct sample data with 5 steps and 2 source sentences
+  // beam_size = 2, start_id = 0, end_id = 1
   LoDTensorArray ids;
   LoDTensorArray scores;
 
   paddle::test::GenerateExample(
-      std::vector<size_t>{0, 2, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},
-      std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &scores);
-
-  std::vector<BeamNodeVector<float>> beamnode_vector_list;
-  std::vector<SentenceVector<float>> sentence_vector_list(
-      2, SentenceVector<float>());
-
-  BeamSearchDecoder<float> helper;
-  beamnode_vector_list = helper.PackTwoSteps(
-      ids[0], scores[0], &beamnode_vector_list, &sentence_vector_list);
-  ASSERT_EQ(beamnode_vector_list.size(), 2UL);
-  ASSERT_EQ(beamnode_vector_list[0].size(), 2UL);
-  ASSERT_EQ(beamnode_vector_list[1].size(), 4UL);
-}
-
-TEST(BeamSearchDecodeOp, PackTwoSteps) {
-  CPUPlace place;
-
-  // first source has three prefix
-  BeamNodeVector<float> source0_prefixes;
-  source0_prefixes.push_back(
-      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(1, 1)));
-  source0_prefixes.push_back(
-      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(0, 0)));
-  source0_prefixes.push_back(
-      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(3, 3)));
-
-  // second source has two prefix
-  BeamNodeVector<float> source1_prefixes;
-  source1_prefixes.push_back(
-      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(4, 4)));
-  source1_prefixes.push_back(
-      std::unique_ptr<BeamNode<float>>(new BeamNode<float>(5, 5)));
-
-  std::vector<BeamNodeVector<float>> beamnode_vector_list;
-  std::vector<SentenceVector<float>> sentence_vector_list(
-      2, SentenceVector<float>());
-
-  beamnode_vector_list.push_back(std::move(source0_prefixes));
-  beamnode_vector_list.push_back(std::move(source1_prefixes));
-
-  // generate data for one step
-  LoDTensorArray ids;
-  LoDTensorArray scores;
-
-  paddle::test::GenerateExample(std::vector<size_t>{0, 3, 5},
-                                std::vector<size_t>{0, 1, 1, 3, 4, 5},
-                                std::vector<int>{0, 1, 2, 3, 4}, &ids, &scores);
-
-  BeamSearchDecoder<float> helper1;
-  beamnode_vector_list = helper1.PackTwoSteps(
-      ids[0], scores[0], &beamnode_vector_list, &sentence_vector_list);
-
-  ASSERT_EQ(sentence_vector_list[0].size(), 1UL);
-  ASSERT_EQ(sentence_vector_list[1].size(), 0UL);
-  ASSERT_EQ(beamnode_vector_list[0].size(), 3UL);
-  ASSERT_EQ(beamnode_vector_list[1].size(), 2UL);
-}
-
-TEST(BeamSearchDecodeOp, PackAllSteps) {
-  CPUPlace place;
-
-  // we will constuct a sample data with 3 steps and 2 source sentences
-  LoDTensorArray ids;
-  LoDTensorArray scores;
-
+      std::vector<size_t>{0, 1, 2}, std::vector<size_t>{0, 1, 2},
+      std::vector<int>{0, 0}, &ids, &scores);  // start with start_id
+  paddle::test::GenerateExample(std::vector<size_t>{0, 1, 2},
+                                std::vector<size_t>{0, 2, 4},
+                                std::vector<int>{2, 3, 4, 5}, &ids, &scores);
+  paddle::test::GenerateExample(std::vector<size_t>{0, 2, 4},
+                                std::vector<size_t>{0, 2, 2, 4, 4},
+                                std::vector<int>{3, 1, 5, 4}, &ids, &scores);
+  paddle::test::GenerateExample(std::vector<size_t>{0, 2, 4},
+                                std::vector<size_t>{0, 1, 2, 3, 4},
+                                std::vector<int>{1, 1, 3, 5}, &ids, &scores);
   paddle::test::GenerateExample(
-      std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 2, 3, 4, 5, 6},
-      std::vector<int>{1, 2, 3, 4, 5, 6}, &ids, &scores);
-  paddle::test::GenerateExample(
-      std::vector<size_t>{0, 3, 6}, std::vector<size_t>{0, 1, 1, 3, 5, 5, 6},
-      std::vector<int>{0, 1, 2, 3, 4, 5}, &ids, &scores);
-  paddle::test::GenerateExample(std::vector<size_t>{0, 3, 6},
-                                std::vector<size_t>{0, 0, 1, 2, 3, 4, 5},
-                                std::vector<int>{0, 1, 2, 3, 4}, &ids, &scores);
+      std::vector<size_t>{0, 2, 4},
+      std::vector<size_t>{0, 0, 0, 2,
+                          2},  // the branchs of the first source sentence
+                               // are pruned since finished
+      std::vector<int>{5, 1},
+      &ids, &scores);
 
-  ASSERT_EQ(ids.size(), 3UL);
-  ASSERT_EQ(scores.size(), 3UL);
+  ASSERT_EQ(ids.size(), 5UL);
+  ASSERT_EQ(scores.size(), 5UL);
 
-  BeamSearchDecoder<float> helper;
+  BeamSearchDecoder<float> helper(2, 1);  // beam_size = 2, end_id = 1
 
   LoDTensor id_tensor;
   LoDTensor score_tensor;
-  helper.PackAllSteps(ids, scores, &id_tensor, &score_tensor);
+  helper.Backtrace(ids, scores, &id_tensor, &score_tensor);
 
   LoD lod = id_tensor.lod();
-  std::vector<size_t> expect_source_lod = {0, 4, 8};
+  std::vector<size_t> expect_source_lod = {0, 2, 4};
   EXPECT_EQ(lod[0], expect_source_lod);
-  std::vector<size_t> expect_sentence_lod = {0, 1, 3, 6, 9, 10, 13, 16, 19};
+  std::vector<size_t> expect_sentence_lod = {0, 4, 7, 12, 17};
   EXPECT_EQ(lod[1], expect_sentence_lod);
-  // 2| 1, 0| 3, 1, 0| 3, 2, 1| 5| 4, 3, 2| 4, 4, 3| 6, 5, 4
-  std::vector<int> expect_data = {2, 1, 0, 3, 1, 0, 3, 2, 1, 5,
-                                  4, 3, 2, 4, 4, 3, 6, 5, 4};
+  std::vector<int> expect_data = {0, 2, 3, 1, 0, 2, 1, 0, 4,
+                                  5, 3, 5, 0, 4, 5, 3, 1};
   ASSERT_EQ(id_tensor.dims()[0], static_cast<int64_t>(expect_data.size()));
   for (size_t i = 0; i < expect_data.size(); ++i) {
     ASSERT_EQ(id_tensor.data<int64_t>()[i],

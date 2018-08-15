@@ -13,7 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <glog/logging.h>
 #include <algorithm>
+#include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -65,17 +67,21 @@ inline void get_mid_dims(const framework::DDim& x_dims,
   }
 }
 
-inline void trim_trailing_singular_dims(framework::DDim* dims) {
+inline framework::DDim trim_trailing_singular_dims(
+    const framework::DDim& dims) {
   // Remove trailing dimensions of size 1 for y
-  auto actual_dims_size = dims->size();
+  auto actual_dims_size = dims.size();
   for (; actual_dims_size != 0; --actual_dims_size) {
-    if ((*dims)[actual_dims_size - 1] != 1) break;
+    if (dims[actual_dims_size - 1] != 1) break;
   }
-  if (actual_dims_size != dims->size()) {
-    auto actual_dims = framework::vectorize(*dims);
-    actual_dims.resize(actual_dims_size);
-    *dims = framework::make_ddim(actual_dims);
+
+  std::vector<int> trim_dims;
+  trim_dims.resize(actual_dims_size);
+  for (int i = 0; i < actual_dims_size; ++i) {
+    trim_dims[i] = dims[i];
   }
+  framework::DDim actual_dims = framework::make_ddim(trim_dims);
+  return actual_dims;
 }
 
 template <typename T, typename DeviceContext>
@@ -457,69 +463,121 @@ static void ElemwiseGradBroadcast2CUDA(cudaStream_t stream, const T* x,
 #endif
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
+void ElemwiseGradComputeNoBroadcast(
+    const framework::ExecutionContext& ctx, const framework::DDim& x_dim,
+    const framework::DDim& y_dim, const framework::Tensor& x,
+    const framework::Tensor& y, const framework::Tensor& out,
+    const framework::Tensor& dout, int axis, framework::Tensor* dx,
+    framework::Tensor* dy, DX_OP dx_op, DY_OP dy_op) {
+  size_t N = static_cast<size_t>(framework::product(x_dim));
+  platform::ForRange<DeviceContext> for_range(
+      ctx.template device_context<DeviceContext>(), N);
+  for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP>{
+      x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), dx_op, dy_op,
+      dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+      dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
+}
+
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
+void ElemwiseGradComputeWithBroadcast(
+    const framework::ExecutionContext& ctx, const framework::DDim& x_dim,
+    const framework::DDim& y_dim_untrimed, const framework::Tensor& x,
+    const framework::Tensor& y, const framework::Tensor& out,
+    const framework::Tensor& dout, int axis, framework::Tensor* dx,
+    framework::Tensor* dy, DX_OP dx_op, DY_OP dy_op) {
+  axis = (axis == -1 ? x_dim.size() - y_dim_untrimed.size() : axis);
+  auto y_dim = trim_trailing_singular_dims(y_dim_untrimed);
+  axis = (y_dim.size() == 0) ? x_dim.size() : axis;
+
+  int pre, n, post;
+  get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
+  if (post == 1) {
+    int h = pre;
+    int w = n;
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef __NVCC__
+      ElemwiseGradBroadcast1CUDA(
+          ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
+          y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+#endif
+    } else {
+      ElemwiseGradBroadcast1CPU(
+          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op,
+          dy_op, dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    }
+  } else {
+    if (platform::is_gpu_place(ctx.GetPlace())) {
+#ifdef __NVCC__
+      ElemwiseGradBroadcast2CUDA(
+          ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
+          y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post, dx_op,
+          dy_op, dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+#endif
+    } else {
+      ElemwiseGradBroadcast2CPU(
+          x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post,
+          dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
+    }
+  }
+}
+
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
 void ElemwiseGradCompute(const framework::ExecutionContext& ctx,
                          const framework::Tensor& x, const framework::Tensor& y,
                          const framework::Tensor& out,
                          const framework::Tensor& dout, int axis,
                          framework::Tensor* dx, framework::Tensor* dy,
                          DX_OP dx_op, DY_OP dy_op) {
+  const framework::DDim& x_dim = x.dims();
+  const framework::DDim& y_dim = y.dims();
   if (x.dims() == y.dims()) {
-    size_t N = static_cast<size_t>(framework::product(x.dims()));
-    platform::ForRange<DeviceContext> for_range(
-        ctx.template device_context<DeviceContext>(), N);
-    for_range(ElemwiseGradNoBroadcast<T, DX_OP, DY_OP>{
-        x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), dx_op, dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
+    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
   } else {  // Y is a scalar
-    auto x_dim = x.dims();
-    auto y_dim = y.dims();
+    ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, x_dim, y_dim, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+  }
+}
 
-    axis = (axis == -1 ? x_dim.size() - y_dim.size() : axis);
-    trim_trailing_singular_dims(&y_dim);
-    axis = (y_dim.size() == 0) ? x_dim.size() : axis;
-
-    int pre, n, post;
-    get_mid_dims(x_dim, y_dim, axis, &pre, &n, &post);
-    if (post == 1) {
-      int h = pre;
-      int w = n;
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
-        ElemwiseGradBroadcast1CUDA(
-            ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-            y.data<T>(), out.data<T>(), dout.data<T>(), h, w, dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
-#endif
-      } else {
-        ElemwiseGradBroadcast1CPU(
-            x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), h, w,
-            dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
-      }
-    } else {
-      if (platform::is_gpu_place(ctx.GetPlace())) {
-#ifdef __NVCC__
-        ElemwiseGradBroadcast2CUDA(
-            ctx.template device_context<DeviceContext>().stream(), x.data<T>(),
-            y.data<T>(), out.data<T>(), dout.data<T>(), pre, n, post, dx_op,
-            dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
-#endif
-      } else {
-        ElemwiseGradBroadcast2CPU(
-            x.data<T>(), y.data<T>(), out.data<T>(), dout.data<T>(), pre, n,
-            post, dx_op, dy_op,
-            dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-            dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace()));
-      }
+// NOTE(dzhwinter): Only used in elementwise_add, elementwise_sub.
+// explicit gradient can cut off X, Y, Out from gradient op
+// In elementwise_add, elementwise_sub, we use dout as fake X, Y, Out to reuse
+// elementwise code.
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
+void ElemwiseExplicitGradCompute(const framework::ExecutionContext& ctx,
+                                 const framework::Tensor& x,
+                                 const framework::Tensor& y,
+                                 const framework::Tensor& out,
+                                 const framework::Tensor& dout, int axis,
+                                 framework::Tensor* dx, framework::Tensor* dy,
+                                 DX_OP dx_op, DY_OP dy_op) {
+  if (dy == nullptr) {
+    const framework::DDim& dx_dims = dout.dims();
+    auto dy_dims = dx_dims;
+    ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+        ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+  } else {
+    if (dout.dims() == dy->dims()) {
+      const framework::DDim& dx_dims = dout.dims();
+      const framework::DDim& dy_dims = dy->dims();
+      ElemwiseGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+          ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
+    } else {  // Y is a scalar
+      auto dx_dims = dout.dims();
+      const framework::DDim& dy_dims = dy->dims();
+      ElemwiseGradComputeWithBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+          ctx, dx_dims, dy_dims, x, y, out, dout, axis, dx, dy, dx_op, dy_op);
     }
   }
 }
 
+// Deprecated
 template <typename DeviceContext, typename T, typename functor,
           typename broadcastfunctor, typename broadcast2functor>
 void ElementwiseGradCompute(const framework::ExecutionContext& ctx,
@@ -547,7 +605,7 @@ void ElementwiseGradCompute(const framework::ExecutionContext& ctx,
   }
 
   axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
-  trim_trailing_singular_dims(&y_dims);
+  trim_trailing_singular_dims(y_dims);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
   int pre, n, post;
@@ -574,19 +632,19 @@ void ElementwiseComputeEx(const framework::ExecutionContext& ctx,
       x, y, z, ctx.template device_context<DeviceContext>(), func);
 
   auto x_dims = x->dims();
-  auto y_dims = y->dims();
-  PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
+  auto y_dims_untrimed = y->dims();
+  PADDLE_ENFORCE_GE(x_dims.size(), y_dims_untrimed.size(),
                     "Rank of first input must >= rank of second input.");
 
-  if (x_dims == y_dims) {
+  if (x_dims == y_dims_untrimed) {
     functor.Run();
     return;
   }
 
-  axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
+  axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
   PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                  "Axis should be in range [0, x_dims)");
-  trim_trailing_singular_dims(&y_dims);
+  auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
   axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
   int pre, n, post;

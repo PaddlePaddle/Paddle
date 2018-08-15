@@ -128,8 +128,7 @@ def create_or_get_tensor(scope, var_name, var, place):
     tensor = scope.var(var_name).get_tensor()
     if var is not None:
         assert isinstance(var, np.ndarray)
-        tensor.set_lod([[]])
-        tensor.set_dims(var.shape)
+        tensor.set_recursive_sequence_lengths([])
         tensor.set(var, place)
     return tensor
 
@@ -159,6 +158,7 @@ class TestBatchNormOpInference(unittest.TestCase):
     def setUp(self):
         self.dtype = np.float32
         self.use_mkldnn = False
+        self.fuse_with_relu = False
         self.init_kernel_type()
 
     def __assert_close(self, tensor, np_array, msg, atol=1e-4):
@@ -180,6 +180,8 @@ class TestBatchNormOpInference(unittest.TestCase):
         scale_shape = [c]
 
         x_val = np.random.random_sample(x_shape).astype(dtype)
+        # generate some negative values to test case with relu fused
+        x_val = x_val - 0.5
         scale_val = np.random.random_sample(scale_shape).astype(np.float32)
         bias_val = np.random.random_sample(scale_shape).astype(np.float32)
 
@@ -188,6 +190,8 @@ class TestBatchNormOpInference(unittest.TestCase):
 
         y_out = _reference_testing(x_val, scale_val, bias_val, mean, variance,
                                    epsilon, data_layout).astype(dtype)
+        if self.fuse_with_relu:
+            y_out = np.maximum(y_out, 0)
 
         scope = core.Scope()
 
@@ -233,6 +237,7 @@ class TestBatchNormOpInference(unittest.TestCase):
             is_test=True,
             data_layout=data_layout,
             use_mkldnn=self.use_mkldnn,
+            fuse_with_relu=self.fuse_with_relu,
             epsilon=epsilon)
 
         batch_norm_op.run(scope, place)
@@ -265,6 +270,7 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):
         self.dtype = np.float16
         self.use_mkldnn = False
+        self.fuse_with_relu = False
         self.init_kernel_type()
 
     def test_check_output(self):
@@ -284,6 +290,7 @@ class TestFP16BatchNormOpInference(TestBatchNormOpInference):
 class TestBatchNormOpTraining(unittest.TestCase):
     def setUp(self):
         self.use_mkldnn = False
+        self.fuse_with_relu = False
         self.data_formats = ["NCHW", "NHWC"]
         self.init_kernel_type()
 
@@ -367,7 +374,8 @@ class TestBatchNormOpTraining(unittest.TestCase):
                         "epsilon": epsilon,
                         "is_test": False,
                         "data_layout": data_layout,
-                        "use_mkldnn": self.use_mkldnn
+                        "use_mkldnn": self.use_mkldnn,
+                        "fuse_with_relu": self.fuse_with_relu
                     })
                 block.create_var(name='y@GRAD', dtype='float32', shape=y.shape)
 
@@ -407,7 +415,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
             self.__assert_close(scale_grad, out[6], "scale_grad")
             self.__assert_close(bias_grad, out[7], "bias_grad")
 
-            print "op test forward passed: ", str(place), data_layout
+            print("op test forward passed: ", str(place), data_layout)
 
         places = [core.CPUPlace()]
 

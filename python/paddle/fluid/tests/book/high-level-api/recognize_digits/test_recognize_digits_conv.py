@@ -11,9 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import print_function
+
 import argparse
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle
 import sys
 import numpy
@@ -57,14 +58,17 @@ def train_program():
     return [avg_cost, acc]
 
 
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
 
     trainer = fluid.Trainer(
         train_func=train_program,
         place=place,
-        optimizer=optimizer,
+        optimizer_func=optimizer_func,
         parallel=True)
 
     def event_handler(event):
@@ -85,8 +89,10 @@ def train(use_cuda, train_program, params_dirname):
                 if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
         elif isinstance(event, fluid.EndStepEvent):
-            print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(numpy.array, event.metrics)))
+            print(
+                ("Step {0}, Epoch {1} Metrics {2}".format(
+                    event.step, event.epoch,
+                    list(map(numpy.array, event.metrics)))))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -131,4 +137,4 @@ def main(use_cuda):
 
 if __name__ == '__main__':
     # for use_cuda in (False, True):
-    main(use_cuda=True)
+    main(use_cuda=core.is_compiled_with_cuda())

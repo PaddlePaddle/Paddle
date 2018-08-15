@@ -103,7 +103,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   need_update_ = true;
 }
 
-OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
+OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -211,6 +211,12 @@ void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   need_update_ = true;
 }
 
+void OpDesc::SetBlocksAttr(const std::string &name,
+                           std::vector<BlockDesc *> blocks) {
+  this->attrs_[name] = blocks;
+  need_update_ = true;
+}
+
 void OpDesc::SetAttrMap(
     const std::unordered_map<std::string, Attribute> &attr_map) {
   attrs_ = attr_map;
@@ -232,7 +238,20 @@ Attribute OpDesc::GetNullableAttr(const std::string &name) const {
   }
 }
 
-int OpDesc::GetBlockAttr(const std::string &name) const {
+std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
+  auto it = attrs_.find(name);
+  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  auto blocks = boost::get<std::vector<BlockDesc *>>(it->second);
+
+  std::vector<int> ids;
+  for (auto n : blocks) {
+    ids.push_back(n->ID());
+  }
+
+  return ids;
+}
+
+int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return boost::get<BlockDesc *>(it->second)->ID();
@@ -304,6 +323,13 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   }
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
+  }
+  void operator()(const std::vector<BlockDesc *> &v) const {
+    std::vector<int> blocks_idx;
+    for (auto blk : v) {
+      blocks_idx.push_back(blk->ID());
+    }
+    VectorToRepeated(blocks_idx, attr_->mutable_blocks_idx());
   }
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(int64_t v) const { attr_->set_l(v); }

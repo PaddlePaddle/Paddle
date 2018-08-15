@@ -145,14 +145,14 @@ void BindBlockDesc(pybind11::module *m) {
       .def_property_readonly("id", &pd::BlockDesc::ID)
       .def_property_readonly("parent", &pd::BlockDesc::Parent)
       .def("get_forward_block_idx", &pd::BlockDesc::ForwardBlockID)
-      .def("set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
+      .def("_set_forward_block_idx", &pd::BlockDesc::SetForwardBlockID)
       .def("append_op", &pd::BlockDesc::AppendOp,
            pybind11::return_value_policy::reference)
-      .def("prepend_op", &pd::BlockDesc::PrependOp,
+      .def("_prepend_op", &pd::BlockDesc::PrependOp,
            pybind11::return_value_policy::reference)
-      .def("insert_op", &pd::BlockDesc::InsertOp,
+      .def("_insert_op", &pd::BlockDesc::InsertOp,
            pybind11::return_value_policy::reference)
-      .def("remove_op", &pd::BlockDesc::RemoveOp)
+      .def("_remove_op", &pd::BlockDesc::RemoveOp)
       .def("var",
            [](pd::BlockDesc &self, pybind11::bytes byte_name) {
              std::string name = byte_name;
@@ -165,7 +165,7 @@ void BindBlockDesc(pybind11::module *m) {
              return self.HasVar(name);
            },
            pybind11::return_value_policy::reference)
-      .def("rename_var",
+      .def("_rename_var",
            [](pd::BlockDesc &self, const pybind11::bytes &byte_name,
               const pybind11::bytes &byte_name_new) {
              std::string name = byte_name;
@@ -189,7 +189,7 @@ void BindBlockDesc(pybind11::module *m) {
              return self.FindVarRecursive(name);
            },
            pybind11::return_value_policy::reference)
-      .def("remove_var",
+      .def("_remove_var",
            [](pd::BlockDesc &self, pybind11::bytes byte_name) {
              std::string name = byte_name;
              return self.RemoveVar(name);
@@ -268,7 +268,8 @@ void BindOpDesc(pybind11::module *m) {
       .value("STRINGS", pd::proto::AttrType::STRINGS)
       .value("BOOL", pd::proto::AttrType::BOOLEAN)
       .value("BOOLS", pd::proto::AttrType::BOOLEANS)
-      .value("BLOCK", pd::proto::AttrType::BLOCK);
+      .value("BLOCK", pd::proto::AttrType::BLOCK)
+      .value("BLOCKS", pd::proto::AttrType::BLOCKS);
 
   pybind11::class_<pd::OpDesc> op_desc(*m, "OpDesc", "");
   op_desc
@@ -293,13 +294,15 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_attr", &pd::OpDesc::SetAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
+      .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
       .def("set_serialized_attr",
            [](pd::OpDesc &self, const std::string &name,
               const pybind11::bytes &seriralized) {
              std::string ser(seriralized);
              self.SetAttr(name, ser);
            })
-      .def("block_attr", &pd::OpDesc::GetBlockAttr)
+      .def("block_attr_id", &pd::OpDesc::GetBlockAttrId)
+      .def("blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)

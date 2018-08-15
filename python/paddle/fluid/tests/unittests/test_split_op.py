@@ -26,7 +26,7 @@ class TestSplitOp(OpTest):
         self.inputs = {'X': x}
         self.attrs = {'axis': axis, 'sections': [2, 1, 2]}
         self.outputs = {'Out': [('out%d' % i, out[i]) \
-            for i in xrange(len(out))]}
+            for i in range(len(out))]}
 
     def _set_op_type(self):
         self.op_type = "split"
