@@ -259,7 +259,7 @@ class TestLRDecayConditional(TranspilerTest):
         serv_op = pserver.blocks[0].ops[0]
         sub_blocks = []
         optimize_blocks = []
-        for b in serv_op.attrs["optimize_blocks"]:
+        for b in serv_op.all_attrs()["optimize_blocks"]:
             optimize_blocks.append(b.idx)
         for b in pserver.blocks:
             if b.idx not in optimize_blocks:
@@ -534,6 +534,36 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
             'sum', 'split_ids', 'send', 'recv', 'recv'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
+
+
+class TestRMSPropOptimizer(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=fluid.ParamAttr(name='fc_b'))
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+        optimizer.minimize(avg_cost)
+        return
+
+    def transpiler_test_impl(self):
+        pserver, startup = self.get_pserver(self.pserver1_ep)
+        pserver2, startup2 = self.get_pserver(self.pserver2_ep)
+
+        self.assertEqual(len(pserver.blocks), 3)
+        # block1~2: optimize pass
+        self.assertEqual([op.type for op in pserver.blocks[1].ops],
+                         ["sum", "scale", "rmsprop"])
+        # the variable #fc_w will be split into two blocks
+        fc_w_var = startup.global_block().var("fc_w.block1")
+        self.assertEqual(fc_w_var.shape, (500, 1000))
+        moment_var = startup.global_block().var("momentum_1")
+        self.assertEqual(moment_var.shape, (500, 1000))
 
 
 if __name__ == "__main__":
