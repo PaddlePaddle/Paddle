@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import sys
-import six
 import re
 from .graphviz import GraphPreviewGenerator
 from .proto import framework_pb2
@@ -226,7 +225,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     graph = GraphPreviewGenerator("some graph")
     # collect parameters and args
     protostr = block.desc.serialize_to_string()
-    desc = framework_pb2.BlockDesc.FromString(six.binary_type(protostr))
+    desc = framework_pb2.BlockDesc.FromString(str(protostr))
 
     def need_highlight(name):
         if highlights is None: return False

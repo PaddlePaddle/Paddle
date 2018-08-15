@@ -19,12 +19,11 @@ limitations under the License. */
 #include <thread>  // NOLINT
 #include <vector>
 
-#include "gflags/gflags.h"
-
 #include "paddle/fluid/operators/detail/macros.h"
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -104,7 +103,6 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
-  VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -124,9 +122,7 @@ void ListenAndServOp::RunSyncLoop(
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
   rpc_service_->ResetBarrierCounter();
-
   while (true) {
-    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -174,7 +170,6 @@ void ListenAndServOp::RunSyncLoop(
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
-  VLOG(2) << "RunAsyncLoop";
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;

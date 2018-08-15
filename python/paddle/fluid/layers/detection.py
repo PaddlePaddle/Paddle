@@ -20,11 +20,7 @@ from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
 from . import tensor
 from . import nn
-from . import ops
-from ... import compat as cpt
 import math
-import six
-import numpy
 from functools import reduce
 
 __all__ = [
@@ -42,7 +38,6 @@ __all__ = [
 __auto__ = [
     'iou_similarity',
     'box_coder',
-    'polygon_box_transform',
 ]
 
 __all__ += __auto__
@@ -106,7 +101,7 @@ def rpn_target_assign(loc,
             examples.
 
     Returns:
-        tuple:
+        tuple: 
                A tuple(predicted_scores, predicted_location, target_label,
                target_bbox) is returned. The predicted_scores and
                predicted_location is the predicted result of the RPN.
@@ -117,7 +112,7 @@ def rpn_target_assign(loc,
                anchors. The predicted_scores is a 2D Tensor with shape
                [F + B, 1], and the shape of target_label is same as the shape
                of the predicted_scores, B is the number of the background
-               anchors, the F and B is depends on the input of this operator.
+               anchors, the F and B is depends on the input of this operator. 
 
     Examples:
         .. code-block:: python
@@ -168,7 +163,7 @@ def rpn_target_assign(loc,
         })
 
     # 4. Reshape and gather the target entry
-    scores = nn.reshape(x=scores, shape=(-1, 2))
+    scores = nn.reshape(x=scores, shape=(-1, 1))
     loc = nn.reshape(x=loc, shape=(-1, 4))
     target_label = nn.reshape(x=target_label, shape=(-1, 1))
     target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
@@ -234,8 +229,8 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable:
-
+        Variable: 
+        
             The detection outputs is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
@@ -268,11 +263,10 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    compile_shape = scores.shape
-    run_shape = ops.shape(scores)
-    scores = nn.flatten(x=scores, axis=2)
+    old_shape = scores.shape
+    scores = nn.reshape(x=scores, shape=(-1, old_shape[-1]))
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
+    scores = nn.reshape(x=scores, shape=old_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
@@ -506,7 +500,7 @@ def target_assign(input,
 
     Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
     for i-th instance and each `id` of neg_indices in this instance:
-
+    
     .. code-block:: text
 
         out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
@@ -524,11 +518,11 @@ def target_assign(input,
        mismatch_value (float32): Fill this value to the mismatched location.
 
     Returns:
-        tuple:
-               A tuple(out, out_weight) is returned. out is a 3D Tensor with
-               shape [N, P, K], N and P is the same as they are in
-               `neg_indices`, K is the same as it in input of X. If
-               `match_indices[i][j]`. out_weight is the weight for output with
+        tuple: 
+               A tuple(out, out_weight) is returned. out is a 3D Tensor with 
+               shape [N, P, K], N and P is the same as they are in 
+               `neg_indices`, K is the same as it in input of X. If 
+               `match_indices[i][j]`. out_weight is the weight for output with 
                the shape of [N, P, 1].
 
     Examples:
@@ -682,10 +676,9 @@ def ssd_loss(location,
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
-    conf_shape = ops.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.flatten(x=var, axis=2)
+        return nn.reshape(x=var, shape=[-1, var.shape[-1]])
 
     # 1. Find matched boundding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -696,8 +689,7 @@ def ssd_loss(location,
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = nn.reshape(
-        x=gt_label, shape=(len(gt_label.shape) - 1) * (0, ) + (-1, 1))
+    gt_label = nn.reshape(x=gt_label, shape=gt_label.shape + (1, ))
     gt_label.stop_gradient = True
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
@@ -708,12 +700,9 @@ def ssd_loss(location,
     target_label = __reshape_to_2d(target_label)
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
+
     # 3. Mining hard examples
-    conf_loss = nn.reshape(
-        x=conf_loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+    conf_loss = nn.reshape(x=conf_loss, shape=(num, num_prior))
     conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
@@ -732,7 +721,7 @@ def ssd_loss(location,
         },
         attrs={
             'neg_pos_ratio': neg_pos_ratio,
-            'neg_dist_threshold': neg_overlap,
+            'neg_dist_threshold': neg_pos_ratio,
             'mining_type': mining_type,
             'sample_size': sample_size,
         })
@@ -782,11 +771,7 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(
-        x=loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+    loss = nn.reshape(x=loss, shape=[-1, num_prior])
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -836,7 +821,7 @@ def prior_box(input,
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
-            in order of [min, max, aspect_ratios], which is consistent with
+            in order of [min, max, aspect_ratios], which is consistent with 
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the final
             detection results. Default: False.
@@ -979,7 +964,7 @@ def multi_box_head(inputs,
        stride(int|list|tuple): The stride of conv2d. Default:1,
        name(str): Name of the prior box layer. Default: None.
        min_max_aspect_ratios_order(bool): If set True, the output prior box is
-            in order of [min, max, aspect_ratios], which is consistent with
+            in order of [min, max, aspect_ratios], which is consistent with 
             Caffe. Please note, this order affects the weights order of
             convolution layer followed by and does not affect the fininal
             detection results. Default: False.
@@ -1019,7 +1004,13 @@ def multi_box_head(inputs,
     """
 
     def _reshape_with_axis_(input, axis=1):
-        out = nn.flatten(x=input, axis=axis)
+        if not (axis > 0 and axis < len(input.shape)):
+            raise ValueError("The axis should be smaller than "
+                             "the arity of input and bigger than 0.")
+        new_shape = [
+            -1, reduce(lambda x, y: x * y, input.shape[axis:len(input.shape)])
+        ]
+        out = nn.reshape(x=input, shape=new_shape)
         return out
 
     def _is_list_or_tuple_(data):
@@ -1041,7 +1032,7 @@ def multi_box_head(inputs,
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-        for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
+        for ratio in range(min_ratio, max_ratio + 1, step):
             min_sizes.append(base_size * ratio / 100.)
             max_sizes.append(base_size * (ratio + step) / 100.)
         min_sizes = [base_size * .10] + min_sizes
@@ -1109,13 +1100,11 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        compile_shape = [
-            mbox_loc.shape[0], cpt.floor_division(
-                box_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
+        new_shape = [
+            mbox_loc.shape[0],
+            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
         ]
-        run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
-        mbox_loc_flatten = nn.reshape(
-            mbox_loc, shape=compile_shape, actual_shape=run_shape)
+        mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -1127,16 +1116,11 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        new_shape = [0, -1, num_classes]
-        compile_shape = [
-            conf_loc.shape[0],
-            cpt.floor_division(conf_loc.shape[1] * conf_loc.shape[2] *
-                               conf_loc.shape[3], num_classes), num_classes
+        new_shape = [
+            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
+            conf_loc.shape[3] / num_classes, num_classes
         ]
-        run_shape = tensor.assign(
-            numpy.array([0, -1, num_classes]).astype("int32"))
-        conf_loc_flatten = nn.reshape(
-            conf_loc, shape=compile_shape, actual_shape=run_shape)
+        conf_loc_flatten = nn.reshape(conf_loc, shape=new_shape)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:

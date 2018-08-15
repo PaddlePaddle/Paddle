@@ -59,14 +59,6 @@ inline T* Tensor::mutable_data(platform::Place place) {
 }
 
 inline Tensor ReshapeToMatrix(const Tensor& src, int num_col_dims) {
-  int rank = src.dims().size();
-  PADDLE_ENFORCE_GE(
-      rank, 2,
-      "'ReshapeToMatrix()' is only used for flatten high rank "
-      "tensors to matrixs. Can not be used in reshaping vectors.");
-  if (rank == 2) {
-    return src;
-  }
   Tensor res;
   res.ShareDataWith(src);
   res.Resize(flatten_to_2d(src.dims(), num_col_dims));

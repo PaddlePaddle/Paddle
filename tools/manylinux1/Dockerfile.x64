@@ -13,7 +13,7 @@ ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH /opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz
+RUN yum install -y sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh && \
   bash build_scripts/install_nccl2.sh && rm -r build_scripts
@@ -40,13 +40,11 @@ RUN wget -O /root/requirements.txt https://raw.githubusercontent.com/PaddlePaddl
 
 RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install -r /root/requirements.txt && \
     LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install -r /root/requirements.txt && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install -r /root/requirements.txt && \
     go get github.com/Masterminds/glide && \
     rm -rf /root/requirements.txt
 
 RUN LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27mu/bin/pip install pre-commit 'ipython==5.3.0' opencv-python && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install pre-commit 'ipython==5.3.0' opencv-python && \
-    LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH} /opt/_internal/cpython-3.5.1/bin/pip3 install pre-commit 'ipython==5.3.0' opencv-python
+    LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH} /opt/python/cp27-cp27m/bin/pip install pre-commit 'ipython==5.3.0' opencv-python
 
 RUN wget -O /opt/swig-2.0.12.tar.gz https://cytranet.dl.sourceforge.net/project/swig/swig/swig-2.0.12/swig-2.0.12.tar.gz && \
     cd /opt && tar xzf swig-2.0.12.tar.gz && cd /opt/swig-2.0.12 && ./configure && make && make install && cd /opt && rm swig-2.0.12.tar.gz

@@ -24,7 +24,7 @@ SET(MKLDNN_INSTALL_DIR    ${THIRD_PARTY_PATH}/install/mkldnn)
 SET(MKLDNN_INC_DIR        "${MKLDNN_INSTALL_DIR}/include" CACHE PATH "mkldnn include directory." FORCE)
 
 IF(WIN32 OR APPLE)
-    MESSAGE(WARNING
+    MESSAGE(WARNING 
         "Windows or Mac is not supported with MKLDNN in Paddle yet."
         "Force WITH_MKLDNN=OFF")
     SET(WITH_MKLDNN OFF CACHE STRING "Disable MKLDNN in Windows and MacOS" FORCE)
@@ -57,10 +57,8 @@ ExternalProject_Add(
     GIT_TAG             "a29d8487a63afca3d5b8c5bbdbb473cf8ccc6e51"
     PREFIX              ${MKLDNN_SOURCES_DIR}
     UPDATE_COMMAND      ""
-    CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
-    CMAKE_ARGS          -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
     CMAKE_ARGS          -DCMAKE_INSTALL_PREFIX=${MKLDNN_INSTALL_DIR}
-    CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    CMAKE_ARGS          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} 
     CMAKE_ARGS          -DMKLROOT=${MKLML_ROOT}
     CMAKE_ARGS          -DCMAKE_C_FLAGS=${MKLDNN_CFLAG}
     CMAKE_ARGS          -DCMAKE_CXX_FLAGS=${MKLDNN_CXXFLAG}

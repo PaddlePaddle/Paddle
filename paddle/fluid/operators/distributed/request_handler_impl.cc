@@ -41,7 +41,6 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
   // Async
   if (!sync_mode_) {
-    rpc_server_->Profiler().OneStep();
     try {
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                     scope);

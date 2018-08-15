@@ -56,7 +56,7 @@ class TestNodePass final : public NodePass {
   std::string description() const override { return "some doc"; }
 };
 
-TEST(PassManager, DFG_pass_manager) {
+TEST_F(DFG_Tester, DFG_pass_manager) {
   TestDfgPassManager manager;
   DFG_GraphvizDrawPass::Config config("./", "dfg.dot");
 
@@ -64,15 +64,12 @@ TEST(PassManager, DFG_pass_manager) {
   manager.Register("graphviz", new DFG_GraphvizDrawPass(config));
   manager.Register("dfg-to-fluid", new DataFlowGraphToFluidPass);
 
-  Argument argument(FLAGS_inference_model_dir);
-
   ASSERT_TRUE(&argument);
   ASSERT_TRUE(manager.Initialize(&argument));
   manager.RunAll();
 }
 
-TEST(PassManager, Node_pass_manager) {
-  Argument argument(FLAGS_inference_model_dir);
+TEST_F(DFG_Tester, Node_pass_manager) {
   // Pre-process: initialize the DFG with the ProgramDesc first.
   FluidToDataFlowGraphPass pass0;
   pass0.Initialize(&argument);

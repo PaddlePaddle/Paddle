@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/details/build_strategy.h"
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/ssa_graph_builder.h"
 #include "paddle/fluid/framework/ir/graph.h"
 
 namespace paddle {
@@ -30,7 +30,7 @@ namespace framework {
 class Scope;
 namespace details {
 
-class MultiDevSSAGraphBuilder : public ir::Pass {
+class MultiDevSSAGraphBuilder : public SSAGraphBuilder {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override;
@@ -75,9 +75,7 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
-  void CreateScaleLossGradOp(ir::Graph *result,
-                             const std::string &loss_grad_name) const;
-
+  void CreateScaleLossGradOp(ir::Graph *result) const;
   VarHandle *CreateReduceOp(ir::Graph *result, const std::string &og,
                             int dst_dev_id) const;
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,

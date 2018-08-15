@@ -14,23 +14,37 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/details/multi_devices_helper.h"
-
+#include <fstream>
+#include <iosfwd>
+#include <ostream>
 #include <string>
+#include "paddle/fluid/framework/details/ssa_graph_builder.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
-class SSAGraghBuilderWithChecker : public ir::Pass {
+class SSAGraphPrinter {
+ public:
+  virtual ~SSAGraphPrinter() {}
+  virtual void Print(const ir::Graph& graph, std::ostream& sout) const = 0;
+};
+
+class GraphvizSSAGraphPrinter : public SSAGraphPrinter {
+ public:
+  void Print(const ir::Graph& graph, std::ostream& sout) const override;
+};
+
+class SSAGraghBuilderWithPrinter : public SSAGraphBuilder {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
       std::unique_ptr<ir::Graph> graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
+    std::unique_ptr<std::ostream> fout(
+        new std::ofstream(Get<const std::string>("debug_graphviz_path")));
+    PADDLE_ENFORCE(fout->good());
+    Get<GraphvizSSAGraphPrinter>("graph_printer").Print(*graph, *fout);
     return graph;
   }
-
-  bool IsValidGraph(const ir::Graph* graph) const;
 };
 
 }  // namespace details

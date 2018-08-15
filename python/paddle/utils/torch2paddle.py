@@ -24,7 +24,7 @@ import sys
 import struct
 import numpy as np
 import torchfile
-import six.moves.cPickle as pickle
+import cPickle as pickle
 import argparse
 
 
@@ -48,7 +48,7 @@ def save_net_parameters(layers, params, output_path):
         biases = params[i * 2 + 1]
         weight_file = os.path.join(output_path, '_%s.w0' % layers[i])
         biases_file = os.path.join(output_path, '_%s.wbias' % layers[i])
-        print("Saving for layer %s." % layers[i])
+        print "Saving for layer %s." % layers[i]
         save_layer_parameters(weight_file, [weight])
         save_layer_parameters(biases_file, biases)
 

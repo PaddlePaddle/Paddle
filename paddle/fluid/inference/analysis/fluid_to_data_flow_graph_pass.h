@@ -30,7 +30,7 @@ namespace inference {
 namespace analysis {
 
 /*
- * Transform a FluidDesc to a SSA.
+ * Transform a FluidDesc to a data flow graph.
  */
 class FluidToDataFlowGraphPass final : public DataFlowGraphPass {
  public:

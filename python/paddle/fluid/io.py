@@ -555,8 +555,7 @@ def save_inference_model(dirname,
                          executor,
                          main_program=None,
                          model_filename=None,
-                         params_filename=None,
-                         export_for_deployment=True):
+                         params_filename=None):
     """
     Prune the given `main_program` to build a new program especially for inference,
     and then save it and all related parameters to given `dirname` by the `executor`.
@@ -578,8 +577,6 @@ def save_inference_model(dirname,
         params_filename(str|None): The name of file to save all related parameters.
                                    If it is setted None, parameters will be saved
                                    in separate files .
-        export_for_deployment(bool): remove the read ops that are added by py_reader
-                                    for cpp inference lib. Default True
 
     Returns:
         None
@@ -603,15 +600,25 @@ def save_inference_model(dirname,
             # "./infer_model".
 
     """
-    if isinstance(feeded_var_names, six.string_types):
+    if isinstance(feeded_var_names, six.binary_type):
         feeded_var_names = [feeded_var_names]
+    elif isinstance(feeded_var_names, six.text_type):
+        feeded_var_names = [feeded_var_names.encode()]
     else:
         if len(feeded_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
             if not (bool(feeded_var_names) and all(
-                    isinstance(name, six.string_types)
+                    isinstance(name, six.binary_type)
                     for name in feeded_var_names)):
-                raise ValueError("'feed_var_names' should be a list of str.")
+                if not (all(
+                        isinstance(name, six.text_type)
+                        for name in feeded_var_names)):
+                    raise ValueError(
+                        "'feed_var_names' should be a list of str.")
+                else:
+                    feeded_var_names = [
+                        name.encode() for name in feeded_var_names
+                    ]
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
@@ -636,8 +643,7 @@ def save_inference_model(dirname,
     copy_program.desc.flush()
 
     pruned_program = copy_program.prune(targets=target_vars)
-    inference_program = pruned_program.inference_optimize(
-        export_for_deployment=export_for_deployment)
+    inference_program = pruned_program.inference_optimize()
     fetch_var_names = [v.name for v in target_vars]
 
     prepend_feed_ops(inference_program, feeded_var_names)

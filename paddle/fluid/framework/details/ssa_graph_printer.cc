@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include "paddle/fluid/framework/details/ssa_graph_printer.h"
 #include <string>
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -82,5 +82,5 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(multi_devices_print_pass,
+REGISTER_PASS(multi_device_print_pass,
               paddle::framework::details::SSAGraghBuilderWithPrinter);

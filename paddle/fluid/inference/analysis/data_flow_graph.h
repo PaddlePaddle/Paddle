@@ -36,8 +36,6 @@ namespace analysis {
 
 /*
  * DataFlowGraph - A container of Value and Function Nodes.
- *
- * This is the base graph for any other type of graphs, such as SSA or CFG.
  */
 struct DataFlowGraph {
   NodeMap nodes;
@@ -176,9 +174,8 @@ struct GraphTraits<DataFlowGraph> {
 // sub-graph is the inputs nodes and output nodes that doesn't inside the
 // sub-graph.
 std::pair<std::vector<Node *>, std::vector<Node *>>
-ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);  // NOLINT
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);
 
-void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph);
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

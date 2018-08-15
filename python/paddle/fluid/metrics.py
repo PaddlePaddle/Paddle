@@ -14,12 +14,11 @@
 """
 Fluid Metrics
 
-The metrics are accomplished via Python natively.
+The metrics are accomplished via Python natively. 
 """
 import numpy as np
 import copy
 import warnings
-import six
 
 __all__ = [
     'MetricBase',
@@ -80,10 +79,10 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
+            for attr, value in list(self.__dict__.items())
             if not attr.startswith("_")
         }
-        for attr, value in six.iteritems(states):
+        for attr, value in list(states.items()):
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
@@ -106,7 +105,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in six.iteritems(self.__dict__)
+            for attr, value in list(self.__dict__.items())
             if not attr.startswith("_")
         }
         config = {}
@@ -142,10 +141,10 @@ class CompositeMetric(MetricBase):
     """
     Composite multiple metrics in one instance.
     for example, merge F1, accuracy, recall into one Metric.
-
+    
     Examples:
         .. code-block:: python
-
+    
           labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
           pred = fluid.layers.fc(input=data, size=1000, act="tanh")

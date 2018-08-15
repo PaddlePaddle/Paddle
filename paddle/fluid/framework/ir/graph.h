@@ -28,38 +28,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * The graph is a Directed Acyclic Single Static Assignment Graph.
- *
- * In more detail, the following properties must hold:
- *
- *   The graph shouldn't contain cycle. Each node is a black-box to the graph
- *   so the node itself could be a loop operator.
- *
- *   Each Variable-type node has only one input (thus single static assignment).
- *
- *   The output/input of operator is variable and the output/input of variable
- *   is operator.
- *
- * The following data harzards in Program are addressed in the Graph:
- *
- *   Write-After-Read
- *     a = op1(x)
- *     x = op2(b)
- *     A control-dependency connection is created bettwen op1 and op2 such that
- *     op1->op2, so as to ensure correct order.
- *
- *   Write-After-Write
- *     x = op1(a)
- *     x = op2(b)
- *     A control-dependency connection is created between op1 and op2 such that
- *     op1->op2, so as to ensure correct order.
- *
- * Other properties currently hold, but is not enforced yet:
- *
- *   Variable-type node (not control dep) with the same variable name share
- *   the same underlying VarDesc.
- */
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);

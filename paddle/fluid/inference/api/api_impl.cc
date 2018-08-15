@@ -22,9 +22,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/fluid/platform/profiler.h"
-
-DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
 namespace paddle {
 namespace {
@@ -60,15 +57,6 @@ std::string num2str(T a) {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
-
-  if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
-    LOG(INFO) << "You can turn off by set gflags '-profile false'";
-
-    auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
-                                           : platform::ProfilerState::kCPU;
-    platform::EnableProfiler(tracking_device);
-  }
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -114,10 +102,6 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
-  if (FLAGS_profile) {
-    platform::DisableProfiler(platform::EventSortingKey::kTotal,
-                              "./profile.log");
-  }
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
@@ -199,13 +183,6 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
     std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
                 inputs[i].data.length());
-    // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
-    framework::LoD lod;
-    for (auto &level : inputs[i].lod) {
-      lod.emplace_back(level);
-    }
-    input.set_lod(lod);
-
     feeds->push_back(input);
   }
   return true;
@@ -271,10 +248,6 @@ bool NativePaddlePredictor::GetFetch(
       buffer.Resize(sizeof(float) * data.size());
     }
     std::memcpy(buffer.data(), data.data(), buffer.length());
-    // copy LoD
-    for (const auto &level : fetchs[i].lod()) {
-      outputs->at(i).lod.emplace_back(level);
-    }
     outputs->at(i).dtype = PaddleDType::FLOAT32;
     // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }
