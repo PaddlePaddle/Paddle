@@ -158,11 +158,12 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
 
   x(&graph, handle);
 
-  // Detect op3 -> var4 -> op5
-  // Detect op2 -> var2 -> op3
-  // Detect op2 -> var2 -> op4
-  // Detect op2 -> var3 -> op5
-  ASSERT_EQ(count, 4);
+  // 1. Detect op3 -> var4 -> op5
+  // 2. Detect op2 -> var2 -> op3
+  // 3. Detect op2 -> var2 -> op4
+  // 4. Detect op2 -> var3 -> op5
+  // But 2 and 3 and 4 overlapped, so keep 2, so the final choices are 1 and 2
+  ASSERT_EQ(count, 2UL);
 }
 
 }  // namespace ir

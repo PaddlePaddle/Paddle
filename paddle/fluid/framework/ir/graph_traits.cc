@@ -38,14 +38,13 @@ Node &NodesDFSIterator::operator*() {
 }
 
 NodesDFSIterator &NodesDFSIterator::operator++() {
-  if (stack_.empty()) return *this;
+  PADDLE_ENFORCE(!stack_.empty(), "the iterator exceeds range");
   visited_.insert(stack_.top());
   auto *cur = stack_.top();
   stack_.pop();
   for (auto *x : cur->outputs) {
     if (!visited_.count(x)) {
       stack_.push(x);
-      visited_.insert(x);
     }
   }
   return *this;
