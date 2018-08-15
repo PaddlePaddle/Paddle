@@ -73,6 +73,8 @@ def recordio(paths, buf_size=100):
     def reader():
         if isinstance(paths, six.string_types):
             path = paths
+        elif isinstance(paths, six.binary_type):
+            path = paths.decode()
         else:
             path = ",".join(paths)
         f = rec.reader(path)

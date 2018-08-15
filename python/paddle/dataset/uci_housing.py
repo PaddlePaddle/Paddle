@@ -22,6 +22,7 @@ parse training set and test set into paddle reader creators.
 import os
 
 import numpy as np
+import six
 import tempfile
 import tarfile
 import os
@@ -70,11 +71,11 @@ def load_data(filename, feature_num=14, ratio=0.8):
         return
 
     data = np.fromfile(filename, sep=' ')
-    data = data.reshape(data.shape[0] / feature_num, feature_num)
+    data = data.reshape(data.shape[0] // feature_num, feature_num)
     maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
         axis=0) / data.shape[0]
     feature_range(maximums[:-1], minimums[:-1])
-    for i in range(feature_num - 1):
+    for i in six.moves.range(feature_num - 1):
         data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
     offset = int(data.shape[0] * ratio)
     UCI_TRAIN_DATA = data[:offset]
@@ -137,7 +138,7 @@ def predict_reader():
     It returns just one tuple data to do inference.
 
     :return: one tuple data
-    :rtype: tuple 
+    :rtype: tuple
     """
     global UCI_TEST_DATA
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))

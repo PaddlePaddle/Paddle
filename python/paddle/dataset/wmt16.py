@@ -29,11 +29,13 @@ Multi30K: Multilingual English-German Image Descriptions.
 """
 
 import os
+import six
 import tarfile
 import gzip
 from collections import defaultdict
 
 import paddle.dataset.common
+import paddle.compat as cpt
 
 __all__ = [
     "train",
@@ -60,7 +62,7 @@ def __build_dict(tar_file, dict_size, save_path, lang):
     word_dict = defaultdict(int)
     with tarfile.open(tar_file, mode="r") as f:
         for line in f.extractfile("wmt16/train"):
-            line_split = line.strip().split("\t")
+            line_split = line.strip().split(six.b("\t"))
             if len(line_split) != 2: continue
             sen = line_split[0] if lang == "en" else line_split[1]
             for w in sen.split():
@@ -70,8 +72,7 @@ def __build_dict(tar_file, dict_size, save_path, lang):
         fout.write("%s\n%s\n%s\n" % (START_MARK, END_MARK, UNK_MARK))
         for idx, word in enumerate(
                 sorted(
-                    iter(list(word_dict.items())),
-                    key=lambda x: x[1],
+                    six.iteritems(word_dict), key=lambda x: x[1],
                     reverse=True)):
             if idx + 3 == dict_size: break
             fout.write("%s\n" % (word[0]))
@@ -81,16 +82,16 @@ def __load_dict(tar_file, dict_size, lang, reverse=False):
     dict_path = os.path.join(paddle.dataset.common.DATA_HOME,
                              "wmt16/%s_%d.dict" % (lang, dict_size))
     if not os.path.exists(dict_path) or (
-            len(open(dict_path, "r").readlines()) != dict_size):
+            len(open(dict_path, "rb").readlines()) != dict_size):
         __build_dict(tar_file, dict_size, dict_path, lang)
 
     word_dict = {}
-    with open(dict_path, "r") as fdict:
+    with open(dict_path, "rb") as fdict:
         for idx, line in enumerate(fdict):
             if reverse:
-                word_dict[idx] = line.strip()
+                word_dict[idx] = cpt.to_text(line.strip())
             else:
-                word_dict[line.strip()] = idx
+                word_dict[cpt.to_text(line.strip())] = idx
     return word_dict
 
 
@@ -120,7 +121,7 @@ def reader_creator(tar_file, file_name, src_dict_size, trg_dict_size, src_lang):
 
         with tarfile.open(tar_file, mode="r") as f:
             for line in f.extractfile(file_name):
-                line_split = line.strip().split("\t")
+                line_split = line.strip().split(six.b("\t"))
                 if len(line_split) != 2:
                     continue
                 src_words = line_split[src_col].split()

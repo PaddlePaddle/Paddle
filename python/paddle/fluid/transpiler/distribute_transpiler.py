@@ -31,6 +31,7 @@ Steps to transpile pserver:
 import math
 import random
 import numpy as np
+import collections
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
@@ -217,9 +218,10 @@ class DistributeTranspiler(object):
         #       fc_w@GRAD_trainer_0, fc_w@GRAD_trainer_1 --> pserver1
         #       fc_b@GRAD_trainer_0, fc_b@GRAD_trainer_1 --> pserver2
         # shuffle the map will avoid the uneven distribution above
-        grad_var_mapping_items = list(self.grad_var_mapping.items())
+        grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
+
         if not self.config.slice_var_up:
-            random.seed(self.trainer_num)
+            random.seed(self.origin_program.random_seed)
             random.shuffle(grad_var_mapping_items)
 
         for orig_varname, splited_vars in grad_var_mapping_items:
@@ -277,7 +279,7 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
         # step4: Concat the parameters splits together after recv.
-        for varname, splited_var in list(self.param_var_mapping.items()):
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
@@ -292,16 +294,17 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        program.global_block().append_op(
-            type="fetch_barrier",
-            inputs={},
-            outputs={},
-            attrs={
-                "endpoints": pserver_endpoints,
-                RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            })
+        if self.sync_mode:
+            program.global_block().append_op(
+                type="fetch_barrier",
+                inputs={},
+                outputs={},
+                attrs={
+                    "endpoints": pserver_endpoints,
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
 
-        for varname, splited_var in list(self.param_var_mapping.items()):
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[varname]
@@ -494,6 +497,7 @@ class DistributeTranspiler(object):
             pserver_index = self.pserver_endpoints.index(endpoint)
             table_opt_block = self._create_table_optimize_block(
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
+            optimize_blocks.append(table_opt_block)
             prefetch_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(
@@ -528,7 +532,10 @@ class DistributeTranspiler(object):
         pserver_program._sync_with_cpp()
         return pserver_program
 
-    def get_startup_program(self, endpoint, pserver_program):
+    def get_startup_program(self,
+                            endpoint,
+                            pserver_program,
+                            startup_program=None):
         """
         Get startup program for current parameter server.
         Modify operator input variables if there are variables that
@@ -538,12 +545,17 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): call get_pserver_program first and
                 pass the result here.
+            startup_program (Program): if pass None, will use
+                default_startup_program
 
         Returns:
             Program: parameter server side startup program.
         """
         s_prog = Program()
-        orig_s_prog = default_startup_program()
+        if not startup_program:
+            orig_s_prog = default_startup_program()
+        else:
+            orig_s_prog = startup_program
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
@@ -556,14 +568,14 @@ class DistributeTranspiler(object):
 
         # 1. create vars in pserver program to startup program
         pserver_vars = pserver_program.global_block().vars
-        created_var_map = dict()
-        for _, var in list(pserver_vars.items()):
+        created_var_map = collections.OrderedDict()
+        for _, var in six.iteritems(pserver_vars):
             tmpvar = s_prog.global_block()._clone_variable(var)
             created_var_map[var.name] = tmpvar
 
         # 2. rename op outputs
         for op in orig_s_prog.global_block().ops:
-            new_outputs = dict()
+            new_outputs = collections.OrderedDict()
             # do not append startup op if var is not on this pserver
             op_on_pserver = False
             for key in op.output_names:
@@ -582,12 +594,12 @@ class DistributeTranspiler(object):
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
-                    op.attrs["shape"] = new_outputs["Out"].shape
+                    op.set_attr("shape", list(new_outputs["Out"].shape))
                 s_prog.global_block().append_op(
                     type=op.type,
                     inputs=new_inputs,
                     outputs=new_outputs,
-                    attrs=op.attrs)
+                    attrs=op.all_attrs())
         return s_prog
 
     # ====================== private transpiler functions =====================
@@ -601,7 +613,7 @@ class DistributeTranspiler(object):
         self.table_name = None
         for op in self.origin_program.global_block().ops:
             if op.type == LOOKUP_TABLE_TYPE:
-                if op.attrs['is_distributed'] is True:
+                if op.attr('is_distributed') is True:
                     if self.table_name is None:
                         self.table_name = op.input("W")[0]
                     if self.table_name != op.input("W")[0]:
@@ -702,7 +714,7 @@ class DistributeTranspiler(object):
             self.origin_program,
             grad_blocks,
             add_trainer_suffix=self.trainer_num > 1)
-        self.grad_param_mapping = dict()
+        self.grad_param_mapping = collections.OrderedDict()
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
             p_name, p_bid, _ = p.split(":")
@@ -710,7 +722,7 @@ class DistributeTranspiler(object):
                     self.param_var_mapping[p_name][int(p_bid)]
 
         # create mapping of endpoint -> split var to create pserver side program
-        self.param_grad_ep_mapping = dict()
+        self.param_grad_ep_mapping = collections.OrderedDict()
         [
             self.param_grad_ep_mapping.update({
                 ep: {
@@ -747,14 +759,14 @@ class DistributeTranspiler(object):
                     out_name = op.output("Out")
 
                     ids_var = program.global_block().vars[ids_name[0]]
-                    prefetch_input_vars = self.create_splited_vars(
+                    prefetch_input_vars = self._create_splited_vars(
                         source_var=ids_var,
                         block=program.global_block(),
                         tag="_prefetch_in_")
                     self.all_prefetch_input_vars.append(prefetch_input_vars)
 
                     out_var = program.global_block().vars[out_name[0]]
-                    prefetch_output_vars = self.create_splited_vars(
+                    prefetch_output_vars = self._create_splited_vars(
                         source_var=out_var,
                         block=program.global_block(),
                         tag="_prefetch_out_")
@@ -894,8 +906,6 @@ class DistributeTranspiler(object):
             self.table_name
         ][0]
         table_opt_block = pserver_program.create_block(pre_block_idx)
-        # only support sgd now
-        assert table_opt_op.type == "sgd"
 
         if self.sync_mode:
             # create grad vars in pserver program
@@ -935,11 +945,12 @@ class DistributeTranspiler(object):
             "LearningRate": [lr_var]
         }
         outputs = {"ParamOut": [param_var]}
-        table_opt_block.append_op(
-            type=table_opt_op.type,
-            inputs=inputs,
-            outputs=outputs,
-            attrs=table_opt_op.attrs)
+        # only support sgd now
+        import logging
+        logging.warn(
+            "distribute lookup table only support sgd optimizer, change it's optimizer to sgd instead of "
+            + table_opt_op.type)
+        table_opt_block.append_op(type="sgd", inputs=inputs, outputs=outputs)
 
         # add table parameter gradient and it's block id to grad_to_block_id
         grad_to_block_id.append(grad_var.name + ":" + str(table_opt_block.idx))
@@ -980,21 +991,21 @@ class DistributeTranspiler(object):
             block_list (list[(varname, block_id, block_size)]): List of gradient blocks.
             add_trainer_suffix (Bool): Add trainer suffix to new variable's name if set True.
         Returns:
-            var_mapping (dict(varname->[new_varname_variable])):A dict mapping
+            var_mapping (collections.OrderedDict(varname->[new_varname_variable])):A dict mapping
                 from original var name to each var split.
         """
 
         # varname->[(block_id, current_block_size)]
-        block_map = dict()
+        block_map = collections.OrderedDict()
 
-        var_mapping = dict()
+        var_mapping = collections.OrderedDict()
         for block_str in block_list:
             varname, offset, size = block_str.split(":")
             if varname not in block_map:
                 block_map[varname] = []
             block_map[varname].append((int(offset), int(size)))
 
-        for varname, splited in list(block_map.items()):
+        for varname, splited in six.iteritems(block_map):
             orig_var = program.global_block().var(varname)
             if len(splited) == 1:
                 if self.sync_mode and add_trainer_suffix:
@@ -1016,7 +1027,7 @@ class DistributeTranspiler(object):
 
             for i, block in enumerate(splited):
                 size = block[1]
-                rows = size / orig_dim1_flatten
+                rows = size // orig_dim1_flatten
                 splited_shape = [rows]
                 if len(orig_shape) >= 2:
                     splited_shape.extend(orig_shape[1:])
@@ -1037,7 +1048,7 @@ class DistributeTranspiler(object):
             program.global_block()._sync_with_cpp()
         return var_mapping
 
-    def create_splited_vars(self, source_var, block, tag):
+    def _create_splited_vars(self, source_var, block, tag):
         return [
             block.create_var(
                 name=str(source_var.name + tag + str(index)),
@@ -1180,19 +1191,40 @@ class DistributeTranspiler(object):
                             grad_to_block_id, origin_program, merged_var):
         program = optimize_block.program
         pserver_block = program.global_block()
-        new_inputs = dict()
+        new_inputs = collections.OrderedDict()
+
         # update param/grad shape first, then other inputs like
         # moment can use the updated shape
+        def _get_param_block(opt_op):
+            # param is already created on global program
+            param_block = None
+            for p in self.param_grad_ep_mapping[endpoint]["params"]:
+                if same_or_split_var(p.name, opt_op.input("Param")[0]):
+                    param_block = p
+                    break
+            return param_block
+
         for key in opt_op.input_names:
             if key == "Grad":
                 new_inputs[key] = merged_var
+            # For RMSProp optimizer
+            elif key == "Moment" or key == "MeanSquare":
+                param_block = _get_param_block(opt_op)
+                if not param_block:
+                    return
+                moment_var = origin_program.global_block().vars[opt_op.input(
+                    key)[0]]
+                tmpvar = pserver_block.create_var(
+                    name=moment_var.name,
+                    persistable=moment_var.persistable,
+                    dtype=moment_var.dtype,
+                    # change to use same shape as param
+                    # TODO(typhoonzero): didn't append .block in the var name,
+                    # may affect checkpoint saving? Need to verify.
+                    shape=param_block.shape)
+                new_inputs[key] = tmpvar
             elif key == "Param":
-                # param is already created on global program
-                param_block = None
-                for p in self.param_grad_ep_mapping[endpoint]["params"]:
-                    if same_or_split_var(p.name, opt_op.input(key)[0]):
-                        param_block = p
-                        break
+                param_block = _get_param_block(opt_op)
                 if not param_block:
                     return
                 tmpvar = pserver_block.create_var(
@@ -1218,7 +1250,7 @@ class DistributeTranspiler(object):
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad", "LearningRate"]:
+            if key in ["Param", "Grad", "LearningRate", "Moment", "MeanSquare"]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             # update accumulator variable shape
@@ -1241,13 +1273,11 @@ class DistributeTranspiler(object):
             type=opt_op.type,
             inputs=new_inputs,
             outputs=outputs,
-            attrs=opt_op.attrs)
+            attrs=opt_op.all_attrs())
 
     def _is_splited_grad_var(self, var, var_dict):
         grad_block = None
-        # TODO(minqiyang): replace these items() with six.iteritems() to
-        # improve memory
-        for _, g in list(var_dict.items()):
+        for _, g in six.iteritems(var_dict):
             if self._orig_varname(g.name) == self._orig_varname(var.name):
                 if g.name.find(".trainer_") == -1:
                     grad_block = g
@@ -1257,7 +1287,7 @@ class DistributeTranspiler(object):
     def _clone_lr_op(self, program, block, op):
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, op)
-        for key, varlist in list(inputs.items()):
+        for key, varlist in six.iteritems(inputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1266,7 +1296,7 @@ class DistributeTranspiler(object):
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, op)
-        for key, varlist in list(outputs.items()):
+        for key, varlist in six.iteritems(outputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1274,14 +1304,14 @@ class DistributeTranspiler(object):
                     block._clone_variable(var)
 
         return block.append_op(
-            type=op.type, inputs=inputs, outputs=outputs, attrs=op.attrs)
+            type=op.type, inputs=inputs, outputs=outputs, attrs=op.all_attrs())
 
     def _append_pserver_non_opt_ops(self, optimize_block, opt_op):
         program = optimize_block.program
         # Append the ops for parameters that do not need to be optimized/updated
         inputs = self._get_input_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for key, varlist in list(inputs.items()):
+        for key, varlist in six.iteritems(inputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1300,7 +1330,7 @@ class DistributeTranspiler(object):
 
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
-        for key, varlist in list(outputs.items()):
+        for key, varlist in six.iteritems(outputs):
             if not isinstance(varlist, list):
                 varlist = [varlist]
             for var in varlist:
@@ -1315,7 +1345,7 @@ class DistributeTranspiler(object):
             type=opt_op.type,
             inputs=inputs,
             outputs=outputs,
-            attrs=opt_op.attrs)
+            attrs=opt_op.all_attrs())
 
     def _is_op_connected(self, op1, op2):
         # If one op's input is another op's output or
@@ -1358,7 +1388,7 @@ class DistributeTranspiler(object):
 
     def _get_input_map_from_op(self, varmap, op):
         """Returns a dict from op input name to the vars in varmap."""
-        iomap = dict()
+        iomap = collections.OrderedDict()
         for key in op.input_names:
             vars = []
             for varname in op.input(key):
@@ -1371,7 +1401,7 @@ class DistributeTranspiler(object):
 
     def _get_output_map_from_op(self, varmap, op):
         """Returns a dict from op output name to the vars in varmap."""
-        iomap = dict()
+        iomap = collections.OrderedDict()
         for key in op.output_names:
             vars = []
             for varname in op.output(key):
@@ -1420,8 +1450,8 @@ class DistributeTranspiler(object):
         # optimize
         op_maker = core.op_proto_and_checker_maker
         optimize_role = core.op_proto_and_checker_maker.OpRole.Optimize
-        if op_maker.kOpRoleAttrName() in op.attrs and \
-            int(op.attrs[op_maker.kOpRoleAttrName()]) == int(optimize_role):
+        if op_maker.kOpRoleAttrName() in op.attr_names and \
+                int(op.all_attrs()[op_maker.kOpRoleAttrName()]) == int(optimize_role):
             return True
         return False
 
@@ -1444,8 +1474,8 @@ class DistributeTranspiler(object):
                 # and op_role_var to get the pair.
                 for input_name in op.input_arg_names:
                     if input_name.find("@GRAD") != -1 and \
-                        op.attrs[RPC_OP_ROLE_ATTR_NAME]:
-                        param_name = op.attrs[OP_ROLE_VAR_ATTR_NAME][0]
+                        op.attr(RPC_OP_ROLE_ATTR_NAME):
+                        param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                         params_grads.append([
                             origin_var_dict[param_name],
                             origin_var_dict[input_name]
