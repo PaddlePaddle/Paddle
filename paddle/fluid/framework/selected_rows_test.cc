@@ -9,8 +9,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include <thread>  // NOLINT
+
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
 namespace framework {
@@ -108,6 +110,70 @@ TEST_F(SelectedRowsTester, SparseTable) {
   for (int j = 0; j < embedding_width; ++j) {
     ASSERT_EQ(value_data[3 * embedding_width + j], 0);
   }
+}
+
+void f1(SelectedRows* table, int table_size) {
+  for (int i = 1000; i > 0; --i) {
+    auto id = i % table_size;
+    int64_t index1 = table->AutoGrownIndex(id);
+    int64_t index2 = table->AutoIndex(id);
+    int64_t index3 = table->AutoGrownIndex(id);
+    ASSERT_EQ(index1, index2);
+    ASSERT_EQ(index2, index3);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void f2(SelectedRows* table, int table_size) {
+  for (int i = 0; i < 1000; ++i) {
+    auto id = i % table_size;
+    int64_t index1 = table->AutoGrownIndex(id);
+    int64_t index2 = table->AutoIndex(id);
+    int64_t index3 = table->AutoGrownIndex(id);
+    ASSERT_EQ(index1, index2);
+    ASSERT_EQ(index2, index3);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void f3(SelectedRows* table, int table_size) {
+  for (int i = 1000; i > 0; --i) {
+    table->AutoIndex(i % table_size);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+void f4(SelectedRows* table, int table_size) {
+  for (int i = 1000; i > 0; --i) {
+    table->AutoGrownIndex(i % table_size);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  }
+}
+
+TEST(SelectedRows, MultiThreadAutoIndex) {
+  platform::CPUPlace cpu;
+  SelectedRows table;
+
+  int64_t table_size = 100;
+  int64_t embedding_width = 8;
+  // initialize a sparse table
+  table.mutable_value()->Resize(
+      framework::make_ddim({table_size, embedding_width}));
+  auto* data = table.mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+
+  std::thread t1(f1, &table, table_size);
+  std::thread t2(f2, &table, table_size);
+  t1.join();
+  t2.join();
+  std::thread t3(f3, &table, table_size);
+  std::thread t4(f4, &table, table_size);
+  t3.join();
+  t4.join();
 }
 
 }  // namespace framework

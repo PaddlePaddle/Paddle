@@ -147,7 +147,7 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key) {
     auto write_iter = id_to_index.find(key);
     if (write_iter == id_to_index.end()) {
       size_t row_num = rows_.size();
-      if (row_num == value_->dims()[1]) {
+      if (row_num == value_->dims()[0]) {
         pthread_rwlock_unlock(&rwlock_.get()->lock);
         PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
       }
