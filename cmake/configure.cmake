@@ -56,6 +56,10 @@ if(NOT CMAKE_CROSSCOMPILING)
         set(SIMD_FLAG ${SSE3_FLAG})
     endif()
 endif()
+if(UNIX AND NOT APPLE)
+  # except apple from nix*Os family
+  set(LINUX TRUE)
+endif(UNIX AND NOT APPLE)
 
 if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
