@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from parallel_executor_test_base import TestParallelExecutorBase
 import paddle.fluid as fluid
 import paddle.fluid.core as core
