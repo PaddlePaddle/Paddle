@@ -20,6 +20,9 @@
 DEFINE_int32(io_threadpool_size, 100,
              "number of threads used for doing IO, default 100");
 
+DEFINE_int32(dist_threadpool_size, 0,
+             "number of threads used for distributed executed.");
+
 namespace paddle {
 namespace framework {
 
@@ -35,6 +38,10 @@ void ThreadPool::Init() {
   if (threadpool_.get() == nullptr) {
     // TODO(Yancey1989): specify the max threads number
     int num_threads = std::thread::hardware_concurrency();
+    if (FLAGS_dist_threadpool_size > 0) {
+      num_threads = FLAGS_dist_threadpool_size;
+      VLOG(1) << "set dist_threadpool_size to " << num_threads;
+    }
     PADDLE_ENFORCE_GT(num_threads, 0);
     threadpool_.reset(new ThreadPool(num_threads));
   }
