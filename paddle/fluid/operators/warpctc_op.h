@@ -153,7 +153,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
     // warpctc needs sequences data stored in transposed padding format
-    Tensor warpctc_logits;
+    LoDTensor warpctc_logits;
     const size_t max_sequence_length =
         math::MaximumSequenceLength(logits_lod[level]);
     auto warpctc_logits_dims =
@@ -163,7 +163,7 @@ class WarpCTCKernel : public framework::OpKernel<T> {
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
-        static_cast<T>(0), false /* norm_by_times */, 0,
+        {static_cast<T>(0)}, -1, 0, false /* norm_by_times */,
         math::kLengthBatchWidth);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
@@ -210,15 +210,15 @@ template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* warpctc_grad = ctx.Input<Tensor>("WarpCTCGrad");
+    auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
     const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
     math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), logits_grad,
-        *warpctc_grad, norm_by_times, 0, math::kLengthBatchWidth);
+        ctx.template device_context<DeviceContext>(), *warpctc_grad,
+        logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad->data<T>();
     math::ScaleLoDTensorFunctor<DeviceContext, T>()(
