@@ -134,6 +134,8 @@ class FCOpKernel : public framework::OpKernel<T> {
     math::FCCompute<platform::CPUDeviceContext, T>(
         blas, in_dims[0], w_dims[1], w_dims[0], input_data, w_data, output_data,
         bias ? bias->data<T>() : NULL);
+
+    // TODO(TJ): fuse act
   }
 };
 
