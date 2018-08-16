@@ -273,7 +273,7 @@ class ParallelExecutor(object):
             self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
-        self.executor.run(cpt.to_text(fetch_list), cpt.to_text(fetch_var_name))
+        self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:
