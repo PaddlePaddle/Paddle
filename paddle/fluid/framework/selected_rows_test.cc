@@ -77,10 +77,10 @@ TEST(SelectedRows, SparseTable) {
       data[i * embedding_width + j] = static_cast<float>(i);
     }
   }
-  ASSERT_EQ(table.AutoGrownIndex(10), 0);
-  ASSERT_EQ(table.AutoGrownIndex(8), 1);
-  ASSERT_EQ(table.AutoGrownIndex(8), 1);
-  ASSERT_EQ(table.AutoGrownIndex(6), 2);
+  ASSERT_EQ(table.AutoGrownIndex(10, true), 0);
+  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
+  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
+  ASSERT_EQ(table.AutoGrownIndex(6, true), 2);
   ASSERT_TRUE(table.HasKey(10));
   ASSERT_TRUE(table.HasKey(8));
   ASSERT_TRUE(table.HasKey(6));
@@ -116,9 +116,9 @@ TEST(SelectedRows, SparseTable) {
 void f1(SelectedRows* table, int table_size) {
   for (int i = 1000000; i > 0; --i) {
     auto id = i % table_size;
-    int64_t index1 = table->AutoGrownIndex(id);
-    int64_t index2 = table->AutoIndex(id);
-    int64_t index3 = table->AutoGrownIndex(id);
+    int64_t index1 = table->AutoGrownIndex(id, true);
+    int64_t index2 = table->AutoGrownIndex(id, false);
+    int64_t index3 = table->AutoGrownIndex(id, true);
     ASSERT_EQ(index1, index2);
     ASSERT_EQ(index2, index3);
   }
@@ -127,9 +127,9 @@ void f1(SelectedRows* table, int table_size) {
 void f2(SelectedRows* table, int table_size) {
   for (int i = 0; i < 1000000; ++i) {
     auto id = i % table_size;
-    int64_t index1 = table->AutoGrownIndex(id);
-    int64_t index2 = table->AutoIndex(id);
-    int64_t index3 = table->AutoGrownIndex(id);
+    int64_t index1 = table->AutoGrownIndex(id, true);
+    int64_t index2 = table->AutoGrownIndex(id, false);
+    int64_t index3 = table->AutoGrownIndex(id, true);
     ASSERT_EQ(index1, index2);
     ASSERT_EQ(index2, index3);
   }
@@ -138,7 +138,7 @@ void f2(SelectedRows* table, int table_size) {
 void f3(SelectedRows* table, int table_size) {
   clock_t t1 = clock();
   for (int i = 100000; i > 0; --i) {
-    auto id1 = table->AutoIndex(i % table_size);
+    auto id1 = table->AutoGrownIndex(i % table_size, true);
     auto id2 = table->Index(i % table_size);
     ASSERT_EQ(id1, id2);
   }
@@ -149,7 +149,7 @@ void f3(SelectedRows* table, int table_size) {
 void f4(SelectedRows* table, int table_size) {
   clock_t t1 = clock();
   for (int i = 0; i < 100000; ++i) {
-    auto id1 = table->AutoGrownIndex(i % table_size);
+    auto id1 = table->AutoGrownIndex(i % table_size, true);
     auto id2 = table->Index(i % table_size);
     ASSERT_EQ(id1, id2);
   }

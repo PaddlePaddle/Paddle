@@ -80,7 +80,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
-  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i);
+  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
 
   auto ptr = w_value->mutable_data<float>(*place);
 

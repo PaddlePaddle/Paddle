@@ -120,27 +120,21 @@ bool SelectedRows::HasKey(int64_t key) const {
                                                                    : true;
 }
 
-int64_t SelectedRows::AutoIndex(int64_t key) const {
-  pthread_rwlock_rdlock(&rwlock_.get()->lock);
-  auto iter = id_to_index_.find(key);
-  bool has_key = iter != id_to_index_.end();
-  if (!has_key) {
-    pthread_rwlock_unlock(&rwlock_.get()->lock);
-    PADDLE_THROW("Id %s not in table", key);
-  }
-  auto ret = iter->second;
-  pthread_rwlock_unlock(&rwlock_.get()->lock);
-  return ret;
-}
-
-int64_t SelectedRows::AutoGrownIndex(int64_t key) {
+int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown) {
   pthread_rwlock_rdlock(&rwlock_.get()->lock);
   auto iter = id_to_index_.find(key);
   if (iter == id_to_index_.end()) {
     pthread_rwlock_unlock(&rwlock_.get()->lock);
+    if (!auto_grown) {
+      PADDLE_THROW("key %d not found", key);
+    }
     pthread_rwlock_wrlock(&rwlock_.get()->lock);
-    PADDLE_ENFORCE(id_to_index_.size() == rows_.size(),
-                   "id_to_index_ should have the same size with rows_");
+    auto map_size = id_to_index_.size();
+    auto vector_size = rows_.size();
+    PADDLE_ENFORCE(
+        map_size == vector_size,
+        "id_to_index_ size %d should have the same size with rows_ %d",
+        map_size, vector_size);
     auto write_iter = id_to_index_.find(key);
     if (write_iter == id_to_index_.end()) {
       size_t row_num = rows_.size();
@@ -187,13 +181,7 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
     for (size_t i = 0; i < ids.numel(); ++i) {
-      int64_t id = ids.data<int64_t>()[i];
-      int64_t index;
-      if (auto_grown) {
-        index = AutoGrownIndex(id);
-      } else {
-        index = AutoIndex(id);
-      }
+      int64_t index = AutoGrownIndex(ids.data<int64_t>()[i], auto_grown);
       framework::VisitDataType(
           framework::ToDataType(value_->type()),
           TensorCopyVisitor(value, i * value_width, *value_.get(),

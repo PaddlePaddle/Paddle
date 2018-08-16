@@ -116,17 +116,6 @@ class SelectedRows {
            bool auto_grown = false);
 
   /*
-   * @brief Get the index of key from id_to_index_ map.
-   *
-   * Note!!! this interface is only used when selected_rows is used as
-   * parameters
-   * for distribute lookup table.
-   *
-   * @return index of the key.
-   */
-  int64_t AutoIndex(int64_t key) const;
-
-  /*
    * @brief Get the index of the key from id_to_index_ map. If the key not
    * exist,
    * add the key into id_to_index_.
@@ -137,7 +126,7 @@ class SelectedRows {
    *
    * @return index of the key.
    */
-  int64_t AutoGrownIndex(int64_t key);
+  int64_t AutoGrownIndex(int64_t key, bool auto_grown);
 
   void SyncIndex();
 
