@@ -105,7 +105,7 @@ curl-config --features
 rm -rf /usr/local/ssl
 
 # Install patchelf (latest with unreleased bug fixes)
-curl -sLO https://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
+curl -sLO http://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
 check_sha256sum patchelf-0.9njs2.tar.gz $PATCHELF_HASH
 tar -xzf patchelf-0.9njs2.tar.gz
 (cd patchelf-0.9njs2 && ./configure && make && make install)
