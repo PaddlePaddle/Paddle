@@ -5090,7 +5090,7 @@ def random_crop(x, shape, seed=None):
     return out
 
 
-def log(x):
+def log(x, name=None):
     """
     Calculates the natural log of the given input tensor, element-wise.
 
@@ -5100,6 +5100,8 @@ def log(x):
 
     Args:
         x (Variable): Input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
 
     Returns:
         Variable: The natural log of the input tensor computed element-wise.
@@ -5117,7 +5119,7 @@ def log(x):
     return out
 
 
-def relu(x):
+def relu(x, name=None):
     """
     Relu takes one input data (Tensor) and produces one output data (Tensor)
     where the rectified linear function, y = max(0, x), is applied to
@@ -5129,6 +5131,8 @@ def relu(x):
 
     Args:
         x (Variable): The input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
