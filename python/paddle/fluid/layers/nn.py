@@ -106,6 +106,7 @@ __all__ = [
     'image_resize_short',
     'resize_bilinear',
     'gather',
+    'scatter',
     'random_crop',
     'mean_iou',
     'relu',
@@ -5044,6 +5045,45 @@ def gather(input, index):
         type="gather",
         inputs={"X": input,
                 "Index": index},
+        outputs={"Out": out})
+    return out
+
+
+def scatter(input, index, updates):
+    """
+    **Scatter Layer**
+
+    Output is obtained by updating the input on selected indices on the first
+    axis.
+
+    .. math::
+
+        Out = X
+        Out[Ids] = Updates
+
+    Args:
+        input: The source input with rank>=1.
+        index: The index input with rank=1.
+        updates: The updated value of scatter op.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.scatter(input, index, updates)
+
+    """
+    helper = LayerHelper('scatter', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": input,
+                "Ids": index,
+                "Updates": updates},
         outputs={"Out": out})
     return out
 
