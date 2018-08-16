@@ -30,11 +30,18 @@ namespace paddle {
 namespace framework {
 
 struct RWLock {
-  RWLock() { pthread_rwlock_init(&lock, nullptr); }
+  RWLock() { pthread_rwlock_init(&lock_, nullptr); }
 
-  ~RWLock() { pthread_rwlock_destroy(&lock); }
+  ~RWLock() { pthread_rwlock_destroy(&lock_); }
 
-  pthread_rwlock_t lock;
+  void RDLock() { PADDLE_ENFORCE_EQ(pthread_rwlock_rdlock(&lock_), 0, ""); }
+
+  void WRLock() { PADDLE_ENFORCE_EQ(pthread_rwlock_wrlock(&lock_), 0, ""); }
+
+  void UNLock() { PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_), 0, ""); }
+
+ private:
+  pthread_rwlock_t lock_;
 };
 
 class SelectedRows {

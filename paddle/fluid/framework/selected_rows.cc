@@ -121,52 +121,54 @@ bool SelectedRows::HasKey(int64_t key) const {
 }
 
 int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown) {
-  pthread_rwlock_rdlock(&rwlock_.get()->lock);
+  rwlock_->RDLock();
   auto iter = id_to_index_.find(key);
   if (iter == id_to_index_.end()) {
-    pthread_rwlock_unlock(&rwlock_.get()->lock);
+    rwlock_->UNLock();
     if (!auto_grown) {
       PADDLE_THROW("key %d not found", key);
     }
-    pthread_rwlock_wrlock(&rwlock_.get()->lock);
+    rwlock_->WRLock();
     auto map_size = id_to_index_.size();
     auto vector_size = rows_.size();
-    PADDLE_ENFORCE(
-        map_size == vector_size,
-        "id_to_index_ size %d should have the same size with rows_ %d",
-        map_size, vector_size);
+    if (map_size != vector_size) {
+      rwlock_->UNLock();
+      PADDLE_THROW(
+          "id_to_index_ size %d should have the same size with rows_ %d",
+          map_size, vector_size);
+    }
     auto write_iter = id_to_index_.find(key);
     if (write_iter == id_to_index_.end()) {
       size_t row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
-        pthread_rwlock_unlock(&rwlock_.get()->lock);
+        rwlock_->UNLock();
         PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
       }
       // key logic to put a key into id_to_index_
       rows_.push_back(key);
       auto index = static_cast<int64_t>(rows_.size() - 1);
       id_to_index_[key] = index;
-      pthread_rwlock_unlock(&rwlock_.get()->lock);
+      rwlock_->UNLock();
       return index;
     } else {
       auto index = write_iter->second;
-      pthread_rwlock_unlock(&rwlock_.get()->lock);
+      rwlock_->UNLock();
       return index;
     }
   } else {
     auto index = iter->second;
-    pthread_rwlock_unlock(&rwlock_.get()->lock);
+    rwlock_->UNLock();
     return index;
   }
 }
 
 void SelectedRows::SyncIndex() {
-  pthread_rwlock_wrlock(&rwlock_.get()->lock);
+  rwlock_->WRLock();
   id_to_index_.clear();
   for (size_t i = 0; i < rows_.size(); ++i) {
     id_to_index_[rows_[i]] = i;
   }
-  pthread_rwlock_unlock(&rwlock_.get()->lock);
+  rwlock_->UNLock();
 }
 
 void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
