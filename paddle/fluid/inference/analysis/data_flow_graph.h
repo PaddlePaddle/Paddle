@@ -176,8 +176,9 @@ struct GraphTraits<DataFlowGraph> {
 // sub-graph is the inputs nodes and output nodes that doesn't inside the
 // sub-graph.
 std::pair<std::vector<Node *>, std::vector<Node *>>
-ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);  // NOLINT
 
+void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph);
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

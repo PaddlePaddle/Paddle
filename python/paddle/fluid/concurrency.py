@@ -12,15 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from layers.control_flow import BlockGuard, equal
+from .layers.control_flow import BlockGuard, equal
 from .framework import Operator
-from layer_helper import LayerHelper, unique_name
-from layers import fill_constant
-import core
+from .layer_helper import LayerHelper, unique_name
+from .layers import fill_constant
+from . import core
 
 __all__ = [
-    'Go', 'make_channel', 'channel_send', 'channel_recv', 'channel_close',
-    'Select'
+    'make_channel', 'channel_send', 'channel_recv', 'channel_close', 'Select'
 ]
 
 
@@ -35,10 +34,10 @@ class Go(BlockGuard):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is not None:
             return False
-        self.construct_go_op()
+        self._construct_go_op()
         return super(Go, self).__exit__(exc_type, exc_val, exc_tb)
 
-    def construct_go_op(self):
+    def _construct_go_op(self):
         main_program = self.helper.main_program
         go_block = main_program.current_block()
         parent_block = main_program.block(main_program.current_block()

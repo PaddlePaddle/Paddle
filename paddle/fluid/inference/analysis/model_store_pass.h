@@ -17,6 +17,8 @@
  * model in the disk, and that model can be reloaded for prediction.
  */
 
+#pragma once
+#include <string>
 #include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {

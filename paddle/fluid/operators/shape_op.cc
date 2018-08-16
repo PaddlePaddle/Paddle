@@ -38,7 +38,7 @@ class ShapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Input", "(Tensor), The input tensor.");
     AddOutput("Out",
               "(Tensor), The shape of input tensor, the data type of the shape"
-              " is int64_t, will be on the same device with the input Tensor.");
+              " is int32_t, will be on the same device with the input Tensor.");
     AddComment(R"DOC(
 Shape Operator
 
@@ -53,5 +53,5 @@ Get the shape of input tensor. Only support CPU input Tensor now.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(shape, ops::ShapeOp, ops::ShapeOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<int>, ops::ShapeKernel<int64_t>,
+REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<int>, ops::ShapeKernel<int32_t>,
                        ops::ShapeKernel<float>, ops::ShapeKernel<double>);
