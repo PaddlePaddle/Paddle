@@ -85,6 +85,120 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     int* track_value =
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
 
+#ifdef __AVX__
+    //Now only optimize for float type.
+    if (std::is_same<T, float>::value) {
+      size_t type_size = 8;
+
+      size_t len = tag_num/type_size;
+      size_t remain = tag_num%type_size;
+      int last_offset = remain - type_size;
+
+      //Setup the alpha initial value.
+      for (size_t i = 0; i <= len; ++i) {
+        __m256 w_content, x_content, alpha_content;
+        size_t i_offset = i * type_size;
+        if ( i == len ) {
+          if (remain > 0) {
+            i_offset = i * type_size + last_offset;
+          } else {
+            break;
+          }
+        }
+        w_content = _mm256_loadu_ps((const float*)w + i_offset);
+        x_content = _mm256_loadu_ps((const float*)x + i_offset);
+        alpha_content = _mm256_add_ps(w_content, x_content);
+        _mm256_storeu_ps((float *)alpha_value + i_offset,
+                alpha_content);
+      }
+
+      //Get the maximum score for every row..
+      for (size_t k = 1; k < seq_len; ++k) {
+        size_t j_offset = 0;
+        //Optimize the code to check the column value firstly.
+        for (size_t j = 0; j <= len; ++j) {
+          j_offset = j * type_size;
+          if ( j == len ) {
+            if ( remain > 0 ) {
+              j_offset = j * type_size + last_offset;
+            } else {
+              break;
+            }
+          }
+          __m256 max_score = _mm256_set1_ps(
+                    -std::numeric_limits<T>::max());
+          __m256i max_j = _mm256_set1_epi32(0);
+          for (size_t i = 0; i < tag_num; ++i) {
+            __m256 alpha_content = _mm256_broadcast_ss((const float*)
+                                          alpha_value + (k - 1) * tag_num + i);
+
+            __m256 w_content = _mm256_loadu_ps((const float*)(w +
+                                          (i + state_trans_base_idx) * tag_num +
+                                          j_offset));
+            __m256 score_v = _mm256_add_ps(alpha_content, w_content);
+
+            __m256 mask = _mm256_cmp_ps(score_v, max_score,
+                    _CMP_GT_OS);
+            if ( i > 0) {
+#ifdef __AVX2__
+              max_j = _mm256_or_si256(
+                        _mm256_andnot_si256((__m256i)mask, max_j),
+                        _mm256_and_si256((__m256i)mask, _mm256_set1_epi32(i)));
+#else
+              __m128i lo_max_j = _mm256_extractf128_si256(max_j, 0);
+              __m128i hi_max_j = _mm256_extractf128_si256(max_j, 1);
+              __m128i lo_mask = _mm256_extractf128_si256((__m256i)mask, 0);
+              __m128i hi_mask = _mm256_extractf128_si256((__m256i)mask, 1);
+
+              lo_max_j = _mm_andnot_si128(lo_mask, lo_max_j);
+              hi_max_j = _mm_andnot_si128(hi_mask, hi_max_j);
+              lo_mask = _mm_and_si128(lo_mask, _mm_set1_epi32(i));
+              hi_mask = _mm_and_si128(hi_mask, _mm_set1_epi32(i));
+
+
+              lo_max_j = _mm_or_si128(lo_mask, lo_max_j);
+              hi_max_j = _mm_or_si128(hi_mask, hi_max_j);
+
+              max_j = _mm256_insertf128_si256(max_j, lo_max_j, 0);
+              max_j = _mm256_insertf128_si256(max_j, hi_max_j, 1);
+#endif
+            }
+            max_score = _mm256_max_ps(max_score, score_v);
+            if ( i == tag_num - 1 ) {
+              __m256 x_content = _mm256_loadu_ps((const float*)(x + k *
+                                                  tag_num + j_offset));
+              max_score = _mm256_add_ps(max_score, x_content);
+            }
+          }
+          _mm256_storeu_ps((float *)(alpha_value +
+                            k * tag_num + j_offset), max_score);
+          _mm256_storeu_si256((__m256i *)(track_value + k * tag_num +
+                              j_offset), max_j);
+        }
+      }
+
+    } else {
+      for (size_t i = 0; i < tag_num; ++i) alpha_value[i] = w[i] + x[i];
+
+      for (size_t k = 1; k < seq_len; ++k) {
+        for (size_t i = 0; i < tag_num; ++i) {
+          T max_score = -std::numeric_limits<T>::max();
+          int max_j = 0;
+          for (size_t j = 0; j < tag_num; ++j) {
+            T score = alpha_value[(k - 1) * tag_num + j] +
+                      w[(j + state_trans_base_idx) * tag_num + i];
+            if (score > max_score) {
+              max_score = score;
+              max_j = j;
+            }
+          }
+
+          alpha_value[k * tag_num + i] = max_score + x[k * tag_num + i];
+          track_value[k * tag_num + i] = max_j;
+        }
+      }
+    }
+#else
     for (size_t i = 0; i < tag_num; ++i) alpha_value[i] = w[i] + x[i];
 
     for (size_t k = 1; k < seq_len; ++k) {
@@ -105,6 +219,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       }
     }
 
+#endif
     T max_score = -std::numeric_limits<T>::max();
     int max_i = 0;
     for (size_t i = 0; i < tag_num; ++i) {
