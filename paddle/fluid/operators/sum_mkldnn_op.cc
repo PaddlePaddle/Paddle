@@ -34,15 +34,15 @@
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::CPUDeviceContext;
 using framework::DataLayout;
 using mkldnn::memory;
 using mkldnn::primitive;
+using mkldnn::reorder;
 using mkldnn::stream;
 using mkldnn::sum;
-using mkldnn::reorder;
+using paddle::framework::Tensor;
+using paddle::platform::CPUDeviceContext;
+using paddle::platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
 template <typename T>
@@ -186,8 +186,9 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       if (in_dim.empty()) {
-        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+        VLOG(3) << "WARNING: all the inputs are empty"
       }
+
       in_dim[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim));
