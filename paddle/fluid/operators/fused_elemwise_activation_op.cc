@@ -32,16 +32,45 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
         ctx->HasInput("Y"),
         "Input(Y) of FusedElemwiseActivationOp op should not be null.");
     PADDLE_ENFORCE(
-        ctx->HasOutput("Out"),
+        ctx->HasOutputs("Out"),
         "Output(Out) of FusedElemwiseActivationOp op should not be null.");
 
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
-    PADDLE_ENFORCE_GE(x_dim.size(), y_dim.size(),
-                      "Rank of first input must >= rank of second input.");
 
-    ctx->SetOutputDim("Out", x_dim);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    // TODO(zcd): whether Y can broadcast to X or X can broadcast to Y
+    bool bcast_y = x_dim.size() >= y_dim.size();
+    if (x_dim.size() == y_dim.size()) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (x_dim[i] < y_dim[i]) {
+          bcast_y = false;
+          break;
+        }
+      }
+    }
+
+    auto &out_dim = bcast_y ? x_dim : y_dim;
+
+    if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
+      PADDLE_ENFORCE_EQ(ctx->Outputs("Out").size(), 2,
+                        "The option of 'keep_intermediate_value' is opened, "
+                        "so the number of 'Out' should be two.");
+      // TODO(zcd): hard code.
+      if (ctx->Attrs().Get<std::vector<std::string>>("functor_list")[1] ==
+          "elementwise_add") {
+        ctx->SetOutputsDim("Out", {out_dim, out_dim});
+      } else {
+        ctx->SetOutputsDim("Out", {out_dim, y_dim});
+      }
+    } else {
+      PADDLE_ENFORCE_EQ(
+          ctx->Outputs("Out").size(), 1,
+          "The option of 'keep_intermediate_value' is not opened, "
+          "so the number of 'Out' should be only one.");
+
+      ctx->SetOutputsDim("Out", {out_dim});
+      ctx->ShareLoD("X", /*->*/ "Out");  // Is it necessary?
+    }
   }
 
  protected:
@@ -59,25 +88,38 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "(vector<Tensor>)");
-    AddInput("Y", "(vector<Tensor>)");
-    AddOutput("Out", "vector<Tensor>");
+    AddInput(
+        "X",
+        "(Tensor) The input tensor of fused_elemwise_activation operator.");
+    AddInput(
+        "Y",
+        "(Tensor) The input tensor of fused_elemwise_activation operator.");
+    AddOutput("Out",
+              "vector<Tensor> The output tensor of fused_elemwise_activation "
+              "operator."
+              "If the option of 'keep_intermediate_value' is opened, the "
+              "number of 'Out' should be two."
+              "else, the number of 'Out' should be one.")
+        .AsDuplicable();
     AddAttr<int>("axis",
                  "axis is used by elementwise_op, the default value is -1.")
         .SetDefault(-1);
     AddAttr<float>("scale",
                    "scale is used by scale_op, the default value is 0.0.")
         .SetDefault(0.0);
-    AddAttr<bool>("recomputation",
-                  "Whether to recompute the Out."
-                  "fused_elemwise_activation_grad has two methods to get the "
-                  "dx and dy, one "
-                  "is to use the 'Out', and the other is not to use it. "
-                  "The former method will save the time of recomputing the "
-                  "'Out', but it must occupy the memory to store the 'out'. "
-                  "While, the later method can avoid occupying the memory, "
-                  "but it must recompute the 'Out'. The default value is true.")
+    AddAttr<bool>(
+        "recomputation",
+        "Whether to recompute the Out."
+        "fused_elemwise_activation_grad has two methods to get the "
+        "dx and dy, one is to use the 'Out', and the other is not to use it. "
+        "The former method will save the time of recomputing the "
+        "'Out', but it must occupy the memory to store the 'out'. "
+        "While, the later method can avoid occupying the memory, "
+        "but it must recompute the 'Out'. The default value is true.")
         .SetDefault(true);
+    AddAttr<bool>("keep_intermediate_value",
+                  "scale is used by scale_op, the default value is 0.0.")
+        .SetDefault(false);
     AddAttr<std::vector<std::string>>("functor_list",
                                       "The functors that should be fused.")
         .AddCustomChecker([&](const std::vector<std::string> &functor_list) {
@@ -93,6 +135,7 @@ operators (elementwise_op and activation_op):
     Z = Binary(X, Unary(Y))
     Z = Unary(Binary(X, Y))
 
+The input 'X' and 'Y' can be summed by broadcasting 'X' or 'Y'.
 The attributions of activation_op can be get from fused_elemwise_activation_op's
 attributions. functor_list records the functors to be fused, for example
 "scale,elementwise_add".
@@ -141,6 +184,7 @@ class FusedElemwiseActivationGradMaker
       op_desc_ptr->SetInput(framework::GradVarName(output_param),
                             this->OutputGrad(output_param));
     }
+
     op_desc_ptr->SetAttrMap(this->Attrs());
 
     std::vector<std::string> functor_names =
@@ -158,25 +202,23 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
-                   "Input(Out@GRAD) should not be null");
-
-    auto x_dims = ctx->GetInputDim("X");
-    auto y_dims = ctx->GetInputDim("Y");
-    auto out_dims = ctx->GetInputDim(framework::GradVarName("Out"));
-
-    PADDLE_ENFORCE_GE(x_dims.size(), y_dims.size(),
-                      "Rank of first input must >= rank of second input.");
+    if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
+      PADDLE_ENFORCE_EQ(ctx->Inputs(framework::GradVarName("Out")).size(), 2);
+    } else {
+      PADDLE_ENFORCE_EQ(ctx->Inputs(framework::GradVarName("Out")).size(), 1);
+    }
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
-      ctx->SetOutputDim(x_grad_name, x_dims);
+      PADDLE_ENFORCE(ctx->HasInputs(framework::GradVarName("Out")),
+                     "Input(Out@GRAD) should not be null");
+      auto out_dims = ctx->GetInputsDim(framework::GradVarName("Out"));
+      ctx->SetOutputDim(x_grad_name, out_dims[0]);
     }
     if (ctx->HasOutput(y_grad_name)) {
-      ctx->SetOutputDim(y_grad_name, y_dims);
+      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+      ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
     }
   }
 

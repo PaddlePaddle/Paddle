@@ -13,806 +13,268 @@
 # limitations under the License.
 import unittest
 import numpy as np
+from functools import partial
 import paddle.fluid.core as core
 from op_test import OpTest
 
-# scale + add
-#   TestElementwiseAddOp
-#   TestFusedOperatorsOp_scalar
-#   TestFusedOperatorsOp_scalar2
-#   TestFusedOperatorsOp_Vector
-#   TestFusedOperatorsOp_broadcast_0
-#   TestFusedOperatorsOp_broadcast_1
-#   TestFusedOperatorsOp_broadcast_2
-#   TestFusedOperatorsOp_broadcast_3
-#   TestFusedOperatorsOp_broadcast_4
-#   TestFusedOperatorsOp_rowwise_add_0
-#   TestFusedOperatorsOp_rowwise_add_1
-#   TestFusedOperatorsOp_channelwise_add
-
-
-class TestElementwiseAddOp(OpTest):
-    def setUp(self):
-        self.op_type = "fused_elemwise_activation"
-        self.dtype = np.float32
-        self.axis = -1
-
-        self.init_axis()
-        self.init_dtype()
-        self.init_input()
-        self.init_output()
-        self.init_attr()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
-        }
-        self.outputs = {'Out': self.out}
-
-    def init_input(self):
-        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["scale", "elementwise_add"]
-        }
-
-    def init_dtype(self):
-        pass
-
-    def init_axis(self):
-        pass
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.005)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.005, no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.005, no_grad_set=set('Y'))
-
-
-class TestFusedOperatorsOp_scalar(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(1).astype(self.dtype)
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y) * self.scale
-
-
-class TestFusedOperatorsOp_scalar2(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(1, 1).astype(self.dtype)
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y) * self.scale
-
-
-class TestFusedOperatorsOp_Vector(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.random((32, )).astype(self.dtype)
-        self.y = np.random.random((32, )).astype(self.dtype)
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y) * self.scale
-
-
-class TestFusedOperatorsOp_broadcast_0(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(2).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(2, 1, 1)) * self.scale
-
-
-class TestFusedOperatorsOp_broadcast_1(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(3).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(1, 3, 1)) * self.scale
-
-
-class TestFusedOperatorsOp_broadcast_2(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(4).astype(self.dtype)
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(1, 1, 4)) * self.scale
-
-
-class TestFusedOperatorsOp_broadcast_3(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(1, 3, 4, 1)) * self.scale
-
-
-class TestFusedOperatorsOp_broadcast_4(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
-        self.y = np.random.rand(2, 1).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(2, 1, 1, 1)) * self.scale
-
-
-class TestFusedOperatorsOp_rowwise_add_0(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 3, 4).astype(self.dtype)
-        self.y = np.random.rand(3, 4).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(1, 3, 4)) * self.scale
-
-
-class TestFusedOperatorsOp_rowwise_add_1(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(2, 1).astype(self.dtype)
-        self.y = np.random.rand(1).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y.reshape(1, 1)) * self.scale
-
-
-class TestFusedOperatorsOp_channelwise_add(TestElementwiseAddOp):
-    def init_input(self):
-        self.x = np.random.rand(3, 20, 20).astype(self.dtype)
-        self.y = np.random.rand(3, 1, 1).astype(self.dtype)
-
-    def init_axis(self):
-        self.axis = -1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = (self.x + self.y) * self.scale
-
-
-# add + scale
-#   TestElementwiseAddOp_f_add_scale
-#   TestFusedOperatorsOp_scalar_f_add_scale
-#   TestFusedOperatorsOp_scalar2_f_add_scale
-#   TestFusedOperatorsOp_Vector_f_add_scale
-#   TestFusedOperatorsOp_broadcast_0_f_add_scale
-#   TestFusedOperatorsOp_broadcast_1_f_add_scale
-#   TestFusedOperatorsOp_broadcast_2_f_add_scale
-#   TestFusedOperatorsOp_broadcast_3_f_add_scale
-#   TestFusedOperatorsOp_broadcast_4_f_add_scale
-#   TestFusedOperatorsOp_rowwise_add_0_f_add_scale
-#   TestFusedOperatorsOp_rowwise_add_1_f_add_scale
-#   TestFusedOperatorsOp_channelwise_add_f_add_scale
-
-
-class TestFusedOperatorsOp_f_add_scale(TestElementwiseAddOp):
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_scalar_f_add_scale(TestFusedOperatorsOp_scalar):
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_scalar2_f_add_scale(TestFusedOperatorsOp_scalar2):
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_Vector_f_add_scale(TestFusedOperatorsOp_Vector):
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_0_f_add_scale(
-        TestFusedOperatorsOp_broadcast_0):
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y.reshape(2, 1, 1) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_1_f_add_scale(
-        TestFusedOperatorsOp_broadcast_1):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y.reshape(1, 3, 1) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_2_f_add_scale(
-        TestFusedOperatorsOp_broadcast_2):
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y.reshape(1, 1, 4) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_3_f_add_scale(
-        TestFusedOperatorsOp_broadcast_3):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y.reshape(1, 3, 4, 1) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_4_f_add_scale(
-        TestFusedOperatorsOp_broadcast_4):
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.scale = 0.2
-        self.out = self.x + self.y.reshape(2, 1, 1, 1) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_rowwise_add_0_f_add_scale(
-        TestFusedOperatorsOp_rowwise_add_0):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.1
-        self.out = self.x + self.y.reshape(1, 3, 4) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_rowwise_add_1_f_add_scale(
-        TestFusedOperatorsOp_rowwise_add_1):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.scale = 0.2
-        self.out = self.x + self.y.reshape(1, 1) * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-class TestFusedOperatorsOp_channelwise_add_f_add_scale(
-        TestFusedOperatorsOp_channelwise_add):
-    def init_axis(self):
-        self.axis = -1
-
-    def init_output(self):
-        self.scale = 0.2
-        self.out = self.x + self.y * self.scale
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'scale': self.scale,
-            'functor_list': ["elementwise_add", "scale"]
-        }
-
-
-# add + relu
-#   TestElementwiseAddOp_f_add_relu
-#   TestFusedOperatorsOp_scalar_f_add_relu
-#   TestFusedOperatorsOp_scalar2_f_add_relu
-#   TestFusedOperatorsOp_Vector_f_add_relu
-#   TestFusedOperatorsOp_broadcast_0_f_add_relu
-#   TestFusedOperatorsOp_broadcast_1_f_add_relu
-#   TestFusedOperatorsOp_broadcast_2_f_add_relu
-#   TestFusedOperatorsOp_broadcast_3_f_add_relu
-#   TestFusedOperatorsOp_broadcast_4_f_add_relu
-#   TestFusedOperatorsOp_rowwise_add_0_f_add_relu
-#   TestFusedOperatorsOp_rowwise_add_1_f_add_relu
-#   TestFusedOperatorsOp_channelwise_add_f_add_relu
-
-
-class TestFusedOperatorsOp_f_add_relu(TestElementwiseAddOp):
-    def init_output(self):
-        # Copy from test_activation_op.py
-        # Because we set delta = 0.005 in calculating numeric gradient,
-        # if x is too small, such as 0.002, x_neg will be -0.003
-        # x_pos will be 0.007, so the numeric gradient is inaccurate.
-        # we should avoid this
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y, 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_scalar_f_add_relu(TestFusedOperatorsOp_scalar):
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y, 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_scalar2_f_add_relu(TestFusedOperatorsOp_scalar2):
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y, 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_Vector_f_add_relu(TestFusedOperatorsOp_Vector):
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y, 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_0_f_add_relu(
-        TestFusedOperatorsOp_broadcast_0):
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(2, 1, 1), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_1_f_add_relu(
-        TestFusedOperatorsOp_broadcast_1):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(1, 3, 1), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_2_f_add_relu(
-        TestFusedOperatorsOp_broadcast_2):
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(1, 1, 4), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_3_f_add_relu(
-        TestFusedOperatorsOp_broadcast_3):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(1, 3, 4, 1), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_4_f_add_relu(
-        TestFusedOperatorsOp_broadcast_4):
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(2, 1, 1, 1), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_rowwise_add_0_f_add_relu(
-        TestFusedOperatorsOp_rowwise_add_0):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(1, 3, 4), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_rowwise_add_1_f_add_relu(
-        TestFusedOperatorsOp_rowwise_add_1):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y.reshape(1, 1), 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-class TestFusedOperatorsOp_channelwise_add_f_add_relu(
-        TestFusedOperatorsOp_channelwise_add):
-    def init_axis(self):
-        self.axis = -1
-
-    def init_output(self):
-        self.y[np.abs(self.y) < 0.005] = 0.02
-        self.out = self.x + np.maximum(self.y, 0)
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["elementwise_add", "relu"]
-        }
-
-
-# relu + add
-#   TestElementwiseAddOp_f_relu_add
-#   TestFusedOperatorsOp_scalar_f_relu_add
-#   TestFusedOperatorsOp_scalar2_f_relu_add
-#   TestFusedOperatorsOp_Vector_f_relu_add
-#   TestFusedOperatorsOp_broadcast_0_f_relu_add
-#   TestFusedOperatorsOp_broadcast_1_f_relu_add
-#   TestFusedOperatorsOp_broadcast_2_f_relu_add
-#   TestFusedOperatorsOp_broadcast_3_f_relu_add
-#   TestFusedOperatorsOp_broadcast_4_f_relu_add
-#   TestFusedOperatorsOp_rowwise_add_0_f_relu_add
-#   TestFusedOperatorsOp_rowwise_add_1_f_relu_add
-#   TestFusedOperatorsOp_channelwise_add_f_relu_add
-
-
-class TestFusedOperatorsOp_f_relu_add(TestElementwiseAddOp):
-    def init_output(self):
-        # Copy from test_activation_op.py
-        # Because we set delta = 0.005 in calculating numeric gradient,
-        # if x is too small, such as 0.002, x_neg will be -0.003
-        # x_pos will be 0.007, so the numeric gradient is inaccurate.
-        # we should avoid this
-        self.out = self.x + self.y
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_scalar_f_relu_add(TestFusedOperatorsOp_scalar):
-    def init_output(self):
-        self.out = self.x + self.y
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_scalar2_f_relu_add(TestFusedOperatorsOp_scalar2):
-    def init_output(self):
-        self.out = self.x + self.y
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_Vector_f_relu_add(TestFusedOperatorsOp_Vector):
-    def init_output(self):
-        self.out = self.x + self.y
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_0_f_relu_add(
-        TestFusedOperatorsOp_broadcast_0):
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.out = self.x + self.y.reshape(2, 1, 1)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_1_f_relu_add(
-        TestFusedOperatorsOp_broadcast_1):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.out = self.x + self.y.reshape(1, 3, 1)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_2_f_relu_add(
-        TestFusedOperatorsOp_broadcast_2):
-    def init_output(self):
-        self.out = self.x + self.y.reshape(1, 1, 4)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_3_f_relu_add(
-        TestFusedOperatorsOp_broadcast_3):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.out = self.x + self.y.reshape(1, 3, 4, 1)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_broadcast_4_f_relu_add(
-        TestFusedOperatorsOp_broadcast_4):
-    def init_axis(self):
-        self.axis = 0
-
-    def init_output(self):
-        self.out = self.x + self.y.reshape(2, 1, 1, 1)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_rowwise_add_0_f_relu_add(
-        TestFusedOperatorsOp_rowwise_add_0):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.out = self.x + self.y.reshape(1, 3, 4)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_rowwise_add_1_f_relu_add(
-        TestFusedOperatorsOp_rowwise_add_1):
-    def init_axis(self):
-        self.axis = 1
-
-    def init_output(self):
-        self.out = self.x + self.y.reshape(1, 1)
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
-
-class TestFusedOperatorsOp_channelwise_add_f_relu_add(
-        TestFusedOperatorsOp_channelwise_add):
-    def init_axis(self):
-        self.axis = -1
-
-    def init_output(self):
-        self.out = self.x + self.y
-        self.out = np.maximum(self.out, 0)
-        self.out[np.abs(self.out) < 0.005] = 0.02
-
-    def init_attr(self):
-        self.attrs = {
-            'axis': self.axis,
-            'functor_list': ["relu", "elementwise_add"]
-        }
-
+#   TestFusedElementwiseActivationOp
+#   TestFusedElementwiseActivationOp_scalar
+#   TestFusedElementwiseActivationOp_scalar2
+#   TestFusedElementwiseActivationOp_Vector
+#   TestFusedElementwiseActivationOp_broadcast_0
+#   TestFusedElementwiseActivationOp_broadcast_1
+#   TestFusedElementwiseActivationOp_broadcast_2
+#   TestFusedElementwiseActivationOp_broadcast_3
+#   TestFusedElementwiseActivationOp_broadcast_4
+#   TestFusedElementwiseActivationOp_rowwise_add_0
+#   TestFusedElementwiseActivationOp_rowwise_add_1
+#   TestFusedElementwiseActivationOp_channelwise_add
+
+
+def create_test_class(test_case, callback, attrs):
+    class TestFusedElementwiseActivationOp_base(OpTest):
+        def setUp(self):
+            self.op_type = "fused_elemwise_activation"
+            self.dtype = np.float32
+            self.axis = -1
+
+            self.init_input()
+            self.init_output()
+            self.init_attr()
+
+            self.inputs = {
+                'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+                'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+            }
+            if self.attrs["keep_intermediate_value"]:
+                self.outputs = {
+                    'Out': [('out', self.out),
+                            ('intermediate_out', self.intermediate_out)]
+                }
+            else:
+                self.outputs = {'Out': [('out', self.out)]}
+
+        def init_input(self):
+            self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+            self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+            self.axis = -1
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y)
+
+        def init_attr(self):
+            self.attrs = {'axis': self.axis, }
+            for key in attrs.keys():
+                self.attrs[key] = attrs[key]
+
+        def test_check_output(self):
+            self.check_output()
+
+        def test_check_grad_normal(self):
+            self.check_grad(['X', 'Y'], ['out'], max_relative_error=0.005)
+            # if self.attrs["keep_intermediate_value"]:
+            #     self.check_grad(['X', 'Y'], ['out','intermediate_out'], max_relative_error=0.005)
+            # else:
+
+        def test_check_grad_ingore_x(self):
+            self.check_grad(
+                ['Y'], 'out', max_relative_error=0.005, no_grad_set=set("X"))
+
+        def test_check_grad_ingore_y(self):
+            self.check_grad(
+                ['X'], 'out', max_relative_error=0.005, no_grad_set=set('Y'))
+
+    class TestFusedElementwiseActivationOp_scalar(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(1).astype(self.dtype)
+
+    class TestFusedElementwiseActivationOp_scalar2(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(1, 1).astype(self.dtype)
+
+    class TestFusedElementwiseActivationOp_Vector(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.random((32, )).astype(self.dtype)
+            self.y = np.random.random((32, )).astype(self.dtype)
+
+    class TestFusedElementwiseActivationOp_broadcast_0(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(2).astype(self.dtype)
+            self.axis = 0
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(2, 1, 1))
+
+    class TestFusedElementwiseActivationOp_broadcast_1(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(3).astype(self.dtype)
+            self.axis = 1
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 1))
+
+    class TestFusedElementwiseActivationOp_broadcast_2(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(4).astype(self.dtype)
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 1, 4))
+
+    class TestFusedElementwiseActivationOp_broadcast_3(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+            self.y = np.random.rand(3, 4).astype(self.dtype)
+            self.axis = 1
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 4, 1))
+
+    class TestFusedElementwiseActivationOp_broadcast_4(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4, 5).astype(self.dtype)
+            self.y = np.random.rand(2, 1).astype(self.dtype)
+            self.axis = 0
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(2, 1, 1, 1))
+
+    class TestFusedElementwiseActivationOp_rowwise_add_0(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 3, 4).astype(self.dtype)
+            self.y = np.random.rand(3, 4).astype(self.dtype)
+            self.axis = 1
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 3, 4))
+
+    class TestFusedElementwiseActivationOp_rowwise_add_1(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(2, 1).astype(self.dtype)
+            self.y = np.random.rand(1).astype(self.dtype)
+            self.axis = 1
+
+        def init_output(self):
+            self.x, self.y, self.intermediate_out, self.out = \
+                callback(self.x, self.y, self.x, self.y.reshape(1, 1))
+
+    class TestFusedElementwiseActivationOp_channelwise_add(
+            TestFusedElementwiseActivationOp_base):
+        def init_input(self):
+            self.x = np.random.rand(3, 20, 20).astype(self.dtype)
+            self.y = np.random.rand(3, 1, 1).astype(self.dtype)
+
+    TestFusedElementwiseActivationOp_base.__name__ = test_case + "_base"
+    TestFusedElementwiseActivationOp_scalar.__name__ = test_case + "_scalar"
+    TestFusedElementwiseActivationOp_scalar2.__name__ = test_case + "_scalar2"
+    TestFusedElementwiseActivationOp_Vector.__name__ = test_case + "_Vector"
+    TestFusedElementwiseActivationOp_broadcast_0.__name__ = test_case + "_broadcast_0"
+    TestFusedElementwiseActivationOp_broadcast_1.__name__ = test_case + "_broadcast_1"
+    TestFusedElementwiseActivationOp_broadcast_2.__name__ = test_case + "_broadcast_2"
+    TestFusedElementwiseActivationOp_broadcast_3.__name__ = test_case + "_broadcast_3"
+    TestFusedElementwiseActivationOp_broadcast_4.__name__ = test_case + "_broadcast_4"
+    TestFusedElementwiseActivationOp_rowwise_add_0.__name__ = test_case + "_rowwise_add_0"
+    TestFusedElementwiseActivationOp_rowwise_add_1.__name__ = test_case + "_rowwise_add_1"
+    TestFusedElementwiseActivationOp_channelwise_add.__name__ = test_case + "_channelwise_add"
+
+    globals()[test_case + "_base"] = TestFusedElementwiseActivationOp_base
+    globals()[test_case + "_scalar"] = TestFusedElementwiseActivationOp_scalar
+    globals()[test_case + "_scalar2"] = TestFusedElementwiseActivationOp_scalar2
+    globals()[test_case + "_Vector"] = TestFusedElementwiseActivationOp_Vector
+    globals()[test_case +
+              "_broadcast_0"] = TestFusedElementwiseActivationOp_broadcast_0
+    globals()[test_case +
+              "_broadcast_1"] = TestFusedElementwiseActivationOp_broadcast_1
+    globals()[test_case +
+              "_broadcast_2"] = TestFusedElementwiseActivationOp_broadcast_2
+    globals()[test_case +
+              "_broadcast_3"] = TestFusedElementwiseActivationOp_broadcast_3
+    globals()[test_case +
+              "_broadcast_4"] = TestFusedElementwiseActivationOp_broadcast_4
+    globals()[test_case +
+              "_rowwise_add_0"] = TestFusedElementwiseActivationOp_rowwise_add_0
+    globals()[test_case +
+              "_rowwise_add_1"] = TestFusedElementwiseActivationOp_rowwise_add_1
+    globals(
+    )[test_case +
+      "_channelwise_add"] = TestFusedElementwiseActivationOp_channelwise_add
+
+
+def scale_add_func(x, y, x_bcast, y_bcast, scale):
+    return x, y, (x_bcast + y_bcast), (x_bcast + y_bcast) * scale
+
+
+def add_scale_func(x, y, x_bcast, y_bcast, scale):
+    return x, y, y * scale, x_bcast + y_bcast * scale
+
+
+def add_relu_func(x, y, x_bcast, y_bcast):
+    # Copy from test_activation_op.py
+    # Because we set delta = 0.005 in calculating numeric gradient,
+    # if x is too small, such as 0.002, x_neg will be -0.003
+    # x_pos will be 0.007, so the numeric gradient is inaccurate.
+    # we should avoid this
+    y[np.abs(y) < 0.005] = 0.02
+    y_bcast[np.abs(y_bcast) < 0.005] = 0.02
+    return x, y, np.maximum(y, 0), x_bcast + np.maximum(y_bcast, 0)
+
+
+def relu_add_func(x, y, x_bcast, y_bcast):
+    intermediate_out = x_bcast + y_bcast
+    out = np.maximum(intermediate_out, 0)
+    out[np.abs(out) < 0.005] = 0.02
+    return x, y, intermediate_out, out
+
+
+scale = 0.1
+scale_add_func = partial(scale_add_func, scale=scale)
+add_scale_func = partial(add_scale_func, scale=scale)
+
+for keep_intermediate_value in {False}:  # ,True
+    kiv = keep_intermediate_value
+    create_test_class('scale_add' + ("_keep_intermediate_value" if kiv else ""),
+                      scale_add_func, {
+                          'scale': scale,
+                          'functor_list': ["scale", "elementwise_add"],
+                          'keep_intermediate_value': kiv
+                      })
+    create_test_class('add_scale' + ("_keep_intermediate_value" if kiv else ""),
+                      add_scale_func, {
+                          'scale': scale,
+                          'functor_list': ["elementwise_add", "scale"],
+                          'keep_intermediate_value': keep_intermediate_value
+                      })
+    create_test_class('add_relu' + ("_keep_intermediate_value" if kiv else ""),
+                      add_relu_func, {
+                          'functor_list': ["elementwise_add", "relu"],
+                          'keep_intermediate_value': keep_intermediate_value
+                      })
+    create_test_class('relu_add' + ("_keep_intermediate_value" if kiv else ""),
+                      relu_add_func, {
+                          'functor_list': ["relu", "elementwise_add"],
+                          'keep_intermediate_value': keep_intermediate_value
+                      })
 
 if __name__ == '__main__':
     unittest.main()

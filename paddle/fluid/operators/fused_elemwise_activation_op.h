@@ -27,35 +27,40 @@ namespace math = paddle::operators::math;
 namespace paddle {
 namespace operators {
 
-// CompoundFunctors
-// For example: Z = Binary(X, Unary(Y))
-template <typename T, typename BinaryFun, typename UnaryFun>
+template <typename T, typename BinaryFunctor, typename UnaryFunctor>
 struct BinaryCompoundFunctor {
-  BinaryCompoundFunctor(const BinaryFun &binary_fun, const UnaryFun &unary_fun)
-      : binary_fun_(binary_fun), unary_fun_(unary_fun) {}
+  BinaryCompoundFunctor(const BinaryFunctor func1, const UnaryFunctor func2)
+      : func1_(func1), func2_(func2) {}
+  // Z = BinaryFunctor(X, UnaryFunctor(Y))
 
-  inline HOSTDEVICE T operator()(T x, T y) {
-    return binary_fun_(x, unary_fun_(y));
+  inline HOSTDEVICE T GetOut(T x, T y) { return func1_(x, func2_(y)); }
+
+  inline HOSTDEVICE T GetOut(T x, T y, T intermediat_out) {
+    return func1_(x, intermediat_out);
   }
 
- private:
-  BinaryFun binary_fun_;
-  UnaryFun unary_fun_;
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return func2_(y); }
+
+  BinaryFunctor func1_;
+  UnaryFunctor func2_;
 };
 
-// For example: Z = Unary(Binary(X, Y))
-template <typename T, typename UnaryFun, typename BinaryFun>
+template <typename T, typename UnaryFunctor, typename BinaryFunctor>
 struct UnaryCompoundFunctor {
-  UnaryCompoundFunctor(const UnaryFun &unary_fun, const BinaryFun &binary_fun)
-      : unary_fun_(unary_fun), binary_fun_(binary_fun) {}
+  UnaryCompoundFunctor(const UnaryFunctor func1, const BinaryFunctor func2)
+      : func1_(func1), func2_(func2) {}
+  // Z = UnaryFunctor(BinaryFunctor(X, Y))
 
-  inline HOSTDEVICE T operator()(T x, T y) {
-    return unary_fun_(binary_fun_(x, y));
+  inline HOSTDEVICE T GetOut(T x, T y) { return func1_(func2_(x, y)); }
+
+  inline HOSTDEVICE T GetOut(T x, T y, T intermediat_out) {
+    return func1_(intermediat_out);
   }
 
- private:
-  UnaryFun unary_fun_;
-  BinaryFun binary_fun_;
+  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return func2_(x, y); }
+
+  UnaryFunctor func1_;
+  BinaryFunctor func2_;
 };
 
 // FIXME(zcd): DBinaryFun and DUnaryFun have to method to get
@@ -64,7 +69,6 @@ struct UnaryCompoundFunctor {
 // 'out', but it must occupy the memory to store the 'out'.
 // While the later method can avoid occupying this memory,
 // but it must recompute the 'out'.
-
 template <typename T, typename DBinaryFun, typename UnaryFun,
           bool Recomputation = true>
 struct BinaryCompoundGradDxFunctor {
@@ -77,6 +81,14 @@ struct BinaryCompoundGradDxFunctor {
       return dout * d_binary_fun_(x, unary_fun_(y));
     } else {
       return dout * d_binary_fun_(x, unary_fun_(y), out);
+    }
+  }
+
+  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
+    if (Recomputation) {
+      return dout * d_binary_fun_(x, intermediate_out);
+    } else {
+      return dout * d_binary_fun_(x, intermediate_out, out);
     }
   }
 
@@ -103,6 +115,14 @@ struct BinaryCompoundGradDyFunctor {
     }
   }
 
+  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
+    if (Recomputation) {
+      return dout * d_binary_fun_(intermediate_out, x) * d_unary_fun_(y);
+    } else {
+      return dout * d_binary_fun_(intermediate_out, x, out) * d_unary_fun_(y);
+    }
+  }
+
  private:
   DBinaryFun d_binary_fun_;
   UnaryFun unary_fun_;
@@ -125,6 +145,16 @@ struct UnaryCompoundGradDxFunctor {
       base = dout * d_unary_fun_(binary_fun_(x, y));
     } else {
       base = dout * d_unary_fun_(binary_fun_(x, y), out);
+    }
+    return base * d_binary_fun_(x, y);
+  }
+
+  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
+    T base;
+    if (Recomputation) {
+      base = dout * d_unary_fun_(intermediate_out);
+    } else {
+      base = dout * d_unary_fun_(intermediate_out, out);
     }
     return base * d_binary_fun_(x, y);
   }
@@ -155,6 +185,16 @@ struct UnaryCompoundGradDyFunctor {
     return base * d_binary_fun_(y, x);
   }
 
+  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
+    T base;
+    if (Recomputation) {
+      base = dout * d_unary_fun_(intermediate_out);
+    } else {
+      base = dout * d_unary_fun_(intermediate_out, out);
+    }
+    return base * d_binary_fun_(y, x);
+  }
+
  private:
   DUnaryFun d_unary_fun_;
   BinaryFun binary_fun_;
@@ -163,37 +203,56 @@ struct UnaryCompoundGradDyFunctor {
 
 template <typename DeviceContext, typename T, typename BinaryFunctor,
           typename UnaryFunctor>
-static void RunBinaryCompoundFunctor(const framework::ExecutionContext &ctx,
-                                     const BinaryFunctor &binary_functor,
-                                     const UnaryFunctor &unary_functor,
-                                     const framework::Tensor *in_x,
-                                     const framework::Tensor *in_y,
-                                     framework::Tensor *output) {
+static void RunBinaryCompoundFunctor(
+    const framework::ExecutionContext &ctx, const BinaryFunctor &binary_functor,
+    const UnaryFunctor &unary_functor, const framework::Tensor &in_x,
+    const framework::Tensor &in_y, std::vector<framework::Tensor *> *outputs) {
+  // Z = Binary(X, Unary(Y))
   int axis = ctx.Attr<int>("axis");
-  using BinaryCompoundFunctor =
-      BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>;
 
-  ElementwiseComputeEx<BinaryCompoundFunctor, DeviceContext, T>(
-      ctx, in_x, in_y, axis,
-      BinaryCompoundFunctor(binary_functor, unary_functor), output);
+  BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor> compound_func(
+      binary_functor, unary_functor);
+
+  if (ctx.Attr<bool>("keep_intermediate_value")) {
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T, BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        true /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+  } else {
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T, BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        false /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+  }
 }
 
 template <typename DeviceContext, typename T, typename UnaryFunctor,
           typename BinaryFunctor>
-static void RunUnaryCompoundFunctors(const framework::ExecutionContext &ctx,
-                                     const UnaryFunctor &unary_functor,
-                                     const BinaryFunctor &binary_functor,
-                                     const framework::Tensor *in_x,
-                                     const framework::Tensor *in_y,
-                                     framework::Tensor *output) {
+static void RunUnaryCompoundFunctors(
+    const framework::ExecutionContext &ctx, const UnaryFunctor &unary_functor,
+    const BinaryFunctor &binary_functor, const framework::Tensor &in_x,
+    const framework::Tensor &in_y, std::vector<framework::Tensor *> *outputs) {
+  // Z = Unary(Binary(X, Y))
   int axis = ctx.Attr<int>("axis");
 
-  using UnaryCompoundFunctor =
-      UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>;
+  UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor> compound_func(
+      unary_functor, binary_functor);
 
-  ElementwiseComputeEx<UnaryCompoundFunctor, DeviceContext, T>(
-      ctx, in_x, in_y, axis,
-      UnaryCompoundFunctor(unary_functor, binary_functor), output);
+  if (ctx.Attr<bool>("keep_intermediate_value")) {
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T, UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        true /*KeepIntermediateValue*/,
+        true /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+  } else {
+    FusedElemwiseAndActComputeEx<
+        DeviceContext, T, UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        false /*KeepIntermediateValue*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
+  }
 }
 
 template <typename DeviceContext, typename T, typename BinaryGradFunctor,
@@ -205,8 +264,10 @@ static void RunBinaryCompoundGradFunctors(
     const UnaryFunctor &unary_functor,
     const UnaryGradFunctor &unary_grad_functor, const framework::Tensor *in_x,
     const framework::Tensor *in_y, const framework::Tensor *in_out,
+    const framework::Tensor *in_intermediate_out,
     const framework::Tensor *in_out_grad, framework::Tensor *x_grad,
     framework::Tensor *y_grad) {
+  // Z = Binary(X, Unary(Y))
   int axis = ctx.Attr<int>("axis");
 
   using BinaryCompoundDxFunctor =
@@ -216,12 +277,25 @@ static void RunBinaryCompoundGradFunctors(
       BinaryCompoundGradDyFunctor<T, BinaryGradFunctor, UnaryFunctor,
                                   UnaryGradFunctor, Recomputation>;
 
-  ElemwiseGradCompute<DeviceContext, T, BinaryCompoundDxFunctor,
-                      BinaryCompoundDyFunctor>(
-      ctx, *in_x, *in_y, *in_out, *in_out_grad, axis, x_grad, y_grad,
-      BinaryCompoundDxFunctor(binary_grad_functor, unary_functor),
-      BinaryCompoundDyFunctor(binary_grad_functor, unary_functor,
-                              unary_grad_functor));
+  if (in_intermediate_out) {
+    FusedElemwiseAndActGradComputeEx<
+        DeviceContext, T, BinaryCompoundDxFunctor, BinaryCompoundDyFunctor,
+        true /*UseIntermediateOut*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
+        y_grad, BinaryCompoundDxFunctor(binary_grad_functor, unary_functor),
+        BinaryCompoundDyFunctor(binary_grad_functor, unary_functor,
+                                unary_grad_functor));
+  } else {
+    FusedElemwiseAndActGradComputeEx<
+        DeviceContext, T, BinaryCompoundDxFunctor, BinaryCompoundDyFunctor,
+        false /*UseIntermediateOut*/,
+        false /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
+        y_grad, BinaryCompoundDxFunctor(binary_grad_functor, unary_functor),
+        BinaryCompoundDyFunctor(binary_grad_functor, unary_functor,
+                                unary_grad_functor));
+  }
 }
 
 template <typename DeviceContext, typename T, typename UnaryGradFunctor,
@@ -233,8 +307,10 @@ static void RunUnaryCompoundGradFunctors(
     const BinaryFunctor &binary_functor,
     const BinaryGradFunctor &binary_grad_functor, const framework::Tensor *in_x,
     const framework::Tensor *in_y, const framework::Tensor *in_out,
+    const framework::Tensor *in_intermediate_out,
     const framework::Tensor *in_out_grad, framework::Tensor *x_grad,
     framework::Tensor *y_grad) {
+  // Z = Unary(Binary(X, Y))
   int axis = ctx.Attr<int>("axis");
 
   using UnaryCompoundDxFunctor =
@@ -244,45 +320,63 @@ static void RunUnaryCompoundGradFunctors(
       UnaryCompoundGradDyFunctor<T, UnaryGradFunctor, BinaryFunctor,
                                  BinaryGradFunctor, Recomputation>;
 
-  ElemwiseGradCompute<DeviceContext, T, UnaryCompoundDxFunctor,
-                      UnaryCompoundDyFunctor>(
-      ctx, *in_x, *in_y, *in_out, *in_out_grad, axis, x_grad, y_grad,
-      UnaryCompoundDxFunctor(unary_grad_functor, binary_functor,
-                             binary_grad_functor),
-      UnaryCompoundDyFunctor(unary_grad_functor, binary_functor,
-                             binary_grad_functor));
+  if (in_intermediate_out) {
+    FusedElemwiseAndActGradComputeEx<
+        DeviceContext, T, UnaryCompoundDxFunctor, UnaryCompoundDyFunctor,
+        true /*UseIntermediateOut*/, true /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
+        y_grad, UnaryCompoundDxFunctor(unary_grad_functor, binary_functor,
+                                       binary_grad_functor),
+        UnaryCompoundDyFunctor(unary_grad_functor, binary_functor,
+                               binary_grad_functor));
+  } else {
+    FusedElemwiseAndActGradComputeEx<DeviceContext, T, UnaryCompoundDxFunctor,
+                                     UnaryCompoundDyFunctor,
+                                     false /*UseIntermediateOut*/,
+                                     true /*SameShapeOfIntermediateOutAndOut*/>(
+        ctx, in_x, in_y, in_out, in_intermediate_out, in_out_grad, axis, x_grad,
+        y_grad, UnaryCompoundDxFunctor(unary_grad_functor, binary_functor,
+                                       binary_grad_functor),
+        UnaryCompoundDyFunctor(unary_grad_functor, binary_functor,
+                               binary_grad_functor));
+  }
 }
 
 template <typename DeviceContext, typename T>
 static void RunFunctors(const framework::ExecutionContext &ctx,
-                        const framework::Tensor *in_x,
-                        const framework::Tensor *in_y,
-                        framework::Tensor *output) {
+                        const framework::Tensor &in_x,
+                        const framework::Tensor &in_y,
+                        std::vector<framework::Tensor *> *outputs) {
   auto &functors = ctx.Attr<std::vector<std::string>>("functor_list");
-  auto funcs_str = functors[0] + "," + functors[1];
+
   // TODO(zcd): The following code can be refined.
+  auto funcs_str = functors[0] + "," + functors[1];
   if (funcs_str == "elementwise_add,scale") {
     // Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
                              math::ScaleFunctor<T>>(
         ctx, math::AddFunctor<T>(), math::ScaleFunctor<T>(scale), in_x, in_y,
-        output);
+        outputs);
   } else if (funcs_str == "scale,elementwise_add") {
     // Z = Unary(Binary(X, Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     RunUnaryCompoundFunctors<DeviceContext, T, math::ScaleFunctor<T>,
                              math::AddFunctor<T>>(
         ctx, math::ScaleFunctor<T>(scale), math::AddFunctor<T>(), in_x, in_y,
-        output);
+        outputs);
   } else if (funcs_str == "elementwise_add,relu") {
+    // Z = Binary(X, Unary(Y))
     RunBinaryCompoundFunctor<DeviceContext, T, math::AddFunctor<T>,
-                             math::ReluFunctor<T>>(
-        ctx, math::AddFunctor<T>(), math::ReluFunctor<T>(), in_x, in_y, output);
+                             math::ReluFunctor<T>>(ctx, math::AddFunctor<T>(),
+                                                   math::ReluFunctor<T>(), in_x,
+                                                   in_y, outputs);
   } else if (funcs_str == "relu,elementwise_add") {
+    // Z = Unary(Binary(X, Y))
     RunUnaryCompoundFunctors<DeviceContext, T, math::ReluFunctor<T>,
-                             math::AddFunctor<T>>(
-        ctx, math::ReluFunctor<T>(), math::AddFunctor<T>(), in_x, in_y, output);
+                             math::AddFunctor<T>>(ctx, math::ReluFunctor<T>(),
+                                                  math::AddFunctor<T>(), in_x,
+                                                  in_y, outputs);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
@@ -293,6 +387,7 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
                             const framework::Tensor *in_x,
                             const framework::Tensor *in_y,
                             const framework::Tensor *in_out,
+                            const framework::Tensor *in_intermediate_out,
                             const framework::Tensor *in_out_grad,
                             framework::Tensor *x_grad,
                             framework::Tensor *y_grad) {
@@ -301,24 +396,24 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
 
   bool recomputation = ctx.Attr<bool>("recomputation");
 
-  // TODO(zcd): The following code can be refined. for example, use registion
+  // TODO(zcd): The following code can be refined. for example, use registrition
   if (funcs_str == "elementwise_add_grad,scale_grad") {
     // The backward of Z = Binary(X, Unary(Y))
     T scale = static_cast<T>(ctx.Attr<float>("scale"));
     if (recomputation) {
-      RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
-                                    math::ScaleFunctor<T>,
-                                    math::ScaleGradFunctor<T>, true>(
+      RunBinaryCompoundGradFunctors<
+          DeviceContext, T, math::AddGradFunctor<T>, math::ScaleFunctor<T>,
+          math::ScaleGradFunctor<T>, true /*Recomputation*/>(
           ctx, math::AddGradFunctor<T>(), math::ScaleFunctor<T>(scale),
-          math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out, in_out_grad,
-          x_grad, y_grad);
+          math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
+          in_intermediate_out, in_out_grad, x_grad, y_grad);
     } else {
-      RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
-                                    math::ScaleFunctor<T>,
-                                    math::ScaleGradFunctor<T>, false>(
+      RunBinaryCompoundGradFunctors<
+          DeviceContext, T, math::AddGradFunctor<T>, math::ScaleFunctor<T>,
+          math::ScaleGradFunctor<T>, false /*Recomputation*/>(
           ctx, math::AddGradFunctor<T>(), math::ScaleFunctor<T>(scale),
-          math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out, in_out_grad,
-          x_grad, y_grad);
+          math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
+          in_intermediate_out, in_out_grad, x_grad, y_grad);
     }
   } else if (funcs_str == "scale_grad,elementwise_add_grad") {
     // The backward of Z = Unary(Binary(X, Y))
@@ -326,49 +421,49 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
     if (recomputation) {
       RunUnaryCompoundGradFunctors<DeviceContext, T, math::ScaleGradFunctor<T>,
                                    math::AddFunctor<T>, math::AddGradFunctor<T>,
-                                   true>(ctx, math::ScaleGradFunctor<T>(scale),
-                                         math::AddFunctor<T>(),
-                                         math::AddGradFunctor<T>(), in_x, in_y,
-                                         in_out, in_out_grad, x_grad, y_grad);
+                                   true /*Recomputation*/>(
+          ctx, math::ScaleGradFunctor<T>(scale), math::AddFunctor<T>(),
+          math::AddGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
+          in_out_grad, x_grad, y_grad);
     } else {
       RunUnaryCompoundGradFunctors<DeviceContext, T, math::ScaleGradFunctor<T>,
                                    math::AddFunctor<T>, math::AddGradFunctor<T>,
-                                   false>(ctx, math::ScaleGradFunctor<T>(scale),
-                                          math::AddFunctor<T>(),
-                                          math::AddGradFunctor<T>(), in_x, in_y,
-                                          in_out, in_out_grad, x_grad, y_grad);
+                                   false /*Recomputation*/>(
+          ctx, math::ScaleGradFunctor<T>(scale), math::AddFunctor<T>(),
+          math::AddGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
+          in_out_grad, x_grad, y_grad);
     }
   } else if (funcs_str == "elementwise_add_grad,relu_grad") {
     if (recomputation) {
-      RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
-                                    math::ReluFunctor<T>,
-                                    math::ReluGradFunctor<T>, true>(
+      RunBinaryCompoundGradFunctors<
+          DeviceContext, T, math::AddGradFunctor<T>, math::ReluFunctor<T>,
+          math::ReluGradFunctor<T>, true /*Recomputation*/>(
           ctx, math::AddGradFunctor<T>(), math::ReluFunctor<T>(),
-          math::ReluGradFunctor<T>(), in_x, in_y, in_out, in_out_grad, x_grad,
-          y_grad);
+          math::ReluGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
+          in_out_grad, x_grad, y_grad);
     } else {
-      RunBinaryCompoundGradFunctors<DeviceContext, T, math::AddGradFunctor<T>,
-                                    math::ReluFunctor<T>,
-                                    math::ReluGradFunctor<T>, false>(
+      RunBinaryCompoundGradFunctors<
+          DeviceContext, T, math::AddGradFunctor<T>, math::ReluFunctor<T>,
+          math::ReluGradFunctor<T>, false /*Recomputation*/>(
           ctx, math::AddGradFunctor<T>(), math::ReluFunctor<T>(),
-          math::ReluGradFunctor<T>(), in_x, in_y, in_out, in_out_grad, x_grad,
-          y_grad);
+          math::ReluGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
+          in_out_grad, x_grad, y_grad);
     }
   } else if (funcs_str == "relu_grad,elementwise_add_grad") {
     if (recomputation) {
       RunUnaryCompoundGradFunctors<DeviceContext, T, math::ReluGradFunctor<T>,
                                    math::AddFunctor<T>, math::AddGradFunctor<T>,
-                                   true>(ctx, math::ReluGradFunctor<T>(),
-                                         math::AddFunctor<T>(),
-                                         math::AddGradFunctor<T>(), in_x, in_y,
-                                         in_out, in_out_grad, x_grad, y_grad);
+                                   true /*Recomputation*/>(
+          ctx, math::ReluGradFunctor<T>(), math::AddFunctor<T>(),
+          math::AddGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
+          in_out_grad, x_grad, y_grad);
     } else {
       RunUnaryCompoundGradFunctors<DeviceContext, T, math::ReluGradFunctor<T>,
                                    math::AddFunctor<T>, math::AddGradFunctor<T>,
-                                   false>(ctx, math::ReluGradFunctor<T>(),
-                                          math::AddFunctor<T>(),
-                                          math::AddGradFunctor<T>(), in_x, in_y,
-                                          in_out, in_out_grad, x_grad, y_grad);
+                                   false /*Recomputation*/>(
+          ctx, math::ReluGradFunctor<T>(), math::AddFunctor<T>(),
+          math::AddGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
+          in_out_grad, x_grad, y_grad);
     }
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
@@ -385,11 +480,13 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
                              "Cannot get input tensor %s, variable name = %s",
                              "Y", ctx.op().Input("Y"));
-    auto &output = detail::Ref(ctx.Output<framework::Tensor>("Out"),
-                               "Cannot get input tensor %s, variable name = %s",
-                               "Out", ctx.op().Output("Out"));
+    auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
 
-    RunFunctors<DeviceContext, T>(ctx, &in_x, &in_y, &output);
+    if (!ctx.Attr<bool>("keep_intermediate_value")) {
+      outputs.push_back(nullptr);
+    }
+
+    RunFunctors<DeviceContext, T>(ctx, in_x, in_y, &outputs);
   }
 };
 
@@ -397,28 +494,39 @@ template <typename DeviceContext, typename T>
 class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &in_x = detail::Ref(ctx.Input<framework::Tensor>("X"),
-                             "Cannot get input tensor %s, variable name = %s",
-                             "X", ctx.op().Input("X"));
-    auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
-                             "Cannot get input tensor %s, variable name = %s",
-                             "Y", ctx.op().Input("Y"));
-    auto &in_out = detail::Ref(ctx.Input<framework::Tensor>("Out"),
-                               "Cannot get input tensor %s, variable name = %s",
-                               "Out", ctx.op().Input("Out"));
-    auto &in_out_grad =
-        detail::Ref(ctx.Input<framework::Tensor>(framework::GradVarName("Out")),
-                    "Cannot get input tensor %s, variable name = %s",
-                    framework::GradVarName("Out"),
-                    ctx.op().Input(framework::GradVarName("Out")));
+    framework::Tensor in_x = *ctx.Input<framework::Tensor>("X");
+    framework::Tensor in_y = *ctx.Input<framework::Tensor>("Y");
+    framework::Tensor in_out;
+
+    auto &in_outs = ctx.MultiInput<framework::Tensor>("Out");
+    auto &in_outs_grad =
+        ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
 
     framework::Tensor *x_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     framework::Tensor *y_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
-    RunGradFunctors<DeviceContext, T>(ctx, &in_x, &in_y, &in_out, &in_out_grad,
-                                      x_grad, y_grad);
+    // If functor_list contains elementwise_add, the backward doesn't use
+    // in_x,in_y and in_outs.
+    if (ctx.Attr<std::vector<std::string>>("functor_list")[0] ==
+            "elementwise_add" ||
+        ctx.Attr<std::vector<std::string>>("functor_list")[1] ==
+            "elementwise_add") {
+      in_x = *in_outs_grad[0];
+      in_y = *in_outs_grad[0];
+      in_out = *in_outs_grad[0];
+    } else {
+      in_out = *in_outs[0];
+    }
+
+    if (ctx.Attr<bool>("keep_intermediate_value")) {
+      RunGradFunctors<DeviceContext, T>(ctx, &in_x, &in_y, &in_out, in_outs[1],
+                                        in_outs_grad[0], x_grad, y_grad);
+    } else {
+      RunGradFunctors<DeviceContext, T>(ctx, &in_x, &in_y, &in_out, nullptr,
+                                        in_outs_grad[0], x_grad, y_grad);
+    }
   }
 };
 }  // namespace operators
