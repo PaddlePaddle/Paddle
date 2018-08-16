@@ -11,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
 
 
 class TestDistSeResneXt2x2(TestDistBase):
     def test_se_resnext(self):
-        self.check_with_place("dist_se_resnext.py")
+        self.check_with_place("dist_se_resnext.py", delta=1e-7)
 
 
 if __name__ == "__main__":

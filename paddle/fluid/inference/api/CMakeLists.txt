@@ -45,7 +45,6 @@ endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
 
-
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)
@@ -61,23 +60,19 @@ cc_library(paddle_inference_tensorrt_subgraph_engine
 inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()
 
-if (WITH_ANAKIN) # only needed in CI
-    # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
-    # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
-    # compile the libinference_anakin_api.a and compile with anakin.so.
-    fetch_include_recursively(${ANAKIN_INCLUDE})
+if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
-    nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
-    target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    target_compile_options(inference_anakin_api_shared BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-    target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
+    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    #nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
+    function(anakin_target target_name)
+      target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+    endfunction()
+    anakin_target(inference_anakin_api)
+    #anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
-        # this test is unstable, disable it first.
-        #cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                                  #ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                                  #DEPS inference_anakin_api_shared)
-        #target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-     endif(WITH_TESTING)
+        cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
+                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
+                DEPS inference_anakin_api dynload_cuda SERIAL)
+        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+    endif(WITH_TESTING)
 endif()

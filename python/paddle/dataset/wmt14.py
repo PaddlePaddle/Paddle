@@ -19,10 +19,15 @@ http://paddlepaddle.cdn.bcebos.com/demo/wmt_shrinked_data/wmt14.tgz and
 parse training set and test set into paddle reader creators.
 
 """
+
+from __future__ import print_function
+
+import six
 import tarfile
 import gzip
 
 import paddle.dataset.common
+import paddle.compat as cpt
 
 __all__ = [
     'train',
@@ -36,8 +41,7 @@ URL_DEV_TEST = ('http://www-lium.univ-lemans.fr/~schwenk/'
 MD5_DEV_TEST = '7d7897317ddd8ba0ae5c5fa7248d3ff5'
 # this is a small set of data for test. The original data is too large and
 # will be add later.
-URL_TRAIN = ('http://paddlepaddle.cdn.bcebos.com/demo/'
-             'wmt_shrinked_data/wmt14.tgz')
+URL_TRAIN = ('http://paddlemodels.bj.bcebos.com/wmt/wmt14.tgz')
 MD5_TRAIN = '0791583d57d5beb693b9414c5b36798c'
 # BLEU of this trained model is 26.92
 URL_MODEL = 'http://paddlemodels.bj.bcebos.com/wmt%2Fwmt14.tgz'
@@ -54,7 +58,7 @@ def __read_to_dict(tar_file, dict_size):
         out_dict = dict()
         for line_count, line in enumerate(fd):
             if line_count < size:
-                out_dict[line.strip()] = line_count
+                out_dict[cpt.to_text(line.strip())] = line_count
             else:
                 break
         return out_dict
@@ -85,7 +89,7 @@ def reader_creator(tar_file, file_name, dict_size):
             ]
             for name in names:
                 for line in f.extractfile(name):
-                    line_split = line.strip().split('\t')
+                    line_split = line.strip().split(six.b('\t'))
                     if len(line_split) != 2:
                         continue
                     src_seq = line_split[0]  # one source sequence
@@ -154,8 +158,8 @@ def get_dict(dict_size, reverse=True):
     tar_file = paddle.dataset.common.download(URL_TRAIN, 'wmt14', MD5_TRAIN)
     src_dict, trg_dict = __read_to_dict(tar_file, dict_size)
     if reverse:
-        src_dict = {v: k for k, v in list(src_dict.items())}
-        trg_dict = {v: k for k, v in list(trg_dict.items())}
+        src_dict = {v: k for k, v in six.iteritems(src_dict)}
+        trg_dict = {v: k for k, v in six.iteritems(trg_dict)}
     return src_dict, trg_dict
 
 

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from functools import partial
 import numpy as np
 
@@ -22,7 +24,7 @@ pos_enc_param_names = (
     "src_pos_enc_table",
     "trg_pos_enc_table", )
 
-batch_size = 64
+batch_size = 2
 
 
 def position_encoding_init(n_position, d_pos_vec):

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
 import numpy as np
 from .. import core
@@ -57,10 +59,10 @@ class InferenceTranspiler(object):
             scope = global_scope()
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
-        self.fuse_batch_norm(program, place, scope)
-        self.fuse_relu_mkldnn(program)
+        self._fuse_batch_norm(program, place, scope)
+        self._fuse_relu_mkldnn(program)
 
-    def fuse_relu_mkldnn(self, program):
+    def _fuse_relu_mkldnn(self, program):
         '''
         Transpile the program by fused relu activation for MKLDNN program.
 
@@ -104,7 +106,7 @@ class InferenceTranspiler(object):
         # And a better solution will be considered later.
         program = program.clone()
 
-    def fuse_batch_norm(self, program, place, scope):
+    def _fuse_batch_norm(self, program, place, scope):
         '''
         Transpile the program by fused batch normalization.
 
