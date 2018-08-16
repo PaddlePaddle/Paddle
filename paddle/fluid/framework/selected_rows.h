@@ -58,14 +58,12 @@ class SelectedRows {
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
     value_.reset(new Tensor());
-    auto_grown_mutex_.reset(new std::mutex);
     rwlock_.reset(new RWLock);
   }
 
   SelectedRows() {
     height_ = 0;
     value_.reset(new Tensor());
-    auto_grown_mutex_.reset(new std::mutex);
     rwlock_.reset(new RWLock);
   }
 
@@ -99,16 +97,17 @@ class SelectedRows {
   }
 
   /*
-   * @brief wheter has the specified key in the table.
+   * @brief whether has the specified key in the table.
    *
    * @return true if the key is exists.
    */
   bool HasKey(int64_t key) const;
 
   /*
-   * @brief Get value by the key list, the interface is use when selected_rows
-   * is
-   * used as embedding parameters.
+   * @brief Get value by the key list.
+   * Note!!! this interface is only used when selected_rows is used as
+   * parameters
+   * for distribute lookup table.
    *
    * @return a list of pair which contains the non-exists key and the index in
    * the value
@@ -117,12 +116,27 @@ class SelectedRows {
            bool auto_grown = false);
 
   /*
-   * @brief Get the index of key in id_to_index map. Used with auto grown index.
+   * @brief Get the index of key from id_to_index_ map.
+   *
+   * Note!!! this interface is only used when selected_rows is used as
+   * parameters
+   * for distribute lookup table.
    *
    * @return index of the key.
    */
   int64_t AutoIndex(int64_t key) const;
 
+  /*
+   * @brief Get the index of the key from id_to_index_ map. If the key not
+   * exist,
+   * add the key into id_to_index_.
+   *
+   * Note!!! this interface is only used when selected_rows is used as
+   * parameters
+   * for distribute lookup table.
+   *
+   * @return index of the key.
+   */
   int64_t AutoGrownIndex(int64_t key);
 
   void SyncIndex();
@@ -138,10 +152,9 @@ class SelectedRows {
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
-  std::unordered_map<int64_t, int64_t> id_to_index;
+  std::unordered_map<int64_t, int64_t> id_to_index_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
-  std::unique_ptr<std::mutex> auto_grown_mutex_{nullptr};
   std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 

@@ -62,7 +62,7 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
 }
 
-TEST_F(SelectedRowsTester, SparseTable) {
+TEST(SelectedRows, SparseTable) {
   platform::CPUPlace cpu;
   SelectedRows table;
 

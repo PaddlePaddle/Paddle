@@ -116,17 +116,14 @@ void DeserializeFromStream(std::istream& is, SelectedRows* selected_rows,
 }
 
 bool SelectedRows::HasKey(int64_t key) const {
-  pthread_rwlock_rdlock(&rwlock_.get()->lock);
-  auto iter = id_to_index.find(key);
-  bool has_key = iter != id_to_index.end();
-  pthread_rwlock_unlock(&rwlock_.get()->lock);
-  return has_key;
+  return std::find(rows_.begin(), rows_.end(), key) == rows_.end() ? false
+                                                                   : true;
 }
 
 int64_t SelectedRows::AutoIndex(int64_t key) const {
   pthread_rwlock_rdlock(&rwlock_.get()->lock);
-  auto iter = id_to_index.find(key);
-  bool has_key = iter != id_to_index.end();
+  auto iter = id_to_index_.find(key);
+  bool has_key = iter != id_to_index_.end();
   if (!has_key) {
     pthread_rwlock_unlock(&rwlock_.get()->lock);
     PADDLE_THROW("Id %s not in table", key);
@@ -138,22 +135,23 @@ int64_t SelectedRows::AutoIndex(int64_t key) const {
 
 int64_t SelectedRows::AutoGrownIndex(int64_t key) {
   pthread_rwlock_rdlock(&rwlock_.get()->lock);
-  auto iter = id_to_index.find(key);
-  if (iter == id_to_index.end()) {
+  auto iter = id_to_index_.find(key);
+  if (iter == id_to_index_.end()) {
     pthread_rwlock_unlock(&rwlock_.get()->lock);
     pthread_rwlock_wrlock(&rwlock_.get()->lock);
-    PADDLE_ENFORCE(id_to_index.size() == rows_.size(),
-                   "id_to_index should have the same size with rows_");
-    auto write_iter = id_to_index.find(key);
-    if (write_iter == id_to_index.end()) {
+    PADDLE_ENFORCE(id_to_index_.size() == rows_.size(),
+                   "id_to_index_ should have the same size with rows_");
+    auto write_iter = id_to_index_.find(key);
+    if (write_iter == id_to_index_.end()) {
       size_t row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
         pthread_rwlock_unlock(&rwlock_.get()->lock);
         PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
       }
+      // key logic to put a key into id_to_index_
       rows_.push_back(key);
       auto index = static_cast<int64_t>(rows_.size() - 1);
-      id_to_index[key] = index;
+      id_to_index_[key] = index;
       pthread_rwlock_unlock(&rwlock_.get()->lock);
       return index;
     } else {
@@ -170,9 +168,9 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key) {
 
 void SelectedRows::SyncIndex() {
   pthread_rwlock_wrlock(&rwlock_.get()->lock);
-  id_to_index.clear();
+  id_to_index_.clear();
   for (size_t i = 0; i < rows_.size(); ++i) {
-    id_to_index[rows_[i]] = i;
+    id_to_index_[rows_[i]] = i;
   }
   pthread_rwlock_unlock(&rwlock_.get()->lock);
 }
