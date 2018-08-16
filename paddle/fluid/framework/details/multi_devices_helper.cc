@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -11,28 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#pragma once
-
-#include "paddle/fluid/framework/details/ssa_graph_builder.h"
-
-#include <string>
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 
 namespace paddle {
 namespace framework {
-namespace details {
-
-class SSAGraghBuilderWithChecker : public SSAGraphBuilder {
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override {
-    PADDLE_ENFORCE(IsValidGraph(graph.get()));
-    return graph;
-  }
-
-  bool IsValidGraph(const ir::Graph* graph) const;
-};
-
-}  // namespace details
+namespace details {}  // namespace details
 }  // namespace framework
 }  // namespace paddle
