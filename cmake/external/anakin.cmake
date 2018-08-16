@@ -35,6 +35,7 @@ set(ANAKIN_COMPILE_EXTRA_FLAGS
 ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
+    DEPENDS             ${MKLML_PROJECT}
     GIT_REPOSITORY      "https://github.com/PaddlePaddle/Anakin"
     GIT_TAG             "04256ba78fa3da0beb74e8036c8efd68c12824d6"
     PREFIX              ${ANAKIN_SOURCE_DIR}
