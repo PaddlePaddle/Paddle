@@ -18,6 +18,9 @@ This module will download dataset from
 http://www.fit.vutbr.cz/~imikolov/rnnlm/ and parse training set and test set
 into paddle reader creators.
 """
+
+from __future__ import print_function
+
 import paddle.dataset.common
 import collections
 import tarfile

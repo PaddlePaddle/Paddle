@@ -29,6 +29,9 @@ the image layout as follows.
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference peroid.
 """
+
+from __future__ import print_function
+
 import numpy as np
 try:
     import cv2

@@ -20,6 +20,8 @@ The script fetch and preprocess movie_reviews data set that provided by NLTK
 TODO(yuyang18): Complete dataset.
 """
 
+from __future__ import print_function
+
 import six
 import collections
 from itertools import chain

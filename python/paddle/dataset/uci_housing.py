@@ -19,7 +19,7 @@ https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """
 
-import os
+from __future__ import print_function
 
 import numpy as np
 import six

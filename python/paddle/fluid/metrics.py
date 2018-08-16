@@ -16,6 +16,9 @@ Fluid Metrics
 
 The metrics are accomplished via Python natively.
 """
+
+from __future__ import print_function
+
 import numpy as np
 import copy
 import warnings

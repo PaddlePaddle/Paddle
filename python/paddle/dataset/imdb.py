@@ -20,6 +20,8 @@ of 25,000 highly polar movie reviews for training, and 25,000 for testing.
 Besides, this module also provides API for building dictionary.
 """
 
+from __future__ import print_function
+
 import paddle.dataset.common
 import collections
 import tarfile
