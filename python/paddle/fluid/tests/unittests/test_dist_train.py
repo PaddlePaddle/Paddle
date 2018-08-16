@@ -28,6 +28,12 @@ from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
 
+from paddle.fluid import core
+
+RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
+)
+RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
+
 
 class TestSendOp(unittest.TestCase):
     def test_send(self):
@@ -91,18 +97,29 @@ class TestSendOp(unittest.TestCase):
     def init_client(self, place, port):
         main = fluid.Program()
         with fluid.program_guard(main):
+            main.global_block().append_op(
+                type="fetch_barrier",
+                inputs={},
+                outputs={},
+                attrs={
+                    "endpoints": ["127.0.0.1:{0}".format(port)],
+                    RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                })
+
             x = layers.data(
                 shape=[32, 32],
                 dtype='float32',
                 name='X',
                 append_batch_size=False)
             fluid.initializer.Constant(value=2.3)(x, main.global_block())
+
             get_var = main.global_block().create_var(
                 name="scale_0.tmp_0",  # server side var
                 dtype="float32",
                 persistable=False,
                 shape=[32, 32])
             fluid.initializer.Constant(value=2.3)(get_var, main.global_block())
+
             Send("127.0.0.1:%d" % port, [x])
             o = Recv("127.0.0.1:%d" % port, [get_var])
 
