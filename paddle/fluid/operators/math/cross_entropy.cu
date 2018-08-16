@@ -15,10 +15,24 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
+
+template <typename T>
+HOSTDEVICE T log(const T& val) {
+  return std::log(val);
+}
+
+template <>
+HOSTDEVICE platform::float16 log(const platform::float16& val) {
+  // strage bug, hlog is not exists.
+  return static_cast<float16>(0);
+  // half tmp = static_cast<half>(val);
+  // return static_cast<platform::float16>(hlog(tmp));
+}
 
 namespace {
 template <typename T>
@@ -35,12 +49,12 @@ template <typename T>
 __global__ void SoftCrossEntropyKernel(T* Y, const T* X, const T* label,
                                        const int class_num) {
   int tid = threadIdx.x;
-  T val = 0;
+  T val(0);
 
   int idx = blockIdx.x * class_num + tid;
   int end = blockIdx.x * class_num + class_num;
   for (; idx < end; idx += blockDim.x) {
-    val += math::TolerableValue<T>()(std::log(X[idx])) * label[idx];
+    val += math::TolerableValue<T>()(log(X[idx])) * label[idx];
   }
 
   val = paddle::platform::reduceSum(val, tid, blockDim.x);
@@ -84,6 +98,8 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
 
 template class CrossEntropyFunctor<platform::CUDADeviceContext, float>;
 template class CrossEntropyFunctor<platform::CUDADeviceContext, double>;
+template class CrossEntropyFunctor<platform::CUDADeviceContext,
+                                   platform::float16>;
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
