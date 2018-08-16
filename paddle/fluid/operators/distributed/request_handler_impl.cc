@@ -44,8 +44,18 @@ bool RequestSendHandler::Handle(const std::string& varname,
   if (!sync_mode_) {
     rpc_server_->Profiler().OneStep();
     try {
+      framework::Scope* local = &(scope->NewScope());
+      if (enable_dc_asgd_) {
+        // set @TRAINER_ID@ var only at runtime.
+        auto var = local->Var("@TRAINER_ID@");
+        auto t = var->GetMutable<framework::LoDTensor>();
+        t->Resize({1});
+        auto* d = t->mutable_data<int64_t>(dev_ctx_->GetPlace());
+        *d = trainer_id;
+      }
+
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
-                                    scope);
+                                    local);
     } catch (std::exception& e) {
       LOG(ERROR) << "async: run sub program error " << e.what();
       return false;
@@ -108,12 +118,11 @@ bool RequestGetHandler::Handle(const std::string& varname,
             string::Sprintf("%s.trainer_%d", varname, trainer_id);
         auto var = scope_->FindVar(varname);
         auto t_orig = var->Get<framework::LoDTensor>();
-        auto place = t_orig.place();
         auto param_bak = scope_->Var(param_bak_name);
         auto t = param_bak->GetMutable<framework::LoDTensor>();
-        t->mutable_data(place);
+        t->mutable_data(dev_ctx_->GetPlace());
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
-        framework::TensorCopy(t_orig, place, t);
+        framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }
       *outvar = scope_->FindVar(varname);
     }

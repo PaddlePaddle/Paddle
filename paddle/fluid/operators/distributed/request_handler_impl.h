@@ -36,7 +36,10 @@ namespace distributed {
 
 class RequestSendHandler final : public RequestHandler {
  public:
-  explicit RequestSendHandler(bool sync_mode) : RequestHandler(sync_mode) {}
+  explicit RequestSendHandler(bool sync_mode, bool enable_dc_asgd = false)
+      : RequestHandler(sync_mode) {
+    enable_dc_asgd_ = enable_dc_asgd;
+  }
   virtual ~RequestSendHandler() {}
   bool Handle(const std::string& varname, framework::Scope* scope,
               framework::Variable* var, framework::Variable** outvar,
@@ -45,13 +48,14 @@ class RequestSendHandler final : public RequestHandler {
   void ResetSparseVarRecorder();
 
  private:
+  bool enable_dc_asgd_;
   std::mutex mutex_sparse_vars_;
   std::vector<framework::Variable*> sparse_vars_;
 };
 
 class RequestGetHandler final : public RequestHandler {
  public:
-  explicit RequestGetHandler(bool sync_mode, bool enable_dc_asgd)
+  explicit RequestGetHandler(bool sync_mode, bool enable_dc_asgd = false)
       : RequestHandler(sync_mode) {
     enable_dc_asgd_ = enable_dc_asgd;
   }

@@ -33,7 +33,7 @@ import random
 import numpy as np
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
-from .. import core, framework
+from .. import core, framework, unique_name
 from ..framework import Program, default_main_program, \
                         default_startup_program, Block, \
                         Parameter, grad_var_name
@@ -177,6 +177,7 @@ class DistributeTranspiler(object):
     def transpile(self,
                   trainer_id,
                   program=None,
+                  startup_program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
                   sync_mode=True):
@@ -188,6 +189,8 @@ class DistributeTranspiler(object):
                 n workers, the id may range from 0 ~ n-1
             program (Program|None): program to transpile,
                 default is fluid.default_main_program().
+            startup_program (Program|None): startup_program to transpile,
+                default is fluid.default_startup_program().
             pservers (str): comma separated ip:port string for the pserver
                 list.
             trainers (int): number of trainers in the distributed job.
@@ -195,6 +198,8 @@ class DistributeTranspiler(object):
         """
         if program is None:
             program = default_main_program()
+        if startup_program is None:
+            self.startup_program = default_startup_program()
         self.origin_program = program
         self.trainer_num = trainers
         self.sync_mode = sync_mode
@@ -398,6 +403,27 @@ class DistributeTranspiler(object):
                     endpoint, op):
                 opt_op_on_pserver.append(op)
         # step 3.3
+        # prepare if dc asgd is enabled
+        if self.config.enable_dc_asgd == True:
+            assert (self.sync_mode == False)
+            self.param_bak_list = []
+            # add param_bak for each trainer
+            for p, _ in self.param_grad_ep_mapping[endpoint]["param"]:
+                # each parameter should have w_bak for each trainer id
+                for i in range(self.trainer_num):
+                    param_bak_name = "%s.trainer_%d" % (p.name, i)
+                    tmpvar = pserver_program.global_block().create_var(
+                        # NOTE: this var name format is used in `request_get_handler`
+                        name=param_bak_name,
+                        type=p.type,
+                        shape=p.shape,
+                        dtype=p.dtype)
+                    self.param_bak_list.append(tmpvar)
+                    # copy init random value to param_bak
+                    self.startup_program.global_block().append_op(
+                        type="assign", inputs={"X", p},
+                        outputs={"Out", tmpvar})
+        # step 3.4
         # Iterate through the ops, and if an op and the optimize ops
         # which located on current pserver are in one set, then
         # append it into the sub program.
@@ -479,21 +505,7 @@ class DistributeTranspiler(object):
                     __append_optimize_op__(op, per_opt_block, grad_to_block_id,
                                            merged_var, lr_ops)
 
-        if self.config.enable_dc_asgd == True and self.sync_mode == False:
-            # add param_bak for each trainer
-            for p, _ in self.param_grad_ep_mapping[endpoint]["param"]:
-                # each parameter should have w_bak for each trainer id
-                for i in range(self.trainer_num):
-                    pserver_program.global_block().create_var(
-                        # NOTE: this var name format is used in `request_get_handler`
-                        name="%s.trainer_%d" % (p.name, i),
-                        type=p.type,
-                        shape=p.shape,
-                        dtype=p.dtype)
-        else:
-            raise Exception(
-                "enable_dc_asgd must be used together with sync_mode=False")
-        # dedup grad to ids list
+# dedup grad to ids list
         grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
@@ -545,10 +557,7 @@ class DistributeTranspiler(object):
         pserver_program._sync_with_cpp()
         return pserver_program
 
-    def get_startup_program(self,
-                            endpoint,
-                            pserver_program,
-                            startup_program=None):
+    def get_startup_program(self, endpoint, pserver_program):
         """
         Get startup program for current parameter server.
         Modify operator input variables if there are variables that
@@ -558,17 +567,12 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): call get_pserver_program first and
                 pass the result here.
-            startup_program (Program): if pass None, will use
-                default_startup_program
 
         Returns:
             Program: parameter server side startup program.
         """
         s_prog = Program()
-        if not startup_program:
-            orig_s_prog = default_startup_program()
-        else:
-            orig_s_prog = startup_program
+        orig_s_prog = self.startup_program
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
@@ -1206,6 +1210,63 @@ class DistributeTranspiler(object):
                     attrs={"scale": 1.0 / float(self.trainer_num)})
         return merged_var
 
+    def _append_dc_sgd_ops(self, block, param_var, grad_var):
+        # NOTE: can not use grammar candy here, should put ops in specific block
+        local_param_bak = block.create_var(
+            name="local_%s_bak" % param_var.name,
+            shape=param_var.shape,
+            type=param_var.type,
+            dtype=param_var.dtype,
+            persistable=False)
+        # trainer_id_var is block local
+        trainer_id_var = block.create_var(
+            name="@TRAINER_ID@",
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            dtype=core.VarDesc.VarType.INT64,
+            shape=[1],
+            persistable=False)
+
+        block.append_op(
+            type="ref_by_trainer_id",
+            inputs={"X": self.param_bak_list,
+                    "TrainerId": trainer_id_var},
+            outputs={"Out", local_param_bak})
+
+        def __create_temp_var__():
+            return block.create_var(
+                name=unique_name.generate("tmp_dc_output"),
+                shape=param_var.shape,
+                type=param_var.type,
+                dtype=param_var.dtype,
+                persistable=False)
+
+        o1 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_sub",
+            inputs={"X": param_var,
+                    "Y": local_param_bak},
+            outputs={"Out": o1})
+        o2 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_mul",
+            inputs={"X": o1,
+                    "Y": grad_var},
+            outputs={"Out": o2})
+        o3 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_mul",
+            inputs={"X": o2,
+                    "Y": grad_var},
+            outputs={"Out": o3})
+        # TODO(typhoonzero): append scale
+        o4 = __create_temp_var__()
+        block.append_op(
+            type="elementwise_add",
+            inputs={"X": grad_var,
+                    "Y": o3},
+            outputs={"Out": o4})
+        return o4
+
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
                             grad_to_block_id, origin_program, merged_var):
         program = optimize_block.program
@@ -1223,9 +1284,16 @@ class DistributeTranspiler(object):
                     break
             return param_block
 
+        if self.config.enable_dc_asgd:
+            param_var = _get_param_block(opt_op)
+            dc = self._append_dc_sgd_ops(optimize_block, param_var, merged_var)
+
         for key in opt_op.input_names:
             if key == "Grad":
-                new_inputs[key] = merged_var
+                if self.config.enable_dc_asgd:
+                    new_inputs[key] = dc
+                else:
+                    new_inputs[key] = merged_var
             # For RMSProp optimizer
             elif key == "Moment" or key == "MeanSquare":
                 param_block = _get_param_block(opt_op)
