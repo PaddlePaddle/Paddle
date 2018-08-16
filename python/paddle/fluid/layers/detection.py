@@ -15,6 +15,8 @@
 All layers just related to the detection neural network.
 """
 
+from __future__ import print_function
+
 from .layer_function_generator import generate_layer_fn
 from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
