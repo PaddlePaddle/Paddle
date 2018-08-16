@@ -103,6 +103,9 @@ bool NativePaddlePredictor::Init(
     return false;
   }
 
+  // Enable mkldnn inference operators.
+  if (config_.use_mkldnn) executor_->EnableMKLDNN(*inference_program_);
+
   ctx_ = executor_->Prepare(*inference_program_, 0);
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
