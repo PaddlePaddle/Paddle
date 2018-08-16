@@ -15,6 +15,7 @@
 import unittest
 import numpy as np
 import math
+import functools
 from op_test import OpTest
 from test_lstm_op import identity, sigmoid, tanh, relu
 
@@ -38,7 +39,8 @@ class TestGRUOp(OpTest):
         for i in range(len(seq_lens)):
             seq_starts.append(seq_starts[-1] + seq_lens[i])
         sorted_seqs = sorted(
-            list(range(len(seq_lens))), lambda x, y: seq_lens[y] - seq_lens[x])
+            list(range(len(seq_lens))),
+            key=functools.cmp_to_key(lambda x, y: seq_lens[y] - seq_lens[x]))
         num_batch = seq_lens[sorted_seqs[0]]
         for batch_idx in range(num_batch):
             idx_in_seq = []
