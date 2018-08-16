@@ -99,22 +99,6 @@ _switch_scope
 ..  autofunction:: paddle.fluid._switch_scope
     :noindex:
 
-.. _api_fluid_fetch_var:
-
-fetch_var
----------
-
-..  autofunction:: paddle.fluid.fetch_var
-    :noindex:
-
-.. _api_fluid_Go:
-
-Go
---
-
-..  autoclass:: paddle.fluid.Go
-    :members:
-    :noindex:
 
 .. _api_fluid_make_channel:
 
