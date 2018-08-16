@@ -9,6 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <time.h>
 #include <thread>  // NOLINT
 
 #include "gtest/gtest.h"
@@ -113,48 +114,54 @@ TEST_F(SelectedRowsTester, SparseTable) {
 }
 
 void f1(SelectedRows* table, int table_size) {
-  for (int i = 1000; i > 0; --i) {
+  for (int i = 1000000; i > 0; --i) {
     auto id = i % table_size;
     int64_t index1 = table->AutoGrownIndex(id);
     int64_t index2 = table->AutoIndex(id);
     int64_t index3 = table->AutoGrownIndex(id);
     ASSERT_EQ(index1, index2);
     ASSERT_EQ(index2, index3);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 }
 
 void f2(SelectedRows* table, int table_size) {
-  for (int i = 0; i < 1000; ++i) {
+  for (int i = 0; i < 1000000; ++i) {
     auto id = i % table_size;
     int64_t index1 = table->AutoGrownIndex(id);
     int64_t index2 = table->AutoIndex(id);
     int64_t index3 = table->AutoGrownIndex(id);
     ASSERT_EQ(index1, index2);
     ASSERT_EQ(index2, index3);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 }
 
 void f3(SelectedRows* table, int table_size) {
-  for (int i = 1000; i > 0; --i) {
-    table->AutoIndex(i % table_size);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  clock_t t1 = clock();
+  for (int i = 100000; i > 0; --i) {
+    auto id1 = table->AutoIndex(i % table_size);
+    auto id2 = table->Index(i % table_size);
+    ASSERT_EQ(id1, id2);
   }
+  clock_t t2 = clock();
+  std::cout << "f3 run time:" << t2 - t1 << std::endl;
 }
 
 void f4(SelectedRows* table, int table_size) {
-  for (int i = 1000; i > 0; --i) {
-    table->AutoGrownIndex(i % table_size);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  clock_t t1 = clock();
+  for (int i = 0; i < 100000; ++i) {
+    auto id1 = table->AutoGrownIndex(i % table_size);
+    auto id2 = table->Index(i % table_size);
+    ASSERT_EQ(id1, id2);
   }
+  clock_t t2 = clock();
+  std::cout << "f4 run time:" << t2 - t1 << std::endl;
 }
 
 TEST(SelectedRows, MultiThreadAutoIndex) {
   platform::CPUPlace cpu;
   SelectedRows table;
 
-  int64_t table_size = 100;
+  int64_t table_size = 100000;
   int64_t embedding_width = 8;
   // initialize a sparse table
   table.mutable_value()->Resize(
@@ -167,9 +174,13 @@ TEST(SelectedRows, MultiThreadAutoIndex) {
   }
 
   std::thread t1(f1, &table, table_size);
+  std::thread t11(f1, &table, table_size);
   std::thread t2(f2, &table, table_size);
+  std::thread t22(f2, &table, table_size);
   t1.join();
+  t11.join();
   t2.join();
+  t22.join();
   std::thread t3(f3, &table, table_size);
   std::thread t4(f4, &table, table_size);
   t3.join();
