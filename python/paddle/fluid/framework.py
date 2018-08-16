@@ -19,6 +19,7 @@ import six
 
 import numpy as np
 
+from .. import compat as cpt
 from .proto import framework_pb2
 try:
     from . import core
@@ -27,7 +28,7 @@ except ImportError as e:
         """NOTE: You may need to run \"export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH\"
     if you encounters \"libmkldnn.so not found\" errors. If you have python
     installed in other directory, replace \"/usr/local/lib\" with your own
-    directory. The original error is: \n""" + e.message)
+    directory. The original error is: \n""" + cpt.get_exception_message(e))
 except Exception as e:
     raise e
 from . import unique_name
@@ -87,7 +88,7 @@ def convert_np_dtype_to_dtype_(np_dtype):
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
     else:
-        raise ValueError("Not supported numpy dtype " + six.binary_type(dtype))
+        raise ValueError("Not supported numpy dtype %s" % dtype)
 
 
 def dtype_is_floating(dtype):
@@ -198,11 +199,11 @@ class Variable(object):
         if name is None:
             name = unique_name.generate('_generated_var')
         is_new_var = False
-        name = name if isinstance(name, six.binary_type) else name.encode()
-        self.desc = self.block.desc.find_var(name)
+        name = cpt.to_text(name)
+        self.desc = self.block.desc.find_var(cpt.to_bytes(name))
 
         if self.desc is None:
-            self.desc = self.block.desc.var(name)
+            self.desc = self.block.desc.var(cpt.to_bytes(name))
             is_new_var = True
 
         if is_new_var:
@@ -325,7 +326,7 @@ class Variable(object):
 
     @property
     def name(self):
-        return self.desc.name()
+        return cpt.to_text(self.desc.name())
 
     @name.setter
     def name(self, new_name):
@@ -531,14 +532,7 @@ class Operator(object):
                         elif isinstance(arg, six.binary_type):
                             in_arg_names.append(arg.decode())
                         else:
-                            if isinstance(arg.name, six.string_types):
-                                in_arg_names.append(arg.name)
-                            elif isinstance(arg.name, six.binary_type):
-                                in_arg_names.append(arg.name.decode())
-                            else:
-                                raise TypeError(
-                                    "arguments require unicode, str or bytes, but get %s instead."
-                                    % (type(arg.name)))
+                            in_arg_names.append(cpt.to_text(arg.name))
                     self.desc.set_input(in_proto.name, in_arg_names)
                 else:
                     self.desc.set_input(in_proto.name, [])
@@ -567,14 +561,7 @@ class Operator(object):
                         (out_proto.name, len(out_args)))
                 out_arg_names = []
                 for arg in out_args:
-                    if isinstance(arg.name, six.string_types):
-                        out_arg_names.append(arg.name)
-                    elif isinstance(arg.name, six.binary_type):
-                        out_arg_names.append(arg.name.decode())
-                    else:
-                        raise TypeError(
-                            "arguments require unicode, str or bytes, but get %s instead."
-                            % (type(arg.name)))
+                    out_arg_names.append(cpt.to_text(arg.name))
                     arg.op = self
                 self.desc.set_output(out_proto.name, out_arg_names)
 
@@ -970,10 +957,9 @@ class Block(object):
             Variable: the Variable with the giving name.
         """
         if not isinstance(name, six.string_types):
-            if not isinstance(name, six.binary_type):
-                raise TypeError(
-                    "var require string as parameter, but get %s instead." %
-                    (type(name)))
+            raise TypeError(
+                "var require string as parameter, but get %s instead." %
+                (type(name)))
         v = self.vars.get(name, None)
         if v is None:
             raise ValueError("var %s not in this block" % name)
@@ -1024,7 +1010,7 @@ class Block(object):
         return list(self.iter_parameters())
 
     def iter_parameters(self):
-        return (item[1] for item in list(self.vars.items())
+        return (item[1] for item in six.iteritems(self.vars)
                 if isinstance(item[1], Parameter))
 
     def create_var(self, *args, **kwargs):
@@ -1052,6 +1038,9 @@ class Block(object):
         Returns:
             Variable: the Variable with the giving name.
         """
+        name = cpt.to_text(name)
+        new_name = cpt.to_text(new_name)
+
         if not self.has_var(name):
             raise ValueError("var %s is not in current block" % name)
         v = self.var(name)
@@ -1070,9 +1059,9 @@ class Block(object):
         else:
             raise ValueError("unsupported var type: %s", type(v))
         orig_var_type = v.type
-        self.desc._rename_var(name, new_name)
+        self.desc._rename_var(cpt.to_bytes(name), cpt.to_bytes(new_name))
         # NOTE: v is destroyed by C++ after calling _rename_var.
-        d = self.desc.find_var(new_name)
+        d = self.desc.find_var(cpt.to_bytes(new_name))
         if var_type == "Parameter":
             var = Parameter(
                 self,
@@ -1103,7 +1092,7 @@ class Block(object):
 
     def _remove_var(self, name):
         self._sync_with_cpp()
-        self.desc._remove_var(name)
+        self.desc._remove_var(cpt.to_bytes(name))
         del self.vars[name]
 
     def create_parameter(self, *args, **kwargs):
@@ -1205,7 +1194,7 @@ class Block(object):
 
         # sync variables removed from c++ end
         for var in list(self.vars.keys()):
-            if not self.desc.find_var(var):
+            if not self.desc.find_var(cpt.to_bytes(var)):
                 self.vars.pop(var)
 
         # sync operators from cpp
@@ -1576,7 +1565,9 @@ class Program(object):
             p.current_block_idx = self.current_block_idx
             p._seed = self._seed
             p.desc = core.ProgramDesc(self.desc)
-            p.blocks = [Block(p, i) for i in xrange(self.desc.num_blocks())]
+            p.blocks = [
+                Block(p, i) for i in six.moves.range(self.desc.num_blocks())
+            ]
 
             p._current_role = self._current_role
             p._op_role_var = self._op_role_var
@@ -1632,7 +1623,9 @@ class Program(object):
             targets_idx.append([t.block.idx, t.idx])
         res = Program()
         res.desc = core.prune(self.desc, targets_idx)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
@@ -1675,16 +1668,18 @@ class Program(object):
                 root_block._remove_op(0, read_op_idx + 1)
             for var in root_block.all_vars():
                 if var.type() == core.VarDesc.VarType.READER:
-                    root_block._remove_var(var.name())
+                    root_block._remove_var(cpt.to_bytes(var.name()))
 
         # change all `is_test` attributes to True
-        for i in range(res.desc.num_blocks()):
+        for i in six.moves.range(res.desc.num_blocks()):
             block = res.desc.block(i)
-            for j in range(block.op_size()):
+            for j in six.moves.range(block.op_size()):
                 op = block.op(j)
                 if op.has_attr('is_test'):
                     op.set_attr('is_test', True)
-        res.blocks = [Block(res, i) for i in range(res.desc.num_blocks())]
+        res.blocks = [
+            Block(res, i) for i in six.moves.range(res.desc.num_blocks())
+        ]
         res._sync_with_cpp()
         return res
 
@@ -1704,7 +1699,7 @@ class Program(object):
         """
         p = Program()
         p.desc = core.ProgramDesc(binary_str)
-        p.blocks = [Block(p, i) for i in range(p.desc.num_blocks())]
+        p.blocks = [Block(p, i) for i in six.moves.range(p.desc.num_blocks())]
         p._sync_with_cpp()
         return p
 
