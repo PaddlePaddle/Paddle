@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import argparse
 import time
@@ -22,6 +24,7 @@ import paddle.fluid as fluid
 from paddle.fluid import core
 import os
 import sys
+import six
 import transformer_model
 import paddle.dataset.wmt16 as wmt16
 
@@ -159,6 +162,7 @@ def get_model():
     avg_cost = transformer(use_feed=False)
     optimizer = fluid.optimizer.Adam()
     optimizer.minimize(avg_cost)
+    fluid.memory_optimize(fluid.default_main_program())
     return avg_cost
 
 
@@ -222,7 +226,7 @@ class DistTransformer2x2(object):
 
         first_loss, = exe.run(fetch_list=[avg_cost.name])
         print(first_loss)
-        for i in xrange(5):
+        for i in six.moves.xrange(5):
             _ = exe.run(fetch_list=[avg_cost.name])
         last_loss, = exe.run(fetch_list=[avg_cost.name])
         print(last_loss)

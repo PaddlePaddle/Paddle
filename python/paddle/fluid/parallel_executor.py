@@ -17,8 +17,10 @@ import multiprocessing
 from . import core
 from . import framework
 from . import executor
+from .. import compat as cpt
 import warnings
 import sys
+import six
 import os
 
 __all__ = ['ParallelExecutor', 'ExecutionStrategy', 'BuildStrategy']
@@ -95,7 +97,7 @@ class ParallelExecutor(object):
         self._places = []
         self._act_places = []
         if use_cuda:
-            for i in range(core.get_cuda_device_count()):
+            for i in six.moves.range(core.get_cuda_device_count()):
                 p = core.Place()
                 self._act_places.append(core.CUDAPlace(i))
                 p.set_place(self._act_places[-1])
@@ -103,7 +105,7 @@ class ParallelExecutor(object):
         else:
             cpu_num = int(
                 os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-            for i in range(cpu_num):
+            for i in six.moves.range(cpu_num):
                 p = core.Place()
                 self._act_places.append(core.CPUPlace())
                 p.set_place(self._act_places[-1])
@@ -153,11 +155,13 @@ class ParallelExecutor(object):
         self.executor = core.ParallelExecutor(
             self._places,
             set([
-                p.name for p in main.global_block().iter_parameters()
+                cpt.to_text(p.name)
+                for p in main.global_block().iter_parameters()
                 if not p.stop_gradient
             ]),
-            set(self.persistable_vars), main.desc, loss_name
-            if loss_name else '', scope, local_scopes, exec_strategy,
+            set(cpt.to_text(var) for var in self.persistable_vars), main.desc,
+            cpt.to_text(loss_name)
+            if loss_name else six.u(''), scope, local_scopes, exec_strategy,
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
