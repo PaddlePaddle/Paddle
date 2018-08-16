@@ -2079,6 +2079,10 @@ def batch_norm(input,
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
 
+    if in_place:
+        raise ValueError("The argument in_place is deprecated since 0.15.0, "
+                         "please do not set it True.")
+
     input_shape = input.shape
     if data_layout == 'NCHW':
         channel_num = input_shape[1]
@@ -2128,7 +2132,7 @@ def batch_norm(input,
     saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
+    batch_norm_out = helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="batch_norm",
