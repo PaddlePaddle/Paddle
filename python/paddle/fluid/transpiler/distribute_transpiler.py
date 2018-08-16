@@ -669,7 +669,7 @@ class DistributeTranspiler(object):
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
-                    op.set_attr("shape", list(new_outputs["Out"].shape))
+                    op._set_attr("shape", list(new_outputs["Out"].shape))
                 s_prog.global_block().append_op(
                     type=op.type,
                     inputs=new_inputs,
