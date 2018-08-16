@@ -120,8 +120,8 @@ class TestProgram(unittest.TestCase):
         main_program = fluid.Program()
         with fluid.program_guard(main_program, startup_program):
             net()
-        no_read_program = main_program.inference_optimize()
-        keep_read_program = main_program.inference_optimize(
+        no_read_program = main_program._inference_optimize()
+        keep_read_program = main_program._inference_optimize(
             export_for_deployment=False)
         no_read_ops = no_read_program.global_block().ops
         keep_read_ops = keep_read_program.global_block().ops
