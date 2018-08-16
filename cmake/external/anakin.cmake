@@ -36,8 +36,9 @@ ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLML_PROJECT}
-    GIT_REPOSITORY      "https://github.com/PaddlePaddle/Anakin"
-    GIT_TAG             "04256ba78fa3da0beb74e8036c8efd68c12824d6"
+    # Anakin codes error on Intel(R) Xeon(R) Gold 5117 CPU, temporary do not compile avx512 related code.
+    GIT_REPOSITORY      "https://github.com/luotao1/Anakin"
+    GIT_TAG             "bcf17aabe7921ceb7bce591244b4f9dce7dba5c8"
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DUSE_GPU_PLACE=YES
