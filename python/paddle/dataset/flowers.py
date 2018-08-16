@@ -116,8 +116,8 @@ def reader_creator(data_file,
             for file in open(file_list):
                 file = file.strip()
                 batch = None
-                with open(file, 'r') as f:
-                    batch = pickle.load(f)
+                with open(file, 'rb') as f:
+                    batch = pickle.loads(f.read())
                 data = batch['data']
                 labels = batch['label']
                 for sample, label in zip(data, batch['label']):

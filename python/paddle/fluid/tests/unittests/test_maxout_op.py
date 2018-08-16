@@ -19,7 +19,7 @@ from op_test import OpTest
 
 def maxout_forward_naive(input, groups):
     s0, s1, s2, s3 = input.shape
-    return np.ndarray([s0, s1 / groups, groups, s2, s3], \
+    return np.ndarray([s0, s1 // groups, groups, s2, s3], \
         buffer = input, dtype=input.dtype).max(axis=(2))
 
 
