@@ -112,7 +112,7 @@ class TestLstmOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(atol=1e-8)
+        self.check_output()
 
 
 class TestLstmOpInitReverse(TestLstmOp):

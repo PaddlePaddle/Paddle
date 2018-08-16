@@ -242,6 +242,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       to_batch(dev_ctx, *xx, batched_gate, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
+      batched_gate->set_lod(xx->lod());
       math::FCCompute<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1],
                                         xx_data, wx_data, batched_gate_data,
                                         bias->data<T>());
