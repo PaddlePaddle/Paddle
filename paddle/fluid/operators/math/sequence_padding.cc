@@ -18,37 +18,45 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+enum CopyType { kSeqToPad, kPadToSeq };
+
 template <typename T>
-void CopyDataCPU(framework::LoDTensor* seq_tensor,
-                 framework::Tensor* pad_tensor,
-                 const framework::Vector<size_t>& seq_offset,
-                 const int64_t& max_seq_len, const int64_t& seq_width,
-                 bool seq_to_pad, bool norm_by_len,
-                 OutputLayout output_layout) {
-  T* seq_data = seq_tensor->data<T>();
-  T* pad_data = pad_tensor->data<T>();
+void CopyValidData(framework::Tensor* dst_tensor,
+                   const framework::Tensor* src_tensor,
+                   const framework::Vector<size_t>& seq_offsets,
+                   int pad_seq_len, int step_width, bool norm_by_len,
+                   CopyType type, PadLayout layout) {
+  int seq_num = seq_offsets.size() - 1;
+  const T* src_data = src_tensor->data<T>();
+  T* dst_data = dst_tensor->data<T>();
 
-  int64_t seq_num = seq_offset.size() - 1;
+  int seq_cpy_gap = step_width;
+  int pad_cpy_gap =
+      layout == kBatchLengthWidth ? step_width : seq_num * step_width;
+  for (int seq_idx = 0; seq_idx < seq_num; ++seq_idx) {
+    int valid_seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
+    PADDLE_ENFORCE_GE(
+        pad_seq_len, valid_seq_len,
+        "The padded sequence length can not be less than its original length.");
+    int seq_data_offset = seq_offsets[seq_idx] * step_width;
+    int pad_data_offset = layout == kBatchLengthWidth
+                              ? seq_idx * pad_seq_len * step_width
+                              : seq_idx * step_width;
+    float scale = 1.0f / static_cast<float>(valid_seq_len);
 
-  for (int64_t i = 0; i < seq_num; ++i) {
-    int64_t seq_start = seq_offset[i];
-    int64_t seq_len = seq_offset[i + 1] - seq_start;
-    T scale = norm_by_len ? (1.0f / static_cast<T>(seq_len)) : 1.0f;
-    for (int64_t j = 0; j < seq_len; ++j) {
-      for (int64_t k = 0; k < seq_width; ++k) {
-        size_t pad_data_idx = 0;
-        size_t seq_data_idx = (seq_start + j) * seq_width + k;
-        if (output_layout == kBatchLengthWidth) {
-          pad_data_idx = (i * max_seq_len + j) * seq_width + k;
-        } else {
-          pad_data_idx = (j * seq_num + i) * seq_width + k;
-        }
-        if (seq_to_pad) {
-          pad_data[pad_data_idx] = seq_data[seq_data_idx] * scale;
-        } else {
-          seq_data[seq_data_idx] = pad_data[pad_data_idx] * scale;
+    for (int step_idx = 0; step_idx < valid_seq_len; ++step_idx) {
+      const T* src =
+          src_data + (type == kSeqToPad ? seq_data_offset : pad_data_offset);
+      T* dst =
+          dst_data + (type == kSeqToPad ? pad_data_offset : seq_data_offset);
+      memcpy(dst, src, step_width * sizeof(T));
+      if (norm_by_len) {
+        for (int i = 0; i < step_width; ++i) {
+          *(dst + i) *= scale;
         }
       }
+      seq_data_offset += seq_cpy_gap;
+      pad_data_offset += pad_cpy_gap;
     }
   }
 }
@@ -58,31 +66,37 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& seq_tensor,
-                  framework::Tensor* pad_tensor,
-                  T pad_value = static_cast<T>(0), bool norm_by_times = false,
-                  size_t lod_level = 0,
-                  OutputLayout output_layout = kBatchLengthWidth) {
-    CheckLoD(seq_tensor, lod_level);
-
-    auto& lod = seq_tensor.lod();
-    auto& seq_offset = framework::ToAbsOffset(lod)[lod_level];
-
+                  framework::LoDTensor* pad_tensor,
+                  std::vector<T> pad_value = {0}, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth) {
+    auto seq_offsets = framework::ToAbsOffset(seq_tensor.lod())[lod_level];
     auto seq_tensor_dims = seq_tensor.dims();
     auto pad_tensor_dims = pad_tensor->dims();
-    int64_t max_seq_len = MaximumSequenceLength(seq_offset);
-    int64_t seq_num = seq_offset.size() - 1;
-    int64_t seq_width = seq_tensor.numel() / seq_tensor_dims[0];
+    if (pad_seq_len == -1) {
+      pad_seq_len = MaximumSequenceLength(seq_offsets);
+    }
+    int step_width = seq_tensor.numel() / seq_tensor_dims[0];
 
-    CheckDims(seq_tensor_dims, seq_offset.back(), pad_tensor_dims, max_seq_len,
-              seq_num, seq_width, output_layout);
+    CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
+              step_width, layout);
+    PADDLE_ENFORCE(pad_value.size() == 1 ||
+                       static_cast<int>(pad_value.size()) == step_width,
+                   "The size of 'pad_value' can only be 1 or be equal to the "
+                   "'step_width'.");
 
+    if (pad_value.size() == 1) {
+      pad_value = std::vector<T>(step_width, pad_value[0]);
+    }
+
+    // fill padding value
     T* pad_data = pad_tensor->data<T>();
+    for (int i = 0; i < pad_tensor->numel() / step_width; ++i) {
+      memcpy(pad_data, pad_value.data(), step_width * sizeof(T));
+    }
 
-    memset(pad_data, pad_value, max_seq_len * seq_num * seq_width * sizeof(T));
-
-    CopyDataCPU<T>(const_cast<framework::LoDTensor*>(&seq_tensor), pad_tensor,
-                   seq_offset, max_seq_len, seq_width, true /* seq_to_pad */,
-                   norm_by_times, output_layout);
+    CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
+                     step_width, norm_by_times, kSeqToPad, layout);
   }
 };
 
@@ -90,30 +104,23 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  framework::LoDTensor* seq_tensor,
-                  const framework::Tensor& pad_tensor,
-                  bool norm_by_times = false, size_t lod_level = 0,
-                  OutputLayout output_layout = kBatchLengthWidth) {
-    CheckLoD(*seq_tensor, lod_level);
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout& layout = kBatchLengthWidth) {
+    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    auto seq_tensor_dims = seq_tensor->dims();
+    auto pad_tensor_dims = pad_tensor.dims();
+    if (pad_seq_len == -1) {
+      pad_seq_len = MaximumSequenceLength(seq_offsets);
+    }
+    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
 
-    auto& lod = seq_tensor->lod();
-    auto& seq_offset = framework::ToAbsOffset(lod)[lod_level];
+    CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
+              step_width, layout);
 
-    auto& seq_tensor_dims = seq_tensor->dims();
-    auto& pad_tensor_dims = pad_tensor.dims();
-    int64_t max_seq_len = MaximumSequenceLength(seq_offset);
-    int64_t seq_num = seq_offset.size() - 1;
-    int64_t seq_width = seq_tensor->numel() / seq_tensor_dims[0];
-
-    CheckDims(seq_tensor_dims, seq_offset.back(), pad_tensor_dims, max_seq_len,
-              seq_num, seq_width, output_layout);
-
-    T* seq_data = seq_tensor->data<T>();
-    memset(seq_data, static_cast<T>(0), seq_tensor->numel() * sizeof(T));
-
-    CopyDataCPU<T>(seq_tensor, const_cast<framework::Tensor*>(&pad_tensor),
-                   seq_offset, max_seq_len, seq_width, false /* seq_to_pad */,
-                   norm_by_times, output_layout);
+    CopyValidData<T>(seq_tensor, &pad_tensor, seq_offsets, pad_seq_len,
+                     step_width, norm_by_times, kPadToSeq, layout);
   }
 };
 
