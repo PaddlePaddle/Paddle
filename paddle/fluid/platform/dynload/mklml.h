@@ -49,25 +49,27 @@ extern void* mklml_dso_handle;
 
 #define MKLML_ROUTINE_EACH(__macro) \
   __macro(cblas_sgemm);             \
-  __macro(cblas_saxpy);             \
-  __macro(cblas_scopy);             \
-  __macro(cblas_sgemv);             \
-  __macro(cblas_sgemm_batch);       \
   __macro(cblas_dgemm);             \
+  __macro(cblas_saxpy);             \
   __macro(cblas_daxpy);             \
+  __macro(cblas_scopy);             \
   __macro(cblas_dcopy);             \
+  __macro(cblas_sgemv);             \
   __macro(cblas_dgemv);             \
+  __macro(cblas_sgemm_alloc);       \
+  __macro(cblas_dgemm_alloc);       \
+  __macro(cblas_sgemm_pack);        \
+  __macro(cblas_dgemm_pack);        \
+  __macro(cblas_sgemm_compute);     \
+  __macro(cblas_dgemm_compute);     \
+  __macro(cblas_sgemm_free);        \
+  __macro(cblas_dgemm_free);        \
+  __macro(cblas_sgemm_batch);       \
   __macro(cblas_dgemm_batch);       \
   __macro(vsAdd);                   \
   __macro(vdAdd);                   \
-  __macro(cblas_sgemm_alloc);       \
-  __macro(cblas_sgemm_pack);        \
-  __macro(cblas_sgemm_compute);     \
-  __macro(cblas_sgemm_free);        \
-  __macro(cblas_dgemm_alloc);       \
-  __macro(cblas_dgemm_pack);        \
-  __macro(cblas_dgemm_compute);     \
-  __macro(cblas_dgemm_free);        \
+  __macro(vsMul);                   \
+  __macro(vdMul);                   \
   __macro(MKL_Set_Num_Threads)
 
 MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);
