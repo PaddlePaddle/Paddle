@@ -78,10 +78,9 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
-  auto rows = w->mutable_rows();
-  for (int64_t i = 0; i < rows_numel; ++i) rows->push_back(i);
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
+  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i);
 
   auto ptr = w_value->mutable_data<float>(*place);
 
