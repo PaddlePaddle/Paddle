@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <pthread.h>
 #include <algorithm>
 #include <memory>
 #include <mutex>  // NOLINT
@@ -23,26 +22,12 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 
 namespace paddle {
 namespace framework {
-
-struct RWLock {
-  RWLock() { pthread_rwlock_init(&lock_, nullptr); }
-
-  ~RWLock() { pthread_rwlock_destroy(&lock_); }
-
-  void RDLock() { PADDLE_ENFORCE_EQ(pthread_rwlock_rdlock(&lock_), 0, ""); }
-
-  void WRLock() { PADDLE_ENFORCE_EQ(pthread_rwlock_wrlock(&lock_), 0, ""); }
-
-  void UNLock() { PADDLE_ENFORCE_EQ(pthread_rwlock_unlock(&lock_), 0, ""); }
-
- private:
-  pthread_rwlock_t lock_;
-};
 
 class SelectedRows {
   /*
