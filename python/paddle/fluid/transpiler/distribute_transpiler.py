@@ -320,7 +320,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
-        for varname, splited_var in six.iteritems(self.param_var_mapping):
+        for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             if len(splited_var) <= 1:
                 continue
             orig_param = program.global_block().vars[param_varname]
