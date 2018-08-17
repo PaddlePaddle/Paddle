@@ -54,6 +54,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#include "pybind11/stl.h"
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -247,6 +249,7 @@ PYBIND11_PLUGIN(core) {
         self.set_rows(new_rows);
 #endif
            })
+      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
       .def("rows", [](SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;

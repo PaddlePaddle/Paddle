@@ -21,5 +21,5 @@ for sub_deb in $DEBS; do
   ar x $sub_deb && tar xf data.tar.xz
 done
 mv -f usr/include/nccl.h /usr/local/include/
-mv -f usr/lib/libnccl* /usr/local/lib/
+mv -f usr/lib/x86_64-linux-gnu/libnccl* /usr/local/lib/
 rm -rf $DIR
