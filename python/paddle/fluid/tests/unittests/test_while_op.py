@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.layers as layers
 from paddle.fluid.executor import Executor
@@ -66,7 +68,7 @@ class TestWhileOp(unittest.TestCase):
         exe = Executor(cpu)
         d = []
 
-        for i in xrange(3):
+        for i in range(3):
             d.append(numpy.random.random(size=[10]).astype('float32'))
 
         outs = exe.run(feed={'d0': d[0],

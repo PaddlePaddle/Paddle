@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
+import paddle
 import paddle.fluid as fluid
-import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
+import paddle.dataset.mnist as mnist
 
 
 class TestPreprocessor(unittest.TestCase):

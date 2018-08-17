@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -20,8 +22,8 @@ class TestElementwiseOp(OpTest):
     def setUp(self):
         self.op_type = "elementwise_sub"
         self.inputs = {
-            'X': np.random.uniform(0.1, 1, [13, 17]).astype("float32"),
-            'Y': np.random.uniform(0.1, 1, [13, 17]).astype("float32")
+            'X': np.random.uniform(0.1, 1, [2, 3]).astype("float32"),
+            'Y': np.random.uniform(0.1, 1, [2, 3]).astype("float32")
         }
         self.outputs = {'Out': self.inputs['X'] - self.inputs['Y']}
 

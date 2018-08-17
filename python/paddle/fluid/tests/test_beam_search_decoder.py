@@ -15,6 +15,8 @@
 A simple machine translation demo using beam search decoder.
 """
 
+from __future__ import print_function
+
 import contextlib
 import numpy as np
 import paddle
@@ -155,7 +157,7 @@ def train_main(use_cuda):
         ]
         feeder = fluid.DataFeeder(feed_list, place)
 
-        for pass_id in xrange(1):
+        for pass_id in range(1):
             for batch_id, data in enumerate(train_reader()):
                 outs = exe.run(main_program,
                                feed=feeder.feed(data),
@@ -204,8 +206,8 @@ def decode_main(use_cuda):
     ]
     feeder = fluid.DataFeeder(feed_list, place)
 
-    data = train_reader().next()
-    feed_dict = feeder.feed(map(lambda x: [x[0]], data))
+    data = next(train_reader())
+    feed_dict = feeder.feed([[x[0]] for x in data])
     feed_dict['init_ids'] = init_ids
     feed_dict['init_scores'] = init_scores
 
@@ -214,7 +216,7 @@ def decode_main(use_cuda):
         feed=feed_dict,
         fetch_list=[translation_ids, translation_scores],
         return_numpy=False)
-    print result_ids.lod()
+    print(result_ids.lod())
 
 
 class TestBeamSearchDecoder(unittest.TestCase):

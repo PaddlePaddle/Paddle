@@ -19,9 +19,10 @@ https://archive.ics.uci.edu/ml/machine-learning-databases/housing/ and
 parse training set and test set into paddle reader creators.
 """
 
-import os
+from __future__ import print_function
 
 import numpy as np
+import six
 import tempfile
 import tarfile
 import os
@@ -49,9 +50,12 @@ def feature_range(maximums, minimums):
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots()
     feature_num = len(maximums)
-    ax.bar(range(feature_num), maximums - minimums, color='r', align='center')
+    ax.bar(list(range(feature_num)),
+           maximums - minimums,
+           color='r',
+           align='center')
     ax.set_title('feature scale')
-    plt.xticks(range(feature_num), feature_names)
+    plt.xticks(list(range(feature_num)), feature_names)
     plt.xlim([-1, feature_num])
     fig.set_figheight(6)
     fig.set_figwidth(10)
@@ -67,11 +71,11 @@ def load_data(filename, feature_num=14, ratio=0.8):
         return
 
     data = np.fromfile(filename, sep=' ')
-    data = data.reshape(data.shape[0] / feature_num, feature_num)
+    data = data.reshape(data.shape[0] // feature_num, feature_num)
     maximums, minimums, avgs = data.max(axis=0), data.min(axis=0), data.sum(
         axis=0) / data.shape[0]
     feature_range(maximums[:-1], minimums[:-1])
-    for i in xrange(feature_num - 1):
+    for i in six.moves.range(feature_num - 1):
         data[:, i] = (data[:, i] - avgs[i]) / (maximums[i] - minimums[i])
     offset = int(data.shape[0] * ratio)
     UCI_TRAIN_DATA = data[:offset]
@@ -134,7 +138,7 @@ def predict_reader():
     It returns just one tuple data to do inference.
 
     :return: one tuple data
-    :rtype: tuple 
+    :rtype: tuple
     """
     global UCI_TEST_DATA
     load_data(paddle.dataset.common.download(URL, 'uci_housing', MD5))

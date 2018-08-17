@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from layer_function_generator import generate_layer_fn
+
+from __future__ import print_function
+from .layer_function_generator import generate_layer_fn
 
 __activations__ = [
     'sigmoid',
@@ -66,9 +68,7 @@ __all__ = [
     'scatter',
     'sum',
     'slice',
-    'polygon_box_transform',
     'shape',
-    'iou_similarity',
     'maxout',
 ] + __activations__
 

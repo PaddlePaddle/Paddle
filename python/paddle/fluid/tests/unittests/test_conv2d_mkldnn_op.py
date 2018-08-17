@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 
 from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride
@@ -20,16 +22,19 @@ from test_conv2d_op import TestConv2dOp, TestWithPad, TestWithStride
 class TestMKLDNN(TestConv2dOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.data_format = "NCHW"
 
 
 class TestMKLDNNWithPad(TestWithPad):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.data_format = "NCHW"
 
 
 class TestMKLDNNWithStride(TestWithStride):
     def init_kernel_type(self):
         self.use_mkldnn = True
+        self.data_format = "NCHW"
 
 
 if __name__ == '__main__':

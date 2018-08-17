@@ -216,15 +216,15 @@ def get_model(args, is_train, main_prog, startup_prog):
                 total_images = 1281167 / trainer_count
 
                 step = int(total_images / args.batch_size + 1)
-                epochs = [40, 80, 100]
+                epochs = [30, 60, 80, 90]
                 bd = [step * e for e in epochs]
                 base_lr = args.learning_rate
                 lr = []
                 lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
                 optimizer = fluid.optimizer.Momentum(
-                    #learning_rate=base_lr,
-                    learning_rate=fluid.layers.piecewise_decay(
-                        boundaries=bd, values=lr),
+                    learning_rate=base_lr,
+                    #learning_rate=fluid.layers.piecewise_decay(
+                    #    boundaries=bd, values=lr),
                     momentum=0.9,
                     regularization=fluid.regularizer.L2Decay(1e-4))
                 optimizer.minimize(avg_cost)
