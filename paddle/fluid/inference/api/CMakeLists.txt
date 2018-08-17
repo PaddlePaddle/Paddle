@@ -70,9 +70,14 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     anakin_target(inference_anakin_api)
     #anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
-        cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
-                DEPS inference_anakin_api dynload_cuda SERIAL)
-        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+        function(anakin_test_target target_name src_name)
+          cc_test(${target_name} SRCS ${src_name}
+                  ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
+                  DEPS inference_anakin_api dynload_cuda SERIAL)
+          target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+        endfunction()
+        anakin_test_target(inference_anakin_test api_anakin_engine_tester.cc)
+        anakin_test_target(inference_anakin_cnn_test api_anakin_engine_cnn_tester.cc)
+        anakin_test_target(inference_anakin_rnn_test api_anakin_engine_rnn_tester.cc)
     endif(WITH_TESTING)
 endif()

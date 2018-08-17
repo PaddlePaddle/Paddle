@@ -25,9 +25,11 @@ set(ANAKIN_COMPILE_EXTRA_FLAGS
     -Wno-error=format-extra-args -Wno-format-extra-args
     -Wno-error=comment -Wno-comment 
     -Wno-error=format -Wno-format 
+    -Wno-error=maybe-uninitialized
     -Wno-error=switch -Wno-switch
     -Wno-error=return-type -Wno-return-type 
     -Wno-error=non-virtual-dtor -Wno-non-virtual-dtor
+    -Wno-error=ignored-qualifiers
     -Wno-sign-compare
     -Wno-reorder 
     -Wno-error=cpp)
