@@ -159,7 +159,7 @@ class TestBook(unittest.TestCase):
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=(label_dict_len - 1) // 2)
             self.assertFalse(crf is None)
             self.assertFalse(crf_decode is None)
 
@@ -286,7 +286,7 @@ class TestBook(unittest.TestCase):
                     name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
         dict_size = 10000
-        label_word = int(window_size / 2) + 1
+        label_word = int(window_size // 2) + 1
 
         embs = []
         for i in range(window_size):
