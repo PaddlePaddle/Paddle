@@ -16,12 +16,12 @@ limitations under the License. */
 #include <algorithm>
 #include <fstream>
 #include <iostream>
-#include <thread>
+#include <thread>  // NOLINT
 #include <vector>
-#include "net.h"
-#include "paddle_inference_api.h"
+#include "framework/core/net/net.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
-DEFINE_string(modeldir, "", "Directory of the inference model.");
+DEFINE_string(model, "", "Directory of the inference model.");
 DEFINE_string(datapath, "", "Path of the dataset.");
 DEFINE_int32(batch_size, 1, "batch size.");
 
@@ -44,8 +44,8 @@ std::vector<std::string> string_split(std::string in_str,
       in_str.substr(pre_found + 1, in_str.length() - (pre_found + 1)));
   return seq;
 }
-std::vector<std::string> string_split(std::string in_str,
-                                      std::vector<std::string>& delimiter) {
+std::vector<std::string> string_split(
+    std::string in_str, std::vector<std::string>& delimiter) {  // NOLINT
   std::vector<std::string> in;
   std::vector<std::string> out;
   out.push_back(in_str);
@@ -71,10 +71,10 @@ class Data {
     _total_length = _file.tellg();
     _file.seekg(_file.beg);
   }
-  void get_batch_data(std::vector<std::vector<float>>& fea,
-                      std::vector<std::vector<float>>& week_fea,
-                      std::vector<std::vector<float>>& time_fea,
-                      std::vector<long unsigned int>& seq_offset);
+  void get_batch_data(std::vector<std::vector<float>>& fea,         // NOLINT
+                      std::vector<std::vector<float>>& week_fea,    // NOLINT
+                      std::vector<std::vector<float>>& time_fea,    // NOLINT
+                      std::vector<long unsigned int>& seq_offset);  // NOLINT
 
  private:
   std::fstream _file;
@@ -82,12 +82,13 @@ class Data {
   int _batch_size;
 };
 
-void Data::get_batch_data(std::vector<std::vector<float>>& fea,
-                          std::vector<std::vector<float>>& week_fea,
-                          std::vector<std::vector<float>>& time_fea,
-                          std::vector<long unsigned int>& seq_offset) {
+void Data::get_batch_data(
+    std::vector<std::vector<float>>& fea,          // NOLINT
+    std::vector<std::vector<float>>& week_fea,     // NOLINT
+    std::vector<std::vector<float>>& time_fea,     // NOLINT
+    std::vector<long unsigned int>& seq_offset) {  // NOLINT
   int seq_num = 0;
-  long unsigned int cum = 0;
+  long unsigned int cum = 0;  // NOLINT
 
   char buf[10000];
   seq_offset.clear();
@@ -144,14 +145,14 @@ AnakinConfig GetConfig() {
   AnakinConfig config;
   // using AnakinConfig::X86 if you need to use cpu to do inference
   config.target_type = AnakinConfig::X86;
-  config.model_file = FLAGS_modeldir;
+  config.model_file = FLAGS_model;
   config.device = 0;
   config.max_batch_size = 128;
   return config;
 }
 
 void set_tensor(std::string name, std::vector<int> shape,
-                std::vector<PaddleTensor>& vec) {
+                std::vector<PaddleTensor>& vec) {  // NOLINT
   int sum = 1;
   std::for_each(shape.begin(), shape.end(), [&](int n) { sum *= n; });
   float* data = new float[sum];
@@ -174,7 +175,7 @@ void single_test() {
   std::vector<std::vector<float>> fea;
   std::vector<std::vector<float>> week_fea;
   std::vector<std::vector<float>> time_fea;
-  std::vector<long unsigned int> seq_offset;
+  std::vector<long unsigned int> seq_offset;  // NOLINT
 
   paddle::PaddleTensor tensor_0, tensor_1, tensor_2;
   tensor_0.name = "input_0";
@@ -190,9 +191,9 @@ void single_test() {
   std::vector<PaddleTensor> inputs;
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
-  float data_0[max_batch_size * 38];
-  float data_1[max_batch_size * 10];
-  float data_2[max_batch_size * 10];
+  float data_0[max_batch_size * 38];  // NOLINT
+  float data_1[max_batch_size * 10];  // NOLINT
+  float data_2[max_batch_size * 10];  // NOLINT
 
   int count = 0;
   while (true) {
@@ -204,13 +205,13 @@ void single_test() {
       break;
     }
 
-    std::vector<std::vector<long unsigned int>> seq_offset_vec;
+    std::vector<std::vector<long unsigned int>> seq_offset_vec;  // NOLINT
     seq_offset_vec.push_back(seq_offset);
     tensor_0.lod = seq_offset_vec;
 
-    int p_shape_0[] = {(int)fea.size(), 1, 1, 38};
-    int p_shape_1[] = {(int)week_fea.size(), 10, 1, 1};
-    int p_shape_2[] = {(int)time_fea.size(), 10, 1, 1};
+    int p_shape_0[] = {(int)fea.size(), 1, 1, 38};       // NOLINT
+    int p_shape_1[] = {(int)week_fea.size(), 10, 1, 1};  // NOLINT
+    int p_shape_2[] = {(int)time_fea.size(), 10, 1, 1};  // NOLINT
 
     std::vector<int> shape_0(p_shape_0, p_shape_0 + 4);
     std::vector<int> shape_1(p_shape_1, p_shape_1 + 4);
@@ -254,7 +255,7 @@ void single_test() {
     }
   }
 }
-}
+}  // namespace paddle
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);

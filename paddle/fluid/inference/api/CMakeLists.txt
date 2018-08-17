@@ -62,7 +62,7 @@ endif()
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml dynload_cuda)
     #nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
@@ -74,7 +74,7 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
           cc_test(${target_name} SRCS ${src_name}
                   ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
                   DEPS inference_anakin_api dynload_cuda SERIAL)
-          target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+          target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
         endfunction()
         anakin_test_target(inference_anakin_test api_anakin_engine_tester.cc)
         anakin_test_target(inference_anakin_cnn_test api_anakin_engine_cnn_tester.cc)

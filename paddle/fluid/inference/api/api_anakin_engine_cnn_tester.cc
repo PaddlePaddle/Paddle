@@ -17,15 +17,15 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <thread>  //NOLINT
-#include "anakin/utils/logger/logger.h"
+#include <thread>  // NOLINT
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "sys/time.h"
-#include "utils.h"
+#include "utils.h"  // NOLINT
+#include "utils/logger/logger.h"
 
 namespace paddle {
 
-DEFINE_string(modelfile, "", "Directory of the inference model and data.");
+DEFINE_string(model, "", "Directory of the inference model and data.");
 DEFINE_string(data, "", "Directory of the inference model and data.");
 struct Record {
   std::vector<float> data;
@@ -61,7 +61,7 @@ Record ProcessALine(const std::string& line) {
 
 int Main(int max_batch) {
   AnakinConfig config;
-  config.model_file = FLAGS_modelfile;
+  config.model_file = FLAGS_model;
   config.device = 0;
   config.max_batch_size = max_batch;
   config.target_type = AnakinConfig::TargetType::X86;
@@ -100,7 +100,7 @@ int Main(int max_batch) {
 
   struct timeval cur_time;
   gettimeofday(&cur_time, NULL);
-  long t = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
+  int16_t t = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
 
   PaddleTensor tensor_out;
   tensor_out.name = "outnet_con1.tmp_1_gout";
@@ -124,12 +124,12 @@ int Main(int max_batch) {
     LOG(INFO) << "data: " << ss.str();
   }
   gettimeofday(&cur_time, NULL);
-  long t2 = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
+  int16_t t2 = cur_time.tv_sec * 1000000 + cur_time.tv_usec;
 
   std::cout << "max_batch:" << max_batch << ", time:" << (t2 - t) / 1000 << "ms"
             << std::endl;
 }
-}
+}  // namespace paddle
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);

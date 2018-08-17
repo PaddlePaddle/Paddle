@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "api_anakin_engine.h"
+#include "paddle/fluid/inference/api/api_anakin_engine.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -20,6 +20,9 @@
 
 #include <mkl_service.h>
 #include <omp.h>
+#include <map>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "framework/core/net/net.h"
@@ -75,7 +78,6 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       return false;
     }
     auto d_tensor_in_p = executor_p_->get_in(input.name);
-    // auto net_shape = d_tensor_in_p->valid_shape();
     auto net_shape = d_tensor_in_p->shape();
     if (net_shape.size() != input.shape.size()) {
       VLOG(3) << " input  " << input.name
@@ -130,15 +132,9 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
     }
   }
 #ifdef PADDLE_WITH_CUDA
-  if (std::is_same<anakin::NV, Target>::value) {
-    cudaDeviceSynchronize();
-    executor_p_->prediction();
-    cudaDeviceSynchronize();
-  } else {
-    cudaDeviceSynchronize();
-    executor_p_->prediction();
-    cudaDeviceSynchronize();
-  }
+  cudaDeviceSynchronize();
+  executor_p_->prediction();
+  cudaDeviceSynchronize();
 #endif
 
   if (output_data->empty()) {
@@ -219,15 +215,15 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     VLOG(3) << "Anakin Predictor create on unknown platform.";
     return nullptr;
   }
-};
+}
 
+#ifdef ENABLE_OP_TIMER
 template <typename Target>
 using executor_t =
     anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>;
 
 template <typename Target>
 void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
-  using namespace anakin;
   std::vector<float> op_time = net_executor->get_op_time();
   auto exec_funcs = net_executor->get_exec_funcs();
   auto op_param = net_executor->get_op_param();
@@ -248,13 +244,15 @@ void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
     LOG(INFO) << it->first << "  " << (it->second) / epoch << " ms";
   }
 }
+#endif
 
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::~PaddleInferenceAnakinPredictor() {
+#ifdef ENABLE_OP_TIMER
   DisplayOpTimer<Target>(executor_p_, max_batch_size_);
-
+#endif
   delete executor_p_;
   executor_p_ = nullptr;
-};
+}
 
 }  // namespace paddle
