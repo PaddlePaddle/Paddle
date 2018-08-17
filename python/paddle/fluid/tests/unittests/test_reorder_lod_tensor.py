@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.layers.control_flow import lod_rank_table
 import numpy
+import functools
 
 
 class TestReorderLoDTensor(unittest.TestCase):
@@ -101,7 +104,8 @@ class TestReorderLoDTensor(unittest.TestCase):
         rank_table = []  # list of (index, length)
         for i in range(len(ref_lod)):
             rank_table.append((i, ref_lod[i]))
-        rank_table = sorted(rank_table, lambda x, y: y[1] - x[1])
+        rank_table = sorted(
+            rank_table, key=functools.cmp_to_key(lambda x, y: y[1] - x[1]))
 
         # compute the input sequence info according to input_lod
         input_value, input_lod = self.data[self.data_desc[0][0]]
