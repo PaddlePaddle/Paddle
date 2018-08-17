@@ -198,7 +198,7 @@ __global__ void DeviceReduceSum(T* in, T* out, size_t N) {
 }
 
 template <typename T>
-void TestReduce(size_t num) {
+void TestReduce(size_t num, float atol = 0.01) {
   T* in1;
   T *d_in1, *d_in2;
   size_t size = sizeof(T) * num;
@@ -218,17 +218,17 @@ void TestReduce(size_t num) {
   cudaDeviceSynchronize();
   // NOTE(dzhwinter): the float16 add has small underflow/overflow
   // so we use EXPECT_NEAR to check the result.
-  EXPECT_NEAR(static_cast<float>(in1[0]), static_cast<float>(out), 0.01);
+  EXPECT_NEAR(static_cast<float>(in1[0]), static_cast<float>(out), atol);
   free(in1);
   cudaFree(d_in1);
   cudaFree(d_in2);
 }
 
 TEST(CudaShuffleSync, float16) {
-  // TestReduce<float>(10);
-  // TestReduce<float>(1000);
+  TestReduce<float>(10);
+  TestReduce<float>(1000);
 
-  // float16 will overflow in big size.
+  // float16 will overflow or accumulate truncate errors in big size.
   TestReduce<float16>(10);
-  // TestReduce<float16>(100);
+  TestReduce<float16>(100, /*atol error*/ 1.0);
 }
