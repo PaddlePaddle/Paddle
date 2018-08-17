@@ -73,7 +73,7 @@ struct EnforceNotMet : public std::exception {
 
       sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
       sout << "PaddlePaddle Call Stacks: " << std::endl;
-#if !define(WIN32)
+#if !defined(_WIN32)
       void* call_stack[TRACE_STACK_LIMIT];
       auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
       auto symbols = backtrace_symbols(call_stack, size);
