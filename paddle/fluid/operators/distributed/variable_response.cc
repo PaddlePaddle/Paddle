@@ -190,12 +190,15 @@ bool VariableResponse::ProcSerializedField(
 #endif
   }
 
+  VLOG(7) << "ProcSerializedField:" << meta_.varname()
+          << ", type:" << meta_.type() << std::endl;
   framework::DDim dims = GetDims(meta_.dims());
   if (meta_.type() == sendrecv::LOD_TENSOR) {
     PADDLE_ENFORCE(meta_.lod_size() >= 0, "lod info should be got first!");
     if (!CopyLodTensorData(input, *dev_ctx_, dims, num_bytes)) {
       return false;
     }
+
     return true;
   }
 
@@ -206,7 +209,9 @@ bool VariableResponse::ProcSerializedField(
     return true;
   }
 
-  return true;
+  PADDLE_ENFORCE("not supported var types:", meta_.varname(), meta_.type());
+
+  return false;
 }
 
 };  // namespace distributed

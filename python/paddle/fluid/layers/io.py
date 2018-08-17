@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 import multiprocessing
+import six
 import threading
 
 from ..data_feeder import DataFeeder
@@ -69,7 +72,7 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in range(len(shape)):
+    for i in six.moves.range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -674,7 +677,7 @@ def py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in xrange(counter)]
+                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
 
         __set_tensor_provider__(__tensor_provider__)
 
@@ -750,7 +753,7 @@ def open_files(filenames,
     else:
         buffer_size = int(buffer_size)
 
-    if isinstance(filenames, basestring):
+    if isinstance(filenames, six.string_types):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -1005,7 +1008,7 @@ class Preprocessor(object):
         source_lod_levels = self.underlying_reader.desc.lod_levels()
         self.source_var_names = [
             unique_name("preprocessor_source")
-            for _ in range(len(source_shapes))
+            for _ in six.moves.range(len(source_shapes))
         ]
         source_vars = []
         for var_name, shape, dtype, lod_level in zip(
