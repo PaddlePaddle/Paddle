@@ -5037,7 +5037,7 @@ def gather(input, index):
     return out
 
 
-def scatter(input, index, updates):
+def scatter(input, index, updates, name=None):
     """
     **Scatter Layer**
 
@@ -5050,9 +5050,11 @@ def scatter(input, index, updates):
         Out[Ids] = Updates
 
     Args:
-        input: The source input with rank>=1.
-        index: The index input with rank=1.
-        updates: The updated value of scatter op.
+        input (Variable): The source input with rank>=1.
+        index (Variable): The index input with rank=1. Its dtype should be
+                          int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter op.
+        name (str|None): The output variable name. Default None.
 
     Returns:
         output (Variable): The output is a tensor with the same shape as input.
