@@ -55,6 +55,41 @@ TEST(Pool2dOpConverter, main) {
   validator.Execute(3);
 }
 
+TEST(Pool2dOpConverter, test_global_pooling) {
+  framework::Scope scope;
+  std::unordered_set<std::string> parameters;
+  TRTConvertValidation validator(5, parameters, scope, 1 << 15);
+
+  // The ITensor's Dims should not contain the batch size.
+  // So, the ITensor's Dims of input and output should be C * H * W.
+  validator.DeclInputVar("pool2d-X", nvinfer1::Dims3(3, 4, 4));
+  validator.DeclOutputVar("pool2d-Out", nvinfer1::Dims3(3, 1, 1));
+
+  // Prepare Op description
+  framework::OpDesc desc;
+  desc.SetType("pool2d");
+  desc.SetInput("X", {"pool2d-X"});
+  desc.SetOutput("Out", {"pool2d-Out"});
+
+  std::vector<int> ksize({2, 2});
+  std::vector<int> strides({2, 2});
+  std::vector<int> paddings({0, 0});
+  std::string pooling_t = "max";
+  bool global_pooling = true;
+
+  desc.SetAttr("pooling_type", pooling_t);
+  desc.SetAttr("ksize", ksize);
+  desc.SetAttr("strides", strides);
+  desc.SetAttr("paddings", paddings);
+  desc.SetAttr("global_pooling", global_pooling);
+
+  LOG(INFO) << "set OP";
+  validator.SetOp(*desc.Proto());
+  LOG(INFO) << "execute";
+
+  validator.Execute(3);
+}
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
