@@ -18,6 +18,7 @@ from __future__ import print_function
 
 import six
 
+
 def delete_ops(block, ops):
     try:
         start = list(block.ops).index(ops[0])
