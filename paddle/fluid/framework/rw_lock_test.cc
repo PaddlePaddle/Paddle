@@ -35,15 +35,9 @@ TEST(RWLOCK, read_read) {
   lock.UNLock();
 }
 
-void f2(f::RWLock *lock, std::vector<int> *result, bool *do_read) {
+void f2(f::RWLock *lock, std::vector<int> *result) {
   lock->RDLock();
-  while (true) {
-    if (do_read) {
-      ASSERT_EQ(result->size(), 0UL);
-      break;
-    }
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-  }
+  ASSERT_EQ(result->size(), 0UL);
   lock->UNLock();
 }
 
@@ -56,14 +50,32 @@ void f3(f::RWLock *lock, std::vector<int> *result) {
 TEST(RWLOCK, read_write) {
   f::RWLock lock;
   std::vector<int> result;
-  bool do_read = false;
 
-  std::thread t1(f2, &lock, &result, &do_read);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
-  std::thread t2(f3, &lock, &result);
-  ASSERT_EQ(result.size(), 0UL);
-  do_read = true;
+  lock.RDLock();
+  std::thread t1(f2, &lock, &result);
   t1.join();
+  std::thread t2(f3, &lock, &result);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  ASSERT_EQ(result.size(), 0UL);
+  lock.UNLock();
   t2.join();
   ASSERT_EQ(result.size(), 1UL);
+}
+
+void f4(f::RWLock *lock, std::vector<int> *result) {
+  lock->RDLock();
+  ASSERT_EQ(result->size(), 1UL);
+  lock->UNLock();
+}
+
+TEST(RWLOCK, write_read) {
+  f::RWLock lock;
+  std::vector<int> result;
+
+  lock.WRLock();
+  std::thread t1(f4, &lock, &result);
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  result.push_back(1);
+  lock.UNLock();
+  t1.join();
 }
