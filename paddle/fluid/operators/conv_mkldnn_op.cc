@@ -326,18 +326,17 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         src_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
     auto weights_md = platform::MKLDNNMemDesc(
         weights_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
-    std::vector<int> bias_tz; // TODO(mgallus): avoid empty vector creation.
-                              // Currently used whenever bias is != nullptr.
+    std::vector<int> bias_tz;  // TODO(mgallus): avoid empty vector creation.
+                               // Currently used whenever bias is != nullptr.
     auto dst_md = platform::MKLDNNMemDesc(
         dst_tz, platform::MKLDNNGetDataType<T>(), chosen_memory_format);
 
     // create a conv primitive descriptor and save it for usage in backward
     std::shared_ptr<mkldnn::convolution_forward::primitive_desc> conv_pd;
     if (bias) {
-      bias_tz =
-        paddle::framework::vectorize2int(bias->dims());
+      bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
-        bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
+          bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
       conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
                                      strides, paddings, mkldnn_engine);
     } else {

@@ -37,10 +37,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
-  framework::DDim bias_dims;
-  if (ctx->HasInput("Bias")) {
-    bias_dims = ctx->GetInputDim("Bias");
-  }
+
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
@@ -51,9 +48,12 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "Conv input dimension and filter dimension should be the same.");
+#ifdef PADDLE_WITH_MKLDNN
   if (ctx->HasInput("Bias")) {
+    auto bias_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(bias_dims.size(), 1, "Conv bias should one-dimensional.");
   }
+#endif
   PADDLE_ENFORCE(
       in_dims.size() - strides.size() == 2U,
       "Conv input dimension and strides dimension should be consistent.");
@@ -131,7 +131,7 @@ void Conv2DOpMaker::Make() {
   AddInput("Bias",
            "(Tensor) Bias to be added to each output of filter application."
            "The format of output tensor is X (one-dimensional) of size equal"
-           "to the number of output channels.")
+           "to the number of output channels. Only used with MKL-DNN.")
       .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
