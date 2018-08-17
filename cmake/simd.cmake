@@ -89,7 +89,7 @@ CHECK_CXX_SOURCE_RUNS("
 #include <immintrin.h>
 int main()
 {
-    _mm512_setzero_si512();
+    __m512i a = _mm512_undefined_epi32();
     return 0;
 }" AVX512F_FOUND)
 
