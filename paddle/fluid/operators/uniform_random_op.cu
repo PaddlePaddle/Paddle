@@ -11,14 +11,10 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <glog/logging.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
-#include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/transform.h"
 
 namespace paddle {
 namespace operators {
@@ -38,11 +34,6 @@ struct UniformGenerator {
     rng.discard(n);
     return dist(rng);
   }
-};
-
-template <typename T, typename V>
-struct CastFunctor {
-  HOSTDEVICE V operator()(const T& a) { return static_cast<V>(a); }
 };
 
 // It seems that Eigen::Tensor::random in GPU will SEGFAULT.
@@ -75,50 +66,18 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     T max = static_cast<T>(context.Attr<float>("max"));
     thrust::counting_iterator<unsigned int> index_sequence_begin(0);
     int64_t size = tensor->numel();
-    if (out_var->IsType<framework::LoDTensor>() &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
-      framework::Tensor master_copy_tensor;
-      master_copy_tensor.Resize(tensor->dims());
-      float* master_copy_tensor_data =
-          master_copy_tensor.mutable_data<float>(context.GetPlace());
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<float>(master_copy_tensor_data),
-                        UniformGenerator<float>(static_cast<float>(min),
-                                                static_cast<float>(max), seed));
-      platform::Transform<platform::CUDADeviceContext> trans;
-      auto* in_begin = master_copy_tensor.data<float>();
-      auto* in_end = in_begin + master_copy_tensor.numel();
-      auto* out_begin = tensor->mutable_data<T>(context.GetPlace());
-      trans(context.template device_context<platform::CUDADeviceContext>(),
-            in_begin, in_end, out_begin, CastFunctor<float, T>());
-    } else {
-      thrust::transform(index_sequence_begin, index_sequence_begin + size,
-                        thrust::device_ptr<T>(data),
-                        UniformGenerator<T>(min, max, seed));
-    }
-    if (VLOG_IS_ON(5)) {
-      framework::Tensor cpu_tensor;
-      framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-      auto& dev_ctx =
-          *platform::DeviceContextPool::Instance().Get(context.GetPlace());
-      dev_ctx.Wait();
-      auto x = framework::EigenVector<T>::Flatten(cpu_tensor);
-      VLOG(5) << "The Uniform output " << x;
-    }
+    thrust::transform(index_sequence_begin, index_sequence_begin + size,
+                      thrust::device_ptr<T>(data),
+                      UniformGenerator<T>(min, max, seed));
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    uniform_random, paddle::operators::GPUUniformRandomKernel<float>,
-    paddle::operators::GPUUniformRandomKernel<double>,
-    paddle::operators::GPUUniformRandomKernel<plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    uniform_random_batch_size_like,
-    paddle::operators::GPUUniformRandomKernel<float>,
-    paddle::operators::GPUUniformRandomKernel<double>,
-    paddle::operators::GPUUniformRandomKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(uniform_random,
+                        paddle::operators::GPUUniformRandomKernel<float>,
+                        paddle::operators::GPUUniformRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(uniform_random_batch_size_like,
+                        paddle::operators::GPUUniformRandomKernel<float>,
+                        paddle::operators::GPUUniformRandomKernel<double>);
