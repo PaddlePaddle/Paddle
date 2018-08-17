@@ -160,11 +160,11 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
     std::ostringstream sout;
     sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python callstacks: \n";
+    sout << "Python Callstacks: \n";
     for (auto& line : callstack) {
-      sout << "\t" << line << "\n";
+      sout << line;
     }
-    sout << "C++ callstacks: \n";
+    sout << "C++ Callstacks: \n";
     sout << exception.err_str_;
     exception.err_str_ = sout.str();
     throw exception;
