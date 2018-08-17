@@ -672,12 +672,11 @@ def save_inference_model(dirname,
     save_persistables(executor, dirname, inference_program, params_filename)
 
     # if there is lookup table, the trainer 0 will notify all pserver to save.
-    if main_program._is_distributed and main_program._is_chief:
-        if main_program._distributed_lookup_table:
-            lookup_table_filename = os.path.join(dirname, "__lookup_table__")
-            _save_lookup_tables_by_notify(
-                executor, lookup_table_filename,
-                main_program._distributed_lookup_table, main_program._endpoints)
+    if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
+        lookup_table_filename = os.path.join(dirname, "__lookup_table__")
+        _save_lookup_tables_by_notify(executor, lookup_table_filename,
+                                      main_program._distributed_lookup_table,
+                                      main_program._endpoints)
 
 
 def load_inference_model(dirname,

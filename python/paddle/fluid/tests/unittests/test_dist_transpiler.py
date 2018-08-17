@@ -536,6 +536,19 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
 
+class TestDistArgsInProgram(TestDistLookupTableBase):
+    def net_conf(self):
+        self.network_with_table(is_sparse=True, is_distributed=True)
+
+    def transpiler_test_impl(self):
+        config = fluid.DistributeTranspilerConfig()
+        pserver1, _ = self.get_pserver(self.pserver1_ep, config, False)
+
+        self.assertTrue(pserver1._is_chief)
+        self.assertTrue(pserver1._is_distributed)
+        self.assertEqual(pserver1._distributed_lookup_table)
+
+
 class TestRMSPropOptimizer(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
@@ -564,6 +577,42 @@ class TestRMSPropOptimizer(TranspilerTest):
         self.assertEqual(fc_w_var.shape, (500, 1000))
         moment_var = startup.global_block().var("momentum_1")
         self.assertEqual(moment_var.shape, (500, 1000))
+
+
+class TestLoadSliceVar(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=fluid.ParamAttr(name='fc_b'))
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
+        optimizer.minimize(avg_cost)
+        return
+
+    def transpiler_test_impl(self):
+        pserver, _ = self.get_pserver(self.pserver1_ep)
+        pserver2, _ = self.get_pserver(self.pserver2_ep)
+
+        self.assertTrue(pserver._slice_vars_and_atts)
+        self.assertTrue(pserver2._slice_vars_and_atts)
+
+        for idx in xrange(len(pserver._slice_vars_and_atts)):
+            self.assertEqual(pserver._slice_vars_and_atts[idx][0],
+                             pserver2._slice_vars_and_atts[idx][0])
+
+            total_numel = reduce(lambda x, y: x * y,
+                                 pserver._slice_vars_and_atts[idx][0].shape)
+            self.assertEqual(
+                total_numel,
+                reduce(lambda x, y: x * y,
+                       pserver._slice_vars_and_atts[idx][2].shape) + reduce(
+                           lambda x, y: x * y,
+                           pserver2._slice_vars_and_atts[idx][2].shape))
 
 
 if __name__ == "__main__":
