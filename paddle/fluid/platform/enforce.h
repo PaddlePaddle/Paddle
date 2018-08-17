@@ -14,9 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>     // for dladdr
-#include <execinfo.h>  // for backtrace
-
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
@@ -36,6 +33,7 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
