@@ -14,9 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
-
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "warpctc/include/ctc.h"
 
