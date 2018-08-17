@@ -276,7 +276,8 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
 
   rpc_service_.reset(new RPCSERVER_T(endpoint, fan_in));
 
-  request_send_handler_.reset(new distributed::RequestSendHandler(sync_mode));
+  request_send_handler_.reset(
+      new distributed::RequestSendHandler(sync_mode, dc_sgd));
   request_get_handler_.reset(
       new distributed::RequestGetHandler(sync_mode, dc_sgd));
   request_prefetch_handler_.reset(

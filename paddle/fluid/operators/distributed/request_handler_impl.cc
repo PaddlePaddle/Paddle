@@ -46,6 +46,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
     try {
       framework::Scope* local = &(scope->NewScope());
       if (enable_dc_asgd_) {
+        VLOG(3) << "got client trainer_id " << trainer_id;
         // set @TRAINER_ID@ var only at runtime.
         auto var = local->Var("@TRAINER_ID@");
         auto t = var->GetMutable<framework::LoDTensor>();
@@ -55,7 +56,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
       }
 
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
-                                    local);
+                                    local, /*create_local_scope=*/false);
     } catch (std::exception& e) {
       LOG(ERROR) << "async: run sub program error " << e.what();
       return false;
@@ -113,14 +114,15 @@ bool RequestGetHandler::Handle(const std::string& varname,
   } else {
     if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
       if (enable_dc_asgd_) {
-        // copy current returnning param to param_bak_trainer_id
+        // NOTE: the format is determined by distributed_transpiler.py
         std::string param_bak_name =
-            string::Sprintf("%s.trainer_%d", varname, trainer_id);
+            string::Sprintf("%s.trainer_%d_bak", varname, trainer_id);
+        VLOG(3) << "getting " << param_bak_name << " trainer_id " << trainer_id;
         auto var = scope_->FindVar(varname);
         auto t_orig = var->Get<framework::LoDTensor>();
         auto param_bak = scope_->Var(param_bak_name);
         auto t = param_bak->GetMutable<framework::LoDTensor>();
-        t->mutable_data(dev_ctx_->GetPlace());
+        t->mutable_data(dev_ctx_->GetPlace(), t_orig.type());
         VLOG(3) << "copying " << varname << " to " << param_bak_name;
         framework::TensorCopy(t_orig, dev_ctx_->GetPlace(), t);
       }

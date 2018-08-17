@@ -35,7 +35,7 @@ class RefByTrainerIdOp : public framework::OperatorWithKernel {
                    "Output(Out) of RefByTrainerIdOp should not be null.");
     PADDLE_ENFORCE_EQ(ctx->GetInputDim("TrainerId").size(), 1,
                       "TrainerId should be a scalar.");
-    ctx->SetOutputDim("Out", ctx->GetInputsDim("X")[0]);
+    // Out's shape is determined at runtime.
   }
 
  protected:
