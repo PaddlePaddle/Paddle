@@ -15,6 +15,8 @@
 All util layers.
 """
 
+from __future__ import print_function
+
 from .layer_function_generator import autodoc
 from ..framework import unique_name
 from ..layer_helper import LayerHelper

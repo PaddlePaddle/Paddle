@@ -116,7 +116,8 @@ size_t GpuMaxChunkSize() {
   size_t allocating = static_cast<size_t>(FLAGS_fraction_of_gpu_memory_to_use *
                                           (total - reserving));
 
-  PADDLE_ENFORCE_LE(allocating, available);
+  PADDLE_ENFORCE_LE(allocating, available,
+                    "Insufficient GPU memory to allocation.");
 
   return allocating;
 }
