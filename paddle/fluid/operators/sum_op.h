@@ -46,7 +46,7 @@ class SumKernel : public framework::OpKernel<T> {
       if (!in_place) {
         math::SetConstant<DeviceContext, T> constant_functor;
         constant_functor(context.template device_context<DeviceContext>(), out,
-                         static_cast<T>(0));
+                         0.0);
       }
 
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;

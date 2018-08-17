@@ -23,5 +23,4 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SoftmaxKernel<plat::CUDADeviceContext, plat::float16>);
 REGISTER_OP_CUDA_KERNEL(
     softmax_grad, ops::SoftmaxGradKernel<plat::CUDADeviceContext, float>,
-    ops::SoftmaxGradKernel<plat::CUDADeviceContext, double>,
-    ops::SoftmaxGradKernel<plat::CUDADeviceContext, plat::float16>);
+    ops::SoftmaxGradKernel<plat::CUDADeviceContext, double>);
