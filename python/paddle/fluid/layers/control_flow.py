@@ -28,22 +28,10 @@ import six
 from functools import reduce
 
 __all__ = [
-    'While',
-    'Switch',
-    'increment',
-    'array_write',
-    'create_array',
-    'less_than',
-    'equal',
-    'array_read',
-    'array_length',
-    'IfElse',
-    'DynamicRNN',
-    'StaticRNN',
-    'reorder_lod_tensor_by_rank',
-    'ParallelDo',
-    'Print',
-    'is_empty',
+    'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
+    'equal', 'array_read', 'array_length', 'IfElse', 'DynamicRNN', 'StaticRNN',
+    'reorder_lod_tensor_by_rank', 'ParallelDo', 'Print', 'is_empty',
+    'control_dependency'
 ]
 
 
@@ -1965,3 +1953,29 @@ def is_empty(x, cond=None, **ignored):
     helper.append_op(
         type='is_empty', inputs={'X': [x]}, outputs={'Out': [cond]})
     return cond
+
+
+def control_dependency(x, out):
+    """
+    add control_dependency between x and out variables.
+
+    Args:
+        x (Variable|list(Variable)): The input variables.
+        out (Variable|list(Variable)): The output Variables.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+          fluid.layers.control_dependency(x=input, out=output)
+    """
+    helper = LayerHelper("control_dependency", **locals())
+    if not isinstance(x, list):
+        x = [x]
+    if not isinstance(out, list):
+        out = [out]
+    helper.append_op(
+        type='control_dependency', inputs={'X': x}, outputs={'Out': out})
+    return None

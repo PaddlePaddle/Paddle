@@ -124,7 +124,8 @@ class TestBasicModel(TranspilerTest):
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
             'fill_constant', 'mean_grad', 'square_grad', 'elementwise_sub_grad',
             'elementwise_add_grad', 'send', 'mul_grad', 'split_byref', 'send',
-            'send_barrier', 'recv', 'recv', 'fetch_barrier', 'concat'
+            'send_barrier', 'control_dependency', 'recv', 'control_dependency',
+            'recv', 'fetch_barrier', 'concat'
         ])
 
         self.assertEqual(len(pserver.blocks), 3)
@@ -175,7 +176,8 @@ class TestBasicModelWithLargeBlockSize(TranspilerTest):
             'mul', 'elementwise_add', 'elementwise_sub', 'square', 'mean',
             'fill_constant', 'mean_grad', 'square_grad', 'elementwise_sub_grad',
             'elementwise_add_grad', 'send', 'mul_grad', 'send', 'send_barrier',
-            'recv', 'recv', 'fetch_barrier'
+            'control_dependency', 'recv', 'control_dependency', 'recv',
+            'fetch_barrier'
         ])
 
         self.assertEqual(len(pserver.blocks), 2)
@@ -451,7 +453,8 @@ class TestLocalLookupTable(TestDistLookupTableBase):
             'elementwise_add_grad', 'send', 'mul_grad', 'send', 'concat_grad',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'sum', 'split_selected_rows', 'send',
-            'send_barrier', 'recv', 'recv', 'recv', 'fetch_barrier', 'concat'
+            'send_barrier', 'control_dependency', 'recv', 'control_dependency',
+            'recv', 'control_dependency', 'recv', 'fetch_barrier', 'concat'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
@@ -489,8 +492,8 @@ class TestDistLookupTable(TestDistLookupTableBase):
             'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'sum', 'split_ids', 'send', 'send_barrier', 'recv', 'recv',
-            'fetch_barrier'
+            'sum', 'split_ids', 'send', 'send_barrier', 'control_dependency',
+            'recv', 'control_dependency', 'recv', 'fetch_barrier'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
@@ -521,8 +524,9 @@ class TestAsyncLocalLookupTable(TestDistLookupTableBase):
             'fill_constant', 'mean_grad', 'cross_entropy_grad',
             'elementwise_add_grad', 'send', 'mul_grad', 'send', 'concat_grad',
             'sequence_pool_grad', 'lookup_table_grad', 'sequence_pool_grad',
-            'lookup_table_grad', 'sum', 'split_selected_rows', 'send', 'recv',
-            'recv', 'recv', 'concat'
+            'lookup_table_grad', 'sum', 'split_selected_rows', 'send',
+            'control_dependency', 'recv', 'control_dependency', 'recv',
+            'control_dependency', 'recv', 'concat'
         ]
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
@@ -561,8 +565,10 @@ class TestAsyncDistLookupTable(TestDistLookupTableBase):
             'mean_grad', 'cross_entropy_grad', 'elementwise_add_grad', 'send',
             'mul_grad', 'send', 'concat_grad', 'sequence_pool_grad',
             'lookup_table_grad', 'sequence_pool_grad', 'lookup_table_grad',
-            'sum', 'split_ids', 'send', 'recv', 'recv'
+            'sum', 'split_ids', 'send', 'control_dependency', 'recv',
+            'control_dependency', 'recv'
         ]
+        print([op.type for op in trainer.blocks[0].ops])
         self.assertEqual([op.type for op in trainer.blocks[0].ops], ops)
 
 
