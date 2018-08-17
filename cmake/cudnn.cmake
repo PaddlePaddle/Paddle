@@ -47,8 +47,6 @@ find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
           NO_DEFAULT_PATH
     DOC "Path to cuDNN library.")
 
-message("Include Dir" ${CUDNN_INCLUDE_DIR})
-message("Library Dir" ${CUDNN_LIBRARY})
 if(CUDNN_INCLUDE_DIR AND CUDNN_LIBRARY)
     set(CUDNN_FOUND ON)
 else()
