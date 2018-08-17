@@ -20,10 +20,15 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * Fuse the MUL and ELEMENTWISE_ADD to a FCOp.
+ */
 class FCFusePass : public Pass {
+ public:
+  virtual ~FCFusePass() {}
+
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
+  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 };
 
 }  // namespace ir
