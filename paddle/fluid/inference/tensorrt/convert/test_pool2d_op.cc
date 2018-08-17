@@ -40,11 +40,13 @@ TEST(Pool2dOpConverter, main) {
   std::vector<int> strides({2, 2});
   std::vector<int> paddings({0, 0});
   std::string pooling_t = "max";
+  bool global_pooling = false;
 
   desc.SetAttr("pooling_type", pooling_t);
   desc.SetAttr("ksize", ksize);
   desc.SetAttr("strides", strides);
   desc.SetAttr("paddings", paddings);
+  desc.SetAttr("global_pooling", global_pooling);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
