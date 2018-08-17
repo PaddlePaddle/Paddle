@@ -293,21 +293,16 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
         # step4: Concat the parameters splits together after recv.
-        for varname, splited_var in six.iteritems(self.param_var_mapping):
+        for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
-            dummy_input = program.global_block().create_var()
             grad_send_dummy_out = grad_name_to_send_dummy_out[
                 self.param_name_to_grad_name[param_varname]]
             program.global_block().append_op(
-                type='control_dependency',
-                inputs={'X': grad_send_dummy_out},
-                outputs={'Out': dummy_input})
-            program.global_block().append_op(
                 type="recv",
-                inputs={"X": [dummy_input]},
+                inputs={"X": [grad_send_dummy_out]},
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
@@ -396,7 +391,7 @@ class DistributeTranspiler(object):
 
             op = startup_program.global_block().append_op(
                 type="recv",
-                inputs={},
+                inputs={"X": []},
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
