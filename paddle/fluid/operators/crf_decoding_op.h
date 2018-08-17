@@ -151,7 +151,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 
             __mmask16 mask = _mm512_cmp_ps_mask(score_v, max_score, _CMP_GT_OS);
 
-            max_j = _mm512_mask_set1_epi32(max_j, mask, i);              
+            max_j = _mm512_mask_set1_epi32(max_j, mask, i);
 
             max_score = _mm512_max_ps(max_score, score_v);
             if ( i == tag_num - 1 ) {
