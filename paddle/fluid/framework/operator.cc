@@ -148,20 +148,25 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       VLOG(3) << place << " " << DebugStringEx(&scope);
     }
   } catch (platform::EnforceNotMet exception) {
+    if (Attrs().count("sub_block") != 0) {
+      throw exception;
+    }
+
     auto& callstack = Attr<std::vector<std::string>>(
         OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
 
-    if (!callstack.empty()) {
-      std::ostringstream sout;
-      sout << "Invoke operator " << Type() << " error.\n";
-      sout << "Python callstacks: \n";
-      for (auto& line : callstack) {
-        sout << "\t" << line << "\n";
-      }
-      sout << "C++ callstacks: \n";
-      sout << exception.err_str_;
-      exception.err_str_ = sout.str();
+    if (callstack.empty()) {
+      throw exception;
     }
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python callstacks: \n";
+    for (auto& line : callstack) {
+      sout << "\t" << line << "\n";
+    }
+    sout << "C++ callstacks: \n";
+    sout << exception.err_str_;
+    exception.err_str_ = sout.str();
     throw exception;
   } catch (...) {
     std::rethrow_exception(std::current_exception());
