@@ -276,7 +276,6 @@ class DistributeTranspiler(object):
                 outputs={},
                 attrs={
                     "endpoints": pserver_endpoints,
-                    "sync_mode": True,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
