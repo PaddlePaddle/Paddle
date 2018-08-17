@@ -95,8 +95,9 @@ class TranspilerTest(unittest.TestCase):
     def test_transpiler(self):
         main = fluid.Program()
         startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            self.transpiler_test_impl()
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, startup):
+                self.transpiler_test_impl()
 
 
 class TestBasicModel(TranspilerTest):
