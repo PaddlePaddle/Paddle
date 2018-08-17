@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import framework
+from __future__ import print_function
+
+from . import framework
 import numpy as np
 import contextlib
-from framework import convert_np_dtype_to_dtype_
-from core import VarDesc
+from .core import VarDesc
 
 __all__ = [
     'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
@@ -264,7 +265,8 @@ class NormalInitializer(Initializer):
                 "dtype": int(var.dtype),
                 "mean": self._mean,
                 "std": self._std_dev,
-                "seed": self._seed
+                "seed": self._seed,
+                "use_mkldnn": False
             })
         var.op = op
         return op

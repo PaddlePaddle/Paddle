@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
+import numpy as np
+import six
+
 import paddle.fluid.core as core
 import paddle.fluid.proto.framework_pb2 as framework_pb2
 
@@ -24,13 +29,13 @@ def get_all_op_protos():
     protostrs = core.get_all_op_protos()
     ret_values = []
     for pbstr in protostrs:
-        op_proto = framework_pb2.OpProto.FromString(str(pbstr))
+        op_proto = framework_pb2.OpProto.FromString(six.binary_type(pbstr))
         ret_values.append(op_proto)
     return ret_values
 
 
 def is_str(s):
-    return isinstance(s, str) or isinstance(s, unicode)
+    return isinstance(s, six.string_types)
 
 
 class OpDescCreationMethod(object):
@@ -97,6 +102,8 @@ class OpDescCreationMethod(object):
                 new_attr = op_desc.attrs.add()
                 new_attr.name = attr.name
                 new_attr.type = attr.type
+                if isinstance(user_defined_attr, np.ndarray):
+                    user_defined_attr = user_defined_attr.tolist()
                 if attr.type == framework_pb2.INT:
                     new_attr.i = user_defined_attr
                 elif attr.type == framework_pb2.FLOAT:
@@ -189,7 +196,7 @@ class OperatorFactory(object):
         return self.get_op_info(t).method(**kwargs)
 
     def types(self):
-        return self.op_methods.keys()
+        return list(self.op_methods.keys())
 
     def get_op_info(self, t):
         if t not in self.op_methods:
@@ -197,13 +204,13 @@ class OperatorFactory(object):
         return self.op_methods.get(t)
 
     def get_op_input_names(self, type):
-        return map(lambda x: x[0], self.get_op_info(type).inputs)
+        return [x[0] for x in self.get_op_info(type).inputs]
 
     def get_op_inputs(self, type):
         return self.get_op_info(type).inputs
 
     def get_op_output_names(self, type):
-        return map(lambda x: x[0], self.get_op_info(type).outputs)
+        return [x[0] for x in self.get_op_info(type).outputs]
 
     def get_op_outputs(self, type):
         return self.get_op_info(type).outputs

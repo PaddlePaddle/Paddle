@@ -66,8 +66,17 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_LE(FLAGS_tensorrt_engine_batch_size,
                       context.Attr<int>("max_batch"));
 
+    std::vector<std::string> output_maps =
+        context.Attr<std::vector<std::string>>("output_name_mapping");
+
+    auto params = context.Attr<std::vector<std::string>>("parameters");
+    std::unordered_set<std::string> parameters;
+    for (const auto& param : params) {
+      parameters.insert(param);
+    }
     // Convert input tensor from fluid to engine.
     for (const auto& x : context.Inputs("Xs")) {
+      if (parameters.count(x)) continue;
       // convert input and copy to TRT engine's buffer
       auto& t = inference::analysis::GetFromScope<framework::LoDTensor>(
           context.scope(), x);
@@ -82,10 +91,12 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
     // Execute the engine.
     PADDLE_ENFORCE_GT(FLAGS_tensorrt_engine_batch_size, 0);
     engine->Execute(FLAGS_tensorrt_engine_batch_size);
+
     // Convert output tensor from engine to fluid
+    int output_index = 0;
     for (const auto& y : context.Outputs("Ys")) {
       // convert output and copy to fluid.
-      nvinfer1::ITensor* trt_t = engine->GetITensor(y);
+      nvinfer1::ITensor* trt_t = engine->GetITensor(output_maps[output_index]);
       auto dims = trt_t->getDimensions();
       // Use the output ITensor's dims to reshape the Fluid Tensor.
       std::vector<int> ddim(dims.d, dims.d + dims.nbDims);
@@ -102,7 +113,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       // TODO(Superjomn) change this float to dtype size.
       auto size = inference::analysis::AccuDims(dims.d, dims.nbDims) *
                   FLAGS_tensorrt_engine_batch_size;
-      engine->GetOutputInCPU(y,
+      engine->GetOutputInCPU(output_maps[output_index],
                              fluid_t->mutable_data<float>(platform::CPUPlace()),
                              size * sizeof(float));
       //} else {
@@ -110,6 +121,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
       // y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
       // size * sizeof(float));
       //}
+      output_index += 1;
     }
 
     cudaStreamSynchronize(*engine->stream());

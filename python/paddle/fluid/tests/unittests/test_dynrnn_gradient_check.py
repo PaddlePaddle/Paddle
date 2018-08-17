@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy
 import random
 import collections
@@ -61,13 +63,13 @@ class BaseRNN(object):
         self.num_seq = num_seq
         self.inputs = collections.defaultdict(list)
 
-        for _ in xrange(num_seq):
+        for _ in range(num_seq):
             seq_len = random.randint(1, max_seq_len - 1)
             for iname in ins:
                 ishape = ins[iname].get('shape', None)
                 idtype = ins[iname].get('dtype', 'float32')
                 lst = []
-                for _ in xrange(seq_len):
+                for _ in range(seq_len):
                     lst.append(numpy.random.random(size=ishape).astype(idtype))
                 self.inputs[iname].append(lst)
 
@@ -96,16 +98,16 @@ class BaseRNN(object):
         for out in self.outputs:
             retv[out] = []
 
-        for seq_id in xrange(self.num_seq):
+        for seq_id in range(self.num_seq):
             for mname in self.mems:
                 self.mems[mname].reset()
             for out in self.outputs:
                 self.outputs[out].next_sequence()
 
-            iname0 = self.inputs.keys()[0]
+            iname0 = list(self.inputs.keys())[0]
             seq_len = len(self.inputs[iname0][seq_id])
 
-            for step_id in xrange(seq_len):
+            for step_id in range(seq_len):
                 xargs = dict()
 
                 for iname in self.inputs:
@@ -138,7 +140,7 @@ class BaseRNN(object):
         for iname in self.inputs:
             lod = []
             np_flatten = []
-            for seq_id in xrange(len(self.inputs[iname])):
+            for seq_id in range(len(self.inputs[iname])):
                 seq_len = len(self.inputs[iname][seq_id])
                 lod.append(seq_len)
                 np_flatten.extend(self.inputs[iname][seq_id])
@@ -159,8 +161,8 @@ class BaseRNN(object):
                              " which is not matrix")
         g = numpy.zeros(shape=p.shape, dtype=p.dtype)
 
-        for i in xrange(p.shape[0]):
-            for j in xrange(p.shape[1]):
+        for i in range(p.shape[0]):
+            for j in range(p.shape[1]):
                 o = p[i][j]
                 p[i][j] += delta
                 pos = self._exe_mean_out_()
@@ -184,7 +186,7 @@ class BaseRNN(object):
                 if len(item.shape) != 1:
                     raise ValueError("Not support")
 
-                for i in xrange(len(item)):
+                for i in range(len(item)):
                     o = item[i]
                     item[i] += delta
                     pos = self._exe_mean_out_()
@@ -198,14 +200,14 @@ class BaseRNN(object):
         if not return_one_tensor:
             return grad
 
-        for i in xrange(len(grad)):
+        for i in range(len(grad)):
             grad[i] = numpy.concatenate(grad[i])
         grad = numpy.concatenate(grad)
         return grad
 
     def _exe_mean_out_(self):
         outs = self.exe()
-        return numpy.array([o.mean() for o in outs.itervalues()]).mean()
+        return numpy.array([o.mean() for o in outs.values()]).mean()
 
 
 class SeedFixedTestCase(unittest.TestCase):
@@ -274,13 +276,14 @@ class TestSimpleMul(SeedFixedTestCase):
 
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
-        out, w_g, i_g = map(numpy.array,
-                            exe.run(feed=py_rnn.to_feed(cpu),
-                                    fetch_list=[
-                                        out, self.PARAM_NAME + "@GRAD",
-                                        self.DATA_NAME + "@GRAD"
-                                    ],
-                                    return_numpy=False))
+        out, w_g, i_g = list(
+            map(numpy.array,
+                exe.run(feed=py_rnn.to_feed(cpu),
+                        fetch_list=[
+                            out, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
+                            "@GRAD"
+                        ],
+                        return_numpy=False)))
         out_by_python = py_rnn.exe()[self.OUT_NAME]
         self.assertTrue(numpy.allclose(out, out_by_python))
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
@@ -351,14 +354,15 @@ class TestSimpleMulWithMemory(SeedFixedTestCase):
         cpu = fluid.CPUPlace()
         exe = fluid.Executor(cpu)
         feed = py_rnn.to_feed(cpu)
-        last_np, w_g, i_g = map(numpy.array,
-                                exe.run(feed=feed,
-                                        fetch_list=[
-                                            last, self.PARAM_NAME + "@GRAD",
-                                            self.DATA_NAME + "@GRAD"
-                                        ],
-                                        return_numpy=False))
-        last_by_py, = py_rnn.exe().values()
+        last_np, w_g, i_g = list(
+            map(numpy.array,
+                exe.run(feed=feed,
+                        fetch_list=[
+                            last, self.PARAM_NAME + "@GRAD", self.DATA_NAME +
+                            "@GRAD"
+                        ],
+                        return_numpy=False)))
+        last_by_py, = list(py_rnn.exe().values())
         w_g_num = py_rnn.get_numeric_gradient_of_param(self.PARAM_NAME)
         self.assertTrue(numpy.allclose(last_np, last_by_py))
 

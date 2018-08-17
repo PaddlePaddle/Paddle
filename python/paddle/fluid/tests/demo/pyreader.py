@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy
+import six
 
 import paddle
 import paddle.dataset.mnist as mnist
@@ -31,7 +34,7 @@ def network(is_train):
 
     hidden = img
 
-    for i in xrange(2):
+    for i in six.moves.xrange(2):
         hidden = fluid.layers.fc(input=hidden, size=100, act='tanh')
         hidden = fluid.layers.dropout(
             hidden, dropout_prob=0.5, is_test=not is_train)
@@ -74,7 +77,7 @@ def main():
 
     test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
 
-    for epoch_id in xrange(10):
+    for epoch_id in six.moves.xrange(10):
         train_reader.start()
         try:
             while True:

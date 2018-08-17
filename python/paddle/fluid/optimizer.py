@@ -11,18 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import re
 from collections import defaultdict
 from paddle.fluid.framework import Program, Variable
-import framework
-import layers
-from backward import append_backward
-from framework import program_guard
-import unique_name
-from initializer import Constant
-from layer_helper import LayerHelper
-from regularizer import append_regularization_ops
-from clip import append_gradient_clip_ops, error_clip_callback
+from . import framework
+from . import layers
+from .backward import append_backward
+from .framework import program_guard
+from . import unique_name
+from .initializer import Constant
+from .layer_helper import LayerHelper
+from .regularizer import append_regularization_ops
+from .clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
 
 __all__ = [

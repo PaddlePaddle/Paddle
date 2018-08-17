@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
-import paddle.v2 as paddle
+import paddle
 import numpy as np
 import unittest
 
@@ -21,7 +23,7 @@ import unittest
 class TestReaderReset(unittest.TestCase):
     def prepare_data(self):
         def fake_data_generator():
-            for n in xrange(self.total_ins_num):
+            for n in range(self.total_ins_num):
                 yield np.ones(self.ins_shape) * n, n
 
         # Prepare data

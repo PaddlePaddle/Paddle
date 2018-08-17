@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import math
 import sys
 
@@ -78,7 +80,7 @@ for pass_id in range(PASS_NUM):
 
         if avg_loss_value[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
-        print avg_loss_value[0]
+        print(avg_loss_value[0])
         if math.isnan(float(avg_loss_value)):
             sys.exit("got NaN loss, training failed.")
 exit(1)
