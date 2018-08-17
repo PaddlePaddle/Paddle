@@ -498,10 +498,10 @@ class Operator(object):
             del op_attrs[role_var_name]
 
         callstack = []
-        for fn, lineno, func_name, line_content in reversed(
-                traceback.extract_stack()):
-            callstack.append("Function {2} In file {0}:{1}. Statement is: {3}".
-                             format(fn, lineno, func_name, line_content))
+        iter_callstack = iter(reversed(traceback.format_stack()))
+        next(iter_callstack)
+        for stack_line in iter_callstack:
+            callstack.append(stack_line)
         callstack_var_name = op_maker.kOpCreationCallstackAttrName()
         op_attrs[callstack_var_name] = callstack
 
