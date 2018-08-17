@@ -70,9 +70,10 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   std::vector<T> pad_value = {0}, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
-    auto seq_offsets = framework::ToAbsOffset(seq_tensor.lod())[lod_level];
-    auto seq_tensor_dims = seq_tensor.dims();
-    auto pad_tensor_dims = pad_tensor->dims();
+    auto seq_lod = seq_tensor.lod();
+    const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
+    const auto& seq_tensor_dims = seq_tensor.dims();
+    const auto& pad_tensor_dims = pad_tensor->dims();
     if (pad_seq_len == -1) {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
@@ -91,12 +92,21 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
 
     // fill padding value
     T* pad_data = pad_tensor->data<T>();
-    for (int i = 0; i < pad_tensor->numel() / step_width; ++i) {
-      memcpy(pad_data, pad_value.data(), step_width * sizeof(T));
+    for (int i = 0; i < pad_tensor->numel(); i += step_width) {
+      memcpy(pad_data + i, pad_value.data(), step_width * sizeof(T));
     }
 
     CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
                      step_width, norm_by_times, kSeqToPad, layout);
+
+    // Set pad_tensor's lod info if possible
+    if (layout == kBatchLengthWidth) {
+      framework::LoD pad_lod(seq_lod.begin() + lod_level, seq_lod.end());
+      for (size_t i = 0; i < pad_lod[0].size(); ++i) {
+        pad_lod[0][i] = i * pad_seq_len;
+      }
+      pad_tensor->set_lod(pad_lod);
+    }
   }
 };
 
@@ -109,8 +119,8 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout& layout = kBatchLengthWidth) {
     auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
-    auto seq_tensor_dims = seq_tensor->dims();
-    auto pad_tensor_dims = pad_tensor.dims();
+    const auto& seq_tensor_dims = seq_tensor->dims();
+    const auto& pad_tensor_dims = pad_tensor.dims();
     if (pad_seq_len == -1) {
       pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
