@@ -154,11 +154,6 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
             max_j = _mm512_mask_set1_epi32(max_j, mask, i);
 
             max_score = _mm512_max_ps(max_score, score_v);
-            if ( i == tag_num - 1 ) {
-              __m512 x_content = _mm512_loadu_ps((const float*)(x +
-                                              seq_offset + tag_num + j_offset));
-              max_score = _mm512_add_ps(max_score, x_content);
-            }
 #else
             __m256 alpha_content = _mm256_broadcast_ss((const float*)
                                       (alpha_value + seq_offset + i));
@@ -191,21 +186,22 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 #endif
 
             max_score = _mm256_max_ps(max_score, score_v);
-            if ( i == tag_num - 1 ) {
-              __m256 x_content = _mm256_loadu_ps((const float*)(x +
-                                              seq_offset + tag_num + j_offset));
-              max_score = _mm256_add_ps(max_score, x_content);
-            }
 #endif
             trans_offset += tag_num;
           }
 
 #ifdef __AVX512F__
+          __m512 x_content = _mm512_loadu_ps((const float*)(x +
+                                          seq_offset + tag_num + j_offset));
+          max_score = _mm512_add_ps(max_score, x_content);
           _mm512_storeu_ps((float *)(alpha_value +
                             seq_offset + tag_num + j_offset), max_score);
           _mm512_storeu_si512((__m512i *)(track_value + seq_offset + tag_num +
                               j_offset), max_j);
 #else
+          __m256 x_content = _mm256_loadu_ps((const float*)(x +
+                                          seq_offset + tag_num + j_offset));
+          max_score = _mm256_add_ps(max_score, x_content);
           _mm256_storeu_ps((float *)(alpha_value +
                             seq_offset + tag_num + j_offset), max_score);
           _mm256_storeu_si256((__m256i *)(track_value + seq_offset + tag_num +
