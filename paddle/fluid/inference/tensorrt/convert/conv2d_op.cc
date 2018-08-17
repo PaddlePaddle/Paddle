@@ -35,12 +35,20 @@ class Conv2dOpConverter : public OpConverter {
     auto* Y_v = scope.FindVar(op_desc.Input("Filter").front());
     PADDLE_ENFORCE_NOT_NULL(Y_v);
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
-    auto* weight_data = Y_t->mutable_data<float>(platform::CPUPlace());
 
-    PADDLE_ENFORCE_EQ(Y_t->dims().size(), 4UL);
-    const int n_output = Y_t->dims()[0];
-    const int filter_h = Y_t->dims()[2];
-    const int filter_w = Y_t->dims()[3];
+    platform::CPUPlace cpu_place;
+    framework::LoDTensor* weight_tensor = new framework::LoDTensor();
+    weight_tensor->Resize(Y_t->dims());
+    TensorCopySync((*Y_t), cpu_place, weight_tensor);
+    engine_->weight_map[op_desc.Input("Filter").front()] =
+        std::move(std::unique_ptr<framework::Tensor>(weight_tensor));
+    auto* weight_data =
+        weight_tensor->mutable_data<float>(platform::CPUPlace());
+
+    PADDLE_ENFORCE_EQ(weight_tensor->dims().size(), 4UL);
+    const int n_output = weight_tensor->dims()[0];
+    const int filter_h = weight_tensor->dims()[2];
+    const int filter_w = weight_tensor->dims()[3];
 
     const int groups = boost::get<int>(op_desc.GetAttr("groups"));
     const std::vector<int> dilations =
@@ -57,7 +65,7 @@ class Conv2dOpConverter : public OpConverter {
 
     TensorRTEngine::Weight weight{nvinfer1::DataType::kFLOAT,
                                   static_cast<void*>(weight_data),
-                                  Y_t->memory_size() / sizeof(float)};
+                                  weight_tensor->memory_size() / sizeof(float)};
 
     TensorRTEngine::Weight bias{nvinfer1::DataType::kFLOAT, nullptr, 0};
     auto* layer = TRT_ENGINE_ADD_LAYER(
