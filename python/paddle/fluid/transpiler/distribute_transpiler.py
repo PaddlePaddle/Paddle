@@ -34,6 +34,7 @@ import math
 import random
 import numpy as np
 import collections
+import six
 
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
