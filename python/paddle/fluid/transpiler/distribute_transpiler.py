@@ -264,12 +264,11 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    "sync_mode": True,
+                    "sync_mode": not self.sync_mode,
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 
-        grad_name_to_send_dummy_out
         if self.sync_mode:
             program.global_block().append_op(
                 type="send_barrier",
@@ -277,7 +276,7 @@ class DistributeTranspiler(object):
                 outputs={},
                 attrs={
                     "endpoints": pserver_endpoints,
-                    "sync_mode": self.sync_mode,
+                    "sync_mode": True,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
@@ -307,7 +306,7 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    "sync_mode": True
+                    "sync_mode": not self.sync_mode
                 })
 
         if self.sync_mode:
