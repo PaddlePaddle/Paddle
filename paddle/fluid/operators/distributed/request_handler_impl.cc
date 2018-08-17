@@ -130,6 +130,7 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
+  // TODO(tangwei12): find out why scope will be error.
   auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
