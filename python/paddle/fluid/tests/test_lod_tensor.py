@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
 from paddle.fluid.lod_tensor import create_lod_tensor, create_random_int_lodtensor
 import numpy as np
