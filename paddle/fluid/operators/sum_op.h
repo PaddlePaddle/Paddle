@@ -115,7 +115,7 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
       if (in_dim.empty()) {
-        VLOG(3) << "WARNING: all the inputs are empty"
+        VLOG(3) << "WARNING: all the inputs are empty";
       }
 
       in_dim[0] = static_cast<int64_t>(first_dim);
