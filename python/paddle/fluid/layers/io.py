@@ -265,9 +265,9 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     assert (type(get_vars) == list)
 
     if dummy_input is None:
-        dummy_output = []
+        dummy_input = []
     elif isinstance(dummy_input, Variable):
-        dummy_output = [dummy_input]
+        dummy_input = [dummy_input]
 
     assert (type(dummy_input) == list)
 
