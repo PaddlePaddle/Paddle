@@ -16,6 +16,7 @@ import collections
 import contextlib
 import re
 import six
+import traceback
 
 import numpy as np
 
@@ -495,6 +496,14 @@ class Operator(object):
 
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
+
+        callstack = []
+        for fn, lineno, func_name, line_content in reversed(
+                traceback.extract_stack()):
+            callstack.append("Function {2} In file {0}:{1}. Statement is: {3}".
+                             format(fn, lineno, func_name, line_content))
+        callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+        op_attrs[callstack_var_name] = callstack
 
         if len(self.desc.type()) != 0:
             return
