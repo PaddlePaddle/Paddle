@@ -171,6 +171,9 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "tensorrt_engine_op")
           message(STATUS "Pybind skips [tensorrt_engine_op], for this OP is only used in inference")
+      elseif(${TARGET} STREQUAL "fc")
+        # HACK: fc only have mkldnn and cpu, which would mismatch the cpu only condition
+        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()
@@ -301,12 +304,6 @@ op_library(channel_send_op DEPS concurrency)
 op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
-
-# The fully connected layer is deleted when the WITH_MKLDNN flag is OFF
-# Because the fully connected layer has only one MKLDNN's operator
-if(NOT WITH_MKLDNN)
-    list(REMOVE_ITEM GENERAL_OPS fc_op)
-endif(NOT WITH_MKLDNN)
 
 foreach(src ${GENERAL_OPS})
     op_library(${src})

@@ -81,6 +81,8 @@ class OpDesc {
 
   Attribute GetAttr(const std::string &name) const;
 
+  const proto::OpProto::Attr &GetProtoAttr(const std::string &name) const;
+
   Attribute GetNullableAttr(const std::string &name) const;
 
   int GetBlockAttrId(const std::string &name) const;

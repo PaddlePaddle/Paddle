@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
+import six
 from op_test import OpTest
 import paddle.fluid.core as core
 from paddle.fluid.op import Operator
@@ -59,7 +62,7 @@ class TestSpliteIds(unittest.TestCase):
         x_tensor = x.get_tensor()
         x_tensor.set(np_array, place)
 
-        outs_name = ["out%d" % i for i in xrange(3)]
+        outs_name = ["out%d" % i for i in six.moves.xrange(3)]
         outs = [
             scope.var(var_name).get_selected_rows() for var_name in outs_name
         ]

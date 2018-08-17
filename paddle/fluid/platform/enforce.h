@@ -263,7 +263,8 @@ inline void throw_on_error(T e) {
  *    PADDLE_ENFORCE_EQ(a, b);
  *
  *    will raise an expression described as follows:
- *    "enforce a == b failed, 1 != 2" with detailed stack information.
+ *    "Enforce failed. Expected input a == b, but received a(1) != b(2)."
+ *      with detailed stack information.
  *
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
@@ -292,9 +293,10 @@ inline void throw_on_error(T e) {
 #define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
   do {                                                                  \
     if (UNLIKELY(!((__VAL0)__CMP(__VAL1)))) {                           \
-      PADDLE_THROW("enforce %s " #__CMP " %s failed, %s " #__INV_CMP    \
-                   " %s\n%s",                                           \
-                   #__VAL0, #__VAL1, paddle::string::to_string(__VAL0), \
+      PADDLE_THROW("Enforce failed. Expected %s " #__CMP                \
+                   " %s, but received %s:%s " #__INV_CMP " %s:%s.\n%s", \
+                   #__VAL0, #__VAL1, #__VAL0,                           \
+                   paddle::string::to_string(__VAL0), #__VAL1,          \
                    paddle::string::to_string(__VAL1),                   \
                    paddle::string::Sprintf("" __VA_ARGS__));            \
     }                                                                   \
