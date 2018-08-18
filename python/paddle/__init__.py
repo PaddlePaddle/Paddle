@@ -24,4 +24,5 @@ except ImportError:
 import paddle.reader
 import paddle.dataset
 import paddle.batch
+import paddle.compat
 batch = batch.batch

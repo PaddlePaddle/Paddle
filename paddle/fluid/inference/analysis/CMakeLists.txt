@@ -8,7 +8,7 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   helper.cc
         model_store_pass.cc
   DEPS framework_proto proto_desc)
-cc_test(test_node SRCS node_tester.cc DEPS analysis)
+cc_test(test_node SRCS node_tester.cc DEPS analysis gflags glog gtest)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
 cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis)
 

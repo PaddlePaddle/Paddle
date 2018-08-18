@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import math
 
 import unittest
@@ -49,6 +51,7 @@ class TranspilerTest(unittest.TestCase):
 
     def get_main_program(self):
         main = fluid.Program()
+        main.random_seed = 1
         with fluid.program_guard(main):
             self.net_conf()
         self.origin_prog = main.clone()
