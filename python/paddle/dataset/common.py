@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import requests
 import hashlib
 import os
@@ -85,10 +87,10 @@ def download(url, module_name, md5sum, save_name=None):
         total_length = r.headers.get('content-length')
 
         if total_length is None:
-            with open(filename, 'w') as f:
+            with open(filename, 'wb') as f:
                 shutil.copyfileobj(r.raw, f)
         else:
-            with open(filename, 'w') as f:
+            with open(filename, 'wb') as f:
                 dl = 0
                 total_length = int(total_length)
                 for data in r.iter_content(chunk_size=4096):

@@ -17,10 +17,12 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/rw_lock.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
 
@@ -48,13 +50,13 @@ class SelectedRows {
   SelectedRows(const std::vector<int64_t>& rows, const int64_t& height)
       : rows_(rows), height_(height) {
     value_.reset(new Tensor());
-    auto_grown_mutex_.reset(new std::mutex);
+    rwlock_.reset(new RWLock);
   }
 
   SelectedRows() {
     height_ = 0;
     value_.reset(new Tensor());
-    auto_grown_mutex_.reset(new std::mutex);
+    rwlock_.reset(new RWLock);
   }
 
   platform::Place place() const { return value_->place(); }
@@ -74,36 +76,6 @@ class SelectedRows {
   void set_rows(const Vector<int64_t>& rows) { rows_ = rows; }
 
   /*
-   * @brief wheter has the specified key in the table.
-   *
-   * @return true if the key is exists.
-   */
-  bool HasKey(int64_t key) const;
-
-  /*
-   * @brief Get value by the key list, if the
-   *
-   * @return a list of pair which contains the non-exists key and the index in
-   * the value
-   */
-  std::vector<std::pair<int64_t, int64_t>> Get(const std::vector<int64_t>& keys,
-                                               framework::Tensor* value) const;
-
-  /*
-   * @brief Set a key-value pair into the table.
-   *  This function will double the value memory if it's not engouth.
-   *
-   * @note:
-   *    1. The first dim of the value should be 1
-   *    2. The value should be initialized and the data type
-   *       should be the same with the table.
-   *
-   * @return true if the key is a new one, otherwise false
-   *
-   */
-  bool Set(int64_t key, const Tensor& value);
-
-  /*
    * @brief Get the index of key in rows
    *
    * @return -1 if the key does not exists.
@@ -111,10 +83,44 @@ class SelectedRows {
   int64_t Index(int64_t key) const {
     auto it = std::find(rows_.begin(), rows_.end(), key);
     if (it == rows_.end()) {
-      return static_cast<int64_t>(-1);
+      PADDLE_THROW("id %s not in table", key);
     }
     return static_cast<int64_t>(std::distance(rows_.begin(), it));
   }
+
+  /*
+   * @brief whether has the specified key in the table.
+   *
+   * @return true if the key is exists.
+   */
+  bool HasKey(int64_t key) const;
+
+  /*
+   * @brief Get value by the key list.
+   * Note!!! this interface is only used when selected_rows is used as
+   * parameters
+   * for distribute lookup table.
+   *
+   * @return a list of pair which contains the non-exists key and the index in
+   * the value
+   */
+  void Get(const framework::Tensor& ids, framework::Tensor* value,
+           bool auto_grown = false);
+
+  /*
+   * @brief Get the index of the key from id_to_index_ map. If the key not
+   * exist,
+   * add the key into id_to_index_.
+   *
+   * Note!!! this interface is only used when selected_rows is used as
+   * parameters
+   * for distribute lookup table.
+   *
+   * @return index of the key.
+   */
+  int64_t AutoGrownIndex(int64_t key, bool auto_grown);
+
+  void SyncIndex();
 
   DDim GetCompleteDims() const {
     std::vector<int64_t> dims = vectorize(value_->dims());
@@ -127,9 +133,10 @@ class SelectedRows {
   // SelectedRows are simply concated when adding together. Until a
   // SelectedRows add a Tensor, will the duplicate rows be handled.
   Vector<int64_t> rows_;
+  std::unordered_map<int64_t, int64_t> id_to_index_;
   std::unique_ptr<Tensor> value_{nullptr};
   int64_t height_;
-  std::unique_ptr<std::mutex> auto_grown_mutex_{nullptr};
+  std::unique_ptr<RWLock> rwlock_{nullptr};
 };
 
 /*
