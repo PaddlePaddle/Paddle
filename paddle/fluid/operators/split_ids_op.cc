@@ -21,7 +21,12 @@ class SplitIdsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}");
-    AddOutput("Out", "(LoDTensor) The outputs of the input Ids.")
+    AddInput(
+        "Refs",
+        "if this has value, split lod by the it and share the lod information")
+        .AsDuplicable()
+        .AsDispensable();
+    AddOutput("Out", "(LoDTensors) The outputs of the input Ids.")
         .AsDuplicable();
 
     AddComment(R"DOC(
@@ -50,8 +55,15 @@ class SplitIdsOp : public framework::OperatorWithKernel {
     auto ids_dims = ctx->GetInputDim("Ids");
     if (ids_var_type == framework::proto::VarType::LOD_TENSOR) {
       PADDLE_ENFORCE_EQ(ids_dims.size(), 2);
-      PADDLE_ENFORCE_EQ(ids_dims[1], 1);
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<framework::Tensor>("Ids")->type()),
+        ctx.GetPlace());
   }
 };
 
