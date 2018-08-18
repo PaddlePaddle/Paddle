@@ -2,7 +2,6 @@ cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
 cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
   helper.cc
-  model_store_pass.cc
   # passes
   fluid_to_data_flow_graph_pass.cc
   data_flow_graph_to_fluid_pass.cc
@@ -10,6 +9,7 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   tensorrt_subgraph_pass.cc
   tensorrt_subgraph_node_mark_pass.cc
   fluid_to_ir_pass.cc
+  model_store_pass.cc
   DEPS framework_proto proto_desc ir_pass_manager graph pass)
 
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
