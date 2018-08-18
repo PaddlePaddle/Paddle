@@ -140,7 +140,7 @@ class TestSpliteIdsByRefs(unittest.TestCase):
 
         out_concated = np.concatenate(
             (np.array(out1_t), np.array(out2_t), np.array(out3_t)), axis=0)
-        self.assertTrue((embedding_out_data == out_concated).all())
+        self.assertTrue((np.array(embedding_out_t) == out_concated).all())
         self.assertEqual(id1_t.lod(), out1_t.lod())
         self.assertEqual(id2_t.lod(), out2_t.lod())
         self.assertEqual(id3_t.lod(), out3_t.lod())

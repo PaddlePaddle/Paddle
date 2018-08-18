@@ -39,6 +39,7 @@ __all__ = [
     'ones',
     'zeros',
     'reverse',
+    'split_ids',
 ]
 
 
@@ -652,3 +653,38 @@ def load_combine(out, file_path):
         inputs={},
         output={"Out": out},
         args={"file_path": file_path})
+
+
+def split_ids(ids, refs, name=None):
+    """
+    Split input ids(LoDTensor) into multiple LodTensors by the refs. The outputs num
+    is equal to the refs's num, each output' first dimension and lod is the same with
+    the corresponding refs.
+
+    Args:
+        ids(LodTensor): An LodTensor, the first dimension has relation shape with ids.
+        for example, the result of lookup table op.
+        refs(list<LodTensor>): List of LodTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the split_ids
+
+    Examples:
+        .. code-block:: python
+
+           out = fluid.layers.split_ids(ids=ids, refs=[id1, id2, id3])
+    """
+    helper = LayerHelper('split_ids', **locals())
+    outs = []
+    for ref in refs:
+        out = helper.create_tmp_variable(dtype=ids.dtype)
+        outs.append(out)
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='split_ids',
+        inputs={'Ids': ids,
+                'Refs': refs},
+        outputs={'Out': outs})
+    return outs
