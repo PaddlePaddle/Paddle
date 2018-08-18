@@ -132,18 +132,22 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
     Node *x;
     if (ir_node->IsOp()) {
       PADDLE_ENFORCE(ir_node->Op()->Proto());
+      LOG(INFO) << "get op " << ir_node->Name();
       x = nodes.Create(Node::Type::kFunction);
       x->attr("ir_node").Pointer() = ir_node;
       x->SetName(ir_node->Op()->Proto()->type());
       x->SetPbMsg(ir_node->Op()->Proto()->SerializeAsString());
+      LOG(INFO) << "<<";
     } else if (ir_node->IsVar()) {
       // Not create a Node for IR ControlDepVar, considering Inference currently
       // just used in single thread scenerio.
       if (ir_node->Var()) {
+        LOG(INFO) << "get var " << ir_node->Name();
         x = nodes.Create(Node::Type::kValue);
         x->attr("ir_node").Pointer() = ir_node;
         x->SetName(ir_node->Name());
         x->SetPbMsg(ir_node->Var()->Proto()->SerializeAsString());
+        LOG(INFO) << "<<";
       } else {
         LOG(INFO) << "detect IR control node " << ir_node->Name();
         continue;
@@ -153,7 +157,9 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
     }
     ir_node_map.emplace(ir_node, x);
   }
+  LOG(INFO) << "finish creating var";
 
+  LOG(INFO) << "to create edge";
   // Create links
   for (auto *ir_node : graph.Nodes()) {
     auto it = ir_node_map.find(ir_node);
@@ -173,6 +179,7 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
   Build();
 
   ir_graph = &graph;
+  LOG(INFO) << "finished build from IR";
 }
 
 bool DataFlowGraph::IsFullyConnected() const {

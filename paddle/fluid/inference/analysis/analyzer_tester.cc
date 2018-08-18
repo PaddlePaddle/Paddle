@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <google/protobuf/text_format.h>
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
@@ -96,3 +97,7 @@ TEST(Analyzer, SupportIRPass) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
+
+USE_PASS(fc_fuse_pass);
+USE_PASS(graph_viz_pass);
+USE_PASS(infer_clean_graph_pass);

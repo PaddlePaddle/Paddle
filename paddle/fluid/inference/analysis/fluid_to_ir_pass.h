@@ -50,20 +50,21 @@ class FluidToIrPass final : public DataFlowGraphPass {
     argument_ = argument;
     return true;
   }
+
   bool Finalize() override { return true; }
 
   void Run(DataFlowGraph *graph) override {
     // Call all the IR Passes
     framework::ProgramDesc p(*argument_->origin_program_desc);
     IRPassManager ir_passes(p);
-    ir_passes.Apply(std::vector<std::string>({
-        // Manual update the passes here.
-    }));
+    ir_passes.Apply(std::vector<std::string>(
+        {// Manual update the passes here.
+         "graph_viz_pass", "infer_clean_graph_pass", "graph_viz_pass",
+         "fc_fuse_pass", "graph_viz_pass"}));
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
     PADDLE_ENFORCE(argument_->main_dfg->IsFullyConnected());
-    // LOG(INFO) << argument_->main_dfg->DotString();
   }
 
   std::string repr() const override { return "fluid-to-ir-pass"; }
