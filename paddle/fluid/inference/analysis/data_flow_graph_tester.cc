@@ -82,10 +82,6 @@ TEST(DataFlowGraph, TS) {
     source->outlinks.push_back(target);
   };
 
-  // graph.inputs.push_back(graph.nodes.GetMutable(0));
-  // graph.inputs.push_back(graph.nodes.GetMutable(1));
-  // graph.inputs.push_back(graph.nodes.GetMutable(2));
-
   add_link(0, 4);
   add_link(0, 5);
   add_link(1, 6);
