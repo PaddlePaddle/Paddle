@@ -30,7 +30,7 @@ TEST(DFG_StorePass, test) {
   argument.model_output_store_path.reset(
       new std::string("./_dfg_store_pass_tmp"));
   // disable storage in alalyzer
-  FLAGS_inference_analysis_output_storage_path = "";
+  FLAGS_IA_output_storage_path = "";
   analyzer.Run(&argument);
 
   ModelStorePass pass;

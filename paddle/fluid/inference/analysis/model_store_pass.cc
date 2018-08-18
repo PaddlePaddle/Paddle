@@ -48,6 +48,8 @@ void ModelStorePass::Run(DataFlowGraph *x) {
   PADDLE_ENFORCE_NOT_NULL(argument_->transformed_program_desc,
                           "program desc is not transformed, should call "
                           "DataFlowGraphToFluidPass first.");
+  LOG(INFO) << "store analyzed program to "
+            << *argument_->model_output_store_path;
   const std::string program_output_path =
       *argument_->model_output_store_path + "/__model__";
   std::ofstream file(program_output_path, std::ios::binary);
@@ -57,6 +59,8 @@ void ModelStorePass::Run(DataFlowGraph *x) {
       argument_->transformed_program_desc->SerializeAsString();
   file.write(serialized_message.c_str(), serialized_message.size());
 }
+
+bool ModelStorePass::Finalize() { return true; }
 
 }  // namespace analysis
 }  // namespace inference

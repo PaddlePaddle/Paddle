@@ -63,7 +63,7 @@ class FluidToIrPass final : public DataFlowGraphPass {
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
     PADDLE_ENFORCE(argument_->main_dfg->IsFullyConnected());
-    LOG(INFO) << argument_->main_dfg->DotString();
+    // LOG(INFO) << argument_->main_dfg->DotString();
   }
 
   std::string repr() const override { return "fluid-to-ir-pass"; }
