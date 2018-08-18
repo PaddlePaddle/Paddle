@@ -255,7 +255,8 @@ class DistributeTranspiler(object):
                 AssertionError("Can not insert the send op by original "
                                "variable name :", splited_grad_varname)
 
-            dummy_output = program.global_block().create_var()
+            dummy_output = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
             grad_name_to_send_dummy_out[grad_varname] = dummy_output
             program.global_block()._insert_op(
                 index=index + 1,
