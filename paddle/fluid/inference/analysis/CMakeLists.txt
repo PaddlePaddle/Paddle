@@ -37,7 +37,7 @@ function (inference_analysis_test TARGET)
     endif(WITH_TESTING)
 endfunction(inference_analysis_test)
 
-cc_test(test_analyzer SRCS analyzer_tester.cc DEPS paddle_fluid
+cc_test(test_analyzer SRCS analyzer_tester.cc DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
         ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
 set_tests_properties(test_analyzer PROPERTIES DEPENDS test_word2vec)
 
