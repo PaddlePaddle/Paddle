@@ -37,11 +37,11 @@ class Conv2dOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
 
     platform::CPUPlace cpu_place;
-    framework::LoDTensor* weight_tensor = new framework::LoDTensor();
+    std::unique_ptr<framework::LoDTensor> weight_tensor(
+        new framework::LoDTensor());
     weight_tensor->Resize(Y_t->dims());
-    TensorCopySync((*Y_t), cpu_place, weight_tensor);
-    engine_->weight_map[op_desc.Input("Filter").front()] =
-        std::move(std::unique_ptr<framework::Tensor>(weight_tensor));
+    TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
+
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
 
@@ -78,6 +78,8 @@ class Conv2dOpConverter : public OpConverter {
     layer->setNbGroups(groups);
 
     auto output_name = op_desc.Output("Output").front();
+    engine_->weight_map[op_desc.Input("Filter").front()] =
+        std::move(weight_tensor);
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {
       engine_->DeclareOutput(output_name);

@@ -78,10 +78,8 @@ class FcOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(weight_tensor.dims().size(), 2UL);  // a matrix
     size_t n_output = weight_tensor.dims()[1];
 
-    framework::LoDTensor* tmp = new framework::LoDTensor();
+    std::unique_ptr<framework::Tensor> tmp(new framework::LoDTensor());
     tmp->Resize(weight_tensor.dims());
-    engine_->weight_map[op_desc.Input("Y").front()] =
-        std::move(std::unique_ptr<framework::Tensor>(tmp));
 
     memcpy(tmp->mutable_data<float>(platform::CPUPlace()), weight_data,
            Y_t->dims()[0] * Y_t->dims()[1] * sizeof(float));
@@ -110,6 +108,7 @@ class FcOpConverter : public OpConverter {
 
     auto output_name = op_desc.Output("Out").front();
     engine_->SetITensor(output_name, layer->getOutput(0));
+    engine_->weight_map[op_desc.Input("Y").front()] = std::move(tmp);
     if (test_mode) {
       engine_->DeclareOutput(output_name);
     }
