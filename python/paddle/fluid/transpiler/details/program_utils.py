@@ -96,6 +96,8 @@ def op_to_code(op):
         outputs_str += "{name}=".format(name=op.output_names[i])
         o = op.output(op.output_names[i])
         outputs_str += "{value}".format(value=o)
+        if i != len(op.output_names) - 1:
+            outputs_str += ", "
     outputs_str += "}"
 
     inputs_str = "{"
@@ -104,6 +106,8 @@ def op_to_code(op):
         o = op.input(op.input_names[i])
         inputs_str += "{value}".format(value=o)
 
+        if i != len(op.input_names) - 1:
+            inputs_str += ", "
     inputs_str += "}"
 
     attrs_str = ""
@@ -129,7 +133,7 @@ def op_to_code(op):
         if i != len(op.attr_names) - 1:
             attrs_str += ", "
 
-    if outputs_str != "":
+    if outputs_str != "{}":
         op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
             format(outputs = outputs_str, op_type=op.type, inputs=inputs_str, attrs=attrs_str)
     else:
@@ -159,7 +163,10 @@ def program_to_code(prog):
         for var in all_vars:
             print("{}{}".format(
                 get_indent_space(indent), variable_to_code(var[1])))
-        print("")
+
+        if len(all_vars) > 0:
+            print("")
+
         for op in block.ops:
             print("{}{}".format(get_indent_space(indent), op_to_code(op)))
         indent -= 1
