@@ -37,23 +37,20 @@ class SendBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-    bool sync_mode = Attr<bool>("sync_mode");
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>(
             Attr<int>("trainer_id"));
 
-    VLOG(3) << "SendBarrierOp sync_mode:" << sync_mode;
+    VLOG(3) << "SendBarrierOp sync";
 
     // need to wait before sending send_barrier message
     PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
-    if (sync_mode) {
-      for (auto& ep : eps) {
-        VLOG(3) << "send barrier, ep: " << ep;
-        rpc_client->AsyncSendBatchBarrier(ep);
-      }
-      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+    for (auto& ep : eps) {
+      VLOG(3) << "send barrier, ep: " << ep;
+      rpc_client->AsyncSendBatchBarrier(ep);
     }
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 
@@ -72,7 +69,6 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 

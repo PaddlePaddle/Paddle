@@ -20,15 +20,18 @@ dataset. And a pre-trained word vector model based on Wikipedia corpus is used
 to initialize SRL model.
 """
 
+from __future__ import print_function
+
 import tarfile
 import gzip
 import itertools
 import paddle.dataset.common
-from six.moves import zip
+import paddle.compat as cpt
+from six.moves import zip, range
 
 __all__ = ['test, get_dict', 'get_embedding', 'convert']
 
-DATA_URL = 'http://www.cs.upc.edu/~srlconll/conll05st-tests.tar.gz'
+DATA_URL = 'http://paddlemodels.bj.bcebos.com/conll05st/conll05st-tests.tar.gz'
 DATA_MD5 = '387719152ae52d60422c016e92a742fc'
 WORDDICT_URL = 'http://paddlemodels.bj.bcebos.com/conll05st%2FwordDict.txt'
 WORDDICT_MD5 = 'ea7fb7d4c75cc6254716f0177a506baa'
@@ -89,8 +92,8 @@ def corpus_reader(data_path, words_name, props_name):
             labels = []
             one_seg = []
             for word, label in zip(words_file, props_file):
-                word = word.strip()
-                label = label.strip().split()
+                word = cpt.to_text(word.strip())
+                label = cpt.to_text(label.strip().split())
 
                 if len(label) == 0:  # end of sentence
                     for i in range(len(one_seg[0])):

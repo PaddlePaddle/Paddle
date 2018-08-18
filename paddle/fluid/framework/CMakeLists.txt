@@ -115,6 +115,8 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 # cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 
+cc_test(rw_lock_test SRCS rw_lock_test.cc)
+
 # disable test temporarily.
 # TODO https://github.com/PaddlePaddle/Paddle/issues/11971
 # cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
