@@ -41,12 +41,10 @@ class ElementwiseWeightOpConverter : public OpConverter {
     auto* Y_t = Y_v->GetMutable<framework::LoDTensor>();
 
     platform::CPUPlace cpu_place;
-    framework::LoDTensor* weight_tensor = new framework::LoDTensor();
+    std::unique_ptr<framework::LoDTensor> weight_tensor(
+        new framework::LoDTensor());
     weight_tensor->Resize(Y_t->dims());
-    TensorCopySync((*Y_t), cpu_place, weight_tensor);
-    engine_->weight_map[op_desc.Input("Y").front()] =
-        std::move(std::unique_ptr<framework::Tensor>(weight_tensor));
-
+    TensorCopySync((*Y_t), cpu_place, weight_tensor.get());
     auto* weight_data =
         weight_tensor->mutable_data<float>(platform::CPUPlace());
     auto scale_mode = nvinfer1::ScaleMode::kELEMENTWISE;
@@ -90,6 +88,8 @@ class ElementwiseWeightOpConverter : public OpConverter {
         engine_, Scale, *const_cast<nvinfer1::ITensor*>(X), scale_mode,
         shift_weights.get(), scale_weights.get(), power_weights.get());
     auto output_name = op_desc.Output("Out")[0];
+
+    engine_->weight_map[op_desc.Input("Y").front()] = std::move(weight_tensor);
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {  // the test framework can not determine which is the
                       // output, so place the declaration inside.
