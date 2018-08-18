@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
-import paddle
 from __future__ import print_function
 
 import six
+
+from paddle.fluid import core
+import paddle
 
 
 def delete_ops(block, ops):
@@ -90,31 +91,20 @@ def op_to_code(op):
         string: The foramtted string.
     """
 
-    outputs_str = ""
+    outputs_str = "{"
     for i in range(0, len(op.output_names)):
+        outputs_str += "{name}=".format(name=op.output_names[i])
         o = op.output(op.output_names[i])
-        for n in o:
-            outputs_str += "{name}".format(name=n)
+        outputs_str += "{value}".format(value=o)
+    outputs_str += "}"
 
-            if n != o[len(o) - 1]:
-                outputs_str += ", "
-
-        if i != len(op.output_names) - 1:
-            outputs_str += ", "
-
-    inputs_str = "["
+    inputs_str = "{"
     for i in range(0, len(op.input_names)):
+        inputs_str += "{name}=".format(name=op.input_names[i])
         o = op.input(op.input_names[i])
-        for n in o:
-            inputs_str += "{name}".format(name=n)
+        inputs_str += "{value}".format(value=o)
 
-            if n != o[len(o) - 1]:
-                inputs_str += ", "
-
-        if i != len(op.input_names) - 1:
-            inputs_str += ", "
-
-    inputs_str += "]"
+    inputs_str += "}"
 
     attrs_str = ""
     for i in range(0, len(op.attr_names)):
@@ -161,17 +151,17 @@ def program_to_code(prog):
     indent = 0
     block_idx = 0
     for block in prog.blocks:
-        print "{0}{1} // block {2}".format(
-            get_indent_space(indent), '{', block_idx)
+        print("{0}{1} // block {2}".format(
+            get_indent_space(indent), '{', block_idx))
         indent += 1
         # sort all vars
         all_vars = sorted(block.vars.iteritems(), key=lambda x: x[0])
         for var in all_vars:
-            print "{}{}".format(
-                get_indent_space(indent), variable_to_code(var[1]))
-        print ""
+            print("{}{}".format(
+                get_indent_space(indent), variable_to_code(var[1])))
+        print("")
         for op in block.ops:
-            print "{}{}".format(get_indent_space(indent), op_to_code(op))
+            print("{}{}".format(get_indent_space(indent), op_to_code(op)))
         indent -= 1
-        print "{0}{1}".format(get_indent_space(indent), '}')
+        print("{0}{1}".format(get_indent_space(indent), '}'))
         block_idx += 1
