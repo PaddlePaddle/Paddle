@@ -1242,6 +1242,7 @@ class DistributeTranspiler(object):
         ref_inputs = []
         for p, p_bak in self.param_bak_list:
             if p.name == param_var.name:
+                print("#### ref inputs: ", param_var.name, p_bak.name)
                 ref_inputs.append(p_bak)
         block.append_op(
             type="ref_by_trainer_id",

@@ -44,7 +44,7 @@ void RPCOpHandle::RunImpl() {
   auto &tmp_scope = local_scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
   // FIXME(wuyi): can not use RunAndRecordEvent here, for it will cause dead
   // lock.
-  op_->Run(*tmp_scope, place_);
+  op_->RunAndRecordEvent(*tmp_scope, place_);
 }
 
 std::string RPCOpHandle::Name() const { return name_; }
