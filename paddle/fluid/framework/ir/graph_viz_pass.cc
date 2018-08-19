@@ -25,7 +25,7 @@ static const char kGraphVizPath[] = "graph_viz_path";
 std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   const std::string graph_viz_path = Get<std::string>(kGraphVizPath);
-  LOG(INFO) << "draw IR graph viz to " << graph_viz_path;
+  VLOG(3) << "draw IR graph viz to " << graph_viz_path;
   std::unique_ptr<std::ostream> fout(new std::ofstream(graph_viz_path));
   PADDLE_ENFORCE(fout->good());
   std::ostream& sout = *fout;

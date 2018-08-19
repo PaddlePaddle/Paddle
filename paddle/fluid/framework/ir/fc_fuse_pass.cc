@@ -128,7 +128,6 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
 
   std::unordered_set<Node*> nodes2delete;
 
-  LOG(INFO) << "build fc pattern";
   GraphPatternDetecter gpd;
   BuildFCPattern(gpd.mutable_pattern());
 
@@ -140,7 +139,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
 
   auto handler = [&](const GraphPatternDetecter::subgraph_t& subgraph,
                      Graph* g) {
-    LOG(INFO) << "handle FC";
+    VLOG(4) << "handle FC fuse";
     // Currently, there is no FC op available, so I will just simulate the
     // scenerio.
     // FC's fusion is simple, just op fuse, no need to process the
@@ -163,12 +162,12 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     std::string fc_Y_in = mul_weight->Name();
     std::string fc_bias_in = elementwise_add_tmpvar->Name();
     std::string fc_out = elementwise_add_out->Name();
-    desc->SetInput("X", std::vector<std::string>({fc_x_in}));
-    desc->SetInput("Y", std::vector<std::string>({fc_Y_in}));
-    desc->SetInput("bias", std::vector<std::string>({fc_bias_in}));
+    desc->SetInput("Input", std::vector<std::string>({fc_x_in}));
+    desc->SetInput("W", std::vector<std::string>({fc_Y_in}));
+    desc->SetInput("Bias", std::vector<std::string>({fc_bias_in}));
     desc->SetOutput("Out", std::vector<std::string>({fc_out}));
+    desc->SetType("fc");
     auto fc_node = g->CreateOpNode(desc);
-    fc_node->Op()->SetType("fc");
     fc_node->inputs =
         std::vector<Node*>({mul_tmp_var, mul_weight, elementwise_add_tmpvar});
     fc_node->outputs.push_back(elementwise_add_out);
@@ -187,7 +186,6 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     graph->RemoveNode(mul_out);  // tmp variable
   };
 
-  LOG(INFO) << "running gpd";
   gpd(graph.get(), handler);
 
   return graph;

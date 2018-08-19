@@ -53,7 +53,6 @@ bool DataFlowGraphToFluidPass::Finalize() { return true; }
 
 void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
   // FilterRedundantOutputOfSubGraph(graph);
-  LOG(INFO) << "graph.inputs " << graph->inputs().size();
   for (auto &node : GraphTraits<DataFlowGraph>(*graph).nodes_in_TS()) {
     if (node.deleted()) continue;
 
@@ -230,9 +229,9 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   framework::BlockDesc block_desc(nullptr, &proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
-  LOG(INFO) << "origin variable size: "
+  VLOG(4) << "origin variable size: "
             << argument_->origin_program_desc->blocks(0).vars().size();
-  LOG(INFO) << "transformed variable size: "
+  VLOG(4) << "transformed variable size: "
             << block_desc.Proto()->vars().size();
   // copy ops.
 

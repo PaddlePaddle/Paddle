@@ -54,6 +54,9 @@ struct DataFlowGraph {
   // Build a graph from ir::Graph.
   void Build(const framework::ir::Graph &graph);
 
+  // Get an attribute.
+  AnyAttr& Attr(const std::string& key) { return attrs_[key]; }
+
   bool IsFullyConnected() const;
 
   // Output a DOT graph file for debug.
@@ -73,9 +76,11 @@ struct DataFlowGraph {
     return outputs_;
   }
 
+
  private:
   mutable std::vector<Node *> inputs_;
   mutable std::vector<Node *> outputs_;
+  std::unordered_map<std::string, AnyAttr> attrs_;
 
   // Remove duplicate edges and so on.
   void Clean();

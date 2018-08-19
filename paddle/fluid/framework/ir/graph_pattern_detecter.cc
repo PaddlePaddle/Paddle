@@ -69,7 +69,7 @@ void GraphPatternDetecter::operator()(Graph* graph,
 }
 
 bool GraphPatternDetecter::MarkPDNodesInGraph(const ir::Graph& graph) {
-  LOG(INFO) << "mark pdnodes in graph";
+  VLOG(4) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
   for (auto& node : GraphTraits::DFS(graph)) {
@@ -116,7 +116,6 @@ bool IsNodesLink(Node* a, Node* b) {
 
 std::vector<GraphPatternDetecter::subgraph_t>
 GraphPatternDetecter::DetectPatterns() {
-  LOG(INFO) << "detecting patterns";
   // Init empty subgraphs.
   std::vector<GraphPatternDetecter::subgraph_t> result;
   std::vector<HitGroup> init_groups;

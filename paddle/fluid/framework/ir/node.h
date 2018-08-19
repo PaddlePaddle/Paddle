@@ -44,6 +44,7 @@ class Node {
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(op_desc),
+        op_desc_copied_(*op_desc),
         type_(Type::kOperation) {
     PADDLE_ENFORCE(op_desc_);
   }
@@ -58,8 +59,8 @@ class Node {
   }
 
   OpDesc* Op() {
-    PADDLE_ENFORCE(type_ == Type::kOperation);
-    return op_desc_;
+    PADDLE_ENFORCE(IsOp());
+    return &op_desc_copied_;
   }
 
   bool IsOp() const { return type_ == Type::kOperation; }
@@ -72,6 +73,7 @@ class Node {
   const std::string name_;
   VarDesc* var_desc_;
   OpDesc* op_desc_;
+  OpDesc op_desc_copied_;
   Type type_;
 
  private:

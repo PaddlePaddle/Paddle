@@ -129,37 +129,31 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
   // Create nodes
   std::unordered_map<ir_node_t *, Node *> ir_node_map;
   for (auto *ir_node : graph.Nodes()) {
-    Node *x;
+    Node *x{nullptr};
     if (ir_node->IsOp()) {
-      PADDLE_ENFORCE(ir_node->Op()->Proto());
-      LOG(INFO) << "get op " << ir_node->Name();
+      PADDLE_ENFORCE(ir_node->Op());
+      VLOG(4) << "get op " << ir_node << " " << ir_node->Name();
       x = nodes.Create(Node::Type::kFunction);
       x->attr("ir_node").Pointer() = ir_node;
+      PADDLE_ENFORCE(ir_node->Op()->Proto());
       x->SetName(ir_node->Op()->Proto()->type());
       x->SetPbMsg(ir_node->Op()->Proto()->SerializeAsString());
-      LOG(INFO) << "<<";
     } else if (ir_node->IsVar()) {
       // Not create a Node for IR ControlDepVar, considering Inference currently
       // just used in single thread scenerio.
-      if (ir_node->Var()) {
-        LOG(INFO) << "get var " << ir_node->Name();
-        x = nodes.Create(Node::Type::kValue);
-        x->attr("ir_node").Pointer() = ir_node;
-        x->SetName(ir_node->Name());
-        x->SetPbMsg(ir_node->Var()->Proto()->SerializeAsString());
-        LOG(INFO) << "<<";
-      } else {
-        LOG(INFO) << "detect IR control node " << ir_node->Name();
-        continue;
-      }
+      VLOG(4) << "get var " << ir_node->Name();
+      x = nodes.Create(Node::Type::kValue);
+      x->attr("ir_node").Pointer() = ir_node;
+      x->SetName(ir_node->Name());
+      // x->SetPbMsg(ir_node->Var()->Proto()->SerializeAsString());
     } else {
       PADDLE_THROW("Failed to create an Node from IR, unknown type");
     }
     ir_node_map.emplace(ir_node, x);
   }
-  LOG(INFO) << "finish creating var";
+  VLOG(4) << "finish creating Nodes";
 
-  LOG(INFO) << "to create edge";
+  VLOG(4) << "to create edge";
   // Create links
   for (auto *ir_node : graph.Nodes()) {
     auto it = ir_node_map.find(ir_node);
@@ -177,9 +171,10 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
   }
 
   Build();
+  PADDLE_ENFORCE(!inputs_.empty(), "Can't deduce any inputs from the graph, Is the graph empty?");
 
   ir_graph = &graph;
-  LOG(INFO) << "finished build from IR";
+  VLOG(3) << "finished build from IR";
 }
 
 bool DataFlowGraph::IsFullyConnected() const {
