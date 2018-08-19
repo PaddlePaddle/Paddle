@@ -244,7 +244,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[8, 2], dtype='float32')
-            out = layers.unsqueeze(x=x, axes=[1])
+            out = layers.unsqueeze(input=x, axes=[1])
             self.assertIsNotNone(out)
         print(str(program))
 
@@ -252,7 +252,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
-            out = layers.squeeze(x=x, axes=[2])
+            out = layers.squeeze(input=x, axes=[2])
             self.assertIsNotNone(out)
         print(str(program))
 

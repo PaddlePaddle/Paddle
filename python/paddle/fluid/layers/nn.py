@@ -4483,7 +4483,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     return helper.append_activation(out)
 
 
-def squeeze(x, axes, inplace=False, name=None):
+def squeeze(input, axes, inplace=False, name=None):
     """
     Remove single-dimensional entries from the shape of a tensor. Takes a 
     parameter axes with a list of axes to squeeze. If axes is not provided, all 
@@ -4507,7 +4507,7 @@ def squeeze(x, axes, inplace=False, name=None):
           Out.shape = (3, 5)
     
     Args:
-        x (Variable): The input variable to be squeezed.
+        input (Variable): The input variable to be squeezed.
         axes (list): List of integers, indicating the dimensions to be squeezed.
         name (str|None): Name for this layer.
 
@@ -4518,20 +4518,20 @@ def squeeze(x, axes, inplace=False, name=None):
         .. code-block:: python
 
             x = layers.data(name='x', shape=[5, 1, 10])
-            y = layers.sequeeze(x, axes=[1])
+            y = layers.sequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("squeeze", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type="squeeze",
-        inputs={"X": x},
+        inputs={"X": input},
         attrs={"axes": axes},
         outputs={"Out": out})
 
     return out
 
 
-def unsqueeze(x, axes, inplace=False, name=None):
+def unsqueeze(input, axes, inplace=False, name=None):
     """
     Insert single-dimensional entries to the shape of a tensor. Takes one 
     required argument axes, a list of dimensions that will be inserted. 
@@ -4542,7 +4542,7 @@ def unsqueeze(x, axes, inplace=False, name=None):
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
     
     Args:
-        x (Variable): The input variable to be unsqueezed.
+        input (Variable): The input variable to be unsqueezed.
         axes (list): List of integers, indicating the dimensions to be inserted.
         name (str|None): Name for this layer.
 
@@ -4553,13 +4553,13 @@ def unsqueeze(x, axes, inplace=False, name=None):
         .. code-block:: python
 
             x = layers.data(name='x', shape=[5, 10])
-            y = layers.unsequeeze(x, axes=[1])
+            y = layers.unsequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type="unsqueeze",
-        inputs={"X": x},
+        inputs={"X": input},
         attrs={"axes": axes},
         outputs={"Out": out})
 
