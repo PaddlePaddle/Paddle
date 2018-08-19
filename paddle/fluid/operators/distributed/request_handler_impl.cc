@@ -20,6 +20,7 @@
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/string/printf.h"
@@ -42,13 +43,16 @@ bool RequestSendHandler::Handle(const std::string& varname,
   // Async
   if (!sync_mode_) {
     rpc_server_->Profiler().OneStep();
-    try {
-      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
-                                    scope);
-    } catch (std::exception& e) {
-      LOG(ERROR) << "async: run sub program error " << e.what();
-      return false;
-    }
+    std::future<void> ft = framework::Async([this, &scope, varname]() {
+      try {
+        executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
+                                      scope);
+      } catch (const std::exception& e) {
+        LOG(ERROR) << "async run grad [" << varname << "] prepared ctx failed. "
+                   << e.what();
+      }
+    });
+    ft.wait();
     return true;
   }
 
@@ -115,9 +119,10 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
 
   auto var_desc = program_->Block(0).FindVar(out_var_name);
   InitializeVariable(*outvar, var_desc->GetType());
-  executor_->RunPreparedContext(
-      (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
-
+  std::future<void> ft = framework::Async([this, &scope, varname]() {
+    executor_->RunPreparedContext(
+        (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
+  });
   return true;
 }
 
