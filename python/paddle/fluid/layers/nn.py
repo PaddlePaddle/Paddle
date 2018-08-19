@@ -4482,6 +4482,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
     return helper.append_activation(out)
 
+
 def squeeze(x, axes, inplace=False, name=None):
     """
     Remove single-dimensional entries from the shape of a tensor. Takes a 
@@ -4508,7 +4509,7 @@ def squeeze(x, axes, inplace=False, name=None):
     Args:
         x (Variable): The input variable to be squeezed.
         axes (list): List of integers, indicating the dimensions to be squeezed.
-        name (str): Name for this layers.
+        name (str|None): Name for this layer.
 
     Returns:
         Variable: Output squeezed variable.
@@ -4527,8 +4528,9 @@ def squeeze(x, axes, inplace=False, name=None):
         attrs={"axes": axes},
         outputs={"Out": out})
 
-    return out 
-    
+    return out
+
+
 def unsqueeze(x, axes, inplace=False, name=None):
     """
     Insert single-dimensional entries to the shape of a tensor. Takes one 
@@ -4542,7 +4544,7 @@ def unsqueeze(x, axes, inplace=False, name=None):
     Args:
         x (Variable): The input variable to be unsqueezed.
         axes (list): List of integers, indicating the dimensions to be inserted.
-        name (str): Name for this layers.
+        name (str|None): Name for this layer.
 
     Returns:
         Variable: Output unsqueezed variable.
@@ -4561,7 +4563,8 @@ def unsqueeze(x, axes, inplace=False, name=None):
         attrs={"axes": axes},
         outputs={"Out": out})
 
-    return out 
+    return out
+
 
 def lod_reset(x, y=None, target_lod=None):
     """
