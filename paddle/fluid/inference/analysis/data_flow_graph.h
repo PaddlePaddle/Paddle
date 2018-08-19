@@ -55,7 +55,7 @@ struct DataFlowGraph {
   void Build(const framework::ir::Graph &graph);
 
   // Get an attribute.
-  AnyAttr& Attr(const std::string& key) { return attrs_[key]; }
+  AnyAttr &Attr(const std::string &key) { return attrs_[key]; }
 
   bool IsFullyConnected() const;
 
@@ -75,7 +75,6 @@ struct DataFlowGraph {
                    "No outputs are deduced, need to Build() first.");
     return outputs_;
   }
-
 
  private:
   mutable std::vector<Node *> inputs_;

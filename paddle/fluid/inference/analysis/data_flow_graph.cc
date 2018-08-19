@@ -171,7 +171,8 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
   }
 
   Build();
-  PADDLE_ENFORCE(!inputs_.empty(), "Can't deduce any inputs from the graph, Is the graph empty?");
+  PADDLE_ENFORCE(!inputs_.empty(),
+                 "Can't deduce any inputs from the graph, Is the graph empty?");
 
   ir_graph = &graph;
   VLOG(3) << "finished build from IR";

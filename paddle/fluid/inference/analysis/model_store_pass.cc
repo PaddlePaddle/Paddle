@@ -49,7 +49,7 @@ void ModelStorePass::Run(DataFlowGraph *x) {
                           "program desc is not transformed, should call "
                           "DataFlowGraphToFluidPass first.");
   VLOG(3) << "store analyzed program to "
-            << *argument_->model_output_store_path;
+          << *argument_->model_output_store_path;
   const std::string program_output_path =
       *argument_->model_output_store_path + "/__model__";
   std::ofstream file(program_output_path, std::ios::binary);
