@@ -123,6 +123,7 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
     executor_->RunPreparedContext(
         (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
   });
+  ft.wait();
   return true;
 }
 
