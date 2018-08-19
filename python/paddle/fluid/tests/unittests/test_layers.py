@@ -240,6 +240,22 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.softmax(hid))
         print(str(program))
 
+    def test_sequence_unsqueeze(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8,2], dtype='float32')
+            out = layers.unsqueeze(x=x, axes=[1])
+            self.assertIsNotNone(out)
+        print(str(program))
+   
+    def test_squeeze(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
+            out = layers.squeeze(x=x, axes=[0])
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_lrn(self):
         program = Program()
         with program_guard(program):
@@ -261,6 +277,7 @@ class TestBook(unittest.TestCase):
             out = layers.sequence_reshape(input=x, new_dim=16)
             self.assertIsNotNone(out)
         print(str(program))
+    
 
     def test_im2sequence(self):
         program = Program()
