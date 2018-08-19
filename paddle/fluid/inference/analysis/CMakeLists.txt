@@ -39,7 +39,8 @@ endfunction(inference_analysis_test)
 
 cc_test(test_analyzer SRCS analyzer_tester.cc DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
         ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
-set_tests_properties(test_analyzer PROPERTIES DEPENDS test_word2vec)
+#set_tests_properties(test_analyzer PROPERTIES DEPENDS test_word2vec)
+#inference_api_test(test_analyzer SRC analyzer_tester.cc ARGS test_word2vec)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
 inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
