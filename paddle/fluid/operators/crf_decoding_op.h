@@ -86,18 +86,19 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
 
 #ifdef __AVX__
-    //Only optimize for float type.
+
+// Only optimize for float type.
 #ifdef __AVX512F__
-      size_t step_size = 16;
+    size_t step_size = 16;
 #else
-      size_t step_size = 8;
+    size_t step_size = 8;
 #endif
     if (std::is_same<T, float>::value && (tag_num >= step_size)) {
-      size_t steps = tag_num/step_size;
-      size_t remain = tag_num%step_size;
-      int last_offset = (int)remain - (int)step_size;
+      size_t steps = tag_num / step_size;
+      size_t remain = tag_num % step_size;
+      int last_offset = static_cast<int>(remain) - static_cast<int>(step_size);
 
-      //Setup the alpha initial value.
+      // Setup the alpha initial value.
       size_t i_offset = 0;
       for (size_t i = 0; i <= steps; ++i) {
 #ifdef __AVX512F__
@@ -106,17 +107,19 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         w_content = _mm512_loadu_ps((const float*)(w + i_offset));
         x_content = _mm512_loadu_ps((const float*)(x + i_offset));
         alpha_content = _mm512_add_ps(w_content, x_content);
-        _mm512_storeu_ps((float *)(alpha_value + i_offset), alpha_content);
+        _mm512_storeu_ps(reinterpret_cast<float*>(alpha_value + i_offset),
+                         alpha_content);
 #else
         __m256 w_content, x_content, alpha_content;
 
         w_content = _mm256_loadu_ps((const float*)(w + i_offset));
         x_content = _mm256_loadu_ps((const float*)(x + i_offset));
         alpha_content = _mm256_add_ps(w_content, x_content);
-        _mm256_storeu_ps((float *)(alpha_value + i_offset), alpha_content);
+        _mm256_storeu_ps(reinterpret_cast<float*>(alpha_value + i_offset),
+                         alpha_content);
 #endif
         i_offset += step_size;
-        if ( i == steps - 1 ) {
+        if (i == steps - 1) {
           if (remain > 0) {
             i_offset += last_offset;
           } else {
@@ -125,28 +128,25 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         }
       }
 
-      //Use the column-major strategy to get the location of maximum score.
+      // Use the column-major strategy to get the location of maximum score.
       size_t seq_offset = 0;
       for (size_t k = 1; k < seq_len; ++k) {
         size_t j_offset = 0;
         for (size_t j = 0; j <= steps; ++j) {
 #ifdef __AVX512F__
-          __m512 max_score = _mm512_set1_ps(
-                    -std::numeric_limits<T>::max());
+          __m512 max_score = _mm512_set1_ps(-std::numeric_limits<T>::max());
           __m512i max_j = _mm512_setzero_si512();
 #else
-          __m256 max_score = _mm256_set1_ps(
-                    -std::numeric_limits<T>::max());
+          __m256 max_score = _mm256_set1_ps(-std::numeric_limits<T>::max());
           __m256i max_j = _mm256_set1_epi32(0);
 #endif
           size_t trans_offset = state_trans_base_idx * tag_num + j_offset;
           for (size_t i = 0; i < tag_num; ++i) {
-
 #ifdef __AVX512F__
-            __m512 alpha_content = _mm512_set1_ps(*(const float*)
-                                      (alpha_value + seq_offset + i));
-            __m512 w_content = _mm512_loadu_ps((const float*)(w +
-                                      trans_offset));
+            __m512 alpha_content =
+                _mm512_set1_ps(*(const float*)(alpha_value + seq_offset + i));
+            __m512 w_content =
+                _mm512_loadu_ps((const float*)(w + trans_offset));
             __m512 score_v = _mm512_add_ps(alpha_content, w_content);
 
             __mmask16 mask = _mm512_cmp_ps_mask(score_v, max_score, _CMP_GT_OS);
@@ -155,18 +155,18 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 
             max_score = _mm512_max_ps(max_score, score_v);
 #else
-            __m256 alpha_content = _mm256_broadcast_ss((const float*)
-                                      (alpha_value + seq_offset + i));
-            __m256 w_content = _mm256_loadu_ps((const float*)(w +
-                                      trans_offset));
+            __m256 alpha_content = _mm256_broadcast_ss(
+                (const float*)(alpha_value + seq_offset + i));
+            __m256 w_content =
+                _mm256_loadu_ps((const float*)(w + trans_offset));
             __m256 score_v = _mm256_add_ps(alpha_content, w_content);
 
             __m256 mask = _mm256_cmp_ps(score_v, max_score, _CMP_GT_OS);
 
 #ifdef __AVX2__
             max_j = _mm256_or_si256(
-                      _mm256_andnot_si256((__m256i)mask, max_j),
-                      _mm256_and_si256((__m256i)mask, _mm256_set1_epi32(i)));
+                _mm256_andnot_si256((__m256i)mask, max_j),
+                _mm256_and_si256((__m256i)mask, _mm256_set1_epi32(i)));
 #else
             __m128i lo_max_j = _mm256_extractf128_si256(max_j, 0);
             __m128i hi_max_j = _mm256_extractf128_si256(max_j, 1);
@@ -191,27 +191,33 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
           }
 
 #ifdef __AVX512F__
-          __m512 x_content = _mm512_loadu_ps((const float*)(x +
-                                          seq_offset + tag_num + j_offset));
+          __m512 x_content = _mm512_loadu_ps(
+              (const float*)(x + seq_offset + tag_num + j_offset));
           max_score = _mm512_add_ps(max_score, x_content);
-          _mm512_storeu_ps((float *)(alpha_value +
-                            seq_offset + tag_num + j_offset), max_score);
-          _mm512_storeu_si512((__m512i *)(track_value + seq_offset + tag_num +
-                              j_offset), max_j);
+          _mm512_storeu_ps(reinterpret_cast<float*>(alpha_value + seq_offset +
+                                                    tag_num + j_offset),
+                           max_score);
+          _mm512_storeu_si512(
+              reinterpret_cast<__m512i*>(track_value + seq_offset + tag_num +
+                                         j_offset),
+              max_j);
 #else
-          __m256 x_content = _mm256_loadu_ps((const float*)(x +
-                                          seq_offset + tag_num + j_offset));
+          __m256 x_content = _mm256_loadu_ps(
+              (const float*)(x + seq_offset + tag_num + j_offset));
           max_score = _mm256_add_ps(max_score, x_content);
-          _mm256_storeu_ps((float *)(alpha_value +
-                            seq_offset + tag_num + j_offset), max_score);
-          _mm256_storeu_si256((__m256i *)(track_value + seq_offset + tag_num +
-                              j_offset), max_j);
+          _mm256_storeu_ps(reinterpret_cast<float*>(alpha_value + seq_offset +
+                                                    tag_num + j_offset),
+                           max_score);
+          _mm256_storeu_si256(
+              reinterpret_cast<__m256i*>(track_value + seq_offset + tag_num +
+                                         j_offset),
+              max_j);
 #endif
 
-          //Calculate the offset of next step
+          // Calculate the offset of next step
           j_offset += step_size;
-          if ( j == steps - 1 ) {
-            if ( remain > 0 ) {
+          if (j == steps - 1) {
+            if (remain > 0) {
               j_offset += last_offset;
             } else {
               break;
