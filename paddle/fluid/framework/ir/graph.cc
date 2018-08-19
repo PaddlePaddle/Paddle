@@ -126,7 +126,6 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
         // TODO(panyx0718): Add a test.
         var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
       }
-      ir::Node *var = CreateVarNode(all_vars.at(each_var_name));
       var_nodes[each_var_name].push_back(var);
       node->outputs.push_back(var);
       var->inputs.push_back(node);
