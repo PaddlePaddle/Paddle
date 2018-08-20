@@ -641,21 +641,21 @@ class TestLoadSliceVar(TranspilerTest):
         pserver, _ = self.get_pserver(self.pserver1_ep)
         pserver2, _ = self.get_pserver(self.pserver2_ep)
 
-        self.assertTrue(pserver._slice_vars_and_atts)
-        self.assertTrue(pserver2._slice_vars_and_atts)
+        self.assertTrue(pserver._slice_vars_and_attrs)
+        self.assertTrue(pserver2._slice_vars_and_attrs)
 
-        for idx in xrange(len(pserver._slice_vars_and_atts)):
-            self.assertEqual(pserver._slice_vars_and_atts[idx][0],
-                             pserver2._slice_vars_and_atts[idx][0])
+        for idx in xrange(len(pserver._slice_vars_and_attrs)):
+            self.assertEqual(pserver._slice_vars_and_attrs[idx][0],
+                             pserver2._slice_vars_and_attrs[idx][0])
 
             total_numel = reduce(lambda x, y: x * y,
-                                 pserver._slice_vars_and_atts[idx][0].shape)
+                                 pserver._slice_vars_and_attrs[idx][0].shape)
             self.assertEqual(
                 total_numel,
                 reduce(lambda x, y: x * y,
-                       pserver._slice_vars_and_atts[idx][2].shape) + reduce(
+                       pserver._slice_vars_and_attrs[idx][2].shape) + reduce(
                            lambda x, y: x * y,
-                           pserver2._slice_vars_and_atts[idx][2].shape))
+                           pserver2._slice_vars_and_attrs[idx][2].shape))
 
 
 if __name__ == "__main__":
