@@ -39,10 +39,17 @@ class PReluTest(OpTest):
             alpha_np = np.random.rand(*x_np.shape).astype("float32")
             self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
+        import sys
+        print('self.inputs', self.inputs)
+        sys.stdout.flush()
+
         out_np = np.maximum(self.inputs['X'], 0.)
         out_np = out_np + np.minimum(self.inputs['X'],
                                      0.) * self.inputs['Alpha']
         assert out_np is not self.inputs['X']
+        import sys
+        print('self.outputs', self.outputs)
+        sys.stdout.flush()
         self.outputs = {'Out': out_np}
 
     def initTestCase(self):
