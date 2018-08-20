@@ -26,7 +26,7 @@
 namespace paddle {
 
 DEFINE_string(model, "", "Directory of the inference model and data.");
-DEFINE_string(data, "", "Directory of the inference model and data.");
+DEFINE_string(datapath, "", "Directory of the inference model and data.");
 struct Record {
   std::vector<float> data;
 };
@@ -66,7 +66,7 @@ int Main(int max_batch) {
   config.max_batch_size = max_batch;
   config.target_type = AnakinConfig::TargetType::X86;
   std::string line;
-  std::ifstream file(FLAGS_data);
+  std::ifstream file(FLAGS_datapath);
   std::vector<PaddleTensor> inputs;
   std::vector<std::vector<int>> shapes({{4, 1, 1},
                                         {1, 50, 12},

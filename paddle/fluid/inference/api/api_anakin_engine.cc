@@ -108,9 +108,9 @@ bool PaddleInferenceAnakinPredictor<Target>::Run(
       }
       std::vector<int> offset(input.lod[0].begin(), input.lod[0].end());
       d_tensor_in_p->set_seq_offset(offset);
-      LOG(WARNING) << "============== offset.size()" << offset.size();
+      VLOG(3) << "offset.size(): " << offset.size();
       for (int i = 0; i < offset.size(); i++) {
-        LOG(WARNING) << offset[i];
+        VLOG(3) << offset[i];
       }
     }
 

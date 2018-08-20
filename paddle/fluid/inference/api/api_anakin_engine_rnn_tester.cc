@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gflags/gflags.h>
+#include <sys/time.h>
+#include <time.h>
 #include <algorithm>
 #include <fstream>
 #include <iostream>
@@ -24,6 +26,7 @@ limitations under the License. */
 DEFINE_string(model, "", "Directory of the inference model.");
 DEFINE_string(datapath, "", "Path of the dataset.");
 DEFINE_int32(batch_size, 1, "batch size.");
+DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 
 std::vector<std::string> string_split(std::string in_str,
                                       std::string delimiter) {
@@ -246,12 +249,26 @@ void single_test() {
     inputs.push_back(tensor_2);
     inputs.push_back(tensor_0);
 
-    predictor->Run(inputs, &outputs);
+    auto GetCurrentMs = []() -> double {
+      struct timeval time;
+      gettimeofday(&time, NULL);
+      return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
+    };
+    auto t1 = GetCurrentMs();
+
+    for (int i = 0; i < FLAGS_repeat; i++) predictor->Run(inputs, &outputs);
+
+    auto t2 = GetCurrentMs();
+    LOG(INFO) << "batch_size = " << FLAGS_batch_size
+              << ", repeat = " << FLAGS_repeat
+              << ", sequence_length = " << seq_offset[seq_offset.size() - 1]
+              << ", latency: " << (t2 - t1) / FLAGS_repeat / FLAGS_batch_size
+              << "ms";
 
     float* data_o = static_cast<float*>(outputs[0].data.data());
-    LOG(INFO) << "outputs[0].data.length() = " << outputs[0].data.length();
+    VLOG(3) << "outputs[0].data.length() = " << outputs[0].data.length();
     for (size_t j = 0; j < outputs[0].data.length(); ++j) {
-      LOG(INFO) << "output[" << j << "]: " << data_o[j];
+      VLOG(3) << "output[" << j << "]: " << data_o[j];
     }
   }
 }
@@ -261,6 +278,8 @@ int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   logger::init(argv[0]);
 
+  paddle::single_test();
+  /* multi-threads
   std::vector<std::thread> threads;
   int num = 1;
   for (int i = 0; i < num; i++) {
@@ -271,6 +290,7 @@ int main(int argc, char** argv) {
     threads[i].join();
   }
   threads.clear();
+  */
 
   return 0;
 }
