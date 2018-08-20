@@ -41,7 +41,7 @@ class TestUnsqueezeOp(OpTest):
         self.new_shape = (3, 1, 1, 5)
 
     def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": False}
+        self.attrs = {"axes": self.axes}
 
 
 # Correct: Single input index.
@@ -74,39 +74,6 @@ class TestUnsqueezeOp4(TestUnsqueezeOp):
         self.ori_shape = (3, 2, 5)
         self.axes = (3, 1, 1)
         self.new_shape = (3, 1, 1, 2, 5, 1)
-
-
-# Correct: Inplace.
-class TestUnsqueezeOpInplace1(TestUnsqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (3, 5)
-        self.axes = (0, 2)
-        self.new_shape = (1, 3, 1, 5)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
-
-
-# Correct: Inplace. There is mins index.
-class TestUnsqueezeOpInplace2(TestUnsqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (3, 5)
-        self.axes = (0, -2)
-        self.new_shape = (1, 3, 1, 5)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
-
-
-# Correct: Inplace. There is duplicated axis.
-class TestUnsqueezeOpInplace3(TestUnsqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (3, 2, 5)
-        self.axes = (0, 3, 3)
-        self.new_shape = (1, 3, 2, 1, 1, 5)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
 
 
 if __name__ == "__main__":
