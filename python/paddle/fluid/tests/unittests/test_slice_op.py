@@ -39,6 +39,9 @@ class TestSliceOp(OpTest):
     def test_check_output(self):
         self.check_output()
 
+    def test_check_grad_normal(self):
+        self.check_grad(['Input'], 'Out', max_relative_error=0.006)
+
 
 class TestCase1(TestSliceOp):
     def config(self):

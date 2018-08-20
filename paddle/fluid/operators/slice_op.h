@@ -144,7 +144,7 @@ class SliceGradKernel : public framework::OpKernel<T> {
     Eigen::array<std::pair<int, int>, D> paddings;
     for (size_t i = 0; i < paddings.size(); ++i) {
       paddings[i].first = offsets[i];
-      paddings[i].second = in_dims[i] - out_dims[i];
+      paddings[i].second = (in_dims[i] - out_dims[i]) - offsets[i];
     }
     auto d_in_t =
         framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
