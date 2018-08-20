@@ -704,8 +704,7 @@ class DistributeTranspiler(object):
                     attrs=op.all_attrs())
 
         # add slice vars
-        slice_vars_and_atts = self._get_slice_vars_and_atts(endpoint)
-        s_prog._slice_vars_and_atts = slice_vars_and_atts
+        s_prog._slice_vars_and_atts = self._get_slice_vars_and_atts(endpoint)
 
         return s_prog
 
