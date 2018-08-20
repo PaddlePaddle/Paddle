@@ -498,7 +498,8 @@ class Operator(object):
             del op_attrs[role_var_name]
 
         callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-        op_attrs[callstack_var_name] = reversed(traceback.format_stack())[1:]
+        op_attrs[callstack_var_name] = list(
+            reversed(traceback.format_stack()))[1:]
 
         if len(self.desc.type()) != 0:
             return
