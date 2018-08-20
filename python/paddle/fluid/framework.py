@@ -1366,7 +1366,7 @@ class Program(object):
         # for distribute
         self._is_distributed = False
         self._is_chief = False
-        self._slice_vars_and_atts = []
+        self._slice_vars_and_attrs = []
         self._endpoints = []
         self._distributed_lookup_table = None
 
