@@ -82,7 +82,9 @@ class DefaultValueSetter {
  public:
   explicit DefaultValueSetter(T default_value)
       : default_value_(default_value) {}
-  void operator()(T& value) const { value = default_value_; }
+  void operator()(T& value) const {  // NOLINT
+    value = default_value_;
+  }
 
  private:
   T default_value_;
@@ -128,7 +130,8 @@ struct ExtractAttribute {
       attr_value = &boost::get<T>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type %s, its type is %s",
-                   attr_name_, typeid(T).name(), attr.type().name());
+                   attr_name_, paddle::platform::demangle(typeid(T).name()),
+                   paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -160,7 +163,7 @@ struct ExtractAttribute<bool> {
       attr_value = &boost::get<bool>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type bool, its type is %s",
-                   attr_name_, attr.type().name());
+                   attr_name_, paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -186,7 +189,7 @@ struct ExtractAttribute<int64_t> {
       attr_value = &boost::get<int64_t>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
-                   attr_name_, attr.type().name());
+                   attr_name_, paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -234,7 +237,7 @@ class TypedAttrChecker {
     return *this;
   }
 
-  void operator()(AttributeMap& attr_map) const {
+  void operator()(AttributeMap& attr_map) const {  // NOLINT
     if (!attr_map.count(attr_name_)) {
       // user do not set this attr
       PADDLE_ENFORCE(!default_value_setter_.empty(),
@@ -270,7 +273,7 @@ class OpAttrChecker {
     return *(checker.target<TypedAttrChecker<T>>());
   }
 
-  void Check(AttributeMap& attr_map) const {
+  void Check(AttributeMap& attr_map) const {  // NOLINT
     for (const auto& checker : attr_checkers_) {
       checker(attr_map);
     }

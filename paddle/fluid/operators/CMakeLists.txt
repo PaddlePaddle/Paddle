@@ -100,7 +100,8 @@ function(op_library TARGET)
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
+"tensor_array_read_write_op" "tensorrt_engine_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -170,6 +171,9 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "tensorrt_engine_op")
           message(STATUS "Pybind skips [tensorrt_engine_op], for this OP is only used in inference")
+      elseif(${TARGET} STREQUAL "fc")
+        # HACK: fc only have mkldnn and cpu, which would mismatch the cpu only condition
+        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()
@@ -245,6 +249,7 @@ op_library(softmax_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 if (WITH_GPU AND TENSORRT_FOUND)
     op_library(tensorrt_engine_op DEPS tensorrt_engine tensorrt_converter)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(tensorrt_engine);\n")
     nv_test(test_tensorrt_engine_op SRCS tensorrt_engine_op_test.cc
       DEPS tensorrt_engine_op
       analysis)
@@ -299,12 +304,6 @@ op_library(channel_send_op DEPS concurrency)
 op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
-
-# The fully connected layer is deleted when the WITH_MKLDNN flag is OFF
-# Because the fully connected layer has only one MKLDNN's operator
-if(NOT WITH_MKLDNN)
-    list(REMOVE_ITEM GENERAL_OPS fc_op)
-endif(NOT WITH_MKLDNN)
 
 foreach(src ${GENERAL_OPS})
     op_library(${src})

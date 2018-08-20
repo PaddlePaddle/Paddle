@@ -1,0 +1,926 @@
+[INFO] Checking merge-conflict files only.
+CRLF end-lines remover...............................(no files to check)Skipped
+yapf.................................................(no files to check)Skipped
+Check for added large files..............................................Passed
+Check for merge conflicts................................................Passed
+Check for broken symlinks................................................Passed
+Detect Private Key...................................(no files to check)Skipped
+Fix End of Files.........................................................Passed
+clang-format.............................................................Passed
+cpplint..................................................................Failed
+hookid: cpplint-cpp-source
+
+Ignoring .gitignore; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing .gitignore
+Ignoring CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing CMakeLists.txt
+Ignoring cmake/configure.cmake; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing cmake/configure.cmake
+Ignoring cmake/external/anakin.cmake; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing cmake/external/anakin.cmake
+Ignoring doc/fluid/dev/use_eigen_cn.md; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing doc/fluid/dev/use_eigen_cn.md
+Ignoring doc/fluid/new_docs/advanced_usage/deploy/native_infer.rst; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing doc/fluid/new_docs/advanced_usage/deploy/native_infer.rst
+Ignoring paddle/fluid/API.spec; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/API.spec
+Ignoring paddle/fluid/framework/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/framework/CMakeLists.txt
+paddle/fluid/framework/attribute.h:240:  Is this a non-const reference? If so, make const or use a pointer: AttributeMap& attr_map  [runtime/references] [2]
+paddle/fluid/framework/attribute.h:276:  Is this a non-const reference? If so, make const or use a pointer: AttributeMap& attr_map  [runtime/references] [2]
+Done processing paddle/fluid/framework/attribute.h
+Total errors found: 2
+Ignoring paddle/fluid/framework/details/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/framework/details/CMakeLists.txt
+Done processing paddle/fluid/framework/details/execution_strategy.h
+Done processing paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.cc
+Done processing paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h
+Done processing paddle/fluid/framework/details/op_handle_base.cc
+Done processing paddle/fluid/framework/details/op_handle_base.h
+Ignoring paddle/fluid/framework/ir/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/framework/ir/CMakeLists.txt
+Done processing paddle/fluid/framework/ir/graph.cc
+Done processing paddle/fluid/framework/ir/graph_pattern_detecter.cc
+paddle/fluid/framework/ir/graph_pattern_detecter.h:40:  Constructors callable with one argument should be marked explicit.  [runtime/explicit] [5]
+paddle/fluid/framework/ir/graph_pattern_detecter.h:99:  Add #include <string> for string  [build/include_what_you_use] [4]
+paddle/fluid/framework/ir/graph_pattern_detecter.h:173:  Add #include <utility> for pair<>  [build/include_what_you_use] [4]
+paddle/fluid/framework/ir/graph_pattern_detecter.h:175:  Add #include <vector> for vector<>  [build/include_what_you_use] [4]
+Done processing paddle/fluid/framework/ir/graph_pattern_detecter.h
+Total errors found: 4
+Done processing paddle/fluid/framework/ir/graph_pattern_detecter_tester.cc
+Done processing paddle/fluid/framework/ir/graph_traits.cc
+Done processing paddle/fluid/framework/ir/graph_traits.h
+Done processing paddle/fluid/framework/ir/node.h
+Done processing paddle/fluid/framework/op_desc.cc
+Done processing paddle/fluid/framework/op_desc.h
+Done processing paddle/fluid/framework/parallel_executor.cc
+Done processing paddle/fluid/framework/rw_lock.h
+Done processing paddle/fluid/framework/rw_lock_test.cc
+Done processing paddle/fluid/framework/selected_rows.cc
+Done processing paddle/fluid/framework/selected_rows.h
+Done processing paddle/fluid/framework/selected_rows_test.cc
+Done processing paddle/fluid/framework/threadpool.cc
+Ignoring paddle/fluid/inference/analysis/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/inference/analysis/CMakeLists.txt
+Done processing paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.cc
+Done processing paddle/fluid/inference/analysis/node.cc
+Done processing paddle/fluid/inference/analysis/node.h
+Done processing paddle/fluid/inference/analysis/node_tester.cc
+Done processing paddle/fluid/inference/analysis/subgraph_splitter.cc
+Ignoring paddle/fluid/inference/api/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/inference/api/CMakeLists.txt
+Ignoring paddle/fluid/inference/api/demo_ci/run.sh; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/inference/api/demo_ci/run.sh
+Done processing paddle/fluid/inference/tensorrt/convert/conv2d_op.cc
+Done processing paddle/fluid/inference/tensorrt/convert/elementwise_op.cc
+Done processing paddle/fluid/inference/tensorrt/convert/fc_op.cc
+Done processing paddle/fluid/inference/tensorrt/convert/pool2d_op.cc
+paddle/fluid/inference/tensorrt/convert/test_op_converter.cc:17:  Found C system header after other header. Should be: test_op_converter.h, c system, c++ system, other.  [build/include_order] [4]
+Done processing paddle/fluid/inference/tensorrt/convert/test_op_converter.cc
+Total errors found: 1
+Done processing paddle/fluid/inference/tensorrt/convert/test_pool2d_op.cc
+Done processing paddle/fluid/inference/tensorrt/convert/ut_helper.h
+Done processing paddle/fluid/inference/tensorrt/engine.cc
+Done processing paddle/fluid/inference/tensorrt/engine.h
+Done processing paddle/fluid/inference/tensorrt/test_engine.cc
+Ignoring paddle/fluid/operators/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/fluid/operators/CMakeLists.txt
+Done processing paddle/fluid/operators/distributed/rpc_server_test.cc
+Done processing paddle/fluid/operators/distributed/variable_response.cc
+Done processing paddle/fluid/operators/fc_mkldnn_op.cc
+Done processing paddle/fluid/operators/fc_op.cc
+Done processing paddle/fluid/operators/gru_op.cc
+Done processing paddle/fluid/operators/gru_op.cu.cc
+Done processing paddle/fluid/operators/gru_op.h
+Done processing paddle/fluid/operators/listen_and_serv_op.cc
+Done processing paddle/fluid/operators/lookup_sparse_table_op.cc
+Done processing paddle/fluid/operators/math/blas.h
+Done processing paddle/fluid/operators/math/blas_impl.h
+Done processing paddle/fluid/operators/prelu_op.cc
+Done processing paddle/fluid/operators/prelu_op.h
+Done processing paddle/fluid/operators/recv_op.cc
+Done processing paddle/fluid/operators/sampling_id_op.cc
+Done processing paddle/fluid/operators/sampling_id_op.cu
+Done processing paddle/fluid/operators/sampling_id_op.h
+Done processing paddle/fluid/operators/scatter_op.h
+Done processing paddle/fluid/operators/send_barrier_op.cc
+Done processing paddle/fluid/operators/send_op.cc
+Done processing paddle/fluid/operators/sgd_op.h
+Done processing paddle/fluid/operators/sum_mkldnn_op.cc
+Done processing paddle/fluid/operators/sum_op.h
+Done processing paddle/fluid/operators/tensorrt_engine_op.cc
+Skipping input 'paddle/fluid/operators/prelu_op.cu': Can't open for reading
+paddle/fluid/operators/tensorrt_engine_op.h:37:  Do not use unnamed namespaces in header files.  See https://google-styleguide.googlecode.com/svn/trunk/cppguide.xml#Namespaces for more information.  [build/namespaces] [4]
+Done processing paddle/fluid/operators/tensorrt_engine_op.h
+Total errors found: 1
+Done processing paddle/fluid/operators/tensorrt_engine_op_test.cc
+Done processing paddle/fluid/platform/cuda_device_function.h
+Done processing paddle/fluid/platform/cuda_helper_test.cu
+Done processing paddle/fluid/platform/dynload/mklml.h
+Done processing paddle/fluid/platform/enforce.h
+Done processing paddle/fluid/platform/enforce_test.cc
+Done processing paddle/fluid/platform/gpu_info.cc
+Done processing paddle/fluid/pybind/protobuf.cc
+Done processing paddle/fluid/pybind/pybind.cc
+Ignoring paddle/scripts/submit_local.sh.in; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing paddle/scripts/submit_local.sh.in
+Ignoring python/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/CMakeLists.txt
+Ignoring python/paddle/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/__init__.py
+Ignoring python/paddle/compat.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/compat.py
+Ignoring python/paddle/dataset/cifar.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/cifar.py
+Ignoring python/paddle/dataset/common.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/common.py
+Ignoring python/paddle/dataset/conll05.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/conll05.py
+Ignoring python/paddle/dataset/flowers.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/flowers.py
+Ignoring python/paddle/dataset/image.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/image.py
+Ignoring python/paddle/dataset/imdb.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/imdb.py
+Ignoring python/paddle/dataset/imikolov.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/imikolov.py
+Ignoring python/paddle/dataset/mnist.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/mnist.py
+Ignoring python/paddle/dataset/movielens.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/movielens.py
+Ignoring python/paddle/dataset/mq2007.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/mq2007.py
+Ignoring python/paddle/dataset/sentiment.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/sentiment.py
+Ignoring python/paddle/dataset/tests/cifar_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/cifar_test.py
+Ignoring python/paddle/dataset/tests/common_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/common_test.py
+Ignoring python/paddle/dataset/tests/flowers_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/flowers_test.py
+Ignoring python/paddle/dataset/tests/imdb_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/imdb_test.py
+Ignoring python/paddle/dataset/tests/imikolov_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/imikolov_test.py
+Ignoring python/paddle/dataset/tests/mnist_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/mnist_test.py
+Ignoring python/paddle/dataset/tests/mq2007_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/mq2007_test.py
+Ignoring python/paddle/dataset/tests/test_image.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/test_image.py
+Ignoring python/paddle/dataset/tests/test_sentiment.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/test_sentiment.py
+Ignoring python/paddle/dataset/tests/voc2012_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/voc2012_test.py
+Ignoring python/paddle/dataset/tests/wmt16_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/tests/wmt16_test.py
+Ignoring python/paddle/dataset/uci_housing.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/uci_housing.py
+Ignoring python/paddle/dataset/voc2012.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/voc2012.py
+Ignoring python/paddle/dataset/wmt14.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/wmt14.py
+Ignoring python/paddle/dataset/wmt16.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/dataset/wmt16.py
+Ignoring python/paddle/fluid/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/__init__.py
+Ignoring python/paddle/fluid/average.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/average.py
+Ignoring python/paddle/fluid/backward.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/backward.py
+Ignoring python/paddle/fluid/clip.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/clip.py
+Ignoring python/paddle/fluid/concurrency.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/concurrency.py
+Ignoring python/paddle/fluid/contrib/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/contrib/__init__.py
+Ignoring python/paddle/fluid/contrib/decoder/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/contrib/decoder/__init__.py
+Ignoring python/paddle/fluid/contrib/decoder/beam_search_decoder.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/contrib/decoder/beam_search_decoder.py
+Ignoring python/paddle/fluid/contrib/memory_usage_calc.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/contrib/memory_usage_calc.py
+Ignoring python/paddle/fluid/data_feeder.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/data_feeder.py
+Ignoring python/paddle/fluid/debugger.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/debugger.py
+Ignoring python/paddle/fluid/default_scope_funcs.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/default_scope_funcs.py
+Ignoring python/paddle/fluid/evaluator.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/evaluator.py
+Ignoring python/paddle/fluid/executor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/executor.py
+Ignoring python/paddle/fluid/framework.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/framework.py
+Ignoring python/paddle/fluid/graphviz.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/graphviz.py
+Ignoring python/paddle/fluid/inferencer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/inferencer.py
+Ignoring python/paddle/fluid/initializer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/initializer.py
+Ignoring python/paddle/fluid/io.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/io.py
+Ignoring python/paddle/fluid/layer_helper.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layer_helper.py
+Ignoring python/paddle/fluid/layers/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/__init__.py
+Ignoring python/paddle/fluid/layers/control_flow.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/control_flow.py
+Ignoring python/paddle/fluid/layers/detection.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/detection.py
+Ignoring python/paddle/fluid/layers/device.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/device.py
+Ignoring python/paddle/fluid/layers/io.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/io.py
+Ignoring python/paddle/fluid/layers/layer_function_generator.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/layer_function_generator.py
+Ignoring python/paddle/fluid/layers/learning_rate_scheduler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/learning_rate_scheduler.py
+Ignoring python/paddle/fluid/layers/math_op_patch.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/math_op_patch.py
+Ignoring python/paddle/fluid/layers/metric_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/metric_op.py
+Ignoring python/paddle/fluid/layers/nn.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/nn.py
+Ignoring python/paddle/fluid/layers/ops.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/ops.py
+Ignoring python/paddle/fluid/layers/tensor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/tensor.py
+Ignoring python/paddle/fluid/layers/utils.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/layers/utils.py
+Ignoring python/paddle/fluid/lod_tensor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/lod_tensor.py
+Ignoring python/paddle/fluid/metrics.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/metrics.py
+Ignoring python/paddle/fluid/net_drawer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/net_drawer.py
+Ignoring python/paddle/fluid/nets.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/nets.py
+Ignoring python/paddle/fluid/op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/op.py
+Ignoring python/paddle/fluid/optimizer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/optimizer.py
+Ignoring python/paddle/fluid/parallel_executor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/parallel_executor.py
+Ignoring python/paddle/fluid/param_attr.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/param_attr.py
+Ignoring python/paddle/fluid/profiler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/profiler.py
+Ignoring python/paddle/fluid/recordio_writer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/recordio_writer.py
+Ignoring python/paddle/fluid/regularizer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/regularizer.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/fit_a_line/test_fit_a_line.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/fit_a_line/test_fit_a_line.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/image_classification/cifar10_small_test_set.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/image_classification/cifar10_small_test_set.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/image_classification/test_image_classification_resnet.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/image_classification/test_image_classification_resnet.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/image_classification/test_image_classification_vgg.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/image_classification/test_image_classification_vgg.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/label_semantic_roles/test_label_semantic_roles_newapi.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/label_semantic_roles/test_label_semantic_roles_newapi.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/machine_translation/test_machine_translation.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/machine_translation/test_machine_translation.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/recognize_digits/test_recognize_digits_conv.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/recognize_digits/test_recognize_digits_conv.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/recognize_digits/test_recognize_digits_mlp.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/recognize_digits/test_recognize_digits_mlp.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/recommender_system/test_recommender_system_newapi.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/recommender_system/test_recommender_system_newapi.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/understand_sentiment/test_understand_sentiment_conv.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/understand_sentiment/test_understand_sentiment_conv.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/understand_sentiment/test_understand_sentiment_dynamic_rnn.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/understand_sentiment/test_understand_sentiment_dynamic_rnn.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/understand_sentiment/test_understand_sentiment_stacked_lstm.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/understand_sentiment/test_understand_sentiment_stacked_lstm.py
+Ignoring python/paddle/fluid/tests/book/high-level-api/word2vec/test_word2vec_new_api.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/high-level-api/word2vec/test_word2vec_new_api.py
+Ignoring python/paddle/fluid/tests/book/notest_understand_sentiment.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/notest_understand_sentiment.py
+Ignoring python/paddle/fluid/tests/book/test_fit_a_line.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_fit_a_line.py
+Ignoring python/paddle/fluid/tests/book/test_image_classification.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_image_classification.py
+Ignoring python/paddle/fluid/tests/book/test_label_semantic_roles.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_label_semantic_roles.py
+Ignoring python/paddle/fluid/tests/book/test_machine_translation.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_machine_translation.py
+Ignoring python/paddle/fluid/tests/book/test_recognize_digits.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_recognize_digits.py
+Ignoring python/paddle/fluid/tests/book/test_recommender_system.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_recommender_system.py
+Ignoring python/paddle/fluid/tests/book/test_rnn_encoder_decoder.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_rnn_encoder_decoder.py
+Ignoring python/paddle/fluid/tests/book/test_word2vec.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book/test_word2vec.py
+Ignoring python/paddle/fluid/tests/book_memory_optimization/test_memopt_fit_a_line.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book_memory_optimization/test_memopt_fit_a_line.py
+Ignoring python/paddle/fluid/tests/book_memory_optimization/test_memopt_image_classification_train.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book_memory_optimization/test_memopt_image_classification_train.py
+Ignoring python/paddle/fluid/tests/book_memory_optimization/test_memopt_machine_translation.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/book_memory_optimization/test_memopt_machine_translation.py
+Ignoring python/paddle/fluid/tests/demo/fc_gan.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/demo/fc_gan.py
+Ignoring python/paddle/fluid/tests/demo/file_reader/convert_data_to_recordio.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/demo/file_reader/convert_data_to_recordio.py
+Ignoring python/paddle/fluid/tests/demo/file_reader/train.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/demo/file_reader/train.py
+Ignoring python/paddle/fluid/tests/demo/pyreader.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/demo/pyreader.py
+Ignoring python/paddle/fluid/tests/no_test_concurrency.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/no_test_concurrency.py
+Ignoring python/paddle/fluid/tests/notest_concurrency.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/notest_concurrency.py
+Ignoring python/paddle/fluid/tests/test_beam_search_decoder.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_beam_search_decoder.py
+Ignoring python/paddle/fluid/tests/test_cpp_reader.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_cpp_reader.py
+Ignoring python/paddle/fluid/tests/test_data_feeder.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_data_feeder.py
+Ignoring python/paddle/fluid/tests/test_detection.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_detection.py
+Ignoring python/paddle/fluid/tests/test_error_clip.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_error_clip.py
+Ignoring python/paddle/fluid/tests/test_gradient_clip.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_gradient_clip.py
+Ignoring python/paddle/fluid/tests/test_if_else_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_if_else_op.py
+Ignoring python/paddle/fluid/tests/test_lod_tensor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_lod_tensor.py
+Ignoring python/paddle/fluid/tests/test_python_operator_overriding.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/test_python_operator_overriding.py
+Ignoring python/paddle/fluid/tests/unittests/CMakeLists.txt; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/CMakeLists.txt
+Ignoring python/paddle/fluid/tests/unittests/benchmark.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/benchmark.py
+Ignoring python/paddle/fluid/tests/unittests/benchmark_sum_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/benchmark_sum_op.py
+Ignoring python/paddle/fluid/tests/unittests/decorators.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/decorators.py
+Ignoring python/paddle/fluid/tests/unittests/dist_mnist.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/dist_mnist.py
+Ignoring python/paddle/fluid/tests/unittests/dist_se_resnext.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/dist_se_resnext.py
+Ignoring python/paddle/fluid/tests/unittests/dist_transformer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/dist_transformer.py
+Ignoring python/paddle/fluid/tests/unittests/dist_word2vec.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/dist_word2vec.py
+Ignoring python/paddle/fluid/tests/unittests/op_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/op_test.py
+Ignoring python/paddle/fluid/tests/unittests/parallel_executor_test_base.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/parallel_executor_test_base.py
+Ignoring python/paddle/fluid/tests/unittests/test_accuracy_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_accuracy_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_activation_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_activation_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_activation_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_activation_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_adadelta_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_adadelta_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_adagrad_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_adagrad_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_adam_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_adam_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_adamax_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_adamax_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_anchor_generator_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_anchor_generator_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_arg_min_max_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_arg_min_max_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_argsort_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_argsort_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_array_read_write_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_array_read_write_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_assign_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_assign_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_assign_value_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_assign_value_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_auc_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_auc_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_batch_norm_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_batch_norm_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_batch_norm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_batch_norm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_beam_search_decode_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_beam_search_decode_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_beam_search_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_beam_search_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_bilinear_interp_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_bilinear_interp_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_bilinear_tensor_product_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_bilinear_tensor_product_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_bipartite_match_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_bipartite_match_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_box_coder_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_box_coder_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_calc_gradient.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_calc_gradient.py
+Ignoring python/paddle/fluid/tests/unittests/test_cast_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_cast_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_chunk_eval_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_chunk_eval_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_clip_by_norm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_clip_by_norm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_clip_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_clip_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_compare_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_compare_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_compat.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_compat.py
+Ignoring python/paddle/fluid/tests/unittests/test_concat_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_concat_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_conditional_block.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conditional_block.py
+Ignoring python/paddle/fluid/tests/unittests/test_const_value.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_const_value.py
+Ignoring python/paddle/fluid/tests/unittests/test_conv2d_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conv2d_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_conv2d_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conv2d_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_conv2d_transpose_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conv2d_transpose_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_conv3d_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conv3d_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_conv3d_transpose_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conv3d_transpose_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_conv_shift_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_conv_shift_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_cos_sim_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_cos_sim_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_create_op_doc_string.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_create_op_doc_string.py
+Ignoring python/paddle/fluid/tests/unittests/test_crf_decoding_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_crf_decoding_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_crop_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_crop_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_cross_entropy_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_cross_entropy_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_ctc_align.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_ctc_align.py
+Ignoring python/paddle/fluid/tests/unittests/test_cumsum_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_cumsum_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_data_balance.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_data_balance.py
+Ignoring python/paddle/fluid/tests/unittests/test_debugger.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_debugger.py
+Ignoring python/paddle/fluid/tests/unittests/test_decayed_adagrad_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_decayed_adagrad_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_default_scope_funcs.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_default_scope_funcs.py
+Ignoring python/paddle/fluid/tests/unittests/test_desc_clone.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_desc_clone.py
+Ignoring python/paddle/fluid/tests/unittests/test_detection_map_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_detection_map_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_base.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_base.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_mnist.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_mnist.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_se_resnext.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_se_resnext.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_train.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_train.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_transformer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_transformer.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_transpiler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_transpiler.py
+Ignoring python/paddle/fluid/tests/unittests/test_dist_word2vec.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dist_word2vec.py
+Ignoring python/paddle/fluid/tests/unittests/test_dropout_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dropout_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_dyn_rnn.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dyn_rnn.py
+Ignoring python/paddle/fluid/tests/unittests/test_dynrnn_gradient_check.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dynrnn_gradient_check.py
+Ignoring python/paddle/fluid/tests/unittests/test_dynrnn_static_input.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_dynrnn_static_input.py
+Ignoring python/paddle/fluid/tests/unittests/test_edit_distance_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_edit_distance_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_add_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_add_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_add_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_add_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_div_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_div_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_gradient_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_gradient_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_max_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_max_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_min_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_min_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_mul_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_mul_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_pow_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_pow_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_elementwise_sub_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_elementwise_sub_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_exception.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_exception.py
+Ignoring python/paddle/fluid/tests/unittests/test_executor_and_mul.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_executor_and_mul.py
+Ignoring python/paddle/fluid/tests/unittests/test_expand_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_expand_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_extract_rows_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_extract_rows_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fake_dequantize_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fake_dequantize_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fake_quantize_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fake_quantize_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fc_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fc_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fc_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fc_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_feed_fetch_method.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_feed_fetch_method.py
+Ignoring python/paddle/fluid/tests/unittests/test_fetch_var.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fetch_var.py
+Ignoring python/paddle/fluid/tests/unittests/test_fill_constant_batch_size_like_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fill_constant_batch_size_like_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fill_constant_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fill_constant_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fill_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fill_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fill_zeros_like_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fill_zeros_like_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_flatten_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_flatten_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_framework_debug_str.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_framework_debug_str.py
+Ignoring python/paddle/fluid/tests/unittests/test_ftrl_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_ftrl_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_fused_elemwise_activation_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_fused_elemwise_activation_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_gather_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_gather_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_gaussian_random_batch_size_like_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_gaussian_random_batch_size_like_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_gaussian_random_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_gaussian_random_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_gaussian_random_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_gaussian_random_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_get_places_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_get_places_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_gru_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_gru_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_gru_unit_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_gru_unit_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_hinge_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_hinge_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_hsigmoid_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_hsigmoid_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_huber_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_huber_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_im2sequence_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_im2sequence_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_image_classification_layer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_image_classification_layer.py
+Ignoring python/paddle/fluid/tests/unittests/test_infer_shape.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_infer_shape.py
+Ignoring python/paddle/fluid/tests/unittests/test_inference_model_io.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_inference_model_io.py
+Ignoring python/paddle/fluid/tests/unittests/test_initializer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_initializer.py
+Ignoring python/paddle/fluid/tests/unittests/test_iou_similarity_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_iou_similarity_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_is_empty_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_is_empty_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_l1_norm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_l1_norm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_label_smooth_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_label_smooth_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_layer_norm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_layer_norm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_layers.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_layers.py
+Ignoring python/paddle/fluid/tests/unittests/test_learning_rate_scheduler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_learning_rate_scheduler.py
+Ignoring python/paddle/fluid/tests/unittests/test_linear_chain_crf_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_linear_chain_crf_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_listen_and_serv_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_listen_and_serv_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lod_array_length_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lod_array_length_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lod_rank_table.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lod_rank_table.py
+Ignoring python/paddle/fluid/tests/unittests/test_lod_reset_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lod_reset_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lod_tensor_array.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lod_tensor_array.py
+Ignoring python/paddle/fluid/tests/unittests/test_lod_tensor_array_ops.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lod_tensor_array_ops.py
+Ignoring python/paddle/fluid/tests/unittests/test_log_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_log_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_logical_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_logical_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lookup_sparse_table_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lookup_sparse_table_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lookup_table_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lookup_table_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lrn_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lrn_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lrn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lrn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lstm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lstm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lstm_unit_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lstm_unit_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_lstmp_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_lstmp_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_margin_rank_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_margin_rank_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_math_op_patch.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_math_op_patch.py
+Ignoring python/paddle/fluid/tests/unittests/test_matmul_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_matmul_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_maxout_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_maxout_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_mean_iou.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_mean_iou.py
+Ignoring python/paddle/fluid/tests/unittests/test_mean_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_mean_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_memory_usage.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_memory_usage.py
+Ignoring python/paddle/fluid/tests/unittests/test_merge_ids_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_merge_ids_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_mine_hard_examples_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_mine_hard_examples_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_minus_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_minus_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_modified_huber_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_modified_huber_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_momentum_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_momentum_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_mul_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_mul_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_multi_file_reader.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_multi_file_reader.py
+Ignoring python/paddle/fluid/tests/unittests/test_multi_pass_reader.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_multi_pass_reader.py
+Ignoring python/paddle/fluid/tests/unittests/test_multiclass_nms_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_multiclass_nms_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_multihead_attention.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_multihead_attention.py
+Ignoring python/paddle/fluid/tests/unittests/test_multiplex_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_multiplex_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_nce.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_nce.py
+Ignoring python/paddle/fluid/tests/unittests/test_network_with_dtype.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_network_with_dtype.py
+Ignoring python/paddle/fluid/tests/unittests/test_norm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_norm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_normalization_wrapper.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_normalization_wrapper.py
+Ignoring python/paddle/fluid/tests/unittests/test_nvprof.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_nvprof.py
+Ignoring python/paddle/fluid/tests/unittests/test_one_hot_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_one_hot_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_op_support_gpu.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_op_support_gpu.py
+Ignoring python/paddle/fluid/tests/unittests/test_operator.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_operator.py
+Ignoring python/paddle/fluid/tests/unittests/test_operator_desc.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_operator_desc.py
+Ignoring python/paddle/fluid/tests/unittests/test_optimizer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_optimizer.py
+Ignoring python/paddle/fluid/tests/unittests/test_pad_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_pad_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_executor_crf.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_executor_crf.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_executor_fetch_feed.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_executor_fetch_feed.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_executor_mnist.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_executor_mnist.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_executor_seresnext.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_executor_seresnext.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_executor_test_while_train.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_executor_test_while_train.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_executor_transformer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_executor_transformer.py
+Ignoring python/paddle/fluid/tests/unittests/test_parallel_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parallel_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_parameter.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_parameter.py
+Ignoring python/paddle/fluid/tests/unittests/test_polygon_box_transform.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_polygon_box_transform.py
+Ignoring python/paddle/fluid/tests/unittests/test_pool2d_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_pool2d_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_pool2d_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_pool2d_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_pool3d_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_pool3d_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_pool_max_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_pool_max_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_positive_negative_pair_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_positive_negative_pair_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_precision_recall_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_precision_recall_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_prelu_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_prelu_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_preprocessor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_preprocessor.py
+Ignoring python/paddle/fluid/tests/unittests/test_print_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_print_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_prior_box_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_prior_box_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_profiler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_profiler.py
+Ignoring python/paddle/fluid/tests/unittests/test_protobuf.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_protobuf.py
+Ignoring python/paddle/fluid/tests/unittests/test_protobuf_descs.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_protobuf_descs.py
+Ignoring python/paddle/fluid/tests/unittests/test_proximal_adagrad_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_proximal_adagrad_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_proximal_gd_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_proximal_gd_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_py_reader_push_pop.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_py_reader_push_pop.py
+Ignoring python/paddle/fluid/tests/unittests/test_py_reader_using_executor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_py_reader_using_executor.py
+Ignoring python/paddle/fluid/tests/unittests/test_random_crop_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_random_crop_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_rank_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_rank_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_reader_reset.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_reader_reset.py
+Ignoring python/paddle/fluid/tests/unittests/test_recordio_reader.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_recordio_reader.py
+Ignoring python/paddle/fluid/tests/unittests/test_recurrent_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_recurrent_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_reduce_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_reduce_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_registry.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_registry.py
+Ignoring python/paddle/fluid/tests/unittests/test_regularizer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_regularizer.py
+Ignoring python/paddle/fluid/tests/unittests/test_reorder_lod_tensor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_reorder_lod_tensor.py
+Ignoring python/paddle/fluid/tests/unittests/test_reshape_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_reshape_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_reverse_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_reverse_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_rmsprop_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_rmsprop_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_rnn_memory_helper_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_rnn_memory_helper_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_roi_pool_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_roi_pool_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_row_conv_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_row_conv_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_rpn_target_assign_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_rpn_target_assign_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sampling_id_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sampling_id_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_scale_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_scale_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_scatter_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_scatter_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_scope.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_scope.py
+Ignoring python/paddle/fluid/tests/unittests/test_selected_rows.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_selected_rows.py
+Ignoring python/paddle/fluid/tests/unittests/test_seq_concat_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_seq_concat_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_seq_conv.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_seq_conv.py
+Ignoring python/paddle/fluid/tests/unittests/test_seq_pool.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_seq_pool.py
+Ignoring python/paddle/fluid/tests/unittests/test_sequence_erase_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sequence_erase_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sequence_expand.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sequence_expand.py
+Ignoring python/paddle/fluid/tests/unittests/test_sequence_reshape.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sequence_reshape.py
+Ignoring python/paddle/fluid/tests/unittests/test_sequence_slice_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sequence_slice_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sequence_softmax_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sequence_softmax_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sgd_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sgd_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_shape_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_shape_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_shrink_rnn_memory.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_shrink_rnn_memory.py
+Ignoring python/paddle/fluid/tests/unittests/test_sigmoid_cross_entropy_with_logits_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sigmoid_cross_entropy_with_logits_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sign_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sign_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_slice_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_slice_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_slice_var.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_slice_var.py
+Ignoring python/paddle/fluid/tests/unittests/test_smooth_l1_loss_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_smooth_l1_loss_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_softmax_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_softmax_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_softmax_with_cross_entropy_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_softmax_with_cross_entropy_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_split_and_merge_lod_tensor_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_split_and_merge_lod_tensor_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_split_ids_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_split_ids_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_split_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_split_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_split_selected_rows_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_split_selected_rows_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_spp_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_spp_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_squared_l2_distance_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_squared_l2_distance_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_squared_l2_norm_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_squared_l2_norm_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_squeeze_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_squeeze_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sum_mkldnn_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sum_mkldnn_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_sum_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_sum_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_switch.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_switch.py
+Ignoring python/paddle/fluid/tests/unittests/test_target_assign_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_target_assign_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_tensor.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_tensor.py
+Ignoring python/paddle/fluid/tests/unittests/test_top_k_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_top_k_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_transpose_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_transpose_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_uniform_random_batch_size_like_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_uniform_random_batch_size_like_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_uniform_random_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_uniform_random_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_unique_name.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_unique_name.py
+Ignoring python/paddle/fluid/tests/unittests/test_unpool_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_unpool_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_unsqueeze_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_unsqueeze_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_variable.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_variable.py
+Ignoring python/paddle/fluid/tests/unittests/test_version.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_version.py
+Ignoring python/paddle/fluid/tests/unittests/test_warpctc_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_warpctc_op.py
+Ignoring python/paddle/fluid/tests/unittests/test_weight_normalization.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_weight_normalization.py
+Ignoring python/paddle/fluid/tests/unittests/test_while_op.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/test_while_op.py
+Ignoring python/paddle/fluid/tests/unittests/testsuite.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/testsuite.py
+Ignoring python/paddle/fluid/tests/unittests/transformer_model.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/tests/unittests/transformer_model.py
+Ignoring python/paddle/fluid/trainer.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/trainer.py
+Ignoring python/paddle/fluid/transpiler/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/__init__.py
+Ignoring python/paddle/fluid/transpiler/details/__init__.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/details/__init__.py
+Ignoring python/paddle/fluid/transpiler/details/program_utils.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/details/program_utils.py
+Ignoring python/paddle/fluid/transpiler/details/ufind.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/details/ufind.py
+Ignoring python/paddle/fluid/transpiler/distribute_transpiler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/distribute_transpiler.py
+Ignoring python/paddle/fluid/transpiler/inference_transpiler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/inference_transpiler.py
+Ignoring python/paddle/fluid/transpiler/memory_optimization_transpiler.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/memory_optimization_transpiler.py
+Ignoring python/paddle/fluid/transpiler/ps_dispatcher.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/transpiler/ps_dispatcher.py
+Ignoring python/paddle/fluid/unique_name.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/fluid/unique_name.py
+Ignoring python/paddle/reader/decorator.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/reader/decorator.py
+Ignoring python/paddle/reader/tests/creator_test.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/reader/tests/creator_test.py
+Ignoring python/paddle/utils/dump_config.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/dump_config.py
+Ignoring python/paddle/utils/image_multiproc.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/image_multiproc.py
+Ignoring python/paddle/utils/image_util.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/image_util.py
+Ignoring python/paddle/utils/make_model_diagram.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/make_model_diagram.py
+Ignoring python/paddle/utils/merge_model.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/merge_model.py
+Ignoring python/paddle/utils/plotcurve.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/plotcurve.py
+Ignoring python/paddle/utils/predefined_net.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/predefined_net.py
+Ignoring python/paddle/utils/preprocess_img.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/preprocess_img.py
+Ignoring python/paddle/utils/preprocess_util.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/preprocess_util.py
+Ignoring python/paddle/utils/show_pb.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/show_pb.py
+Ignoring python/paddle/utils/torch2paddle.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing python/paddle/utils/torch2paddle.py
+Ignoring tools/manylinux1/build_scripts/build.sh; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing tools/manylinux1/build_scripts/build.sh
+Ignoring tools/manylinux1/build_scripts/install_nccl2.sh; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing tools/manylinux1/build_scripts/install_nccl2.sh
+Ignoring tools/test_runner.py; not a valid file name (c, cc, h, hpp, c++, h++, cu, cpp, hxx, cxx, cuh)
+Done processing tools/test_runner.py
+
+pylint...............................................(no files to check)Skipped
+go fmt...............................................(no files to check)Skipped
+copyright_checker........................................................Passed

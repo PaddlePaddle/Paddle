@@ -12,11 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/prelu_op.h"
+#include "paddle/fluid/operators/tensorrt_engine_op.h"
+
+namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    prelu,
-    paddle::operators::PReluKernel<paddle::platform::CUDADeviceContext, float>);
-REGISTER_OP_CUDA_KERNEL(prelu_grad,
-                        paddle::operators::PReluGradKernel<
-                            paddle::platform::CUDADeviceContext, float>);
+    tensorrt_engine,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, int64_t>);
