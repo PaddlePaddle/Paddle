@@ -31,8 +31,8 @@ std::unique_ptr<Graph> Pass::Apply(std::unique_ptr<Graph> graph) const {
   }
   auto applied_graph = ApplyImpl(std::move(graph));
   // TODO(panyx0718): Add more verifications.
-  // PADDLE_ENFORCE(!HasCircle(*applied_graph),
-  //                "Illegal Pass. Generated graph shouldn't has cycle.");
+  PADDLE_ENFORCE(!HasCircle(*applied_graph),
+                 "Illegal Pass. Generated graph shouldn't has cycle.");
   applied_ = true;
   return applied_graph;
 }
