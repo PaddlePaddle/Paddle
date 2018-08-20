@@ -65,13 +65,13 @@ config.model_dir = "xxx";
 config.use_gpu = false;
 // 创建一个原生的 PaddlePredictor
 auto predictor =
-      paddle::CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+      paddle::CreatePaddlePredictor<paddle::NativeConfig, paddle::PaddleEngineKind::kNative>(config);
 // 创建输入 tensor
 int64_t data[4] = {1, 2, 3, 4};
 paddle::PaddleTensor tensor{.name = "",
                             .shape = std::vector<int>({4, 1}),
-                            .data = PaddleBuf(data, sizeof(data)),
-                            .dtype = PaddleDType::INT64};
+                            .data = paddle::PaddleBuf(data, sizeof(data)),
+                            .dtype = paddle::PaddleDType::INT64};
 // 创建输出 tensor，输出 tensor 的内存可以复用
 std::vector<paddle::PaddleTensor> outputs;
 // 执行预测
