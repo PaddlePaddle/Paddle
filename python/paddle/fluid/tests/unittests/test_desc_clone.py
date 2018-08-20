@@ -110,7 +110,7 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 
 
 def operator_equal(a, b):
-    for k, v in a.__dict__.iteritems():
+    for k, v in six.iteritems(a.__dict__):
         if isinstance(v, fluid.framework.Program) or \
                 isinstance(v, fluid.framework.Block):
             continue
@@ -120,8 +120,8 @@ def operator_equal(a, b):
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(v.iteritems(), key=lambda x: x[0])
-            v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
+            v0 = sorted(six.iteritems(v), key=lambda x: x[0])
+            v1 = sorted(six.iteritems(b.__dict__[k]), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
@@ -133,7 +133,7 @@ def operator_equal(a, b):
 
 
 def block_equal(a, b):
-    for k, v in a.__dict__.iteritems():
+    for k, v in six.iteritems(a.__dict__):
         if isinstance(v, core.ProgramDesc) or isinstance(
                 v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
             continue
@@ -145,8 +145,8 @@ def block_equal(a, b):
             assert (len(a.ops) == len(b.ops))
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(v.iteritems(), key=lambda x: x[0])
-            v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
+            v0 = sorted(six.iteritems(v), key=lambda x: x[0])
+            v1 = sorted(six.iteritems(b.__dict__[k]), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In block_equal not equal:{0}\n".format(k))
@@ -158,7 +158,7 @@ def block_equal(a, b):
 
 
 def program_equal(a, b):
-    for k, v in a.__dict__.iteritems():
+    for k, v in six.iteritems(a.__dict__):
         if isinstance(v, core.ProgramDesc):
             continue
 
