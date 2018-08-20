@@ -57,8 +57,6 @@ struct DataFlowGraph {
   // Get an attribute.
   AnyAttr &Attr(const std::string &key) { return attrs_[key]; }
 
-  bool IsFullyConnected() const;
-
   // Output a DOT graph file for debug.
   std::string DotString() const;
 
@@ -96,8 +94,7 @@ struct GraphTraits<DataFlowGraph> {
   struct NodesBFSIterator
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesBFSIterator() = default;
-    explicit NodesBFSIterator(const std::vector<Node *> &source,
-                              bool directive);
+    explicit NodesBFSIterator(const std::vector<Node *> &source);
     NodesBFSIterator(NodesBFSIterator &&other) noexcept;
     // NOTE Heavy to use.
     NodesBFSIterator(const NodesBFSIterator &other);
@@ -113,7 +110,6 @@ struct GraphTraits<DataFlowGraph> {
     bool operator!=(const NodesBFSIterator &other) { return !(*this == other); }
 
    private:
-    bool directive_;
     std::deque<Node *> queue_;
     std::unordered_set<Node *> visited_;
   };
@@ -122,7 +118,7 @@ struct GraphTraits<DataFlowGraph> {
   struct NodesDFSIterator
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesDFSIterator() = default;
-    NodesDFSIterator(const std::vector<Node *> &source, bool directive);
+    NodesDFSIterator(const std::vector<Node *> &source);
     NodesDFSIterator(NodesDFSIterator &&other) noexcept;
     NodesDFSIterator(const NodesDFSIterator &other);
 
@@ -137,7 +133,6 @@ struct GraphTraits<DataFlowGraph> {
     Node *operator->();
 
    private:
-    bool directive_;
     std::stack<Node *> stack_;
     std::unordered_set<Node *> visited_;
   };
@@ -146,11 +141,9 @@ struct GraphTraits<DataFlowGraph> {
   struct NodesTSIterator
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesTSIterator() = default;
-    NodesTSIterator(const std::vector<Node *> &source, bool directive);
+    NodesTSIterator(const std::vector<Node *> &source);
     NodesTSIterator(NodesTSIterator &&other)
-        : directive_(other.directive_),
-          sorted_(std::move(other.sorted_)),
-          cursor_(other.cursor_) {
+        : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
       other.cursor_ = 0;
     }
     NodesTSIterator(const NodesTSIterator &other);
@@ -166,13 +159,11 @@ struct GraphTraits<DataFlowGraph> {
     Node *operator->();
 
    private:
-    bool directive_;
     std::vector<Node *> sorted_;
     size_t cursor_{0};
   };
 
-  explicit GraphTraits(const DataFlowGraph &graph, bool directive = true)
-      : graph_(graph), directive_(directive) {}
+  explicit GraphTraits(const DataFlowGraph &graph) : graph_(graph) {}
 
   // default use BFS to visit the nodes.
   iterator_range<NodesBFSIterator> nodes() {
@@ -190,23 +181,20 @@ struct GraphTraits<DataFlowGraph> {
 
  private:
   NodesBFSIterator nodes_bfs_begin() {
-    return NodesBFSIterator(graph_.inputs(), directive_);
+    return NodesBFSIterator(graph_.inputs());
   }
   NodesBFSIterator nodes_bfs_end() { return NodesBFSIterator(); }
 
   NodesDFSIterator nodes_dfs_begin() {
-    return NodesDFSIterator(graph_.inputs(), directive_);
+    return NodesDFSIterator(graph_.inputs());
   }
   NodesDFSIterator nodes_dfs_end() { return NodesDFSIterator(); }
 
-  NodesTSIterator nodes_ts_begin() {
-    return NodesTSIterator(graph_.inputs(), directive_);
-  }
+  NodesTSIterator nodes_ts_begin() { return NodesTSIterator(graph_.inputs()); }
   NodesTSIterator nodes_ts_end() { return NodesTSIterator(); }
 
  private:
   const DataFlowGraph &graph_;
-  bool directive_;
 };
 
 // Extract the inputs and outputs of a graph. The inputs and outputs of a

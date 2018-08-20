@@ -178,26 +178,6 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
   VLOG(3) << "finished build from IR";
 }
 
-bool DataFlowGraph::IsFullyConnected() const {
-  // Use a DFS and check whether all the nodes are visited.
-  // NOTE a trick here, start from just one start point, and check whether all
-  // the nodes are visited.
-  PADDLE_ENFORCE(!inputs_.empty(),
-                 "graph should have at least one inputs, or call Build() to "
-                 "deduce the inputs and outputs first.");
-  auto inputs_copied = this->inputs_;
-  inputs_.erase(inputs_.begin() + 1, inputs_.end());
-  PADDLE_ENFORCE_EQ(inputs_.size(), 1UL);
-  std::unordered_set<Node *> visited;
-  for (auto &node :
-       GraphTraits<DataFlowGraph>(*this, false /*directive*/).nodes_in_DFS()) {
-    visited.insert(&node);
-  }
-
-  inputs_ = inputs_copied;
-  return visited.size() == nodes.size();
-}
-
 void DataFlowGraph::Clean() {
   for (auto &node : nodes.nodes()) {
     std::unordered_set<Node *> inlinks_set(node->inlinks.begin(),
@@ -251,20 +231,17 @@ std::string DataFlowGraph::HumanReadableInfo(bool show_values,
 //
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
-    const std::vector<Node *> &source, bool directive = true)
-    : directive_(directive), queue_(source.begin(), source.end()) {}
+    const std::vector<Node *> &source)
+    : queue_(source.begin(), source.end()) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
-    : directive_(other.directive_),
-      queue_(std::move(other.queue_)),
+    : queue_(std::move(other.queue_)),
       visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     const GraphTraits<DataFlowGraph>::NodesBFSIterator &other)
-    : directive_(other.directive_),
-      queue_(other.queue_),
-      visited_(other.visited_) {}
+    : queue_(other.queue_), visited_(other.visited_) {}
 
 Node &GraphTraits<DataFlowGraph>::NodesBFSIterator::operator*() {
   PADDLE_ENFORCE(!queue_.empty());
@@ -279,7 +256,6 @@ Node *GraphTraits<DataFlowGraph>::NodesBFSIterator::operator->() {
 GraphTraits<DataFlowGraph>::NodesBFSIterator &
 GraphTraits<DataFlowGraph>::NodesBFSIterator::operator=(
     const GraphTraits<DataFlowGraph>::NodesBFSIterator &other) {
-  directive_ = other.directive_;
   queue_ = other.queue_;
   visited_ = other.visited_;
   return *this;
@@ -297,14 +273,6 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator
       visited_.insert(output);
     }
   }
-  if (!directive_) {
-    for (auto *input : cur->inlinks) {
-      if (!visited_.count(input)) {
-        queue_.push_back(input);
-        visited_.insert(input);
-      }
-    }
-  }
   return *this;
 }
 
@@ -313,8 +281,7 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
   if (queue_.empty()) return other.queue_.empty();
   if ((!queue_.empty()) && (!other.queue_.empty())) {
     return queue_.front() == other.queue_.front() &&
-           visited_.size() == other.visited_.size() &&
-           directive_ == other.directive_;  // here need to check the
+           visited_.size() == other.visited_.size();
     // equality of queue and
     // visited. Just a light but week implementation.
   }
@@ -325,22 +292,18 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
 // NodesDFSIterator
 //
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
-    const std::vector<Node *> &source, bool directive = true)
-    : directive_(directive) {
+    const std::vector<Node *> &source) {
   for (auto *x : source) stack_.push(x);
 }
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
     GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
-    : directive_(other.directive_),
-      stack_(std::move(other.stack_)),
+    : stack_(std::move(other.stack_)),
       visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
     const GraphTraits<DataFlowGraph>::NodesDFSIterator &other)
-    : directive_(other.directive_),
-      stack_(other.stack_),
-      visited_(other.visited_) {}
+    : stack_(other.stack_), visited_(other.visited_) {}
 
 Node &GraphTraits<DataFlowGraph>::NodesDFSIterator::operator*() {
   PADDLE_ENFORCE(!stack_.empty());
@@ -359,14 +322,6 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator
       visited_.insert(x);
     }
   }
-  if (!directive_) {
-    for (auto *x : cur->inlinks) {
-      if (!visited_.count(x)) {
-        stack_.push(x);
-        visited_.insert(x);
-      }
-    }
-  }
   return *this;
 }
 bool GraphTraits<DataFlowGraph>::NodesDFSIterator::operator==(
@@ -383,7 +338,6 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator::operator=(
     const GraphTraits<DataFlowGraph>::NodesDFSIterator &other) {
   stack_ = other.stack_;
   visited_ = other.visited_;
-  directive_ = other.directive_;
   return *this;
 }
 Node *GraphTraits<DataFlowGraph>::NodesDFSIterator::operator->() {
@@ -395,8 +349,7 @@ inline bool CheckNodeIndegreeEquals(const Node &node, size_t n) {
 }
 
 GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
-    const std::vector<Node *> &source, bool directive = true)
-    : directive_(directive) {
+    const std::vector<Node *> &source) {
   PADDLE_ENFORCE(!source.empty(),
                  "Start points of topological sorting should not be empty!");
   // CHECK all the inputs' in-degree is 0
@@ -427,14 +380,6 @@ GraphTraits<DataFlowGraph>::NodesTSIterator::NodesTSIterator(
         for (auto *_ : p->outlinks) {
           if (!visited.count(_)) {
             to_visit.insert(_);
-          }
-        }
-
-        if (!directive_) {
-          for (auto *_ : p->outlinks) {
-            if (!visited.count(_)) {
-              to_visit.insert(_);
-            }
           }
         }
 

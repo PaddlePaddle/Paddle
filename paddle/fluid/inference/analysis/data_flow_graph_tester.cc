@@ -160,38 +160,6 @@ TEST(DataFlowGraph, Build_IR_Graph) {
   ASSERT_EQ(graph.nodes.size(), ir_graph.Nodes().size());
 }
 
-TEST(DataFlowGraph, IsFullyConnected) {
-  framework::ProgramDesc prog;
-  for (auto& v : std::vector<std::string>({"a", "b", "c", "d", "e", "f"})) {
-    auto* var = prog.MutableBlock(0)->Var(v);
-    var->SetType(framework::proto::VarType::SELECTED_ROWS);
-    if (v == "c") {
-      var->SetPersistable(true);
-    }
-  }
-
-  SetOp(&prog, "OP0", std::vector<std::string>({"a"}),
-        std::vector<std::string>({"b"}));
-  SetOp(&prog, "OP1", std::vector<std::string>({"a"}),
-        std::vector<std::string>({"c"}));
-  SetOp(&prog, "mul", std::vector<std::string>({"b", "c"}),
-        std::vector<std::string>({"d"}));
-  SetOp(&prog, "elementwise_add", std::vector<std::string>({"d", "e"}),
-        std::vector<std::string>({"f"}));
-
-  DataFlowGraph graph;
-  graph.Build(*prog.Proto());
-
-  ASSERT_TRUE(graph.IsFullyConnected());
-
-  auto* var = prog.MutableBlock(0)->Var("outlier");
-  var->SetType(framework::proto::VarType::SELECTED_ROWS);
-
-  DataFlowGraph graph1;
-  graph1.Build(*prog.Proto());
-  ASSERT_FALSE(graph1.IsFullyConnected());
-}
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
