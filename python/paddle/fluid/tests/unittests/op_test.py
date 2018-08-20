@@ -123,7 +123,7 @@ def get_numeric_gradient(place,
         y_neg = get_output()
 
         __set_elem__(tensor_to_check, i, origin)
-        gradient_flat[i] = (y_pos - y_neg) / delta // 2
+        gradient_flat[i] = (y_pos - y_neg) / delta / 2
 
     return gradient_flat.reshape(tensor_to_check.shape())
 
