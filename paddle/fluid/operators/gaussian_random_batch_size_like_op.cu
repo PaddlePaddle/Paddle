@@ -18,6 +18,6 @@ template <typename T>
 using GPUGaussianRandomKernel =
     paddle::operators::GaussianRandomKernel<paddle::platform::CUDADeviceContext,
                                             T>;
-REGISTER_OP_CPU_KERNEL(gaussian_random_batch_size_like,
-                       GPUGaussianRandomKernel<float>,
-                       GPUGaussianRandomKernel<double>);
+REGISTER_OP_CUDA_KERNEL(gaussian_random_batch_size_like,
+                        GPUGaussianRandomKernel<float>,
+                        GPUGaussianRandomKernel<double>);
