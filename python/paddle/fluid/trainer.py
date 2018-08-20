@@ -282,11 +282,12 @@ class Trainer(object):
             self._load_checkpoint()
 
         if param_path and os.path.isdir(param_path):
-            # load params from param_path into scope
-            io.load_persistables(
-                executor=exe,
-                dirname=param_path,
-                main_program=self.startup_program)
+            with self._prog_and_scope_guard():
+                # load params from param_path into scope
+                io.load_persistables(
+                    executor=exe,
+                    dirname=param_path,
+                    main_program=self.startup_program)
 
     def _transpile_nccl2_dist(self):
         # PADDLE_TRAINER_IPS
