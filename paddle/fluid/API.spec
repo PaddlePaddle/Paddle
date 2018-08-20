@@ -143,6 +143,8 @@ paddle.fluid.layers.smooth_l1 ArgSpec(args=['x', 'y', 'inside_weight', 'outside_
 paddle.fluid.layers.one_hot ArgSpec(args=['input', 'depth'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.layers.autoincreased_step_counter ArgSpec(args=['counter_name', 'begin', 'step'], varargs=None, keywords=None, defaults=(None, 1, 1))
 paddle.fluid.layers.reshape ArgSpec(args=['x', 'shape', 'actual_shape', 'act', 'inplace', 'name'], varargs=None, keywords=None, defaults=(None, None, True, None))
+paddle.fluid.layers.squeeze ArgSpec(args=['input', 'axes', 'inplace', 'name'], varargs=None, keywords=None, defaults=(False, None))
+paddle.fluid.layers.unsqueeze ArgSpec(args=['input', 'axes', 'inplace', 'name'], varargs=None, keywords=None, defaults=(False, None))
 paddle.fluid.layers.lod_reset ArgSpec(args=['x', 'y', 'target_lod'], varargs=None, keywords=None, defaults=(None, None))
 paddle.fluid.layers.lrn ArgSpec(args=['input', 'n', 'k', 'alpha', 'beta', 'name'], varargs=None, keywords=None, defaults=(5, 1.0, 0.0001, 0.75, None))
 paddle.fluid.layers.pad ArgSpec(args=['x', 'paddings', 'pad_value', 'name'], varargs=None, keywords=None, defaults=(0.0, None))
