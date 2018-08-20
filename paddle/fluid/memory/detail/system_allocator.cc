@@ -11,11 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
-#include <stdlib.h>    // for malloc and free
+#ifdef _WIN32
+#include <windows.h>
+#include <malloc.h>
+#else
 #include <sys/mman.h>  // for mlock and munlock
+#endif
+#include <stdlib.h>    // for malloc and free
 #include <algorithm>   // for std::max
 
 #include "gflags/gflags.h"
@@ -35,6 +41,24 @@ namespace paddle {
 namespace memory {
 namespace detail {
 
+void* AlignedMalloc(size_t size) {
+  void* p = nullptr;
+  size_t alignment = 32ul;
+  #ifdef PADDLE_WITH_MKLDNN
+  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
+  // memory alignment
+  alignment = 4096ul;
+  #endif
+#ifdef _WIN32
+  p = _aligned_malloc(size, alignment);
+#else
+   PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
+                    size);
+#endif
+  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
+  return p;
+}
+
 void* CPUAllocator::Alloc(size_t* index, size_t size) {
   // According to http://www.cplusplus.com/reference/cstdlib/malloc/,
   // malloc might not return nullptr if size is zero, but the returned
@@ -43,23 +67,16 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
   *index = 0;  // unlock memory
 
-  void* p = nullptr;
-
-#ifdef PADDLE_WITH_MKLDNN
-  // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
-  // memory alignment
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, 4096ul, size), 0, "Alloc %ld error!",
-                    size);
-#else
-  PADDLE_ENFORCE_EQ(posix_memalign(&p, 32ul, size), 0, "Alloc %ld error!",
-                    size);
-#endif
-  PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
+  void* p = AlignedMalloc(size);
 
   if (p != nullptr) {
     if (FLAGS_use_pinned_memory) {
       *index = 1;
+#ifdef _WIN32
+      VirtualLock(p, size);
+#else
       mlock(p, size);  // lock memory
+#endif
     }
   }
 
@@ -68,7 +85,11 @@ void* CPUAllocator::Alloc(size_t* index, size_t size) {
 
 void CPUAllocator::Free(void* p, size_t size, size_t index) {
   if (p != nullptr && index == 1) {
+#ifdef _WIN32
+    VirtualUnlock(p, size);
+#else
     munlock(p, size);
+#endif
   }
   free(p);
 }

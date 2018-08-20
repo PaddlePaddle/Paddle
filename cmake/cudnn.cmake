@@ -31,7 +31,6 @@ find_library(CUDNN_LIBRARY NAMES libcudnn.so libcudnn.dylib # libcudnn_static.a
           NO_DEFAULT_PATH
     DOC "Path to cuDNN library.")
 
-
 if(CUDNN_INCLUDE_DIR AND CUDNN_LIBRARY)
     set(CUDNN_FOUND ON)
 else()

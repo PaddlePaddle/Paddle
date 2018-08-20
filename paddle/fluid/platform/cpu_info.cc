@@ -22,6 +22,9 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
+#elif defined(_WIN32)
+#include <windows.h>
+#include <psapi.h>
 #else
 #include <unistd.h>
 #endif
@@ -60,6 +63,11 @@ inline size_t CpuTotalPhysicalMemory() {
   size_t len = sizeof(size);
   if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
   return 0L;
+#elif defined(_WIN32)
+MEMORYSTATUSEX sMeminfo;
+sMeminfo.dwLength = sizeof(sMeminfo);
+GlobalMemoryStatusEx(&sMeminfo);
+return sMeminfo.ullTotalPhys;
 #else
   int64_t pages = sysconf(_SC_PHYS_PAGES);
   int64_t page_size = sysconf(_SC_PAGE_SIZE);
