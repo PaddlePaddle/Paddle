@@ -86,7 +86,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         track.mutable_data<int>(emission_dims, platform::CPUPlace());
 
 #ifdef __AVX__
-
+// It use the AVX or AVX512 instruction to deal the data as the vector of 8 or
+// 16 elements per iteration. Then it can implement the parallel processing.
 // Only optimize for float type.
 #ifdef __AVX512F__
     size_t step_size = 16;
@@ -102,19 +103,29 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
       size_t i_offset = 0;
       for (size_t i = 0; i <= steps; ++i) {
 #ifdef __AVX512F__
+        // Declare the variable for the content of weights, input and alpha
+        // values.
         __m512 w_content, x_content, alpha_content;
 
+        // Load the relevant data into the variables from un-aligned address.
         w_content = _mm512_loadu_ps((const float*)(w + i_offset));
         x_content = _mm512_loadu_ps((const float*)(x + i_offset));
         alpha_content = _mm512_add_ps(w_content, x_content);
+
+        // Save the alpha value.
         _mm512_storeu_ps(reinterpret_cast<float*>(alpha_value + i_offset),
                          alpha_content);
 #else
+        // Declare the variable for the content of weights, input and alpha
+        // values.
         __m256 w_content, x_content, alpha_content;
 
+        // Load the relevant data into the variables from un-aligned address.
         w_content = _mm256_loadu_ps((const float*)(w + i_offset));
         x_content = _mm256_loadu_ps((const float*)(x + i_offset));
         alpha_content = _mm256_add_ps(w_content, x_content);
+
+        // Save the alpha value.
         _mm256_storeu_ps(reinterpret_cast<float*>(alpha_value + i_offset),
                          alpha_content);
 #endif
@@ -134,29 +145,40 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
         size_t j_offset = 0;
         for (size_t j = 0; j <= steps; ++j) {
 #ifdef __AVX512F__
+          // Initialize the variables of maximum score and location.
           __m512 max_score = _mm512_set1_ps(-std::numeric_limits<T>::max());
           __m512i max_j = _mm512_setzero_si512();
 #else
+          // Initialize the variables of maximum score and location.
           __m256 max_score = _mm256_set1_ps(-std::numeric_limits<T>::max());
           __m256i max_j = _mm256_set1_epi32(0);
 #endif
+          // Calculate the offset of transition_weights.
           size_t trans_offset = state_trans_base_idx * tag_num + j_offset;
           for (size_t i = 0; i < tag_num; ++i) {
 #ifdef __AVX512F__
+            // Initalize the content of alpha variable with related offset.
             __m512 alpha_content =
                 _mm512_set1_ps(*(const float*)(alpha_value + seq_offset + i));
+            // Obtain the content of weights from un-aligned address.
             __m512 w_content =
                 _mm512_loadu_ps((const float*)(w + trans_offset));
+
             __m512 score_v = _mm512_add_ps(alpha_content, w_content);
 
             __mmask16 mask = _mm512_cmp_ps_mask(score_v, max_score, _CMP_GT_OS);
 
+            // According to the mask value, it update the index of the max_score
+            // location.
             max_j = _mm512_mask_set1_epi32(max_j, mask, i);
 
+            // Update the max_score value.
             max_score = _mm512_max_ps(max_score, score_v);
 #else
+            // Initalize the content of alpha variable with related offset.
             __m256 alpha_content = _mm256_broadcast_ss(
                 (const float*)(alpha_value + seq_offset + i));
+            // Obtain the content of weights from un-aligned address.
             __m256 w_content =
                 _mm256_loadu_ps((const float*)(w + trans_offset));
             __m256 score_v = _mm256_add_ps(alpha_content, w_content);
@@ -164,6 +186,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
             __m256 mask = _mm256_cmp_ps(score_v, max_score, _CMP_GT_OS);
 
 #ifdef __AVX2__
+            // According to the mask value, it update the index of the max_score
+            // location.
             max_j = _mm256_or_si256(
                 _mm256_andnot_si256((__m256i)mask, max_j),
                 _mm256_and_si256((__m256i)mask, _mm256_set1_epi32(i)));
@@ -181,16 +205,20 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
             lo_max_j = _mm_or_si128(lo_mask, lo_max_j);
             hi_max_j = _mm_or_si128(hi_mask, hi_max_j);
 
+            // According to the mask value, it update the index of the max_score
+            // location.
             max_j = _mm256_insertf128_si256(max_j, lo_max_j, 0);
             max_j = _mm256_insertf128_si256(max_j, hi_max_j, 1);
 #endif
 
+            // Update the max_score value.
             max_score = _mm256_max_ps(max_score, score_v);
 #endif
             trans_offset += tag_num;
           }
 
 #ifdef __AVX512F__
+          // Update the alpha and track values.
           __m512 x_content = _mm512_loadu_ps(
               (const float*)(x + seq_offset + tag_num + j_offset));
           max_score = _mm512_add_ps(max_score, x_content);
@@ -202,6 +230,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
                                          j_offset),
               max_j);
 #else
+          // Update the alpha and track values.
           __m256 x_content = _mm256_loadu_ps(
               (const float*)(x + seq_offset + tag_num + j_offset));
           max_score = _mm256_add_ps(max_score, x_content);
