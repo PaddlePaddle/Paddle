@@ -25,6 +25,8 @@ namespace math {
 
 enum PadLayout { kBatchLengthWidth = 0, kLengthBatchWidth };
 
+enum CopyType { kSeqToPad, kPadToSeq };
+
 inline static size_t MaximumSequenceLength(
     const framework::Vector<size_t>& seq_offset) {
   size_t seq_num = seq_offset.size() - 1;
@@ -82,7 +84,7 @@ class PaddingLoDTensorFunctor {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
-                  std::vector<T> pad_value = {0}, int pad_seq_len = -1,
+                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth);
 };
@@ -94,7 +96,7 @@ class UnpaddingLoDTensorFunctor {
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
-                  const PadLayout& layout = kBatchLengthWidth);
+                  const PadLayout layout = kBatchLengthWidth);
 };
 
 }  // namespace math

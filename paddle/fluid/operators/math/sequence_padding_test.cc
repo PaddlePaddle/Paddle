@@ -24,6 +24,8 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   paddle::framework::LoDTensor seq;
   paddle::framework::LoDTensor seq_back;
   paddle::framework::LoDTensor padding;
+  paddle::framework::LoDTensor cpu_pad_value;
+  paddle::framework::LoDTensor pad_value;
 
   const size_t level = lod.size() - 1;
   auto seq_dims =
@@ -55,8 +57,17 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
 
   padding.mutable_data<T>(padding_dims, *place);
 
+  T* pad_value_data =
+      cpu_pad_value.mutable_data<T>({1}, paddle::platform::CPUPlace());
+  *pad_value_data = static_cast<T>(0);
+  if (paddle::platform::is_cpu_place(*place)) {
+    pad_value = cpu_pad_value;
+  } else {
+    TensorCopySync(cpu_pad_value, *place, &pad_value);
+  }
+
   paddle::operators::math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-      *context, seq, &padding, {0}, -1, 0, false,
+      *context, seq, &padding, pad_value, -1, 0, false,
       paddle::operators::math::kLengthBatchWidth);
 
   seq_back.set_lod(lod);

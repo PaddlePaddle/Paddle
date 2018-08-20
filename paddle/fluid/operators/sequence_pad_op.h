@@ -35,14 +35,11 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto* pad_value = ctx.Input<LoDTensor>("PadValue");
-    const T* pad_value_data = pad_value->data<T>();
-    std::vector<T> pad_value_vec(pad_value_data,
-                                 pad_value_data + pad_value->numel());
 
     int padded_length = ctx.Attr<int>("padded_length");
 
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), *x, out, pad_value_vec,
+        ctx.template device_context<DeviceContext>(), *x, out, *pad_value,
         padded_length, 0, false, math::kBatchLengthWidth);
   }
 };
