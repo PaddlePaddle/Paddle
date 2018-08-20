@@ -42,10 +42,12 @@ endif(WIN32)
 if(Apple)
 set(CUDNN_LIB_NAME "libcudnn.dylib" "libcudnn.so")
 endif(Apple)
+
 find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
     PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
           NO_DEFAULT_PATH
     DOC "Path to cuDNN library.")
+
 
 if(CUDNN_INCLUDE_DIR AND CUDNN_LIBRARY)
     set(CUDNN_FOUND ON)

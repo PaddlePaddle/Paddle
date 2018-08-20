@@ -212,6 +212,7 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
 endif()
 
+include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
 include(cupti)
 include(configure)          # add paddle env configuration
@@ -220,7 +221,6 @@ include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
-include(flags)              # set paddle compile flags
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
