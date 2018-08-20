@@ -20,10 +20,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
+using framework::Tensor;
+using framework::EigenMatrix;
 
 template <typename T, typename ProbType>
 class FillMaskAndY {
@@ -67,7 +65,8 @@ class DropoutKernel : public framework::OpKernel<T> {
       int seed = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
                                                 : std::random_device()();
 
-      uint32_t uint32_prob = static_cast<uint32_t>(UINT32_MAX * dropout_prob);
+      uint32_t uint32_prob =
+          static_cast<uint32_t>(static_cast<double>(UINT32_MAX) * dropout_prob);
       FillMaskAndY<T, uint32_t> fill_functor(mask_data, x_data, y_data,
                                              uint32_prob);
       platform::RandomSequence<DeviceContext> rand_seq;
