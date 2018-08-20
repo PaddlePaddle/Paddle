@@ -101,9 +101,15 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   while (num_complete != op_deps->size()) {
     size_t num_comp = complete_q.Pop();
     if (num_comp == -1UL) {
-      int remaining = remaining_;
-      for (int i = 0; i < remaining; ++i) {
-        complete_q.Pop();
+      int remaining = 0;
+      while (true) {
+        remaining = remaining_;
+        if (remaining == 0) {
+          break;
+        }
+        for (int i = 0; i < remaining; ++i) {
+          complete_q.Pop();
+        }
       }
       exception_.ReThrow();
     }
