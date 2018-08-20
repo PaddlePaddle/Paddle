@@ -39,14 +39,14 @@ limitations under the License. */
 #include "paddle/fluid/inference/analysis/pass.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 
-namespace paddle {
-
 // TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
 // flag if not available.
-DECLARE_bool(inference_analysis_enable_tensorrt_subgraph_engine);
-DECLARE_string(inference_analysis_graphviz_log_root);
-DECLARE_string(inference_analysis_output_storage_path);
+DECLARE_bool(IA_enable_tensorrt_subgraph_engine);
+DECLARE_string(IA_graphviz_log_root);
+DECLARE_string(IA_output_storage_path);
+DECLARE_bool(IA_enable_ir);
 
+namespace paddle {
 namespace inference {
 namespace analysis {
 

@@ -98,11 +98,13 @@ class Graph {
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
+    PADDLE_ENFORCE(var_desc);
     return AddNode(new ir::Node(var_desc));
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
+    PADDLE_ENFORCE(op_desc);
     return AddNode(new ir::Node(op_desc));
   }
 
@@ -134,7 +136,6 @@ class Graph {
     return ret;
   }
 
- private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
@@ -149,6 +150,9 @@ class Graph {
     nodes_.erase(node);
   }
 
+  const ProgramDesc &program() const { return program_; }
+
+ private:
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc &program_;
   std::map<std::string, boost::any> attrs_;
