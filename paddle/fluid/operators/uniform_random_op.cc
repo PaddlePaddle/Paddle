@@ -30,8 +30,10 @@ class CPUUniformRandomKernel : public framework::OpKernel<T> {
       tensor = out_var->GetMutable<framework::LoDTensor>();
     } else if (out_var->IsType<framework::SelectedRows>()) {
       auto shape = ctx.Attr<std::vector<int>>("shape");
-      tensor = out_var->GetMutable<framework::SelectedRows>()->mutable_value();
+      auto* selected_rows = out_var->GetMutable<framework::SelectedRows>();
+      tensor = selected_rows->mutable_value();
       tensor->Resize(framework::make_ddim(shape));
+      selected_rows->mutable_rows()->reserve(shape[0]);
     } else {
       PADDLE_THROW(
           "uniform_random_op's output only"

@@ -14,25 +14,19 @@ limitations under the License. */
 
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/elementwise_mul_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMulKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseMulKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::ElementwiseMulKernel<paddle::platform::CUDADeviceContext,
-                              plat::float16>);
+    ops::ElementwiseMulKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMulGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::ElementwiseMulGradKernel<paddle::platform::CUDADeviceContext,
-                                  plat::float16>,
     ops::ElementwiseMulGradKernel<paddle::platform::CUDADeviceContext,
                                   int64_t>);
