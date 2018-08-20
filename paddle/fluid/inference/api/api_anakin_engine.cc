@@ -217,7 +217,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   }
 }
 
-#ifdef ENABLE_OP_TIMER
+#ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER
 template <typename Target>
 using executor_t =
     anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>;
@@ -248,7 +248,7 @@ void DisplayOpTimer(executor_t<Target> *net_executor, int epoch) {
 
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::~PaddleInferenceAnakinPredictor() {
-#ifdef ENABLE_OP_TIMER
+#ifdef PADDLE_ANAKIN_ENABLE_OP_TIMER
   DisplayOpTimer<Target>(executor_p_, max_batch_size_);
 #endif
   delete executor_p_;

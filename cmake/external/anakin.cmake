@@ -2,6 +2,11 @@ if (NOT WITH_ANAKIN)
   return()
 endif()
 
+option(ANAKIN_ENABLE_OP_TIMER      "Get more detailed information with Anakin op time"        OFF)
+if(ANAKIN_ENABLE_OP_TIMER)
+  add_definitions(-DPADDLE_ANAKIN_ENABLE_OP_TIMER)
+endif()
+
 INCLUDE(ExternalProject)
 set(ANAKIN_SOURCE_DIR  ${THIRD_PARTY_PATH}/anakin)
 # the anakin install dir is only default one now
@@ -53,6 +58,7 @@ ExternalProject_Add(
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
                         -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
                         -DCUDNN_ROOT=${CUDNN_ROOT}
+                        -DENABLE_OP_TIMER=${ANAKIN_ENABLE_OP_TIMER}
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
 )
