@@ -14,8 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/eigen_extend.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {
 namespace framework {
@@ -46,11 +46,13 @@ struct EigenTensor {
   using ConstType =
       Eigen::TensorMap<Eigen::Tensor<const T, D, MajorType, IndexType>>;
 
-  static Type From(Tensor& tensor, DDim dims) {
+  static Type From(Tensor& tensor, DDim dims) {  // NOLINT
     return Type(tensor.data<T>(), EigenDim<D>::From(dims));
   }
 
-  static Type From(Tensor& tensor) { return From(tensor, tensor.dims_); }
+  static Type From(Tensor& tensor) {  // NOLINT
+    return From(tensor, tensor.dims_);
+  }
 
   static ConstType From(const Tensor& tensor, DDim dims) {
     return ConstType(tensor.data<T>(), EigenDim<D>::From(dims));
@@ -64,7 +66,8 @@ struct EigenTensor {
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenMatrix : public EigenTensor<T, 2, MajorType, IndexType> {
-  static typename EigenMatrix::Type Reshape(Tensor& tensor, int num_col_dims) {
+  static typename EigenMatrix::Type Reshape(Tensor& tensor,  // NOLINT
+                                            int num_col_dims) {
     int rank = tensor.dims_.size();
     PADDLE_ENFORCE(num_col_dims > 0 && num_col_dims < rank,
                    "`num_col_dims` must be between (0, rank_of_tensor).");
@@ -86,7 +89,7 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 struct EigenVector : public EigenTensor<T, 1, MajorType, IndexType> {
   // Flatten reshapes a Tensor into an EigenVector.
-  static typename EigenVector::Type Flatten(Tensor& tensor) {
+  static typename EigenVector::Type Flatten(Tensor& tensor) {  // NOLINT
     return EigenVector::From(tensor, {product(tensor.dims_)});
   }
 
@@ -104,7 +107,7 @@ struct EigenScalar {
   using ConstType = Eigen::TensorMap<
       Eigen::TensorFixedSize<const T, Eigen::Sizes<>, MajorType, IndexType>>;
 
-  static Type From(Tensor& tensor) { return Type(tensor.data<T>()); }
+  static Type From(Tensor& tensor) { return Type(tensor.data<T>()); }  // NOLINT
 
   static ConstType From(const Tensor& tensor) {
     return ConstType(tensor.data<T>());
