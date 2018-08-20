@@ -47,7 +47,6 @@ class TranspilerTest(unittest.TestCase):
         avg_cost = fluid.layers.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
-        return
 
     def get_main_program(self):
         main = fluid.Program()
@@ -250,7 +249,6 @@ class TestLRDecay(TranspilerTest):
                 decay_rate=0.1,
                 staircase=True))
         sgd_optimizer.minimize(avg_cost)
-        return
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
@@ -280,7 +278,6 @@ class TestLRDecayConditional(TranspilerTest):
             learning_rate=fluid.layers.piecewise_decay([10000, 20000],
                                                        [1.0, 0.5, 1.0]))
         sgd_optimizer.minimize(avg_cost)
-        return
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
@@ -329,7 +326,6 @@ class TestL2Decay(TranspilerTest):
         avg_cost = fluid.layers.mean(cost)
         sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1)
         sgd_optimizer.minimize(avg_cost)
-        return
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
@@ -364,7 +360,6 @@ class TestL2DecayWithPiecewise(TranspilerTest):
             momentum=0.9,
             regularization=fluid.regularizer.L2Decay(1e-4))
         sgd_optimizer.minimize(avg_cost)
-        return
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
@@ -589,8 +584,6 @@ class TestDistArgsInProgram(TestDistLookupTableBase):
         self.network_with_table(is_sparse=True, is_distributed=True)
 
     def transpiler_test_impl(self):
-        config = fluid.DistributeTranspilerConfig()
-
         trainer, _ = self.get_trainer()
 
         self.assertTrue(trainer._is_distributed)
@@ -614,7 +607,6 @@ class TestRMSPropOptimizer(TranspilerTest):
         avg_cost = fluid.layers.mean(cost)
         optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
-        return
 
     def transpiler_test_impl(self):
         pserver, startup = self.get_pserver(self.pserver1_ep)
@@ -644,7 +636,6 @@ class TestLoadSliceVar(TranspilerTest):
         avg_cost = fluid.layers.mean(cost)
         optimizer = fluid.optimizer.RMSProp(learning_rate=0.1)
         optimizer.minimize(avg_cost)
-        return
 
     def transpiler_test_impl(self):
         pserver, _ = self.get_pserver(self.pserver1_ep)
