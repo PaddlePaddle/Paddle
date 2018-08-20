@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import multiprocessing
 import os
 import unittest
@@ -36,7 +38,8 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  optimizer=fluid.optimizer.Adam):
+                                  optimizer=fluid.optimizer.Adam,
+                                  use_fast_executor=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
                 res = exe.run(fetch_list=fetch_list, feed=feed)
@@ -69,6 +72,8 @@ class TestParallelExecutorBase(unittest.TestCase):
             startup_exe.run(startup)
             exec_strategy = fluid.ExecutionStrategy()
             exec_strategy.allow_op_delay = allow_op_delay
+            if use_fast_executor:
+                exec_strategy.use_experimental_executor = True
 
             build_strategy = fluid.BuildStrategy()
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
