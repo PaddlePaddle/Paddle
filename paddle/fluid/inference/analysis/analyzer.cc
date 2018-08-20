@@ -23,8 +23,6 @@
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_node_mark_pass.h"
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
 
-namespace paddle {
-
 DEFINE_bool(IA_enable_tensorrt_subgraph_engine, false,
             "Enable subgraph to TensorRT engine for acceleration");
 
@@ -35,6 +33,7 @@ DEFINE_string(IA_graphviz_log_root, "./",
 
 DEFINE_string(IA_output_storage_path, "", "optimized model output path");
 
+namespace paddle {
 namespace inference {
 namespace analysis {
 

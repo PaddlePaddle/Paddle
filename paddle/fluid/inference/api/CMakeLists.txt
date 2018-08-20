@@ -18,7 +18,10 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api)
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager
+  graph_viz_pass fc_fuse_pass
+    infer_clean_graph_pass
+  )
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
@@ -50,6 +53,9 @@ cc_test(test_paddle_inference_api
         DEPS paddle_inference_api)
 
 inference_api_test(test_api_impl SRC api_impl_tester.cc
+                    ARGS test_word2vec test_image_classification)
+
+inference_api_test(test_ditu_rnn SRC test_ditu_rnn.cc
                     ARGS test_word2vec test_image_classification)
 
 if(WITH_GPU AND TENSORRT_FOUND)
