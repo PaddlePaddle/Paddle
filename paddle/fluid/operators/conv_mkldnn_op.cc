@@ -260,7 +260,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
 
     auto* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
-    auto* bias = ctx.Input<Tensor>("Bias");
+    auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
     PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
