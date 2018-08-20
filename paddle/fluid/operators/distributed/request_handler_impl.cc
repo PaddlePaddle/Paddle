@@ -43,6 +43,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
   // Async
   if (!sync_mode_) {
     rpc_server_->Profiler().OneStep();
+    // All execution should use thread in the thread pool to do.
     std::future<void> ft = framework::Async([this, &scope, varname]() {
       try {
         executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
@@ -117,9 +118,10 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
                                     const std::string& out_var_name) {
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
-  auto var_desc = program_->Block(0).FindVar(out_var_name);
-  InitializeVariable(*outvar, var_desc->GetType());
+  // All execution should use thread in the thread pool to do.
   std::future<void> ft = framework::Async([this, &scope, varname]() {
+    auto var_desc = program_->Block(0).FindVar(out_var_name);
+    InitializeVariable(*outvar, var_desc->GetType());
     executor_->RunPreparedContext(
         (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
   });
