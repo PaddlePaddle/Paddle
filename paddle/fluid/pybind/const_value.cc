@@ -13,7 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/pybind/const_value.h"
-#include <paddle/fluid/framework/op_proto_maker.h>
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 
 namespace paddle {
@@ -24,6 +25,8 @@ void BindConstValue(pybind11::module* m) {
   m->def("kTempVarName", [] { return framework::kTempVarName; });
   m->def("kGradVarSuffix", [] { return framework::kGradVarSuffix; });
   m->def("kZeroVarSuffix", [] { return framework::kZeroVarSuffix; });
+  m->def("kControlDepVarName",
+         [] { return framework::ir::Node::kControlDepVarName; });
 
   auto op_proto_and_checker_maker =
       m->def_submodule("op_proto_and_checker_maker");
