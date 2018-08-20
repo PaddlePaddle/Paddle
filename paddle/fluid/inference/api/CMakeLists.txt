@@ -62,13 +62,13 @@ endif()
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml dynload_cuda)
-    #nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml dynload_cuda)
+    #cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endfunction()
     anakin_target(inference_anakin_api)
-    #anakin_target(inference_anakin_api_shared)
+    anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
         function(anakin_test_target target_name src_name)
           cc_test(${target_name} SRCS ${src_name}
