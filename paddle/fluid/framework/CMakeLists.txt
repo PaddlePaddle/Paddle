@@ -99,10 +99,14 @@ else()
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method)
 endif()
 
-
-
 if (NOT WIN32)
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS threaded_ssa_graph_executor scope_buffered_ssa_graph_executor graph graph_viz_pass multi_devices_graph_pass multi_devices_graph_print_pass multi_devices_graph_check_pass)
+
+cc_library(parallel_executor SRCS parallel_executor.cc DEPS
+        threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
+        graph graph_viz_pass multi_devices_graph_pass
+        multi_devices_graph_print_pass multi_devices_graph_check_pass
+        fast_threaded_ssa_graph_executor)
 endif() # NOT WIN32
 
 cc_library(prune SRCS prune.cc DEPS framework_proto)
@@ -117,6 +121,8 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 
 # cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
+
+cc_test(rw_lock_test SRCS rw_lock_test.cc)
 
 # disable test temporarily.
 # TODO https://github.com/PaddlePaddle/Paddle/issues/11971
