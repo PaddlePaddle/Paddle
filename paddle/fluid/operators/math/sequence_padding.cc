@@ -18,8 +18,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-enum CopyType { kSeqToPad, kPadToSeq };
-
 template <typename T>
 void CopyValidData(framework::Tensor* dst_tensor,
                    const framework::Tensor* src_tensor,
@@ -67,7 +65,7 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
-                  std::vector<T> pad_value = {0}, int pad_seq_len = -1,
+                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
@@ -81,19 +79,21 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
 
     CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
               step_width, layout);
-    PADDLE_ENFORCE(pad_value.size() == 1 ||
-                       static_cast<int>(pad_value.size()) == step_width,
-                   "The size of 'pad_value' can only be 1 or be equal to the "
+    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
+                   "The numel of 'pad_value' can only be 1 or be equal to the "
                    "'step_width'.");
-
-    if (pad_value.size() == 1) {
-      pad_value = std::vector<T>(step_width, pad_value[0]);
-    }
 
     // fill padding value
     T* pad_data = pad_tensor->data<T>();
-    for (int i = 0; i < pad_tensor->numel(); i += step_width) {
-      memcpy(pad_data + i, pad_value.data(), step_width * sizeof(T));
+    const T* pad_value_data = pad_value.data<T>();
+    if (pad_value.numel() == 1) {
+      for (int i = 0; i < pad_tensor->numel(); ++i) {
+        pad_data[i] = *pad_value_data;
+      }
+    } else {
+      for (int i = 0; i < pad_tensor->numel(); i += step_width) {
+        memcpy(pad_data + i, pad_value_data, step_width * sizeof(T));
+      }
     }
 
     CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
@@ -117,7 +117,7 @@ class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
-                  const PadLayout& layout = kBatchLengthWidth) {
+                  const PadLayout layout = kBatchLengthWidth) {
     auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
     const auto& pad_tensor_dims = pad_tensor.dims();
