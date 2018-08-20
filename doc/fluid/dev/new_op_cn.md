@@ -337,11 +337,19 @@ ctest -R test_mul_op
 
 ### PADDLE_ENFORCE使用注意
 
-PADDLE_ENFORCE以及PADDLE_ENFORCE_EQ等宏定义用于检查Op中数据的合法性，如果检查出错，会终止程序运行，并将ENFORCE检查中的报错信息反馈给用户，为了确保提示友好易懂，需要注意其使用方法。
+实现Op时检查数据的合法性需要使用PADDLE_ENFORCE以及PADDLE_ENFORCE_EQ等宏定义，基本格式如下：
+
+```
+PADDLE_ENFORCE(表达式, 错误提示信息)
+PADDLE_ENFORCE_EQ(比较对象A, 比较对象B, 错误提示信息)
+```
+
+如果表达式为真，或者比较对象A=B，则检查通过，否则会终止程序运行，向用户反馈相应的错误提示信息。
+为了确保提示友好易懂，开发者需要注意其使用方法。
 
 #### 总体原则
 
-任何使用了PADDLE_ENFORCE与PADDLE_ENFORCE_**检查的地方，必须有详略得当的备注解释！备注不能为空！
+任何使用了PADDLE_ENFORCE与PADDLE_ENFORCE_**检查的地方，必须有详略得当的备注解释！**错误提示信息**不能为空！
 
 #### 提示信息书写标准
 
@@ -351,6 +359,8 @@ PADDLE_ENFORCE以及PADDLE_ENFORCE_EQ等宏定义用于检查Op中数据的合�
     - 例如：`Expected labels dimension=1. Received 4.`
 3. 能否给出修改意见？
     - 例如：`Suggested Fix:If your classifier expects one-hot encoding label,check your n_classes argument to the estimatorand/or the shape of your label.Otherwise, check the shape of your label.`
+
+如果并非必要或者简洁的描述即可表达清楚以上要点，根据情况书写亦可。
 
 ##### 错误用法示例
 
@@ -377,7 +387,7 @@ PADDLE_ENFORCE(context->HasInput("X"),
                                "ArrayToLoDTensorOp must has input X."); //must has属于语法错误
 ```
 
-#### OP InferShape检查标准
+#### OP InferShape检查提示信息特别说明
 
 - 检查输入输出变量，请统一遵循以下格式
 `Input(变量名) of OP名 operator should not be null.`  
@@ -393,7 +403,7 @@ PADDLE_ENFORCE(ctx->HasInput("Input"),
 正确示例：
 ```
 PADDLE_ENFORCE(ctx->HasInput("X"),
-                               "Input(X) of LoDResetGrad opreator should not be null.");
+                        "Input(X) of LoDResetGrad opreator should not be null.");
 ```
 
 #### 错误用法示例
