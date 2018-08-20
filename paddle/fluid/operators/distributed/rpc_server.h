@@ -69,7 +69,7 @@ class RPCServer {
   // class, and auto generate a condition id for this call
   // to be used for the barrier.
   void RegisterRPC(const std::string& rpc_name, RequestHandler* handler,
-                   int thread_num = 5);
+                   int thread_num);
 
   // Wait util all the clients have reached the barrier for one
   // rpc method. This function should be called in the

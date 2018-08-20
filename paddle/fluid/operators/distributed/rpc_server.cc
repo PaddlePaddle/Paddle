@@ -17,6 +17,7 @@
 #include <limits>
 #include <string>
 
+#include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
 #include "paddle/fluid/platform/profiler.h"
 

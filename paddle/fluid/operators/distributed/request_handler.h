@@ -113,7 +113,7 @@ class RequestHandler {
   framework::Executor* executor() { return executor_; }
 
   // This function processes user's rpc request.
-  // The implemention is in request_handler_impl.
+  // The implementation is in request_handler_impl.
   // example:
   //    std::string varname = request_.varname();
   //

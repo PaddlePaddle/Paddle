@@ -275,14 +275,17 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
       sync_mode, checkpoint_block_id));
 
+  int thread_pool_size =
+      static_cast<int>(framework::ThreadPool::GetInstance()->Threads());
   rpc_service_->RegisterRPC(distributed::kRequestSend,
-                            request_send_handler_.get());
+                            request_send_handler_.get(), thread_pool_size * 2);
   rpc_service_->RegisterRPC(distributed::kRequestGet,
-                            request_get_handler_.get());
+                            request_get_handler_.get(), thread_pool_size * 2);
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
-                            request_prefetch_handler_.get());
+                            request_prefetch_handler_.get(),
+                            thread_pool_size * 2);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
-                            request_checkpoint_handler_.get());
+                            request_checkpoint_handler_.get(), 2);
 
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
