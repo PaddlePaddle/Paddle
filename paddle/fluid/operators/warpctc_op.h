@@ -161,10 +161,21 @@ class WarpCTCKernel : public framework::OpKernel<T> {
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
+
+    LoDTensor cpu_pad_value;
+    T* pad_value_data =
+        cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
+    *pad_value_data = static_cast<T>(0);
+    LoDTensor pad_value;
+    if (platform::is_cpu_place(ctx.GetPlace())) {
+      pad_value = cpu_pad_value;
+    } else {
+      TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
+    }
+
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
-        {static_cast<T>(0)}, -1, 0, false /* norm_by_times */,
-        math::kLengthBatchWidth);
+        pad_value, -1, 0, false /* norm_by_times */, math::kLengthBatchWidth);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
     std::vector<int> warpctc_label_lengths(num_sequences);
