@@ -179,7 +179,7 @@ class SE_ResNeXt():
             act=None,
             # avoid pserver CPU init differs from GPU
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant()),
+                initializer=fluid.initializer.Constant(value=0.2)),
             bias_attr=False)
         return fluid.layers.batch_norm(input=conv, act=act)
 
