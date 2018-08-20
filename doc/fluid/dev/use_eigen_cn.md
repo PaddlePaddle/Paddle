@@ -7,7 +7,7 @@
 
 Eigen Tensor模块对element-wise计算提供了强大的支持，并且书写一份代码，可以同时在CPU、GPU执行。但Eigen Tensor是一个正在开发中的模块，因此可能测试不够完备，文档较少。
 
-关于Eigen Tensor模块的详细介绍请参考[文档1](https://github.com/RLovelett/eigen/blob/master/unsupported/Eigen/CXX11/src/Tensor/README.md) 和[文档2](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md)
+关于Eigen Tensor模块的详细介绍请参考[Eigen文档](https://bitbucket.org/eigen/eigen/src/default/unsupported/Eigen/CXX11/src/Tensor/README.md)
 
 
 ## paddle::framework::Tensor
