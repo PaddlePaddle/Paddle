@@ -3,7 +3,7 @@ cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc)
 
 # There is no macOS version of NCCL.
-if (NOT APPLE)
+if (NOT APPLE AND NOT WIN32)
   list(APPEND CUDA_SRCS nccl.cc)
 endif()
 
