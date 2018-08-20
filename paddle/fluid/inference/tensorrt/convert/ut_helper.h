@@ -177,6 +177,9 @@ class TRTConvertValidation {
     ASSERT_FALSE(op_desc_->OutputArgumentNames().empty());
     const size_t output_space_size = 3000;
     for (const auto& output : op_desc_->OutputArgumentNames()) {
+      // Some Ops like batch norm, the output specified
+      // in the op des is only used during training, so we should
+      // neglect those ouput during inference.
       if (neglected_output.count(output)) continue;
       std::vector<float> fluid_out;
       std::vector<float> trt_out(output_space_size);
