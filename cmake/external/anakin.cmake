@@ -27,20 +27,20 @@ include_directories(${ANAKIN_INCLUDE}/saber/core/)
 include_directories(${ANAKIN_INCLUDE}/saber/funcs/impl/x86/)
 include_directories(${ANAKIN_INCLUDE}/saber/funcs/impl/cuda/base/cuda_c/)
 
-set(ANAKIN_COMPILE_EXTRA_FLAGS 
+set(ANAKIN_COMPILE_EXTRA_FLAGS
     -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
-    -Wno-error=unused-variable -Wno-unused-variable 
+    -Wno-error=unused-variable -Wno-unused-variable
     -Wno-error=format-extra-args -Wno-format-extra-args
     -Wno-error=comment -Wno-comment 
     -Wno-error=format -Wno-format 
     -Wno-error=maybe-uninitialized -Wno-maybe-uninitialized
     -Wno-error=switch -Wno-switch
-    -Wno-error=return-type -Wno-return-type 
+    -Wno-error=return-type -Wno-return-type
     -Wno-error=non-virtual-dtor -Wno-non-virtual-dtor
     -Wno-error=ignored-qualifiers
     -Wno-ignored-qualifiers
     -Wno-sign-compare
-    -Wno-reorder 
+    -Wno-reorder
     -Wno-error=cpp)
 
 ExternalProject_Add(
@@ -58,6 +58,7 @@ ExternalProject_Add(
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
                         -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
                         -DCUDNN_ROOT=${CUDNN_ROOT}
+                        -DCUDNN_INCLUDE_DIR=${CUDNN_INCLUDE_DIR}
                         -DENABLE_OP_TIMER=${ANAKIN_ENABLE_OP_TIMER}
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
