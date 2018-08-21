@@ -213,7 +213,7 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
 
         # Reader
         train_reader, _ = get_train_reader()
-        return inference_program, avg_cost, train_reader, _, acc, predict
+        return inference_program, avg_cost, train_reader, train_reader, acc, predict
 
 
 if __name__ == "__main__":
