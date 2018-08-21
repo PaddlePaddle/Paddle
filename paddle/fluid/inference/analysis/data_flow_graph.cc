@@ -19,14 +19,16 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
+using ir_node_t = framework::ir::Node;
+using ir_graph_t = framework::ir::Graph;
 
 // It is a better idea that the inputs and outputs of this graph is set manually
 // before, but there must be a Pass that helps to prune the unnecessary ops that
 // do not contribute to the given targets, so in this pass, analysis and get the
 // inputs and outputs is OK.
 void DataFlowGraph::Build() {
-  inputs.clear();
-  outputs.clear();
+  inputs_.clear();
+  outputs_.clear();
   std::unordered_set<Node *> ins;
   std::unordered_set<Node *> outs;
   for (auto &node : nodes.nodes()) {
@@ -42,16 +44,138 @@ void DataFlowGraph::Build() {
   // similarly, the nodes that in outs but not in ins is the graphs' outputs
   for (auto *in : ins) {
     if (!outs.count(in)) {
-      inputs.push_back(in);
+      inputs_.push_back(in);
     }
   }
   for (auto *out : outs) {
-    if (!outs.count(out)) {
-      outputs.push_back(out);
+    if (!ins.count(out)) {
+      outputs_.push_back(out);
     }
   }
 
   Clean();
+}
+
+void DataFlowGraph::Build(const framework::proto::ProgramDesc &prog) {
+  // insert vars
+  // The `var2id` keeps a map from a variable's name to its Node-id, the Node-id
+  // will keep updating to its latest alias during the graph-building.
+  std::unordered_map<std::string, size_t> var2id;
+  auto &main_block = prog.blocks(framework::kRootBlockIndex);
+  for (int i = 0; i < main_block.vars_size(); i++) {
+    const auto &var = main_block.vars(i);
+    auto *v = nodes.Create(Node::Type::kValue);
+    v->SetName(var.name());
+    v->SetPbDesc(const_cast<void *>(static_cast<const void *>(&var)));
+    v->SetPbMsg(var.SerializeAsString());
+    var2id[var.name()] = v->id();
+  }
+
+  // The variables in a SSA can only write once, so if a variable is written
+  // multiple times(quite common in our ProgramDesc design), multiple alias
+  // Nodes of this variable will be created, and each will just write once.
+
+  // An set that keep all the names of the variables(the original, not alias)
+  // that have been written(as outputs). Once an Op's output variable hit the
+  // set, it should create a new alias and update the global alias for this
+  // variable. And that make a Data Flow Graph a SSA.
+  std::unordered_set<Node *> unique_written_vars;
+  for (int i = 0; i < main_block.ops_size(); i++) {
+    const auto &op = main_block.ops(i);
+    auto *o = nodes.Create(Node::Type::kFunction);
+    o->SetName(op.type());
+    static_cast<Function *>(o)->SetFuncType(op.type());
+    // Link to the original protobuf message's memory, make it easier to
+    // generate from a data flow graph to fluid ProgramDesc.
+    o->SetPbDesc(const_cast<void *>(static_cast<const void *>(&op)));
+    o->SetPbMsg(op.SerializeAsString());
+
+    // set inputs and outputs
+    for (int j = 0; j < op.inputs_size(); j++) {
+      auto &in_var = op.inputs(j);
+      for (int k = 0; k < in_var.arguments_size(); k++) {
+        auto *in = nodes.GetMutable(var2id.at(in_var.arguments(k)));
+        in->outlinks.push_back(o);
+        o->inlinks.push_back(in);
+        unique_written_vars.insert(in);
+      }
+    }
+    for (int j = 0; j < op.outputs_size(); j++) {
+      auto &out_var = op.outputs(j);
+      for (int k = 0; k < out_var.arguments_size(); k++) {
+        auto *out = nodes.GetMutable(var2id[out_var.arguments(k)]);
+        if (unique_written_vars.count(out)) {
+          // Loop found, for example, a = op(a), use SSA, change to a1 = op(a).
+          auto *out_alias = nodes.Create(Node::Type::kValue);
+          out_alias->SetName(out->name());
+          out_alias->SetPbDesc(out->pb_desc());
+          out_alias->SetPbMsg(out->pb_msg());
+          var2id[out_alias->name()] =
+              out_alias->id();  // update variable's alias Node
+          LOG(INFO) << "loop found in graph, create SSA alias node ["
+                    << out_alias->repr() << "] for [" << out->repr() << "]";
+          out = out_alias;
+        }
+        out->inlinks.push_back(o);
+        o->outlinks.push_back(out);
+      }
+    }
+  }
+  // Analysis and extract the inputs and outputs of this graph.
+  Build();
+}
+
+void DataFlowGraph::Build(const framework::ir::Graph &graph) {
+  // Create nodes
+  std::unordered_map<ir_node_t *, Node *> ir_node_map;
+  for (auto *ir_node : graph.Nodes()) {
+    Node *x{nullptr};
+    if (ir_node->IsOp()) {
+      PADDLE_ENFORCE(ir_node->Op());
+      VLOG(4) << "get op " << ir_node << " " << ir_node->Name();
+      x = nodes.Create(Node::Type::kFunction);
+      x->attr("ir_node").Pointer() = ir_node;
+      PADDLE_ENFORCE(ir_node->Op()->Proto());
+      x->SetName(ir_node->Op()->Proto()->type());
+      x->SetPbMsg(ir_node->Op()->Proto()->SerializeAsString());
+    } else if (ir_node->IsVar()) {
+      // Not create a Node for IR ControlDepVar, considering Inference currently
+      // just used in single thread scenerio.
+      VLOG(4) << "get var " << ir_node->Name();
+      x = nodes.Create(Node::Type::kValue);
+      x->attr("ir_node").Pointer() = ir_node;
+      x->SetName(ir_node->Name());
+      // x->SetPbMsg(ir_node->Var()->Proto()->SerializeAsString());
+    } else {
+      PADDLE_THROW("Failed to create an Node from IR, unknown type");
+    }
+    ir_node_map.emplace(ir_node, x);
+  }
+  VLOG(4) << "finish creating Nodes";
+
+  VLOG(4) << "to create edge";
+  // Create links
+  for (auto *ir_node : graph.Nodes()) {
+    auto it = ir_node_map.find(ir_node);
+    // Skip ControlDepVar.
+    if (it == ir_node_map.end()) continue;
+    auto *node = it->second;
+    for (auto *x : ir_node->inputs) {
+      if (!ir_node_map.count(x)) continue;
+      node->inlinks.push_back(ir_node_map.at(x));
+    }
+    for (auto *x : ir_node->outputs) {
+      if (!ir_node_map.count(x)) continue;
+      node->outlinks.push_back(ir_node_map.at(x));
+    }
+  }
+
+  Build();
+  PADDLE_ENFORCE(!inputs_.empty(),
+                 "Can't deduce any inputs from the graph, Is the graph empty?");
+
+  ir_graph = &graph;
+  VLOG(3) << "finished build from IR";
 }
 
 void DataFlowGraph::Clean() {
@@ -61,11 +185,9 @@ void DataFlowGraph::Clean() {
     std::unordered_set<Node *> outlinks_set(node->outlinks.begin(),
                                             node->outlinks.end());
     if (inlinks_set.size() < node->inlinks.size()) {
-      LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
       node->inlinks.assign(inlinks_set.begin(), inlinks_set.end());
     }
     if (outlinks_set.size() < node->outlinks.size()) {
-      LOG(INFO) << "Clean: node " << node->repr() << " prune duplicate inputs";
       node->outlinks.assign(outlinks_set.begin(), outlinks_set.end());
     }
   }
@@ -112,10 +234,10 @@ GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     const std::vector<Node *> &source)
     : queue_(source.begin(), source.end()) {}
 
-// GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
-//     GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
-//     : queue_(std::move(other.queue_)),
-//       visited_(std::move(other.visited_)) {}
+GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
+    GraphTraits<DataFlowGraph>::NodesBFSIterator &&other) noexcept
+    : queue_(std::move(other.queue_)),
+      visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesBFSIterator::NodesBFSIterator(
     const GraphTraits<DataFlowGraph>::NodesBFSIterator &other)
@@ -159,7 +281,7 @@ bool GraphTraits<DataFlowGraph>::NodesBFSIterator::operator==(
   if (queue_.empty()) return other.queue_.empty();
   if ((!queue_.empty()) && (!other.queue_.empty())) {
     return queue_.front() == other.queue_.front() &&
-           visited_.size() == other.visited_.size();  // here need to check the
+           visited_.size() == other.visited_.size();
     // equality of queue and
     // visited. Just a light but week implementation.
   }
@@ -174,10 +296,10 @@ GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
   for (auto *x : source) stack_.push(x);
 }
 
-// GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
-//     GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
-//     : stack_(std::move(other.stack_)),
-//       visited_(std::move(other.visited_)) {}
+GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
+    GraphTraits<DataFlowGraph>::NodesDFSIterator &&other) noexcept
+    : stack_(std::move(other.stack_)),
+      visited_(std::move(other.visited_)) {}
 
 GraphTraits<DataFlowGraph>::NodesDFSIterator::NodesDFSIterator(
     const GraphTraits<DataFlowGraph>::NodesDFSIterator &other)
@@ -339,7 +461,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
 
 void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph) {
   std::vector<Node *> op_nodes;
-  for (auto &node : GraphTraits<DataFlowGraph>(graph).nodes_in_TS()) {
+  for (auto &node : GraphTraits<DataFlowGraph>(*graph).nodes_in_TS()) {
     if (node.type() == Node::Type::kValue || node.deleted()) {
       continue;
     }
