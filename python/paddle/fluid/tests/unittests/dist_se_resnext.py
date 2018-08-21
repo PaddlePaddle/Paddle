@@ -129,7 +129,12 @@ class SE_ResNeXt():
             input=conv, pool_size=7, pool_type='avg', global_pooling=True)
         drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
-        out = fluid.layers.fc(input=drop, size=class_dim, act='softmax')
+        out = fluid.layers.fc(
+            input=drop,
+            size=class_dim,
+            act='softmax',
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.2)))
         return out
 
     def shortcut(self, input, ch_out, stride):
@@ -228,10 +233,8 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
         optimizer = fluid.optimizer.Momentum(
-            # FIXME(typhoonzero): add back LR decay once ParallelExecutor fixed.
-            #learning_rate=fluid.layers.piecewise_decay(
-            #    boundaries=bd, values=lr),
-            learning_rate=base_lr,
+            learning_rate=fluid.layers.piecewise_decay(
+                boundaries=bd, values=lr),
             momentum=0.9,
             regularization=fluid.regularizer.L2Decay(1e-4))
         optimizer.minimize(avg_cost)
