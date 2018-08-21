@@ -75,7 +75,6 @@ class Pass {
  protected:
   virtual std::unique_ptr<Graph> ApplyImpl(
       std::unique_ptr<Graph> graph) const = 0;
-
  private:
   template <typename PassType>
   friend struct PassRegistrar;
