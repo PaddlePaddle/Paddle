@@ -65,8 +65,8 @@ class DropoutKernel : public framework::OpKernel<T> {
       int seed = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
                                                 : std::random_device()();
 
-      uint32_t uint32_prob =
-          static_cast<uint32_t>(static_cast<double>(UINT32_MAX) * dropout_prob);
+      uint32_t uint32_prob = static_cast<uint32_t>(
+          static_cast<double>(UINT32_MAX) * static_cast<double>(dropout_prob));
       FillMaskAndY<T, uint32_t> fill_functor(mask_data, x_data, y_data,
                                              uint32_prob);
       platform::RandomSequence<DeviceContext> rand_seq;
