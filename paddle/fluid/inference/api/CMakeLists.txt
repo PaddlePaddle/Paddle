@@ -66,7 +66,6 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-      get_filename_component(CUDNN_LIBRARY_DIR ${CUDNN_LIBRARY} DIRECTORY)
       target_link_libraries(${target_name} "-L${CUDNN_LIBRARY_DIR} -lcudnn -Wl,--as-needed")
       get_filename_component(CUBLAS_LIBRARY_DIR ${CUDA_CUBLAS_LIBRARIES} DIRECTORY)
       target_link_libraries(${target_name} "-L${CUBLAS_LIBRARY_DIR} -lcublas -Wl,--as-needed")
