@@ -80,6 +80,9 @@ inline framework::DDim trim_trailing_singular_dims(
   for (int i = 0; i < actual_dims_size; ++i) {
     trim_dims[i] = dims[i];
   }
+  if (trim_dims.size() == 0) {
+    return framework::DDim(framework::make_dim());
+  }
   framework::DDim actual_dims = framework::make_ddim(trim_dims);
   return actual_dims;
 }
