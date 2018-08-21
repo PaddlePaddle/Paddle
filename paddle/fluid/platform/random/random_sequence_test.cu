@@ -72,6 +72,25 @@ TEST(RandomSequence, IdentitySame) {
   TestMain(IdentityDistribution<uint16_t>());
 }
 
+template <typename Dist>
+void TestIdentityMean(Dist dist) {
+  using T = typename Dist::ResultType;
+  constexpr size_t length = 1U << 18;
+  std::vector<T> cpu(length);
+  RandomFill(CPUDeviceContext(), 0, dist, cpu.data(), length);
+
+  __uint128_t sum = 0;
+  for (auto& item : cpu) {
+    sum += item;
+  }
+  sum /= length;
+  std::cerr << static_cast<T>(sum) << " " << (Dist::Max / 2) << std::endl;
+}
+
+TEST(RandomSequence, IdentityMean) {
+  TestIdentityMean(IdentityDistribution<uint32_t>());
+}
+
 }  // namespace random
 }  // namespace platform
 }  // namespace paddle
