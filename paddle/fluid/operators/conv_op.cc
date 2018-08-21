@@ -48,12 +48,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(
       in_dims.size(), filter_dims.size(),
       "Conv input dimension and filter dimension should be the same.");
-#ifdef PADDLE_WITH_MKLDNN
-  if (ctx->HasInput("Bias")) {
-    auto bias_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(bias_dims.size(), 1, "Conv bias should one-dimensional.");
-  }
-#endif
   PADDLE_ENFORCE(
       in_dims.size() - strides.size() == 2U,
       "Conv input dimension and strides dimension should be consistent.");
