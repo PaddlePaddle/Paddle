@@ -44,7 +44,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
-#ifndef __APPLE__
+#if !defined(__APPLE__) and !defined(_WIN32)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -205,7 +205,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 #endif
 }
 
-#ifndef __APPLE__
+#if !defined(__APPLE__) and !defined(_WIN32)
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     ncclResult_t stat, const Args&... args) {
@@ -221,7 +221,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 #endif
   }
 }
-#endif  // __APPLE__
+#endif  // __APPLE__ and windows
 #endif  // PADDLE_WITH_CUDA
 
 template <typename T>

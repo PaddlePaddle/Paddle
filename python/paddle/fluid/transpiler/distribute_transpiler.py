@@ -369,7 +369,7 @@ class DistributeTranspiler(object):
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
 
-        for varname, splited_var in self.param_var_mapping.iteritems():
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             # Get the eplist of recv vars
             eps = []
             for var in splited_var:
@@ -406,7 +406,7 @@ class DistributeTranspiler(object):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-        for varname, splited_var in self.param_var_mapping.iteritems():
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             #add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
@@ -1209,8 +1209,8 @@ class DistributeTranspiler(object):
         elif op_type == "momentum":
             if varkey == "Velocity":
                 return param_shape
-        elif op_type == "":
-            if varkey == "Moment":
+        elif op_type == "rmsprop":
+            if varkey in ["Moment", "MeanSquare"]:
                 return param_shape
         elif op_type == "sgd":
             pass
@@ -1289,8 +1289,6 @@ class DistributeTranspiler(object):
         pserver_block = program.global_block()
         new_inputs = collections.OrderedDict()
 
-        # update param/grad shape first, then other inputs like
-        # moment can use the updated shape
         def _get_param_block(opt_op):
             # param is already created on global program
             param_block = None
@@ -1303,22 +1301,6 @@ class DistributeTranspiler(object):
         for key in opt_op.input_names:
             if key == "Grad":
                 new_inputs[key] = merged_var
-            # For RMSProp optimizer
-            elif key == "Moment" or key == "MeanSquare":
-                param_block = _get_param_block(opt_op)
-                if not param_block:
-                    return
-                moment_var = origin_program.global_block().vars[opt_op.input(
-                    key)[0]]
-                tmpvar = pserver_block.create_var(
-                    name=moment_var.name,
-                    persistable=moment_var.persistable,
-                    dtype=moment_var.dtype,
-                    # change to use same shape as param
-                    # TODO(typhoonzero): didn't append .block in the var name,
-                    # may affect checkpoint saving? Need to verify.
-                    shape=param_block.shape)
-                new_inputs[key] = tmpvar
             elif key == "Param":
                 param_block = _get_param_block(opt_op)
                 if not param_block:
@@ -1346,7 +1328,7 @@ class DistributeTranspiler(object):
 
         for key in opt_op.input_names:
             new_shape = None
-            if key in ["Param", "Grad", "LearningRate", "Moment", "MeanSquare"]:
+            if key in ["Param", "Grad", "LearningRate"]:
                 continue
             var = self.origin_program.global_block().vars[opt_op.input(key)[0]]
             # update accumulator variable shape
