@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 from .layer_function_generator import generate_layer_fn
 
 __activations__ = [
@@ -63,7 +65,6 @@ __all__ = [
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
-    'scatter',
     'sum',
     'slice',
     'shape',

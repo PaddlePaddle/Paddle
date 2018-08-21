@@ -9,7 +9,6 @@ function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
     # cc_library. But it handle split GPU/CPU code and link some common library
     # for ops.
-    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
     set(cc_srcs)
     set(cu_srcs)
     set(hip_cu_srcs)
@@ -84,6 +83,16 @@ function(op_library TARGET)
         message(FATAL_ERROR "The op library ${TARGET} should contains at least one .cc file")
     endif()
 
+    #remove windows unsupported op
+    if (WIN32)
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op")
+        if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
+          return()
+        endif()
+    endforeach()
+    endif(WIN32)
+    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
+
     list(LENGTH op_library_DEPS op_library_DEPS_len)
     if (${op_library_DEPS_len} GREATER 0)
         set(DEPS_OPS ${TARGET} ${DEPS_OPS} PARENT_SCOPE)
@@ -100,7 +109,8 @@ function(op_library TARGET)
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
+"tensor_array_read_write_op" "tensorrt_engine_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -170,6 +180,9 @@ function(op_library TARGET)
         file(APPEND ${pybind_file} "USE_OP(fake_dequantize_max_abs);\n")
       elseif(${TARGET} STREQUAL "tensorrt_engine_op")
           message(STATUS "Pybind skips [tensorrt_engine_op], for this OP is only used in inference")
+      elseif(${TARGET} STREQUAL "fc")
+        # HACK: fc only have mkldnn and cpu, which would mismatch the cpu only condition
+        file(APPEND ${pybind_file} "USE_CPU_ONLY_OP(${TARGET});\n")
       else()
         file(APPEND ${pybind_file} "USE_OP(${TARGET});\n")
       endif()
@@ -177,19 +190,19 @@ function(op_library TARGET)
 endfunction()
 
 add_subdirectory(math)
+if (NOT WIN32)
 add_subdirectory(nccl)
-
 if(WITH_GPU)
     op_library(nccl_op DEPS nccl_common)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(ncclAllReduce);\n")
 else()
     set(DEPS_OPS ${DEPS_OPS} nccl_op)
 endif()
+endif() # NOT WIN32
 
 set(DISTRIBUTE_DEPS "")
 if(WITH_DISTRIBUTE)
     add_subdirectory(distributed)
-    
     set(DISTRIBUTE_DEPS "")
     if(WITH_GRPC)
         set(DISTRIBUTE_DEPS sendrecvop_grpc grpc++_unsecure grpc_unsecure gpr cares zlib protobuf node)
@@ -218,7 +231,7 @@ if(WITH_DISTRIBUTE)
     #set_source_files_properties(send_recv_op_test.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     #cc_test(test_send_recv SRCS send_recv_op_test.cc DEPS prefetch_op send_op
     #        listen_and_serv_op sum_op executor SERIAL)
-    if(WITH_GPU)
+    if(WITH_GPU AND NOT WIN32)
         set_source_files_properties(test_send_nccl_id.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
         cc_test(test_send_nccl_id SRCS test_send_nccl_id.cc DEPS listen_and_serv_op ${DISTRIBUTE_DEPS} executor SERIAL)
         if(WITH_GRPC)
@@ -229,7 +242,7 @@ if(WITH_DISTRIBUTE)
         set_source_files_properties(gen_nccl_id_op.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
     else()
         set(DEPS_OPS ${DEPS_OPS} gen_nccl_id_op)
-    endif()
+    endif() # WITH_GPU AND NOT WIN32
 else()
     set(DEPS_OPS ${DEPS_OPS}  checkpoint_notify_op prefetch_op recv_op listen_and_serv_op send_op send_barrier_op fetch_barrier_op gen_nccl_id_op)
 endif()
@@ -245,6 +258,7 @@ op_library(softmax_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 if (WITH_GPU AND TENSORRT_FOUND)
     op_library(tensorrt_engine_op DEPS tensorrt_engine tensorrt_converter)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(tensorrt_engine);\n")
     nv_test(test_tensorrt_engine_op SRCS tensorrt_engine_op_test.cc
       DEPS tensorrt_engine_op
       analysis)
@@ -300,12 +314,6 @@ op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 
-# The fully connected layer is deleted when the WITH_MKLDNN flag is OFF
-# Because the fully connected layer has only one MKLDNN's operator
-if(NOT WITH_MKLDNN)
-    list(REMOVE_ITEM GENERAL_OPS fc_op)
-endif(NOT WITH_MKLDNN)
-
 foreach(src ${GENERAL_OPS})
     op_library(${src})
 endforeach()
@@ -332,5 +340,7 @@ cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_sea
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
 cc_test(save_load_op_test SRCS save_load_op_test.cc DEPS save_op load_op)
 cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_combine_op load_combine_op)
+if(NOT WIN32)
 nv_test(nccl_op_test SRCS nccl_op_test.cu.cc DEPS nccl_op gpu_info device_context)
+endif()
 nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor)

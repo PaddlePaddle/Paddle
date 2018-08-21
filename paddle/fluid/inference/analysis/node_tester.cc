@@ -20,6 +20,24 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+TEST(NodeAttr, bool) {
+  NodeAttr x;
+  x.Bool() = true;
+  ASSERT_EQ(x.Bool(), true);
+}
+
+TEST(NodeAttr, int32) {
+  NodeAttr x;
+  x.Int32() = 32;
+  ASSERT_EQ(x.Int32(), 32);
+}
+
+TEST(NodeAttr, string) {
+  NodeAttr x;
+  x.String() = "Hello";
+  ASSERT_EQ(x.String(), "Hello");
+}
+
 TEST(Node, Attr) {
   // Node is an abstract class, use Value instead for they share the same Attr
   // logic.
@@ -27,6 +45,9 @@ TEST(Node, Attr) {
   auto* node = nodes.Create(Node::Type::kValue);
   node->attr("v0").Int32() = 2008;
   ASSERT_EQ(node->attr("v0").Int32(), 2008);
+
+  node->attr("str").String() = "hello world";
+  ASSERT_EQ(node->attr("str").String(), "hello world");
 }
 
 }  // namespace analysis

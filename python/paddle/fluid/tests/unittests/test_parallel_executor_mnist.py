@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from parallel_executor_test_base import TestParallelExecutorBase
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -181,7 +183,9 @@ class TestMNIST(TestParallelExecutorBase):
             use_parallel_executor=True)
 
         self.assertAlmostEquals(
-            np.mean(parallel_first_loss), single_first_loss, delta=1e-6)
+            np.mean(parallel_first_loss),
+            single_first_loss,
+            delta=1e-6, )
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss, delta=1e-6)
 
@@ -189,7 +193,7 @@ class TestMNIST(TestParallelExecutorBase):
         self.check_simple_fc_parallel_accuracy(True)
         self.check_simple_fc_parallel_accuracy(False)
 
-    def check_batchnorm_fc_convergence(self, use_cuda):
+    def check_batchnorm_fc_convergence(self, use_cuda, use_fast_executor):
         if use_cuda and not core.is_compiled_with_cuda():
             return
 
@@ -201,11 +205,13 @@ class TestMNIST(TestParallelExecutorBase):
             fc_with_batchnorm,
             feed_dict={"image": img,
                        "label": label},
-            use_cuda=use_cuda)
+            use_cuda=use_cuda,
+            use_fast_executor=use_fast_executor)
 
     def test_batchnorm_fc(self):
-        self.check_batchnorm_fc_convergence(True)
-        self.check_batchnorm_fc_convergence(False)
+        for use_cuda in (False, True):
+            for use_fast_executor in (False, True):
+                self.check_batchnorm_fc_convergence(use_cuda, use_fast_executor)
 
     def test_batchnorm_fc_with_new_strategy(self):
         # FIXME(zcd): close this test temporally.

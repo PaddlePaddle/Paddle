@@ -31,6 +31,26 @@ struct CBlas<float> {
     platform::dynload::cblas_sgemm(args...);
   }
 
+  template <typename... ARGS>
+  static float *GEMM_ALLOC(ARGS... args) {
+    return platform::dynload::cblas_sgemm_alloc(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_PACK(ARGS... args) {
+    platform::dynload::cblas_sgemm_pack(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_COMPUTE(ARGS... args) {
+    platform::dynload::cblas_sgemm_compute(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_FREE(ARGS... args) {
+    platform::dynload::cblas_sgemm_free(args...);
+  }
+
 #ifdef PADDLE_WITH_LIBXSMM
   template <typename... ARGS>
   static void SMM_GEMM(ARGS... args) {
@@ -62,6 +82,11 @@ struct CBlas<float> {
   static void VADD(ARGS... args) {
     platform::dynload::vsAdd(args...);
   }
+
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vsMul(args...);
+  }
 };
 
 template <>
@@ -69,6 +94,26 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
     platform::dynload::cblas_dgemm(args...);
+  }
+
+  template <typename... ARGS>
+  static double *GEMM_ALLOC(ARGS... args) {
+    return platform::dynload::cblas_dgemm_alloc(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_PACK(ARGS... args) {
+    platform::dynload::cblas_dgemm_pack(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_COMPUTE(ARGS... args) {
+    platform::dynload::cblas_dgemm_compute(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_FREE(ARGS... args) {
+    platform::dynload::cblas_dgemm_free(args...);
   }
 
 #ifdef PADDLE_WITH_LIBXSMM
@@ -101,6 +146,11 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VADD(ARGS... args) {
     platform::dynload::vdAdd(args...);
+  }
+
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vdMul(args...);
   }
 };
 
@@ -159,6 +209,7 @@ struct CBlas<platform::float16> {
   static void SMM_GEMM(...) {
     PADDLE_THROW("float16 SMM_GEMM not supported on CPU");
   }
+  static void VMUL(...) { PADDLE_THROW("float16 VMUL not supported on CPU"); }
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
     PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
@@ -223,6 +274,41 @@ inline void GEMM_WARP(CBLAS_ORDER order, CBLAS_TRANSPOSE transA,
   CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
                  beta, C, ldc);
 }
+
+#ifdef PADDLE_WITH_MKLML
+template <>
+template <typename T>
+T *Blas<platform::CPUDeviceContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id,
+                                                const int M, const int N,
+                                                const int K) const {
+  return CBlas<T>::GEMM_ALLOC(id, M, N, K);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM_PACK(const CBLAS_IDENTIFIER id,
+                                                 const CBLAS_TRANSPOSE trans,
+                                                 int M, int N, int K,
+                                                 const T alpha, const T *src,
+                                                 const int ld, T *dst) const {
+  CBlas<T>::GEMM_PACK(CblasRowMajor, id, trans, M, N, K, alpha, src, ld, dst);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM_COMPUTE(
+    int transA, int transB, int M, int N, int K, const T *A, const int lda,
+    const T *B, const int ldb, T beta, T *C, const int ldc) const {
+  CBlas<T>::GEMM_COMPUTE(CblasRowMajor, transA, transB, M, N, K, A, lda, B, ldb,
+                         beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM_FREE(T *data) const {
+  CBlas<T>::GEMM_FREE(data);
+}
+#endif
 
 template <>
 template <typename T>
@@ -296,6 +382,20 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
 #else
   this->template VCOPY<T>(n, y, z);
   this->template AXPY<T>(n, 1., x, z);
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMUL(n, x, y, z);
+#else
+  // try to find if openblas support vmul
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
 #endif
 }
 
