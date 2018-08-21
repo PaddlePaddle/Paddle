@@ -470,7 +470,7 @@ void MultiDevSSAGraphBuilder::ConnectOp(SSAGraph *result, OpHandleBase *op,
 void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
                                                 const OpDesc &op) const {
   int op_dev_id = -1;
-  if (op.Type() == "split_byref") {
+  if (op.Type() == "split_byref" || op.Type() == "split_selected_rows") {
     op_dev_id = GetVarDeviceID(op.InputArgumentNames()[0]);
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
       op_dev_id = GetAppropriateDeviceID(op.InputArgumentNames());
@@ -483,6 +483,9 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(SSAGraph *result,
     }
   } else if (op.Type() == "concat") {
     op_dev_id = GetVarDeviceID(op.InputArgumentNames()[0]);
+    for (auto &varname : op.OutputArgumentNames()) {
+      var_name_on_devices_.emplace(varname, op_dev_id);
+    }
   } else {
     PADDLE_ENFORCE(
         "the distribute training related op should be in [split_byref, "

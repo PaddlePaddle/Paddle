@@ -169,9 +169,8 @@ class TestCRFModel(unittest.TestCase):
             data = train_data()
             for i in xrange(10):
                 cur_batch = next(data)
-                print map(np.array,
-                          pe.run(feed=feeder.feed(cur_batch),
-                                 fetch_list=[avg_cost.name]))[0]
+                print pe.run(feed=feeder.feed(cur_batch),
+                             fetch_list=[avg_cost.name])[0]
 
     @unittest.skip(reason="CI hangs")
     def test_update_sparse_parameter_all_reduce(self):

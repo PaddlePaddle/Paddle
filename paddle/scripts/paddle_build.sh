@@ -22,7 +22,7 @@
 function print_usage() {
     echo -e "\n${RED}Usage${NONE}:
     ${BOLD}${SCRIPT_NAME}${NONE} [OPTION]"
-    
+
     echo -e "\n${RED}Options${NONE}:
     ${BLUE}build${NONE}: run build for x86 platform
     ${BLUE}build_android${NONE}: run build for android platform
@@ -106,6 +106,7 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -133,7 +134,7 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-        -DWITH_ANAKIN=ON
+        -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
 }
 
 function abort(){
@@ -198,7 +199,7 @@ function build_android() {
     fi
 
     ANDROID_STANDALONE_TOOLCHAIN=$ANDROID_TOOLCHAINS_DIR/$ANDROID_ARCH-android-$ANDROID_API
-    
+
     cat <<EOF
     ============================================
     Generating the standalone toolchain ...
@@ -212,13 +213,13 @@ EOF
           --arch=$ANDROID_ARCH \
           --platform=android-$ANDROID_API \
           --install-dir=$ANDROID_STANDALONE_TOOLCHAIN
-    
+
     BUILD_ROOT=${PADDLE_ROOT}/build_android
     DEST_ROOT=${PADDLE_ROOT}/install_android
-    
+
     mkdir -p $BUILD_ROOT
     cd $BUILD_ROOT
-    
+
     if [ $ANDROID_ABI == "armeabi-v7a" ]; then
       cmake -DCMAKE_SYSTEM_NAME=Android \
             -DANDROID_STANDALONE_TOOLCHAIN=$ANDROID_STANDALONE_TOOLCHAIN \
@@ -286,7 +287,7 @@ function build_ios() {
           -DWITH_TESTING=OFF \
           -DWITH_SWIG_PY=OFF \
           -DCMAKE_BUILD_TYPE=Release
-    
+
     make -j 2
 }
 
@@ -331,14 +332,14 @@ EOF
 function bind_test() {
     # the number of process to run tests
     NUM_PROC=6
-    
+
     # calculate and set the memory usage for each process
     MEM_USAGE=$(printf "%.2f" `echo "scale=5; 1.0 / $NUM_PROC" | bc`)
     export FLAGS_fraction_of_gpu_memory_to_use=$MEM_USAGE
-    
+
     # get the CUDA device count
     CUDA_DEVICE_COUNT=$(nvidia-smi -L | wc -l)
-    
+
     for (( i = 0; i < $NUM_PROC; i++ )); do
         cuda_list=()
         for (( j = 0; j < $CUDA_DEVICE_COUNT; j++ )); do
@@ -380,6 +381,25 @@ EOF
     linkchecker doc/v2/en/html/index.html
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
+
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+
+    # Deploy to the the content server if its a "develop" or "release/version" branch
+    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
+    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
+        PPO_SCRIPT_BRANCH=develop
+    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
+        PPO_SCRIPT_BRANCH=master
+    else
+        # Early exit, this branch doesn't require documentation build
+        return 0;
+    fi
+     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
+    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
+    cd ..
+    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
+    cd -
 }
 
 function gen_html() {
