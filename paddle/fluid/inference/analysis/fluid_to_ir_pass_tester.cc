@@ -31,3 +31,7 @@ TEST(FluidToIrPass, Test) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
+
+USE_PASS(fc_fuse_pass);
+USE_PASS(graph_viz_pass);
+USE_PASS(infer_clean_graph_pass);
