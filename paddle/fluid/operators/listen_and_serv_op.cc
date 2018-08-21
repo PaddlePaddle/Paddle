@@ -278,12 +278,12 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   int thread_pool_size =
       static_cast<int>(framework::ThreadPool::GetInstance()->Threads());
   rpc_service_->RegisterRPC(distributed::kRequestSend,
-                            request_send_handler_.get(), thread_pool_size * 2);
+                            request_send_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestGet,
-                            request_get_handler_.get(), thread_pool_size * 2);
+                            request_get_handler_.get());
   rpc_service_->RegisterRPC(distributed::kRequestPrefetch,
                             request_prefetch_handler_.get(),
-                            thread_pool_size * 2);
+                            thread_pool_size + 1);
   rpc_service_->RegisterRPC(distributed::kRequestCheckpoint,
                             request_checkpoint_handler_.get(), 2);
 
