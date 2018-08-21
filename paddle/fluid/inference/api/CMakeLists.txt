@@ -55,9 +55,6 @@ cc_test(test_paddle_inference_api
 inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
 
-inference_api_test(test_ditu_rnn SRC test_ditu_rnn.cc
-                    ARGS test_word2vec test_image_classification)
-
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
