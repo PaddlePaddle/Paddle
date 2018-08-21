@@ -17,9 +17,20 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistSeResneXt2x2(TestDistBase):
+class TestDistMnist2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+
     def test_se_resnext(self):
         self.check_with_place("dist_mnist.py", delta=1e-7)
+
+
+class TestDistMnistAsync(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_mnist.py", delta=200)
 
 
 if __name__ == "__main__":
