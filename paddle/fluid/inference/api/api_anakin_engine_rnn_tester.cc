@@ -150,7 +150,7 @@ AnakinConfig GetConfig() {
   config.target_type = AnakinConfig::X86;
   config.model_file = FLAGS_model;
   config.device = 0;
-  config.max_batch_size = 128;
+  config.max_batch_size = 1000;  // the max number of token
   return config;
 }
 
@@ -194,9 +194,12 @@ void single_test() {
   std::vector<PaddleTensor> inputs;
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
-  float data_0[max_batch_size * 38];  // NOLINT
-  float data_1[max_batch_size * 10];  // NOLINT
-  float data_2[max_batch_size * 10];  // NOLINT
+  int data_0_dim = 38;
+  int data_1_dim = 10;
+  int data_2_dim = 10;
+  float data_0[max_batch_size * data_0_dim];  // NOLINT
+  float data_1[max_batch_size * data_1_dim];  // NOLINT
+  float data_2[max_batch_size * data_2_dim];  // NOLINT
 
   int count = 0;
   while (true) {
@@ -212,9 +215,9 @@ void single_test() {
     seq_offset_vec.push_back(seq_offset);
     tensor_0.lod = seq_offset_vec;
 
-    int p_shape_0[] = {(int)fea.size(), 1, 1, 38};       // NOLINT
-    int p_shape_1[] = {(int)week_fea.size(), 10, 1, 1};  // NOLINT
-    int p_shape_2[] = {(int)time_fea.size(), 10, 1, 1};  // NOLINT
+    int p_shape_0[] = {(int)fea.size(), 1, 1, data_0_dim};       // NOLINT
+    int p_shape_1[] = {(int)week_fea.size(), data_1_dim, 1, 1};  // NOLINT
+    int p_shape_2[] = {(int)time_fea.size(), data_2_dim, 1, 1};  // NOLINT
 
     std::vector<int> shape_0(p_shape_0, p_shape_0 + 4);
     std::vector<int> shape_1(p_shape_1, p_shape_1 + 4);
@@ -225,20 +228,23 @@ void single_test() {
     tensor_2.shape = shape_2;
 
     for (int i = 0; i < fea.size(); i++) {
-      memcpy(data_0 + i * 38, &fea[i][0], sizeof(float) * 38);
+      memcpy(data_0 + i * data_0_dim, &fea[i][0], sizeof(float) * data_0_dim);
     }
     for (int i = 0; i < week_fea.size(); i++) {
-      memcpy(data_1 + i * 10, &week_fea[i][0], sizeof(float) * 10);
+      memcpy(data_1 + i * data_1_dim, &week_fea[i][0],
+             sizeof(float) * data_1_dim);
     }
     for (int i = 0; i < time_fea.size(); i++) {
-      memcpy(data_2 + i * 10, &time_fea[i][0], sizeof(float) * 10);
+      memcpy(data_2 + i * data_2_dim, &time_fea[i][0],
+             sizeof(float) * data_2_dim);
     }
 
-    tensor_0.data = paddle::PaddleBuf(data_0, fea.size() * sizeof(float) * 38);
+    tensor_0.data =
+        paddle::PaddleBuf(data_0, fea.size() * sizeof(float) * data_0_dim);
     tensor_1.data =
-        paddle::PaddleBuf(data_1, week_fea.size() * sizeof(float) * 10);
+        paddle::PaddleBuf(data_1, week_fea.size() * sizeof(float) * data_1_dim);
     tensor_2.data =
-        paddle::PaddleBuf(data_2, time_fea.size() * sizeof(float) * 10);
+        paddle::PaddleBuf(data_2, time_fea.size() * sizeof(float) * data_2_dim);
 
     tensor_0.dtype = paddle::PaddleDType::FLOAT32;
     tensor_1.dtype = paddle::PaddleDType::FLOAT32;
