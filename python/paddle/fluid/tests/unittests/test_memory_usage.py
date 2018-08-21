@@ -34,7 +34,7 @@ def train_simulator(test_batch_size=10):
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
 
-    # Calculate memory usage in current network config 
+    # Calculate memory usage in current network config
     lower_usage, upper_usage, unit = fluid.contrib.memory_usage(
         fluid.default_main_program(), batch_size=test_batch_size)
 

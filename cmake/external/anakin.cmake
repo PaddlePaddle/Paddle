@@ -19,24 +19,26 @@ execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-cer
 include_directories(${ANAKIN_INCLUDE})
 include_directories(${ANAKIN_INCLUDE}/saber/)
 
-set(ANAKIN_COMPILE_EXTRA_FLAGS 
+set(ANAKIN_COMPILE_EXTRA_FLAGS
     -Wno-error=unused-but-set-variable -Wno-unused-but-set-variable
-    -Wno-error=unused-variable -Wno-unused-variable 
+    -Wno-error=unused-variable -Wno-unused-variable
     -Wno-error=format-extra-args -Wno-format-extra-args
-    -Wno-error=comment -Wno-comment 
-    -Wno-error=format -Wno-format 
+    -Wno-error=comment -Wno-comment
+    -Wno-error=format -Wno-format
     -Wno-error=switch -Wno-switch
-    -Wno-error=return-type -Wno-return-type 
+    -Wno-error=return-type -Wno-return-type
     -Wno-error=non-virtual-dtor -Wno-non-virtual-dtor
     -Wno-sign-compare
-    -Wno-reorder 
+    -Wno-reorder
     -Wno-error=cpp)
 
 ExternalProject_Add(
     extern_anakin
     ${EXTERNAL_PROJECT_LOG_ARGS}
-    GIT_REPOSITORY      "https://github.com/PaddlePaddle/Anakin"
-    GIT_TAG             "04256ba78fa3da0beb74e8036c8efd68c12824d6"
+    DEPENDS             ${MKLML_PROJECT}
+    # Anakin codes error on Intel(R) Xeon(R) Gold 5117 CPU, temporary do not compile avx512 related code.
+    GIT_REPOSITORY      "https://github.com/luotao1/Anakin"
+    GIT_TAG             "bcf17aabe7921ceb7bce591244b4f9dce7dba5c8"
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          -DUSE_GPU_PLACE=YES
@@ -45,6 +47,7 @@ ExternalProject_Add(
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf
                         -DMKLML_ROOT=${THIRD_PARTY_PATH}/install/mklml
                         -DCUDNN_ROOT=${CUDNN_ROOT}
+                        -DCUDNN_INCLUDE_DIR=${CUDNN_INCLUDE_DIR}
                         ${EXTERNAL_OPTIONAL_ARGS}
     CMAKE_CACHE_ARGS    -DCMAKE_INSTALL_PREFIX:PATH=${ANAKIN_INSTALL_DIR}
 )

@@ -15,6 +15,8 @@
 A simple machine translation demo using beam search decoder.
 """
 
+from __future__ import print_function
+
 import contextlib
 import numpy as np
 import paddle
