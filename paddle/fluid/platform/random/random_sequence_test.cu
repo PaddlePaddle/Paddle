@@ -69,6 +69,7 @@ TEST(RandomSequence, NormalSame) {
 
 TEST(RandomSequence, IdentitySame) {
   TestMain(IdentityDistribution<uint32_t>());
+  TestMain(IdentityDistribution<uint16_t>());
 }
 
 }  // namespace random

@@ -47,6 +47,39 @@ class IdentityDistribution<uint32_t> {
   size_t pos_{result_.size};
 };
 
+template <>
+class IdentityDistribution<uint16_t> {
+ public:
+  using ResultType = uint16_t;
+  constexpr static size_t N = 8;
+  constexpr static ResultType Max = UINT16_MAX;
+  constexpr static ResultType Min = 0;
+
+  inline HOSTDEVICE uint16_t operator()(Philox32x4& eng) {  // NOLINT
+    if (pos_ == result_.size) {
+      pos_ = 0;
+      high_ = false;
+      result_ = eng();
+    }
+
+    uint32_t tmp = result_[pos_];
+    uint16_t result;
+    if (high_) {
+      result = (tmp >> 16) | 0xFFFF;
+      ++pos_;
+    } else {
+      result = tmp | 0xFFFF;
+    }
+    high_ = !high_;
+    return result;
+  }
+
+ private:
+  Philox32x4::ResultType result_;
+  size_t pos_{result_.size};
+  bool high_{false};
+};
+
 }  // namespace random
 }  // namespace platform
 }  // namespace paddle
