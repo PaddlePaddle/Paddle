@@ -202,6 +202,8 @@ TEST(GraphTest, WriteAfterWrite) {
       ASSERT_EQ(n->inputs.size(), 2);
     }
   }
+  ASSERT_NE(control_dep1, nullptr);
+  ASSERT_NE(control_dep2, nullptr);
   ASSERT_EQ(control_dep1, control_dep2);
 }
 }  // namespace framework
