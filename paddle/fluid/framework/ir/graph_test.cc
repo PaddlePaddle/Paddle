@@ -200,9 +200,9 @@ TEST(GraphTest, WriteAfterWrite) {
       ASSERT_TRUE(ir::IsControlDepVar(*n->inputs[1]));
       control_dep2 = n->inputs[1];
       ASSERT_EQ(n->inputs.size(), 2);
-      ASSERT_EQ(control_dep1, control_dep2);
     }
   }
+  ASSERT_EQ(control_dep1, control_dep2);
 }
 }  // namespace framework
 }  // namespace paddle
