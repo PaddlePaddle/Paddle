@@ -9,7 +9,6 @@ function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
     # cc_library. But it handle split GPU/CPU code and link some common library
     # for ops.
-    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
     set(cc_srcs)
     set(cu_srcs)
     set(hip_cu_srcs)
@@ -92,6 +91,7 @@ function(op_library TARGET)
         endif()
     endforeach()
     endif(WIN32)
+    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
 
     list(LENGTH op_library_DEPS op_library_DEPS_len)
     if (${op_library_DEPS_len} GREATER 0)

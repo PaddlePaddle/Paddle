@@ -25,10 +25,28 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+size_t PDPattern::id_ = 0UL;
+
 PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
+  if (!name.empty()) {
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+                      "PDNode's name should be unique, get duplicate [%s]",
+                      name);
+  }
+
   nodes_.emplace_back(new PDNode(std::move(teller), name));
   auto* cur = nodes_.back().get();
+  node_map_[name] = cur;
   return cur;
+}
+
+PDNode* PDPattern::RetriveNode(const std::string& id) const {
+  auto it = node_map_.find(id);
+  if (it == node_map_.end()) {
+    return nullptr;
+  }
+
+  return it->second;
 }
 
 void PDPattern::AddEdge(PDNode* a, PDNode* b) {
@@ -51,15 +69,18 @@ void GraphPatternDetecter::operator()(Graph* graph,
 }
 
 bool GraphPatternDetecter::MarkPDNodesInGraph(const ir::Graph& graph) {
+  VLOG(4) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
   for (auto& node : GraphTraits::DFS(graph)) {
     for (const auto& pdnode : pattern_.nodes()) {
       if (pdnode->Tell(&node)) {
+        VLOG(4) << "pdnode " << pdnode->name() << " marked";
         pdnodes2nodes_[pdnode.get()].insert(&node);
       }
     }
   }
+  VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
   return !pdnodes2nodes_.empty();
 }
 
@@ -67,10 +88,20 @@ struct HitGroup {
   std::unordered_map<PDNode*, Node*> roles;
 
   bool Match(Node* node, PDNode* pat) {
+    if (nodes_.count(node)) {
+      if (!roles.count(pat)) return false;
+      return roles[pat] == node;
+    }
     return !roles.count(pat) || roles.at(pat) == node;
   }
 
-  void Register(Node* node, PDNode* pat) { roles[pat] = node; }
+  void Register(Node* node, PDNode* pat) {
+    roles[pat] = node;
+    nodes_.insert(node);
+  }
+
+ private:
+  std::unordered_set<Node*> nodes_;
 };
 
 // Tell whether Node a links to b.
@@ -104,6 +135,7 @@ GraphPatternDetecter::DetectPatterns() {
   // Extend a PDNode to subgraphs by deducing the connection relations defined
   // in edges of PDNodes.
   for (const auto& edge : pattern_.edges()) {
+    VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
     auto& pre_groups = bi_records[step % 2];
@@ -127,6 +159,7 @@ GraphPatternDetecter::DetectPatterns() {
         }
       }
     }
+    VLOG(3) << "step " << step << " get records: " << cur_groups.size();
   }
 
   for (auto& group : bi_records[step % 2]) {

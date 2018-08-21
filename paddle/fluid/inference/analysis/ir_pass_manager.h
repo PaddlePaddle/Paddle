@@ -12,31 +12,34 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/model_store_pass.h"
+/*
+ * This file defines IRPassManager, it helps control the passes in IR. Inference
+ * phrase will load the model program and parameters from disk, that is quite
+ * different from the training phase.
+ * This manager will control the Passes and make the passes in IR work smoothly
+ * for inference.
+ */
 
-#include <gflags/gflags.h>
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/analyzer.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+using framework::ProgramDesc;
 
-DEFINE_string(inference_model_dir, "", "Model path");
+class IRPassManager final {
+ public:
+  IRPassManager(const ProgramDesc& program);
 
-TEST(DFG_StorePass, test) {
-  Analyzer analyzer;
-  Argument argument(FLAGS_inference_model_dir);
-  argument.model_output_store_path.reset(
-      new std::string("./_dfg_store_pass_tmp"));
-  // disable storage in alalyzer
-  FLAGS_IA_output_storage_path = "";
-  analyzer.Run(&argument);
+  void Apply(const std::vector<std::string>& passes);
 
-  ModelStorePass pass;
-  pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
-}
+  framework::ir::Graph& graph() const { return *graph_; }
+
+ private:
+  std::unique_ptr<framework::ir::Graph> graph_;
+};
 
 }  // namespace analysis
 }  // namespace inference
