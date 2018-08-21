@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
 
@@ -32,7 +33,8 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
     VLOG(3) << "Predictor::init()";
-
+    FLAGS_tensorrt_max_batch_size = config_.max_batch_size;
+    FLAGS_tensorrt_workspace_size = config_.workspace_size;
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
     } else {
@@ -150,3 +152,12 @@ CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
 }
 
 }  // namespace paddle
+
+USE_TRT_CONVERTER(elementwise_add_weight);
+USE_TRT_CONVERTER(mul);
+USE_TRT_CONVERTER(conv2d);
+USE_TRT_CONVERTER(relu);
+USE_TRT_CONVERTER(fc);
+USE_TRT_CONVERTER(pool2d);
+USE_TRT_CONVERTER(softmax);
+USE_TRT_CONVERTER(batch_norm);
