@@ -4191,7 +4191,10 @@ def multiplex(inputs, index):
     return out
 
 
-def softmax_with_cross_entropy(logits, label, soft_label=False):
+def softmax_with_cross_entropy(logits,
+                               label,
+                               soft_label=False,
+                               flatten_dim=None):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4254,7 +4257,10 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label})
+        attrs={
+            'soft_label': soft_label,
+            'flatten_dim': flatten_dim if flatten_dim is not None else -1
+        })
     return loss
 
 

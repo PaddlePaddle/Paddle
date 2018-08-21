@@ -260,17 +260,21 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
     auto soft_label = context.Attr<bool>("soft_label");
+    int batch_size = softmax->dims()[0];
+    int feature_size = softmax->dims()[1];
+
     if (soft_label) {
-      int batch_size = logits->dims()[0];
-      int feature_size = logits->dims()[1];
       auto* logits_data = logits->data<T>();
       auto* labels_data = labels->data<T>();
       SoftmaxWithCrossEntropyFusedKernel(
           logits_data, labels_data, softmax_data, loss_data, batch_size,
           feature_size, context.cuda_device_context().stream());
     } else {
-      math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(), logits,
-                                     softmax);
+      Tensor logits_reshaped;
+      logits_reshaped.ShareDataWith(*logits);
+      logits_reshaped.Resize({batch_size, feature_size});
+      math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(),
+                                     &logits_reshaped, softmax);
       math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
           context.cuda_device_context(), loss, softmax, labels, false);
     }
@@ -288,11 +292,13 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
         context.Input<Tensor>(framework::GradVarName("Loss"))->data<T>();
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
+    framework::DDim original_dims = logit_grad->dims();
     logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
     T* logit_grad_data = logit_grad->data<T>();
 
     const int batch_size = logit_grad->dims()[0];
     const int class_num = logit_grad->dims()[1];
+
     int block = 512;
     auto stream = context.cuda_device_context().stream();
 
@@ -311,6 +317,8 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
       Scale<T><<<grid, block, 0, stream>>>(logit_grad_data, loss_grad_data, num,
                                            class_num);
     }
+
+    logit_grad->Resize(original_dims);
   }
 };
 

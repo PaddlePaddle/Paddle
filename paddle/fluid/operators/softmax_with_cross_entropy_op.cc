@@ -17,6 +17,15 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+static inline void GetReshapedDimsForSoftmaxWithCrossEntropy(
+    const framework::DDim& dims, int flatten_dim, int* batch_size,
+    int* feature_size) {
+  if (flatten_dim < 0) flatten_dim += dims.size();
+  *batch_size = 1;
+  for (int i = 0; i < flatten_dim; ++i) (*batch_size) *= dims[i];
+  *feature_size = framework::product(dims) / (*batch_size);
+}
+
 class SoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
@@ -44,6 +53,11 @@ class SoftmaxWithCrossEntropyOpMaker
         "(bool, default: false), A flag to indicate whether to interpretate "
         "the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<int>(
+        "flatten_dim",
+        "(int, default: -1), An integer to indicate the dimension from which "
+        "Logits should be reshaped to 2-D tensor")
+        .SetDefault(-1);
     AddComment(R"DOC(
 Softmax With Cross Entropy Operator.
 
@@ -93,25 +107,44 @@ class SoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 
     auto logits_dims = ctx->GetInputDim("Logits");
     auto labels_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(
-        logits_dims.size(), 2UL,
-        "The input of softmax_with_cross_entropy should be a 2-D tensor.");
-    PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
-                      "The labels should be a 2-D tensor.");
+
+    int flatten_dim = ctx->Attrs().Get<int>("flatten_dim");
+    PADDLE_ENFORCE(
+        flatten_dim >= -logits_dims.size() && flatten_dim < logits_dims.size(),
+        "Attr(flatten_dim) must be inside [-rank(Logits), rank(Logits))");
+
+    int batch_size, feature_size;
+    GetReshapedDimsForSoftmaxWithCrossEntropy(logits_dims, flatten_dim,
+                                              &batch_size, &feature_size);
+    if (!ctx->IsRuntime()) {
+      batch_size = -1;
+    }
 
     if (ctx->Attrs().Get<bool>("soft_label")) {
-      PADDLE_ENFORCE_EQ(logits_dims[1], labels_dims[1],
-                        "If Attr(soft_label) == true, the 2nd dimension of "
-                        "Input(X) and Input(Label) should be equal.");
+      PADDLE_ENFORCE_EQ(logits_dims, labels_dims,
+                        "If Attr(soft_label) == true, the shape of "
+                        "Input(Logits) must be the same with the shape of "
+                        "Input(Labels)");
     } else {
+      PADDLE_ENFORCE_EQ(
+          labels_dims.size(), 2UL,
+          "If Attr(soft_label) == false ,Input(label) should be a 2-D tensor.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(
+            labels_dims[0], batch_size,
+            "If Attr(soft_label) == false, the 1st dimension of "
+            "Input(Label) should be product(Logits.shape[0:%d])=%d at runtime",
+            flatten_dim, batch_size);
+      }
       PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
                         "If Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
-    ctx->SetOutputDim("Softmax", logits_dims);
-    ctx->SetOutputDim("Loss", {logits_dims[0], 1});
+    ctx->SetOutputDim("Softmax", {batch_size, feature_size});
+    ctx->SetOutputDim("Loss", {batch_size, 1});
 
+    // FIXME(zengjinle): reshape would be conflict with LoD
     ctx->ShareLoD("Logits", /*->*/ "Softmax");
     ctx->ShareLoD("Logits", /*->*/ "Loss");
   }
@@ -140,21 +173,43 @@ class SoftmaxWithCrossEntropyOpGrad : public framework::OperatorWithKernel {
 
     auto softmax_dims = ctx->GetInputDim("Softmax");
     auto labels_dims = ctx->GetInputDim("Label");
-    PADDLE_ENFORCE_EQ(labels_dims.size(), 2UL,
-                      "The labels should be a 2-D tensor.");
+    auto logits_dims = ctx->GetInputDim("Logits");
+
+    int flatten_dim = ctx->Attrs().Get<int>("flatten_dim");
+    PADDLE_ENFORCE(
+        flatten_dim >= -logits_dims.size() && flatten_dim < logits_dims.size(),
+        "Attr(flatten_dim) must be inside [-rank(Logits), rank(Logits))");
+
+    int batch_size, feature_size;
+    GetReshapedDimsForSoftmaxWithCrossEntropy(logits_dims, flatten_dim,
+                                              &batch_size, &feature_size);
+    if (!ctx->IsRuntime()) {
+      batch_size = -1;
+    }
 
     if (ctx->Attrs().Get<bool>("soft_label")) {
-      PADDLE_ENFORCE_EQ(softmax_dims[1], labels_dims[1],
-                        "When Attr(soft_label) == true, the 2nd dimension of "
-                        "Input(X) and Input(Label) should be equal.");
+      PADDLE_ENFORCE_EQ(logits_dims, labels_dims,
+                        "If Attr(soft_label) == true, the shape of "
+                        "Input(Logits) must be the same with the shape of "
+                        "Input(Labels)");
     } else {
+      PADDLE_ENFORCE_EQ(
+          labels_dims.size(), 2UL,
+          "If Attr(soft_label) == false ,Input(label) should be a 2-D tensor.");
+      if (ctx->IsRuntime()) {
+        PADDLE_ENFORCE_EQ(
+            labels_dims[0], batch_size,
+            "If Attr(soft_label) == false, the 1st dimension of "
+            "Input(Label) should be product(Logits.shape[0:%d])=%d at runtime",
+            flatten_dim, batch_size);
+      }
       PADDLE_ENFORCE_EQ(labels_dims[1], 1UL,
-                        "When Attr(soft_label) == false, the 2nd dimension of "
+                        "If Attr(soft_label) == false, the 2nd dimension of "
                         "Input(Label) should be 1.");
     }
 
     ctx->SetOutputDim(framework::GradVarName("Logits"),
-                      ctx->GetInputDim("Softmax"));
+                      ctx->GetInputDim("Logits"));
   }
 
  protected:
@@ -175,6 +230,7 @@ class SoftmaxGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* grad_op = new framework::OpDesc();
     grad_op->SetType("softmax_with_cross_entropy_grad");
+    grad_op->SetInput("Logits", Input("Logits"));
     grad_op->SetInput("Label", Input("Label"));
     grad_op->SetInput("Softmax", Output("Softmax"));
     grad_op->SetInput("Loss", Output("Loss"));

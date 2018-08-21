@@ -37,15 +37,28 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     Tensor* softmax = context.Output<Tensor>("Softmax");
     Tensor* loss = context.Output<Tensor>("Loss");
 
+    int batch_size = softmax->dims()[0];
+    int feature_size = softmax->dims()[1];
+
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
+    Tensor logits_reshaped, labels_reshaped;
+    logits_reshaped.ShareDataWith(*logits);
+    labels_reshaped.ShareDataWith(*labels);
+
+    logits_reshaped.Resize(framework::make_ddim({batch_size, feature_size}));
+    if (context.Attr<bool>("soft_label")) {
+      labels_reshaped.Resize(framework::make_ddim({batch_size, feature_size}));
+    }
+
     auto& dev_ctx =
         context.template device_context<platform::CPUDeviceContext>();
-    math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(dev_ctx, logits,
-                                                          softmax);
+    math::SoftmaxFunctor<platform::CPUDeviceContext, T>()(
+        dev_ctx, &logits_reshaped, softmax);
     math::CrossEntropyFunctor<platform::CPUDeviceContext, T>()(
-        dev_ctx, loss, softmax, labels, context.Attr<bool>("soft_label"));
+        dev_ctx, loss, softmax, &labels_reshaped,
+        context.Attr<bool>("soft_label"));
   }
 };
 
@@ -58,15 +71,19 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
-    logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
 
+    framework::DDim original_dims = logit_grad->dims();
+    logit_grad->ShareDataWith(*context.Input<Tensor>("Softmax"));
+    const int batch_size = logit_grad->dims()[0];
     const int class_num = logit_grad->dims()[1];
+
     auto out_grad_mat = EigenMatrix<T>::From(*out_grad);
     auto logit_grad_mat = EigenMatrix<T>::From(*logit_grad);
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
                        .eigen_device();
     if (context.Attr<bool>("soft_label")) {
-      auto lbl_mat = EigenMatrix<T>::From(*labels);
+      auto lbl_mat = framework::EigenTensor<T, 2>::From(
+          *labels, framework::make_ddim({batch_size, class_num}));
       logit_grad_mat.device(place) =
           out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, class_num)) *
           (logit_grad_mat - lbl_mat);
@@ -83,6 +100,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
         logit_grad_data[i * class_num + label_data[i]] -= out_grad_data[i];
       }
     }
+
+    logit_grad->Resize(original_dims);
   }
 };
 
