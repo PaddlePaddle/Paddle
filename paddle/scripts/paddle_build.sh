@@ -320,9 +320,9 @@ EOF
         ctest --output-on-failure -R test_dist_mnist -V
         ctest --output-on-failure -R test_listen_and_serv_op -V
         ctest --output-on-failure -R test_debugger -V
-        ctest --output-on-failure -R test_prelu_op -V
         ctest --output-on-failure -R test_dist_transformer -V
         ctest --output-on-failure -R test_dist_se_resnext -V
+        ctest --output-on-failure -R test_prelu_op -V
 
         # make install should also be test when unittest
         make install -j `nproc`
