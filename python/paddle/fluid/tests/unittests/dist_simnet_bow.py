@@ -32,6 +32,8 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
+DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
+DATA_MD5 = '4cc060b0a0939a343fc9242aa1ee2e4e'
 
 # For Net
 base_lr = 0.005
@@ -191,7 +193,9 @@ def get_batch_reader(file_list):
 
 def get_train_reader():
     # The training data set.
-    train_reader = get_batch_reader("sample")
+    train_file = os.path.join(paddle.dataset.common.DATA_HOME, "simnet",
+                              "train")
+    train_reader = get_batch_reader(train_file)
     train_feed = ["query_ids", "pos_title_ids", "neg_title_ids", "label"]
     return train_reader, train_feed
 
@@ -202,15 +206,16 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
         avg_cost, acc, predict = train_network()
 
         inference_program = fluid.default_main_program().clone()
+
         # Optimization
-        opt = get_optimizer(learning_rate=0.001)
+        opt = get_optimizer()
         opt.minimize(avg_cost)
 
         # Reader
         train_reader, _ = get_train_reader()
-
         return inference_program, avg_cost, train_reader, _, acc, predict
 
 
 if __name__ == "__main__":
+    paddle.dataset.common.download(DATA_URL, 'simnet', DATA_MD5, "train")
     runtime_main(TestDistSimnetBow2x2)
