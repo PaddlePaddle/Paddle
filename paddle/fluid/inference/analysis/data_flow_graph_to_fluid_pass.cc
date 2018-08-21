@@ -23,9 +23,6 @@
 namespace paddle {
 namespace inference {
 
-DEFINE_int32(tensorrt_max_batchsize, 1, "TensorRT maximum batch size");
-DEFINE_int32(tensorrt_workspace_size, 2048, "TensorRT workspace size");
-
 namespace analysis {
 
 using framework::proto::ProgramDesc;
@@ -190,8 +187,6 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
   // Set attrs
   SetAttr(desc.Proto(), "subgraph", block->SerializeAsString());
   SetAttr(desc.Proto(), "engine_uniq_key", "trt-" + std::to_string(counter++));
-  SetAttr(desc.Proto(), "max_batch", FLAGS_tensorrt_max_batchsize);
-  SetAttr(desc.Proto(), "max_workspace", FLAGS_tensorrt_workspace_size);
   SetAttr(desc.Proto(), "parameters", ExtractParameters(graph.nodes.nodes()));
   SetAttr(desc.Proto(), "output_name_mapping", output_mapping);
   node->SetPbMsg(desc.Proto()->SerializeAsString());
