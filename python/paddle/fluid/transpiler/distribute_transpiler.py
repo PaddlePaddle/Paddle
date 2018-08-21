@@ -258,6 +258,10 @@ class DistributeTranspiler(object):
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
             grad_name_to_send_dummy_out[grad_varname] = dummy_output
+
+            for p, g in self.params_grads:
+                if g.name == grad_varname:
+                    send_param_grad = [p.name, g.name]
             program.global_block()._insert_op(
                 index=index + 1,
                 type="send",
@@ -266,6 +270,7 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                    OP_ROLE_VAR_ATTR_NAME: send_param_grad,
                     "sync_mode": not self.sync_mode,
                 })
             for _, var in enumerate(splited_vars):
@@ -300,6 +305,9 @@ class DistributeTranspiler(object):
                 eps.append(eplist[index])
             grad_send_dummy_out = grad_name_to_send_dummy_out[
                 self.param_name_to_grad_name[param_varname]]
+            for p, g in self.params_grads:
+                if p.name == param_varname:
+                    send_param_grad = [p.name, g.name]
             program.global_block().append_op(
                 type="recv",
                 inputs={"X": [grad_send_dummy_out]},
@@ -307,6 +315,7 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                    OP_ROLE_VAR_ATTR_NAME: send_param_grad,
                     "sync_mode": not self.sync_mode
                 })
 
@@ -928,6 +937,10 @@ class DistributeTranspiler(object):
                         'Ids': [program.global_block().vars[table_grad_name]]
                     },
                     outputs={"Out": self.trainer_side_table_grad_list})
+                print("table_grad_name ", table_grad_name)
+                for p, g in self.params_grads:
+                    if g.name == table_grad_name:
+                        send_param_grad = [p.name, g.name]
                 program.global_block()._insert_op(
                     index=op_index + 2,
                     type="send",
@@ -936,7 +949,8 @@ class DistributeTranspiler(object):
                     attrs={
                         "sync_mode": True,
                         "epmap": pserver_endpoints,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME: send_param_grad
                     })
                 break
 

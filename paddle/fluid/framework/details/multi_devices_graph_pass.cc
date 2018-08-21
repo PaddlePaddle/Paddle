@@ -771,8 +771,6 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
                    "This hack no longer holds, please fix.");
     // the variable name which contains .block means it was splited by
     // split_byref op
-    // so that we can balance the variable blocks to all the pserver
-    // instances.
     if (strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce &&
         node->inputs[0]->Name().find(".block") == std::string::npos) {
       std::vector<std::string> input_var_names;
@@ -780,6 +778,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
         input_var_names.push_back(n->Name());
       }
       op_dev_id = GetAppropriateDeviceID(input_var_names);
+      VLOG(10) << "send grad " << input_var_names[0] << " place: " << op_dev_id;
       for (auto &varname : input_var_names) {
         result->Get<ShardedVarDevice>(kShardedVarDevice)
             .emplace(varname, op_dev_id);
@@ -790,7 +789,17 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
     for (ir::Node *n : node->outputs) {
       output_var_names.push_back(n->Name());
     }
-    op_dev_id = GetAppropriateDeviceID(output_var_names);
+    auto recv_param_grad = boost::get<std::vector<std::string>>(
+        node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
+    // FIXME(typhoonzero): assume each recv op output one param
+    // Use the same place as send.
+    if (recv_param_grad.size() == 2U) {
+      op_dev_id = GetVarDeviceID(*result, recv_param_grad[1]);
+      VLOG(10) << "recv param " << recv_param_grad[0]
+               << " place: " << op_dev_id;
+    } else {
+      op_dev_id = GetAppropriateDeviceID(output_var_names);
+    }
     for (auto &varname : output_var_names) {
       result->Get<ShardedVarDevice>(kShardedVarDevice)
           .emplace(varname, op_dev_id);
