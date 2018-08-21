@@ -32,7 +32,9 @@ class IdentityDistribution<uint32_t> {
   constexpr static ResultType Max = UINT32_MAX;
   constexpr static ResultType Min = 0;
 
-  inline HOSTDEVICE uint32_t operator()(Philox32x4& eng) {  // NOLINT
+  IdentityDistribution() : pos_{result_.size} {}
+
+  inline HOSTDEVICE uint32_t operator()(Philox32x4 &eng) {  // NOLINT
     if (pos_ == result_.size) {
       // regenerate from engine
       result_ = eng();
@@ -55,7 +57,7 @@ class IdentityDistribution<uint16_t> {
   constexpr static ResultType Max = UINT16_MAX;
   constexpr static ResultType Min = 0;
 
-  inline HOSTDEVICE uint16_t operator()(Philox32x4& eng) {  // NOLINT
+  inline HOSTDEVICE uint16_t operator()(Philox32x4 &eng) {  // NOLINT
     if (pos_ == result_.size) {
       pos_ = 0;
       high_ = false;

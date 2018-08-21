@@ -25,7 +25,7 @@ namespace random {
 
 template <typename T>
 struct FillValue {
-  T* val_;
+  T *val_;
   HOSTDEVICE void operator()(size_t i, T val) { val_[i] = val; }
 };
 
@@ -67,7 +67,7 @@ TEST(RandomSequence, NormalSame) {
   TestMain(NormalDistribution<double>(0, 1));
 }
 
-TEST(RandomSequence, IdentitySame) {
+TEST(RandomSequence, IdentityCPUGPUSame) {
   TestMain(IdentityDistribution<uint32_t>());
   TestMain(IdentityDistribution<uint16_t>());
 }
@@ -80,7 +80,7 @@ void TestIdentityMean(Dist dist) {
   RandomFill(CPUDeviceContext(), 0, dist, cpu.data(), length);
 
   __uint128_t sum = 0;
-  for (auto& item : cpu) {
+  for (auto &item : cpu) {
     sum += item;
   }
   sum /= length;
@@ -88,12 +88,35 @@ void TestIdentityMean(Dist dist) {
   ASSERT_LE(
       std::abs(static_cast<double>(sum) - static_cast<double>(Dist::Max / 2)) /
           (Dist::Max / 2),
-      1e-4);
+      1e-3);
 }
 
 TEST(RandomSequence, IdentityMean) {
   TestIdentityMean(IdentityDistribution<uint32_t>());
-  TestIdentityMean(IdentityDistribution<uint16_t>());
+}
+
+TEST(RandomSequenceIdentity, IdentitySame) {
+  constexpr size_t length = 1U << 18;
+  std::vector<uint32_t> cpu(length);
+  RandomFill(CPUDeviceContext(), 0, IdentityDistribution<uint32_t>(),
+             cpu.data(), length);
+
+  std::vector<uint32_t> cpu2;
+  cpu2.reserve(length);
+  Philox32x4 engine(0);
+  for (size_t i = 0; i < (length << 2); ++i) {
+    auto result = engine();
+    for (size_t j = 0; j < result.size; ++j) {
+      cpu2.emplace_back(result[j]);
+    }
+  }
+
+  for (size_t i = 0; i < length; ++i) {
+    if (cpu[i] != cpu2[i]) {
+      std::cerr << i << std::endl;
+    }
+    ASSERT_EQ(cpu[i], cpu2[i]);
+  }
 }
 
 }  // namespace random
