@@ -115,7 +115,9 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
         "The former method will save the time of recomputing the "
         "'Out', but it must occupy the memory to store the 'out'. "
         "While, the later method can avoid occupying the memory, "
-        "but it must recompute the 'Out'. The default value is true.")
+        "but it must recompute the 'Out'. It is useful for Unary(Binary(X, "
+        "Y)). "
+        "The default value is true.")
         .SetDefault(true);
     AddAttr<bool>("keep_intermediate_value",
                   "scale is used by scale_op, the default value is 0.0.")

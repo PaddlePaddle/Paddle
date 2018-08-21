@@ -28,8 +28,6 @@ struct AddFunctor {
 template <typename T>
 struct AddGradFunctor {
   inline HOSTDEVICE T operator()(T x, T y) { return 1; }
-
-  inline HOSTDEVICE T operator()(T x, T y, T out) const { return 1; }
 };
 
 template <typename T>

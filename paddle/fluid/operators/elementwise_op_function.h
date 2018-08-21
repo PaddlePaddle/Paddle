@@ -699,16 +699,20 @@ static void FusedElemwiseAndActBroadcast1CPU(const T *x, const T *y,
 
       T y_val = BcastY ? y[j] : y[offset];
       T x_val = BcastY ? x[offset] : x[j];
-
+      int64_t intermediate_out_offset;
       if (KeepIntermediateOut) {
         T intermeidiate_out = compound_functor.GetIntermediateOut(x_val, y_val);
+
         if (SameShapeOfIntermediateOutAndOut) {
-          intermediate_out[offset] = intermeidiate_out;
+          // for the case of f1(f2(x, y))
+          intermediate_out_offset = offset;
         } else if (BcastY) {
-          intermediate_out[j] = intermeidiate_out;
+          intermediate_out_offset = j;
         } else {
-          intermediate_out[offset] = intermeidiate_out;
+          intermediate_out_offset = offset;
         }
+
+        intermediate_out[intermediate_out_offset] = intermeidiate_out;
         out[offset] = compound_functor.GetOut(x_val, y_val, intermeidiate_out);
       } else {
         out[offset] = compound_functor.GetOut(x_val, y_val);
@@ -730,17 +734,22 @@ static void FusedElemwiseAndActBroadcast2CPU(const T *x, const T *y, int pre,
 
         T y_val = BcastY ? y[j] : y[offset];
         T x_val = BcastY ? x[offset] : x[j];
+        int64_t intermediate_out_offset;
 
         if (KeepIntermediateOut) {
           T intermeidiate_out =
               compound_functor.GetIntermediateOut(x_val, y_val);
+
           if (SameShapeOfIntermediateOutAndOut) {
-            intermediate_out[offset] = intermeidiate_out;
+            // for the case of f1(f2(x, y))
+            intermediate_out_offset = offset;
           } else if (BcastY) {
-            intermediate_out[j] = intermeidiate_out;
+            intermediate_out_offset = j;
           } else {
-            intermediate_out[offset] = intermeidiate_out;
+            intermediate_out_offset = offset;
           }
+
+          intermediate_out[intermediate_out_offset] = intermeidiate_out;
           out[offset] =
               compound_functor.GetOut(x_val, y_val, intermeidiate_out);
         } else {
@@ -765,16 +774,21 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
+    int64_t intermediate_out_offset;
 
     if (KeepIntermediateOut) {
       T intermeidiate_out = compound_functor.GetIntermediateOut(x_val, y_val);
+
       if (SameShapeOfIntermediateOutAndOut) {
-        intermediate_out[offset] = intermeidiate_out;
+        // for the case of f1(f2(x, y))
+        intermediate_out_offset = offset;
       } else if (BcastY) {
-        intermediate_out[j] = intermeidiate_out;
+        intermediate_out_offset = j;
       } else {
-        intermediate_out[offset] = intermeidiate_out;
+        intermediate_out_offset = offset;
       }
+
+      intermediate_out[intermediate_out_offset] = intermeidiate_out;
       out[offset] = compound_functor.GetOut(x_val, y_val, intermeidiate_out);
     } else {
       out[offset] = compound_functor.GetOut(x_val, y_val);
@@ -816,16 +830,21 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
 
     T y_val = BcastY ? y[j] : y[offset];
     T x_val = BcastY ? x[offset] : x[j];
+    int64_t intermediate_out_offset;
 
     if (KeepIntermediateOut) {
       T intermeidiate_out = compound_functor.GetIntermediateOut(x_val, y_val);
+
       if (SameShapeOfIntermediateOutAndOut) {
-        intermediate_out[offset] = intermeidiate_out;
+        // for the case of f1(f2(x, y))
+        intermediate_out_offset = offset;
       } else if (BcastY) {
-        intermediate_out[j] = intermeidiate_out;
+        intermediate_out_offset = j;
       } else {
-        intermediate_out[offset] = intermeidiate_out;
+        intermediate_out_offset = offset;
       }
+
+      intermediate_out[intermediate_out_offset] = intermeidiate_out;
       out[offset] = compound_functor.GetOut(x_val, y_val, intermeidiate_out);
     } else {
       out[offset] = compound_functor.GetOut(x_val, y_val);
@@ -955,6 +974,7 @@ struct FusedElemwiseAndActGradNoBroadcast {
                                   : dy_op_(x_[i], y_[i], out_[i], dout_[i]);
     }
   }
+
   const T *x_;
   const T *y_;
   const T *intermediate_out_;
@@ -980,7 +1000,7 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
   for_range(
       FusedElemwiseAndActGradNoBroadcast<T, DX_OP, DY_OP, UseIntermediateOut>{
           x->data<T>(), y->data<T>(),
-          UseIntermediateOut ? intermediate_out->data<T>() : nullptr,
+          intermediate_out ? intermediate_out->data<T>() : nullptr,
           out->data<T>(), dout->data<T>(), dx_op, dy_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
           dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
@@ -1301,6 +1321,8 @@ void FusedElemwiseAndActGradComputeEx(
         }
       }
     }
+    // z = f1(x, f2(y))
+    // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.
       FusedElemwiseAndActGradComputeWithBroadcast<
           DeviceContext, T, DX_OP, DY_OP, UseIntermediateOut, true /*BcastY*/,
@@ -1349,17 +1371,31 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
       }
     }
 
+    // z = f1(x, f2(y))
+    // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.
+      // In this case,
+      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // of Y.
+      // for 'f2(x, y)', the shape of intermediate_out should be equal to the
+      // shape of Out.
+      // the shape of Out should be equal to the shape of X.
       FusedElemwiseAndActComputeWithBroadcast<
           DeviceContext, T, CompoundFunctor, true /*BcastY*/,
           KeepIntermediateOut, SameShapeOfIntermediateOutAndOut>(
-          ctx, x_dim, y_dim, x, y, compound_functor, axis, out,
+          ctx, x_dim /*OutShape*/, y_dim, x, y, compound_functor, axis, out,
           intermediate_out);
     } else {
+      // In this case,
+      // for 'f2(y)', the shape of intermediate_out should be equal to the shape
+      // of Out.
+      // for 'f2(x, y)', the shape of intermediate_out should be equal to the
+      // shape of Out.
+      // the shape of Out should be equal to the shape of Y.
       FusedElemwiseAndActComputeWithBroadcast<
           DeviceContext, T, CompoundFunctor, false /*BcastY*/,
           KeepIntermediateOut, SameShapeOfIntermediateOutAndOut>(
-          ctx, y_dim, x_dim, x, y, compound_functor, axis, out,
+          ctx, y_dim /*OutShape*/, x_dim, x, y, compound_functor, axis, out,
           intermediate_out);
     }
   }
