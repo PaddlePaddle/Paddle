@@ -16,10 +16,15 @@ set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
 set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
 set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 
-# TODO(luotao): ANAKIN_MODLE_URL will move to demo ci later.
-set(ANAKIN_MODLE_URL "http://paddle-inference-dist.bj.bcebos.com/mobilenet_v2.anakin.bin")
+# TODO(luotao): ANAKIN_MODLE_URL etc will move to demo ci later.
+set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
+set(ANAKIN_MODLE_URL "${INFERENCE_URL}/mobilenet_v2.anakin.bin")
+set(ANAKIN_RNN_MODLE_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn.anakin2.model.bin")
+set(ANAKIN_RNN_DATA_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn_data.txt")
 execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_SOURCE_DIR}")
-execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL}")
+execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL} -N")
+execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_MODLE_URL} -N")
+execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_DATA_URL} -N")
 
 include_directories(${ANAKIN_INCLUDE})
 include_directories(${ANAKIN_INCLUDE}/saber/)

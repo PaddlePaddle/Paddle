@@ -62,23 +62,20 @@ endif()
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
     cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-      target_link_libraries(${target_name} "-L${CUDNN_LIBRARY_DIR} -lcudnn -Wl,--as-needed")
-      get_filename_component(CUBLAS_LIBRARY_DIR ${CUDA_CUBLAS_LIBRARIES} DIRECTORY)
-      target_link_libraries(${target_name} "-L${CUBLAS_LIBRARY_DIR} -lcublas -Wl,--as-needed")
-      target_link_libraries(${target_name} "-L${MKLML_LIB_DIR} -lmklml_intel -Wl,--as-needed")
     endfunction()
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
         cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.bin
-                DEPS inference_anakin_api dynload_cuda SERIAL)
+                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
         cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/gis_rnn.anakin2.bin --datapath=${ANAKIN_SOURCE_DIR}/data.txt
-                DEPS inference_anakin_api dynload_cuda SERIAL)
+                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
+                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
     endif(WITH_TESTING)
 endif()
