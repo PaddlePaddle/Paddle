@@ -159,7 +159,7 @@ class TestBook(unittest.TestCase):
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=(label_dict_len - 1) // 2)
             self.assertFalse(crf is None)
             self.assertFalse(crf_decode is None)
 
@@ -286,7 +286,7 @@ class TestBook(unittest.TestCase):
                     name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
         dict_size = 10000
-        label_word = int(window_size / 2) + 1
+        label_word = int(window_size // 2) + 1
 
         embs = []
         for i in range(window_size):
@@ -345,6 +345,25 @@ class TestBook(unittest.TestCase):
             y = layers.data(name='label', shape=[4], dtype='float32')
             loss = layers.smooth_l1(x, y)
             self.assertIsNotNone(loss)
+        print(str(program))
+
+    def test_scatter(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            idx = layers.data(
+                name='idx', shape=[2], append_batch_size=False, dtype='int32')
+            updates = layers.data(
+                name='updates',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+            out = layers.scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
         print(str(program))
 
     def test_lod_reset(self):

@@ -130,12 +130,13 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
-  auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  // TODO(tangwei12): find out why scope will be error.
+  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
           << out_var_name;
-  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
   return true;
 }
 

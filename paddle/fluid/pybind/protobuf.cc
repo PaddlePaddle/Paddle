@@ -205,12 +205,7 @@ void BindBlockDesc(pybind11::module *m) {
 void BindVarDsec(pybind11::module *m) {
   pybind11::class_<pd::VarDesc> var_desc(*m, "VarDesc", "");
   var_desc
-      .def("name",
-           [](pd::VarDesc &self) {
-             pybind11::bytes name = self.Name();
-             return name;
-           },
-           pybind11::return_value_policy::reference)
+      .def("name", &pd::VarDesc::Name, pybind11::return_value_policy::reference)
       .def("set_name", &pd::VarDesc::SetName)
       .def("set_shape", &pd::VarDesc::SetShape)
       .def("set_shapes", &pd::VarDesc::SetShapes)

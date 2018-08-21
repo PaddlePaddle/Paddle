@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import os
 import numpy as np
@@ -93,7 +95,7 @@ class TestProfiler(unittest.TestCase):
                      "profiler is enabled only with GPU")
     def test_all_profiler(self):
         self.net_profiler('All', '/tmp/profile_out')
-        with open('/tmp/profile_out', 'r') as f:
+        with open('/tmp/profile_out', 'rb') as f:
             self.assertGreater(len(f.read()), 0)
 
 

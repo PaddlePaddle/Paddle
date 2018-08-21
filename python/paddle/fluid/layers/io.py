@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 import multiprocessing
+import six
 import threading
 
 from ..data_feeder import DataFeeder
@@ -21,7 +24,7 @@ from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program, program_guard, Program
+    default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
@@ -69,7 +72,7 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in range(len(shape)):
+    for i in six.moves.range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -206,7 +209,7 @@ class ListenAndServ(object):
             })
 
 
-def Send(endpoints, send_vars, sync=True):
+def Send(endpoints, send_vars, dummy_output=None, sync=True):
     """
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
@@ -220,6 +223,13 @@ def Send(endpoints, send_vars, sync=True):
     """
     assert (type(send_vars) == list)
 
+    if dummy_output is None:
+        dummy_output = []
+    elif isinstance(dummy_output, Variable):
+        dummy_output = [dummy_output]
+
+    assert (type(dummy_output) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
@@ -229,6 +239,7 @@ def Send(endpoints, send_vars, sync=True):
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
+        outputs={"Out": dummy_output},
         attrs={
             "endpoints": endpoints,
             "epmap": epmap,
@@ -238,7 +249,7 @@ def Send(endpoints, send_vars, sync=True):
         helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
 
 
-def Recv(endpoints, get_vars, sync=True):
+def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     """
     Receive variables from server side
 
@@ -253,13 +264,20 @@ def Recv(endpoints, get_vars, sync=True):
     """
     assert (type(get_vars) == list)
 
+    if dummy_input is None:
+        dummy_input = []
+    elif isinstance(dummy_input, Variable):
+        dummy_input = [dummy_input]
+
+    assert (type(dummy_input) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Recv", **locals())
     helper.append_op(
         type="recv",
-        inputs={"X": get_vars},
+        inputs={"X": dummy_input},
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
@@ -674,7 +692,7 @@ def py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in xrange(counter)]
+                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
 
         __set_tensor_provider__(__tensor_provider__)
 
@@ -750,7 +768,7 @@ def open_files(filenames,
     else:
         buffer_size = int(buffer_size)
 
-    if isinstance(filenames, basestring):
+    if isinstance(filenames, six.string_types):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -1005,7 +1023,7 @@ class Preprocessor(object):
         source_lod_levels = self.underlying_reader.desc.lod_levels()
         self.source_var_names = [
             unique_name("preprocessor_source")
-            for _ in range(len(source_shapes))
+            for _ in six.moves.range(len(source_shapes))
         ]
         source_vars = []
         for var_name, shape, dtype, lod_level in zip(

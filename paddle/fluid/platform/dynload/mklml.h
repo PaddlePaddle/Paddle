@@ -60,6 +60,14 @@ extern void* mklml_dso_handle;
   __macro(cblas_dgemm_batch);       \
   __macro(vsAdd);                   \
   __macro(vdAdd);                   \
+  __macro(cblas_sgemm_alloc);       \
+  __macro(cblas_sgemm_pack);        \
+  __macro(cblas_sgemm_compute);     \
+  __macro(cblas_sgemm_free);        \
+  __macro(cblas_dgemm_alloc);       \
+  __macro(cblas_dgemm_pack);        \
+  __macro(cblas_dgemm_compute);     \
+  __macro(cblas_dgemm_free);        \
   __macro(MKL_Set_Num_Threads)
 
 MKLML_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_MKLML_WRAP);

@@ -23,7 +23,7 @@
 namespace paddle {
 namespace inference {
 
-DEFINE_int32(tensorrt_max_batchsize, 3, "TensorRT maximum batch size");
+DEFINE_int32(tensorrt_max_batchsize, 1, "TensorRT maximum batch size");
 DEFINE_int32(tensorrt_workspace_size, 2048, "TensorRT workspace size");
 
 namespace analysis {
@@ -52,7 +52,6 @@ bool DataFlowGraphToFluidPass::Initialize(Argument *argument) {
 bool DataFlowGraphToFluidPass::Finalize() { return true; }
 
 void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
-  FilterRedundantOutputOfSubGraph(graph);
   LOG(INFO) << "graph.inputs " << graph->inputs.size();
   for (auto &node : GraphTraits<DataFlowGraph>(graph).nodes_in_TS()) {
     if (node.deleted()) continue;
