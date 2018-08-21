@@ -34,6 +34,8 @@ class PReluKernel : public framework::OpKernel<T> {
     const T* alpha_ptr = alpha->data<T>();
     std::string mode = context.Attr<std::string>("mode");
 
+    LOG(ERROR) << "PreluOp mode: " << mode;
+
     int numel = x->numel();
     auto dim = x->dims();
     int index = 0;
@@ -72,6 +74,9 @@ class PReluGradKernel : public framework::OpKernel<T> {
     const T* dout_ptr = dout->data<T>();
     const T* out_ptr = out->data<T>();
     std::string mode = context.Attr<std::string>("mode");
+
+    LOG(ERROR) << "PreluGrad mode: " << mode;
+
     int numel = x->numel();
     auto dim = x->dims();
     int index = 0;
