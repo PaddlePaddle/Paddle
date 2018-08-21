@@ -691,6 +691,10 @@ def load_inference_model(dirname,
                                    parameters were saved in a single binary
                                    file. If parameters were saved in separate
                                    files, set it as 'None'.
+        pserver_endpoints(list|None): This only need by distributed inference.
+                                    When use distributed look up table in training,
+                                    We also need it in inference.The parameter is
+                                    a list of pserver endpoints.
 
     Returns:
         tuple: The return of this function is a tuple with three elements:
@@ -709,11 +713,15 @@ def load_inference_model(dirname,
 
             exe = fluid.Executor(fluid.CPUPlace())
             path = "./infer_model"
+            endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
             [inference_program, feed_target_names, fetch_targets] =
                 fluid.io.load_inference_model(dirname=path, executor=exe)
             results = exe.run(inference_program,
                           feed={feed_target_names[0]: tensor_img},
                           fetch_list=fetch_targets)
+
+            # if we need lookup table, we will use:
+            fluid.io.load_inference_model(dirname=path, executor=exe, pserver_endpoints=endpoints)
 
             # In this exsample, the inference program was saved in the
             # "./infer_model/__model__" and parameters were saved in
