@@ -33,8 +33,16 @@ struct RandomSequence<CUDADeviceContext> {
       engine.Discard(i);
       auto dist = dist_;
       size_t offset = i * Distribution::N;
-      for (size_t j = 0; j < Distribution::N; ++j, ++offset) {
-        if (offset < length_) {
+      if (offset + Distribution::N < length_) {
+        #pragma unroll (Distribution::N)
+        for (size_t j = 0; j < Distribution::N; ++j, ++offset) {
+          callback_(offset, dist(engine));
+        }
+      } else {
+        for (size_t j = 0; j < Distribution::N; ++j, ++offset) {
+          if (offset >= length_) {
+            break;
+          }
           callback_(offset, dist(engine));
         }
       }
