@@ -16,6 +16,7 @@ limitations under the License. */
 #include <random>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/for_range.h"
 #include "paddle/fluid/platform/random.h"
 
 namespace paddle {

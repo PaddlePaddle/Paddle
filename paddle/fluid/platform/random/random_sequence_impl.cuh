@@ -24,17 +24,17 @@ template <>
 struct RandomSequence<CUDADeviceContext> {
   template <typename Callback, typename Distribution>
   struct ForRangeFunctor {
-    HOSTDEVICE ForRangeFunctor(Callback callback, uint64_t seed, size_t length,
+    ForRangeFunctor(Callback callback, uint64_t seed, size_t length,
                                Distribution dist)
         : callback_(callback), seed_(seed), length_(length), dist_(dist) {}
 
-    HOSTDEVICE inline void operator()(size_t i) {
+    __device__ inline void operator()(size_t i) {
       Philox32x4 engine(seed_);
       engine.Discard(i);
       auto dist = dist_;
       size_t offset = i * Distribution::N;
       if (offset + Distribution::N < length_) {
-        #pragma unroll (Distribution::N)
+        #pragma unroll (Distribution::N)  // NOLINT
         for (size_t j = 0; j < Distribution::N; ++j, ++offset) {
           callback_(offset, dist(engine));
         }
