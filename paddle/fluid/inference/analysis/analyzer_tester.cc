@@ -166,9 +166,9 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   // DataRecord data(FLAGS_datapath, batch_size);
   PaddleTensor lod_attention_tensor, init_zero_tensor, lod_tensor_tensor,
       week_tensor, minute_tensor;
-  lod_attention_tensor.name = "lod_attention";
-  init_zero_tensor.name = "init_zero";
-  lod_tensor_tensor.name = "lod_tensor";
+  lod_attention_tensor.name = "data_lod_attention";
+  init_zero_tensor.name = "cell_init";
+  lod_tensor_tensor.name = "data";
   week_tensor.name = "week";
   minute_tensor.name = "minute";
   auto one_batch = data->NextBatch();
@@ -196,13 +196,51 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
   // clang-format on
   LOG(INFO) << "set input_slots";
-  input_slots->assign({lod_tensor_tensor, lod_attention_tensor,
-                       init_zero_tensor, init_zero_tensor, week_tensor,
-                       minute_tensor});
+  auto init_zero_tensor1 = init_zero_tensor;
+  init_zero_tensor1.name = "hidden_init";
+  input_slots->assign({week_tensor, init_zero_tensor, minute_tensor,
+                       init_zero_tensor1, lod_attention_tensor,
+                       lod_tensor_tensor});
   LOG(INFO) << "set type";
   for (auto &tensor : *input_slots) {
     tensor.dtype = PaddleDType::FLOAT32;
   }
+}
+
+std::string DescribeTensor(const PaddleTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name << "]\n";
+  os << " - type: ";
+  switch (tensor.dtype) {
+    case PaddleDType::FLOAT32:
+      os << "float32";
+      break;
+    case PaddleDType::INT64:
+      os << "int64";
+      break;
+    default:
+      os << "unset";
+  }
+  os << '\n';
+
+  os << " - shape: " << to_string(tensor.shape) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+
+  // clang-format off
+  int dim = std::accumulate(tensor.shape.begin(),
+                            tensor.shape.end(),
+                            1,
+                            [](int a, int b) { return a * b; });  // clang-format on
+  for (size_t i = 0; i < dim; i++) {
+    os << static_cast<float *>(tensor.data.data())[i] << " ";
+  }
+  os << '\n';
+  return os.str();
 }
 
 }  // namespace
@@ -235,12 +273,11 @@ void TestDituRNNPrediction(const std::string &model_path,
   config.param_file = model_out + "/param";
   config.use_gpu = false;
   config.device = 0;
+  config.specify_input_name = true;
 
-  LOG(INFO) << "create predictor";
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   std::vector<PaddleTensor> input_slots;
-  LOG(INFO) << "open data";
   DataRecord data(data_path, batch_size);
   // Run multiple time to cancel the memory malloc or initialization of the
   // first time.
@@ -249,10 +286,11 @@ void TestDituRNNPrediction(const std::string &model_path,
   PrepareInputs(&input_slots, &data, batch_size);
   std::vector<PaddleTensor> outputs;
 
-  LOG(INFO) << "run";
-  for (int i = 0; i < 1000; i++) {
-    predictor->Run(input_slots, &outputs);
+  for (auto &input : input_slots) {
+    LOG(INFO) << "input: " << input.name << DescribeTensor(input);
   }
+
+  predictor->Run(input_slots, &outputs);
 
   for (auto &out : outputs) {
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
@@ -285,7 +323,7 @@ TEST(Analyzer, SupportIRPass) {
 
 TEST(Analyzer, DituRNN) {
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        1, false, false);
+                        1, true, true);
 }
 
 }  // namespace analysis

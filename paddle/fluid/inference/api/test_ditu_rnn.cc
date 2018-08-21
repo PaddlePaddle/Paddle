@@ -289,14 +289,11 @@ void Main1(int batch_size) {
 
   for (auto &out : outputs) {
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                  [](int a, int b) {
-                                    return a * b;
-                                  }) ;
-    float* data = static_cast<float *>(out.data.data());
+                                  [](int a, int b) { return a * b; });
+    float *data = static_cast<float *>(out.data.data());
     for (int i = 0; i < size; i++) {
       LOG(INFO) << data[i];
     }
-
   }
 }
 void MainMultiThread(int batch_size) {
