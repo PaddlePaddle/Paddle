@@ -59,6 +59,26 @@ class TestTensor(unittest.TestCase):
         self.assertAlmostEqual(1.0, tensor_array_2[3, 9])
         self.assertAlmostEqual(2.0, tensor_array_2[19, 11])
 
+    def test_int8_tensor(self):
+        scope = core.Scope()
+        var = scope.var("int8_tensor")
+        cpu_tensor = var.get_tensor()
+        cuda_tensor = var.get_tensor()
+        tensor_array = numpy.random.randint(
+            -127, high=128, size=[100, 200], dtype=numpy.int8)
+
+        place = core.CPUPlace()
+        cpu_tensor.set(tensor_array, place)
+        cpu_tensor_array_2 = numpy.array(cpu_tensor)
+        self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
+
+        tensor_array = numpy.random.randint(
+            -127, high=128, size=[100, 200], dtype=numpy.int8)
+        place = core.CUDAPlace(0)
+        cuda_tensor.set(tensor_array, place)
+        cuda_tensor_array_2 = numpy.array(cuda_tensor)
+        self.assertAlmostEqual(cuda_tensor_array_2.all(), tensor_array.all())
+
     def test_int_lod_tensor(self):
         place = core.CPUPlace()
         scope = core.Scope()
