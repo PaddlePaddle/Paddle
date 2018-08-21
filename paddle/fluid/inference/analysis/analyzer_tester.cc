@@ -187,7 +187,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
                               (int) one_batch.rnn_minute_datas.front().size()});
   minute_tensor.lod.assign({one_batch.lod3});
   // assign data
-  LOG(INFO) << "to assian data";
   TensorAssignData(&lod_attention_tensor, std::vector<std::vector<float>>({{0, 0}}));
   std::vector<float> tmp_zeros(batch_size * 15, 0.);
   TensorAssignData(&init_zero_tensor, {tmp_zeros});
@@ -195,13 +194,12 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
   TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
   // clang-format on
-  LOG(INFO) << "set input_slots";
+  // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
   input_slots->assign({week_tensor, init_zero_tensor, minute_tensor,
                        init_zero_tensor1, lod_attention_tensor,
                        lod_tensor_tensor});
-  LOG(INFO) << "set type";
   for (auto &tensor : *input_slots) {
     tensor.dtype = PaddleDType::FLOAT32;
   }
@@ -245,6 +243,17 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
 
 }  // namespace
 
+const float ditu_rnn_target_data[] = {
+    104.711, 11.2431, 1.35422, 0,       0,       0,       0,       0,
+    27.7039, 1.41486, 7.09526, 0,       0,       0,       0,       0,
+    7.6481,  6.5324,  56.383,  2.88018, 8.92918, 132.007, 4.27429, 2.02934,
+    14.1727, 10.7461, 25.0616, 16.0197, 14.4163, 16.9199, 6.75517, 0,
+    80.0249, 4.77739, 0,       0,       0,       0,       0,       0,
+    47.5643, 2.67029, 8.76252, 0,       0,       0,       0,       0,
+    51.8822, 4.4411,  0,       0,       0,       0,       0,       0,
+    10.7286, 12.0595, 10.6672, 0,       0,       0,       0,       0,
+    93.5771, 3.84641, 0,       0,       0,       0,       0,       0,
+    169.426, 0,       0,       0,       0,       0,       0,       0};
 // Test with a really complicate model.
 void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
@@ -279,16 +288,9 @@ void TestDituRNNPrediction(const std::string &model_path,
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
-  // Run multiple time to cancel the memory malloc or initialization of the
-  // first time.
-  // double whole_time = 0.;
-  LOG(INFO) << "prepare input";
+  // Prepare inputs.
   PrepareInputs(&input_slots, &data, batch_size);
   std::vector<PaddleTensor> outputs;
-
-  for (auto &input : input_slots) {
-    LOG(INFO) << "input: " << input.name << DescribeTensor(input);
-  }
 
   predictor->Run(input_slots, &outputs);
 
@@ -297,7 +299,7 @@ void TestDituRNNPrediction(const std::string &model_path,
                                   [](int a, int b) { return a * b; });
     float *data = static_cast<float *>(out.data.data());
     for (int i = 0; i < size; i++) {
-      LOG(INFO) << data[i];
+      EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);
     }
   }
 }
@@ -321,9 +323,23 @@ TEST(Analyzer, SupportIRPass) {
   TestWord2vecPrediction("./analysis.out");
 }
 
-TEST(Analyzer, DituRNN) {
+// Directly infer with the original model.
+TEST(Analyzer, DituRNN_without_analysis) {
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        1, true, true);
+                        10, false, false);
+}
+
+// Inference with the original model with the analysis turned on, the analysis
+// module will transform the program to a data flow graph.
+TEST(Analyzer, DituRNN_with_analysis) {
+  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
+                        10, true, false);
+}
+
+// Inference with analysis and IR. The IR module will fuse some large kernels.
+TEST(Analyzer, DituRNN_with_analysis_with_IR) {
+  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
+                        10, true, true);
 }
 
 }  // namespace analysis
