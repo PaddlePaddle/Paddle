@@ -119,12 +119,13 @@ bool RequestPrefetchHandler::Handle(const std::string& varname,
   VLOG(4) << "RequestPrefetchHandler " << varname;
 
   // All execution should use thread in the thread pool to do.
-  std::future<void> ft = framework::Async([this, &scope, varname]() {
-    auto var_desc = program_->Block(0).FindVar(out_var_name);
-    InitializeVariable(*outvar, var_desc->GetType());
-    executor_->RunPreparedContext(
-        (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
-  });
+  std::future<void> ft =
+      framework::Async([this, &scope, &varname, &out_var_name, &outvar]() {
+        auto var_desc = program_->Block(0).FindVar(out_var_name);
+        InitializeVariable(*outvar, var_desc->GetType());
+        executor_->RunPreparedContext(
+            (*prefetch_var_name_to_prepared_ctx_)[varname].get(), scope);
+      });
   ft.wait();
   return true;
 }
@@ -137,14 +138,16 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
   PADDLE_ENFORCE(
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
-  std::future<void> ft = framework::Async([this, &scope, varname]() {
-    auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
-    lt_var->clear();
-    lt_var->append(out_var_name);
-    VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
-            << out_var_name;
-    executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
-  });
+  std::future<void> ft =
+      framework::Async([this, &scope, &varname, &out_var_name]() {
+        auto* lt_var =
+            scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+        lt_var->clear();
+        lt_var->append(out_var_name);
+        VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
+                << out_var_name;
+        executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
+      });
   ft.wait();
   return true;
 }

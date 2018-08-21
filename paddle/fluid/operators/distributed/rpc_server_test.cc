@@ -112,7 +112,7 @@ void StartServer(const std::string& rpc_name) {
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);
 
-  g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
+  g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get(), 5);
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
