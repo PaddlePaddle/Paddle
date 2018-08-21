@@ -20,9 +20,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/fluid/operators/distributed/grpc_client.h"
-#endif
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -47,13 +45,13 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
-void Executor::Complete() {
   ::paddle::operators::distributed::RPCClient::GetInstance<
       ::paddle::operators::distributed::GRPCClient>()
       ->SendComplete();
-}
 #endif
+}
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -332,12 +330,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
-    VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
-    // NOTE! Please do not delete this line, it's usefull because the debug
-    // string before and after op.run are different, after run the output
-    // will have right shape which is usefull for debug.
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "

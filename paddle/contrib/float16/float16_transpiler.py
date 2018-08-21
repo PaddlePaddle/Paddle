@@ -118,7 +118,7 @@ class Float16Transpiler:
 
         for var in self.block.vars.keys():
             if var not in args:
-                self.block.remove_var(var)
+                self.block._remove_var(var)
 
     def _modify_feed_fetch(self):
         '''
@@ -165,7 +165,7 @@ class Float16Transpiler:
                     dtype=core.VarDesc.VarType.FP16,
                     shape=var.shape,
                     persistable=var.persistable)
-                self.block.insert_op(
+                self.block._insert_op(
                     i + 1,
                     type="cast",
                     inputs={"X": var},
@@ -188,7 +188,7 @@ class Float16Transpiler:
                     persistable=var.persistable)
                 find_op(var)
                 var.op.rename_output(var_name, tmp_var_name)
-                self.block.insert_op(
+                self.block._insert_op(
                     i,
                     type="cast",
                     inputs={"X": tmp_var},
@@ -253,4 +253,4 @@ class Float16Transpiler:
 
             # old var will be replaced by the fp16 var in program desc
             self.input_map[var.name] = fp16_var_name
-            self.block.remove_var(var.name)
+            self.block._remove_var(var.name)

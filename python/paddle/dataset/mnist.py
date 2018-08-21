@@ -17,10 +17,15 @@ MNIST dataset.
 This module will download dataset from http://yann.lecun.com/exdb/mnist/ and
 parse training set and test set into paddle reader creators.
 """
+
+from __future__ import print_function
+
 import paddle.dataset.common
 import subprocess
 import numpy
 import platform
+import tempfile
+from six.moves import range
 __all__ = ['train', 'test', 'convert']
 
 URL_PREFIX = 'http://yann.lecun.com/exdb/mnist/'
@@ -45,31 +50,42 @@ def reader_creator(image_filename, label_filename, buffer_size):
 
         # According to http://stackoverflow.com/a/38061619/724872, we
         # cannot use standard package gzip here.
-        m = subprocess.Popen([zcat_cmd, image_filename], stdout=subprocess.PIPE)
-        m.stdout.read(16)  # skip some magic bytes
+        tmp_image_file = tempfile.TemporaryFile(prefix='paddle_dataset')
+        m = subprocess.Popen(
+            [zcat_cmd, image_filename], stdout=tmp_image_file).communicate()
+        tmp_image_file.seek(16)  # skip some magic bytes
 
-        l = subprocess.Popen([zcat_cmd, label_filename], stdout=subprocess.PIPE)
-        l.stdout.read(8)  # skip some magic bytes
+        # Python3 will not take stdout as file
+        tmp_label_file = tempfile.TemporaryFile(prefix='paddle_dataset')
+        l = subprocess.Popen(
+            [zcat_cmd, label_filename], stdout=tmp_label_file).communicate()
+        tmp_label_file.seek(8)  # skip some magic bytes
 
         try:  # reader could be break.
             while True:
                 labels = numpy.fromfile(
-                    l.stdout, 'ubyte', count=buffer_size).astype("int")
+                    tmp_label_file, 'ubyte', count=buffer_size).astype("int")
 
                 if labels.size != buffer_size:
                     break  # numpy.fromfile returns empty slice after EOF.
 
                 images = numpy.fromfile(
-                    m.stdout, 'ubyte', count=buffer_size * 28 * 28).reshape(
-                        (buffer_size, 28 * 28)).astype('float32')
+                    tmp_image_file, 'ubyte', count=buffer_size * 28 *
+                    28).reshape((buffer_size, 28 * 28)).astype('float32')
 
                 images = images / 255.0 * 2.0 - 1.0
 
-                for i in xrange(buffer_size):
+                for i in range(buffer_size):
                     yield images[i, :], int(labels[i])
         finally:
-            m.terminate()
-            l.terminate()
+            try:
+                m.terminate()
+            except:
+                pass
+            try:
+                l.terminate()
+            except:
+                pass
 
     return reader
 
@@ -111,7 +127,7 @@ def fetch():
     paddle.dataset.common.download(TRAIN_IMAGE_URL, 'mnist', TRAIN_IMAGE_MD5)
     paddle.dataset.common.download(TRAIN_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
     paddle.dataset.common.download(TEST_IMAGE_URL, 'mnist', TEST_IMAGE_MD5)
-    paddle.dataset.common.download(TEST_LABEL_URL, 'mnist', TRAIN_LABEL_MD5)
+    paddle.dataset.common.download(TEST_LABEL_URL, 'mnist', TEST_LABEL_MD5)
 
 
 def convert(path):

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 
 import paddle.fluid as fluid
@@ -59,8 +61,7 @@ class TestMultipleReader(unittest.TestCase):
             while True:
                 try:
                     img_val, = exe.run(fetch_list=[img])
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
                 batch_count += 1
                 self.assertLessEqual(img_val.shape[0], self.batch_size)

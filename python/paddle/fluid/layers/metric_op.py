@@ -15,12 +15,14 @@
 All layers just related to metric.
 """
 
+from __future__ import print_function
+
 import warnings
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-import nn
+from . import nn
 
 __all__ = ['accuracy', 'auc']
 
@@ -76,14 +78,14 @@ def accuracy(input, label, k=1, correct=None, total=None):
     return acc_out
 
 
-def auc(input, label, curve='ROC', num_thresholds=200):
+def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
     """
     **Area Under the Curve (AUC) Layer**
 
     This implementation computes the AUC according to forward output and label.
-    It is used very widely in binary classification evaluation. 
+    It is used very widely in binary classification evaluation.
 
-    Note: If input label contains values other than 0 and 1, it will be cast 
+    Note: If input label contains values other than 0 and 1, it will be cast
     to `bool`. Find the relevant definitions `here <https://en.wikipedia.org\
     /wiki/Receiver_operating_characteristic#Area_under_the_curve>`_.
 
@@ -93,46 +95,56 @@ def auc(input, label, curve='ROC', num_thresholds=200):
         2. PR: Precision Recall
 
     Args:
-        input(Variable): A floating-point 2D Variable, values are in the range 
-                         [0, 1]. Each row is sorted in descending order. This 
-                         input should be the output of topk. Typically, this 
+        input(Variable): A floating-point 2D Variable, values are in the range
+                         [0, 1]. Each row is sorted in descending order. This
+                         input should be the output of topk. Typically, this
                          Variable indicates the probability of each label.
-        label(Variable): A 2D int Variable indicating the label of the training 
+        label(Variable): A 2D int Variable indicating the label of the training
                          data. The height is batch size and width is always 1.
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
-        num_thresholds(int): The number of thresholds to use when discretizing 
+        num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 200.
+        topk(int): only topk number of prediction output will be used for auc.
 
     Returns:
         Variable: A scalar representing the current AUC.
 
     Examples:
         .. code-block:: python
-        
+
             # network is a binary classification model and label the ground truth
             prediction = network(image, is_infer=True)
             auc_out=fluid.layers.auc(input=prediction, label=label)
     """
-
-    warnings.warn(
-        "This interface not recommended, fluid.layers.auc compute the auc at every minibatch, \
-        but can not aggregate them and get the pass AUC, because pass \
-        auc can not be averaged with weighted from the minibatch auc value. \
-        Please use fluid.metrics.Auc, it can compute the auc value via Python natively, \
-        which can get every minibatch and every pass auc value.", Warning)
     helper = LayerHelper("auc", **locals())
-    topk_out = helper.create_tmp_variable(dtype=input.dtype)
-    topk_indices = helper.create_tmp_variable(dtype="int64")
-    topk_out, topk_indices = nn.topk(input, k=k)
-    auc_out = helper.create_tmp_variable(dtype="float32")
+    auc_out = helper.create_tmp_variable(dtype="float64")
+    # make tp, tn, fp, fn persistable, so that can accumulate all batches.
+    tp = helper.create_global_variable(persistable=True, dtype='int64')
+    tn = helper.create_global_variable(persistable=True, dtype='int64')
+    fp = helper.create_global_variable(persistable=True, dtype='int64')
+    fn = helper.create_global_variable(persistable=True, dtype='int64')
+    for var in [tp, tn, fp, fn]:
+        helper.set_variable_initializer(
+            var, Constant(
+                value=0.0, force_cpu=True))
+
     helper.append_op(
         type="auc",
         inputs={
-            "Out": [topk_out],
-            "Indices": [topk_indices],
-            "Label": [label]
+            "Predict": [input],
+            "Label": [label],
+            "TP": [tp],
+            "TN": [tn],
+            "FP": [fp],
+            "FN": [fn]
         },
         attrs={"curve": curve,
                "num_thresholds": num_thresholds},
-        outputs={"AUC": [auc_out], })
-    return auc_out
+        outputs={
+            "AUC": [auc_out],
+            "TPOut": [tp],
+            "TNOut": [tn],
+            "FPOut": [fp],
+            "FNOut": [fn]
+        })
+    return auc_out, [tp, tn, fp, fn]

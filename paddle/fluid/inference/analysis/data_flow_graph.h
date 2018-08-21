@@ -26,6 +26,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/inference/analysis/graph_traits.h"
 #include "paddle/fluid/inference/analysis/node.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -36,17 +37,50 @@ namespace analysis {
 
 /*
  * DataFlowGraph - A container of Value and Function Nodes.
+ *
+ * This is the base graph for any other type of graphs, such as SSA or CFG.
  */
 struct DataFlowGraph {
   NodeMap nodes;
-  std::vector<Node *> inputs;
-  std::vector<Node *> outputs;
+  // inputs and outputs are deduced from the graph.
+  // Used to interact with IR.
+  const framework::ir::Graph *ir_graph{nullptr};
 
   // Extract inputs and outputs of the graph.
   void Build();
 
+  void Build(const framework::proto::ProgramDesc &prog);
+
+  // Build a graph from ir::Graph.
+  void Build(const framework::ir::Graph &graph);
+
+  // Get an attribute.
+  AnyAttr &Attr(const std::string &key) { return attrs_[key]; }
+
   // Output a DOT graph file for debug.
   std::string DotString() const;
+
+  std::string HumanReadableInfo(bool show_values = true,
+                                bool show_functions = true) const;
+
+  const std::vector<Node *> &inputs() const {
+    PADDLE_ENFORCE(!inputs_.empty(),
+                   "No inputs are deduced, need to Build() first.");
+    return inputs_;
+  }
+  const std::vector<Node *> &outputs() const {
+    PADDLE_ENFORCE(!outputs_.empty(),
+                   "No outputs are deduced, need to Build() first.");
+    return outputs_;
+  }
+
+ private:
+  mutable std::vector<Node *> inputs_;
+  mutable std::vector<Node *> outputs_;
+  std::unordered_map<std::string, AnyAttr> attrs_;
+
+  // Remove duplicate edges and so on.
+  void Clean();
 };
 
 /*
@@ -61,7 +95,7 @@ struct GraphTraits<DataFlowGraph> {
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesBFSIterator() = default;
     explicit NodesBFSIterator(const std::vector<Node *> &source);
-    // NodesBFSIterator(NodesBFSIterator &&other) noexcept;
+    NodesBFSIterator(NodesBFSIterator &&other) noexcept;
     // NOTE Heavy to use.
     NodesBFSIterator(const NodesBFSIterator &other);
 
@@ -84,8 +118,8 @@ struct GraphTraits<DataFlowGraph> {
   struct NodesDFSIterator
       : public std::iterator<std::forward_iterator_tag, Node *> {
     NodesDFSIterator() = default;
-    explicit NodesDFSIterator(const std::vector<Node *> &source);
-    // NodesDFSIterator(NodesDFSIterator &&other) noexcept;
+    NodesDFSIterator(const std::vector<Node *> &source);
+    NodesDFSIterator(NodesDFSIterator &&other) noexcept;
     NodesDFSIterator(const NodesDFSIterator &other);
 
     Node &operator*();
@@ -103,7 +137,33 @@ struct GraphTraits<DataFlowGraph> {
     std::unordered_set<Node *> visited_;
   };
 
-  explicit GraphTraits(DataFlowGraph *graph) : graph_(graph) {}
+  // Topological sorting iterator on nodes.
+  struct NodesTSIterator
+      : public std::iterator<std::forward_iterator_tag, Node *> {
+    NodesTSIterator() = default;
+    NodesTSIterator(const std::vector<Node *> &source);
+    NodesTSIterator(NodesTSIterator &&other)
+        : sorted_(std::move(other.sorted_)), cursor_(other.cursor_) {
+      other.cursor_ = 0;
+    }
+    NodesTSIterator(const NodesTSIterator &other);
+
+    Node &operator*();
+    NodesTSIterator &operator++();
+    // TODO(Superjomn) current implementation just compare the first
+    // element, need to compare the graph and all the elements in the queue and
+    // set.
+    NodesTSIterator &operator=(const NodesTSIterator &other);
+    bool operator==(const NodesTSIterator &other);
+    bool operator!=(const NodesTSIterator &other) { return !(*this == other); }
+    Node *operator->();
+
+   private:
+    std::vector<Node *> sorted_;
+    size_t cursor_{0};
+  };
+
+  explicit GraphTraits(const DataFlowGraph &graph) : graph_(graph) {}
 
   // default use BFS to visit the nodes.
   iterator_range<NodesBFSIterator> nodes() {
@@ -115,48 +175,35 @@ struct GraphTraits<DataFlowGraph> {
   iterator_range<NodesDFSIterator> nodes_in_DFS() {
     return iterator_range<NodesDFSIterator>(nodes_dfs_begin(), nodes_dfs_end());
   }
+  iterator_range<NodesTSIterator> nodes_in_TS() {
+    return iterator_range<NodesTSIterator>(nodes_ts_begin(), nodes_ts_end());
+  }
 
  private:
   NodesBFSIterator nodes_bfs_begin() {
-    return NodesBFSIterator(graph_->inputs);
+    return NodesBFSIterator(graph_.inputs());
   }
   NodesBFSIterator nodes_bfs_end() { return NodesBFSIterator(); }
+
   NodesDFSIterator nodes_dfs_begin() {
-    return NodesDFSIterator(graph_->inputs);
+    return NodesDFSIterator(graph_.inputs());
   }
   NodesDFSIterator nodes_dfs_end() { return NodesDFSIterator(); }
 
+  NodesTSIterator nodes_ts_begin() { return NodesTSIterator(graph_.inputs()); }
+  NodesTSIterator nodes_ts_end() { return NodesTSIterator(); }
+
  private:
-  DataFlowGraph *graph_;
+  const DataFlowGraph &graph_;
 };
 
 // Extract the inputs and outputs of a graph. The inputs and outputs of a
 // sub-graph is the inputs nodes and output nodes that doesn't inside the
 // sub-graph.
-std::pair<
-    std::vector<Node *>,
-    std::vector<
-        Node *>> static ExtractInputAndOutputOfSubGraph(std::vector<Node *>
-                                                            &graph) {
-  std::unordered_set<Node *> nodes(graph.begin(), graph.end());
-  std::unordered_set<Node *> inputs;
-  std::unordered_set<Node *> outputs;
-  for (auto &node : graph) {
-    for (auto *in : node->inlinks) {
-      if (!nodes.count(in) && in->type() == Node::Type::kValue) {
-        inputs.insert(in);
-      }
-    }
-    for (auto *out : node->outlinks) {
-      if (!nodes.count(out) && out->type() == Node::Type::kValue) {
-        outputs.insert(out);
-      }
-    }
-  }
-  return std::make_pair(std::vector<Node *>(inputs.begin(), inputs.end()),
-                        std::vector<Node *>(outputs.begin(), outputs.end()));
-}
+std::pair<std::vector<Node *>, std::vector<Node *>>
+ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);  // NOLINT
 
+void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph);
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

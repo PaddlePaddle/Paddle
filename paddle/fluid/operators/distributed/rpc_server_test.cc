@@ -30,7 +30,7 @@ namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::operators::distributed;
 
-USE_OP(lookup_table);
+USE_NO_KERNEL_OP(lookup_sparse_table);
 
 std::unique_ptr<distributed::RPCServer> g_rpc_service;
 std::unique_ptr<distributed::RequestHandler> g_req_handler;
@@ -42,13 +42,13 @@ framework::BlockDesc* AppendPrefetchBlcok(framework::ProgramDesc* program) {
   framework::VariableNameMap input({{"W", {"w"}}, {"Ids", {"ids"}}});
   framework::VariableNameMap output({{"Output", {"out"}}});
   auto op = block->AppendOp();
-  op->SetType("lookup_table");
+  op->SetType("lookup_sparse_table");
   op->SetInput("W", {"w"});
   op->SetInput("Ids", {"ids"});
   op->SetOutput("Out", {"out"});
 
   auto& out = *root_block->Var("out");
-  out.SetType(framework::proto::VarType::SELECTED_ROWS);
+  out.SetType(framework::proto::VarType::LOD_TENSOR);
   out.SetShape({10, 10});
 
   return block;
@@ -59,30 +59,28 @@ void CreateVarsOnScope(framework::Scope* scope, platform::CPUPlace* place) {
   w_var->GetMutable<framework::SelectedRows>();
 
   auto out_var = scope->Var("out");
-  out_var->GetMutable<framework::SelectedRows>();
+  out_var->GetMutable<framework::LoDTensor>();
 
   auto ids_var = scope->Var("ids");
-  ids_var->GetMutable<framework::SelectedRows>();
+  ids_var->GetMutable<framework::LoDTensor>();
 }
 
 void InitTensorsOnClient(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
-  auto ids_var = scope->Var("ids")->GetMutable<framework::SelectedRows>();
-  auto rows = ids_var->mutable_rows();
-  for (int64_t i = 0; i < rows_numel; ++i) rows->push_back(i * 2);
-  ids_var->mutable_value()->Resize({rows_numel, 1});
-  ids_var->mutable_value()->mutable_data<float>(*place);
+  auto ids_var = scope->Var("ids")->GetMutable<framework::LoDTensor>();
+  int64_t* ids_ptr =
+      ids_var->mutable_data<int64_t>(framework::DDim({rows_numel, 1}), *place);
+  for (int64_t i = 0; i < rows_numel; ++i) ids_ptr[i] = i * 2;
 }
 
 void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
                          int64_t rows_numel) {
   CreateVarsOnScope(scope, place);
   auto w = scope->Var("w")->GetMutable<framework::SelectedRows>();
-  auto rows = w->mutable_rows();
-  for (int64_t i = 0; i < rows_numel; ++i) rows->push_back(i);
   auto w_value = w->mutable_value();
   w_value->Resize({rows_numel, 10});
+  for (int64_t i = 0; i < rows_numel; ++i) w->AutoGrownIndex(i, true);
 
   auto ptr = w_value->mutable_data<float>(*place);
 
@@ -91,7 +89,7 @@ void InitTensorsOnServer(framework::Scope* scope, platform::CPUPlace* place,
   }
 }
 
-void StartServer() {
+void StartServer(const std::string& rpc_name) {
   framework::ProgramDesc program;
   framework::Scope scope;
   platform::CPUPlace place;
@@ -107,14 +105,14 @@ void StartServer() {
                      std::shared_ptr<framework::ExecutorPrepareContext>>
       prefetch_var_name_to_prepared;
   prefetch_var_name_to_prepared[in_var_name] = prepared[0];
+
   g_req_handler->SetProgram(&program);
   g_req_handler->SetPrefetchPreparedCtx(&prefetch_var_name_to_prepared);
   g_req_handler->SetDevCtx(&ctx);
   g_req_handler->SetScope(&scope);
   g_req_handler->SetExecutor(&exe);
 
-  g_rpc_service->RegisterRPC(distributed::kRequestPrefetch,
-                             g_req_handler.get());
+  g_rpc_service->RegisterRPC(rpc_name, g_req_handler.get());
   g_req_handler->SetRPCServer(g_rpc_service.get());
 
   std::thread server_thread(
@@ -129,7 +127,7 @@ TEST(PREFETCH, CPU) {
   distributed::RPCClient* client =
       distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-  std::thread server_thread(StartServer);
+  std::thread server_thread(StartServer, distributed::kRequestPrefetch);
   g_rpc_service->WaitServerReady();
 
   int port = g_rpc_service->GetSelectedPort();
@@ -148,17 +146,38 @@ TEST(PREFETCH, CPU) {
     client->AsyncPrefetchVar(ep, ctx, scope, in_var_name, out_var_name);
     client->Wait();
     auto var = scope.Var(out_var_name);
-    auto value = var->GetMutable<framework::SelectedRows>()->value();
-    auto ptr = value.mutable_data<float>(place);
+    auto value = var->GetMutable<framework::LoDTensor>();
+    auto ptr = value->mutable_data<float>(place);
 
     for (int64_t i = 0; i < rows_numel; ++i) {
-      EXPECT_EQ(ptr[0 + i * value.dims()[1]], static_cast<float>(i * 2));
+      EXPECT_EQ(ptr[0 + i * value->dims()[1]], static_cast<float>(i * 2));
     }
   }
 
   g_rpc_service->ShutDown();
   server_thread.join();
   LOG(INFO) << "begin reset";
+  g_rpc_service.reset(nullptr);
+  g_req_handler.reset(nullptr);
+}
+
+TEST(COMPLETE, CPU) {
+  g_req_handler.reset(new distributed::RequestSendHandler(true));
+  g_rpc_service.reset(new RPCSERVER_T("127.0.0.1:0", 2));
+  distributed::RPCClient* client =
+      distributed::RPCClient::GetInstance<RPCCLIENT_T>();
+  PADDLE_ENFORCE(client != nullptr);
+  std::thread server_thread(StartServer, distributed::kRequestSend);
+  g_rpc_service->WaitServerReady();
+  int port = g_rpc_service->GetSelectedPort();
+  std::string ep = paddle::string::Sprintf("127.0.0.1:%d", port);
+  client->AsyncSendComplete(ep);
+  client->Wait();
+
+  EXPECT_EQ(g_rpc_service->GetClientNum(), 1);
+
+  g_rpc_service->ShutDown();
+  server_thread.join();
   g_rpc_service.reset(nullptr);
   g_req_handler.reset(nullptr);
 }

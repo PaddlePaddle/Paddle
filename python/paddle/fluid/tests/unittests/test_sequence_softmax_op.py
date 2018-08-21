@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -61,6 +63,8 @@ class TestSequenceSoftmaxOp(OpTest):
 
 
 # ----------------cudnn Sequencesoftmax----------------
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestSequenceSoftmaxCUDNNOp(TestSequenceSoftmaxOp):
     def init_op_type(self):
         self.use_cudnn = True

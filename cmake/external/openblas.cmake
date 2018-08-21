@@ -114,7 +114,17 @@ INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 SET(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/cblas_dummy.c)
 FILE(WRITE ${dummyfile} "const char *dummy_cblas = \"${dummyfile}\";")
 ADD_LIBRARY(cblas STATIC ${dummyfile})
-TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+
+IF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+  TARGET_LINK_LIBRARIES(cblas dynload_mklml)
+ELSE()
+  TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
+ENDIF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
+
+IF(WITH_LIBXSMM)
+  TARGET_LINK_LIBRARIES(cblas ${LIBXSMM_LIBS})
+  ADD_DEPENDENCIES(cblas extern_libxsmm)
+ENDIF()
 
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)

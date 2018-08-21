@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import numpy as np
@@ -19,6 +21,8 @@ import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+from paddle.fluid.layers.control_flow import split_lod_tensor
+from paddle.fluid.layers.control_flow import merge_lod_tensor
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -96,12 +100,11 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
             y = layers.data(name='y', shape=[1])
             y.persistable = True
 
-            out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
+            out_true, out_false = split_lod_tensor(input=x, mask=y, level=level)
             out_true.persistable = True
             out_false.persistable = True
 
-            out = layers.merge_lod_tensor(
+            out = merge_lod_tensor(
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
 
             out.persistable = True
@@ -142,9 +145,8 @@ class TestCPUSplitMergeLoDTensorGrad(unittest.TestCase):
 
             level = 0
 
-            out_true, out_false = layers.split_lod_tensor(
-                input=x, mask=y, level=level)
-            out = layers.merge_lod_tensor(
+            out_true, out_false = split_lod_tensor(input=x, mask=y, level=level)
+            out = merge_lod_tensor(
                 in_true=out_true, in_false=out_false, mask=y, x=x, level=level)
             mean = layers.mean(out)
 

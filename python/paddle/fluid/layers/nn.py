@@ -1,4 +1,4 @@
-#   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,18 @@
 All layers just related to the neural network.
 """
 
+from __future__ import print_function
+
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
 from ..param_attr import ParamAttr
-from layer_function_generator import autodoc, templatedoc
-from tensor import concat
-import utils
+from .layer_function_generator import autodoc, templatedoc
+from .tensor import concat
+from . import utils
 import random
 from .. import unique_name
+from functools import reduce
 
 __all__ = [
     'fc',
@@ -71,6 +74,7 @@ __all__ = [
     'transpose',
     'im2sequence',
     'nce',
+    'hsigmoid',
     'beam_search',
     'row_conv',
     'multiplex',
@@ -90,11 +94,15 @@ __all__ = [
     'image_resize_short',
     'resize_bilinear',
     'gather',
+    'scatter',
     'random_crop',
     'mean_iou',
     'relu',
     'log',
     'crop',
+    'rank_loss',
+    'prelu',
+    'flatten',
 ]
 
 
@@ -151,7 +159,8 @@ def fc(input,
         param_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for learnable
             parameters/weights of this layer.
         bias_attr (ParamAttr|list of ParamAttr, default None): The parameter attribute for the bias
-            of this layer. If it is set to None, no bias will be added to the output units.
+            of this layer. If it is set to False, no bias will be added to the output units.
+            If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
         use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
@@ -342,7 +351,7 @@ def dynamic_lstm(input,
     """
 
     helper = LayerHelper('lstm', **locals())
-    size = size / 4
+    size = size // 4
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[size, 4 * size], dtype=dtype)
     bias_size = [1, 7 * size]
@@ -532,7 +541,7 @@ def dynamic_lstmp(input,
     """
 
     helper = LayerHelper('lstmp', **locals())
-    size = size / 4
+    size = size // 4
     weight = helper.create_parameter(
         attr=helper.param_attr, shape=[proj_size, 4 * size], dtype=dtype)
     proj_weight = helper.create_parameter(
@@ -760,7 +769,7 @@ def gru_unit(input,
 
     helper = LayerHelper('gru_unit', **locals())
     dtype = helper.input_dtype()
-    size = size / 3
+    size = size // 3
 
     # create weight
     weight = helper.create_parameter(
@@ -932,6 +941,10 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     helper = LayerHelper('dropout', **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     mask = helper.create_tmp_variable(dtype=x.dtype, stop_gradient=True)
+
+    if (seed is None or seed == 0) and helper.main_program.random_seed != 0:
+        seed = helper.main_program.random_seed
+
     helper.append_op(
         type='dropout',
         inputs={'X': [x]},
@@ -1240,7 +1253,7 @@ def sequence_conv(input,
         outputs={"Out": pre_bias},
         attrs={
             'contextStride': filter_stride,
-            'contextStart': -int(filter_size / 2),
+            'contextStart': -int(filter_size // 2),
             'contextLength': filter_size
         })
     pre_act = helper.append_bias_op(pre_bias)
@@ -1296,13 +1309,16 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
 
 def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     """
-    The input of the softmax layer is a 2-D tensor with shape N x K (N is the
-    batch_size, K is the dimension of input feature). The output tensor has the
-    same shape as the input tensor.
+    The input of the softmax operator is a tensor of any rank. The output tensor
+    has the same shape as the input.
 
-    For each row of the input tensor, the softmax operator squashes the
-    K-dimensional vector of arbitrary real values to a K-dimensional vector of real
-    values in the range [0, 1] that add up to 1.
+    The input tensor will first be logically flattened to a 2-D matrix. The matrix's
+    second dimension(row length) is as same as the last dimension of the input
+    tensor, and the first dimension(column length) is the product of all other
+    dimensions of the input tensor. For each row of the matrix, the softmax operator
+    squashes the K-dimensional(K is the width of the matrix, which is also the size
+    of the input tensor's last dimension) vector of arbitrary real values to a
+    K-dimensional vector of real values in the range [0, 1] that add up to 1.
 
     It computes the exponential of the given dimension and the sum of exponential
     values of all the other dimensions in the K-dimensional vector input.
@@ -1310,7 +1326,7 @@ def softmax(input, param_attr=None, bias_attr=None, use_cudnn=True, name=None):
     exponential values of all the other dimensions is the output of the softmax
     operator.
 
-    For each row :math:`i` and each column :math:`j` in Input(X), we have:
+    For each row :math:`i` and each column :math:`j` in the matrix, we have:
 
     .. math::
 
@@ -1469,7 +1485,7 @@ def conv2d(input,
     else:
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels / groups
+        num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -1480,7 +1496,7 @@ def conv2d(input,
         raise ValueError("use_cudnn should be True or False")
 
     input_shape = input.shape
-    filter_shape = [num_filters, num_filter_channels] + filter_size
+    filter_shape = [num_filters, int(num_filter_channels)] + filter_size
 
     def _get_default_param_initializer():
         std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
@@ -1631,7 +1647,7 @@ def conv3d(input,
     else:
         if num_channels % groups != 0:
             raise ValueError("num_channels must be divisible by groups.")
-        num_filter_channels = num_channels / groups
+        num_filter_channels = num_channels // groups
 
     filter_size = utils.convert_to_list(filter_size, 3, 'filter_size')
     stride = utils.convert_to_list(stride, 3, 'stride')
@@ -1993,7 +2009,8 @@ def batch_norm(input,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
-               do_model_average_for_mean_and_var=False):
+               do_model_average_for_mean_and_var=False,
+               fuse_with_relu=False):
     """
     **Batch Normalization Layer**
 
@@ -2036,6 +2053,7 @@ def batch_norm(input,
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
         moving_variance_name(string, Default None): The name of the moving_variance which store the global Variance.
         do_model_average_for_mean_and_var(bool, Default False): Do model average for mean and variance or not.
+        fuse_with_relu (bool): if True, this OP performs relu after batch norm.
 
     Returns:
         Variable: A tensor variable which is the result after applying batch normalization on the input.
@@ -2121,7 +2139,8 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": use_mkldnn,
+            "fuse_with_relu": fuse_with_relu
         })
 
     return helper.append_activation(batch_norm_out)
@@ -2222,56 +2241,6 @@ def layer_norm(input,
                "begin_norm_axis": begin_norm_axis})
 
     return helper.append_activation(layer_norm_out)
-
-
-def beam_search_decode(ids, scores, name=None):
-    """
-    Beam Search Decode
-
-    This layers is to pack the output of beam search layer into sentences and
-    associated scores. It is usually called after the beam search layer.
-    Typically, the output of beam search layer is a tensor of selected ids, with
-    a tensor of the score of each id. Beam search layer's output ids, however,
-    are generated directly during the tree search, and they are stacked by each
-    level of the search tree. Thus we need to reorganize them into sentences,
-    based on the score of each id. This layer takes the output of beam search
-    layer as input and repack them into sentences.
-
-    Args:
-        ids (Variable): The selected ids, output of beam search layer.
-        scores (Variable): The associated scores of the ids, out put of beam
-            search layer.
-        name (str): The name of this layer. It is optional.
-
-    Returns:
-        tuple(Variable): a tuple of two output tensors: sentence_ids, sentence_scores.
-        sentence_ids is a tensor with shape [size, length], where size is the
-        beam size of beam search, and length is the length of each sentence.
-        Note that the length of sentences may vary.
-        sentence_scores is a tensor with the same shape as sentence_ids.
-
-    Examples:
-        .. code-block:: python
-
-            ids, scores = fluid.layers.beam_search(
-                pre_ids, ids, scores, beam_size, end_id)
-            sentence_ids, sentence_scores = fluid.layers.beam_search_decode(
-                ids, scores)
-    """
-    helper = LayerHelper('beam_search_decode', **locals())
-    sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
-    sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
-
-    helper.append_op(
-        type="beam_search_decode",
-        inputs={"Ids": ids,
-                "Scores": scores},
-        outputs={
-            "SentenceIds": sentence_ids,
-            "SentenceScores": sentence_scores
-        })
-
-    return sentence_ids, sentence_scores
 
 
 def conv2d_transpose(input,
@@ -2384,10 +2353,17 @@ def conv2d_transpose(input,
           data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
           conv2d_transpose = fluid.layers.conv2d_transpose(input=data, num_filters=2, filter_size=3)
     """
-    helper = LayerHelper("conv2d_transpose", **locals())
+
+    input_channel = input.shape[1]
+
+    op_type = 'conv2d_transpose'
+    if (input_channel == groups and num_filters == input_channel and
+            not use_cudnn):
+        op_type = 'depthwise_conv2d_transpose'
+
+    helper = LayerHelper(op_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv2d_transpose must be Variable")
-    input_channel = input.shape[1]
 
     padding = utils.convert_to_list(padding, 2, 'padding')
     stride = utils.convert_to_list(stride, 2, 'stride')
@@ -2406,22 +2382,22 @@ def conv2d_transpose(input,
         w_in = input.shape[3]
 
         filter_size_h = (output_size[0] - (h_in - 1) * stride[0] + 2 *
-                         padding[0] - 1) / dilation[0] + 1
+                         padding[0] - 1) // dilation[0] + 1
         filter_size_w = (output_size[1] - (w_in - 1) * stride[1] + 2 *
-                         padding[1] - 1) / dilation[1] + 1
+                         padding[1] - 1) // dilation[1] + 1
         filter_size = [filter_size_h, filter_size_w]
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
 
     groups = 1 if groups is None else groups
-    filter_shape = [input_channel, num_filters / groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
     pre_bias = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type='conv2d_transpose',
+        type=op_type,
         inputs={'Input': [input],
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
@@ -2573,18 +2549,18 @@ def conv3d_transpose(input,
         w_in = input.shape[4]
 
         filter_size_d = (output_size[0] - (d_in - 1) * stride[0] + 2 *
-                         padding[0] - 1) / dilation[0] + 1
+                         padding[0] - 1) // dilation[0] + 1
         filter_size_h = (output_size[1] - (h_in - 1) * stride[1] + 2 *
-                         padding[1] - 1) / dilation[1] + 1
+                         padding[1] - 1) // dilation[1] + 1
         filter_size_w = (output_size[2] - (w_in - 1) * stride[2] + 2 *
-                         padding[2] - 1) / dilation[2] + 1
+                         padding[2] - 1) // dilation[2] + 1
         filter_size = [filter_size_d, filter_size_h, filter_size_w]
     else:
         filter_size = utils.convert_to_list(filter_size, 3,
                                             'conv3d_transpose.filter_size')
 
     groups = 1 if groups is None else groups
-    filter_shape = [input_channel, num_filters / groups] + filter_size
+    filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
 
@@ -2677,38 +2653,89 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
-def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
-    '''
-    **beam search**
-
-    This function implements the beam search algorithm.
-
-    Beam search is a classical algorithm for selecting candidate words
-    in a machine translation task.
+def beam_search(pre_ids,
+                pre_scores,
+                ids,
+                scores,
+                beam_size,
+                end_id,
+                level=0,
+                name=None):
+    """
+    Beam search is a classical algorithm for selecting candidate words in a
+    machine translation task.
 
     Refer to `Beam search <https://en.wikipedia.org/wiki/Beam_search>`_
     for more details.
 
+    This layer does the search in beams for one time step. Specifically, it
+    selects the top-K candidate word ids of current step from :attr:`ids`
+    according to their :attr:`scores` for all source sentences, where K is
+    :attr:`beam_size` and :attr:`ids, scores` are predicted results from the
+    computation cell. Additionally, :attr:`pre_ids` and :attr:`pre_scores` are
+    the output of beam_search at previous step, they are needed for special use
+    to handle ended candidate translations.
+
+    Note that the :attr:`scores` passed in should be accumulated scores, and
+    length penalty should be done with extra operators before calculating the
+    accumulated scores if needed, also suggest finding top-K before it and
+    using the top-K candidates following.
+
+    Please see the following demo for a fully beam search usage example:
+
+        fluid/tests/book/test_machine_translation.py
+
     Args:
-        pre_ids (Variable): ids in previous step.
-        ids (Variable): a LoDTensor of shape of [None,k]
-        scores (Variable): a LoDTensor that has the same shape and LoD with `ids`
-        beam_size (int): beam size for beam search
-        end_id (int): the token id which indicates the end of a sequence
-        level (int): the level of LoDTensor
+        pre_ids(Variable): The LodTensor variable which is the output of
+            beam_search at previous step. It should be a LodTensor with shape
+            :math:`(batch_size, 1)` and lod
+            :math:`[[0, 1, ... , batch_size], [0, 1, ..., batch_size]]` at the
+            first step.
+        pre_scores(Variable): The LodTensor variable which is the output of
+            beam_search at previous step.
+        ids(Variable): The LodTensor variable containing the candidates ids.
+            Its shape should be :math:`(batch_size \\times beam_size, K)`,
+            where :math:`K` supposed to be :attr:`beam_size`.
+        scores(Variable): The LodTensor variable containing the accumulated
+            scores corresponding to :attr:`ids` and its shape is the same as
+            the shape of :attr:`ids`.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        level(int, default 0): It can be ignored and mustn't change currently.
+            It means the source level of lod, which is explained as following.
+            The lod level of :attr:`ids` should be 2. The first level is source
+            level which describes how many prefixes (branchs) for each source
+            sentece (beam), and the second level is sentence level which
+            describes how these candidates belong to the prefix. The paths
+            linking prefixes and selected candidates are organized and reserved
+            in lod.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
 
     Returns:
-        tuple: a tuple of beam_search output variables: `selected_ids`, `selected_scores`
+        Variable: The LodTensor pair containing the selected ids and the \
+            corresponding scores.
 
     Examples:
         .. code-block:: python
 
-             # current_score is a Tensor of shape (num_batch_size, embed_size), which
-             # consists score of each candidate word.
-             topk_scores, topk_indices = pd.topk(current_score, k=50)
-             selected_ids, selected_scores = pd.beam_search(
-                 pre_ids, topk_indices, topk_scores, beam_size, end_id=10, level=0)
-    '''
+            # Suppose `probs` contains predicted results from the computation
+            # cell and `pre_ids` and `pre_scores` is the output of beam_search
+            # at previous step.
+            topk_scores, topk_indices = layers.topk(probs, k=beam_size)
+            accu_scores = layers.elementwise_add(
+                x=layers.log(x=topk_scores)),
+                y=layers.reshape(
+                    pre_scores, shape=[-1]),
+                axis=0)
+            selected_ids, selected_scores = layers.beam_search(
+                pre_ids=pre_ids,
+                pre_scores=pre_scores,
+                ids=topk_indices,
+                scores=accu_scores,
+                beam_size=beam_size,
+                end_id=end_id)
+    """
     helper = LayerHelper('beam_search', **locals())
     score_type = scores.dtype
     id_type = ids.dtype
@@ -2720,6 +2747,7 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         type='beam_search',
         inputs={
             'pre_ids': pre_ids,
+            'pre_scores': pre_scores,
             'ids': ids,
             'scores': scores,
         },
@@ -2735,6 +2763,56 @@ def beam_search(pre_ids, ids, scores, beam_size, end_id, level=0):
         })
 
     return selected_ids, selected_scores
+
+
+def beam_search_decode(ids, scores, beam_size, end_id, name=None):
+    """
+    Beam Search Decode Layer. This layer constructs the full hypotheses for
+    each source sentence by walking back along the LoDTensorArray :attr:`ids`
+    whose lods can be used to restore the path in the beam search tree.
+    Please see the following demo for a fully beam search usage example:
+        fluid/tests/book/test_machine_translation.py
+
+    Args:
+        ids(Variable): The LodTensorArray variable containing the selected ids
+            of all steps.
+        scores(Variable): The LodTensorArray variable containing the selected
+            scores of all steps.
+        beam_size(int): The beam width used in beam search.
+        end_id(int): The id of end token.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The LodTensor pair containing the generated id sequences \
+            and the corresponding scores. The shapes and lods of the two \
+            LodTensor are same. The lod level is 2 and the two levels \
+            separately indicate how many hypotheses each source sentence has \
+            and how many ids each hypothesis has.
+
+    Examples:
+        .. code-block:: python
+            # Suppose `ids` and `scores` are LodTensorArray variables reserving
+            # the selected ids and scores of all steps
+            finished_ids, finished_scores = layers.beam_search_decode(
+                ids, scores, beam_size=5, end_id=0)
+    """
+    helper = LayerHelper('beam_search_decode', **locals())
+    sentence_ids = helper.create_tmp_variable(dtype=ids.dtype)
+    sentence_scores = helper.create_tmp_variable(dtype=ids.dtype)
+
+    helper.append_op(
+        type="beam_search_decode",
+        inputs={"Ids": ids,
+                "Scores": scores},
+        outputs={
+            "SentenceIds": sentence_ids,
+            "SentenceScores": sentence_scores
+        },
+        attrs={"beam_size": beam_size,
+               "end_id": end_id})
+
+    return sentence_ids, sentence_scores
 
 
 def lstm_unit(x_t,
@@ -2883,7 +2961,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
-            # Each example is followed by the correspending output tensor.
+            # Each example is followed by the corresponding output tensor.
             fluid.layers.reduce_sum(x)  # [3.5]
             fluid.layers.reduce_sum(x, dim=0)  # [0.3, 0.5, 1.1, 1.6]
             fluid.layers.reduce_sum(x, dim=-1)  # [1.9, 1.6]
@@ -2892,7 +2970,7 @@ def reduce_sum(input, dim=None, keep_dim=False, name=None):
             # x is a Tensor variable with shape [2, 2, 2] and elements as below:
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
-            # Each example is followed by the correspending output tensor.
+            # Each example is followed by the corresponding output tensor.
             fluid.layers.reduce_sum(x, dim=[1, 2]) # [10, 26]
             fluid.layers.reduce_sum(x, dim=[0, 1]) # [16, 20]
 
@@ -3795,6 +3873,74 @@ def nce(input,
     return cost / (num_neg_samples + 1)
 
 
+def hsigmoid(input, label, num_classes, param_attr=None, bias_attr=None):
+    """
+    The hierarchical sigmoid operator is used to accelerate the training
+    process of language model. This operator organizes the classes into a
+    complete binary tree, each leaf node represents a class(a word) and each
+    internal node acts as a binary classifier. For each word there's a unique
+    path from root to it's leaf node, hsigmoid calculate the cost for each
+    internal node on the path, and sum them to get a total cost. hsigmoid can
+    achive a acceleration from :math:`O(N)` to :math:`O(logN)`, where :math:`N`
+    represents the size of word dict.
+
+    Refer to `Hierarchical Probabilistic Neural Network Language Model
+    <http://www.iro.umontreal.ca/~lisa/pointeurs/hierarchical-nnlm-aistats05.pdf>`_
+
+    Args:
+        input (Variable): The input tensor variable with shape
+            :math:`[N \\times D]`, where :math:`N` is the size of mini-batch,
+            and :math:`D` is the feature size.
+        label (Variable): The tensor variable contains labels of training data.
+            It's a tensor with shape is :math:`[N \\times 1]`.
+        num_classes: (int), The number of classes, must not be less than 2.
+        param_attr (ParamAttr|list of ParamAttr, default None): The parameter
+             attribute for learnable parameters/weights of this layer.
+        bias_attr (ParamAttr|list of ParamAttr, default None):  The parameter
+             attribute for the bias of this layer. If it is set to False, no
+             bias will be applied.
+
+    Returns:
+        Out: (Tensor) The cost of hierarchical sigmoid operator. the shape is [N, 1]
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[2], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[1], dtype='int64')
+            out = fluid.layers.hsigmoid(input=x, label=y, num_classes=6)
+    """
+
+    helper = LayerHelper('hierarchical_sigmoid', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    pre_out = helper.create_tmp_variable(dtype)
+    dim = input.shape[1]
+    if num_classes < 2:
+        raise ValueError("num_classes must not be less than 2.")
+    weights = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=[num_classes - 1, dim],
+        is_bias=False,
+        dtype=input.dtype)
+    inputs = {"X": input, "W": weights, "Label": label}
+    if helper.bias_attr:
+        bias = helper.create_parameter(
+            attr=helper.bias_attr,
+            shape=[1, num_classes - 1],
+            is_bias=True,
+            dtype=input.dtype)
+        inputs['Bias'] = bias
+    helper.append_op(
+        type="hierarchical_sigmoid",
+        inputs=inputs,
+        outputs={"Out": out,
+                 "PreOut": pre_out},
+        attrs={"num_classes": num_classes})
+    return out
+
+
 def transpose(x, perm, name=None):
     """
     Permute the dimensions of `input` according to `perm`.
@@ -3838,7 +3984,13 @@ def transpose(x, perm, name=None):
     return out
 
 
-def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
+def im2sequence(input,
+                filter_size=1,
+                stride=1,
+                padding=0,
+                input_image_size=None,
+                out_stride=1,
+                name=None):
     """
     Extracts image patches from the input tensor to form a tensor of shape
     {input.batch_size * output_height * output_width, filter_size_H *
@@ -3874,6 +4026,15 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
             paddings of four direction. Otherwise, a scalar padding means
             padding_up = padding_down = padding_left = padding_right = padding
             Default: padding = 0.
+
+        input_image_size(Variable): the input contains image real size.It's dim
+            is [batchsize, 2]. It is dispensable.It is just for batch inference.
+
+        out_stride(int|tuple): The scaling of image through CNN. It is
+            dispensable. It is valid only when input_image_size is not null.
+            If out_stride is tuple,  it must contain two intergers,
+            (out_stride_H, out_stride_W). Otherwise,
+            the out_stride_H = out_stride_W = out_stride.
 
         name (int): The name of this layer. It is optional.
 
@@ -3925,7 +4086,7 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
                            [ 5.  7.  2.  4.  1.  3.  9.  0.]
                            [ 7.  9.  4.  8.  3.  5.  0.  8.]]
 
-            output.dims = {8, 9}
+            output.dims = {8, 8}
 
             output.lod = [[4, 4]]
 
@@ -3947,18 +4108,17 @@ def im2sequence(input, filter_size=1, stride=1, padding=0, name=None):
     if len(padding) == 2:
         padding.append(padding[0])
         padding.append(padding[1])
-
+    inputs = {"X": input}
+    attrs = {"kernels": filter_size, "strides": stride, "padding": padding}
+    if input_image_size:
+        if isinstance(out_stride, int):
+            out_stride = [out_stride, out_stride]
+        inputs["Y"] = input_image_size
+        attrs["out_stride"] = out_stride
     helper = LayerHelper('im2sequence', **locals())
     out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
-        type='im2sequence',
-        inputs={'X': input},
-        outputs={'Out': out},
-        attrs={
-            'kernels': filter_size,
-            'strides': stride,
-            'paddings': padding,
-        })
+        type='im2sequence', inputs=inputs, outputs={'Out': out}, attrs=attrs)
     return out
 
 
@@ -4208,7 +4368,7 @@ def autoincreased_step_counter(counter_name=None, begin=1, step=1):
         helper.set_variable_initializer(
             counter, initializer=Constant(
                 value=begin - 1, force_cpu=True))
-        helper.main_program.global_block().prepend_op(
+        helper.main_program.global_block()._prepend_op(
             type='increment',
             inputs={'X': [counter]},
             outputs={'Out': [counter]},
@@ -4312,15 +4472,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape", **locals())
-    reshaped = helper.create_tmp_variable(dtype=x.dtype)
+    out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs=inputs,
-        attrs={"shape": shape,
-               "inplace": inplace},
-        outputs={"Out": reshaped})
+        attrs={"shape": shape},
+        outputs={"Out": out})
 
-    return helper.append_activation(reshaped)
+    return helper.append_activation(out)
 
 
 def lod_reset(x, y=None, target_lod=None):
@@ -4682,7 +4841,7 @@ def dice_loss(input, label, epsilon=0.00001):
             loss = fluid.layers.dice_loss(input=predictions, label=label, 2)
     """
     label = one_hot(label, depth=input.shape[-1])
-    reduce_dim = range(1, len(input.shape))
+    reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(
         input, dim=reduce_dim) + reduce_sum(
@@ -4878,6 +5037,47 @@ def gather(input, index):
     return out
 
 
+def scatter(input, index, updates, name=None):
+    """
+    **Scatter Layer**
+
+    Output is obtained by updating the input on selected indices on the first
+    axis.
+
+    .. math::
+
+        Out = X
+        Out[Ids] = Updates
+
+    Args:
+        input (Variable): The source input with rank>=1.
+        index (Variable): The index input with rank=1. Its dtype should be
+                          int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter op.
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.scatter(input, index, updates)
+
+    """
+    helper = LayerHelper('scatter', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": input,
+                "Ids": index,
+                "Updates": updates},
+        outputs={"Out": out})
+    return out
+
+
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
@@ -4920,7 +5120,7 @@ def random_crop(x, shape, seed=None):
     return out
 
 
-def log(x):
+def log(x, name=None):
     """
     Calculates the natural log of the given input tensor, element-wise.
 
@@ -4930,6 +5130,8 @@ def log(x):
 
     Args:
         x (Variable): Input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
 
     Returns:
         Variable: The natural log of the input tensor computed element-wise.
@@ -4947,7 +5149,7 @@ def log(x):
     return out
 
 
-def relu(x):
+def relu(x, name=None):
     """
     Relu takes one input data (Tensor) and produces one output data (Tensor)
     where the rectified linear function, y = max(0, x), is applied to
@@ -4959,6 +5161,8 @@ def relu(x):
 
     Args:
         x (Variable): The input tensor.
+        name (str|None, default None): A name for this layer If set None,
+            the layer will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -5015,12 +5219,12 @@ def mean_iou(input, label, num_classes):
     out_correct = helper.create_tmp_variable(dtype='int32')
     helper.append_op(
         type="mean_iou",
-        inputs={"predictions": input,
-                "labels": label},
+        inputs={"Predictions": input,
+                "Labels": label},
         outputs={
-            "out_mean_iou": out_mean_iou,
-            "out_wrong": out_wrong,
-            "out_correct": out_correct
+            "OutMeanIou": out_mean_iou,
+            "OutWrong": out_wrong,
+            "OutCorrect": out_correct
         },
         attrs={"num_classes": num_classes})
     return out_mean_iou, out_wrong, out_correct
@@ -5121,4 +5325,195 @@ def crop(x, shape=None, offsets=None, name=None):
         inputs=ipts,
         outputs={'Out': out},
         attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def rank_loss(label, left, right, name=None):
+    """
+    **Rank loss layer for RankNet**
+
+    RankNet(http://icml.cc/2015/wp-content/uploads/2015/06/icml_ranking.pdf)
+    is a pairwise ranking model with a training sample consisting of a pair
+    of documents, A and B. Label P indicates whether A is ranked higher than B
+    or not:
+
+    P = {0, 1} or {0, 0.5, 1}, where 0.5 means that there is no information
+    about the rank of the input pair.
+
+    Rank loss layer takes three inputs: left (o_i), right (o_j) and
+    label (P_{i,j}). The inputs respectively represent RankNet's output scores
+    for documents A and B and the value of label P. The following equation
+    computes rank loss C_{i,j} from the inputs:
+
+    $$
+      C_{i,j} = -\tilde{P_{ij}} * o_{i,j} + \log(1 + e^{o_{i,j}}) \\
+      o_{i,j} =  o_i - o_j  \\
+      \tilde{P_{i,j}} = \left \{0, 0.5, 1 \right \} \ or \ \left \{0, 1 \right \}
+    $$
+
+    Rank loss layer takes batch inputs with size batch_size (batch_size >= 1).
+
+    Args:
+        label (Variable): Indicats whether A ranked higher than B or not.
+        left (Variable): RankNet's output score for doc A.
+        right (Variable): RankNet's output score for doc B.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        list: The value of rank loss.
+
+    Raises:
+        ValueError: Any of label, left, and right is not a variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            out = fluid.layers.rank_loss(label, left, right)
+
+
+    """
+    helper = LayerHelper('rank_loss', **locals())
+
+    if not (isinstance(label, Variable)):
+        raise ValueError("The label should be a Variable")
+
+    if not (isinstance(left, Variable)):
+        raise ValueError("The left should be a Variable")
+
+    if not (isinstance(right, Variable)):
+        raise ValueError("The right should be a Variable")
+
+    out = helper.create_tmp_variable("float32")
+
+    helper.append_op(
+        type='rank_loss',
+        inputs={"Label": label,
+                "Left": left,
+                "Right": right},
+        outputs={'Out': out})
+    return out
+
+
+def prelu(x, mode, param_attr=None, name=None):
+    """
+    Equation:
+
+        y = \max(0, x) + alpha \min(0, x)
+
+    Args:
+        x (Variable): The input tensor.
+	  param_attr(ParamAttr|None): The parameter attribute for the learnable
+                                    weight (alpha).
+        mode (string): The mode for weight sharing
+		       all: all elements share same weight
+ 		       channel:elements in a channel share same weight
+ 		       element:each element has a weight
+	  name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
+
+    Returns:
+        Variable: The output tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+         x = fluid.layers.data(name="x", shape=[10,10], dtype="float32")
+            mode = 'channel'
+            output = fluid.layers.prelu(x,mode)
+    """
+    helper = LayerHelper('prelu', **locals())
+    if mode not in ['all', 'channel', 'element']:
+        raise ValueError('mode should be one of all, channel, element.')
+    alpha_shape = [1]
+    if mode == 'channel':
+        alpha_shape = [1, x.shape[1], 1, 1]
+    elif mode == 'element':
+        alpha_shape = x.shape
+    dtype = helper.input_dtype(input_param_name='x')
+    alpha = helper.create_parameter(
+        attr=param_attr,
+        shape=alpha_shape,
+        dtype='float32',
+        is_bias=False,
+        default_initializer=Constant(1.0))
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="prelu",
+        inputs={"X": x,
+                'Alpha': alpha},
+        attrs={"mode": mode},
+        outputs={"Out": out})
+    return out
+
+
+def flatten(x, axis=1, name=None):
+    """
+    **Flatten layer**
+    Flattens the input tensor into a 2D matrix.
+
+    Examples:
+    Case 1:
+      Given
+        X.shape = (3, 100, 100, 4)
+      and
+        axis = 2
+      We get:
+        Out.shape = (3 * 100, 4 * 100)
+
+    Case 2:
+      Given
+        X.shape = (3, 100, 100, 4)
+      and
+        axis = 0
+      We get:
+        Out.shape = (1, 3 * 100 * 100 * 4)
+
+    Args:
+        x (Variable): A tensor of rank >= axis.
+        axis (int): Indicate up to which input dimensions (exclusive) should
+                    be flattened to the outer dimension of the output.
+                    The value for axis must be in the range [0, R], where R
+                    is the rank of the input tensor. When axis = 0, the shape
+                    of the output tensor is (1, (d_0 X d_1 ... d_n), where the
+                    shape of the input tensor is (d_0, d_1, ... d_n).
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: A 2D tensor with the contents of the input tensor, with input
+                  dimensions up to axis flattened to the outer dimension of
+                  the output and remaining input dimensions flattened into the
+                  inner dimension of the output.
+
+    Raises:
+        ValueError: If x is not a variable.
+        ValueError: If axis is not in range [0, rank(x)].
+
+    Examples:
+
+        .. code-block:: python
+
+            x = fluid.layers.data(name="x", shape=[4, 4, 3], dtype="float32")
+            out = fluid.layers.flatten(x=x, axis=2)
+    """
+    helper = LayerHelper('flatten', **locals())
+
+    if not (isinstance(x, Variable)):
+        raise ValueError("The input x should be a Variable")
+
+    if not (isinstance(axis, int)) or axis > len(x.shape) or axis < 0:
+        raise ValueError("The axis should be a int, and in range [0, rank(x)]")
+
+    out = helper.create_tmp_variable(x.dtype)
+    helper.append_op(
+        type='flatten',
+        inputs={"X": x},
+        outputs={'Out': out},
+        attrs={"axis": axis})
     return out

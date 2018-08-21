@@ -61,6 +61,7 @@ inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
   if (iter != dict.end()) return iter->second;
   return MKLDNNDataType::data_undef;
 }
+
 #endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,

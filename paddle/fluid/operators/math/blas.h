@@ -18,48 +18,20 @@
 #include "paddle/fluid/framework/tensor.h"
 
 #ifdef PADDLE_WITH_MKLML
-#include <mkl_cblas.h>
-#include <mkl_lapacke.h>
-#include <mkl_service.h>
-#include <mkl_vml_functions.h>
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef PADDLE_WITH_LIBXSMM
+#include <libxsmm.h>
 #endif
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
-#ifdef LAPACK_FOUND
-#include <lapacke.h>
-#endif
-#endif
-
-#ifndef LAPACK_FOUND
-extern "C" {
-#include <cblas.h>  // NOLINT
-int LAPACKE_sgetrf(int matrix_layout, int m, int n, float* a, int lda,
-                   int* ipiv);
-int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda,
-                   int* ipiv);
-int LAPACKE_sgetri(int matrix_layout, int n, float* a, int lda,
-                   const int* ipiv);
-int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda,
-                   const int* ipiv);
-}
 #endif
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-static void SetNumThreads(int num_threads) {
-#ifdef PADDLE_USE_OPENBLAS
-  int real_num_threads = num_threads > 1 ? num_threads : 1;
-  openblas_set_num_threads(real_num_threads);
-#elif defined(PADDLE_WITH_MKLML)
-  int real_num_threads = num_threads > 1 ? num_threads : 1;
-  mkl_set_num_threads(real_num_threads);
-#else
-  PADDLE_ENFORCE(false, "To be implemented.");
-#endif
-}
 
 /**
  * Matrix Descriptor of a memory buffer.
@@ -118,6 +90,25 @@ class Blas {
   void GEMM(bool transA, bool transB, int M, int N, int K, T alpha, const T* A,
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename T>
+  T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
+                const int K) const;
+
+  template <typename T>
+  void GEMM_PACK(const CBLAS_IDENTIFIER id, const CBLAS_TRANSPOSE trans, int M,
+                 int N, int K, const T alpha, const T* src, const int ld,
+                 T* dst) const;
+
+  template <typename T>
+  void GEMM_COMPUTE(int transA, int transB, int M, int N, int K, const T* A,
+                    const int lda, const T* B, const int ldb, T beta, T* C,
+                    const int ldc) const;
+
+  template <typename T>
+  void GEMM_FREE(T* data) const;
+#endif
+
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
               const framework::Tensor& mat_b, bool trans_b, T alpha,
@@ -142,6 +133,9 @@ class Blas {
 
   template <typename T>
   void VADD(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VMUL(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
   void VCOPY(int n, const T* x, T* y) const;
@@ -174,6 +168,28 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GEMM<T>(args...);
   }
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  T* GEMM_ALLOC(ARGS... args) const {
+    return Base()->template GEMM_ALLOC<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_PACK(ARGS... args) const {
+    Base()->template GEMM_PACK<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_COMPUTE(ARGS... args) const {
+    Base()->template GEMM_COMPUTE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_FREE(ARGS... args) const {
+    Base()->template GEMM_FREE<T>(args...);
+  }
+#endif
+
   template <typename... ARGS>
   void MatMul(ARGS... args) const {
     Base()->template MatMul<T>(args...);
@@ -187,6 +203,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void VADD(ARGS... args) const {
     Base()->template VADD<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VMUL(ARGS... args) const {
+    Base()->template VMUL<T>(args...);
   }
 
   template <typename... ARGS>

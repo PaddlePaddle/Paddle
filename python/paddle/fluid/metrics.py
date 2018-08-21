@@ -14,11 +14,15 @@
 """
 Fluid Metrics
 
-The metrics are accomplished via Python natively. 
+The metrics are accomplished via Python natively.
 """
+
+from __future__ import print_function
+
 import numpy as np
 import copy
 import warnings
+import six
 
 __all__ = [
     'MetricBase',
@@ -79,10 +83,10 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in self.__dict__.iteritems()
+            for attr, value in six.iteritems(self.__dict__)
             if not attr.startswith("_")
         }
-        for attr, value in states.iteritems():
+        for attr, value in six.iteritems(states):
             if isinstance(value, int):
                 setattr(self, attr, 0)
             elif isinstance(value, float):
@@ -105,7 +109,7 @@ class MetricBase(object):
         """
         states = {
             attr: value
-            for attr, value in self.__dict__.iteritems()
+            for attr, value in six.iteritems(self.__dict__)
             if not attr.startswith("_")
         }
         config = {}
@@ -141,10 +145,10 @@ class CompositeMetric(MetricBase):
     """
     Composite multiple metrics in one instance.
     for example, merge F1, accuracy, recall into one Metric.
-    
+
     Examples:
         .. code-block:: python
-    
+
           labels = fluid.layers.data(name="data", shape=[1], dtype="int32")
           data = fluid.layers.data(name="data", shape=[32, 32], dtype="int32")
           pred = fluid.layers.fc(input=data, size=1000, act="tanh")
@@ -591,17 +595,17 @@ class Auc(MetricBase):
                       for i in range(self._num_thresholds - 2)]
         thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
 
-        # caculate TP, FN, TN, FP count
+        # calculate TP, FN, TN, FP count
         for idx_thresh, thresh in enumerate(thresholds):
             tp, fn, tn, fp = 0, 0, 0, 0
             for i, lbl in enumerate(labels):
                 if lbl:
-                    if predictions[i, 1] >= thresh:
+                    if preds[i, 1] >= thresh:
                         tp += 1
                     else:
                         fn += 1
                 else:
-                    if predictions[i, 1] >= thresh:
+                    if preds[i, 1] >= thresh:
                         fp += 1
                     else:
                         tn += 1

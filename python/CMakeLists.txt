@@ -1,4 +1,4 @@
-file(GLOB UTILS_PY_FILES . ./paddle/utils/*.py)
+file(GLOB UTILS_PY_FILES . ./paddle/legacy/utils/*.py)
 file(GLOB_RECURSE FLUID_PY_FILES ./paddle/fluid/*.py)
 set(PY_FILES paddle/__init__.py
   ${UTILS_PY_FILES}
@@ -91,3 +91,17 @@ endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels
 )
+
+if(APPLE)
+  find_program(INSTALL_NAME_TOOL_EXECUTABLE install_name_tool)
+  if(NOT INSTALL_NAME_TOOL_EXECUTABLE)
+    message(FATAL_ERROR "install_name_tool not found, please check.\n")
+  endif()
+endif()
+if(LINUX)
+  find_program(PATCHELF_EXECUTABLE patchelf)
+  if(NOT PATCHELF_EXECUTABLE)
+    message(FATAL_ERROR "patchelf not found, please install it.\n"
+            "For Ubuntu, the command is: apt-get install -y patchelf.")
+  endif()
+endif(LINUX)

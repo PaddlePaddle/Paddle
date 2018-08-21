@@ -4,7 +4,7 @@
 单双层RNN API对比介绍
 #####################
 
-本文以PaddlePaddle的双层RNN单元测试为示例，用多对效果完全相同的、分别使用单双层RNN作为网络配置的模型，来讲解如何使用双层RNN。本文中所有的例子，都只是介绍双层RNN的API接口，并不是使用双层RNN解决实际的问题。如果想要了解双层RNN在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。本文中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
+本文以PaddlePaddle的双层RNN单元测试为示例，用多对效果完全相同的、分别使用单双层RNN作为网络配置的模型，来讲解如何使用双层RNN。本文中所有的例子，都只是介绍双层RNN的API接口，并不是使用双层RNN解决实际的问题。如果想要了解双层RNN在具体问题中的使用，请参考\ :ref:`algo_hrnn_demo`\ 。本文中示例所使用的单元测试文件是\ `test_RecurrentGradientMachine.cpp <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/test_RecurrentGradientMachine.cpp>`_\ 。
 
 示例1：双层RNN，子序列间无Memory
 ================================
@@ -13,8 +13,8 @@
 
 在本示例中，单层RNN和双层RNN的网络配置，都是将每一句分好词后的句子，使用LSTM作为encoder，压缩成一个向量。区别是RNN使用两层序列模型，将多句话看成一个整体同时使用encoder压缩。二者语意上完全一致。这组语义相同的示例配置如下：
 
-* 单层RNN\: `sequence_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_layer_group.conf>`_
-* 双层RNN\: `sequence_nest_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_layer_group.conf>`_
+* 单层RNN\: `sequence_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_layer_group.conf>`_
+* 双层RNN\: `sequence_nest_layer_group.conf <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_nest_layer_group.conf>`_
 
 
 读取双层序列数据
@@ -24,18 +24,18 @@
 
 - 本例中的原始数据一共有10个样本。每个样本由两部分组成，一个label（此处都为2）和一个已经分词后的句子。这个数据也被单层RNN网络直接使用。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/Sequence/tour_train_wdseg
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/Sequence/tour_train_wdseg
     :language: text
 
 
 - 双层序列数据一共有4个样本。 每个样本间用空行分开，整体数据和原始数据完全一样。但于双层序列的LSTM来说，第一个样本同时encode两条数据成两个向量。这四条数据同时处理的句子数量为\ :code:`[2, 3, 2, 3]`\ 。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/Sequence/tour_train_wdseg.nest
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/Sequence/tour_train_wdseg.nest
     :language: text
 
-其次，对于两种不同的输入数据类型，不同DataProvider对比如下(`sequenceGen.py <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequenceGen.py>`_)\：
+其次，对于两种不同的输入数据类型，不同DataProvider对比如下(`sequenceGen.py <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequenceGen.py>`_)\：
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequenceGen.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequenceGen.py
     :language: python
     :lines: 21-39
     :linenos:
@@ -47,7 +47,7 @@
     - words是原始数据中的每一句话，所对应的词表index数组。它是integer_value_sequence类型的，即整数数组。words即为这个数据中的单层时间序列。
     - label是原始数据中对于每一句话的分类标签，它是integer_value类型的。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequenceGen.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequenceGen.py
     :language: python
     :lines: 42-71
     :linenos:
@@ -64,7 +64,7 @@
 
 首先，我们看一下单层RNN的配置。代码中9-15行(高亮部分)即为单层RNN序列的使用代码。这里使用了PaddlePaddle预定义好的RNN处理函数。在这个函数中，RNN对于每一个时间步通过了一个LSTM网络。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_layer_group.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_layer_group.conf
     :language: python
     :lines: 38-63
     :linenos:
@@ -85,7 +85,7 @@
 
 * 至此，\ :code:`lstm_last`\ 便和单层RNN配置中的\ :code:`lstm_last`\ 具有相同的结果了。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_layer_group.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_nest_layer_group.conf
     :language: python
     :lines: 38-64
     :linenos:
@@ -107,7 +107,7 @@
 
 - 单层RNN：过了一个很简单的recurrent_group。每一个时间步，当前的输入y和上一个时间步的输出rnn_state做了一个全链接。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_rnn.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_rnn.conf
     :language: python
     :lines: 36-48
 
@@ -116,7 +116,7 @@
   - 内层inner_step的recurrent_group和单层序列的几乎一样。除了boot_layer=outer_mem，表示将外层的outer_mem作为内层memory的初始状态。外层outer_step中，outer_mem是一个子句的最后一个向量，即整个双层group是将前一个子句的最后一个向量，作为下一个子句memory的初始状态。
   - 从输入数据上看，单双层序列的句子是一样的，只是双层序列将其又做了子序列划分。因此双层序列的配置中，必须将前一个子句的最后一个元素，作为boot_layer传给下一个子句的memory，才能保证和单层序列的配置中“每个时间步都用了上一个时间步的输出结果”一致。
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_rnn.conf
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_nest_rnn.conf
     :language: python
     :lines: 39-66
 
@@ -134,7 +134,7 @@
 
 **输入不等长** 是指recurrent_group的多个输入序列，在每个时间步的子序列长度可以不相等。但序列输出时，需要指定与某一个输入的序列信息是一致的。使用\ :red:`targetInlink`\ 可以指定哪一个输入和输出序列信息一致，默认指定第一个输入。 
 
-示例3的配置分别为\ `单层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_\ 和\ `双层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ 。
+示例3的配置分别为\ `单层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_rnn_multi_unequalength_inputs.py>`_\ 和\ `双层不等长RNN <https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py>`_\ 。
 
 示例3对于单层RNN和双层RNN数据完全相同。
 
@@ -152,14 +152,14 @@
 
 * 单层RNN\:
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_rnn_multi_unequalength_inputs.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_rnn_multi_unequalength_inputs.py
     :language: python
     :lines: 42-59
     :linenos:
 
 * 双层RNN\ \:
 
-..  literalinclude:: ../../../../paddle/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
+..  literalinclude:: ../../../../paddle/legacy/gserver/tests/sequence_nest_rnn_multi_unequalength_inputs.py
     :language: python
     :lines: 41-80
     :linenos:

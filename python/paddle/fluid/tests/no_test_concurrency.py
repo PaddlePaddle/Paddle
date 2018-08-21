@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -194,7 +196,7 @@ class TestRoutineOp(unittest.TestCase):
             quit_ch = fluid.make_channel(dtype=core.VarDesc.VarType.LOD_TENSOR)
 
             with fluid.Go():
-                for i in xrange(10):
+                for i in range(10):
                     fluid.channel_recv(ch1, result)
                     Print(result)
 

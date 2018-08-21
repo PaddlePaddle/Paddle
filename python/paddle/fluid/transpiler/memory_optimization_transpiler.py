@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from collections import defaultdict
 from .. import core
-from ..framework import Program, default_main_program, Parameter, Variable
+from ... import compat as cpt
+from ..framework import Program, default_main_program, Parameter
 from ..backward import _rename_arg_
+from functools import reduce
+from six.moves import range
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -107,7 +112,7 @@ class ControlFlowGraph(object):
         # Repeatedly apply liveness updates until the algorithm stablize
         # on a complete set live input vars and live output vars.
         while True:
-            for i in reversed(range(self.op_size)):
+            for i in reversed(list(range(self.op_size))):
                 live_in[i] = set(self._live_in[i])
                 live_out[i] = set(self._live_out[i])
                 for s in self._successors[i]:
@@ -123,15 +128,15 @@ class ControlFlowGraph(object):
 
     def _has_var(self, block_desc, var_name, is_forward):
         if is_forward:
-            return block_desc.has_var(str(var_name))
+            return block_desc.has_var(cpt.to_bytes(var_name))
         else:
-            return block_desc.has_var_recursive(str(var_name))
+            return block_desc.has_var_recursive(cpt.to_bytes(var_name))
 
     def _find_var(self, block_desc, var_name, is_forward):
         if is_forward:
-            return block_desc.find_var(str(var_name))
+            return block_desc.find_var(cpt.to_bytes(var_name))
         else:
-            return block_desc.find_var_recursive(str(var_name))
+            return block_desc.find_var_recursive(cpt.to_bytes(var_name))
 
     def _check_var_validity(self, block_desc, x, is_forward):
         if str(x) == "@EMPTY@":
@@ -172,12 +177,13 @@ class ControlFlowGraph(object):
             is_forward = i < self._forward_num
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
-            can_optimize = filter(
-                lambda x: self._check_var_validity(block_desc, x, is_forward),
-                in_diff)
+            can_optimize = [
+                x for x in in_diff
+                if self._check_var_validity(block_desc, x, is_forward)
+            ]
             if can_optimize:
                 index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
-                delete_op = block_desc.insert_op(index)
+                delete_op = block_desc._insert_op(index)
                 delete_op.set_type("delete_var")
                 delete_op.set_input("X", can_optimize)
                 if is_forward:
@@ -213,9 +219,10 @@ class ControlFlowGraph(object):
             block_desc = op.block()
             is_forward = i < self._forward_num
             if self.pool:
-                defs_can_optimize = filter(
-                    lambda x: self._check_var_validity(block_desc, x, is_forward),
-                    self._defs[i])
+                defs_can_optimize = [
+                    x for x in self._defs[i]
+                    if self._check_var_validity(block_desc, x, is_forward)
+                ]
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
                     for x in defs_can_optimize
@@ -254,16 +261,17 @@ class ControlFlowGraph(object):
                         # Rename the var to the cache var already with
                         # memory allocated in order to reuse the memory.
                         _rename_arg_(self._ops, x, cache_var, begin_idx=i)
-                        self._program.block(block_desc.id).var(str(
+                        self._program.block(block_desc.id).var(cpt.to_text(
                             x)).desc = self._find_var(block_desc, cache_var,
                                                       is_forward)
                         self._update_graph(x, cache_var, begin_idx=i)
                         break
 
             in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
-            can_optimize = filter(
-                lambda x: self._check_var_validity(block_desc, x, is_forward),
-                in_diff)
+            can_optimize = [
+                x for x in in_diff
+                if self._check_var_validity(block_desc, x, is_forward)
+            ]
             if can_optimize:
                 for var_name in can_optimize:
                     self.pool.append((var_name, self._find_var(
@@ -324,6 +332,8 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
+            sub_op_output.update(sub_op_dict[grad_id].input_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
 
         # Process rest fwd_op block ops
@@ -335,6 +345,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
                 sub_block_ops.append(sub_block.op(i))
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
             ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
     return ops_list
 
@@ -349,13 +360,17 @@ def _get_cfgs(input_program):
     pdesc = input_program.get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
-    # Get global block ops
-    ops_list.append(
-        ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     # Only process one level of nested subblock.
     ops_list.extend(_process_sub_block_pair(pdesc, SUB_BLOCK_PAIR))
 
+    skip_opt_set = set()
+    for _, _, skip_opt in ops_list:
+        skip_opt_set.update(skip_opt)
+
+    # Get global block ops
+    ops_list.insert(
+        0, ([block_desc.op(i) for i in range(op_size)], op_size, skip_opt_set))
     cfgs = [
         ControlFlowGraph(input_program, ops, forward_num, skip_opt)
         for ops, forward_num, skip_opt in ops_list

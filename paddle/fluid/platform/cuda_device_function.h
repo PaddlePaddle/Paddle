@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <cuda.h>
+// NOTE(): support float16 to half in header file.
+#define PADDLE_CUDA_FP16
+#include <cuda_fp16.h>
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace platform {
@@ -32,9 +36,28 @@ __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
 #if CUDA_VERSION < 9000
   return __shfl_down(val, delta, width);
 #else
-  return __shfl_down_sync(mask, val, delta, width);
+  return __shfl_down_sync(mask, val, static_cast<unsigned>(delta), width);
 #endif
 }
+
+// CUDA 9.0 have native compatible float16 shfl_down
+#if CUDA_VERSION < 9000
+template <>
+__forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
+                                                       float16 val, int delta,
+                                                       int width) {
+  return float16(
+      __shfl_down(static_cast<half>(val), static_cast<unsigned>(delta), width));
+}
+#else
+template <>
+__forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
+                                                       float16 val, int delta,
+                                                       int width) {
+  return float16(__shfl_down_sync(mask, static_cast<half>(val),
+                                  static_cast<unsigned>(delta), width));
+}
+#endif
 
 template <typename T>
 __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
@@ -44,6 +67,11 @@ __forceinline__ __device__ T CudaShuffleSync(unsigned mask, T val, int src_line,
 #else
   return __shfl_sync(mask, val, src_line, width);
 #endif
+}
+
+template <typename T>
+HOSTDEVICE T Infinity() {
+  return INFINITY;
 }
 
 template <typename T>

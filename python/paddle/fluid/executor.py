@@ -12,14 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import contextlib
-from framework import Program, default_main_program, Variable
+import six
+from .framework import Program, default_main_program, Variable
 from . import core
 
-__all__ = [
-    'Executor', 'global_scope', 'scope_guard', '_switch_scope', 'fetch_var'
-]
+__all__ = ['Executor', 'global_scope', 'scope_guard', '_switch_scope']
 
 g_scope = core.Scope()
 
@@ -78,6 +79,8 @@ def as_numpy(tensor):
     Returns:
         numpy.ndarray
     """
+    if isinstance(tensor, core.LoDTensorArray):
+        return [as_numpy(t) for t in tensor]
     if isinstance(tensor, list):
         return [as_numpy(t) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
@@ -168,7 +171,7 @@ def has_fetch_operators(block, fetch_targets, fetch_holder_name):
     return fetch_count > 0
 
 
-def fetch_var(name, scope=None, return_numpy=True):
+def _fetch_var(name, scope=None, return_numpy=True):
     """
     Fetch the value of the variable with the given name from the
     given scope.
@@ -202,21 +205,52 @@ def fetch_var(name, scope=None, return_numpy=True):
 
 
 def _get_program_cache_key(feed, fetch_list):
-    feed_var_names = feed.keys()
+    feed_var_names = list(feed.keys())
 
     def to_name_str(var):
         if isinstance(var, Variable):
             return var.desc.name()
         elif isinstance(var, str):
             return var
-        elif isinstance(var, basestring):
+        elif isinstance(var, six.string_types):
             return str(var)
         else:
             raise TypeError(str(var) + " should be Variable or str")
 
-    fetch_var_names = map(to_name_str, fetch_list)
+    fetch_var_names = list(map(to_name_str, fetch_list))
 
     return str(feed_var_names + fetch_var_names)
+
+
+def _as_lodtensor(data, place):
+    """
+        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
+        For higher dimensional sequence data, please use LoDTensor directly.
+
+        Examples:
+            >>> import paddle.fluid as fluid
+            >>> place = fluid.CPUPlace()
+            >>> exe = fluid.executor(place)
+            >>> data = np.array(size=(100, 200, 300))
+            >>> np_outs = map(lambda x: fluid.executor._as_lodtensor(x, place), data)
+            >>>     ...
+
+        Args:
+            data(numpy.ndarray): a instance of array
+
+        Returns:
+            LoDTensor
+        """
+    if isinstance(data, list):
+        raise RuntimeError("Some of your feed data hold LoD information. \
+                They can not be completely cast from a list of Python \
+                ndarray to LoDTensor. Please convert data to LoDTensor \
+                directly before feeding the data.\
+                ")
+    # single tensor case
+    tensor = core.LoDTensor()
+    tensor.set(data, place)
+    return tensor
 
 
 class Executor(object):
@@ -227,8 +261,8 @@ class Executor(object):
     to feed map and fetch_list. Feed map provides input data for the program. fetch_list provides
     the variables(or names) that user want to get after program run. Note: the executor will run all
     operators in the program but not only the operators dependent by the fetch_list.
-    It store the global variables into the global scope, and create a local scope for the temporary 
-    variables. The local scope contents will be discarded after every minibatch forward/backward finished. 
+    It store the global variables into the global scope, and create a local scope for the temporary
+    variables. The local scope contents will be discarded after every minibatch forward/backward finished.
     But the global scope variables will be persistent through different runs.
     All of ops in program will be running in sequence.
 
@@ -245,35 +279,7 @@ class Executor(object):
         p.set_place(place)
         self.executor = core.Executor(p)
         self.program_caches = dict()
-
-    def as_lodtensor(self, data):
-        """
-        Convert numpy.ndarray to Tensor, its only support Tensor without LoD information.
-        For higher dimensional sequence data, please use LoDTensor directly.
-
-        Examples:
-            >>> import paddle.fluid as fluid
-            >>> exe = fluid.executor(fluid.CPUPlace())
-            >>> data = np.array(size=(100, 200, 300))
-            >>> np_outs = map(lambda x: exe.as_lodtensor(x), data)
-            >>>     ...
-
-        Args:
-            data(numpy.ndarray): a instance of array
-
-        Returns:
-            LoDTensor
-        """
-        if isinstance(data, list):
-            raise RuntimeError("Some of your feed data hold LoD information. \
-                They can not be completely cast from a list of Python \
-                ndarray to LoDTensor. Please convert data to LoDTensor \
-                directly before feeding the data.\
-                ")
-        # single tensor case
-        tensor = core.LoDTensor()
-        tensor.set(data, self.place)
-        return tensor
+        self._closed = False
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -307,7 +313,7 @@ class Executor(object):
         if not has_feed_operators(global_block, feed, feed_var_name):
             for i, name in enumerate(feed):
                 out = global_block.var(name)
-                global_block.prepend_op(
+                global_block._prepend_op(
                     type='feed',
                     inputs={'X': [feed_var]},
                     outputs={'Out': [out]},
@@ -316,8 +322,9 @@ class Executor(object):
         # append fetch_operators
         if not has_fetch_operators(global_block, fetch_list, fetch_var_name):
             for i, var in enumerate(fetch_list):
-                assert isinstance(var, Variable) or isinstance(var, str), (
-                    "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
+                assert isinstance(var, Variable) or isinstance(
+                    var, six.string_types), (
+                        "Wrong type for fetch_list[%s]: %s" % (i, type(var)))
                 global_block.append_op(
                     type='fetch',
                     inputs={'X': [var]},
@@ -333,7 +340,7 @@ class Executor(object):
                 feed_target_name = op.desc.output('Out')[0]
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = self.as_lodtensor(cur_feed)
+                    cur_feed = _as_lodtensor(cur_feed, self.place)
                 idx = op.desc.attr('col')
                 core.set_feed_variable(scope, cur_feed, feed_var_name, idx)
             else:
@@ -342,9 +349,27 @@ class Executor(object):
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
             core.get_fetch_variable(scope, fetch_var_name, i)
-            for i in xrange(len(fetch_list))
+            for i in six.moves.range(len(fetch_list))
         ]
         return outs
+
+    def close(self):
+        """
+        Close this executor.
+
+        You can no long use this executor after calling this method.
+        For the distributed training, this method would free the resource on PServers related to
+        the current Trainer.
+
+        Example:
+            >>> cpu = core.CPUPlace()
+            >>> exe = Executor(cpu)
+            >>> ...
+            >>> exe.close()
+        """
+        if not self._closed:
+            self.executor.close()
+            self._closed = True
 
     def run(self,
             program=None,
@@ -397,6 +422,10 @@ class Executor(object):
             >>>     feed={'X': x},
             >>>     fetch_list=[loss.name])
         """
+
+        if self._closed:
+            raise RuntimeError("Attempted to use a closed Executor")
+
         if feed is None:
             feed = {}
         if not isinstance(feed, dict):

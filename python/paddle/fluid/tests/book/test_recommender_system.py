@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import math
 import sys
 import os
@@ -260,13 +262,15 @@ def infer(use_cuda, save_dirname=None):
 
         # Use the first data from paddle.dataset.movielens.test() as input
         assert feed_target_names[0] == "user_id"
-        # Use create_lod_tensor(data, lod, place) API to generate LoD Tensor
-        # where `data` is a list of sequences of index numbers, `lod` is 
-        # the level of detail (lod) info associated with `data`.
+        # Use create_lod_tensor(data, recursive_sequence_lengths, place) API
+        # to generate LoD Tensor where `data` is a list of sequences of index
+        # numbers, `recursive_sequence_lengths` is the length-based level of detail
+        # (lod) info associated with `data`.
         # For example, data = [[10, 2, 3], [2, 3]] means that it contains
         # two sequences of indexes, of length 3 and 2, respectively.
-        # Correspondingly, lod = [[3, 2]] contains one level of detail info,
-        # indicating that `data` consists of two sequences of length 3 and 2. 
+        # Correspondingly, recursive_sequence_lengths = [[3, 2]] contains one
+        # level of detail info, indicating that `data` consists of two sequences
+        # of length 3 and 2, respectively.
         user_id = fluid.create_lod_tensor([[1]], [[1]], place)
 
         assert feed_target_names[1] == "gender_id"

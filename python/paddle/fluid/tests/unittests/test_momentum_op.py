@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -39,7 +41,7 @@ class TestMomentumOp1(OpTest):
 
         velocity_out = mu * velocity + grad
         if use_nesterov:
-            param_out = param - grad * learning_rate + \
+            param_out = param - grad * learning_rate - \
                         velocity_out * mu * learning_rate
         else:
             param_out = param - learning_rate * velocity_out
@@ -75,7 +77,7 @@ class TestMomentumOp2(OpTest):
 
         velocity_out = mu * velocity + grad
         if use_nesterov:
-            param_out = param - grad * learning_rate + \
+            param_out = param - grad * learning_rate - \
                         velocity_out * mu * learning_rate
         else:
             param_out = param - learning_rate * velocity_out

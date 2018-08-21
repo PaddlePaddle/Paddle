@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
@@ -125,6 +126,24 @@ class TestPriorBox(unittest.TestCase):
         assert len(box.shape) == 4
         assert box.shape == var.shape
         assert box.shape[3] == 4
+
+
+class TestAnchorGenerator(unittest.TestCase):
+    def test_anchor_generator(self):
+        data_shape = [3, 224, 224]
+        images = fluid.layers.data(
+            name='pixel', shape=data_shape, dtype='float32')
+        conv1 = fluid.layers.conv2d(images, 3, 3, 2)
+        anchor, var = fluid.layers.anchor_generator(
+            input=conv1,
+            anchor_sizes=[64, 128, 256, 512],
+            aspect_ratios=[0.5, 1.0, 2.0],
+            variance=[0.1, 0.1, 0.2, 0.2],
+            stride=[16.0, 16.0],
+            offset=0.5)
+        assert len(anchor.shape) == 4
+        assert anchor.shape == var.shape
+        assert anchor.shape[3] == 4
 
 
 class TestMultiBoxHead(unittest.TestCase):

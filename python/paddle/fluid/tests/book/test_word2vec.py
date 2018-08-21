@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
 import unittest
 import os
 import numpy as np
@@ -80,13 +83,15 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         avg_cost, predict_word = __network__(
             [first_word, second_word, third_word, forth_word, next_word])
     else:
-        places = fluid.layers.get_places()
+        places = get_places()
         pd = fluid.layers.ParallelDo(places)
         with pd.do():
             avg_cost, predict_word = __network__(
-                map(pd.read_input, [
-                    first_word, second_word, third_word, forth_word, next_word
-                ]))
+                list(
+                    map(pd.read_input, [
+                        first_word, second_word, third_word, forth_word,
+                        next_word
+                    ])))
             pd.write_output(avg_cost)
 
         avg_cost = fluid.layers.mean(pd())
@@ -166,23 +171,24 @@ def infer(use_cuda, save_dirname=None):
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
 
-        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word 
-        # is simply an index to look up for the corresponding word vector and hence 
-        # the shape of word (base_shape) should be [1]. The length-based level of 
-        # detail (lod) info of each LoDtensor should be [[1]] meaning there is only 
-        # one lod_level and there is only one sequence of one word on this level.
-        # Note that lod info should be a list of lists.
-        lod = [[1]]
+        # Setup inputs by creating 4 LoDTensors representing 4 words. Here each word
+        # is simply an index to look up for the corresponding word vector and hence
+        # the shape of word (base_shape) should be [1]. The recursive_sequence_lengths,
+        # which is length-based level of detail (lod) of each LoDTensor, should be [[1]]
+        # meaning there is only one level of detail and there is only one sequence of
+        # one word on this level.
+        # Note that recursive_sequence_lengths should be a list of lists.
+        recursive_seq_lens = [[1]]
         base_shape = [1]
         # The range of random integers is [low, high]
         first_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         second_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         third_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
         fourth_word = fluid.create_random_int_lodtensor(
-            lod, base_shape, place, low=0, high=dict_size - 1)
+            recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1)
 
         assert feed_target_names[0] == 'firstw'
         assert feed_target_names[1] == 'secondw'
@@ -200,7 +206,7 @@ def infer(use_cuda, save_dirname=None):
                           },
                           fetch_list=fetch_targets,
                           return_numpy=False)
-        print(results[0].lod())
+        print(results[0].recursive_sequence_lengths())
         np_data = np.array(results[0])
         print("Inference Shape: ", np_data.shape)
 
@@ -243,7 +249,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
                     is_sparse=is_sparse,
                     is_parallel=is_parallel)
 
-    if use_cuda and is_sparse:
+    if (not fluid.core.is_compiled_with_cuda() or use_cuda) and is_sparse:
         fn = __impl__
     else:
         # skip the other test when on CI server

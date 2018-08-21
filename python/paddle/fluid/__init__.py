@@ -14,77 +14,79 @@
 
 from __future__ import print_function
 # import all class inside framework into fluid module
-import framework
-from framework import *
+from . import framework
+from .framework import *
 # import all class inside executor into fluid module
-import executor
-from executor import *
+from . import executor
+from .executor import *
 
-import trainer
-from trainer import Trainer
-from trainer import BeginEpochEvent
-from trainer import EndEpochEvent
-from trainer import BeginStepEvent
-from trainer import EndStepEvent
-from trainer import CheckpointConfig
+from . import trainer
+from .trainer import Trainer
+from .trainer import BeginEpochEvent
+from .trainer import EndEpochEvent
+from .trainer import BeginStepEvent
+from .trainer import EndStepEvent
+from .trainer import CheckpointConfig
 
-import inferencer
-from inferencer import Inferencer
+from . import inferencer
+from .inferencer import Inferencer
 
-import io
-import evaluator
-import initializer
-import layers
-import nets
-import optimizer
-import backward
-import regularizer
-import average
-import metrics
-import transpiler
-from param_attr import ParamAttr, WeightNormParamAttr
-from data_feeder import DataFeeder
-from core import LoDTensor, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
-from transpiler import DistributeTranspiler, InferenceTranspiler, \
-    memory_optimize, release_memory
-from concurrency import (Go, make_channel, channel_send, channel_recv,
-                         channel_close, Select)
-from lod_tensor import create_lod_tensor, create_random_int_lodtensor
-import clip
-import profiler
-import unique_name
-import recordio_writer
-import parallel_executor
-from parallel_executor import *
+from . import io
+from . import evaluator
+from . import initializer
+from . import layers
+from . import contrib
+from . import nets
+from . import optimizer
+from . import backward
+from . import regularizer
+from . import average
+from . import metrics
+from . import transpiler
+from .param_attr import ParamAttr, WeightNormParamAttr
+from .data_feeder import DataFeeder
+from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
+from .transpiler import DistributeTranspiler, InferenceTranspiler, \
+    memory_optimize, release_memory, DistributeTranspilerConfig
+from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
+from . import clip
+from . import profiler
+from . import unique_name
+from . import recordio_writer
+from . import parallel_executor
+from .parallel_executor import *
+from paddle.fluid.layers.math_op_patch import monkey_patch_variable
 
 Tensor = LoDTensor
 
-__all__ = framework.__all__ + executor.__all__ + concurrency.__all__ + \
-          trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
-          parallel_executor.__all__ + lod_tensor.__all__ + [
-              'io',
-              'initializer',
-              'layers',
-              'transpiler'
-              'nets',
-              'optimizer',
-              'learning_rate_decay',
-              'backward',
-              'regularizer',
-              'LoDTensor',
-              'CPUPlace',
-              'CUDAPlace',
-              'CUDAPinnedPlace',
-              'Tensor',
-              'ParamAttr',
-              'WeightNormParamAttr',
-              'DataFeeder',
-              'clip',
-              'profiler',
-              'unique_name',
-              'recordio_writer',
-              'Scope',
-          ]
+__all__ = framework.__all__ + executor.__all__ + \
+    trainer.__all__ + inferencer.__all__ + transpiler.__all__ + \
+    parallel_executor.__all__ + lod_tensor.__all__ + [
+        'io',
+        'initializer',
+        'layers',
+        'contrib',
+        'transpiler',
+        'nets',
+        'optimizer',
+        'learning_rate_decay',
+        'backward',
+        'regularizer',
+        'LoDTensor',
+        'LoDTensorArray',
+        'CPUPlace',
+        'CUDAPlace',
+        'CUDAPinnedPlace',
+        'Tensor',
+        'ParamAttr',
+        'WeightNormParamAttr',
+        'DataFeeder',
+        'clip',
+        'profiler',
+        'unique_name',
+        'recordio_writer',
+        'Scope',
+    ]
 
 
 def __bootstrap__():
@@ -95,8 +97,8 @@ def __bootstrap__():
         None
     """
     import sys
-    import core
     import os
+    from . import core
 
     in_test = 'unittest' in sys.modules
 
@@ -118,8 +120,15 @@ def __bootstrap__():
 
     read_env_flags = [
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
-        'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb'
+        'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
+        'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
+        "dist_threadpool_size", 'cpu_deterministic'
     ]
+    if core.is_compiled_with_dist():
+        read_env_flags.append('rpc_deadline')
+        read_env_flags.append('rpc_server_profile_period')
+        read_env_flags.append('rpc_server_profile_path')
+
     if core.is_compiled_with_cuda():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
@@ -133,5 +142,5 @@ def __bootstrap__():
 
 # TODO(panyx0718): Avoid doing complex initialization logic in __init__.py.
 # Consider paddle.init(args) or paddle.main(args)
-layers.monkey_patch_variable()
+monkey_patch_variable()
 __bootstrap__()

@@ -16,10 +16,12 @@ from __future__ import print_function
 import unittest
 
 import paddle.fluid.layers as layers
+from paddle.fluid.layers.device import get_places
 import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
 import decorators
+from paddle.fluid.initializer import Constant
 
 
 class TestBook(unittest.TestCase):
@@ -157,7 +159,7 @@ class TestBook(unittest.TestCase):
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=(label_dict_len - 1) // 2)
             self.assertFalse(crf is None)
             self.assertFalse(crf_decode is None)
 
@@ -171,6 +173,16 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(
                 layers.sigmoid_cross_entropy_with_logits(
                     x=dat, label=lbl))
+        print(str(program))
+
+    def test_hsigmoid(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[2], dtype='float32')
+            y = layers.data(name='y', shape=[2], dtype='int64')
+            self.assertIsNotNone(
+                layers.hsigmoid(
+                    input=x, label=y, num_classes=2))
         print(str(program))
 
     def test_sequence_expand(self):
@@ -238,7 +250,7 @@ class TestBook(unittest.TestCase):
     def test_get_places(self):
         program = Program()
         with program_guard(program):
-            x = layers.get_places(device_count=4)
+            x = get_places(device_count=4)
             self.assertIsNotNone(x)
         print(str(program))
 
@@ -251,12 +263,16 @@ class TestBook(unittest.TestCase):
         print(str(program))
 
     def test_im2sequence(self):
-        print("test_im2sequence")
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[3, 128, 128], dtype='float32')
+            y = layers.data(name='y', shape=[], dtype='float32')
             output = layers.im2sequence(
-                input=x, stride=[1, 1], filter_size=[2, 2])
+                input=x,
+                input_image_size=y,
+                stride=[1, 1],
+                filter_size=[2, 2],
+                out_stride=[1, 1])
             self.assertIsNotNone(output)
         print(str(program))
 
@@ -264,16 +280,16 @@ class TestBook(unittest.TestCase):
     def test_nce(self):
         window_size = 5
         words = []
-        for i in xrange(window_size):
+        for i in range(window_size):
             words.append(
                 layers.data(
                     name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
         dict_size = 10000
-        label_word = int(window_size / 2) + 1
+        label_word = int(window_size // 2) + 1
 
         embs = []
-        for i in xrange(window_size):
+        for i in range(window_size):
             if i == label_word:
                 continue
 
@@ -329,6 +345,25 @@ class TestBook(unittest.TestCase):
             y = layers.data(name='label', shape=[4], dtype='float32')
             loss = layers.smooth_l1(x, y)
             self.assertIsNotNone(loss)
+        print(str(program))
+
+    def test_scatter(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            idx = layers.data(
+                name='idx', shape=[2], append_batch_size=False, dtype='int32')
+            updates = layers.data(
+                name='updates',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+            out = layers.scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
         print(str(program))
 
     def test_lod_reset(self):
@@ -401,13 +436,87 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(output)
         print(str(program))
 
-    def test_maxout(self):
+    def test_crop(self):
         program = Program()
         with program_guard(program):
             x = layers.data(name='x', shape=[3, 5], dtype="float32")
             y = layers.data(name='y', shape=[2, 3], dtype="float32")
             output = layers.crop(x, shape=y)
             self.assertIsNotNone(output)
+        print(str(program))
+
+    def test_mean_iou(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[16], dtype='float32')
+            y = layers.data(name='label', shape=[1], dtype='int64')
+            iou = layers.mean_iou(x, y, 2)
+            self.assertIsNotNone(iou)
+        print(str(program))
+
+    def test_argsort(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+            self.assertIsNotNone(out)
+            self.assertIsNotNone(ids)
+        print(str(program))
+
+    def test_rank_loss(self):
+        program = Program()
+        with program_guard(program):
+            label = layers.data(
+                name='label',
+                append_batch_size=False,
+                shape=[16, 1],
+                dtype="float32")
+            left = layers.data(
+                name='left',
+                append_batch_size=False,
+                shape=[16, 1],
+                dtype="float32")
+            right = layers.data(
+                name='right',
+                append_batch_size=False,
+                shape=[16, 1],
+                dtype="float32")
+            out = layers.rank_loss(label, left, right, name="rank_loss")
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_flatten(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                append_batch_size=False,
+                shape=[4, 4, 3],
+                dtype="float32")
+            out = layers.flatten(x, axis=1, name="flatten")
+            self.assertIsNotNone(out)
+
+    def test_shape(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.shape(input, name="shape")
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_prelu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[5, 200, 100, 100], dtype="float32")
+            mode = 'channel'
+            out = layers.prelu(
+                input,
+                mode,
+                param_attr=ParamAttr(initializer=Constant(1.0)),
+                name='prelu')
+            self.assertIsNotNone(out)
         print(str(program))
 
 

@@ -3,7 +3,7 @@ cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc)
 
 # There is no macOS version of NCCL.
-if (NOT APPLE)
+if (NOT APPLE AND NOT WIN32)
   list(APPEND CUDA_SRCS nccl.cc)
 endif()
 
@@ -17,3 +17,7 @@ if (CUPTI_FOUND)
 endif(CUPTI_FOUND)
 nv_library(dynload_cuda SRCS ${CUDA_SRCS} DEPS dynamic_loader)
 cc_library(dynload_warpctc SRCS warpctc.cc DEPS dynamic_loader warpctc)
+if (WITH_MKLML)
+    cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
+endif()
+# TODO(TJ): add iomp, mkldnn?
