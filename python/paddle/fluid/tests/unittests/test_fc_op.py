@@ -64,26 +64,46 @@ class TestFCOp(OpTest):
         self.check_output()
 
 
-class TestFCOpBiasBoth(TestFCOp):
+class TestFCOpNoBias(TestFCOp):
     def init_shapes(self, mb, ic, oc, h, w):
-        for with_bias in {True, False}:
-            self.with_bias = with_bias
-            self.matrix = MatrixGenerate(mb, ic, oc, h, w)
+        self.with_bias = False
+        self.matrix = MatrixGenerate(mb, ic, oc, h, w)
 
 
-class TestFCOp1(TestFCOpBiasBoth):
+class TestFCOpWithBias(TestFCOp):
+    def init_shapes(self, mb, ic, oc, h, w):
+        self.with_bias = True
+        self.matrix = MatrixGenerate(mb, ic, oc, h, w)
+
+
+class TestFCOp1(TestFCOpNoBias):
     def init_op_type(self):
         self.init_shapes(2, 8, 10, 1, 1)
 
 
-class TestFCOp2(TestFCOpBiasBoth):
+class TestFCOp2(TestFCOpNoBias):
     def init_op_type(self):
         self.init_shapes(4, 5, 6, 2, 2)
 
 
-class TestFCOp4(TestFCOpBiasBoth):
+class TestFCOp4(TestFCOpNoBias):
     def init_op_type(self):
         self.init_shapes(1, 32, 64, 3, 3)
+
+
+class TestFCOpWithBias1(TestFCOpWithBias):
+    def init_op_type(self):
+        self.init_shapes(3, 8, 10, 2, 1)
+
+
+class TestFCOpWithBias2(TestFCOpWithBias):
+    def init_op_type(self):
+        self.init_shapes(4, 5, 6, 2, 2)
+
+
+class TestFCOpWithBias3(TestFCOpWithBias):
+    def init_op_type(self):
+        self.init_shapes(1, 64, 32, 3, 3)
 
 
 if __name__ == "__main__":
