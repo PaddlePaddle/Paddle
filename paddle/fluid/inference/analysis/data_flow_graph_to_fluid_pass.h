@@ -27,9 +27,6 @@
 namespace paddle {
 namespace inference {
 
-DECLARE_int32(tensorrt_max_batchsize);
-DECLARE_int32(tensorrt_workspace_size);
-
 namespace analysis {
 class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
  public:
