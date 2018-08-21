@@ -34,16 +34,15 @@ class Node {
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
-        var_desc_(new VarDesc(*var_desc->Proto())),
+        var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
         type_(Type::kVariable) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
-        op_desc_(
-            new OpDesc(*op_desc->Proto(),
-                       nullptr)),  // TODO(Superjomn) concat the block pointer.
+        op_desc_(new OpDesc(*op_desc)),  // TODO(panyx0718) the pointer in the
+                                         // original OpDesc might go out.
         type_(Type::kOperation) {}
 
   Type NodeType() const { return type_; }

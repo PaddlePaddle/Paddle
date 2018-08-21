@@ -28,26 +28,26 @@ class InferCleanGraphPass : public Pass {
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const {
     PADDLE_ENFORCE(graph.get());
 
-    auto is_ctrol_dep_node = [](Node* x) {
-      return x && x->IsVar() && !x->Var();
+    auto is_valid_node = [](Node* x) {
+      return x && IsControlDepVar(*x) && x->IsVar() && !x->Var();
     };
 
-    std::unordered_set<Node*> ctrol_dep_nodes;
+    std::unordered_set<Node*> invalid_nodes;
     for (auto* node : graph->Nodes()) {
-      if (is_ctrol_dep_node(node)) {
-        ctrol_dep_nodes.insert(node);
+      if (is_valid_node(node)) {
+        invalid_nodes.insert(node);
       }
     }
 
     // remove nodes from the graph.
-    for (auto* node : ctrol_dep_nodes) {
+    for (auto* node : invalid_nodes) {
       graph->RemoveNode(node);
     }
 
     // clean edges.
     for (auto* node : graph->Nodes()) {
-      CleanEdges(&node->inputs, ctrol_dep_nodes);
-      CleanEdges(&node->outputs, ctrol_dep_nodes);
+      CleanEdges(&node->inputs, invalid_nodes);
+      CleanEdges(&node->outputs, invalid_nodes);
     }
 
     return graph;

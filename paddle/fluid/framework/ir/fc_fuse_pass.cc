@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/fc_fuse_pass.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -28,16 +30,13 @@ bool VarOutLinksToOp(Node* node, const std::string& op_type) {
   return false;
 }
 
-static std::vector<OpDesc> g_descs;
-
 void BuildFCPattern(PDPattern* pattern) {
   // make sure the selected MUL op has one input argument is a parameter.
   auto* mul_parameter_var = pattern->NewNode(
       [](Node* node) {
         return node->IsVar() && node->outputs.size() == 1UL &&
                node->outputs.front()->Op()->Type() == "mul" && node->Var() &&
-               node->Var()->Persistable()  // check is a parameter
-            ;
+               node->Var()->Persistable();  // check is a parameter
       },
       "mul_weight" /*name*/);
 
@@ -45,8 +44,7 @@ void BuildFCPattern(PDPattern* pattern) {
       [](Node* node) {
         bool result =
             node->IsVar() && node->outputs.size() >= 1UL && node->Var() &&
-            !node->Var()->Persistable()  // this input is not an parameter.
-            ;
+            !node->Var()->Persistable();  // this input is not an parameter.
         if (!result) return false;
         // check whether one output is MUL op.
         for (auto* op : node->outputs) {
@@ -59,11 +57,10 @@ void BuildFCPattern(PDPattern* pattern) {
   // select a MUL op
   auto* mul_op = pattern->NewNode(
       [](Node* node) {
-        return node->IsOp() &&              // start from an Op
-               node->Op()->Type() == "mul"  // type is mul
-            // the output should be consumed only by one element_add, that check
-            // leaves in a Var PDNode.
-            ;
+        return node->IsOp() &&               // start from an Op
+               node->Op()->Type() == "mul";  // type is mul
+        // the output should be consumed only by one element_add, that check
+        // leaves in a Var PDNode.
       },
       "mul" /*name*/);
 
@@ -154,20 +151,17 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
 #undef GET_NODE
 
     // Create an FC Node.
-    // NOTE No FC op is valid currently, this is just a demo.
-
-    g_descs.emplace_back();
-    OpDesc* desc = &g_descs.back();
+    OpDesc desc;
     std::string fc_x_in = mul_tmp_var->Name();
     std::string fc_Y_in = mul_weight->Name();
     std::string fc_bias_in = elementwise_add_tmpvar->Name();
     std::string fc_out = elementwise_add_out->Name();
-    desc->SetInput("Input", std::vector<std::string>({fc_x_in}));
-    desc->SetInput("W", std::vector<std::string>({fc_Y_in}));
-    desc->SetInput("Bias", std::vector<std::string>({fc_bias_in}));
-    desc->SetOutput("Out", std::vector<std::string>({fc_out}));
-    desc->SetType("fc");
-    auto fc_node = g->CreateOpNode(desc);
+    desc.SetInput("Input", std::vector<std::string>({fc_x_in}));
+    desc.SetInput("W", std::vector<std::string>({fc_Y_in}));
+    desc.SetInput("Bias", std::vector<std::string>({fc_bias_in}));
+    desc.SetOutput("Out", std::vector<std::string>({fc_out}));
+    desc.SetType("fc");
+    auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     fc_node->inputs =
         std::vector<Node*>({mul_tmp_var, mul_weight, elementwise_add_tmpvar});
     fc_node->outputs.push_back(elementwise_add_out);
