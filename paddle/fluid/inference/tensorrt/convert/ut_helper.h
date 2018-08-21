@@ -163,6 +163,9 @@ class TRTConvertValidation {
     }
   }
 
+  // We use the set 'neglected_output' here, because some Ops like batch norm,
+  // the outputs specified in the op des are only used during training,
+  // so we should neglect those output during inference.
   void Execute(int batch_size,
                std::unordered_set<std::string> neglected_output = {}) {
     // Execute Fluid Op
