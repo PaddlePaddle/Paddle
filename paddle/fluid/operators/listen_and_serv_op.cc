@@ -275,7 +275,7 @@ void ListenAndServOp::RunImpl(const framework::Scope &scope,
   request_checkpoint_handler_.reset(new distributed::RequestCheckpointHandler(
       sync_mode, checkpoint_block_id));
 
-  int thread_pool_size =
+  auto thread_pool_size =
       static_cast<int>(framework::ThreadPool::GetInstance()->Threads());
   rpc_service_->RegisterRPC(distributed::kRequestSend,
                             request_send_handler_.get());
