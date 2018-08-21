@@ -95,6 +95,7 @@ __all__ = [
     'resize_bilinear',
     'gather',
     'scatter',
+    'sequence_scatter',
     'random_crop',
     'mean_iou',
     'relu',
@@ -5071,6 +5072,66 @@ def scatter(input, index, updates, name=None):
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type="scatter",
+        inputs={"X": input,
+                "Ids": index,
+                "Updates": updates},
+        outputs={"Out": out})
+    return out
+
+
+def sequence_scatter(input, index, updates, name=None):
+    """
+    **Sequence Scatter Layer**
+
+    This operator scatters the Updates tensor to the input X. It uses the LoD
+    information of Ids to select the rows to update, and use the values in Ids as
+    the columns to update in each row of X.
+
+    Here is an example:
+    Given the following input:
+    .. code-block:: text
+        input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+        input.dims = [3, 6]
+
+        index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
+        index.lod =  [[0,        3,                       8,                 12]]
+
+        updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
+        updates.lod =  [[  0,            3,                                 8,                         12]]
+
+    Then we have the output:
+    .. code-block:: text
+        out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
+                    [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
+        out.dims = X.dims = [3, 6]
+
+    Args:
+        input (Variable): The source input with rank>=1.
+        index (Variable): A LoD Tensor. The index input of sequence scatter op
+            where input will be  updated. The index input with rank=1. Its dtype
+            should be int32 or int64 as it is used as indexes.
+        updates (Variable): A LoD Tensor. The values to scatter to the input
+            tensor X, must be a LoDTensor with the same LoD information as index.
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.sequence_scatter(input, index, updates)
+
+    """
+    helper = LayerHelper('sequence_scatter', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="sequence_scatter",
         inputs={"X": input,
                 "Ids": index,
                 "Updates": updates},
