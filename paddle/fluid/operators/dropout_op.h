@@ -52,7 +52,7 @@ class FillZeroYAndMask {
  public:
   FillZeroYAndMask(T *mask, T *y) : mask_(mask), y_(y) {}
   HOSTDEVICE inline void operator()(size_t i) {
-    mask_[i] = static_cast<T>(1);
+    mask_[i] = static_cast<T>(0);
     y_[i] = static_cast<T>(0);
   }
 
@@ -80,8 +80,13 @@ class DropoutKernel : public framework::OpKernel<T> {
       int seed = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
                                                 : std::random_device()();
 
-      uint64_t uint32_prob = static_cast<uint64_t>(
-          static_cast<uint64_t>(1UL << 32) * static_cast<double>(dropout_prob));
+      uint64_t uint32_prob =
+          static_cast<uint64_t>(static_cast<uint64_t>(UINT32_MAX) *
+                                static_cast<double>(dropout_prob));
+
+      uint64_t uint16_prob =
+          static_cast<uint64_t>(static_cast<uint16_t>(UINT16_MAX) *
+                                static_cast<double>(dropout_prob));
 
       if (uint32_prob >= (1UL << 32)) {
         // Fill Zero
@@ -90,12 +95,17 @@ class DropoutKernel : public framework::OpKernel<T> {
         FillZeroYAndMask<T> fill_functor(mask_data, y_data);
         for_range(fill_functor);
       } else {
-        FillMaskAndY<T, uint32_t> fill_functor(
-            mask_data, x_data, y_data, static_cast<uint32_t>(uint32_prob));
-        platform::RandomSequence<DeviceContext> rand_seq;
-        platform::IdentityDistribution<uint32_t> dist;
-        rand_seq(context.template device_context<DeviceContext>(), seed,
-                 x->numel(), dist, fill_functor);
+        constexpr double epsilon = 1e-3;
+        auto uint16_err = std::abs(
+            (static_cast<double>(uint16_prob) / UINT16_MAX) - dropout_prob);
+        if (uint16_err < epsilon) {
+          VLOG(10) << "Fast dropout use uint16_t";
+          DropoutImpl<uint16_t>(context, x, x_data, y_data, mask_data, seed,
+                                uint16_prob);
+        } else {
+          DropoutImpl<uint32_t>(context, x, x_data, y_data, mask_data, seed,
+                                uint32_prob);
+        }
       }
     } else {
       auto &place =
@@ -104,6 +114,18 @@ class DropoutKernel : public framework::OpKernel<T> {
       auto Y = EigenMatrix<T>::Reshape(*y, 1);
       Y.device(place) = X * static_cast<T>(1.0f - dropout_prob);
     }
+  }
+
+  template <typename ProbType>
+  void DropoutImpl(const framework::ExecutionContext &context, const Tensor *x,
+                   const T *x_data, T *y_data, T *mask_data, int seed,
+                   uint64_t uint32_prob) const {
+    FillMaskAndY<T, ProbType> fill_functor(mask_data, x_data, y_data,
+                                           static_cast<ProbType>(uint32_prob));
+    platform::random::RandomSequence<DeviceContext> rand_seq;
+    platform::random::IdentityDistribution<ProbType> dist;
+    rand_seq(context.template device_context<DeviceContext>(), seed, x->numel(),
+             dist, fill_functor);
   }
 };
 
