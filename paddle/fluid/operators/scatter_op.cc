@@ -81,8 +81,8 @@ class ScatterOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The source input of scatter op");
     AddInput("Ids", "The index input of scatter op where X will be updated");
-    AddInput("Updates", "The updated value of updates op");
-    AddOutput("Out", "The output of add op");
+    AddInput("Updates", "The updated value of scatter op");
+    AddOutput("Out", "The output of scatter op");
     AddComment(R"DOC(
 Scatter Operator.
 
@@ -90,7 +90,7 @@ This operator obtains output by updating the input on selected indices on the fi
 
 $$
 Out = X \\
-Out[Ids] = X[Ids] + Updates
+Out[Ids] = Updates
 $$
 
 )DOC");
