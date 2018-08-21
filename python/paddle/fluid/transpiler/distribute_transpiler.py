@@ -1209,7 +1209,7 @@ class DistributeTranspiler(object):
         elif op_type == "momentum":
             if varkey == "Velocity":
                 return param_shape
-        elif op_type == "RMSProp":
+        elif op_type == "rmsprop":
             if varkey in ["Moment", "MeanSquare"]:
                 return param_shape
         elif op_type == "sgd":
@@ -1289,8 +1289,6 @@ class DistributeTranspiler(object):
         pserver_block = program.global_block()
         new_inputs = collections.OrderedDict()
 
-        # update param/grad shape first, then other inputs like
-        # moment can use the updated shape
         def _get_param_block(opt_op):
             # param is already created on global program
             param_block = None
