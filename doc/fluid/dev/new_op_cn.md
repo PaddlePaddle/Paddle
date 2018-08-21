@@ -353,38 +353,34 @@ PADDLE_ENFORCE_EQ(比较对象A, 比较对象B, 错误提示信息)
 
 #### 提示信息书写标准
 
-1. 哪里错了？为什么错了？
+1. [required] 哪里错了？为什么错了？
     - 例如：`ValueError: Mismatched label shape`
-2. 期望的输入是什么样的？实际的输入是怎样的？
+2. [optional] 期望的输入是什么样的？实际的输入是怎样的？
     - 例如：`Expected labels dimension=1. Received 4.`
-3. 能否给出修改意见？
+3. [optional] 能否给出修改意见？
     - 例如：`Suggested Fix:If your classifier expects one-hot encoding label,check your n_classes argument to the estimatorand/or the shape of your label.Otherwise, check the shape of your label.`
 
 如果并非必要或者简洁的描述即可表达清楚以上要点，根据情况书写亦可。
 
-##### 错误用法示例
+##### FAQ 典型问题
 
-1. 报错信息过于简单，不能给用户提供有效的提示！
+1. 无报错信息或报错信息过于简单，不能给用户提供有效的提示！
 
-示例：
+问题示例1 ：未写提示信息
+```
+PADDLE_ENFORCE(ctx->HasInput("X"), "");
+```
+问题示例2 ：提示信息过于简单
 ```
 PADDLE_ENFORCE(i != nullptr, "I must be set"); // I是什么？
 ```
 
-2. 尽量避免在报错信息中使用开发人员定义的变量缩写！
+2. 在报错信息中使用开发人员定义的变量缩写，不易理解！
 
-示例：
+问题示例：
 ```
 PADDLE_ENFORCE(forward_pd != nullptr,
                     "Fail to find eltwise_fwd_pd in device context");  //eltwise_fwd_pd用户可能看不懂
-```
-
-3. 注意语法问题，确保专业性！
-
-示例：
-```
-PADDLE_ENFORCE(context->HasInput("X"),
-                               "ArrayToLoDTensorOp must has input X."); //must has属于语法错误
 ```
 
 #### OP InferShape检查提示信息特别说明
@@ -404,16 +400,4 @@ PADDLE_ENFORCE(ctx->HasInput("Input"),
 ```
 PADDLE_ENFORCE(ctx->HasInput("X"),
                         "Input(X) of LoDResetGrad opreator should not be null.");
-```
-
-#### 错误用法示例
-
-1. 不写提示信息
-```
-PADDLE_ENFORCE(ctx->HasInput("X"), "");
-```
-
-2. 不指明Op，并且正反向不能区分
-```
-PADDLE_ENFORCE(ctx->HasInput("W"), "Input(W) should not be null.");
 ```
