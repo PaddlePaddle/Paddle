@@ -84,11 +84,16 @@ void TestIdentityMean(Dist dist) {
     sum += item;
   }
   sum /= length;
-  std::cerr << static_cast<T>(sum) << " " << (Dist::Max / 2) << std::endl;
+
+  ASSERT_LE(
+      std::abs(static_cast<double>(sum) - static_cast<double>(Dist::Max / 2)) /
+          (Dist::Max / 2),
+      1e-4);
 }
 
 TEST(RandomSequence, IdentityMean) {
   TestIdentityMean(IdentityDistribution<uint32_t>());
+  TestIdentityMean(IdentityDistribution<uint16_t>());
 }
 
 }  // namespace random
