@@ -20,170 +20,13 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/compound_functors.h"
 #include "paddle/fluid/operators/math/functors.h"
 
 namespace math = paddle::operators::math;
 
 namespace paddle {
 namespace operators {
-
-template <typename T, typename BinaryFunctor, typename UnaryFunctor>
-struct BinaryCompoundFunctor {
-  BinaryCompoundFunctor(const BinaryFunctor func1, const UnaryFunctor func2)
-      : func1_(func1), func2_(func2) {}
-  // Z = BinaryFunctor(X, UnaryFunctor(Y))
-
-  inline HOSTDEVICE T GetOut(T x, T y) { return func1_(x, func2_(y)); }
-
-  inline HOSTDEVICE T GetOut(T x, T y, T intermediat_out) {
-    return func1_(x, intermediat_out);
-  }
-
-  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return func2_(y); }
-
-  BinaryFunctor func1_;
-  UnaryFunctor func2_;
-};
-
-template <typename T, typename UnaryFunctor, typename BinaryFunctor>
-struct UnaryCompoundFunctor {
-  UnaryCompoundFunctor(const UnaryFunctor func1, const BinaryFunctor func2)
-      : func1_(func1), func2_(func2) {}
-  // Z = UnaryFunctor(BinaryFunctor(X, Y))
-
-  inline HOSTDEVICE T GetOut(T x, T y) { return func1_(func2_(x, y)); }
-
-  inline HOSTDEVICE T GetOut(T x, T y, T intermediat_out) {
-    return func1_(intermediat_out);
-  }
-
-  inline HOSTDEVICE T GetIntermediateOut(T x, T y) { return func2_(x, y); }
-
-  UnaryFunctor func1_;
-  BinaryFunctor func2_;
-};
-
-// FIXME(zcd): DBinaryFun and DUnaryFun have to method to get
-// the dx, one is to use the 'out', and the other is not to use it.
-// the former method will save the time of recomputing the
-// 'out', but it must occupy the memory to store the 'out'.
-// While the later method can avoid occupying this memory,
-// but it must recompute the 'out'.
-template <typename T, typename DBinaryFun, typename UnaryFun>
-struct BinaryCompoundGradDxFunctor {
-  BinaryCompoundGradDxFunctor(const DBinaryFun &d_binary_fun,
-                              const UnaryFun &unary_fun)
-      : d_binary_fun_(d_binary_fun), unary_fun_(unary_fun) {}
-
-  inline HOSTDEVICE T operator()(T x, T y, T out, T dout) {
-    return dout * d_binary_fun_(x, unary_fun_(y));
-  }
-
-  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
-    return dout * d_binary_fun_(x, intermediate_out);
-  }
-
- private:
-  DBinaryFun d_binary_fun_;
-  UnaryFun unary_fun_;
-};
-
-template <typename T, typename DBinaryFun, typename UnaryFun,
-          typename DUnaryFun>
-struct BinaryCompoundGradDyFunctor {
-  BinaryCompoundGradDyFunctor(const DBinaryFun &d_binary_fun,
-                              const UnaryFun &unary_fun,
-                              const DUnaryFun &d_unary_fun)
-      : d_binary_fun_(d_binary_fun),
-        unary_fun_(unary_fun),
-        d_unary_fun_(d_unary_fun) {}
-
-  inline HOSTDEVICE T operator()(T x, T y, T out, T dout) {
-    return dout * d_binary_fun_(unary_fun_(y), x) * d_unary_fun_(y);
-  }
-
-  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
-    return dout * d_binary_fun_(intermediate_out, x) *
-           d_unary_fun_(y, intermediate_out);
-  }
-
- private:
-  DBinaryFun d_binary_fun_;
-  UnaryFun unary_fun_;
-  DUnaryFun d_unary_fun_;
-};
-
-template <typename T, typename DUnaryFun, typename BinaryFun,
-          typename DBinaryFun, bool Recomputation = true>
-struct UnaryCompoundGradDxFunctor {
-  UnaryCompoundGradDxFunctor(const DUnaryFun &d_unary_fun,
-                             const BinaryFun &binary_fun,
-                             const DBinaryFun &d_binary_fun)
-      : d_unary_fun_(d_unary_fun),
-        binary_fun_(binary_fun),
-        d_binary_fun_(d_binary_fun) {}
-
-  inline HOSTDEVICE T operator()(T x, T y, T out, T dout) {
-    T base;
-    if (Recomputation) {
-      base = dout * d_unary_fun_(binary_fun_(x, y));
-    } else {
-      base = dout * d_unary_fun_(binary_fun_(x, y), out);
-    }
-    return base * d_binary_fun_(x, y);
-  }
-
-  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
-    T base;
-    if (Recomputation) {
-      base = dout * d_unary_fun_(intermediate_out);
-    } else {
-      base = dout * d_unary_fun_(intermediate_out, out);
-    }
-    return base * d_binary_fun_(x, y);
-  }
-
- private:
-  DUnaryFun d_unary_fun_;
-  BinaryFun binary_fun_;
-  DBinaryFun d_binary_fun_;
-};
-
-template <typename T, typename DUnaryFun, typename BinaryFun,
-          typename DBinaryFun, bool Recomputation = true>
-struct UnaryCompoundGradDyFunctor {
-  UnaryCompoundGradDyFunctor(const DUnaryFun &d_unary_fun,
-                             const BinaryFun &binary_fun,
-                             const DBinaryFun &d_binary_fun)
-      : d_unary_fun_(d_unary_fun),
-        binary_fun_(binary_fun),
-        d_binary_fun_(d_binary_fun) {}
-
-  inline HOSTDEVICE T operator()(T x, T y, T out, T dout) {
-    T base;
-    if (Recomputation) {
-      base = dout * d_unary_fun_(binary_fun_(x, y));
-    } else {
-      base = dout * d_unary_fun_(binary_fun_(x, y), out);
-    }
-    return base * d_binary_fun_(y, x);
-  }
-
-  inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
-    T base;
-    if (Recomputation) {
-      base = dout * d_unary_fun_(intermediate_out);
-    } else {
-      base = dout * d_unary_fun_(intermediate_out, out);
-    }
-    return base * d_binary_fun_(y, x);
-  }
-
- private:
-  DUnaryFun d_unary_fun_;
-  BinaryFun binary_fun_;
-  DBinaryFun d_binary_fun_;
-};
 
 template <typename DeviceContext, typename T, typename BinaryFunctor,
           typename UnaryFunctor>
@@ -197,18 +40,20 @@ static void RunBinaryCompoundFunctor(
   // In this case, the shape of intermediate_out and out are different.
   int axis = ctx.Attr<int>("axis");
 
-  BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor> compound_func(
+  math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor> compound_func(
       binary_functor, unary_functor);
 
   if (ctx.Attr<bool>("keep_intermediate_value")) {
     FusedElemwiseAndActComputeEx<
-        DeviceContext, T, BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        DeviceContext, T,
+        math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
         true /*KeepIntermediateValue*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
     FusedElemwiseAndActComputeEx<
-        DeviceContext, T, BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
+        DeviceContext, T,
+        math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>,
         false /*KeepIntermediateValue*/,
         false /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
@@ -227,18 +72,20 @@ static void RunUnaryCompoundFunctors(
   // In this case, the shape of intermediate_out and out are the same.
   int axis = ctx.Attr<int>("axis");
 
-  UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor> compound_func(
+  math::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor> compound_func(
       unary_functor, binary_functor);
 
   if (ctx.Attr<bool>("keep_intermediate_value")) {
     FusedElemwiseAndActComputeEx<
-        DeviceContext, T, UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        DeviceContext, T,
+        math::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
         true /*KeepIntermediateValue*/,
         true /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
   } else {
     FusedElemwiseAndActComputeEx<
-        DeviceContext, T, UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
+        DeviceContext, T,
+        math::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>,
         false /*KeepIntermediateValue*/,
         true /*SameShapeOfIntermediateOutAndOut*/>(
         ctx, in_x, in_y, axis, compound_func, (*outputs)[0], (*outputs)[1]);
@@ -260,10 +107,10 @@ static void RunBinaryCompoundGradFunctors(
   int axis = ctx.Attr<int>("axis");
 
   using BinaryCompoundDxFunctor =
-      BinaryCompoundGradDxFunctor<T, BinaryGradFunctor, UnaryFunctor>;
+      math::BinaryCompoundGradDxFunctor<T, BinaryGradFunctor, UnaryFunctor>;
   using BinaryCompoundDyFunctor =
-      BinaryCompoundGradDyFunctor<T, BinaryGradFunctor, UnaryFunctor,
-                                  UnaryGradFunctor>;
+      math::BinaryCompoundGradDyFunctor<T, BinaryGradFunctor, UnaryFunctor,
+                                        UnaryGradFunctor>;
 
   if (in_intermediate_out) {
     FusedElemwiseAndActGradComputeEx<
@@ -302,11 +149,11 @@ static void RunUnaryCompoundGradFunctors(
   int axis = ctx.Attr<int>("axis");
 
   using UnaryCompoundDxFunctor =
-      UnaryCompoundGradDxFunctor<T, UnaryGradFunctor, BinaryFunctor,
-                                 BinaryGradFunctor, Recomputation>;
+      math::UnaryCompoundGradDxFunctor<T, UnaryGradFunctor, BinaryFunctor,
+                                       BinaryGradFunctor, Recomputation>;
   using UnaryCompoundDyFunctor =
-      UnaryCompoundGradDyFunctor<T, UnaryGradFunctor, BinaryFunctor,
-                                 BinaryGradFunctor, Recomputation>;
+      math::UnaryCompoundGradDyFunctor<T, UnaryGradFunctor, BinaryFunctor,
+                                       BinaryGradFunctor, Recomputation>;
 
   if (in_intermediate_out) {
     FusedElemwiseAndActGradComputeEx<
