@@ -125,6 +125,11 @@ class MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_weights_mem_p");
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireBiasMemory(
+      const mkldnn::memory::desc& md, void* ptr) {
+    return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_dst_mem_p");
