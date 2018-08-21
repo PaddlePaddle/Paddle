@@ -36,13 +36,17 @@ class Node {
       : name_(var_desc->Name()),
         var_desc_(var_desc),
         op_desc_(nullptr),
-        type_(Type::kVariable) {}
+        type_(Type::kVariable) {
+    PADDLE_ENFORCE(var_desc_);
+  }
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(op_desc),
-        type_(Type::kOperation) {}
+        type_(Type::kOperation) {
+    PADDLE_ENFORCE(op_desc_);
+  }
 
   Type NodeType() const { return type_; }
 
