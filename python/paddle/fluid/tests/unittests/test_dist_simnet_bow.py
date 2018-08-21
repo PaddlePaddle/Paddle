@@ -18,6 +18,9 @@ from test_dist_base import TestDistBase
 
 
 class TestDistSimnetBow2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+
     def test_simnet_bow(self):
         self.check_with_place("dist_simnet_bow.py", delta=1e-7)
 
