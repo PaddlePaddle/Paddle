@@ -21,19 +21,19 @@ namespace inference {
 namespace analysis {
 
 TEST(NodeAttr, bool) {
-  NodeAttr x;
+  AnyAttr x;
   x.Bool() = true;
   ASSERT_EQ(x.Bool(), true);
 }
 
 TEST(NodeAttr, int32) {
-  NodeAttr x;
+  AnyAttr x;
   x.Int32() = 32;
   ASSERT_EQ(x.Int32(), 32);
 }
 
 TEST(NodeAttr, string) {
-  NodeAttr x;
+  AnyAttr x;
   x.String() = "Hello";
   ASSERT_EQ(x.String(), "Hello");
 }
