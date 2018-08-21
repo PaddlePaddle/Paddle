@@ -257,7 +257,7 @@ const float ditu_rnn_target_data[] = {
 // Test with a really complicate model.
 void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
-                           bool use_analysis, bool activate_ir) {
+                           bool use_analysis, bool activate_ir, int num_times=1) {
   FLAGS_IA_enable_ir = activate_ir;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "./analysis.out";
@@ -292,13 +292,18 @@ void TestDituRNNPrediction(const std::string &model_path,
   PrepareInputs(&input_slots, &data, batch_size);
   std::vector<PaddleTensor> outputs;
 
-  predictor->Run(input_slots, &outputs);
+  Timer timer;
+  timer.tic();
+  for (int i = 0; i < num_times; i++) {
+    predictor->Run(input_slots, &outputs);
+  }
+  LOG(INFO) << "time/batch: " << timer.toc() / num_times;
 
   for (auto &out : outputs) {
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
     float *data = static_cast<float *>(out.data.data());
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < std::min(sizeof(ditu_rnn_target_data)/sizeof(float), size); i++) {
       EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);
     }
   }
@@ -332,14 +337,16 @@ TEST(Analyzer, DituRNN_without_analysis) {
 // Inference with the original model with the analysis turned on, the analysis
 // module will transform the program to a data flow graph.
 TEST(Analyzer, DituRNN_with_analysis) {
+  LOG(INFO) << "ditu rnn with analysis";
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        10, true, false);
+                        10, true, false, 1);
 }
 
 // Inference with analysis and IR. The IR module will fuse some large kernels.
 TEST(Analyzer, DituRNN_with_analysis_with_IR) {
+  LOG(INFO) << "ditu rnn with analysis and IR fuse";
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        10, true, true);
+                        10, true, true, 1);
 }
 
 }  // namespace analysis

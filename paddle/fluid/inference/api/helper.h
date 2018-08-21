@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <sys/time.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
@@ -22,6 +23,26 @@
 
 namespace paddle {
 namespace inference {
+
+// Timer for timer
+class Timer {
+ public:
+  double start;
+  double startu;
+  void tic() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    start = tp.tv_sec;
+    startu = tp.tv_usec;
+  }
+  double toc() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    double used_time_ms =
+        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
+    return used_time_ms;
+  }
+};
 
 void split(const std::string &str, char sep, std::vector<std::string> *pieces) {
   pieces->clear();
