@@ -231,7 +231,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
                       "The element's type of input should be the same.");
     PADDLE_ENFORCE_EQ(
         input_data_type_index,
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->type(),
+        ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"))[0]
+            ->type(),
         "The element's type of input should be the same.");
 
     auto input_data_type = framework::ToDataType(input_data_type_index);

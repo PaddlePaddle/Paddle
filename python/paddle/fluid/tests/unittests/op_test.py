@@ -46,7 +46,8 @@ def get_numeric_gradient(place,
                          input_to_check,
                          output_names,
                          delta=0.005,
-                         in_place=False):
+                         in_place=False,
+                         sum_outputs=None):
     # FIXME: change this method by compile time concepts
     set_input(scope, op, inputs, place)
 
@@ -57,9 +58,11 @@ def get_numeric_gradient(place,
         sum = []
         for output_name in output_names:
             op.run(scope, place)
+            if sum_outputs and output_name not in sum_outputs:
+                continue
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum).mean()
+        return np.array(sum) / len(output_names)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())
@@ -394,13 +397,14 @@ class OpTest(unittest.TestCase):
                    numeric_grad_delta=0.005,
                    in_place=False,
                    max_relative_error=0.005,
-                   user_defined_grads=None):
+                   user_defined_grads=None,
+                   sum_outputs=None):
         places = self._get_places()
         for place in places:
             self.check_grad_with_place(place, inputs_to_check, output_names,
                                        no_grad_set, numeric_grad_delta,
                                        in_place, max_relative_error,
-                                       user_defined_grads)
+                                       user_defined_grads, sum_outputs)
 
     def check_grad_with_place(self,
                               place,
@@ -410,7 +414,8 @@ class OpTest(unittest.TestCase):
                               numeric_grad_delta=0.005,
                               in_place=False,
                               max_relative_error=0.005,
-                              user_defined_grads=None):
+                              user_defined_grads=None,
+                              sum_outputs=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -433,7 +438,8 @@ class OpTest(unittest.TestCase):
                 input_to_check,
                 output_names,
                 delta=numeric_grad_delta,
-                in_place=in_place) for input_to_check in inputs_to_check
+                in_place=in_place,
+                sum_outputs=sum_outputs) for input_to_check in inputs_to_check
         ]
         analytic_grads = self._get_gradient(inputs_to_check, place,
                                             output_names, no_grad_set)

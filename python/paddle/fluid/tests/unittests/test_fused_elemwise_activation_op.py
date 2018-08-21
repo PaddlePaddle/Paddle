@@ -72,18 +72,39 @@ def create_test_class(test_case, callback, attrs):
             self.check_output()
 
         def test_check_grad_normal(self):
-            self.check_grad(['X', 'Y'], ['out'], max_relative_error=0.005)
-            # if self.attrs["keep_intermediate_value"]:
-            #     self.check_grad(['X', 'Y'], ['out','intermediate_out'], max_relative_error=0.005)
-            # else:
+            if self.attrs["keep_intermediate_value"]:
+                self.check_grad(
+                    ['X', 'Y'], ['out', 'intermediate_out'],
+                    max_relative_error=0.005,
+                    sum_outputs=['out'])
+            else:
+                self.check_grad(['X', 'Y'], ['out'], max_relative_error=0.005)
 
         def test_check_grad_ingore_x(self):
-            self.check_grad(
-                ['Y'], 'out', max_relative_error=0.005, no_grad_set=set("X"))
+            if self.attrs["keep_intermediate_value"]:
+                self.check_grad(
+                    ['Y'], ['out', 'intermediate_out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("X"),
+                    sum_outputs=['out'])
+            else:
+                self.check_grad(
+                    ['Y'], ['out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("X"))
 
         def test_check_grad_ingore_y(self):
-            self.check_grad(
-                ['X'], 'out', max_relative_error=0.005, no_grad_set=set('Y'))
+            if self.attrs["keep_intermediate_value"]:
+                self.check_grad(
+                    ['X'], ['out', 'intermediate_out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("Y"),
+                    sum_outputs=['out'])
+            else:
+                self.check_grad(
+                    ['X'], ['out'],
+                    max_relative_error=0.005,
+                    no_grad_set=set("Y"))
 
     class TestFusedElementwiseActivationOp_scalar(
             TestFusedElementwiseActivationOp_base):

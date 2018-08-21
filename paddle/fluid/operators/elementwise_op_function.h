@@ -966,7 +966,8 @@ struct FusedElemwiseAndActGradNoBroadcast {
   T *dy_;
 };
 
-template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
+template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
+          bool UseIntermediateOut>
 void FusedElemwiseAndActGradComputeNoBroadcast(
     const framework::ExecutionContext &ctx, const framework::DDim &x_dim,
     const framework::DDim &y_dim, const framework::Tensor *x,
@@ -976,21 +977,13 @@ void FusedElemwiseAndActGradComputeNoBroadcast(
   size_t N = static_cast<size_t>(framework::product(x_dim));
   platform::ForRange<DeviceContext> for_range(
       ctx.template device_context<DeviceContext>(), N);
-  if (intermediate_out == nullptr) {
-    for_range(FusedElemwiseAndActGradNoBroadcast<T, DX_OP, DY_OP,
-                                                 false /*UseIntermediateOut*/>{
-        x->data<T>(), y->data<T>(), nullptr, out->data<T>(), dout->data<T>(),
-        dx_op, dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
-  } else {
-    for_range(FusedElemwiseAndActGradNoBroadcast<T, DX_OP, DY_OP,
-                                                 true /*UseIntermediateOut*/>{
-        x->data<T>(), y->data<T>(), intermediate_out->data<T>(), out->data<T>(),
-        dout->data<T>(), dx_op, dy_op,
-        dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
-        dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
-  }
+  for_range(
+      FusedElemwiseAndActGradNoBroadcast<T, DX_OP, DY_OP, UseIntermediateOut>{
+          x->data<T>(), y->data<T>(),
+          UseIntermediateOut ? intermediate_out->data<T>() : nullptr,
+          out->data<T>(), dout->data<T>(), dx_op, dy_op,
+          dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
+          dy == nullptr ? nullptr : dy->mutable_data<T>(ctx.GetPlace())});
 }
 
 template <typename T, typename DX_OP, typename DY_OP, bool UseIntermediateOut,
@@ -1293,7 +1286,8 @@ void FusedElemwiseAndActGradComputeEx(
     PADDLE_ENFORCE(intermediate_out, "intermediate_out should not be nullptr");
   }
   if (x_dim == y_dim) {
-    FusedElemwiseAndActGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP>(
+    FusedElemwiseAndActGradComputeNoBroadcast<DeviceContext, T, DX_OP, DY_OP,
+                                              UseIntermediateOut>(
         ctx, x_dim, y_dim, x, y, intermediate_out, out, dout, axis, dx, dy,
         dx_op, dy_op);
   } else {  // Y is a scalar
