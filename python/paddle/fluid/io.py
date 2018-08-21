@@ -408,7 +408,7 @@ def load_vars(executor,
 
         # load slice vars on pserver, if have it.
         _load_slice_up_vars(executor, dirname,
-                            main_program._slice_vars_and_atts)
+                            main_program._slice_vars_and_attrs)
 
 
 def load_params(executor, dirname, main_program=None, filename=None):
@@ -871,14 +871,14 @@ def get_parameter_value_by_name(name, executor, program=None):
     return get_parameter_value(var, executor)
 
 
-def _load_slice_up_vars(executor, dirname, slice_vars_and_atts):
-    if not slice_vars_and_atts:
+def _load_slice_up_vars(executor, dirname, slice_vars_and_attrs):
+    if not slice_vars_and_attrs:
         return
 
     load_prog = Program()
     load_block = load_prog.global_block()
 
-    for var_tuple in slice_vars_and_atts:
+    for var_tuple in slice_vars_and_attrs:
         orig_var = var_tuple[0]
         start = var_tuple[1]
         slice_var = var_tuple[2]
