@@ -19,6 +19,9 @@ from test_dist_base import TestDistBase
 
 
 class TestDistTransformer2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+
     def test_transformer(self):
         # TODO(paddle-dev): check if the delta is OK.
         # Usually start around ~8000 and converge to ~5000
