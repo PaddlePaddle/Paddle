@@ -203,6 +203,8 @@ TEST(GraphTest, WriteAfterWrite) {
     }
   }
   ASSERT_EQ(control_dep1, control_dep2);
+  ASSERT_NE(control_dep1, nullptr);
+  ASSERT_NE(control_dep2, nullptr);
 }
 }  // namespace framework
 }  // namespace paddle
