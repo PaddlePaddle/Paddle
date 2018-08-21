@@ -215,6 +215,13 @@ class DistributeTranspiler(object):
         for param_var, grad_var in self.params_grads:
             self.param_name_to_grad_name[param_var.name] = grad_var.name
 
+        # add distributed attrs to program
+        self.origin_program._is_distributed = True
+        self.origin_program._endpoints = self.pserver_endpoints
+        self.origin_program._is_chief = self.trainer_id == 0
+        self.origin_program._distributed_lookup_table = self.table_name if self.table_name else None
+
+        # split and create vars, then put splited vars in dicts for later use.
         # step 1: split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars()
 
@@ -590,6 +597,8 @@ class DistributeTranspiler(object):
             checkpoint_block_id = self._create_checkpoint_save_block(
                 pserver_program, table_opt_block.idx)
 
+            pserver_program._distributed_lookup_table = self.table_name
+
         # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
         # not be executed, so it's safe to use optimize_block to hold the place
         if self.has_distributed_lookup_table:
@@ -615,6 +624,10 @@ class DistributeTranspiler(object):
             inputs={'X': recv_inputs},
             outputs={},
             attrs=attrs)
+
+        # add distributed attrs
+        pserver_program._slice_vars_and_attrs = self._get_slice_vars_and_attrs(
+            endpoint)
 
         pserver_program._sync_with_cpp()
         return pserver_program
@@ -689,7 +702,30 @@ class DistributeTranspiler(object):
                     inputs=new_inputs,
                     outputs=new_outputs,
                     attrs=op.all_attrs())
+
+        # add slice vars
+        s_prog._slice_vars_and_attrs = self._get_slice_vars_and_attrs(endpoint)
+
         return s_prog
+
+    def _get_slice_vars_and_attrs(self, endpoint):
+        slice_vars_and_attrs = []
+        block_suffix = "block"
+        for param in self.param_grad_ep_mapping[endpoint]["params"]:
+            orig_var_name, block_name, _ = self._get_varname_parts(param.name)
+            if not block_name:
+                continue
+
+            block_idx = int(block_name.split(block_suffix)[1])
+            orig_var = self.origin_program.global_block().vars[orig_var_name]
+
+            skip_numel = 0
+            slice_vars = self.param_var_mapping[orig_var_name]
+            for slice_var in slice_vars[:block_idx]:
+                skip_numel += reduce(lambda x, y: x * y, slice_var.shape)
+            slice_vars_and_attrs.append([orig_var, skip_numel, param])
+
+        return slice_vars_and_attrs
 
     # ====================== private transpiler functions =====================
 

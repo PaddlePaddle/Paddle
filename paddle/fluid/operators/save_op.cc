@@ -142,6 +142,8 @@ class SaveOp : public framework::OperatorBase {
     std::string filename = lt_var->data();
     VLOG(4) << "SaveSelectedRows get File name: " << filename;
 
+    MkDirRecursively(DirName(filename).c_str());
+
     auto &selectedRows = var->Get<framework::SelectedRows>();
 
     // get device context from pool
