@@ -210,20 +210,25 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 // Test with a really complicate model.
 void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
-                           bool activate_ir) {
+                           bool use_analysis, bool activate_ir) {
   FLAGS_IA_enable_ir = activate_ir;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "./analysis.out";
 
-  Argument argument(model_path);
-  argument.model_output_store_path.reset(new std::string("./analysis.out"));
+  std::string model_out;
+  if (use_analysis) {
+    Argument argument(model_path);
+    argument.model_output_store_path.reset(new std::string("./analysis.out"));
 
-  Analyzer analyzer;
-  analyzer.Run(&argument);
+    Analyzer analyzer;
+    analyzer.Run(&argument);
 
-  // Should get the transformed model stored to ./analysis.out
-  std::string model_out = "./analysis.out";
-  ASSERT_TRUE(PathExists(model_out));
+    // Should get the transformed model stored to ./analysis.out
+    model_out = "./analysis.out";
+    ASSERT_TRUE(PathExists(model_out));
+  } else {
+    model_out = FLAGS_infer_ditu_rnn_model;
+  }
 
   NativeConfig config;
   config.prog_file = model_out + "/__model__";
@@ -280,7 +285,7 @@ TEST(Analyzer, SupportIRPass) {
 
 TEST(Analyzer, DituRNN) {
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        1, false);
+                        1, false, false);
 }
 
 }  // namespace analysis

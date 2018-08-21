@@ -54,9 +54,14 @@ class MulOp : public framework::OperatorWithKernel {
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
+    if (ctx->Outputs("Out").front() == "fc_1.tmp_0") {
+        LOG(INFO) << "MUL (" << ctx->Inputs("X").front() << ", " << ctx->Inputs("Y").front() << ") -> "
+                  << ctx->Outputs("Out").front();
+    }
+
     PADDLE_ENFORCE_EQ(
         x_mat_dims[1], y_mat_dims[0],
-        "First matrix's width must be equal with second matrix's height.");
+        "First matrix's width must be equal with second matrix's height. %s, %s");
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
