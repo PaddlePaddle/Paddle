@@ -34,14 +34,15 @@ class Node {
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
-        var_desc_(var_desc),
+        var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
         type_(Type::kVariable) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
-        op_desc_(op_desc),
+        op_desc_(new OpDesc(*op_desc)),  // TODO(panyx0718) the pointer in the
+                                         // original OpDesc might go out.
         type_(Type::kOperation) {}
 
   Type NodeType() const { return type_; }
@@ -50,12 +51,12 @@ class Node {
 
   VarDesc* Var() {
     PADDLE_ENFORCE(type_ == Type::kVariable);
-    return var_desc_;
+    return var_desc_.get();
   }
 
   OpDesc* Op() {
-    PADDLE_ENFORCE(type_ == Type::kOperation);
-    return op_desc_;
+    PADDLE_ENFORCE(IsOp());
+    return op_desc_.get();
   }
 
   bool IsOp() const { return type_ == Type::kOperation; }
@@ -66,8 +67,8 @@ class Node {
 
  protected:
   const std::string name_;
-  VarDesc* var_desc_;
-  OpDesc* op_desc_;
+  std::unique_ptr<VarDesc> var_desc_;
+  std::unique_ptr<OpDesc> op_desc_;
   Type type_;
 
  private:
