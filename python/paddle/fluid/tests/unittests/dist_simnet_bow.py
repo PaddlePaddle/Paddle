@@ -32,7 +32,7 @@ from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "float32"
-DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
+DATA_URL = 'http://paddle-dist-ce-data.cdn.bcebos.com/train.1000'
 DATA_MD5 = '4cc060b0a0939a343fc9242aa1ee2e4e'
 
 # For Net
