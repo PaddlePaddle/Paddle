@@ -136,14 +136,6 @@ class Graph {
     return ret;
   }
 
-  // This method takes ownership of `node`.
-  ir::Node *AddNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
-    nodes_[node].reset(node);
-    node_set_.insert(node);
-    return node;
-  }
-
   void RemoveNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
     node_set_.erase(node);
@@ -153,6 +145,14 @@ class Graph {
   const ProgramDesc &program() const { return program_; }
 
  private:
+  // This method takes ownership of `node`.
+  ir::Node *AddNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
+    nodes_[node].reset(node);
+    node_set_.insert(node);
+    return node;
+  }
+
   // NOTE: program_ shouldn't be exposed to user.
   const ProgramDesc &program_;
   std::map<std::string, boost::any> attrs_;

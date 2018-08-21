@@ -26,7 +26,7 @@ void SetOp(ProgramDesc* prog, const std::string& type,
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   op->SetInput("Xs", inputs);
-  op->SetOutput("Xs", outputs);
+  op->SetOutput("Ys", outputs);
 }
 
 // a->OP0->b
