@@ -85,28 +85,43 @@ class DropoutKernel : public framework::OpKernel<T> {
                                 static_cast<double>(dropout_prob));
 
       uint64_t uint16_prob =
-          static_cast<uint64_t>(static_cast<uint16_t>(UINT16_MAX) *
+          static_cast<uint64_t>(static_cast<uint64_t>(UINT16_MAX) *
                                 static_cast<double>(dropout_prob));
+      uint64_t uint8_prob = static_cast<uint64_t>(
+          static_cast<uint64_t>(UINT8_MAX) * static_cast<double>(dropout_prob));
 
-      if (uint32_prob >= (1UL << 32)) {
+      if (uint32_prob >=
+          (1UL << 32)) {  // speical case. Dropout rate = 1. always fill zero.
         // Fill Zero
         platform::ForRange<DeviceContext> for_range(
             context.template device_context<DeviceContext>(), x->numel());
         FillZeroYAndMask<T> fill_functor(mask_data, y_data);
         for_range(fill_functor);
-      } else {
-        constexpr double epsilon = 1e-3;
-        auto uint16_err = std::abs(
-            (static_cast<double>(uint16_prob) / UINT16_MAX) - dropout_prob);
-        if (uint16_err < epsilon) {
-          VLOG(10) << "Fast dropout use uint16_t";
-          DropoutImpl<uint16_t>(context, x, x_data, y_data, mask_data, seed,
-                                uint16_prob);
-        } else {
-          DropoutImpl<uint32_t>(context, x, x_data, y_data, mask_data, seed,
-                                uint32_prob);
-        }
+        return;
       }
+
+      constexpr double epsilon = 1e-3;
+      auto uint8_err = std::abs((static_cast<double>(uint8_prob) / UINT8_MAX) -
+                                dropout_prob);
+      if (uint8_err < epsilon) {
+        VLOG(10) << "Fast dropout use uint8_t";
+        DropoutImpl<uint8_t>(context, x, x_data, y_data, mask_data, seed,
+                             uint8_prob);
+        return;
+      }
+
+      auto uint16_err = std::abs(
+          (static_cast<double>(uint16_prob) / UINT16_MAX) - dropout_prob);
+      if (uint16_err < epsilon) {
+        VLOG(10) << "Fast dropout use uint16_t";
+        DropoutImpl<uint16_t>(context, x, x_data, y_data, mask_data, seed,
+                              uint16_prob);
+        return;
+      }
+      // Fall back to uint32_t if the err is always larger than epsilon.
+      DropoutImpl<uint32_t>(context, x, x_data, y_data, mask_data, seed,
+                            uint32_prob);
+
     } else {
       auto &place =
           *context.template device_context<DeviceContext>().eigen_device();

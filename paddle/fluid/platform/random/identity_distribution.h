@@ -32,8 +32,6 @@ class IdentityDistribution<uint32_t> {
   constexpr static ResultType Max = UINT32_MAX;
   constexpr static ResultType Min = 0;
 
-  IdentityDistribution() : pos_{result_.size} {}
-
   inline HOSTDEVICE uint32_t operator()(Philox32x4 &eng) {  // NOLINT
     if (pos_ == result_.size) {
       // regenerate from engine
@@ -80,6 +78,37 @@ class IdentityDistribution<uint16_t> {
   Philox32x4::ResultType result_;
   size_t pos_{result_.size};
   bool high_{false};
+};
+
+template <>
+class IdentityDistribution<uint8_t> {
+ public:
+  using ResultType = uint16_t;
+  constexpr static size_t N = 16;
+  constexpr static ResultType Max = UINT8_MAX;
+  constexpr static ResultType Min = 0;
+
+  inline HOSTDEVICE uint16_t operator()(Philox32x4 &eng) {  // NOLINT
+    if (pos_ == result_.size) {
+      pos_ = 0;
+      shift_ = 0;
+      result_ = eng();
+    }
+
+    uint32_t tmp = result_[pos_];
+    uint8_t result = static_cast<uint8_t>((tmp >> shift_) | 0xFF);
+    shift_ += 8;
+    if (shift_ == 32) {
+      shift_ = 0;
+      ++pos_;
+    }
+    return result;
+  }
+
+ private:
+  Philox32x4::ResultType result_;
+  size_t pos_{result_.size};
+  size_t shift_{0};
 };
 
 }  // namespace random
