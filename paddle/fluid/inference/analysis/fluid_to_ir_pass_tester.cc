@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
 
 #include <gtest/gtest.h>
 #include "paddle/fluid/inference/analysis/ut_helper.h"
@@ -21,18 +21,17 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST(FluidToDataFlowGraphPass, Test) {
-  FluidToDataFlowGraphPass pass;
+TEST(FluidToIrPass, Test) {
+  FluidToIrPass pass;
   Argument argument(FLAGS_inference_model_dir);
   pass.Initialize(&argument);
   pass.Run(argument.main_dfg.get());
-  // Analysis is sensitive to ProgramDesc, careful to change the original model.
-  ASSERT_EQ(argument.main_dfg->nodes.size(), 38UL);
-  pass.Finalize();
-  ASSERT_FALSE(argument.main_dfg->DotString().empty());
-  EXPECT_FALSE(argument.main_dfg->inputs().empty());
 }
 
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
+
+USE_PASS(fc_fuse_pass);
+USE_PASS(graph_viz_pass);
+USE_PASS(infer_clean_graph_pass);
