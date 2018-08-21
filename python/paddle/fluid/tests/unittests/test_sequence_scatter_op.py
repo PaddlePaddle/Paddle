@@ -22,17 +22,11 @@ class TestSequenceScatterOp(OpTest):
         self.op_type = "sequence_scatter"
 
         X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float32')
-            # np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            #                [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-            #                [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]).astype('float32')
         Ids_data = np.array([[0], [1], [2],
                              [5], [4], [3], [2], [1],
                              [3], [2], [5], [4]]).astype('int32')
         Ids_lod = [[3, 5, 4]]
         Updates_data = np.random.uniform(0.1, 1.0, [12, 1]).astype('float32')
-        # Updates_data = np.array([[0.3], [0.3], [0.4],
-        #                          [0.1], [0.2], [0.3], [0.4], [0.0],
-        #                          [0.05], [0.15], [0.25], [0.35]]).astype('float32')
         Updates_lod = Ids_lod
 
         Out_data = np.copy(X_data)
@@ -40,7 +34,8 @@ class TestSequenceScatterOp(OpTest):
         Out_data[1][Ids_data[3:8]] += Updates_data[3:8]
         Out_data[2][Ids_data[8:]] += Updates_data[8:]
 
-        self.inputs = {'X': X_data, 'Ids': (Ids_data, Ids_lod), 'Updates': (Updates_data, Updates_lod)}
+        self.inputs = {'X': X_data, 'Ids': (Ids_data, Ids_lod),
+                       'Updates': (Updates_data, Updates_lod)}
         self.outputs = {'Out': Out_data}
 
     def test_check_output(self):
