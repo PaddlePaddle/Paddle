@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
+
 #include <google/protobuf/text_format.h>
+#include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -257,7 +259,8 @@ const float ditu_rnn_target_data[] = {
 // Test with a really complicate model.
 void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
-                           bool use_analysis, bool activate_ir, int num_times=1) {
+                           bool use_analysis, bool activate_ir,
+                           int num_times = 1) {
   FLAGS_IA_enable_ir = activate_ir;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "./analysis.out";
@@ -303,7 +306,9 @@ void TestDituRNNPrediction(const std::string &model_path,
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
     float *data = static_cast<float *>(out.data.data());
-    for (int i = 0; i < std::min(sizeof(ditu_rnn_target_data)/sizeof(float), size); i++) {
+    for (int i = 0;
+         i < std::min(sizeof(ditu_rnn_target_data) / sizeof(float), size);
+         i++) {
       EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);
     }
   }
