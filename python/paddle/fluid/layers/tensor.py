@@ -27,7 +27,7 @@ __all__ = [
     'create_global_var',
     'cast',
     'concat',
-    'sequence_concat'
+    'sequence_concat',
     'sums',
     'assign',
     'fill_constant_batch_size_like',

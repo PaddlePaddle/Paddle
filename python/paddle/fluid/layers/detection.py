@@ -1256,21 +1256,26 @@ def generate_proposal_labels(
 
     helper = LayerHelper('generate_proposal_labels', **locals())
 
-    boxes = tensor.sequence_concat(input=[gt_boxes, rpn_rois], axis=0, level=0)
-
-    iou = iou_similarity(x=boxes, y=gt_boxes)
-
-    fg_index = helper.create_tmp_variable(dtype=gt_classes.dtype)
-    bg_index = helper.create_tmp_variable(dtype=gt_classes.dtype)
-    gt_index = helper.create_tmp_variable(dtype=gt_classes.dtype)
+    rois = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    labels_int32 = helper.create_tmp_variable(dtype=gt_classes.dtype)
+    bbox_targets = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    bbox_inside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    bbox_outside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
 
     helper.append_op(
         type="generate_proposal_labels",
-        inputs={'DistMat': iou},
+        inputs={
+            'RpnRois': rpns_rois,
+            'GtClasses': gt_classes,
+            'GtBoxes': gt_boxes,
+            'ImScales': im_scales
+        },
         outputs={
-            'FGIndex': fg_index,
-            'BGIndex': bg_index,
-            'GtIndex': gt_index
+            'Rois': rois,
+            'LabelsInt32': labels_int32,
+            'BboxTargets': bbox_targets,
+            'BboxInsideWeights': bbox_inside_weights,
+            'BboxOutsideWeights': bbox_outside_weights
         },
         attrs={
             'batch_size_per_im': batch_size_per_im,
@@ -1278,24 +1283,14 @@ def generate_proposal_labels(
             'fg_thresh': fg_thresh,
             'bg_thresh_hi': bg_thresh_hi,
             'bg_thresh_lo': bg_thresh_lo,
-            'bbox_reg_weights': bbox_reg_weights
+            'bbox_reg_weights': bbox_reg_weights,
+            'class_nums': class_nums
         })
 
-    fg_index.stop_gradient = True
-    bg_index.stop_gradient = True
-    gt_index.stop_gradient = True
-
-    fg_index = nn.reshape(x=fg_index, shape=(-1, 1))
-    bg_index = nn.reshape(x=bg_index, shape=(-1, 1))
-    gt_index = nn.reshape(x=gt_index, shape=(-1, 1))
-
-    fg_boxes = nn.gather(boxes, fg_index)
-    bg_boxes = nn.gather(boxes, bg_index)
-    gt_boxes = nn.gather(gt_boxes, gt_index)
-
-    labels_int32 = tensor.fill_constant(
-        shape=[batch_size_per_im], value=0, dtype='int32')
-    fg_int32 = nn.gather(gt_classes, gt_index)
-    labels_int32 = ops.scatter(x=label_int32, ids=fg_index, updates=fg_int32)
+    rois.stop_gradient = True
+    labels_int32.stop_gradient = True
+    bbox_targets.stop_gradient = True
+    bbox_inside_weights.stop_gradient = True
+    bbox_outside_weights.stop_gradient = True
 
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights

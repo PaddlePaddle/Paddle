@@ -9,9 +9,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <math.h>
+#include <algorithm>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/concat.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -21,36 +26,63 @@ using LoDTensor = framework::LoDTensor;
 
 struct DyDataTypeVisitor {
   const platform::Place place_;
-  LoDTensor *in_;
-  DyDataTypeVisitor(const platform::Place &place, LoDTensor *in)
+  LoDTensor* in_;
+  DyDataTypeVisitor(const platform::Place& place, LoDTensor* in)
       : place_(place), in_(in) {}
 
   template <typename T>
-  T *operator()() {
-    auto *p = in_->mutable_data<T>(place_);
+  T* operator()() {
+    auto* p = in_->mutable_data<T>(place_);
     return p;
   }
 };
 
-struct AppendProposalsFunctor {
-  LoDTensor *out_;
+struct AppendRoisFunctor {
+  LoDTensor* out_;
   int64_t offset_;
-  Tensor *to_add_;
+  Tensor* to_add_;
 
-  AppendProposalsFunctor(LoDTensor *out, int64_t offset, Tensor *to_add)
+  AppendRoisFunctor(LoDTensor* out, int64_t offset, Tensor* to_add)
       : out_(out), offset_(offset), to_add_(to_add) {}
 
   template <typename T>
   void operator()() const {
-    auto *out_data = out_->data<T>();
-    auto *to_add_data = to_add_->data<T>();
+    auto* out_data = out_->data<T>();
+    auto* to_add_data = to_add_->data<T>();
     memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
   }
 };
 
-class GenerateProposalsOpInferShape : public framework::InferShapeBase {
+void PrintTensor(Tensor t) {
+  auto et = framework::EigenTensor<float, 2>::From(t);
+  int r = t.dims()[0];
+  int c = t.dims()[1];
+  for (int i = 0; i < r; ++i) {
+    for (int j = 0; j < c; ++j) {
+      std::cout << et(i, j) << ", ";
+    }
+    std::cout << std::endl;
+  }
+  std::cout << std::endl;
+}
+
+void PrintVector(Tensor v) {
+  auto et = framework::EigenTensor<int, 1>::From(v);
+  int r = v.dims()[0];
+  for (int i = 0; i < r; ++i) {
+    std::cout << et(i) << ", ";
+  }
+  std::cout << std::endl;
+  std::cout << std::endl;
+}
+
+void PrintFlag(char c) { std::cout << c << c << c << std::endl; }
+
+class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("RpnRois"),
                    "Input(RpnRois) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput("GtClasses"),
@@ -78,353 +110,536 @@ class GenerateProposalsOpInferShape : public framework::InferShapeBase {
     auto rpn_rois_dims = ctx->GetInputDim("RpnRois");
     auto gt_classes_dims = ctx->GetInputDim("GtClasses");
     auto gt_boxes_dims = ctx->GetInputDim("GtBoxes");
-    auto im_info_dims = ctx->GetInputDim("ImInfo");
+    auto im_scales_dims = ctx->GetInputDim("ImScales");
 
-    // TODO(BUXINGYUAN)
-    // INPUT DIM CHECK
+    PADDLE_ENFORCE_EQ(rpn_rois_dims.size(), 2,
+                      "The rank of Input(RpnRois) must be 2.");
+    PADDLE_ENFORCE_EQ(gt_classes_dims.size(), 1,
+                      "The rank of Input(GtClasses) must be 1.");
+    PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
+                      "The rank of Input(GtBoxes) must be 2.");
+    PADDLE_ENFORCE_EQ(im_scales_dims.size(), 1,
+                      "The rank of Input(ImScales) must be 1.");
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
-void ConcatAxis0(framework::Scope *scope, const platform::Place &place,
-                 const Tensor &in_tenosr_a, const Tensor &in_tensor_b,
-                 Tensor *out_tensor) {
-  std::string in_name_a, in_name_b, out_name;
-  scope->Var(&in_name_a)->GetMutable<LoDTensor>()->ShareDataWith(in_tensor_a);
-  scope->Var(&in_name_b)->GetMutable<LoDTensor>()->ShareDataWith(in_tensor_b);
-  scope->Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(out_tensor);
+template <typename T>
+void Concat(const Tensor& in_tensor_a, const Tensor& in_tensor_b,
+            Tensor* out_tensor) {
+  int axis = 0;
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(platform::CPUPlace());
 
+  size_t output_offset = 0;
+  auto in_stride_a = framework::stride_numel(in_tensor_a.dims());
+  auto in_stride_b = framework::stride_numel(in_tensor_b.dims());
+  auto out_stride = framework::stride_numel(out_tensor->dims());
+  StridedNumelCopyWithAxis<T>(
+      dev_ctx, axis, out_tensor->data<T>() + output_offset, out_stride,
+      in_tensor_a.data<T>(), in_stride_a, in_stride_a[axis]);
+  output_offset += in_stride_a[axis];
+  StridedNumelCopyWithAxis<T>(
+      dev_ctx, axis, out_tensor->data<T>() + output_offset, out_stride,
+      in_tensor_b.data<T>(), in_stride_b, in_stride_b[axis]);
+}
+
+template <typename T>
+void FillConstant(Tensor* tensor, T value) {
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  auto& dev_ctx = *pool.Get(platform::CPUPlace());
+  math::set_constant(dev_ctx, tensor, value);
+}
+
+template <typename T>
+void Gather(const Tensor& in_tensor, const Tensor& index, Tensor* out_tensor) {
+  auto in_tensor_data = in_tensor.data<T>();
+  auto index_data = index.data<int>();
+  auto out_tensor_data = out_tensor->data<T>();
+  int data_num = index.dims()[0];
+  int stride = out_tensor->numel() / data_num;
+  for (int64_t i = 0; i < data_num; ++i) {
+    int idx = index_data[i];
+    std::copy(in_tensor_data + (idx * stride),
+              in_tensor_data + ((idx + 1) * stride),
+              out_tensor_data + (i * stride));
+  }
+}
+
+template <typename T>
+void BboxOverlaps(const Tensor& r_boxes, const Tensor& c_boxes,
+                  Tensor* overlaps) {
+  auto r_boxes_et = framework::EigenTensor<T, 2>::From(r_boxes);
+  auto c_boxes_et = framework::EigenTensor<T, 2>::From(c_boxes);
+  auto overlaps_et = framework::EigenTensor<T, 2>::From(*overlaps);
+  int r_num = r_boxes.dims()[0];
+  int c_num = c_boxes.dims()[0];
+  auto zero = static_cast<T>(0.0);
+  T r_box_area, c_box_area, x_min, y_min, x_max, y_max, inter_w, inter_h,
+      inter_area;
+  for (int i = 0; i < r_num; ++i) {
+    r_box_area = (r_boxes_et(i, 2) - r_boxes_et(i, 0) + 1) *
+                 (r_boxes_et(i, 3) - r_boxes_et(i, 1) + 1);
+    for (int j = 0; j < c_num; ++j) {
+      c_box_area = (c_boxes_et(j, 2) - c_boxes_et(j, 0) + 1) *
+                   (c_boxes_et(j, 3) - c_boxes_et(j, 1) + 1);
+      x_min = std::max(r_boxes_et(i, 0), c_boxes_et(j, 0));
+      y_min = std::max(r_boxes_et(i, 1), c_boxes_et(j, 1));
+      x_max = std::min(r_boxes_et(i, 2), c_boxes_et(j, 2));
+      y_max = std::min(r_boxes_et(i, 3), c_boxes_et(j, 3));
+      inter_w = std::max(x_max - x_min + 1, zero);
+      inter_h = std::max(y_max - y_min + 1, zero);
+      inter_area = inter_w * inter_h;
+      overlaps_et(i, j) = inter_area / (r_box_area + c_box_area - inter_area);
+    }
+  }
+}
+
+template <typename T>
+void BoxToDelta(int box_num, const Tensor& ex_boxes, const Tensor& gt_boxes,
+                const std::vector<float>& weights, Tensor* box_delta) {
+  auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
+  auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
+  auto box_delta_et = framework::EigenTensor<T, 2>::From(*box_delta);
+  T ex_w, ex_h, ex_ctr_x, ex_ctr_y, gt_w, gt_h, gt_ctr_x, gt_ctr_y;
+  for (int64_t i = 0; i < box_num; ++i) {
+    ex_w = ex_boxes_et(i, 2) - ex_boxes_et(i, 0) + 1;
+    ex_h = ex_boxes_et(i, 3) - ex_boxes_et(i, 1) + 1;
+    ex_ctr_x = ex_boxes_et(i, 0) + 0.5 * ex_w;
+    ex_ctr_y = ex_boxes_et(i, 1) + 0.5 * ex_h;
+
+    gt_w = gt_boxes_et(i, 2) - gt_boxes_et(i, 0) + 1;
+    gt_h = gt_boxes_et(i, 3) - gt_boxes_et(i, 1) + 1;
+    gt_ctr_x = gt_boxes_et(i, 0) + 0.5 * gt_w;
+    gt_ctr_y = gt_boxes_et(i, 1) + 0.5 * gt_h;
+
+    box_delta_et(i, 0) = (gt_ctr_x - ex_ctr_x) / ex_w / weights[0];
+    box_delta_et(i, 1) = (gt_ctr_y - ex_ctr_y) / ex_h / weights[1];
+    box_delta_et(i, 2) = log(gt_w / ex_w) / ex_w / weights[2];
+    box_delta_et(i, 3) = log(gt_h / ex_h) / ex_h / weights[3];
+  }
+}
+
+template <typename T>
+std::vector<std::vector<int>> SampleFgBgGt(
+    const framework::ExecutionContext& context, Tensor* iou,
+    const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
+    const float bg_thresh_hi, const float bg_thresh_lo,
+    std::minstd_rand engine) {
+  std::vector<int> fg_inds;
+  std::vector<int> bg_inds;
+  std::vector<int> gt_inds;
+  T* proposal_to_gt_overlaps = iou->mutable_data<T>(context.GetPlace());
+  int64_t row = iou->dims()[0];
+  int64_t col = iou->dims()[1];
+
+  // Follow the Faster RCNN's implementation
+  for (int64_t i = 0; i < row; ++i) {
+    const T* v = proposal_to_gt_overlaps + i * col;
+    T max_overlap = *std::max_element(v, v + col);
+    if (max_overlap > fg_thresh) {
+      for (int64_t j = 0; j < col; ++j) {
+        T val = proposal_to_gt_overlaps[i * col + j];
+        if (val == max_overlap) {
+          fg_inds.emplace_back(i);
+          gt_inds.emplace_back(j);
+        }
+      }
+    } else {
+      if ((max_overlap >= bg_thresh_lo) && (max_overlap < bg_thresh_hi)) {
+        bg_inds.emplace_back(i);
+      }
+    }
+  }
+
+  // Reservoir Sampling
+  int fg_rois_per_im = std::floor(batch_size_per_im * fg_fraction);
+  int fg_rois_this_image = fg_inds.size();
+  int fg_rois_per_this_image = std::min(fg_rois_per_im, fg_rois_this_image);
+  std::uniform_real_distribution<float> uniform(0, 1);
+  const int64_t fg_size = static_cast<int64_t>(fg_inds.size());
+  if (fg_size > fg_rois_per_this_image) {
+    for (int64_t i = fg_rois_per_this_image; i < fg_size; ++i) {
+      int rng_ind = std::floor(uniform(engine) * i);
+      if (rng_ind < fg_rois_per_this_image) {
+        std::iter_swap(fg_inds.begin() + rng_ind, fg_inds.begin() + i);
+        std::iter_swap(gt_inds.begin() + rng_ind, gt_inds.begin() + i);
+      }
+    }
+  }
+  std::vector<int> new_fg_inds(fg_inds.begin(),
+                               fg_inds.begin() + fg_rois_per_this_image);
+  std::vector<int> new_gt_inds(gt_inds.begin(),
+                               gt_inds.begin() + fg_rois_per_this_image);
+
+  int bg_rois_per_image = batch_size_per_im - fg_rois_per_this_image;
+  int bg_rois_this_image = bg_inds.size();
+  int bg_rois_per_this_image = std::min(bg_rois_per_image, bg_rois_this_image);
+  const int64_t bg_size = static_cast<int64_t>(bg_inds.size());
+  if (bg_size > bg_rois_per_this_image) {
+    for (int64_t i = bg_rois_per_this_image; i < bg_size; ++i) {
+      int rng_ind = std::floor(uniform(engine) * i);
+      if (rng_ind < fg_rois_per_this_image)
+        std::iter_swap(bg_inds.begin() + rng_ind, bg_inds.begin() + i);
+    }
+  }
+  std::vector<int> new_bg_inds(bg_inds.begin(),
+                               bg_inds.begin() + bg_rois_per_this_image);
+  std::vector<std::vector<int>> res;
+  res.emplace_back(new_fg_inds);
+  res.emplace_back(new_bg_inds);
+  res.emplace_back(new_gt_inds);
+  return res;
+}
+
+template <typename T>
+void GatherBoxesLabels(const framework::ExecutionContext& context,
+                       const Tensor& boxes, const Tensor& gt_boxes,
+                       const Tensor& gt_classes,
+                       const std::vector<int>& fg_inds,
+                       const std::vector<int>& bg_inds,
+                       const std::vector<int>& gt_inds, Tensor* sampled_boxes,
+                       Tensor* sampled_labels, Tensor* sampled_gts) {
+  int fg_num = fg_inds.size();
+  int bg_num = bg_inds.size();
+  int gt_num = fg_num + bg_num;
+  Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
+  fg_inds_t.Resize({fg_num});
+  bg_inds_t.Resize({bg_num});
+  gt_box_inds_t.Resize({gt_num});
+  gt_label_inds_t.Resize({fg_num});
+  int* fg_inds_data = fg_inds_t.mutable_data<int>(context.GetPlace());
+  int* bg_inds_data = bg_inds_t.mutable_data<int>(context.GetPlace());
+  int* gt_box_inds_data = gt_box_inds_t.mutable_data<int>(context.GetPlace());
+  int* gt_label_inds_data =
+      gt_label_inds_t.mutable_data<int>(context.GetPlace());
+  std::copy(fg_inds.begin(), fg_inds.end(), fg_inds_data);
+  std::copy(bg_inds.begin(), bg_inds.end(), bg_inds_data);
+  std::copy(gt_inds.begin(), gt_inds.end(), gt_box_inds_data);
+  std::copy(gt_inds.begin(), gt_inds.end(), gt_label_inds_data);
+
+  Tensor fg_boxes;
+  fg_boxes.Resize({fg_num, 4});
+  fg_boxes.mutable_data(context.GetPlace(), boxes.type());
+  Gather<T>(boxes, fg_inds_t, &fg_boxes);
+  Tensor bg_boxes;
+  bg_boxes.Resize({bg_num, 4});
+  bg_boxes.mutable_data(context.GetPlace(), boxes.type());
+  Gather<T>(boxes, bg_inds_t, &bg_boxes);
+  Concat<T>(fg_boxes, bg_boxes, sampled_boxes);
+  Gather<T>(gt_boxes, gt_box_inds_t, sampled_gts);
+  Tensor fg_labels;
+  fg_labels.Resize({fg_num});
+  fg_labels.mutable_data(context.GetPlace(), gt_classes.type());
+  Gather<int>(gt_classes, gt_label_inds_t, &fg_labels);
+  Tensor bg_labels;
+  bg_labels.Resize({bg_num});
+  bg_labels.mutable_data(context.GetPlace(), gt_classes.type());
   framework::AttributeMap attrs;
-  attrs["axis"] = 0;
-  auto concat_op = framework::OpRegistry::CreateOp(
-      "concat", {{"X", {in_name_a, in_name_b}}}, {{"Out", {out_name}}}, attrs);
-  concat_op->Run(*scope, place);
-  out_tensor->Resize(scope->FindVar(out_name)->GetMutable<LoDTensor>()->dims());
+  FillConstant(&bg_labels, 0);
+  Concat<int>(fg_labels, bg_labels, sampled_labels);
 }
 
-void ScaleMul(framework::Scope *scope, const platform::Place &place,
-              const Tensor &in_tensor, Tensor *out_tensor,
-              const framework::AttributeMap &attrs) {
-  std::string in_name, out_name;
-  scope->Var(&in_name)->GetMutable<LoDTensor>()->ShareDataWith(in_tensor);
-  scope->Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(out_tensor);
-
-  auto scalemul_op = framework::OpRegistry::CreateOp(
-      "scale", {{"X", {in_name}}}, {{"Out", {out_name}}}, attrs);
-  scalemul_op->Run(*scope, place);
-
-  out_tensor->Resize(scope->FindVar(out_name)->GetMutable<LoDTensor>()->dims());
-}
-
-void Transpose(framework::Scope *scope, const platform::Place &place,
-               const Tensor &in_tensor, Tensor *out_tensor,
-               const framework::AttributeMap &attrs) {
-  std::string in_name, out_name;
-  scope->Var(&in_name)->GetMutable<LoDTensor>()->ShareDataWith(in_tensor);
-  scope->Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(*out_tensor);
-
-  auto transpose_op = framework::OpRegistry::CreateOp(
-      "transpose", {{"X", {in_name}}}, {{"Out", {out_name}}}, attrs);
-  transpose_op->Run(*scope, place);
-
-  out_tensor->Resize(scope->FindVar(out_name)->GetMutable<LoDTensor>()->dims());
-}
-
-void Gather(framework::Scope *scope, const platform::Place &place,
-            const Tensor &in, const Tensor &index, Tensor *out) {
-  std::string in_name, index_name, out_name;
-  scope->Var(&in_name)->GetMutable<LoDTensor>()->ShareDataWith(in);
-  scope->Var(&index_name)->GetMutable<LoDTensor>()->ShareDataWith(index);
-  scope->Var(&out_name)->GetMutable<LoDTensor>()->ShareDataWith(*out);
-
-  framework::AttributeMap attrs;
-  auto gather_op = framework::OpRegistry::CreateOp(
-      "gather", {{"X", {in_name}}, {"Index", {index_name}}},
-      {{"Out", {out_name}}}, attrs);
-  gather_op->Run(*scope, place);
-
-  out->Resize(scope->FindVar(out_name)->GetMutable<LoDTensor>()->dims());
-}
-
-Tensor BoxCoder(framework::Scope *scope, const platform::Place &place,
-                Tensor *all_anchors, Tensor *bbox_deltas,
-                const Tensor &variances, std::string code_type,
-                bool box_normalized) {
-  std::vector<int64_t> bbox_deltas_dims =
-      framework::vectorize(bbox_deltas->dims());
-  bbox_deltas_dims.emplace(bbox_deltas_dims.begin(), 1);
-  framework::DDim bbox_deltas_shape = framework::make_ddim(bbox_deltas_dims);
-  bbox_deltas->Resize(bbox_deltas_shape);
-
-  Tensor proposals;
-  proposals.Resize(all_anchors->dims());
-  proposals.mutable_data(place, all_anchors->type());
-
-  Tensor variances_swap = variances;
-  variances_swap.Resize({variances_swap.numel() / 4, 4});
-
-  framework::AttributeMap attrs;
-  attrs["code_type"] = code_type;
-  attrs["box_normalized"] = box_normalized;
-
-  std::string all_anchors_name, bbox_deltas_name, variances_name,
-      proposals_name;
-  scope->Var(&all_anchors_name)
-      ->GetMutable<LoDTensor>()
-      ->ShareDataWith(*all_anchors);
-  scope->Var(&bbox_deltas_name)
-      ->GetMutable<LoDTensor>()
-      ->ShareDataWith(*bbox_deltas);
-  scope->Var(&variances_name)
-      ->GetMutable<LoDTensor>()
-      ->ShareDataWith(variances_swap);
-  scope->Var(&proposals_name)
-      ->GetMutable<LoDTensor>()
-      ->ShareDataWith(proposals);
-
-  auto box_coder_op = framework::OpRegistry::CreateOp(
-      "box_coder", {{"PriorBox", {all_anchors_name}},
-                    {"PriorBoxVar", {variances_name}},
-                    {"TargetBox", {bbox_deltas_name}}},
-      {{"OutputBox", {proposals_name}}}, attrs);
-  box_coder_op->Run(*scope, place);
-
-  bbox_deltas_shape =
-      framework::slice_ddim(bbox_deltas->dims(), 1, bbox_deltas->dims().size());
-  bbox_deltas->Resize(bbox_deltas_shape);
-
-  return proposals;
-}
-
+template <typename T>
 std::vector<Tensor> SampleRoisForOneImage(
-    framework::Scope *scope, const paltform::Place &place,
-    Tensor *rpn_rois_slice, Tensor *gt_classes_slice, Tensor *gt_boxes_slice,
-    float *im_scale, int batch_size_per_im, float fg_fraction, float fg_thresh,
-    float bg_thresh_hi, float bg_thresh_lo, std::vector<float> bbox_reg_weights,
-    int class_nums) {
-  Tensor rpn_rois, rpn_rois_swap;
-  Tensor gt_classes, gt_classes_swap;
-  Tensor gt_boxes, gt_boxes_swap;
-  Tensor im_scalse, im_scalse_swap;
-
-  framework::DDim rpn_rois_shape = framework::slice_ddim(
-      rpn_rois_slice->dims(), 1, rpn_rois_slice->dims().size());
-  framework::DDim gt_classes_shape = framework::slice_ddim(
-      gt_classes_slice->dims(), 1, gt_classes_slice->dims().size());
-  framework::DDim gt_boxes_shape = framework::slice_ddim(
-      gt_boxes_slice->dims(), 1, gt_boxes_slice->dims().size());
-
-  rpn_rois = *rpn_rois_slice;
-  gt_classes = *gt_classes_slice;
-  gt_boxes = *gt_boxes_slice;
-  rpn_rois.Resize(rpn_rois_shape);
-  gt_classes.Resize(gt_classes_shape);
-  gt_boxes.Resize(gt_boxes_shape);
-
-  bbox_deltas_swap.Resize(bbox_deltas_shape);
-  scores_swap.Resize(scores_shape);
-  bbox_deltas_swap.mutable_data(place, bbox_deltas.type());
-  scores_swap.mutable_data(place, scores.type());
-
+    const framework::ExecutionContext& context, Tensor* rpn_rois,
+    Tensor* gt_classes, Tensor* gt_boxes, Tensor* im_scale,
+    const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
+    const float bg_thresh_hi, const float bg_thresh_lo,
+    const std::vector<float> bbox_reg_weights, const int class_nums,
+    std::minstd_rand engine) {
   // Roidb
-  framework::AttributeMap scale_attrs;
-  scale_attrs["scale"] = 1 / im_scale;
-  ScaleMul(scope, place, rpn_rois, &rpn_rois_swap, scale_attrs);
+  auto rpn_rois_et = framework::EigenTensor<T, 2>::From(*rpn_rois);
+  auto im_scale_data = im_scale->data<T>()[0];
+  rpn_rois_et = rpn_rois_et / (im_scale_data);
+
   Tensor boxes;
-  ConcatAxis0(scope, place, gt_boxes, rpn_rois, &boxes);
+  int proposals_num = (gt_boxes->numel() / 4) + (rpn_rois->numel() / 4);
+  boxes.Resize({proposals_num, 4});
+  boxes.mutable_data(context.GetPlace(), rpn_rois->type());
+  Concat<T>(*gt_boxes, *rpn_rois, &boxes);
 
-  // Transpose scores
-  Transpose(scope, place, scores, &scores_swap, trans_attrs);
+  // Overlaps
+  Tensor proposal_to_gt_overlaps;
+  proposal_to_gt_overlaps.Resize({proposals_num, gt_boxes->numel() / 4});
+  proposal_to_gt_overlaps.mutable_data(context.GetPlace(), rpn_rois->type());
+  BboxOverlaps<T>(boxes, *gt_boxes, &proposal_to_gt_overlaps);
 
-  scores_swap.Resize({scores_swap.numel(), 1});
-  auto *scores_data = scores_swap.mutable_data<float>(place);
+  // Generate proposal index
+  std::vector<std::vector<int>> fg_bg_gt = SampleFgBgGt<T>(
+      context, &proposal_to_gt_overlaps, batch_size_per_im, fg_fraction,
+      fg_thresh, bg_thresh_hi, bg_thresh_lo, engine);
+  std::vector<int> fg_inds = fg_bg_gt[0];
+  std::vector<int> bg_inds = fg_bg_gt[1];
+  std::vector<int> gt_inds = fg_bg_gt[2];
 
-  // Sort index
-  Tensor index_t;
-  index_t.Resize({scores_swap.numel()});
-  int *index = index_t.mutable_data<int>(place);
-  for (int64_t i = 0; i < scores.numel(); ++i) {
-    index[i] = i;
+  // Gather boxes and labels
+  Tensor sampled_boxes;
+  Tensor sampled_labels;
+  Tensor sampled_gts;
+  int boxes_num = fg_inds.size() + bg_inds.size();
+  sampled_boxes.Resize({boxes_num, 4});
+  sampled_labels.Resize({boxes_num});
+  sampled_gts.Resize({boxes_num, 4});
+  sampled_boxes.mutable_data(context.GetPlace(), rpn_rois->type());
+  sampled_labels.mutable_data(context.GetPlace(), gt_classes->type());
+  sampled_gts.mutable_data(context.GetPlace(), rpn_rois->type());
+  GatherBoxesLabels<T>(context, boxes, *gt_boxes, *gt_classes, fg_inds, bg_inds,
+                       gt_inds, &sampled_boxes, &sampled_labels, &sampled_gts);
+
+  // Compute targets
+  Tensor bbox_targets_single;
+  bbox_targets_single.Resize({boxes_num, 4});
+  bbox_targets_single.mutable_data(context.GetPlace(), sampled_boxes.type());
+  BoxToDelta<T>(boxes_num, sampled_boxes, sampled_gts, bbox_reg_weights,
+                &bbox_targets_single);
+
+  // Scale rois
+  Tensor sampled_rois;
+  sampled_rois.Resize(sampled_boxes.dims());
+  sampled_rois.mutable_data(context.GetPlace(), sampled_boxes.type());
+  auto sampled_rois_et = framework::EigenTensor<T, 2>::From(sampled_rois);
+  auto sampled_boxes_et = framework::EigenTensor<T, 2>::From(sampled_boxes);
+  sampled_rois_et = sampled_boxes_et * im_scale_data;
+
+  // Expand box targets
+  Tensor bbox_targets, bbox_inside_weights, bbox_outside_weights;
+  bbox_targets.Resize({boxes_num, 4 * class_nums});
+  bbox_inside_weights.Resize({boxes_num, 4 * class_nums});
+  bbox_outside_weights.Resize({boxes_num, 4 * class_nums});
+  bbox_targets.mutable_data(context.GetPlace(), rpn_rois->type());
+  bbox_inside_weights.mutable_data(context.GetPlace(), rpn_rois->type());
+  bbox_outside_weights.mutable_data(context.GetPlace(), rpn_rois->type());
+  FillConstant<T>(&bbox_targets, 0.0);
+  FillConstant<T>(&bbox_inside_weights, 0.0);
+  FillConstant<T>(&bbox_outside_weights, 0.0);
+  auto bbox_targets_et = framework::EigenTensor<T, 2>::From(bbox_targets);
+  auto bbox_inside_weights_et =
+      framework::EigenTensor<T, 2>::From(bbox_inside_weights);
+  auto bbox_outside_weights_et =
+      framework::EigenTensor<T, 2>::From(bbox_outside_weights);
+  auto sampled_labels_et = framework::EigenTensor<int, 1>::From(sampled_labels);
+  auto bbox_targets_single_et =
+      framework::EigenTensor<T, 2>::From(bbox_targets_single);
+  for (int64_t i = 0; i < boxes_num; ++i) {
+    int label = sampled_labels_et(i);
+    if (label > 0) {
+      bbox_targets_et(i, 4 * label) = bbox_targets_single_et(4 * i);
+      bbox_targets_et(i, 4 * label + 1) = bbox_targets_single_et(4 * i + 1);
+      bbox_targets_et(i, 4 * label + 2) = bbox_targets_single_et(4 * i + 2);
+      bbox_targets_et(i, 4 * label + 3) = bbox_targets_single_et(4 * i + 3);
+      bbox_inside_weights_et(i, 4 * label) = 1;
+      bbox_inside_weights_et(i, 4 * label + 1) = 1;
+      bbox_inside_weights_et(i, 4 * label + 2) = 1;
+      bbox_inside_weights_et(i, 4 * label + 3) = 1;
+      bbox_outside_weights_et(i, 4 * label) = 1;
+      bbox_outside_weights_et(i, 4 * label + 1) = 1;
+      bbox_outside_weights_et(i, 4 * label + 2) = 1;
+      bbox_outside_weights_et(i, 4 * label + 3) = 1;
+    }
   }
-  std::function<bool(const int64_t &, const int64_t &)> compare = [scores_data](
-      const int64_t &i, const int64_t &j) {
-    return scores_data[i] > scores_data[j];
-  };
-  if (pre_nms_topN <= 0 || pre_nms_topN >= scores_swap.numel()) {
-    std::sort(index, index + scores.numel(), compare);
-  } else {
-    std::nth_element(index, index + pre_nms_topN, index + scores.numel(),
-                     compare);
-    index_t.Resize({pre_nms_topN});
-  }
-
-  Gather(scope, place, scores_swap, index_t, &scores);
-
-  bbox_deltas_swap.Resize({bbox_deltas_swap.numel() / 4, 4});
-  Gather(scope, place, bbox_deltas_swap, index_t, &bbox_deltas);
-
-  Tensor all_anchors, all_anchors_swap;
-  all_anchors_swap = anchors;
-  all_anchors_swap.Resize({all_anchors_swap.numel() / 4, 4});
-  all_anchors.Resize(all_anchors_swap.dims());
-  all_anchors.mutable_data(place, all_anchors_swap.type());
-
-  Gather(scope, place, all_anchors_swap, index_t, &all_anchors);
-
-  Tensor proposals = BoxCoder(scope, place, &all_anchors, &bbox_deltas,
-                              variances, "decode_center_size", false);
-
-  ClipTiledBoxes(place, &proposals, im_info_slice);
-
-  Tensor keep = FilterBoxes(place, &proposals, min_size, im_info_slice);
-
-  Tensor proposals_swap;
-  proposals_swap.Resize(proposals.dims());
-  proposals_swap.mutable_data(place, proposals.type());
-
-  Gather(scope, place, proposals, keep, &proposals_swap);
-  Gather(scope, place, scores, keep, &scores_swap);
-
-  std::cout << "proposals kept: " << std::endl;
-  for (int64_t i = 0; i < proposals_swap.numel(); ++i) {
-    std::cout << proposals_swap.data<float>()[i] << " ";
-  }
-  std::cout << std::endl;
-
-  std::cout << "scores kept: " << std::endl;
-  for (int64_t i = 0; i < scores_swap.numel(); ++i) {
-    std::cout << scores_swap.data<float>()[i] << " ";
-  }
-  std::cout << std::endl;
-
-  if (nms_thresh <= 0) {
-    return std::make_pair(proposals_swap, scores_swap);
-  }
-
-  return std::make_pair(proposals, scores);
+  std::vector<Tensor> res;
+  res.emplace_back(sampled_rois);
+  res.emplace_back(sampled_labels);
+  res.emplace_back(bbox_targets);
+  res.emplace_back(bbox_inside_weights);
+  res.emplace_back(bbox_outside_weights);
+  return res;
 }
 
-class GenerateProposalLabelsOp : public framework::OperatorBase {
+template <typename T>
+class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
  public:
-  using OperatorBase::OperatorBase;
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* rpn_rois = context.Input<LoDTensor>("RpnRois");
+    auto* gt_classes = context.Input<LoDTensor>("GtClasses");
+    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
+    auto* im_scales = context.Input<LoDTensor>("ImScales");
 
- private:
-  void RunImpl(const framework::Scope &scope,
-               const platform::Place &place) const override {
-    auto &rpn_rois = scope.FindVar(Input("RpnRois"))->Get<LoDTensor>();
-    auto &gt_classes = scope.FindVar(Input("GtClasses"))->Get<LoDTensor>();
-    auto &gt_boxes = scope.FindVar(Input("GtBoxes"))->Get<LoDTensor>();
-    auto &im_scales = scope.FindVar(Input("ImScales"))->Get<LoDTensor>();
+    auto* rois = context.Output<LoDTensor>("Rois");
+    auto* labels_int32 = context.Output<LoDTensor>("LabelsInt32");
+    auto* bbox_targets = context.Output<LoDTensor>("BboxTargets");
+    auto* bbox_inside_weights = context.Output<LoDTensor>("BboxInsideWeights");
+    auto* bbox_outside_weights =
+        context.Output<LoDTensor>("BboxOutsideWeights");
 
-    auto *rois = scope.FindVar(Output("Rois"))->GetMutable<LoDTensor>();
-    auto *label_int32 =
-        scope.FindVar(Output("LabelsInt32"))->GetMutable<LoDTensor>();
-    auto *bbox_targets =
-        scope.FindVar(Output("BboxTargets"))->GetMutable<LoDTensor>();
-    auto *bbox_inside_weights =
-        scope.FindVar(Output("BboxInsideWeights"))->GetMutable<LoDTensor>();
-    auto *bbox_outside_weights =
-        scope.FindVar(Output("BboxOutsideWeights"))->GetMutable<LoDTensor>();
-    rois->Resize(rpn_rois.dims());
-    label_int32->Resize(rpn_rois.dims());
-    bbox_targets->Resize(rpn_rois.dims());
-    bbox_inside_weights->Resize(rpn_rois.dims());
-    bbox_outside_weights->Resize(rpn_rois.dims());
-    framework::VisitDataType(framework::ToDataType(rpn_rois.type()),
-                             DyDataTypeVisitor(place, rois));
-    framework::VisitDataType(framework::ToDataType(gt_classes.type()),
-                             DyDataTypeVisitor(place, label_int32));
-    framework::VisitDataType(framework::ToDataType(rpn_rois.type()),
-                             DyDataTypeVisitor(place, bbox_targets));
-    framework::VisitDataType(framework::ToDataType(rpn_rois.type()),
-                             DyDataTypeVisitor(place, bbox_inside_weights));
-    framework::VisitDataType(framework::ToDataType(rpn_rois.type()),
-                             DyDataTypeVisitor(place, bbox_outside_weights));
-
-    int batch_size_per_im = Attr<int>("batch_size_per_im");
-    float fg_fraction = Attr<int>("fg_fraction");
-    float fg_thresh = Attr<float>("fg_thresh");
-    float bg_thresh_hi = Attr<float>("bg_thresh_hi");
-    float bg_thresh_lo = Attr<float>("bg_thresh_lo");
+    int batch_size_per_im = context.Attr<int>("batch_size_per_im");
+    float fg_fraction = context.Attr<float>("fg_fraction");
+    float fg_thresh = context.Attr<float>("fg_thresh");
+    float bg_thresh_hi = context.Attr<float>("bg_thresh_hi");
+    float bg_thresh_lo = context.Attr<float>("bg_thresh_lo");
     std::vector<float> bbox_reg_weights =
-        Attr<std::vector<float>>("bbox_reg_weights");
-    int class_nums = Attr<float>("class_nums");
+        context.Attr<std::vector<float>>("bbox_reg_weights");
+    int class_nums = context.Attr<int>("class_nums");
 
-    paddle::framework::Scope &local_scope = scope.NewScope();
+    int64_t n = rpn_rois->lod().size() == 0UL
+                    ? 1
+                    : static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
+    if (rpn_rois->lod().size()) {
+      PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
+                        "GenerateProposalLabelsOp needs 1 level of LoD");
+      PADDLE_ENFORCE_EQ(gt_classes->lod().size(), 1UL,
+                        "GenerateProposalLabelsOp needs 1 level of LoD");
+      PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
+                        "GenerateProposalLabelsOp needs 1 level of LoD");
+    }
+    rois->Resize({n * batch_size_per_im, 4});
+    labels_int32->Resize({n * batch_size_per_im});
+    bbox_targets->Resize({n * batch_size_per_im, 4 * class_nums});
+    bbox_inside_weights->Resize({n * batch_size_per_im, 4 * class_nums});
+    bbox_outside_weights->Resize({n * batch_size_per_im, 4 * class_nums});
+    framework::VisitDataType(framework::ToDataType(rpn_rois->type()),
+                             DyDataTypeVisitor(context.GetPlace(), rois));
+    framework::VisitDataType(
+        framework::ToDataType(gt_classes->type()),
+        DyDataTypeVisitor(context.GetPlace(), labels_int32));
+    framework::VisitDataType(
+        framework::ToDataType(rpn_rois->type()),
+        DyDataTypeVisitor(context.GetPlace(), bbox_targets));
+    framework::VisitDataType(
+        framework::ToDataType(rpn_rois->type()),
+        DyDataTypeVisitor(context.GetPlace(), bbox_inside_weights));
+    framework::VisitDataType(
+        framework::ToDataType(rpn_rois->type()),
+        DyDataTypeVisitor(context.GetPlace(), bbox_outside_weights));
+
+    std::random_device rnd;
+    std::minstd_rand engine;
+    int seed =
+        context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
+    engine.seed(seed);
 
     framework::LoD lod;
     std::vector<size_t> lod0(1, 0);
 
-    int64_t num_images = im_scales.dims()[0];
     int64_t num_rois = 0;
-    for (int64_t i = 0; i < num_images; ++i) {
-      Tensor rpn_rois_slice = rpn_rois.Slice(i, i + 1);
-      Tensor gt_classes_slice = gt_classes.Slice(i, i + 1);
-      Tensor gt_boxes_slice = gt_boxes.Slice(i, i + 1);
-      Tensor im_scales_slice = im_scalse.Slice(i, i + 1);
-      std::vector<Tensor> tensor_output = SampleRoisForOneImage(
-          &local_scope, place, &rpn_rois_slice, &gt_classes_slice,
-          &gt_boxes_slice, &im_scalse_slice, batch_size_per_im, fg_fraction,
-          fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums);
-      sampled_rois = tensor_output[0];
-      sampled_label_int32 = tensor_output[1];
-      sampled_bbox_targets = tensor_output[2];
-      sampled_bbox_inside_weights = tensor_output[3];
-      sampled_bbox_outside_weights = tensor_output[4];
+    if (n == 1) {
+      Tensor rpn_rois_slice = rpn_rois->Slice(0, rpn_rois->dims()[0]);
+      Tensor gt_classes_slice = gt_classes->Slice(0, gt_classes->dims()[0]);
+      Tensor gt_boxes_slice = gt_boxes->Slice(0, gt_boxes->dims()[0]);
+      Tensor im_scales_slice = im_scales->Slice(0, 1);
+      std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
+          context, &rpn_rois_slice, &gt_classes_slice, &gt_boxes_slice,
+          &im_scales_slice, batch_size_per_im, fg_fraction, fg_thresh,
+          bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums, engine);
+      Tensor sampled_rois = tensor_output[0];
+      Tensor sampled_labels_int32 = tensor_output[1];
+      Tensor sampled_bbox_targets = tensor_output[2];
+      Tensor sampled_bbox_inside_weights = tensor_output[3];
+      Tensor sampled_bbox_outside_weights = tensor_output[4];
 
       framework::VisitDataType(
           framework::ToDataType(rois->type()),
           AppendRoisFunctor(rois, 4 * num_rois, &sampled_rois));
       framework::VisitDataType(
-          framework::ToDataType(label_int32->type()),
-          AppendRoisFunctor(label_int32, num_rois, &sampled_label_int32));
+          framework::ToDataType(labels_int32->type()),
+          AppendRoisFunctor(labels_int32, num_rois, &sampled_labels_int32));
       framework::VisitDataType(
           framework::ToDataType(bbox_targets->type()),
-          AppendRoisFunctor(bbox_targets, 4 * num_rois, &sampled_bbox_targets));
+          AppendRoisFunctor(bbox_targets, 4 * num_rois * class_nums,
+                            &sampled_bbox_targets));
       framework::VisitDataType(
           framework::ToDataType(bbox_inside_weights->type()),
-          AppendRoisFunctor(bbox_inside_weights, 4 * num_rois,
+          AppendRoisFunctor(bbox_inside_weights, 4 * num_rois * class_nums,
                             &sampled_bbox_inside_weights));
       framework::VisitDataType(
           framework::ToDataType(bbox_outside_weights->type()),
-          AppendRoisFunctor(bbox_outside_weights, 4 * num_rois,
+          AppendRoisFunctor(bbox_outside_weights, 4 * num_rois * class_nums,
                             &sampled_bbox_outside_weights));
 
       num_rois += sampled_rois.dims()[0];
       lod0.emplace_back(num_rois);
+    } else {
+      auto rpn_rois_lod = rpn_rois->lod().back();
+      auto gt_classes_lod = gt_classes->lod().back();
+      auto gt_boxes_lod = gt_boxes->lod().back();
+      for (size_t i = 0; i < rpn_rois_lod.size(); ++i) {
+        Tensor rpn_rois_slice =
+            rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
+        Tensor gt_classes_slice =
+            gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
+        Tensor gt_boxes_slice =
+            gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
+        Tensor im_scales_slice = im_scales->Slice(i, i + 1);
+        std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
+            context, &rpn_rois_slice, &gt_classes_slice, &gt_boxes_slice,
+            &im_scales_slice, batch_size_per_im, fg_fraction, fg_thresh,
+            bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums, engine);
+        Tensor sampled_rois = tensor_output[0];
+        Tensor sampled_labels_int32 = tensor_output[1];
+        Tensor sampled_bbox_targets = tensor_output[2];
+        Tensor sampled_bbox_inside_weights = tensor_output[3];
+        Tensor sampled_bbox_outside_weights = tensor_output[4];
+        framework::VisitDataType(
+            framework::ToDataType(rois->type()),
+            AppendRoisFunctor(rois, 4 * num_rois, &sampled_rois));
+        framework::VisitDataType(
+            framework::ToDataType(labels_int32->type()),
+            AppendRoisFunctor(labels_int32, num_rois, &sampled_labels_int32));
+        framework::VisitDataType(
+            framework::ToDataType(bbox_targets->type()),
+            AppendRoisFunctor(bbox_targets, 4 * num_rois * class_nums,
+                              &sampled_bbox_targets));
+        framework::VisitDataType(
+            framework::ToDataType(bbox_inside_weights->type()),
+            AppendRoisFunctor(bbox_inside_weights, 4 * num_rois * class_nums,
+                              &sampled_bbox_inside_weights));
+        framework::VisitDataType(
+            framework::ToDataType(bbox_outside_weights->type()),
+            AppendRoisFunctor(bbox_outside_weights, 4 * num_rois * class_nums,
+                              &sampled_bbox_outside_weights));
+
+        num_rois += sampled_rois.dims()[0];
+        lod0.emplace_back(num_rois);
+      }
     }
 
     lod.emplace_back(lod0);
     rois->set_lod(lod);
-    label_int32->set_lod(lod);
+    labels_int32->set_lod(lod);
     bbox_targets->set_lod(lod);
     bbox_inside_weights->set_lod(lod);
     bbox_outside_weights->set_lod(lod);
     rois->Resize({num_rois, 4});
-    label_int32->Resize({num_rois, 1});
-    bbox_targets->Resize({num_rois, 4});
-    bbox_inside_weights->Resize({num_rois, 4});
-    bbox_outside_weights->Resize({num_rois, 4});
+    labels_int32->Resize({num_rois});
+    bbox_targets->Resize({num_rois, 4 * class_nums});
+    bbox_inside_weights->Resize({num_rois, 4 * class_nums});
+    bbox_outside_weights->Resize({num_rois, 4 * class_nums});
   }
 };
 
-class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
+class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Scores", "The scores of anchors should be foreground.");
-    AddInput("BboxDeltas", "bbox_deltas.");
-    AddInput("ImInfo", "Information for image reshape.");
-    AddInput("Anchors", "All anchors.");
-    AddInput("Variances", " variances");
+    AddInput("RpnRois", "RpnRois.");
+    AddInput("GtClasses", "GtClasses.");
+    AddInput("GtBoxes", "GtBoxes.");
+    AddInput("ImScales", "ImScales.");
 
-    AddOutput("RpnRois", "Anchors.");
-    AddOutput("RpnRoiProbs", "Anchors.");
-    AddAttr<int>("pre_nms_topN", "pre_nms_topN");
-    AddAttr<int>("post_nms_topN", "post_nms_topN");
-    AddAttr<float>("nms_thresh", "nms_thres");
-    AddAttr<float>("min_size", "min size");
+    AddOutput("Rois", "Rois.");
+    AddOutput("LabelsInt32", "LabelsInt32.");
+    AddOutput("BboxTargets", "BboxTargets.");
+    AddOutput("BboxInsideWeights", "BboxInsideWeights.");
+    AddOutput("BboxOutsideWeights", "BboxOutsideWeights.");
+
+    AddAttr<int>("batch_size_per_im", "batch_size_per_im");
+    AddAttr<float>("fg_fraction", "fg_fraction");
+    AddAttr<float>("fg_thresh", "fg_thresh");
+    AddAttr<float>("bg_thresh_hi", "bg_thresh_hi");
+    AddAttr<float>("bg_thresh_lo", "bg_thresh_lo");
+    AddAttr<std::vector<float>>("bbox_reg_weights", "bbox_reg_weights");
+    AddAttr<int>("class_nums", "class_nums");
+    AddAttr<bool>("fix_seed", "fix_seed").SetDefault(false);
+    AddAttr<int>("seed", "seed").SetDefault(0);
 
     AddComment(R"DOC(
-Generate Proposals Operator.
+Generate Proposals Labels Operator.
 )DOC");
   }
 };
@@ -433,7 +648,9 @@ Generate Proposals Operator.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
-                  ops::GenerateProposalsOpMaker,
-                  ops::GenerateProposalsOpInferShape,
+REGISTER_OPERATOR(generate_proposal_labels, ops::GenerateProposalLabelsOp,
+                  ops::GenerateProposalLabelsOpMaker,
                   paddle::framework::EmptyGradOpMaker);
+REGISTER_OP_CPU_KERNEL(generate_proposal_labels,
+                       ops::GenerateProposalLabelsKernel<float>,
+                       ops::GenerateProposalLabelsKernel<double>);
