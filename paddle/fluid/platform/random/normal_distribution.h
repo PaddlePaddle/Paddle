@@ -43,7 +43,7 @@ class NormalDistribution {
       is_valid_ = false;
     }
     T result = cached_rho_ *
-               (is_valid_ ? std::cos(TwoPi * r1_) : std::sin(TwoPi * r2_));
+               (is_valid_ ? std::cos(TwoPi * r1_) : std::sin(TwoPi * r1_));
     return mean_ + std_ * result;
   }
 
