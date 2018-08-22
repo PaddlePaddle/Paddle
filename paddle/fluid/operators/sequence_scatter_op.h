@@ -49,7 +49,6 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
 
     size_t slice_size = 1;
     for (int i = 1; i < x_dims.size(); ++i) slice_size *= x_dims[i];
-    // printf("slice_size=%zu\n", slice_size);
 
     auto lod_vec = ids_lod[0];
     unsigned int seg = 0;
@@ -58,14 +57,11 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
                         "Segment num must not exceed batch size.\n");
       int lower_bound = lod_vec[seg];
       int upper_bound = lod_vec[seg + 1];
-      // printf("seg=%d, lower_bound=%d, upper_bound=%d \n", seg, lower_bound, upper_bound);
       if (i >= lower_bound && i < upper_bound) {
-        // printf("True Block.\n");
         T* p_out = out->data<T>();
         const T* p_updates = updates->data<T>();
         const int* p_index = ids->data<int>();
         p_out[seg * slice_size + p_index[i]] += p_updates[i];
-        // printf("index=%zu\n", seg * slice_size + p_index[i]);
       } else {
         ++seg;
         --i;
@@ -80,10 +76,10 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     PADDLE_ENFORCE(platform::is_cpu_place(ctx.GetPlace()),
                    "This kernel only runs on CPU.");
-    auto *dX = ctx.Output<Tensor>(framework::GradVarName("X"));
-    auto *dUpdates = ctx.Output<LoDTensor>(framework::GradVarName("Updates"));
-    auto *ids = ctx.Input<LoDTensor>("Ids");
-    auto *dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<Tensor>(framework::GradVarName("X"));
+    auto* dUpdates = ctx.Output<LoDTensor>(framework::GradVarName("Updates"));
+    auto* ids = ctx.Input<LoDTensor>("Ids");
+    auto* dOut = ctx.Input<Tensor>(framework::GradVarName("Out"));
 
     auto& ids_lod = ids->lod();
 
@@ -110,27 +106,17 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
                         "Segment num must not exceed batch size.\n");
       int lower_bound = lod_vec[seg];
       int upper_bound = lod_vec[seg + 1];
-      // printf("seg=%d, lower_bound=%d, upper_bound=%d \n", seg, lower_bound, upper_bound);
       if (i >= lower_bound && i < upper_bound) {
-        // printf("True Block.\n");
         const T* p_dOut = dOut->data<T>();
         const int* p_index = ids->data<int>();
         T* p_dUpdates = dUpdates->data<T>();
         p_dUpdates[i] = p_dOut[seg * slice_size + p_index[i]];
-        // printf("index=%zu\n", seg * slice_size + p_index[i]);
       } else {
         ++seg;
         --i;
       }
     }
-    // In place gradient: dX = dO
-    // dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates += dO[Ids]
-    // CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
   }
 };
-
-
-
 }  // namespace operators
 }  // namespace paddle
