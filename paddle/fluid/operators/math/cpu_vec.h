@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
+#include <string>
 #include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
@@ -32,6 +32,12 @@ inline T sigmoid(T x) {
 template <typename T>
 inline T tanh(T x) {
   return 2. * sigmoid(2. * x) - 1.;
+}
+
+template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+inline void vec_identity(const int n, const T* x, T* y) {
+  // do nothing
+  return;
 }
 
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
@@ -75,6 +81,24 @@ inline void vec_relu<float, platform::jit::avx>(const int n, const float* x,
     y[i] = x[i] > 0 ? x[i] : 0;
   }
 }
+
+template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+class VecActivations {
+ public:
+  std::function<void(const int, const T*, T*)> operator()(
+      const std::string& type) {
+    if (type == "sigmoid") {
+      return vec_sigmoid<T, isa>;
+    } else if (type == "relu") {
+      return vec_relu<T, isa>;
+    } else if (type == "tanh") {
+      return vec_tanh<T, isa>;
+    } else if (type == "identity" || type == "") {
+      return vec_identity<T, isa>;
+    }
+    PADDLE_THROW("Not support type %s.", type);
+  }
+};
 
 }  // namespace math
 }  // namespace operators
