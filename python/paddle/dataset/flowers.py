@@ -120,7 +120,10 @@ def reader_creator(data_file,
                 file = file.strip()
                 batch = None
                 with open(file, 'rb') as f:
-                    batch = pickle.loads(f.read())
+                    if six.PY2:
+                        batch = pickle.load(f)
+                    else:
+                        batch = pickle.load(f, encoding='bytes')
                 data = batch['data']
                 labels = batch['label']
                 for sample, label in zip(data, batch['label']):
