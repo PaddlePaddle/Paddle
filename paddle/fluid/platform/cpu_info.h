@@ -43,6 +43,7 @@ namespace jit {
 typedef enum {
   isa_any,
   sse42,
+  avx,
   avx2,
   avx512_common,
   avx512_core,
