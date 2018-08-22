@@ -683,7 +683,7 @@ class While(object):
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
 
-    def __init__(self, cond, name=None):
+    def __init__(self, cond, name=None, is_test=False):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
@@ -694,6 +694,7 @@ class While(object):
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")
         self.cond_var = cond
+        self.is_test = is_test
 
     def block(self):
         return WhileGuard(self)
@@ -735,7 +736,8 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'sub_block': while_block})
+            attrs={'sub_block': while_block,
+                   "is_test": self.is_test})
 
 
 def lod_rank_table(x, level=0):

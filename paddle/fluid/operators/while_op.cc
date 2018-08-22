@@ -58,11 +58,15 @@ class WhileOp : public framework::OperatorBase {
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
 
+    bool is_test = Attr<bool>("is_test");
     auto ctx = executor.Prepare(*program, block->ID());
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
       executor.RunPreparedContext(ctx.get(), &current_scope, false);
+      if (is_test) {
+        scope.DeleteScope(&current_scope);
+      }
     }
   }
 };
@@ -88,6 +92,7 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
               "variables generated in the i'th step.");
     AddAttr<framework::BlockDesc *>(kStepBlock,
                                     "The step block inside WhileOp");
+    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddComment(R"DOC(
 )DOC");
   }
@@ -103,6 +108,8 @@ class WhileGradOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    PADDLE_ENFORCE(!Attr<bool>("is_test"),
+                   "GradOp is only callable when is_test is false");
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
