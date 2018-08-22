@@ -60,6 +60,7 @@ struct Argument {
   // The output storage path of ModelStorePass.
   std::unique_ptr<std::string> model_output_store_path;
 
+  // Support for any other attributes.
   template <typename T>
   void Set(const std::string& key, T* data) {
     PADDLE_ENFORCE_NOT_NULL(data);

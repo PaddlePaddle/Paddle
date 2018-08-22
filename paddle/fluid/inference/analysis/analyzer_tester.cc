@@ -268,6 +268,10 @@ void TestDituRNNPrediction(const std::string &model_path,
   std::string model_out;
   if (use_analysis) {
     Argument argument(model_path);
+    argument.fluid_model_param_path.reset(
+        new std::string(model_path + "/param"));
+    argument.fluid_model_program_path.reset(
+        new std::string(model_path + "/__model__"));
     argument.model_output_store_path.reset(new std::string("./analysis.out"));
 
     Analyzer analyzer;
