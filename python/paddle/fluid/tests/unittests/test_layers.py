@@ -347,6 +347,25 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(loss)
         print(str(program))
 
+    def test_scatter(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            idx = layers.data(
+                name='idx', shape=[2], append_batch_size=False, dtype='int32')
+            updates = layers.data(
+                name='updates',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+            out = layers.scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_lod_reset(self):
         program = Program()
         with program_guard(program):

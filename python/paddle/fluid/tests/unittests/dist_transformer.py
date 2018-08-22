@@ -265,9 +265,9 @@ def main(role="pserver",
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         print(
-            "Usage: python dist_transformer.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist]"
+            "Usage: python dist_transformer.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist] [sync_mode]"
         )
     role = sys.argv[1]
     endpoints = sys.argv[2]
@@ -275,6 +275,8 @@ if __name__ == "__main__":
     current_endpoint = sys.argv[4]
     trainers = int(sys.argv[5])
     is_dist = True if sys.argv[6] == "TRUE" else False
+    # FIXME(typhoonzero): refine this test.
+    is_async = True if sys.argv[7] == "TRUE" else False
     main(
         role=role,
         endpoints=endpoints,
