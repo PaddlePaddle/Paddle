@@ -66,6 +66,9 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
     }
+    PADDLE_ENFORCE_GE(pad_seq_len, max_seq_len,
+                      "The pad_seq_len must be equal to or greater than the "
+                      "original max sequence length.");
     int step_width = seq_tensor.numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
