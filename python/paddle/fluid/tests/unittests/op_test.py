@@ -62,7 +62,7 @@ def get_numeric_gradient(place,
                 continue
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
-        return np.array(sum) / len(output_names)
+        return np.array(sum).sum() / len(output_names)
 
     tensor_to_check = scope.find_var(input_to_check).get_tensor()
     tensor_size = product(tensor_to_check.shape())

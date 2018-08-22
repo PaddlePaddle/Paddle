@@ -272,30 +272,32 @@ scale = 0.1
 scale_add_func = partial(scale_add_func, scale=scale)
 add_scale_func = partial(add_scale_func, scale=scale)
 
-for keep_intermediate_value in {False}:  # ,True
-    kiv = keep_intermediate_value
-    create_test_class('scale_add' + ("_keep_intermediate_value" if kiv else ""),
-                      scale_add_func, {
-                          'scale': scale,
-                          'functor_list': ["scale", "elementwise_add"],
-                          'keep_intermediate_value': kiv
-                      })
-    create_test_class('add_scale' + ("_keep_intermediate_value" if kiv else ""),
-                      add_scale_func, {
-                          'scale': scale,
-                          'functor_list': ["elementwise_add", "scale"],
-                          'keep_intermediate_value': keep_intermediate_value
-                      })
-    create_test_class('add_relu' + ("_keep_intermediate_value" if kiv else ""),
-                      add_relu_func, {
-                          'functor_list': ["elementwise_add", "relu"],
-                          'keep_intermediate_value': keep_intermediate_value
-                      })
-    create_test_class('relu_add' + ("_keep_intermediate_value" if kiv else ""),
-                      relu_add_func, {
-                          'functor_list': ["relu", "elementwise_add"],
-                          'keep_intermediate_value': keep_intermediate_value
-                      })
+for recomputation in {False, True}:
+    for keep_intermediate_value in {False, True}:
+        suffix = ("_keep_intermediate_value" if keep_intermediate_value else ""
+                  ) + ("_recomputation" if recomputation else "")
+        create_test_class('scale_add' + suffix, scale_add_func, {
+            'scale': scale,
+            'functor_list': ["scale", "elementwise_add"],
+            'keep_intermediate_value': keep_intermediate_value,
+            'recomputation': recomputation
+        })
+        create_test_class('add_scale' + suffix, add_scale_func, {
+            'scale': scale,
+            'functor_list': ["elementwise_add", "scale"],
+            'keep_intermediate_value': keep_intermediate_value,
+            'recomputation': recomputation
+        })
+        create_test_class('add_relu' + suffix, add_relu_func, {
+            'functor_list': ["elementwise_add", "relu"],
+            'keep_intermediate_value': keep_intermediate_value,
+            'recomputation': recomputation
+        })
+        create_test_class('relu_add' + suffix, relu_add_func, {
+            'functor_list': ["relu", "elementwise_add"],
+            'keep_intermediate_value': keep_intermediate_value,
+            'recomputation': recomputation
+        })
 
 if __name__ == '__main__':
     unittest.main()

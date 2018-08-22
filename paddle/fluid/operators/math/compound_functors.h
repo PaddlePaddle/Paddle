@@ -14,6 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+#include <unordered_set>
+#include <vector>
+
 namespace paddle {
 namespace operators {
 namespace math {

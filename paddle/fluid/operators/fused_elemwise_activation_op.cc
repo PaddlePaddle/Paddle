@@ -12,13 +12,35 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/fused_elemwise_activation_op.h"
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/operators/fused_elemwise_activation_op.h"
-
 namespace paddle {
 namespace operators {
+
+static bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
+  PADDLE_ENFORCE_EQ(functor_list.size(), 2);
+  return functor_list[1] == "elementwise_add";
+}
+
+static bool IsSupportedCompound(const std::vector<std::string> &functors) {
+  std::unordered_set<std::string> unary_fun = {"scale", "relu"};
+  std::unordered_set<std::string> binary_fun = {"elementwise_add"};
+
+  std::string unary_fun_str;
+  if (binary_fun.count(functors[0])) {
+    unary_fun_str = functors[1];
+  } else if (binary_fun.count(functors[1])) {
+    unary_fun_str = functors[0];
+  } else {
+    PADDLE_THROW("%s and %s are not included in fused_list.", functors[0],
+                 functors[1]);
+  }
+  PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str), 1,
+                    "%s is not included in fused_list.", unary_fun_str);
+  return true;
+}
 
 class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
  public:
@@ -39,25 +61,29 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     auto y_dim = ctx->GetInputDim("Y");
 
     // TODO(zcd): whether Y can broadcast to X or X can broadcast to Y
-    bool bcast_y = x_dim.size() >= y_dim.size();
-    if (x_dim.size() == y_dim.size()) {
-      for (int i = 0; i < x_dim.size(); ++i) {
-        if (x_dim[i] < y_dim[i]) {
-          bcast_y = false;
-          break;
-        }
-      }
-    }
+    //    bool bcast_y = x_dim.size() >= y_dim.size();
+    //    if (x_dim.size() == y_dim.size()) {
+    //      for (int i = 0; i < x_dim.size(); ++i) {
+    //        if (x_dim[i] < y_dim[i]) {
+    //          bcast_y = false;
+    //          break;
+    //        }
+    //      }
+    //    }
+    //    auto &out_dim = bcast_y ? x_dim : y_dim;
 
-    auto &out_dim = bcast_y ? x_dim : y_dim;
+    auto &out_dim = x_dim;
 
     if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
-      PADDLE_ENFORCE_EQ(ctx->Outputs("Out").size(), 2,
-                        "The option of 'keep_intermediate_value' is opened, "
-                        "so the number of 'Out' should be two.");
-      // TODO(zcd): hard code.
-      if (ctx->Attrs().Get<std::vector<std::string>>("functor_list")[1] ==
-          "elementwise_add") {
+      PADDLE_ENFORCE_EQ(
+          ctx->Outputs("Out").size(), 2,
+          "The option of 'keep_intermediate_value' is opened, "
+          "so 'Out' should contain 'out' and 'intermediate_out'.");
+
+      if (IsUnaryCompound(
+              ctx->Attrs().Get<std::vector<std::string>>("functor_list"))) {
+        // for UnaryFunctor(BinaryFunctor(X, Y)), the shape of out and
+        // intermediate_out are the same.
         ctx->SetOutputsDim("Out", {out_dim, out_dim});
       } else {
         ctx->SetOutputsDim("Out", {out_dim, y_dim});
@@ -66,7 +92,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_EQ(
           ctx->Outputs("Out").size(), 1,
           "The option of 'keep_intermediate_value' is not opened, "
-          "so the number of 'Out' should be only one.");
+          "so the 'Out' should contain 'out'.");
 
       ctx->SetOutputsDim("Out", {out_dim});
       ctx->ShareLoD("X", /*->*/ "Out");  // Is it necessary?
@@ -94,12 +120,12 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "Y",
         "(Tensor) The input tensor of fused_elemwise_activation operator.");
-    AddOutput("Out",
-              "vector<Tensor> The output tensor of fused_elemwise_activation "
-              "operator."
-              "If the option of 'keep_intermediate_value' is opened, the "
-              "number of 'Out' should be two."
-              "else, the number of 'Out' should be one.")
+    AddOutput(
+        "Out",
+        "vector<Tensor> The output tensor of fused_elemwise_activation "
+        "operator. If the option of 'keep_intermediate_value' is opened, the "
+        "'Out' should contain 'out' and 'intermediate_out'."
+        "else, the 'Out' only contain 'out'.")
         .AsDuplicable();
     AddAttr<int>("axis",
                  "axis is used by elementwise_op, the default value is -1.")
@@ -110,22 +136,20 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "recomputation",
         "Whether to recompute the Out."
-        "fused_elemwise_activation_grad has two methods to get the "
-        "dx and dy, one is to use the 'Out', and the other is not to use it. "
-        "The former method will save the time of recomputing the "
-        "'Out', but it must occupy the memory to store the 'out'. "
-        "While, the later method can avoid occupying the memory, "
-        "but it must recompute the 'Out'. It is useful for Unary(Binary(X, "
-        "Y)). "
-        "The default value is true.")
+        "The computation of fused_elemwise_activation_grad has two methods to "
+        "get the dx and dy, one is to use the 'Out', and the other is not. "
+        "The former method will save the time of recomputing the 'Out', but it "
+        "must occupy the memory to store the 'out'. While, the later method "
+        "can avoid occupying the memory, but it must recompute the 'Out'. "
+        "It is useful for Unary(Binary(X, Y)). The default value is true.")
         .SetDefault(true);
     AddAttr<bool>("keep_intermediate_value",
-                  "scale is used by scale_op, the default value is 0.0.")
+                  "Whether to save the intermediate_out.")
         .SetDefault(false);
     AddAttr<std::vector<std::string>>("functor_list",
                                       "The functors that should be fused.")
         .AddCustomChecker([&](const std::vector<std::string> &functor_list) {
-          PADDLE_ENFORCE(ValidCheck(functor_list));
+          PADDLE_ENFORCE(IsSupportedCompound(functor_list));
         });
 
     AddComment(R"DOC(
@@ -137,31 +161,12 @@ operators (elementwise_op and activation_op):
     Z = Binary(X, Unary(Y))
     Z = Unary(Binary(X, Y))
 
-The input 'X' and 'Y' can be summed by broadcasting 'X' or 'Y'.
-The attributions of activation_op can be get from fused_elemwise_activation_op's
-attributions. functor_list records the functors to be fused, for example
-"scale,elementwise_add".
+The input 'Y' or Unary(Y) can be summed with 'X' by broadcasting.
+The attributions of activation_op can be get from fused_elemwise_activation_op's.
+The functor_list records the functions to be fused, for example
+"scale and elementwise_add".
 
 )DOC");
-  }
-
- private:
-  bool ValidCheck(const std::vector<std::string> &functors) {
-    std::unordered_set<std::string> unary_fun = {"scale", "relu"};
-    std::unordered_set<std::string> binary_fun = {"elementwise_add"};
-
-    std::string unary_fun_str;
-    if (binary_fun.count(functors[0])) {
-      unary_fun_str = functors[1];
-    } else if (binary_fun.count(functors[1])) {
-      unary_fun_str = functors[0];
-    } else {
-      PADDLE_THROW("%s and %s are not included in fused_list.", functors[0],
-                   functors[1]);
-    }
-    PADDLE_ENFORCE_EQ(unary_fun.count(unary_fun_str), 1,
-                      "%s is not included in fused_list.", unary_fun_str);
-    return true;
   }
 };
 
