@@ -160,7 +160,7 @@ class Blas {
   T DOT(int n, const T* x, const T* y) const;
 
   template <typename T>
-  void SCAL(int n, const T a, const T* x) const;
+  void SCAL(int n, const T a, T* x) const;
 
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
@@ -234,8 +234,23 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void VEXP(ARGS... args) const {
+    Base()->template VEXP<T>(args...);
+  }
+
+  template <typename... ARGS>
   void GEMV(ARGS... args) const {
     Base()->template GEMV<T>(args...);
+  }
+
+  template <typename... ARGS>
+  T DOT(ARGS... args) const {
+    return Base()->template DOT<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void SCAL(ARGS... args) const {
+    Base()->template SCAL<T>(args...);
   }
 
   template <typename... ARGS>
