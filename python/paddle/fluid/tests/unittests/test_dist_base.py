@@ -34,7 +34,9 @@ class TestDistRunnerBase(object):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         import paddle
         import paddle.fluid as fluid
-        t = fluid.DistributeTranspiler()
+        config = fluid.DistributeTranspilerConfig()
+        config.slice_var_up = False
+        t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
             program=main_program,

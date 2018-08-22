@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
-IS_SPARSE = True
+IS_SPARSE = False
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -57,16 +57,21 @@ class TestDistCTR2x2(TestDistRunnerBase):
             is_distributed=False,
             input=dnn_data,
             size=[dnn_input_dim, dnn_layer_dims[0]],
-            param_attr=fluid.ParamAttr(name="deep_embedding"),
+            param_attr=fluid.ParamAttr(
+                name="deep_embedding",
+                initializer=fluid.initializer.Constant(value=0.1)),
             is_sparse=IS_SPARSE)
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum")
         dnn_out = dnn_pool
         for i, dim in enumerate(dnn_layer_dims[1:]):
-            fc = fluid.layers.fc(input=dnn_out,
-                                 size=dim,
-                                 act="relu",
-                                 name='dnn-fc-%d' % i)
+            fc = fluid.layers.fc(
+                input=dnn_out,
+                size=dim,
+                act="relu",
+                param_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=0.1)),
+                name='dnn-fc-%d' % i)
             dnn_out = fc
 
         # build lr model
@@ -74,7 +79,9 @@ class TestDistCTR2x2(TestDistRunnerBase):
             is_distributed=False,
             input=lr_data,
             size=[lr_input_dim, 1],
-            param_attr=fluid.ParamAttr(name="wide_embedding"),
+            param_attr=fluid.ParamAttr(
+                name="wide_embedding",
+                initializer=fluid.initializer.Constant(value=0.1)),
             is_sparse=IS_SPARSE)
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
@@ -88,7 +95,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         inference_program = paddle.fluid.default_main_program().clone()
 
-        sgd_optimizer = fluid.optimizer.Adam(learning_rate=0.0001)
+        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.0001)
         sgd_optimizer.minimize(avg_cost)
 
         dataset = dist_ctr_reader.Dataset()
