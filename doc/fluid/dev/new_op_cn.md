@@ -44,7 +44,7 @@
 </tr>
 <tr>
 <td>Kernel实现 </td>
-<td> CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在'.cc'文件中，CUDA 实现在'.cu'文件中。</td>
+<td> CPU、CUDA共享Kernel实现在'.h'文件中，否则，CPU 实现在'.cc'文件中，CUDA 实现在'.cu'文件中。</td>
 </tr>
 <tr>
 <td>注册Op </td>
