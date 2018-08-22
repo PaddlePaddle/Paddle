@@ -65,7 +65,7 @@ endif()
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
     cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
@@ -73,9 +73,12 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
-        cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
+        cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
                 ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
-                DEPS inference_anakin_api dynload_cuda SERIAL)
-        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
+                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
+                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
     endif(WITH_TESTING)
 endif()
