@@ -23,9 +23,6 @@
 namespace paddle {
 namespace inference {
 
-DEFINE_int32(tensorrt_max_batchsize, 1, "TensorRT maximum batch size");
-DEFINE_int32(tensorrt_workspace_size, 2048, "TensorRT workspace size");
-
 namespace analysis {
 
 using framework::proto::ProgramDesc;
@@ -52,18 +49,15 @@ bool DataFlowGraphToFluidPass::Initialize(Argument *argument) {
 bool DataFlowGraphToFluidPass::Finalize() { return true; }
 
 void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
-  LOG(INFO) << "graph.inputs " << graph->inputs.size();
-  for (auto &node : GraphTraits<DataFlowGraph>(graph).nodes_in_TS()) {
+  // FilterRedundantOutputOfSubGraph(graph);
+  for (auto &node : GraphTraits<DataFlowGraph>(*graph).nodes_in_TS()) {
     if (node.deleted()) continue;
 
     switch (node.type()) {
       case Node::Type::kFunction: {
-        LOG(INFO) << "add function " << node.repr();
         AddFluidOp(&node);
       } break;
       case Node::Type::kFunctionBlock: {
-        LOG(INFO) << "add engine op " << node.repr() << " , "
-                  << static_cast<FunctionBlock *>(&node)->subgraph.size();
         AddEngineOp(&node);
       } break;
       default:
@@ -75,15 +69,27 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
 }
 
 void DataFlowGraphToFluidPass::AddFluidOp(Node *node) {
-  auto *ori_op = static_cast<framework::proto::OpDesc *>(node->pb_desc());
+  PADDLE_ENFORCE(node);
+  PADDLE_ENFORCE(node->IsFunction());
+  PADDLE_ENFORCE(node->pb_desc() || !node->pb_msg().empty(),
+                 "node has invalid protobuf repr.");
+
   // currently only the main block is analyzed.
+  PADDLE_ENFORCE(desc_);
   auto *main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto *op = main_block->add_ops();
-  *op = *ori_op;  // copy the attributes, by default, these will not be changed
-  // by analysis phrase.
-  // The inputs and outputs of the existing ops are not changed by tensorrt
-  // subgraph pass.
-  // NOTE It might be changed by other passes in the long run.
+
+  if (node->pb_desc()) {
+    auto *ori_op = static_cast<framework::proto::OpDesc *>(node->pb_desc());
+    *op =
+        *ori_op;  // copy the attributes, by default, these will not be changed
+    // by analysis phrase.
+    // The inputs and outputs of the existing ops are not changed by tensorrt
+    // subgraph pass.
+    // NOTE It might be changed by other passes in the long run.
+  } else {
+    op->ParseFromString(node->pb_msg());
+  }
 }
 
 void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
@@ -190,8 +196,6 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
   // Set attrs
   SetAttr(desc.Proto(), "subgraph", block->SerializeAsString());
   SetAttr(desc.Proto(), "engine_uniq_key", "trt-" + std::to_string(counter++));
-  SetAttr(desc.Proto(), "max_batch", FLAGS_tensorrt_max_batchsize);
-  SetAttr(desc.Proto(), "max_workspace", FLAGS_tensorrt_workspace_size);
   SetAttr(desc.Proto(), "parameters", ExtractParameters(graph.nodes.nodes()));
   SetAttr(desc.Proto(), "output_name_mapping", output_mapping);
   node->SetPbMsg(desc.Proto()->SerializeAsString());
@@ -220,10 +224,9 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   framework::BlockDesc block_desc(nullptr, &proto);
   block_desc.Proto()->set_parent_idx(-1);
   block_desc.Proto()->set_idx(0);
-  LOG(INFO) << "origin variable size: "
-            << argument_->origin_program_desc->blocks(0).vars().size();
-  LOG(INFO) << "transformed variable size: "
-            << block_desc.Proto()->vars().size();
+  VLOG(4) << "origin variable size: "
+          << argument_->origin_program_desc->blocks(0).vars().size();
+  VLOG(4) << "transformed variable size: " << block_desc.Proto()->vars().size();
   // copy ops.
 
   for (auto *node : block_node->subgraph) {
@@ -257,7 +260,7 @@ class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
 
 Pass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
   return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
-      FLAGS_inference_analysis_graphviz_log_root,
+      FLAGS_IA_graphviz_log_root,
       "data_flow_graph_to_fluid_graphviz_debugger"));
 }
 

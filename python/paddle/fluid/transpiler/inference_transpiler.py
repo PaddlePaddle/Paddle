@@ -59,8 +59,12 @@ class InferenceTranspiler(object):
             scope = global_scope()
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
-        self._fuse_batch_norm(program, place, scope)
-        self._fuse_relu_mkldnn(program)
+        use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
+        if use_mkldnn:
+            self._fuse_relu_mkldnn(program)
+            self._fuse_conv_bias_mkldnn(program)
+        else:
+            self._fuse_batch_norm(program, place, scope)
 
     def _fuse_relu_mkldnn(self, program):
         '''
@@ -82,10 +86,6 @@ class InferenceTranspiler(object):
         :param program: program to transpile
         :type program: Program
         '''
-        use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
-        if not use_mkldnn:
-            return
-
         self.block = program.block(0)
 
         i = 0
@@ -98,6 +98,69 @@ class InferenceTranspiler(object):
                     current_op.set_attr("fuse_with_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
+            i = i + 1
+
+        self._remove_unused_var()
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
+
+    def _fuse_conv_bias_mkldnn(self, program):
+        '''
+        Transpile the program by fused convolution and elementwise_add.
+
+        Replace conv2d and elementwise_add ops with a new conv2d op
+        based on an old conv2d op and the :math:`Bias` taken from
+        elementwise_add.
+
+        For input :math:`X`:
+
+        - Conv process:            :math:`X = input * W`
+        - Elementwise_add process: :math` X = X + bias`
+
+        After fuse into one operation:
+
+        .. math::
+
+            X = input * W + bias
+
+        The operator transformation is:
+
+        - before:
+
+          - conv->elementwise_add->any_other_op
+
+        - after:
+
+          - conv->any_other_op
+
+        The transpile stages are:
+
+        1. Extract bias and output variables from elementwise_add.
+        2. Extract Input, Weight and attributes from conv op.
+        3. Create a new convolution op based on extracted params.
+        4. Remove old conv op.
+        5. Remove elementwise_add.
+        5. Remove unused variables.
+
+        Args:
+            program (Program): program to transpile
+
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops) - 2:
+            current_op = self.block.ops[i]
+            next_op = self.block.ops[i + 1]
+            # conv2d with bias
+            if current_op.type in ['conv2d'] and \
+               next_op.type in ['elementwise_add']:
+                self._fuse_conv_bias(i, current_op, next_op)
+                self.block._remove_op(i + 1)  # Remove old conv
+                self.block._remove_op(i + 1)  # Remove elementwise_add
+                i = i + 1
             i = i + 1
 
         self._remove_unused_var()
@@ -185,7 +248,6 @@ class InferenceTranspiler(object):
                         self.block._remove_op(i + 2)
                         i = i + 1
             i = i + 1
-
         self._adjust_input()
         self._remove_unused_var()
         # TODO(luotao): use clone() method to flush the program.desc in force,
@@ -287,6 +349,33 @@ class InferenceTranspiler(object):
 
         # collect the renamed input
         self.input_map[bn_op.output("Y")[0]] = bias_op.output("Out")[0]
+
+    def _fuse_conv_bias(self, index, conv_op, elementwise_add_op):
+        '''
+        fuse the conv op with elementwise_add
+
+        :param index: index of the conv_op in ops list
+        :type index: Int
+        :param conv_op: convolution operator
+        :type conv_op: Operator
+        :param elementwise_add_op: convolution's bias operator
+        :type elementwise_add_op: Operator
+        '''
+
+        bias_var = self.block.var(elementwise_add_op.input("Y")[0])
+        out_var = self.block.var(elementwise_add_op.output("Out")[0])
+        filter_var = self.block.var(conv_op.input("Filter")[0])
+        in_var = self.block.var(conv_op.input("Input")[0])
+        attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
+
+        self.block._insert_op(
+            index,
+            type="conv2d",
+            inputs={"Input": in_var,
+                    "Filter": filter_var,
+                    "Bias": bias_var},
+            outputs={"Output": out_var},
+            attrs=attrs)
 
     def _adjust_input(self):
         for i in range(len(self.block.ops)):

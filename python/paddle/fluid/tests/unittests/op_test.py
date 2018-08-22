@@ -56,8 +56,8 @@ def get_numeric_gradient(place,
 
     def get_output():
         sum = []
+        op.run(scope, place)
         for output_name in output_names:
-            op.run(scope, place)
             sum.append(
                 np.array(scope.find_var(output_name).get_tensor()).mean())
         return np.array(sum).mean()
