@@ -36,19 +36,19 @@
 <tbody>
 <tr>
 <td>OpProtoMake定义 </td>
-<td>`.cc`文件，Backward Op不需要定义OpProtoMake </td>
+<td>'.cc'文件，Backward Op不需要定义OpProtoMake </td>
 </tr>
 <tr>
 <td>Op定义 </td>
-<td> `.cc`文件</td>
+<td> '.cc'文件</td>
 </tr>
 <tr>
 <td>Kernel实现 </td>
-<td> CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在`.cc`文件中，CUDA 实现在`.cu`文件中。</td>
+<td> CPU、CUDA共享Kernel实现在`.h`文件中，否则，CPU 实现在'.cc'文件中，CUDA 实现在'.cu'文件中。</td>
 </tr>
 <tr>
 <td>注册Op </td>
-<td> Op注册实现在`.cc`文件；Kernel注册CPU实现在`.cc`文件中，CUDA实现在`.cu`文件中</td>
+<td> Op注册实现在'.cc'文件；Kernel注册CPU实现在'.cc'文件中，CUDA实现在'.cu'文件中</td>
 </tr>
 </tbody>
 </table>
@@ -391,7 +391,7 @@ PADDLE_ENFORCE(ctx->HasInput("X"), "");
 ```
 问题示例2 ：提示信息过于简单
 ```
-PADDLE_ENFORCE(i != nullptr, "I must be set"); // I是什么？
+PADDLE_ENFORCE(i != nullptr, "i must be set"); // i是什么？
 ```
 
 2. 在报错信息中使用开发人员定义的变量缩写，不易理解！
