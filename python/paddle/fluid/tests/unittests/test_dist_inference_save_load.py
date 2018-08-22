@@ -20,19 +20,97 @@ import os
 import sys
 import signal
 import subprocess
+import six
 import paddle.compat as cpt
 
 
-class TestDistMnist2x2(TestDistBase):
+class TestDistInferenceSaveAndLoad2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
-    def check_with_place(self, model_file, delta=1e-3, check_error_log=False):
+    @staticmethod
+    def _save_model(dirname, feeded_var_names, target_vars):
+        import paddle.fluid as fluid
+
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+
+        fluid.io.save_inference_model(dirname, feeded_var_names, target_vars,
+                                      exe)
+
+    def run_pserver(self,
+                    pserver_endpoints,
+                    trainers,
+                    current_endpoint,
+                    trainer_id,
+                    sync_mode=True):
+        import paddle
+        import paddle.fluid as fluid
+        self.get_model(batch_size=2)
+        t = self.get_transpiler(trainer_id,
+                                fluid.default_main_program(), pserver_endpoints,
+                                trainers, sync_mode)
+        pserver_prog = t.get_pserver_program(current_endpoint)
+        startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+        place = fluid.CPUPlace()
+        exe = fluid.Executor(place)
+        exe.run(startup_prog)
+        exe.run(pserver_prog)
+
+    def run_trainer(self,
+                    place,
+                    endpoints,
+                    trainer_id,
+                    trainers,
+                    is_dist=True,
+                    sync_mode=True):
+        import paddle
+        import paddle.fluid as fluid
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+            self.get_model(batch_size=2)
+        if is_dist:
+            t = self.get_transpiler(trainer_id,
+                                    fluid.default_main_program(), endpoints,
+                                    trainers, sync_mode)
+            trainer_prog = t.get_trainer_program()
+        else:
+            trainer_prog = fluid.default_main_program()
+
+        startup_exe = fluid.Executor(place)
+        startup_exe.run(fluid.default_startup_program())
+
+        strategy = fluid.ExecutionStrategy()
+        strategy.num_threads = 1
+        strategy.allow_op_delay = False
+        exe = fluid.ParallelExecutor(
+            True, loss_name=avg_cost.name, exec_strategy=strategy)
+
+        feed_var_list = [
+            var for var in trainer_prog.global_block().vars.values()
+            if var.is_data
+        ]
+
+        feeder = fluid.DataFeeder(feed_var_list, place)
+        reader_generator = test_reader()
+
+        data = next(reader_generator)
+        first_loss, = exe.run(fetch_list=[avg_cost.name],
+                              feed=feeder.feed(data))
+        print(first_loss)
+
+        dirname = "/tmp/simnet.infer.model"
+        if trainer_id == 0:
+            self._save_model(dirname, [], [predict])
+
+    def check_with_save_inference(self,
+                                  model_file,
+                                  delta=1e-3,
+                                  check_error_log=False):
         # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH"),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH"),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1"
         }
@@ -139,7 +217,7 @@ class TestDistMnist2x2(TestDistBase):
 
     @unittest.skip(reason="Not Ready, Debugging")
     def test_dist_save_inference_model(self):
-        self.check_with_place("dist_simnet_bow.py", delta=1e-7)
+        self.check_with_save_inference("dist_simnet_bow.py", delta=1e-7)
 
 
 if __name__ == "__main__":

@@ -31,18 +31,17 @@ import signal
 from functools import reduce
 from test_dist_base import TestDistRunnerBase, runtime_main
 
-DTYPE = "float32"
-DATA_URL = 'http://paddle-dist-ce-data.cdn.bcebos.com/train.1000'
+DTYPE = "int64"
+DATA_URL = 'http://paddle-dist-ce-data.cdn.bcebos.com/simnet.train.1000'
 DATA_MD5 = '4cc060b0a0939a343fc9242aa1ee2e4e'
 
 # For Net
-base_lr = 0.005
+base_lr = 0.2
 emb_lr = base_lr * 3
 dict_dim = 1451594
 emb_dim = 128
 hid_dim = 128
 margin = 0.1
-batch_size = 128
 sample_rate = 1
 
 # Fix seed for test
@@ -50,7 +49,7 @@ fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
 
-def get_acc(cos_q_nt, cos_q_pt):
+def get_acc(cos_q_nt, cos_q_pt, batch_size):
     cond = fluid.layers.less_than(cos_q_nt, cos_q_pt)
     cond = fluid.layers.cast(cond, dtype='float64')
     cond_3 = fluid.layers.reduce_sum(cond)
@@ -82,13 +81,14 @@ def get_optimizer():
     return optimizer
 
 
-def train_network():
+def train_network(batch_size, is_distributed=False):
     # query
     q = fluid.layers.data(
         name="query_ids", shape=[1], dtype="int64", lod_level=1)
     ## embedding
     q_emb = fluid.layers.embedding(
         input=q,
+        is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
             name="__emb__", learning_rate=emb_lr),
@@ -109,6 +109,7 @@ def train_network():
     ## embedding
     pt_emb = fluid.layers.embedding(
         input=pt,
+        is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
             name="__emb__", learning_rate=emb_lr),
@@ -128,6 +129,7 @@ def train_network():
     ## embedding
     nt_emb = fluid.layers.embedding(
         input=nt,
+        is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
             name="__emb__", learning_rate=emb_lr),
@@ -146,7 +148,7 @@ def train_network():
     # loss
     avg_cost = get_loss(cos_q_pt, cos_q_nt)
     # acc
-    acc = get_acc(cos_q_nt, cos_q_pt)
+    acc = get_acc(cos_q_nt, cos_q_pt, batch_size)
     return [avg_cost, acc, cos_q_pt]
 
 
@@ -175,10 +177,10 @@ def get_one_data(file_list):
                     continue
 
                 for each in tmp:
-                    yield [one_data[2], each[0], each[1], [0]]
+                    yield [one_data[2], 0, each[0], each[1]]
 
 
-def get_batch_reader(file_list):
+def get_batch_reader(file_list, batch_size):
     def batch_reader():
         res = []
         for i in get_one_data(file_list):
@@ -191,11 +193,11 @@ def get_batch_reader(file_list):
     return batch_reader
 
 
-def get_train_reader():
+def get_train_reader(batch_size):
     # The training data set.
     train_file = os.path.join(paddle.dataset.common.DATA_HOME, "simnet",
                               "train")
-    train_reader = get_batch_reader(train_file)
+    train_reader = get_batch_reader([train_file], batch_size)
     train_feed = ["query_ids", "pos_title_ids", "neg_title_ids", "label"]
     return train_reader, train_feed
 
@@ -203,7 +205,7 @@ def get_train_reader():
 class TestDistSimnetBow2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
         # Train program
-        avg_cost, acc, predict = train_network()
+        avg_cost, acc, predict = train_network(batch_size, False)
 
         inference_program = fluid.default_main_program().clone()
 
@@ -212,10 +214,12 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
         opt.minimize(avg_cost)
 
         # Reader
-        train_reader, _ = get_train_reader()
+        train_reader, _ = get_train_reader(batch_size)
         return inference_program, avg_cost, train_reader, train_reader, acc, predict
 
 
 if __name__ == "__main__":
+    import os
+    os.environ['CPU_NUM'] = '1'
     paddle.dataset.common.download(DATA_URL, 'simnet', DATA_MD5, "train")
     runtime_main(TestDistSimnetBow2x2)
