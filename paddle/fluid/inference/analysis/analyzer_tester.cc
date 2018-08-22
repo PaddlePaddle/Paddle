@@ -236,7 +236,7 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
                             tensor.shape.end(),
                             1,
                             [](int a, int b) { return a * b; });  // clang-format on
-  for (size_t i = 0; i < dim; i++) {
+  for (int i = 0; i < dim; i++) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
   os << '\n';
@@ -306,7 +306,7 @@ void TestDituRNNPrediction(const std::string &model_path,
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
     float *data = static_cast<float *>(out.data.data());
-    for (int i = 0;
+    for (size_t i = 0;
          i < std::min(sizeof(ditu_rnn_target_data) / sizeof(float), size);
          i++) {
       EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);

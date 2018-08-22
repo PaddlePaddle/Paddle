@@ -46,11 +46,7 @@ class FluidToIrPass final : public DataFlowGraphPass {
     if (!argument->main_dfg) {
       argument->main_dfg.reset(new DataFlowGraph);
     }
-    // Persist the ProgramDesc in graph's attribute. The IR graph just keep the
-    // address, will segfault if the original ProgramDesc destroys.
-    auto &ir_program_p = argument->main_dfg->Attr("ir_program_desc").Pointer();
-    ir_program_p = new framework::ProgramDesc(program);
-
+    argument->Set("ir_program_desc", new framework::ProgramDesc(program));
     argument_ = argument;
     return true;
   }
@@ -59,8 +55,7 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
   void Run(DataFlowGraph *graph) override {
     // Call all the IR Passes
-    IRPassManager ir_passes(*static_cast<framework::ProgramDesc *>(
-        argument_->main_dfg->Attr("ir_program_desc").Pointer()));
+    IRPassManager ir_passes(argument_->Get<framework::ProgramDesc>("ir_program_desc"), nullptr);
     ir_passes.Apply(std::vector<std::string>(
         {// Manual update the passes here.
          "graph_viz_pass", "infer_clean_graph_pass", "graph_viz_pass",
@@ -68,10 +63,18 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
-    // PADDLE_ENFORCE(argument_->main_dfg->IsFullyConnected());
   }
 
+  void EnableParamModify(const std::string &model_dir,
+                         const std::string &prog_file,
+                         const std::string &param_file);
+
   std::string repr() const override { return "fluid-to-ir-pass"; }
+
+ private:
+  // Load parameters from a single file or from a directory.
+  void LoadParams(framework::Scope *scope, const std::string &dir,
+                  const std::string &prog_file, const std::string &param_file);
 
  private:
   Argument *argument_{nullptr};
