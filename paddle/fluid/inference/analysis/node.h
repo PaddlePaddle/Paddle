@@ -38,7 +38,7 @@ namespace analysis {
 class NodeMap;
 
 // A helper class to maintain the status from Pass.
-struct NodeAttr {
+struct AnyAttr {
   using any_t =
       boost::variant<bool, float, int32_t, int64_t, void *, std::string>;
   // NOTE T should be a primary type or a struct combined by several primary
@@ -54,10 +54,9 @@ struct NodeAttr {
   void *&Pointer() { return As<void *>(); }
   std::string &String() { return As<std::string>(); }
 
- private:
   template <typename T>
   T &As() {
-    if (type_index_ == typeid(NodeAttr)) {
+    if (type_index_ == typeid(AnyAttr)) {
       type_index_ = typeid(T);
       any_data_ = T();
     } else {
@@ -68,7 +67,7 @@ struct NodeAttr {
 
  private:
   any_t any_data_;
-  std::type_index type_index_{typeid(NodeAttr)};
+  std::type_index type_index_{typeid(AnyAttr)};
 };
 
 /*
@@ -105,7 +104,7 @@ class Node {
 
   // Get an additional attribute and convert it to T data type. NOTE this will
   // silently create a new attribute if not exists.
-  NodeAttr &attr(const std::string &name) const { return attrs_[name]; }
+  AnyAttr &attr(const std::string &name) const { return attrs_[name]; }
 
   int id() const { return id_; }
 
@@ -150,7 +149,7 @@ class Node {
   Type type_{Type::kNone};
   // Mark this node is deleted by some pass.
   bool deleted_{false};
-  mutable std::unordered_map<std::string, NodeAttr> attrs_;
+  mutable std::unordered_map<std::string, AnyAttr> attrs_;
 };
 
 class Function;

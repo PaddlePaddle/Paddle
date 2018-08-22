@@ -135,6 +135,9 @@ class Blas {
   void VADD(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
+  void VMUL(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
   void VCOPY(int n, const T* x, T* y) const;
 
   template <typename T>
@@ -200,6 +203,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void VADD(ARGS... args) const {
     Base()->template VADD<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VMUL(ARGS... args) const {
+    Base()->template VMUL<T>(args...);
   }
 
   template <typename... ARGS>

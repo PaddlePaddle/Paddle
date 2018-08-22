@@ -14,9 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>     // for dladdr
-#include <execinfo.h>  // for backtrace
-
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
@@ -37,6 +34,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
 
@@ -75,7 +73,7 @@ struct EnforceNotMet : public std::exception {
 
       sout << string::Sprintf("%s at [%s:%d]", exp.what(), f, l) << std::endl;
       sout << "PaddlePaddle Call Stacks: " << std::endl;
-
+#if !defined(_WIN32)
       void* call_stack[TRACE_STACK_LIMIT];
       auto size = backtrace(call_stack, TRACE_STACK_LIMIT);
       auto symbols = backtrace_symbols(call_stack, size);
@@ -95,6 +93,9 @@ struct EnforceNotMet : public std::exception {
         }
       }
       free(symbols);
+#else
+      sout << "Windows not support stack backtrace yet.";
+#endif
       err_str_ = sout.str();
     }
   }

@@ -102,7 +102,6 @@ set(COMMON_FLAGS
     -fno-omit-frame-pointer
     -Wall
     -Wextra
-    -Werror
     -Wnon-virtual-dtor
     -Wdelete-non-virtual-dtor
     -Wno-unused-parameter
@@ -114,6 +113,11 @@ set(COMMON_FLAGS
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
 )
+
+# https://github.com/PaddlePaddle/Paddle/issues/12773
+if (NOT WIN32)
+list(APPEND COMMON_FLAGS -Werror)
+endif()
 
 set(GPU_COMMON_FLAGS
     -fPIC
