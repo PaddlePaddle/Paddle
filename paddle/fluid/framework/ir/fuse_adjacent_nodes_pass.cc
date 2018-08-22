@@ -69,7 +69,7 @@ std::unique_ptr<ir::Graph> FuseAdjacentNodesPass::ApplyImpl(
 
   // Release unnecessary nodes
   for (auto &node : need_removed_nodes) {
-    graph->ReleaseNode(node);
+    graph->RemoveNode(node);
   }
   return graph;
 }
@@ -78,7 +78,7 @@ bool FuseAdjacentNodesPass::FindToBeFusedNodes(
     const NodePtr node,
     const std::unordered_map<NodePtr, InternalNodePtr> &internal_nodes,
     std::unordered_set<NodePtr> *tobe_fused_nodes) const {
-  PADDLE_ENFORCE(node->IsOperation(), "Node should be an operation.");
+  PADDLE_ENFORCE(node->IsOp(), "Node should be an operation.");
 
   NodePtr cur_op_node = node;
   // If the input node has be fused, get the fused_node from
@@ -96,7 +96,7 @@ bool FuseAdjacentNodesPass::FindToBeFusedNodes(
   for (auto &in_var : no_control_vars) {
     if (in_var->inputs.empty()) continue;
 
-    PADDLE_ENFORCE(in_var->IsVariable(), "in_var should be a variable.");
+    PADDLE_ENFORCE(in_var->IsVa(), "in_var should be a variable.");
     PADDLE_ENFORCE_EQ(in_var->inputs.size(), 1,
                       "in_var's generation op should be only one.");
 
@@ -177,7 +177,7 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
     if (has_resolved_nodes.count(var)) continue;
     has_resolved_nodes.emplace(var);
 
-    PADDLE_ENFORCE(var->IsVariable());
+    PADDLE_ENFORCE(var->IsVar());
 
     bool no_need_merge =
         var->inputs.empty() || !tobe_fused_nodes.count(var->inputs[0]);
@@ -196,13 +196,13 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
       auto &in_var_gen_node = var->inputs[0];
 
       for (auto &in_var : in_var_gen_node->inputs) {
-        PADDLE_ENFORCE(in_var->IsVariable());
+        PADDLE_ENFORCE(in_var->IsVar());
         fused_node->inputs.emplace_back(in_var);
         replace_node(in_var_gen_node, fused_node, &(in_var->outputs));
       }
 
       for (auto &out_var : in_var_gen_node->outputs) {
-        PADDLE_ENFORCE(out_var->IsVariable());
+        PADDLE_ENFORCE(out_var->IsVar());
         has_resolved_nodes.emplace(out_var);
         if (ir::IsControlDepVar(*out_var)) {
           if (out_var->outputs.size() > 0) {
@@ -227,7 +227,7 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
 
   // link fused_node's output.
   for (auto &cur_output : cur_op_node->outputs) {
-    PADDLE_ENFORCE(cur_output->IsVariable());
+    PADDLE_ENFORCE(cur_output->IsVar());
     fused_node->outputs.emplace_back(cur_output);
     cur_output->inputs.clear();
     cur_output->inputs.emplace_back(fused_node);
@@ -253,9 +253,8 @@ bool FuseAdjacentNodesPass::IsBackward(
 
 bool FuseAdjacentNodesPass::IsFusible(const NodePtr cur_op_node,
                                       const NodePtr upstream_op_node) const {
-  PADDLE_ENFORCE(cur_op_node->IsOperation(),
-                 "cur_op_node should be an operation.");
-  PADDLE_ENFORCE(upstream_op_node->IsOperation(), "n2 should be an operation.");
+  PADDLE_ENFORCE(cur_op_node->IsOp(), "cur_op_node should be an operation.");
+  PADDLE_ENFORCE(upstream_op_node->IsOp(), "n2 should be an operation.");
 
   // TODO(zcd): hard code
   bool case1 = (cur_op_node->Op()->Type() == "scale" ||

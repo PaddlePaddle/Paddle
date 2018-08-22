@@ -204,23 +204,24 @@ include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
 
+include(flags)              # set paddle compile flags
+include(cudnn)              # set cudnn libraries, must before configure
+include(cupti)
+include(configure)          # add paddle env configuration
+
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
     include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
+elseif()
+    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
 endif()
 
-include(cudnn)              # set cudnn libraries, must before configure
-include(cupti)
-include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
-include(flags)              # set paddle compile flags
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries

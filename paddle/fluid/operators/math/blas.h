@@ -90,6 +90,25 @@ class Blas {
   void GEMM(bool transA, bool transB, int M, int N, int K, T alpha, const T* A,
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename T>
+  T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
+                const int K) const;
+
+  template <typename T>
+  void GEMM_PACK(const CBLAS_IDENTIFIER id, const CBLAS_TRANSPOSE trans, int M,
+                 int N, int K, const T alpha, const T* src, const int ld,
+                 T* dst) const;
+
+  template <typename T>
+  void GEMM_COMPUTE(int transA, int transB, int M, int N, int K, const T* A,
+                    const int lda, const T* B, const int ldb, T beta, T* C,
+                    const int ldc) const;
+
+  template <typename T>
+  void GEMM_FREE(T* data) const;
+#endif
+
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
               const framework::Tensor& mat_b, bool trans_b, T alpha,
@@ -114,6 +133,9 @@ class Blas {
 
   template <typename T>
   void VADD(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
+  void VMUL(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
   void VCOPY(int n, const T* x, T* y) const;
@@ -146,6 +168,28 @@ class BlasT : private Blas<DeviceContext> {
     Base()->template GEMM<T>(args...);
   }
 
+#ifdef PADDLE_WITH_MKLML
+  template <typename... ARGS>
+  T* GEMM_ALLOC(ARGS... args) const {
+    return Base()->template GEMM_ALLOC<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_PACK(ARGS... args) const {
+    Base()->template GEMM_PACK<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_COMPUTE(ARGS... args) const {
+    Base()->template GEMM_COMPUTE<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void GEMM_FREE(ARGS... args) const {
+    Base()->template GEMM_FREE<T>(args...);
+  }
+#endif
+
   template <typename... ARGS>
   void MatMul(ARGS... args) const {
     Base()->template MatMul<T>(args...);
@@ -159,6 +203,11 @@ class BlasT : private Blas<DeviceContext> {
   template <typename... ARGS>
   void VADD(ARGS... args) const {
     Base()->template VADD<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void VMUL(ARGS... args) const {
+    Base()->template VMUL<T>(args...);
   }
 
   template <typename... ARGS>
