@@ -23,20 +23,20 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
 
-USE_CPU_ONLY_OP(tensorrt_engine);
+USE_CUDA_ONLY_OP(tensorrt_engine);
 
 namespace paddle {
 namespace operators {
 
 namespace {
-void CreateCPUTensor(framework::Scope* scope, const std::string& name,
-                     const std::vector<int64_t>& shape) {
+void CreateCUDATensor(framework::Scope* scope, const std::string& name,
+                      const std::vector<int64_t>& shape) {
   auto* var = scope->Var(name);
   auto* tensor = var->GetMutable<framework::LoDTensor>();
   auto dims = framework::make_ddim(shape);
   tensor->Resize(dims);
-  platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  platform::CUDAPlace place;
+  platform::CUDADeviceContext ctx(place);
   inference::tensorrt::RandomizeTensor(tensor, place, ctx);
 }
 
@@ -112,15 +112,15 @@ TEST(TensorRTEngineOp, manual) {
   LOG(INFO) << "engine_op " << engine_op.get();
 
   framework::Scope scope;
-  platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  platform::CUDAPlace place;
+  platform::CUDADeviceContext ctx(place);
   // Prepare variables.
-  CreateCPUTensor(&scope, "x", std::vector<int64_t>({2, 4}));
-  CreateCPUTensor(&scope, "y", std::vector<int64_t>({4, 6}));
-  CreateCPUTensor(&scope, "z", std::vector<int64_t>({2, 6}));
+  CreateCUDATensor(&scope, "x", std::vector<int64_t>({2, 4}));
+  CreateCUDATensor(&scope, "y", std::vector<int64_t>({4, 6}));
+  CreateCUDATensor(&scope, "z", std::vector<int64_t>({2, 6}));
 
-  CreateCPUTensor(&scope, "y0", std::vector<int64_t>({6, 8}));
-  CreateCPUTensor(&scope, "z0", std::vector<int64_t>({2, 8}));
+  CreateCUDATensor(&scope, "y0", std::vector<int64_t>({6, 8}));
+  CreateCUDATensor(&scope, "z0", std::vector<int64_t>({2, 8}));
 
   // Execute them.
   LOG(INFO) << "engine_op run";
@@ -130,8 +130,8 @@ TEST(TensorRTEngineOp, manual) {
 void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
   framework::ProgramDesc program;
   framework::Scope scope;
-  platform::CPUPlace place;
-  platform::CPUDeviceContext ctx(place);
+  platform::CUDAPlace place;
+  platform::CUDADeviceContext ctx(place);
 
   auto* block_ = program.Proto()->add_blocks();
   block_->set_idx(0);
@@ -165,10 +165,10 @@ void Execute(int batch_size, int input_dim, int output_dim, int nlayers = 1) {
 
     // Prepare variables.
     if (!x_created) {
-      CreateCPUTensor(&scope, x_name, std::vector<int64_t>(x_shape));
+      CreateCUDATensor(&scope, x_name, std::vector<int64_t>(x_shape));
     }
-    CreateCPUTensor(&scope, y_name, std::vector<int64_t>(y_shape));
-    CreateCPUTensor(&scope, z_name, std::vector<int64_t>(z_shape));
+    CreateCUDATensor(&scope, y_name, std::vector<int64_t>(y_shape));
+    CreateCUDATensor(&scope, z_name, std::vector<int64_t>(z_shape));
 
     // It is wired, need to copy manually.
     *block_->add_ops() = *fc->Proto();
