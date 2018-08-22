@@ -90,6 +90,11 @@ class Blas {
   void GEMM(bool transA, bool transB, int M, int N, int K, T alpha, const T* A,
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
+  template <typename T>
+  void GEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+            T alpha, const T* A, int lda, const T* B, int ldb, T beta, T* C,
+            int ldc) const;
+
 #ifdef PADDLE_WITH_MKLML
   template <typename T>
   T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
@@ -108,6 +113,10 @@ class Blas {
   template <typename T>
   void GEMM_FREE(T* data) const;
 #endif
+
+  template <typename T>
+  void MatMul(const int M, const int N, const int K, const T* A, const T* B,
+              T* C) const;
 
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
