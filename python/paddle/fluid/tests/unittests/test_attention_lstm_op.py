@@ -40,19 +40,20 @@ def attention_lstm(
     D = b.shape[1] / 4
     assert T == x.shape[0]
     assert len(fcws) == len(fcbs)
-
     hidden = []
     cell = []
 
     start_offset = 0
     for bid in range(N):
         seq_len = lod[0][bid]
-        xi = np.copy(x[start_offset:seq_len, :]).reshape(seq_len, M)
+        xi = np.copy(x[start_offset:start_offset + seq_len, :]).reshape(seq_len,
+                                                                        M)
         prev_cell = np.copy(c0[bid]).reshape([1, D])
         prev_hidden = np.copy(h0[bid]).reshape([1, D])
         for step in range(seq_len):
             expanded_cell = np.repeat(prev_cell, seq_len, axis=0)
             tmp = np.concatenate((xi, expanded_cell), axis=1)
+            assert tmp.shape[0] == seq_len
             assert tmp.shape[1] == M + D
             for fcid in range(len(fcbs)):
                 tmp = fc(tmp, fcws[fcid], fcbs[fcid])
@@ -62,7 +63,7 @@ def attention_lstm(
             lstmx = xi * tmp  # seq * M
             lstmx = np.sum(lstmx.reshape(seq_len, M), axis=0).reshape([1, M])
             lstmin = np.concatenate((prev_hidden, lstmx), axis=1)
-            lstmout = np.dot(lstmin, w).reshape([1, 4 * D])
+            lstmout = fc(lstmin, w, b).reshape([1, 4 * D])
 
             g_f, g_i, g_o, cand = np.split(lstmout, 4, axis=1)
             g_f = act_gate(g_f).reshape([1, D])
@@ -88,7 +89,7 @@ def attention_lstm(
 
 class TestAttentionLSTMOp(OpTest):
     def set_conf(self):
-        self.lod = [[3]]
+        pass
 
     def setUp(self):
         self.op_type = 'attention_lstm'
