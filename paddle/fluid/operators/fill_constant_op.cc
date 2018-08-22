@@ -12,28 +12,48 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fill_constant_op.h"
-#include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
 
-class FillConstantOp : public framework::OperatorWithKernel {
+class FillConstantInferShape : public framework::InferShapeBase {
  public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FillConstantOp should not be null.");
-    auto& shape = ctx->Attrs().Get<std::vector<int>>("shape");
+    auto &shape = ctx->Attrs().Get<std::vector<int>>("shape");
     ctx->SetOutputDim("Out", framework::make_ddim(shape));
   }
+};
 
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        static_cast<framework::proto::VarType::Type>(ctx.Attr<int>("dtype")),
-        ctx.device_context());
+class FillConstantOp : public framework::OperatorBase {
+ public:
+  using framework::OperatorBase::OperatorBase;
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &dev_place) const override {
+    auto data_type =
+        static_cast<framework::proto::VarType::Type>(Attr<int>("dtype"));
+    auto value = Attr<float>("value");
+    auto force_cpu = Attr<bool>("force_cpu");
+    auto &out =
+        *scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
+    out.Resize(framework::make_ddim(Attr<std::vector<int>>("shape")));
+    if (force_cpu) {
+      auto cpu = platform::CPUPlace();
+      out.mutable_data(cpu, framework::ToTypeIndex(data_type));
+    } else {
+      out.mutable_data(dev_place, framework::ToTypeIndex(data_type));
+    }
+
+    platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+    auto &dev_ctx = *pool.Get(dev_place);
+    math::set_constant(dev_ctx, &out, value);
   }
 };
 
@@ -67,11 +87,6 @@ Fill up a variable with specified constant value.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fill_constant, ops::FillConstantOp, ops::FillConstantOpMaker,
+REGISTER_OPERATOR(fill_constant, ops::FillConstantOp,
+                  ops::FillConstantInferShape, ops::FillConstantOpMaker,
                   paddle::framework::EmptyGradOpMaker);
-REGISTER_OP_CPU_KERNEL(
-    fill_constant,
-    ops::FillConstantOpKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::FillConstantOpKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::FillConstantOpKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::FillConstantOpKernel<paddle::platform::CPUDeviceContext, int64_t>)

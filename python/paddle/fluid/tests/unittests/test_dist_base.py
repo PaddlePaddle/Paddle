@@ -11,11 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import time
 
 import unittest
 import os
 import sys
+import six
 import signal
 import subprocess
 import six
@@ -27,7 +30,7 @@ class TestDistRunnerBase(object):
             "get_model should be implemented by child classes.")
 
     def get_transpiler(self, trainer_id, main_program, pserver_endpoints,
-                       trainers):
+                       trainers, sync_mode):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         import paddle
         import paddle.fluid as fluid
@@ -36,17 +39,22 @@ class TestDistRunnerBase(object):
             trainer_id=trainer_id,
             program=main_program,
             pservers=pserver_endpoints,
-            trainers=trainers)
+            trainers=trainers,
+            sync_mode=sync_mode)
         return t
 
-    def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
-                    trainer_id):
+    def run_pserver(self,
+                    pserver_endpoints,
+                    trainers,
+                    current_endpoint,
+                    trainer_id,
+                    sync_mode=True):
         import paddle
         import paddle.fluid as fluid
         self.get_model(batch_size=2)
         t = self.get_transpiler(trainer_id,
                                 fluid.default_main_program(), pserver_endpoints,
-                                trainers)
+                                trainers, sync_mode)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
         place = fluid.CPUPlace()
@@ -54,7 +62,13 @@ class TestDistRunnerBase(object):
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, place, endpoints, trainer_id, trainers, is_dist=True):
+    def run_trainer(self,
+                    place,
+                    endpoints,
+                    trainer_id,
+                    trainers,
+                    is_dist=True,
+                    sync_mode=True):
         import paddle
         import paddle.fluid as fluid
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
@@ -62,7 +76,7 @@ class TestDistRunnerBase(object):
         if is_dist:
             t = self.get_transpiler(trainer_id,
                                     fluid.default_main_program(), endpoints,
-                                    trainers)
+                                    trainers, sync_mode)
             trainer_prog = t.get_trainer_program()
         else:
             trainer_prog = fluid.default_main_program()
@@ -103,9 +117,9 @@ def runtime_main(test_class):
     import paddle.fluid as fluid
     import paddle.fluid.core as core
 
-    if len(sys.argv) != 7:
+    if len(sys.argv) != 8:
         print(
-            "Usage: python dist_se_resnext.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist]"
+            "Usage: python dist_se_resnext.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist] [sync_mode]"
         )
     role = sys.argv[1]
     endpoints = sys.argv[2]
@@ -113,31 +127,43 @@ def runtime_main(test_class):
     current_endpoint = sys.argv[4]
     trainers = int(sys.argv[5])
     is_dist = True if sys.argv[6] == "TRUE" else False
+    sync_mode = True if sys.argv[7] == "TRUE" else False
 
     model = test_class()
     if role == "pserver":
-        model.run_pserver(endpoints, trainers, current_endpoint, trainer_id)
+        model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
+                          sync_mode)
     else:
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
-        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist)
+        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist,
+                          sync_mode)
+
+
+import paddle.compat as cpt
 
 
 class TestDistBase(unittest.TestCase):
+    def _setup_config(self):
+        raise NotImplementedError("tests should have _setup_config implemented")
+
     def setUp(self):
         self._trainers = 2
         self._pservers = 2
         self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
         self._python_interp = "python"
+        self._sync_mode = True
+        self._setup_config()
 
     def start_pserver(self, model_file, check_error_log):
+        sync_mode_str = "TRUE" if self._sync_mode else "FALSE"
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        ps0_cmd = "%s %s pserver %s 0 %s %d TRUE" % \
+        ps0_cmd = "%s %s pserver %s 0 %s %d TRUE %s" % \
             (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
-             self._trainers)
-        ps1_cmd = "%s %s pserver %s 0 %s %d TRUE" % \
+             self._trainers, sync_mode_str)
+        ps1_cmd = "%s %s pserver %s 0 %s %d TRUE %s" % \
             (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
-             self._trainers)
+             self._trainers, sync_mode_str)
 
         ps0_pipe = subprocess.PIPE
         ps1_pipe = subprocess.PIPE
@@ -189,9 +215,10 @@ class TestDistBase(unittest.TestCase):
         # Run local to get a base line
         env_local = {"CUDA_VISIBLE_DEVICES": "0"}
         env_local.update(required_envs)
-        local_cmd = "%s %s trainer %s 0 %s %d FLASE" % \
+        sync_mode_str = "TRUE" if self._sync_mode else "FALSE"
+        local_cmd = "%s %s trainer %s 0 %s %d FLASE %s" % \
             (self._python_interp, model_file,
-             "127.0.0.1:1234", "127.0.0.1:1234", 1)
+             "127.0.0.1:1234", "127.0.0.1:1234", 1, sync_mode_str)
         if not check_error_log:
             local_proc = subprocess.Popen(
                 local_cmd.split(" "),
@@ -209,7 +236,7 @@ class TestDistBase(unittest.TestCase):
 
         local_proc.wait()
         out, err = local_proc.communicate()
-        local_ret = out
+        local_ret = cpt.to_text(out)
         sys.stderr.write('local_loss: %s\n' % local_ret)
         sys.stderr.write('local_stderr: %s\n' % err)
 
@@ -220,12 +247,12 @@ class TestDistBase(unittest.TestCase):
         self._wait_ps_ready(ps1.pid)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        tr0_cmd = "%s %s trainer %s 0 %s %d TRUE" % \
+        tr0_cmd = "%s %s trainer %s 0 %s %d TRUE %s" % \
             (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
-             self._trainers)
-        tr1_cmd = "%s %s trainer %s 1 %s %d TRUE" % \
+             self._trainers, sync_mode_str)
+        tr1_cmd = "%s %s trainer %s 1 %s %d TRUE %s" % \
             (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
-             self._trainers)
+             self._trainers, sync_mode_str)
 
         env0 = {"CUDA_VISIBLE_DEVICES": "0"}
         env1 = {"CUDA_VISIBLE_DEVICES": "1"}
@@ -256,7 +283,7 @@ class TestDistBase(unittest.TestCase):
         tr1_proc.wait()
         out, err = tr0_proc.communicate()
         sys.stderr.write('dist_stderr: %s\n' % err)
-        loss_data0 = out
+        loss_data0 = cpt.to_text(out)
         sys.stderr.write('dist_loss: %s\n' % loss_data0)
         lines = loss_data0.split("\n")
         dist_first_loss = eval(lines[0].replace(" ", ","))[0]

@@ -128,7 +128,8 @@ struct ExtractAttribute {
       attr_value = &boost::get<T>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type %s, its type is %s",
-                   attr_name_, typeid(T).name(), attr.type().name());
+                   attr_name_, paddle::platform::demangle(typeid(T).name()),
+                   paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -160,7 +161,7 @@ struct ExtractAttribute<bool> {
       attr_value = &boost::get<bool>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type bool, its type is %s",
-                   attr_name_, attr.type().name());
+                   attr_name_, paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;
   }
@@ -186,7 +187,7 @@ struct ExtractAttribute<int64_t> {
       attr_value = &boost::get<int64_t>(attr);
     } catch (boost::bad_get& bad_get) {
       PADDLE_THROW("Cannot get attribute %s by type int64_t, its type is %s",
-                   attr_name_, attr.type().name());
+                   attr_name_, paddle::platform::demangle(attr.type().name()));
     }
     return attr_value;
   }

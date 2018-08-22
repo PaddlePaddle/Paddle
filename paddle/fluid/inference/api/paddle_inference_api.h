@@ -45,7 +45,7 @@ class PaddleBuf {
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  explicit PaddleBuf(size_t length)
+  PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -70,7 +70,7 @@ struct PaddleTensor {
   std::vector<int> shape;
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<uint64_t>> lod;  // lod data
+  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
 enum class PaddleEngineKind {
@@ -120,6 +120,8 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
+  // Specify the variable's name of each input.
+  bool specify_input_name{false};
 
   std::string prog_file;
   std::string param_file;
@@ -137,6 +139,14 @@ struct AnakinConfig : public PaddlePredictor::Config {
 struct TensorRTConfig : public NativeConfig {
   // Determine whether a subgraph will be executed by TRT.
   int min_subgraph_size{1};
+  // While TensorRT allows an engine optimized for a given max batch size
+  // to run at any smaller size, the performance for those smaller
+  // sizes may not be as well-optimized. Therefore, Max batch is best
+  // equivalent to the runtime batch size.
+  int max_batch_size{1};
+  // For workspace_size, refer it from here:
+  // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
+  int workspace_size{1 << 30};
 };
 
 // A factory to help create different predictors.
