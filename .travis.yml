@@ -19,6 +19,6 @@ script:
     CHANGED_FILES=($(git diff --name-only $TRAVIS_COMMIT_RANGE))
     echo $CHANGED_FILES
 
-    git diff $TRAVIS_COMMIT_RANGE
-
+    echo "test 1"
+    git diff --name-only $TRAVIS_COMMIT_RANGE
     
