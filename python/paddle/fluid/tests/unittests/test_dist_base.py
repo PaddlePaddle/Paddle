@@ -246,10 +246,10 @@ class TestDistBase(unittest.TestCase):
                 env=env_local)
 
         local_proc.wait()
-        tr0_out, tr0_err = local_proc.communicate()
-        local_ret = cpt.to_text(tr0_out)
-        sys.stderr.write('local_loss: %s\n' % local_ret)
-        sys.stderr.write('local_stderr: %s\n' % tr0_err)
+        local_out, local_err = local_proc.communicate()
+        local_ret = cpt.to_text(local_out)
+        sys.stderr.write('local_stdout: %s\n' % local_ret)
+        sys.stderr.write('local_stderr: %s\n' % local_err)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model_file,
