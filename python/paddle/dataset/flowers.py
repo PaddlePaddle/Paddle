@@ -45,9 +45,9 @@ from six.moves import cPickle as pickle
 from six.moves import zip
 __all__ = ['train', 'test', 'valid']
 
-DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
-LABEL_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
-SETID_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat'
+DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
+LABEL_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/imagelabels.mat'
+SETID_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/setid.mat'
 DATA_MD5 = '33bfc11892f1e405ca193ae9a9f2a118'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
