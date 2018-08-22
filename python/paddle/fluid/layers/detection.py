@@ -21,7 +21,6 @@ from ..layer_helper import LayerHelper
 from . import tensor
 from . import nn
 from . import ops
-from ... import compat as cpt
 import math
 
 __all__ = [
