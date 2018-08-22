@@ -18,9 +18,10 @@ All layers just related to the detection neural network.
 from layer_function_generator import generate_layer_fn
 from layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-import tensor
-import nn
-import ops
+from . import tensor
+from . import nn
+from . import ops
+from ... import compat as cpt
 import math
 
 __all__ = [
