@@ -160,6 +160,15 @@ class TestAttentionOpNonInit(TestAttentionLSTMOp):
         self.has_initial_hidden = False
 
 
+class TestAttentionOpAct(TestAttentionLSTMOp):
+    def set_conf(self):
+        self.M = 3
+        self.D = 2
+        self.act_gate = 'relu'
+        self.act_cell = 'tanh'
+        self.act_cand = 'sigmoid'
+
+
 class TestAttentionOpMD1(TestAttentionLSTMOp):
     def set_conf(self):
         self.M = 36
