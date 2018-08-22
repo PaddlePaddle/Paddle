@@ -62,13 +62,13 @@ endif()
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
-    #nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
     function(anakin_target target_name)
       target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endfunction()
     anakin_target(inference_anakin_api)
-    #anakin_target(inference_anakin_api_shared)
+    anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
         cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
                 ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin

@@ -12,15 +12,4 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/fill_constant_op.h"
-#include "paddle/fluid/platform/float16.h"
-
-namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(
-    fill_constant,
-    ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext, int>,
-    ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FillConstantOpKernel<paddle::platform::CUDADeviceContext,
-                              paddle::platform::float16>)
+#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"

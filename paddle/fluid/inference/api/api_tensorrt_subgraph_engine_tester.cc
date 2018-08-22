@@ -23,7 +23,7 @@ namespace paddle {
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 void CompareTensorRTWithFluid(bool enable_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = enable_tensorrt;
+  FLAGS_IA_enable_tensorrt_subgraph_engine = enable_tensorrt;
 
   //# 1. Create PaddlePredictor with a config.
   NativeConfig config0;

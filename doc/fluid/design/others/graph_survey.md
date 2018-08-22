@@ -28,7 +28,7 @@ def get_symbol(num_classes=10, **kwargs):
 
 
 
-Varible here is actually a Symbol. Every basic Symbol will correspond to one Node, and every Node has its own NodeAttr. There is a op field in NodeAttr class, when a Symbol represents Variable(often input data), the op field is null.
+Varible here is actually a Symbol. Every basic Symbol will correspond to one Node, and every Node has its own AnyAttr. There is a op field in AnyAttr class, when a Symbol represents Variable(often input data), the op field is null.
 
 Symbol contains a data member, std::vector<NodeEntry> outputs, and NodeEntry cantains a poniter to Node. We can follow the Node pointer to get all the Graph.
 

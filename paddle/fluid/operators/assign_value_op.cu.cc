@@ -13,10 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/assign_value_op.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace ops = paddle::operators;
-namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(assign_value, ops::AssignValueKernel<int>,
-                        ops::AssignValueKernel<float>,
-                        ops::AssignValueKernel<plat::float16>);
+                        ops::AssignValueKernel<float>);
