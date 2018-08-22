@@ -40,6 +40,40 @@ OpProtoAndCheckerMaker::VariableBuilder OpProtoAndCheckerMaker::AddOutput(
   return OpProtoAndCheckerMaker::VariableBuilder{output};
 }
 
+void OpProtoAndCheckerMaker::Reuse(const std::string& name,
+                                   const std::string& reused_name) {
+  bool found = false;
+  proto::OpProto::Var* var;
+
+  for (auto& var : proto_->inputs()) {
+    if (var.name() == reused_name) {
+      found = true;
+      break;
+    }
+  }
+  PADDLE_ENFORCE(found == true,
+                 "Input/Output name: %s reused_name: %s, one of them is not "
+                 "exists or not matched.",
+                 name, reused_name);
+
+  found = false;
+  for (int i = 0; i < proto_->outputs().size(); ++i) {
+    var = proto_->mutable_outputs()->Mutable(i);
+    if (var->name() == name) {
+      PADDLE_ENFORCE(!var->has_reuse(),
+                     "Output(%s) has been set reused var of %s", name,
+                     var->reuse());
+      found = true;
+      var->set_reuse(reused_name);
+      break;
+    }
+  }
+  PADDLE_ENFORCE(found == true,
+                 "Input/Output name: %s reused_name: %s, one of them is not "
+                 "exists or not matched.",
+                 name, reused_name);
+}
+
 void OpProtoAndCheckerMaker::CheckNoDuplicatedInOutAttrs() {
   std::unordered_set<std::string> names;
   auto checker = [&](const std::string& name) {

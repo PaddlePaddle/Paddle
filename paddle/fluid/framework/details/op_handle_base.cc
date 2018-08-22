@@ -158,6 +158,16 @@ void OpHandleBase::RunAndRecordEvent(platform::Place p,
 #endif
 }
 
+size_t OpHandleBase::NotReadyInputSize() const {
+  std::unordered_set<VarHandleBase *> res;
+  for (auto *var : inputs_) {
+    if (var->GeneratedOp() != nullptr) {
+      res.emplace(var);
+    }
+  }
+  return res.size();
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

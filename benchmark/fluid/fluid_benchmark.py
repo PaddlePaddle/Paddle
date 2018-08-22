@@ -85,8 +85,7 @@ def dist_transpile(trainer_id, args):
         trainer_id,
         pservers=pserver_endpoints,
         trainers=trainers,
-        sync_mode=not args.async_mode,
-        slice_var_up=not args.no_split_var)
+        sync_mode=not args.async_mode)
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
         pserver_startup_program = t.get_startup_program(current_endpoint,

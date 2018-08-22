@@ -20,9 +20,6 @@ limitations under the License. */
 #include "gtest/gtest.h"
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
-#ifdef PADDLE_WITH_MKLML
-#include <omp.h>
-#endif
 
 DEFINE_string(model_path, "", "Directory of the inference model.");
 DEFINE_string(data_file, "", "File of input index data.");
@@ -30,6 +27,7 @@ DEFINE_int32(repeat, 100, "Running the inference program repeat times");
 DEFINE_bool(prepare_vars, true, "Prepare variables before executor");
 DEFINE_int32(num_threads, 1, "Number of threads should be used");
 DECLARE_bool(use_mkldnn);
+DECLARE_int32(paddle_num_threads);
 
 inline double GetCurrentMs() {
   struct timeval time;
@@ -160,12 +158,7 @@ TEST(inference, nlp) {
   std::unique_ptr<paddle::framework::Scope> scope(
       new paddle::framework::Scope());
 
-#ifdef PADDLE_WITH_MKLML
-  // only use 1 thread number per std::thread
-  omp_set_dynamic(0);
-  omp_set_num_threads(1);
-  paddle::platform::SetNumThreads(1);
-#endif
+  paddle::platform::SetNumThreads(FLAGS_paddle_num_threads);
 
   double start_ms = 0, stop_ms = 0;
   if (FLAGS_num_threads > 1) {

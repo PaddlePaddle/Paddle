@@ -18,7 +18,14 @@
 namespace paddle {
 namespace operators {
 namespace reader {
-BufferedReader::~BufferedReader() { reader_->Shutdown(); }
+BufferedReader::~BufferedReader() {
+  reader_->Shutdown();
+  while (!position_.empty()) {
+    position_.front().wait();
+    position_.pop();
+  }
+}
+
 BufferedReader::BufferedReader(
     const std::shared_ptr<framework::ReaderBase> &reader,
     const platform::Place &place, size_t buffer_size)
@@ -30,12 +37,14 @@ BufferedReader::BufferedReader(
   gpu_buffer_.resize(buffer_size);
   ReadTillBufferFullAsync();
 }
+
 void BufferedReader::ReadTillBufferFullAsync() {
   PADDLE_ENFORCE_EQ(position_.size(), 0U);
   for (size_t i = 0; i < buffer_size_; ++i) {
     ReadAsync(i);
   }
 }
+
 void BufferedReader::ReadAsync(size_t i) {
   position_.emplace(thread_pool_.enqueue([this, i]() -> size_t {
     TensorVec &cpu = cpu_buffer_[i];
@@ -56,6 +65,7 @@ void BufferedReader::ReadAsync(size_t i) {
     return i;
   }));
 }
+
 void BufferedReader::ShutdownImpl() {
   reader_->Shutdown();
   while (!position_.empty()) {
@@ -63,10 +73,12 @@ void BufferedReader::ShutdownImpl() {
   }
   prev_pos_ = -1UL;
 }
+
 void BufferedReader::StartImpl() {
   reader_->Start();
   ReadTillBufferFullAsync();
 }
+
 void BufferedReader::ReadNextImpl(std::vector<framework::LoDTensor> *out) {
   if (position_.empty()) {
     out->clear();

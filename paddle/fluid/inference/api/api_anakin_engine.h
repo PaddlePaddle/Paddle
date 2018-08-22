@@ -20,14 +20,16 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
 
-// from anakin
 #include "framework/core/net/net.h"
+#include "framework/graph/graph.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "saber/core/shape.h"
 #include "saber/saber_types.h"
 
 namespace paddle {
 
+template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:
   PaddleInferenceAnakinPredictor() {}
@@ -42,19 +44,21 @@ class PaddleInferenceAnakinPredictor : public PaddlePredictor {
 
   std::unique_ptr<PaddlePredictor> Clone() override;
 
-  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
+  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>&
   get_executer();
 
-  ~PaddleInferenceAnakinPredictor() override{};
+  ~PaddleInferenceAnakinPredictor() override {
+    delete executor_p_;
+    executor_p_ = nullptr;
+  };
 
  private:
   bool Init(const AnakinConfig& config);
 
-  anakin::graph::Graph<anakin::NV, anakin::saber::AK_FLOAT,
-                       anakin::Precision::FP32>
+  anakin::graph::Graph<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
       graph_;
-  anakin::Net<anakin::NV, anakin::saber::AK_FLOAT, anakin::Precision::FP32>
-      executor_;
+  anakin::Net<Target, anakin::saber::AK_FLOAT, anakin::Precision::FP32>*
+      executor_p_{nullptr};
   AnakinConfig config_;
 };
 

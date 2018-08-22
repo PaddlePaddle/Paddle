@@ -11,17 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 import multiprocessing
+import six
 import threading
 
 from ..data_feeder import DataFeeder
-from control_flow import BlockGuard
-from layer_function_generator import templatedoc
+from .control_flow import BlockGuard
+from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program, program_guard, Program
+    default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
@@ -69,7 +72,7 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in xrange(len(shape)):
+    for i in six.moves.range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -206,7 +209,7 @@ class ListenAndServ(object):
             })
 
 
-def Send(endpoints, send_vars, sync=True):
+def Send(endpoints, send_vars, dummy_output=None, sync=True):
     """
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
@@ -220,6 +223,13 @@ def Send(endpoints, send_vars, sync=True):
     """
     assert (type(send_vars) == list)
 
+    if dummy_output is None:
+        dummy_output = []
+    elif isinstance(dummy_output, Variable):
+        dummy_output = [dummy_output]
+
+    assert (type(dummy_output) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
@@ -229,6 +239,7 @@ def Send(endpoints, send_vars, sync=True):
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
+        outputs={"Out": dummy_output},
         attrs={
             "endpoints": endpoints,
             "epmap": epmap,
@@ -238,7 +249,7 @@ def Send(endpoints, send_vars, sync=True):
         helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
 
 
-def Recv(endpoints, get_vars, sync=True):
+def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     """
     Receive variables from server side
 
@@ -253,13 +264,20 @@ def Recv(endpoints, get_vars, sync=True):
     """
     assert (type(get_vars) == list)
 
+    if dummy_input is None:
+        dummy_input = []
+    elif isinstance(dummy_input, Variable):
+        dummy_input = [dummy_input]
+
+    assert (type(dummy_input) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Recv", **locals())
     helper.append_op(
         type="recv",
-        inputs={"X": get_vars},
+        inputs={"X": dummy_input},
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
@@ -387,9 +405,9 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     Create a uniform random data generator
 
     This layer returns a Reader Variable.
-    Instead of opening a file and reading data from it, this 
-    Reader Variable generates float uniform random data by itself. 
-    It can be used as a dummy reader to test a network without 
+    Instead of opening a file and reading data from it, this
+    Reader Variable generates float uniform random data by itself.
+    It can be used as a dummy reader to test a network without
     opening a real file.
 
     Args:
@@ -443,9 +461,6 @@ def random_data_generator(low, high, shapes, lod_levels, for_parallel=True):
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
                                       startup_var)
 
-    if for_parallel:
-        main_prog_var = parallel(reader=main_prog_var)
-
     return monkey_patch_reader_methods(main_prog_var)
 
 
@@ -456,52 +471,124 @@ def py_reader(capacity,
               name=None,
               use_double_buffer=True):
     """
-    Create a reader and blocking queue for data feeding in Python
-    
-    This layer returns a Reader Variable and a BlockingQueue.
-    The BlockingQueue provides `push()` method to push a `LoDTensorArray` 
-    object into the queue in Python side. In C++ side, the Reader 
-    Variable would invoke `pop()` method of the queue to retrieve the 
-    feeding data. The process of feeding data in Python side and fetching 
-    data in C++ side can run in parallel. The BlockingQueue should be closed 
-    using `close()` method when unused.
+    Create a Python reader for data feeding in Python
+
+    This layer returns a Reader Variable.
+    The Reader provides :code:`decorate_paddle_reader()` and
+    :code:`decorate_tensor_provider()` to set a Python generator as the data
+    source in Python side. When :code:`Executor::Run()` is invoked in C++
+    side, the data from the generator would be read automatically. Unlike
+    :code:`DataFeeder.feed()`, the data reading process and
+    :code:`Executor::Run()` process can run in parallel using
+    :code:`py_reader`. The :code:`start()` method of the Reader should be
+    called when each pass begins, while the :code:`reset()` method should be
+    called when the pass ends and :code:`fluid.core.EOFException` raises.
+    Note that :code:`Program.clone()` method cannot clone :code:`py_reader`.
 
     Args:
-       use_double_buffer(bool): Whether use double buffer or not.
-       capacity(int): The maximum capacity of the BlockingQueue.
+       capacity(int): The buffer capacity maintained by :code:`py_reader`.
        shapes(list|tuple): List of tuples which declaring data shapes.
        dtypes(list|tuple): List of strs which declaring data type.
        lod_levels(list|tuple): List of ints which declaring data lod_level.
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.
+       use_double_buffer(bool): Whether use double buffer or not.
 
     Returns:
-       tuple(Variable, BlockingQueue):
-       A Reader Variable from which we can get feeding data.
-       
-       A BlockingQueue object for data feeding.
+       Variable: A Reader from which we can get feeding data.
 
     Examples:
 
-        .. code-block:: python
+        1. The basic usage of :code:`py_reader` is as follows:
 
-            reader, queue = fluid.layers.py_reader(
-                                             capacity=10,
-                                             shapes=[[-1,3,224,224], [-1,1]],
-                                             dtypes=['float32', 'int64'])
-            # Via the reader, we can use 'read_file' layer to get data:
-            image, label = fluid.layers.read_file(reader)
-            
-            # Via the blocking queue, we can feed data using threads
-            def feed_data(queue, feed_images, feed_labels):
-                for feed_image, feed_label in zip(feed_images, feed_labels):
-                    data = core.LoDTensorArray()
-                    data.append(feed_image)
-                    data.append(feed_label)
-                    queue.push(data)
-            
-            thread = threading.Thread(target=feed_data, args=(queue, feed_images, feed_labels))
-            thread.start()
+        >>> import paddle.v2
+        >>> import paddle.fluid as fluid
+        >>> import paddle.dataset.mnist as mnist
+        >>>
+        >>> reader = fluid.layers.py_reader(capacity=64,
+        >>>                                 shapes=[(-1,3,224,224), (-1,1)],
+        >>>                                 dtypes=['float32', 'int64'])
+        >>> reader.decorate_paddle_reader(
+        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>
+        >>> img, label = fluid.layers.read_file(reader)
+        >>> loss = network(img, label) # some network definition
+        >>>
+        >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+        >>>
+        >>> exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
+        >>> for epoch_id in range(10):
+        >>>     reader.start()
+        >>>     try:
+        >>>         while True:
+        >>>             exe.run(fetch_list=[loss.name])
+        >>>     except fluid.core.EOFException:
+        >>>         reader.reset()
+
+        2. When training and testing are both performed, two different
+        :code:`py_reader` should be created with different names, e.g.:
+
+        >>> import paddle.v2
+        >>> import paddle.fluid as fluid
+        >>> import paddle.dataset.mnist as mnist
+        >>>
+        >>> def network(reader):
+        >>>     img, label = fluid.layers.read_file(reader)
+        >>>     # Here, we omitted the network definition
+        >>>     return loss
+        >>>
+        >>> train_reader = fluid.layers.py_reader(capacity=64,
+        >>>                                       shapes=[(-1,3,224,224), (-1,1)],
+        >>>                                       dtypes=['float32', 'int64'],
+        >>>                                       name='train_reader')
+        >>> train_reader.decorate_paddle_reader(
+        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>
+        >>> test_reader = fluid.layers.py_reader(capacity=32,
+        >>>                                      shapes=[(-1,3,224,224), (-1,1)],
+        >>>                                      dtypes=['float32', 'int64'],
+        >>>                                      name='test_reader')
+        >>> test_reader.decorate_paddle_reader(paddle.batch(mnist.test(), 512))
+        >>>
+        >>> # Create train_main_prog and train_startup_prog
+        >>> train_main_prog = fluid.Program()
+        >>> train_startup_prog = fluid.Program()
+        >>> with fluid.program_guard(train_main_prog, train_startup_prog):
+        >>>     # Use fluid.unique_name.guard() to share parameters with test program
+        >>>     with fluid.unique_name.guard():
+        >>>         train_loss = network(train_reader) # some network definition
+        >>>         adam = fluid.optimizer.Adam(learning_rate=0.01)
+        >>>         adam.minimize(loss)
+        >>>
+        >>> # Create test_main_prog and test_startup_prog
+        >>> test_main_prog = fluid.Program()
+        >>> test_startup_prog = fluid.Program()
+        >>> with fluid.program_guard(test_main_prog, test_startup_prog):
+        >>>     # Use fluid.unique_name.guard() to share parameters with train program
+        >>>     with fluid.unique_name.guard():
+        >>>         test_loss = network(test_reader)
+        >>>
+        >>> fluid.Executor(fluid.CUDAPlace(0)).run(train_startup_prog)
+        >>> fluid.Executor(fluid.CUDAPlace(0)).run(test_startup_prog)
+        >>>
+        >>> train_exe = fluid.ParallelExecutor(use_cuda=True,
+        >>>                 loss_name=train_loss.name, main_program=train_main_prog)
+        >>> test_exe = fluid.ParallelExecutor(use_cuda=True,
+        >>>                 loss_name=test_loss.name, main_program=test_main_prog)
+        >>> for epoch_id in range(10):
+        >>>     train_reader.start()
+        >>>     try:
+        >>>         while True:
+        >>>             train_exe.run(fetch_list=[train_loss.name])
+        >>>     except fluid.core.EOFException:
+        >>>         train_reader.reset()
+        >>>
+        >>>     test_reader.start()
+        >>>     try:
+        >>>         while True:
+        >>>             test_exe.run(fetch_list=[test_loss.name])
+        >>>     except fluid.core.EOFException:
+        >>>         test_reader.reset()
     """
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -579,6 +666,7 @@ def py_reader(capacity,
             feed_queue.close()
 
         reader.thread = threading.Thread(target=__provider_thread__)
+        reader.thread.daemon = True
         reader.thread.start()
 
     def __set_tensor_provider__(func):
@@ -604,7 +692,7 @@ def py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in xrange(counter)]
+                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
 
         __set_tensor_provider__(__tensor_provider__)
 
@@ -637,9 +725,9 @@ def open_files(filenames,
     """
     Open files
 
-    This layer takes a list of files to read from and returns a Reader Variable. 
-    Via the Reader Variable, we can get data from given files. All files must 
-    have name suffixs to indicate their formats, e.g., '*.recordio'. 
+    This layer takes a list of files to read from and returns a Reader Variable.
+    Via the Reader Variable, we can get data from given files. All files must
+    have name suffixs to indicate their formats, e.g., '*.recordio'.
 
     Args:
        filenames(list): The list of file names.
@@ -680,7 +768,7 @@ def open_files(filenames,
     else:
         buffer_size = int(buffer_size)
 
-    if isinstance(filenames, basestring):
+    if isinstance(filenames, six.string_types):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -755,9 +843,9 @@ def shuffle(reader, buffer_size):
 
 def batch(reader, batch_size):
     """
-    This layer is a reader decorator. It takes a reader and adds 
-    'batching' decoration on it. When reading with the result 
-    decorated reader, output data will be automatically organized 
+    This layer is a reader decorator. It takes a reader and adds
+    'batching' decoration on it. When reading with the result
+    decorated reader, output data will be automatically organized
     to the form of batches.
 
     Args:
@@ -782,11 +870,11 @@ def batch(reader, batch_size):
             # If we read data with the raw_reader:
             #     data = fluid.layers.read_file(raw_reader)
             # We can only get data instance by instance.
-            # 
+            #
             # However, if we read data with the batch_reader:
             #     data = fluid.layers.read_file(batch_reader)
-            # Each 5 adjacent instances will be automatically combined together 
-            # to become a batch. So what we get('data') is a batch data instead 
+            # Each 5 adjacent instances will be automatically combined together
+            # to become a batch. So what we get('data') is a batch data instead
             # of an instance.
     """
     return __create_unshared_decorated_reader__(
@@ -833,8 +921,8 @@ def read_file(reader):
     """
     Execute the given reader and get data via it.
 
-    A reader is also a Variable. It can be a raw reader generated by 
-    `fluid.layers.open_files()` or a decorated one generated by 
+    A reader is also a Variable. It can be a raw reader generated by
+    `fluid.layers.open_files()` or a decorated one generated by
     `fluid.layers.double_buffer()` and so on.
 
     Args:
@@ -935,7 +1023,7 @@ class Preprocessor(object):
         source_lod_levels = self.underlying_reader.desc.lod_levels()
         self.source_var_names = [
             unique_name("preprocessor_source")
-            for _ in xrange(len(source_shapes))
+            for _ in six.moves.range(len(source_shapes))
         ]
         source_vars = []
         for var_name, shape, dtype, lod_level in zip(

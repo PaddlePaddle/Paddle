@@ -50,6 +50,7 @@ class Pass {
   // Create a debugger Pass that draw the DFG by graphviz toolkit.
   virtual Pass *CreateGraphvizDebugerPass() const { return nullptr; }
 
+  virtual void Run() { LOG(FATAL) << "not valid"; }
   // Run on a single Node.
   virtual void Run(Node *x) { LOG(FATAL) << "not valid"; }
   // Run on a single Function.
@@ -62,7 +63,7 @@ class Pass {
   // Human-readable short representation.
   virtual std::string repr() const = 0;
   // Human-readable long description.
-  virtual std::string description() const = 0;
+  virtual std::string description() const { return "No DOC"; }
 };
 
 // NodePass process on any Node types.

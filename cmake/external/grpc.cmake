@@ -50,7 +50,7 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    PATCH_COMMAND git apply ${PADDLE_SOURCE_DIR}/patches/grpc/fix_too_early_destory.patch
+    PATCH_COMMAND cp ${PADDLE_SOURCE_DIR}/patches/grpc/grpc_library.h ${GRPC_SOURCES_DIR}/src/extern_grpc/include/grpcpp/impl/codegen/grpc_library.h && cp ${PADDLE_SOURCE_DIR}/patches/grpc/completion_queue.h ${GRPC_SOURCES_DIR}/src/extern_grpc/include/grpcpp/impl/codegen/completion_queue.h
     # NOTE(yuyang18):
     # Disable -Werror, otherwise the compile will fail in MacOS.
     # It seems that we cannot configure that by make command.

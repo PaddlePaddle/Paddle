@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import decoder
-from decoder import *
+from __future__ import print_function
 
-__all__ = decoder.__all__
+from . import decoder
+from .decoder import *
+from . import memory_usage_calc
+from .memory_usage_calc import *
+
+__all__ = decoder.__all__ + memory_usage_calc.__all__

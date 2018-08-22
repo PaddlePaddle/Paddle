@@ -20,8 +20,8 @@ limitations under the License. */
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <fstream>
 #include <iostream>
+#include "paddle/fluid/inference/demo_ci/utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "utils.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -123,11 +123,11 @@ void Main(bool use_gpu) {
   file.close();
 
   // Inference.
-  PaddleTensor input{
-      .name = "xx",
-      .shape = record.shape,
-      .data = PaddleBuf(record.data.data(), record.data.size() * sizeof(float)),
-      .dtype = PaddleDType::FLOAT32};
+  PaddleTensor input;
+  input.shape = record.shape;
+  input.data =
+      PaddleBuf(record.data.data(), record.data.size() * sizeof(float));
+  input.dtype = PaddleDType::FLOAT32;
 
   VLOG(3) << "run executor";
   std::vector<PaddleTensor> output;

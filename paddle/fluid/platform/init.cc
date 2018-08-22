@@ -23,6 +23,9 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/piece.h"
 
+DEFINE_int32(paddle_num_threads, 1,
+             "Number of threads for each paddle instance.");
+
 namespace paddle {
 namespace framework {
 
@@ -115,7 +118,7 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   places.emplace_back(platform::CPUPlace());
   platform::DeviceContextPool::Init(places);
 #ifndef PADDLE_WITH_MKLDNN
-  platform::SetNumThreads(1);
+  platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 }
 

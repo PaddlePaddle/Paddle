@@ -47,12 +47,12 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
     int axis = ctx.Attr<int>("axis");
 
     auto x_dims = x->dims();
-    auto y_dims = y->dims();
+    auto y_dims_untrimed = y->dims();
     auto z_dims = z->dims();
 
     // Execute default elementwise_add operator when
     // broadcast operations need to performed.
-    if (x_dims != y_dims) {
+    if (x_dims != y_dims_untrimed) {
       auto sum_func = [](T a, T b) -> T { return a + b; };
 
       TransformFunctor<decltype(sum_func), T,
@@ -62,11 +62,11 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
               ctx.template device_context<paddle::platform::CPUDeviceContext>(),
               sum_func);
 
-      axis = (axis == -1 ? x_dims.size() - y_dims.size() : axis);
+      axis = (axis == -1 ? x_dims.size() - y_dims_untrimed.size() : axis);
       PADDLE_ENFORCE(axis >= 0 && axis < x_dims.size(),
                      "Axis should be in range [0, x_dims)");
 
-      trim_trailing_singular_dims(&y_dims);
+      auto y_dims = trim_trailing_singular_dims(y_dims_untrimed);
       axis = (y_dims.size() == 0) ? x_dims.size() : axis;
 
       int pre, n, post;
@@ -88,7 +88,7 @@ class EltwiseAddMKLDNNKernel : public framework::OpKernel<T> {
                      "Wrong layout/format set for Y tensor");
 
       std::vector<int> src_x_tz = framework::vectorize2int(x_dims);
-      std::vector<int> src_y_tz = framework::vectorize2int(y_dims);
+      std::vector<int> src_y_tz = framework::vectorize2int(y_dims_untrimed);
       std::vector<int> dst_tz = framework::vectorize2int(z_dims);
 
       std::vector<memory::primitive_desc> srcs_pd;
@@ -142,36 +142,39 @@ class EltwiseAddMKLDNNGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     using Tensor = framework::Tensor;
 
-    auto* x = ctx.Input<Tensor>("X");
-    auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");
+    // skip out, x, y,
+    // dout length is larger or equal than dx, dy.
+    auto* out = dout;
+    auto *x = dout, *y = dout;
 
     auto set_mkldnn_format = [](Tensor* in, const Tensor* out) {
       in->set_layout(DataLayout::kMKLDNN);
       in->set_format(out->format());
     };
 
-    if (x->dims() == y->dims()) {
-      auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
-      if (dx) {
-        blas.VCOPY(dout->numel(), dout->data<T>(),
-                   dx->mutable_data<T>(ctx.GetPlace()));
-        set_mkldnn_format(dx, dout);
-      }
+    if (dx != nullptr && dy != nullptr && dx->dims() == dy->dims()) {
+      if (dx->dims() == dy->dims()) {
+        auto blas = math::GetBlas<paddle::platform::CPUDeviceContext, T>(ctx);
+        if (dx) {
+          blas.VCOPY(dout->numel(), dout->data<T>(),
+                     dx->mutable_data<T>(ctx.GetPlace()));
+          set_mkldnn_format(dx, dout);
+        }
 
-      if (dy) {
-        blas.VCOPY(dout->numel(), dout->data<T>(),
-                   dy->mutable_data<T>(ctx.GetPlace()));
-        set_mkldnn_format(dy, dout);
+        if (dy) {
+          blas.VCOPY(dout->numel(), dout->data<T>(),
+                     dy->mutable_data<T>(ctx.GetPlace()));
+          set_mkldnn_format(dy, dout);
+        }
       }
     } else {
       // Execute default kernel when broadcast is needed
-      ElemwiseGradCompute<paddle::platform::CPUDeviceContext, T,
-                          IdentityGrad<T>, IdentityGrad<T>>(
+      ElemwiseExplicitGradCompute<paddle::platform::CPUDeviceContext, T,
+                                  IdentityGrad<T>, IdentityGrad<T>>(
           ctx, *x, *y, *out, *dout, axis, dx, dy, IdentityGrad<T>(),
           IdentityGrad<T>());
     }

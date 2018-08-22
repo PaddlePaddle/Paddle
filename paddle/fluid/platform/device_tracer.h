@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include <sys/time.h>
+#include <time.h>
+#include <chrono>  // NOLINT
 #include <string>
 
 #include "paddle/fluid/platform/dynload/cupti.h"
@@ -24,6 +27,12 @@ namespace platform {
 ///////////////////////
 // WARN: Under Development. Don't depend on it yet.
 //////////////////////
+
+inline uint64_t PosixInNsec() {
+  struct timeval tv;
+  gettimeofday(&tv, nullptr);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+}
 
 // DeviceTracer performs the following tasks:
 // 1. Register cuda callbacks for various events: kernel, memcpy, etc.
@@ -99,9 +108,5 @@ std::string CurAnnotation();
 void SetCurBlock(int block_id);
 void ClearCurBlock();
 int BlockDepth();
-
-void SetCurThread(int thread_id);
-void ClearCurThread();
-int CurThread();
 }  // namespace platform
 }  // namespace paddle

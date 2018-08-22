@@ -28,10 +28,12 @@ namespace distributed {
 
 using VarMsg = sendrecv::VariableMessage;
 
+#ifdef PADDLE_WITH_CUDA
 void* GetVarPayLoad(const std::string varname, int64_t size) {
   platform::CUDAPinnedPlace cuda_pinned;
   return memory::Alloc(cuda_pinned, size);
 }
+#endif
 
 void GetTensorPayload(framework::Variable* var,
                       const platform::DeviceContext& ctx, VarMsg* request,

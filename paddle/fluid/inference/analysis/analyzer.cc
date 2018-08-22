@@ -17,17 +17,23 @@
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
+#include "paddle/fluid/inference/analysis/model_store_pass.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_node_mark_pass.h"
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
 
 namespace paddle {
 
-DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
+DEFINE_bool(IA_enable_tensorrt_subgraph_engine, false,
             "Enable subgraph to TensorRT engine for acceleration");
 
-DEFINE_string(inference_analysis_graphviz_log_root, "./",
+DEFINE_bool(IA_enable_ir, false, "Turn on IR support");
+
+DEFINE_string(IA_graphviz_log_root, "./",
               "Graphviz debuger for data flow graphs.");
+
+DEFINE_string(IA_output_storage_path, "", "optimized model output path");
 
 namespace inference {
 namespace analysis {
@@ -36,17 +42,20 @@ class DfgPassManagerImpl final : public DfgPassManager {
  public:
   DfgPassManagerImpl() {
     // TODO(Superjomn) set the key with pass reprs.
-    AddPass("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
-    if (FLAGS_inference_analysis_enable_tensorrt_subgraph_engine) {
-      auto trt_teller = [](const Node* node) {
-        if (!node->IsFunction()) return false;
-        return static_cast<const Function*>(node)->func_type() == "mul";
-      };
-      AddPass("tensorrt-subgraph-marker",
-              new TensorRTSubgraphNodeMarkPass(trt_teller));
-      AddPass("tensorrt-subgraph", new TensorRTSubGraphPass(trt_teller));
+    LOG(INFO)
+        << "-----------------------------------------------------------------";
+    if (FLAGS_IA_enable_ir) {
+      AddPass("fluid-to-ir-pass", new FluidToIrPass);
+    } else {
+      AddPass("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
     }
+    TryAddTensorRtPass();
     AddPass("data-flow-graph-to-fluid", new DataFlowGraphToFluidPass);
+    if (!FLAGS_IA_output_storage_path.empty()) {
+      AddPass("model-store-pass", new ModelStorePass);
+    }
+    LOG(INFO)
+        << "-----------------------------------------------------------------";
   }
 
   std::string repr() const override { return "dfg-pass-manager"; }
@@ -54,9 +63,31 @@ class DfgPassManagerImpl final : public DfgPassManager {
 
  private:
   void AddPass(const std::string& name, Pass* pass) {
-    LOG(INFO) << "Adding pass " << name;
+    VLOG(3) << "Adding pass " << name;
     Register(name, pass);
     AddGraphvizDebugerPass(pass);
+  }
+
+  void TryAddTensorRtPass() {
+    if (FLAGS_IA_enable_tensorrt_subgraph_engine) {
+      auto trt_teller = [&](const Node* node) {
+        std::unordered_set<std::string> teller_set(
+            {"elementwise_add", "mul", "conv2d", "pool2d", "relu", "softmax",
+             "depthwise_conv2d", "batch_norm"});
+        if (!node->IsFunction()) return false;
+
+        const auto* func = static_cast<const Function*>(node);
+        if (teller_set.count(func->func_type())) {
+          return true;
+        } else {
+          return false;
+        }
+      };
+
+      AddPass("tensorrt-subgraph-marker",
+              new TensorRTSubgraphNodeMarkPass(trt_teller));
+      AddPass("tensorrt-subgraph", new TensorRTSubGraphPass(trt_teller));
+    }
   }
 
   // Add the graphviz debuger pass if the parent pass has one.
