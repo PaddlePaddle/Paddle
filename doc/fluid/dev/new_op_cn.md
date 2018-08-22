@@ -402,6 +402,19 @@ PADDLE_ENFORCE(forward_pd != nullptr,
                     "Fail to find eltwise_fwd_pd in device context");  //eltwise_fwd_pd用户可能看不懂
 ```
 
+3. OP内部调用非法接口：Op内部如果出现Output = ShareDataWith(Input) 
+问题示例：
+```cpp
+auto *out = ctx.Output<framework::LoDTensor>("Out");
+auto *in = ctx.Input<framework::LoDTensor>("X");
+out->ShareDataWith(*in);
+```
+Op内部如果出现Output = ShareDataWith(Input)，相当于operator图的中有一条隐藏边，连接了Input和Output，这条边无法在图分析中表达，引发基于图优化的错误。
+
+4. OP实现的性能实践
+调用了eigen的broadcast, chop等操作，性能会比手写cuda kernel差几倍以上。此时cpu的实现可以复用eigen，gpu实现可以实现cuda kernel.
+
+
 #### OP InferShape检查提示信息特别说明
 
 - 检查输入输出变量，请统一遵循以下格式
