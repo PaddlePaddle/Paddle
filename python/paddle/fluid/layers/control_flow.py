@@ -1272,8 +1272,8 @@ class ConditionalBlock(object):
         parent_block.append_op(
             type='conditional_block',
             inputs={
-                'X': self.inputs,
-                'Params': param_list,
+                'Cond': self.inputs,
+                'Input': param_list,
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
