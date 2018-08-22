@@ -155,7 +155,7 @@ class Dataset(object):
         return _parse
 
 
-def load_data_meta(path):
+def load_data_meta():
     '''
     load data meta info from path, return (dnn_input_dim, lr_input_dim)
     '''

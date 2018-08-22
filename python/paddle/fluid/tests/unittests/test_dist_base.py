@@ -23,6 +23,8 @@ import signal
 import subprocess
 import six
 
+RUN_STEP = 10
+
 
 class TestDistRunnerBase(object):
     def get_model(self, batch_size=2):
@@ -55,10 +57,10 @@ class TestDistRunnerBase(object):
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
         index = pserver_endpoints.index(current_endpoint)
-        with open("/tmp/pserver." + str(index) + ".startup.proto", 'w') as f:
-            f.write(str(startup_prog))
-        with open("/tmp/pserver." + str(index) + ".main.proto", "w") as f:
-            f.write(str(pserver_prog))
+        # with open("/tmp/pserver." + str(index) + ".startup.proto", 'w') as f:
+        #     f.write(str(startup_prog))
+        # with open("/tmp/pserver." + str(index) + ".main.proto", "w") as f:
+        #     f.write(str(pserver_prog))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -112,21 +114,23 @@ class TestDistRunnerBase(object):
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        reader_generator = test_reader()
+        reader_generator = train_reader()
 
-        data = next(reader_generator)
-        first_loss, = exe.run(fetch_list=[avg_cost.name],
-                              feed=feeder.feed(data))
-        print(first_loss)
+        def get_data():
+            origin_batch = next(reader_generator)
+            if is_dist:
+                new_batch = []
+                for offset, item in enumerate(origin_batch):
+                    if offset % 2 == trainer_id:
+                        new_batch.append(item)
+                return new_batch
+            else:
+                return origin_batch
 
-        for i in six.moves.xrange(5):
-            data = next(reader_generator)
-            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+        for _ in six.moves.xrange(RUN_STEP):
+            loss, = exe.run(fetch_list=[avg_cost.name],
+                            feed=feeder.feed(get_data()))
             print(loss)
-
-        data = next(reader_generator)
-        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
-        print(last_loss)
 
 
 def runtime_main(test_class):
@@ -242,10 +246,10 @@ class TestDistBase(unittest.TestCase):
                 env=env_local)
 
         local_proc.wait()
-        out, err = local_proc.communicate()
-        local_ret = cpt.to_text(out)
+        tr0_out, tr0_err = local_proc.communicate()
+        local_ret = cpt.to_text(tr0_out)
         sys.stderr.write('local_loss: %s\n' % local_ret)
-        sys.stderr.write('local_stderr: %s\n' % err)
+        sys.stderr.write('local_stderr: %s\n' % tr0_err)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model_file,
@@ -288,17 +292,21 @@ class TestDistBase(unittest.TestCase):
 
         tr0_proc.wait()
         tr1_proc.wait()
-        out, err = tr0_proc.communicate()
-        sys.stderr.write('dist_stderr: %s\n' % err)
-        loss_data0 = cpt.to_text(out)
-        sys.stderr.write('dist_loss: %s\n' % loss_data0)
-        lines = loss_data0.split("\n")
-        dist_first_loss = eval(lines[0].replace(" ", ","))[0]
-        dist_last_loss = eval(lines[-1].replace(" ", ","))[0]
+        tr0_out, tr0_err = tr0_proc.communicate()
+        tr0_loss_text = cpt.to_text(tr0_out)
+        tr1_out, tr1_err = tr1_proc.communicate()
+        tr1_loss_text = cpt.to_text(tr1_out)
+
+        # print log
+        sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
+        sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
+        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_loss_text)
+        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+
+        tr0_losses = tr0_loss_text.split("\n")
+        tr1_losses = tr1_loss_text.split("\n")
 
         local_lines = local_ret.split("\n")
-        local_first_loss = eval(local_lines[0])[0]
-        local_last_loss = eval(local_lines[1])[0]
 
         # close trainer file
         if check_error_log:
@@ -312,5 +320,9 @@ class TestDistBase(unittest.TestCase):
         os.kill(ps1.pid, signal.SIGKILL)
         FNULL.close()
 
-        self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
-        self.assertAlmostEqual(local_last_loss, dist_last_loss, delta=delta)
+        for step_id in range(RUN_STEP):
+            tr0_loss = eval(tr0_losses[step_id])[0]
+            tr1_loss = eval(tr1_losses[step_id])[0]
+            self.assertAlmostEqual(
+                eval(local_lines[step_id])[0], (tr0_loss + tr1_loss) / 2,
+                delta=delta)

@@ -29,8 +29,7 @@ fluid.default_main_program().random_seed = 1
 
 class TestDistCTR2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
-        dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta(
-            "ctr_data/data.meta.txt")
+        dnn_input_dim, lr_input_dim = dist_ctr_reader.load_data_meta()
         """ network definition """
         dnn_data = fluid.layers.data(
             name="dnn_data",
@@ -59,7 +58,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[dnn_input_dim, dnn_layer_dims[0]],
             param_attr=fluid.ParamAttr(
                 name="deep_embedding",
-                initializer=fluid.initializer.Constant(value=0.1)),
+                initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=IS_SPARSE)
         dnn_pool = fluid.layers.sequence_pool(
             input=dnn_embedding, pool_type="sum")
@@ -70,7 +69,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
                 size=dim,
                 act="relu",
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant(value=0.1)),
+                    initializer=fluid.initializer.Constant(value=0.01)),
                 name='dnn-fc-%d' % i)
             dnn_out = fc
 
@@ -81,7 +80,7 @@ class TestDistCTR2x2(TestDistRunnerBase):
             size=[lr_input_dim, 1],
             param_attr=fluid.ParamAttr(
                 name="wide_embedding",
-                initializer=fluid.initializer.Constant(value=0.1)),
+                initializer=fluid.initializer.Constant(value=0.01)),
             is_sparse=IS_SPARSE)
         lr_pool = fluid.layers.sequence_pool(input=lr_embbding, pool_type="sum")
 
@@ -109,6 +108,3 @@ if __name__ == "__main__":
     import os
     os.environ['CPU_NUM'] = '1'
     runtime_main(TestDistCTR2x2)
-    # dataset = dist_ctr_reader.Dataset()
-    # for data in dataset.train()():
-    #     print(data)
