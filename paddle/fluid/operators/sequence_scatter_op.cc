@@ -154,4 +154,3 @@ REGISTER_OP_CPU_KERNEL(sequence_scatter_grad,
                        ops::SequenceScatterGradientOpKernel<double>,
                        ops::SequenceScatterGradientOpKernel<int>,
                        ops::SequenceScatterGradientOpKernel<int64_t>);
-
