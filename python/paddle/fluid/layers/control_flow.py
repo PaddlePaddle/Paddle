@@ -661,6 +661,7 @@ class While(object):
 
     Args:
         cond (Variable): condition used to compare.
+        is_test(bool): A flag indicating whether execution is in test phase.
         name (str): The name of this layer.
 
     Examples:
@@ -683,7 +684,7 @@ class While(object):
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
 
-    def __init__(self, cond, name=None, is_test=False):
+    def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
