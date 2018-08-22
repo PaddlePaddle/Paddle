@@ -13,10 +13,32 @@
 # limitations under the License.
 
 import logging
+import paddle
+import tarfile
 
 logging.basicConfig()
 logger = logging.getLogger("paddle")
 logger.setLevel(logging.INFO)
+
+DATA_URL = "http://paddle-ctr-data.cdn.bcebos.com/avazu_ctr_data.tgz"
+DATA_MD5 = "c11df99fbd14e53cd4bfa6567344b26e"
+"""
+avazu_ctr_data/train.txt
+avazu_ctr_data/infer.txt
+avazu_ctr_data/test.txt
+avazu_ctr_data/data.meta.txt
+"""
+
+
+def read_data(file_name):
+    path = paddle.dataset.common.download(DATA_URL, "avazu_ctr_data", DATA_MD5)
+    tar = tarfile.open(path, "r:gz")
+    tar_info = None
+    for member in tar.getmembers():
+        if member.name.endswith(file_name):
+            tar_info = member
+    f = tar.extractfile(tar_info)
+    return f.readlines()
 
 
 class TaskMode:
@@ -86,46 +108,49 @@ feeding_index = {'dnn_input': 0, 'lr_input': 1, 'click': 2}
 
 
 class Dataset(object):
-    def train(self, path):
+    def train(self):
         '''
         Load trainset.
         '''
-        logger.info("load trainset from %s" % path)
+        file_name = "train.txt"
+        logger.info("load trainset from %s" % file_name)
         mode = TaskMode.create_train()
-        return self._parse_creator(path, mode)
+        return self._parse_creator(file_name, mode)
 
-    def test(self, path):
+    def test(self):
         '''
         Load testset.
         '''
-        logger.info("load testset from %s" % path)
+        file_name = "test.txt"
+        logger.info("load testset from %s" % file_name)
         mode = TaskMode.create_test()
-        return self._parse_creator(path, mode)
+        return self._parse_creator(file_name, mode)
 
-    def infer(self, path):
+    def infer(self):
         '''
         Load infer set.
         '''
-        logger.info("load inferset from %s" % path)
+        file_name = "infer.txt"
+        logger.info("load inferset from %s" % file_name)
         mode = TaskMode.create_infer()
-        return self._parse_creator(path, mode)
+        return self._parse_creator(file_name, mode)
 
-    def _parse_creator(self, path, mode):
+    def _parse_creator(self, file_name, mode):
         '''
         Parse dataset.
         '''
 
         def _parse():
-            with open(path) as f:
-                for line_id, line in enumerate(f):
-                    fs = line.strip().split('\t')
-                    dnn_input = load_dnn_input_record(fs[0])
-                    lr_input = load_lr_input_record(fs[1])
-                    if not mode.is_infer():
-                        click = int(fs[2])
-                        yield [dnn_input, lr_input, click]
-                    else:
-                        yield [dnn_input, lr_input]
+            data = read_data(file_name)
+            for line_id, line in enumerate(data):
+                fs = line.strip().split('\t')
+                dnn_input = load_dnn_input_record(fs[0])
+                lr_input = load_lr_input_record(fs[1])
+                if not mode.is_infer():
+                    click = int(fs[2])
+                    yield [dnn_input, lr_input, click]
+                else:
+                    yield [dnn_input, lr_input]
 
         return _parse
 

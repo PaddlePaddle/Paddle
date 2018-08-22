@@ -57,7 +57,13 @@ class TestDistRunnerBase(object):
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, place, endpoints, trainer_id, trainers, is_dist=True):
+    def run_trainer(self,
+                    place,
+                    endpoints,
+                    trainer_id,
+                    trainers,
+                    is_dist=True,
+                    use_cuda=True):
         import paddle
         import paddle.fluid as fluid
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
@@ -76,8 +82,10 @@ class TestDistRunnerBase(object):
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
         strategy.allow_op_delay = False
+        if not fluid.core.is_compiled_with_cuda():
+            use_cuda = False
         exe = fluid.ParallelExecutor(
-            True, loss_name=avg_cost.name, exec_strategy=strategy)
+            use_cuda, loss_name=avg_cost.name, exec_strategy=strategy)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -182,8 +190,8 @@ class TestDistBase(unittest.TestCase):
         # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH"),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH"),
+            "PYTHONPATH": os.getenv("PYTHONPATH", "."),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", "."),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1"
         }
