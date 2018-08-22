@@ -415,8 +415,7 @@ T Blas<platform::CPUDeviceContext>::DOT(int n, const T *x, const T *y) const {
 
 template <>
 template <typename T>
-void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a,
-                                            const T *x) const {
+void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
 #ifdef PADDLE_WITH_MKLML
   CBlas<T>::SCAL(n, a, x, 1);
 #else
