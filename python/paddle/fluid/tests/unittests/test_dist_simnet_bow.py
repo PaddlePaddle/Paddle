@@ -23,7 +23,7 @@ class TestDistSimnetBow2x2(TestDistBase):
 
     def test_simnet_bow(self):
         self.check_with_place(
-            "dist_simnet_bow.py", delta=2, check_error_log=False)
+            "dist_simnet_bow.py", delta=2, check_error_log=True)
 
 
 if __name__ == "__main__":

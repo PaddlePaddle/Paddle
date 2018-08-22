@@ -81,7 +81,7 @@ def get_optimizer():
     return optimizer
 
 
-def train_network(batch_size, is_distributed=False):
+def train_network(batch_size, is_distributed=False, is_sparse=False):
     # query
     q = fluid.layers.data(
         name="query_ids", shape=[1], dtype="int64", lod_level=1)
@@ -92,7 +92,7 @@ def train_network(batch_size, is_distributed=False):
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
             name="__emb__", learning_rate=emb_lr),
-        is_sparse=True)
+        is_sparse=is_sparse)
     ## vsum
     q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
     q_ss = fluid.layers.softsign(q_sum)
@@ -113,7 +113,7 @@ def train_network(batch_size, is_distributed=False):
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
             name="__emb__", learning_rate=emb_lr),
-        is_sparse=True)
+        is_sparse=is_sparse)
     ## vsum
     pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
     pt_ss = fluid.layers.softsign(pt_sum)
@@ -133,7 +133,7 @@ def train_network(batch_size, is_distributed=False):
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
             name="__emb__", learning_rate=emb_lr),
-        is_sparse=True)
+        is_sparse=is_sparse)
     ## vsum
     nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
     nt_ss = fluid.layers.softsign(nt_sum)
@@ -205,7 +205,7 @@ def get_train_reader(batch_size):
 class TestDistSimnetBow2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
         # Train program
-        avg_cost, acc, predict = train_network(batch_size, False)
+        avg_cost, acc, predict = train_network(batch_size, False, False)
 
         inference_program = fluid.default_main_program().clone()
 
