@@ -54,6 +54,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#include "pybind11/stl.h"
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -247,6 +249,7 @@ PYBIND11_PLUGIN(core) {
         self.set_rows(new_rows);
 #endif
            })
+      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
       .def("rows", [](SelectedRows &self) {
         auto rows = self.rows();
         std::vector<int64_t> new_rows;
@@ -394,8 +397,10 @@ All parameter, weight, gradient are variables in Paddle.
     InferenceOptimize(*(origin.Proto()), &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
-  m.def("empty_var_name", []() { return framework::kEmptyVarName; });
-  m.def("grad_var_suffix", []() { return framework::kGradVarSuffix; });
+  m.def("empty_var_name",
+        []() { return std::string(framework::kEmptyVarName); });
+  m.def("grad_var_suffix",
+        []() { return std::string(framework::kGradVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -591,8 +596,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy>(pe, "ExecutionStrategy")
-      .def(py::init())
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy");
+  exec_strategy.def(py::init())
       .def_property(
           "num_threads",
           [](const ExecutionStrategy &self) { return self.num_threads_; },
@@ -619,6 +624,16 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
           });
+  exec_strategy.def_property(
+      "use_experimental_executor",
+      [](const ExecutionStrategy &self) {
+        return self.type_ == ExecutionStrategy::kExperimental;
+      },
+      [](ExecutionStrategy &self, bool experimental) {
+        self.type_ = experimental ? ExecutionStrategy::kExperimental
+                                  : ExecutionStrategy::kDefault;
+      });
+
   py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
@@ -662,7 +677,7 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("bcast_params", &ParallelExecutor::BCastParamsToDevices)
+      .def("_bcast_params", &ParallelExecutor::BCastParamsToDevices)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

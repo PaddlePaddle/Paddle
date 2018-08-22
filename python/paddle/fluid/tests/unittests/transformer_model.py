@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from functools import partial
 import numpy as np
 
@@ -22,7 +24,7 @@ pos_enc_param_names = (
     "src_pos_enc_table",
     "trg_pos_enc_table", )
 
-batch_size = 64
+batch_size = 2
 
 
 def position_encoding_init(n_position, d_pos_vec):
@@ -118,8 +120,9 @@ def multi_head_attention(queries,
         # FIXME(guosheng): Decouple the program desc with batch_size.
         return layers.reshape(
             x=trans_x,
-            shape=map(int,
-                      [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]]))
+            shape=list(
+                map(int, [batch_size, -1, trans_x.shape[2] * trans_x.shape[3]
+                          ])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """

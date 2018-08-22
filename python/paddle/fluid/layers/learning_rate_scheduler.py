@@ -20,10 +20,12 @@ User can also implement their own learning_rate_decay
 strategy according to this module.
 """
 
-import control_flow
-import nn
-import ops
-import tensor
+from __future__ import print_function
+
+from . import control_flow
+from . import nn
+from . import ops
+from . import tensor
 from ..initializer import init_on_cpu
 from ..framework import default_main_program, Parameter
 
@@ -72,10 +74,10 @@ def noam_decay(d_model, warmup_steps):
 
 def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
-    Applies exponential decay to the learning rate. 
+    Applies exponential decay to the learning rate.
 
-    When training a model, it is often recommended to lower the learning rate as the 
-    training progresses. By using this function, the learning rate will be decayed by 
+    When training a model, it is often recommended to lower the learning rate as the
+    training progresses. By using this function, the learning rate will be decayed by
     'decay_rate' every 'decay_steps' steps.
 
     >>> if staircase == True:
@@ -148,8 +150,8 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     """
     Applies inverse time decay to the initial learning rate.
 
-    When training a model, it is often recommended to lower the learning rate as the 
-    training progresses. By using this function, an inverse decay function will be 
+    When training a model, it is often recommended to lower the learning rate as the
+    training progresses. By using this function, an inverse decay function will be
     applied to the initial learning rate.
 
     >>> if staircase == True:

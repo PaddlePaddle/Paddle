@@ -117,7 +117,15 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
     }
     // For output args, always create a new var.
     for (auto &each_var_name : op->OutputArgumentNames()) {
-      ir::Node *var = CreateVarNode(all_vars.at(each_var_name));
+      ir::Node *var = nullptr;
+      if (all_vars.count(each_var_name) != 0) {
+        var = CreateVarNode(all_vars.at(each_var_name));
+      } else {
+        // Operation output vars can be @EMPTY@. For example, while_grad
+        // can have multi @EMPTY@ outputs with no VarDesc.
+        // TODO(panyx0718): Add a test.
+        var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
+      }
       var_nodes[each_var_name].push_back(var);
       node->outputs.push_back(var);
       var->inputs.push_back(node);
@@ -182,9 +190,11 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   }
 
   /**
-   * We only handle write after read(WAR), since it should not have a write
-   * after write in program. If there are write after write operators, we need
-   * prune them.
+   * We should handle write after read(WAR) and write after write(WAW) here.
+   * Because some of the operators of the program can be executed parallelly.
+   * So, to make the program running in the right order, we should add the
+   * dependence of WAR and WAW.
+   *
    *
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
@@ -200,6 +210,20 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;
+
+      PADDLE_ENFORCE(write_op, "The write_op should not be empty.");
+
+      // Add write after write dependence
+      ir::Node *upstream_op =
+          (*it_old)->inputs.empty() ? nullptr : (*it_old)->inputs[0];
+      // TODO(zcd): Add a test.
+      if (upstream_op && upstream_op != write_op) {
+        ir::Node *dep_var = CreateControlDepVar();
+        write_op->inputs.push_back(dep_var);
+        upstream_op->outputs.push_back(dep_var);
+        dep_var->outputs.push_back(write_op);
+        dep_var->inputs.push_back(upstream_op);
+      }
 
       for (auto *read_op : read_ops) {
         // Manually add a dependency var from read_op to write_op;

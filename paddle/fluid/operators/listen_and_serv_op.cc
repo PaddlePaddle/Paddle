@@ -25,10 +25,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/distributed/request_handler_impl.h"
 #include "paddle/fluid/operators/listen_and_serv_op.h"
-#include "paddle/fluid/platform/profiler.h"
-
-DEFINE_int32(listen_and_serv_profile_period, 0,
-             "the period of listen_and_serv to do profile");
 
 namespace paddle {
 namespace operators {
@@ -108,6 +104,7 @@ void ListenAndServOp::RunSyncLoop(
     framework::Scope *recv_scope,
     const std::vector<int> &prefetch_block_id_list,
     const int checkpoint_point_block_id) const {
+  VLOG(2) << "RunSyncLoop";
   size_t num_blocks = program->Size();
   auto optimize_blocks =
       Attr<std::vector<framework::BlockDesc *>>(kOptimizeBlocks);
@@ -126,19 +123,13 @@ void ListenAndServOp::RunSyncLoop(
       optimize_prepared.begin(),
       std::shared_ptr<framework::ExecutorPrepareContext>(nullptr));
 
+  // Trainers will get all parameters from pserver in the
+  // startup program, so we will wait RequestGet first
+  rpc_service_->SetCond(distributed::kRequestGet);
+  rpc_service_->WaitBarrier(distributed::kRequestGet);
   rpc_service_->ResetBarrierCounter();
-
-  int32_t profile_step = 0;
   while (true) {
-    PADDLE_ENFORCE_LE(profile_step, FLAGS_listen_and_serv_profile_period,
-                      "profile_step should not be larger then "
-                      "FLAGS_listen_and_serv_profile_period");
-    if (FLAGS_listen_and_serv_profile_period > 0) {
-      if (profile_step == 0) {
-        auto pf_state = paddle::platform::ProfilerState::kCPU;
-        paddle::platform::EnableProfiler(pf_state);
-      }
-    }
+    rpc_service_->Profiler().OneStep();
     // Get from multiple trainers, we don't care about the order in which
     // the gradients arrives, just add suffix 0~n and merge the gradient.
     rpc_service_->SetCond(distributed::kRequestSend);
@@ -180,21 +171,13 @@ void ListenAndServOp::RunSyncLoop(
     // reset received sparse vars to avoid reuse it in the next mini-batch
     dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
         ->ResetSparseVarRecorder();
-    if (FLAGS_listen_and_serv_profile_period > 0) {
-      if (profile_step == FLAGS_listen_and_serv_profile_period) {
-        paddle::platform::DisableProfiler(
-            paddle::platform::EventSortingKey::kTotal, "/dev/null");
-        profile_step = 0;
-      } else {
-        profile_step++;
-      }
-    }
   }  // while(true)
 }
 
 void ListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                    framework::ProgramDesc *program,
                                    framework::Scope *recv_scope) const {
+  VLOG(2) << "RunAsyncLoop";
   // grad name to block id
   std::unordered_map<std::string, int32_t> grad_to_block_id;
   std::unordered_map<int32_t, std::string> id_to_grad;

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import numpy as np
@@ -53,7 +55,7 @@ class TestSpliteSelectedRows(unittest.TestCase):
         height_sections = [5, 5, 5, 5, 3]
 
         # initialize output variables [out0, out1]
-        outs_name = ["out%d" % i for i in xrange(len(height_sections))]
+        outs_name = ["out%d" % i for i in range(len(height_sections))]
         outs = [
             scope.var(var_name).get_selected_rows() for var_name in outs_name
         ]

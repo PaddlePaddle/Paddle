@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 
 import paddle.fluid.core as core
@@ -150,7 +152,7 @@ def append_input_output(block, op_proto, np_list, is_input, dtype):
 
 
 def append_loss_ops(block, output_names):
-    mean_inputs = map(block.var, output_names)
+    mean_inputs = list(map(block.var, output_names))
     # for item in mean_inputs:
     #     print(item)
     #     print("Item", item.dtype)

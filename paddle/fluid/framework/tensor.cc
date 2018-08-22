@@ -112,5 +112,6 @@ Tensor& Tensor::Resize(const DDim& dims) {
 const DDim& Tensor::dims() const { return dims_; }
 
 int64_t Tensor::numel() const { return product(dims_); }
+
 }  // namespace framework
 }  // namespace paddle

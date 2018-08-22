@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
-from layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [

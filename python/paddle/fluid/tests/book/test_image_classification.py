@@ -62,7 +62,7 @@ def resnet_cifar10(input, depth=32):
         return tmp
 
     assert (depth - 2) % 6 == 0
-    n = (depth - 2) / 6
+    n = (depth - 2) // 6
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1)
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
@@ -121,7 +121,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
     avg_cost = fluid.layers.mean(cost)
     acc = fluid.layers.accuracy(input=predict, label=label)
 
-    # Test program 
+    # Test program
     test_program = fluid.default_main_program().clone(for_test=True)
 
     optimizer = fluid.optimizer.Adam(learning_rate=0.001)
