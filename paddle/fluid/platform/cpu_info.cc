@@ -103,9 +103,8 @@ size_t CUDAPinnedMaxChunkSize() {
   return CUDAPinnedMaxAllocSize() / 256;
 }
 
-#ifdef PADDLE_WITH_XBYAK
 namespace jit {
-
+#ifdef PADDLE_WITH_XBYAK
 static Xbyak::util::Cpu cpu;
 bool MayIUse(const cpu_isa_t cpu_isa) {
   using namespace Xbyak::util;  // NOLINT
@@ -136,8 +135,16 @@ bool MayIUse(const cpu_isa_t cpu_isa) {
   }
   return false;
 }
+#else
+bool MayIUse(const cpu_isa_t cpu_isa) {
+  if (cpu_isa == isa_any) {
+    return true;
+  } else {
+    return false;
+  }
+}
+#endif
 
 }  // namespace jit
-#endif
 }  // namespace platform
 }  // namespace paddle
