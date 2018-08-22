@@ -16,7 +16,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -70,6 +69,7 @@ class FillOp : public framework::OperatorBase {
 
     framework::VisitDataType(
         dtype, FillOpVisitor(&tensor, Attr<std::vector<float>>("value")));
+
     if (!force_cpu && platform::is_gpu_place(place)) {
       // Copy tensor to out
       platform::DeviceContextPool &pool =

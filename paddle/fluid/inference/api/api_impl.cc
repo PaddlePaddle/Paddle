@@ -137,8 +137,11 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
     return false;
   }
   for (size_t i = 0; i < feed_target_names_.size(); ++i) {
-    VLOG(4) << "setting " << i << "-th target";
-    feed_targets[feed_target_names_[i]] = &feeds[i];
+    if (config_.specify_input_name) {
+      feed_targets[inputs[i].name] = &feeds[i];
+    } else {
+      feed_targets[feed_target_names_[i]] = &feeds[i];
+    }
   }
   // get fetch variable
   std::map<std::string, framework::LoDTensor *> fetch_targets;

@@ -20,6 +20,8 @@ without using the low level API such as while ops.
 This API is still under active development and may change drastically.
 """
 
+from __future__ import print_function
+
 import contextlib
 import numpy as np
 import six
