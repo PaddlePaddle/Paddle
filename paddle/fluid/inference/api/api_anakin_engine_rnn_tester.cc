@@ -28,6 +28,26 @@ DEFINE_string(datapath, "", "Path of the dataset.");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 
+// Timer for timer
+class Timer {
+ public:
+  double start;
+  double startu;
+  void tic() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    start = tp.tv_sec;
+    startu = tp.tv_usec;
+  }
+  double toc() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    double used_time_ms =
+        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
+    return used_time_ms;
+  }
+};
+
 std::vector<std::string> string_split(std::string in_str,
                                       std::string delimiter) {
   std::vector<std::string> seq;
@@ -203,7 +223,7 @@ void single_test() {
 
   int count = 0;
   while (true) {
-    if (count++ > 5) break;
+    if (count++ > 0) break;  // only run the first batch in ci.
     seq_offset.clear();
     map_data.get_batch_data(fea, week_fea, time_fea, seq_offset);
     if (seq_offset.size() <= 1) {
@@ -255,21 +275,14 @@ void single_test() {
     inputs.push_back(tensor_2);
     inputs.push_back(tensor_0);
 
-    auto GetCurrentMs = []() -> double {
-      struct timeval time;
-      gettimeofday(&time, NULL);
-      return 1e+3 * time.tv_sec + 1e-3 * time.tv_usec;
-    };
-    auto t1 = GetCurrentMs();
-
+    Timer timer;
+    timer.tic();
     for (int i = 0; i < FLAGS_repeat; i++) predictor->Run(inputs, &outputs);
 
-    auto t2 = GetCurrentMs();
     LOG(INFO) << "batch_size = " << FLAGS_batch_size
               << ", repeat = " << FLAGS_repeat
               << ", sequence_length = " << seq_offset[seq_offset.size() - 1]
-              << ", latency: " << (t2 - t1) / FLAGS_repeat / FLAGS_batch_size
-              << "ms";
+              << ", latency: " << timer.toc() / FLAGS_repeat << "ms";
 
     float* data_o = static_cast<float*>(outputs[0].data.data());
     VLOG(3) << "outputs[0].data.length() = " << outputs[0].data.length();
