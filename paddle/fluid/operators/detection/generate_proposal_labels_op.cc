@@ -14,9 +14,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/strided_memcpy.h"
 
 namespace paddle {
 namespace operators {
@@ -52,6 +52,13 @@ struct AppendRoisFunctor {
     memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
   }
 };
+
+template <typename T>
+void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
+  auto* out_data = out->data<T>();
+  auto* to_add_data = to_add->data<T>();
+  memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
+}
 
 void PrintTensor(Tensor t) {
   auto et = framework::EigenTensor<float, 2>::From(t);
@@ -126,50 +133,21 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("RpnRois"));
-    return framework::OpKernelType(data_type, ctx.device_context());
+    return framework::OpKernelType(data_type, platform::CPUPlace());
   }
 };
 
 template <typename T>
-void Concat(const Tensor& in_tensor_a, const Tensor& in_tensor_b,
+void Concat(const framework::ExecutionContext& context,
+            const Tensor& in_tensor_a, const Tensor& in_tensor_b,
             Tensor* out_tensor) {
   int axis = 0;
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(platform::CPUPlace());
-
-  size_t output_offset = 0;
-  auto in_stride_a = framework::stride_numel(in_tensor_a.dims());
-  auto in_stride_b = framework::stride_numel(in_tensor_b.dims());
-  auto out_stride = framework::stride_numel(out_tensor->dims());
-  StridedNumelCopyWithAxis<T>(
-      dev_ctx, axis, out_tensor->data<T>() + output_offset, out_stride,
-      in_tensor_a.data<T>(), in_stride_a, in_stride_a[axis]);
-  output_offset += in_stride_a[axis];
-  StridedNumelCopyWithAxis<T>(
-      dev_ctx, axis, out_tensor->data<T>() + output_offset, out_stride,
-      in_tensor_b.data<T>(), in_stride_b, in_stride_b[axis]);
-}
-
-template <typename T>
-void FillConstant(Tensor* tensor, T value) {
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto& dev_ctx = *pool.Get(platform::CPUPlace());
-  math::set_constant(dev_ctx, tensor, value);
-}
-
-template <typename T>
-void Gather(const Tensor& in_tensor, const Tensor& index, Tensor* out_tensor) {
-  auto in_tensor_data = in_tensor.data<T>();
-  auto index_data = index.data<int>();
-  auto out_tensor_data = out_tensor->data<T>();
-  int data_num = index.dims()[0];
-  int stride = out_tensor->numel() / data_num;
-  for (int64_t i = 0; i < data_num; ++i) {
-    int idx = index_data[i];
-    std::copy(in_tensor_data + (idx * stride),
-              in_tensor_data + ((idx + 1) * stride),
-              out_tensor_data + (i * stride));
-  }
+  std::vector<Tensor> inputs;
+  inputs.emplace_back(in_tensor_a);
+  inputs.emplace_back(in_tensor_b);
+  auto& dev_ctx = context.template device_context<platform::CPUDeviceContext>();
+  math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
+  concat_functor(dev_ctx, inputs, axis, out_tensor);
 }
 
 template <typename T>
@@ -238,6 +216,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
   T* proposal_to_gt_overlaps = iou->mutable_data<T>(context.GetPlace());
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];
+  float epsilon = 0.00001;
 
   // Follow the Faster RCNN's implementation
   for (int64_t i = 0; i < row; ++i) {
@@ -246,9 +225,11 @@ std::vector<std::vector<int>> SampleFgBgGt(
     if (max_overlap > fg_thresh) {
       for (int64_t j = 0; j < col; ++j) {
         T val = proposal_to_gt_overlaps[i * col + j];
-        if (val == max_overlap) {
+        auto diff = std::abs(max_overlap - val);
+        if (diff < epsilon) {
           fg_inds.emplace_back(i);
           gt_inds.emplace_back(j);
+          break;
         }
       }
     } else {
@@ -310,40 +291,37 @@ void GatherBoxesLabels(const framework::ExecutionContext& context,
   int bg_num = bg_inds.size();
   int gt_num = fg_num + bg_num;
   Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
-  fg_inds_t.Resize({fg_num});
-  bg_inds_t.Resize({bg_num});
-  gt_box_inds_t.Resize({gt_num});
-  gt_label_inds_t.Resize({fg_num});
-  int* fg_inds_data = fg_inds_t.mutable_data<int>(context.GetPlace());
-  int* bg_inds_data = bg_inds_t.mutable_data<int>(context.GetPlace());
-  int* gt_box_inds_data = gt_box_inds_t.mutable_data<int>(context.GetPlace());
+  int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
+  int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
+  int* gt_box_inds_data =
+      gt_box_inds_t.mutable_data<int>({gt_num}, context.GetPlace());
   int* gt_label_inds_data =
-      gt_label_inds_t.mutable_data<int>(context.GetPlace());
+      gt_label_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   std::copy(fg_inds.begin(), fg_inds.end(), fg_inds_data);
   std::copy(bg_inds.begin(), bg_inds.end(), bg_inds_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_box_inds_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_label_inds_data);
 
+  const int kBoxDim = 4;
   Tensor fg_boxes;
-  fg_boxes.Resize({fg_num, 4});
-  fg_boxes.mutable_data(context.GetPlace(), boxes.type());
-  Gather<T>(boxes, fg_inds_t, &fg_boxes);
+  fg_boxes.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
+  CPUGather<T>(context.device_context(), boxes, fg_inds_t, &fg_boxes);
   Tensor bg_boxes;
-  bg_boxes.Resize({bg_num, 4});
-  bg_boxes.mutable_data(context.GetPlace(), boxes.type());
-  Gather<T>(boxes, bg_inds_t, &bg_boxes);
-  Concat<T>(fg_boxes, bg_boxes, sampled_boxes);
-  Gather<T>(gt_boxes, gt_box_inds_t, sampled_gts);
+  bg_boxes.mutable_data<T>({bg_num, kBoxDim}, context.GetPlace());
+  CPUGather<T>(context.device_context(), boxes, bg_inds_t, &bg_boxes);
+  Concat<T>(context, fg_boxes, bg_boxes, sampled_boxes);
+  CPUGather<T>(context.device_context(), gt_boxes, gt_box_inds_t, sampled_gts);
   Tensor fg_labels;
-  fg_labels.Resize({fg_num});
-  fg_labels.mutable_data(context.GetPlace(), gt_classes.type());
-  Gather<int>(gt_classes, gt_label_inds_t, &fg_labels);
+  fg_labels.mutable_data<int>({fg_num}, context.GetPlace());
+  CPUGather<int>(context.device_context(), gt_classes, gt_label_inds_t,
+                 &fg_labels);
   Tensor bg_labels;
-  bg_labels.Resize({bg_num});
-  bg_labels.mutable_data(context.GetPlace(), gt_classes.type());
+  bg_labels.mutable_data<int>({bg_num}, context.GetPlace());
   framework::AttributeMap attrs;
-  FillConstant(&bg_labels, 0);
-  Concat<int>(fg_labels, bg_labels, sampled_labels);
+  math::set_constant(
+      context.template device_context<platform::CPUDeviceContext>(), &bg_labels,
+      0);
+  Concat<int>(context, fg_labels, bg_labels, sampled_labels);
 }
 
 template <typename T>
@@ -352,23 +330,22 @@ std::vector<Tensor> SampleRoisForOneImage(
     Tensor* gt_classes, Tensor* gt_boxes, Tensor* im_scale,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
     const float bg_thresh_hi, const float bg_thresh_lo,
-    const std::vector<float> bbox_reg_weights, const int class_nums,
+    const std::vector<float>& bbox_reg_weights, const int class_nums,
     std::minstd_rand engine) {
-  // Roidb
   auto rpn_rois_et = framework::EigenTensor<T, 2>::From(*rpn_rois);
   auto im_scale_data = im_scale->data<T>()[0];
-  rpn_rois_et = rpn_rois_et / (im_scale_data);
+  rpn_rois_et = rpn_rois_et / im_scale_data;
 
+  const int kBoxDim = 4;
   Tensor boxes;
-  int proposals_num = (gt_boxes->numel() / 4) + (rpn_rois->numel() / 4);
-  boxes.Resize({proposals_num, 4});
-  boxes.mutable_data(context.GetPlace(), rpn_rois->type());
-  Concat<T>(*gt_boxes, *rpn_rois, &boxes);
+  int proposals_num = (gt_boxes->dims()[0]) + (rpn_rois->dims()[0]);
+  boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
+  Concat<T>(context, *gt_boxes, *rpn_rois, &boxes);
 
   // Overlaps
   Tensor proposal_to_gt_overlaps;
-  proposal_to_gt_overlaps.Resize({proposals_num, gt_boxes->numel() / 4});
-  proposal_to_gt_overlaps.mutable_data(context.GetPlace(), rpn_rois->type());
+  proposal_to_gt_overlaps.mutable_data<T>({proposals_num, gt_boxes->dims()[0]},
+                                          context.GetPlace());
   BboxOverlaps<T>(boxes, *gt_boxes, &proposal_to_gt_overlaps);
 
   // Generate proposal index
@@ -384,64 +361,67 @@ std::vector<Tensor> SampleRoisForOneImage(
   Tensor sampled_labels;
   Tensor sampled_gts;
   int boxes_num = fg_inds.size() + bg_inds.size();
-  sampled_boxes.Resize({boxes_num, 4});
-  sampled_labels.Resize({boxes_num});
-  sampled_gts.Resize({boxes_num, 4});
-  sampled_boxes.mutable_data(context.GetPlace(), rpn_rois->type());
-  sampled_labels.mutable_data(context.GetPlace(), gt_classes->type());
-  sampled_gts.mutable_data(context.GetPlace(), rpn_rois->type());
+  framework::DDim bbox_dim({boxes_num, kBoxDim});
+  sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
+  sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
+  sampled_gts.mutable_data<T>(bbox_dim, context.GetPlace());
   GatherBoxesLabels<T>(context, boxes, *gt_boxes, *gt_classes, fg_inds, bg_inds,
                        gt_inds, &sampled_boxes, &sampled_labels, &sampled_gts);
 
   // Compute targets
   Tensor bbox_targets_single;
-  bbox_targets_single.Resize({boxes_num, 4});
-  bbox_targets_single.mutable_data(context.GetPlace(), sampled_boxes.type());
+  bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
   BoxToDelta<T>(boxes_num, sampled_boxes, sampled_gts, bbox_reg_weights,
                 &bbox_targets_single);
 
   // Scale rois
   Tensor sampled_rois;
-  sampled_rois.Resize(sampled_boxes.dims());
-  sampled_rois.mutable_data(context.GetPlace(), sampled_boxes.type());
+  sampled_rois.mutable_data<T>(sampled_boxes.dims(), context.GetPlace());
   auto sampled_rois_et = framework::EigenTensor<T, 2>::From(sampled_rois);
   auto sampled_boxes_et = framework::EigenTensor<T, 2>::From(sampled_boxes);
   sampled_rois_et = sampled_boxes_et * im_scale_data;
 
   // Expand box targets
   Tensor bbox_targets, bbox_inside_weights, bbox_outside_weights;
-  bbox_targets.Resize({boxes_num, 4 * class_nums});
-  bbox_inside_weights.Resize({boxes_num, 4 * class_nums});
-  bbox_outside_weights.Resize({boxes_num, 4 * class_nums});
-  bbox_targets.mutable_data(context.GetPlace(), rpn_rois->type());
-  bbox_inside_weights.mutable_data(context.GetPlace(), rpn_rois->type());
-  bbox_outside_weights.mutable_data(context.GetPlace(), rpn_rois->type());
-  FillConstant<T>(&bbox_targets, 0.0);
-  FillConstant<T>(&bbox_inside_weights, 0.0);
-  FillConstant<T>(&bbox_outside_weights, 0.0);
-  auto bbox_targets_et = framework::EigenTensor<T, 2>::From(bbox_targets);
-  auto bbox_inside_weights_et =
-      framework::EigenTensor<T, 2>::From(bbox_inside_weights);
-  auto bbox_outside_weights_et =
-      framework::EigenTensor<T, 2>::From(bbox_outside_weights);
-  auto sampled_labels_et = framework::EigenTensor<int, 1>::From(sampled_labels);
-  auto bbox_targets_single_et =
-      framework::EigenTensor<T, 2>::From(bbox_targets_single);
+  framework::DDim bbox_expand_dim({boxes_num, kBoxDim * class_nums});
+  bbox_targets.mutable_data<T>(bbox_expand_dim, context.GetPlace());
+  bbox_inside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
+  bbox_outside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
+  math::set_constant(
+      context.template device_context<platform::CPUDeviceContext>(),
+      &bbox_targets, 0.0);
+  math::set_constant(
+      context.template device_context<platform::CPUDeviceContext>(),
+      &bbox_inside_weights, 0.0);
+  math::set_constant(
+      context.template device_context<platform::CPUDeviceContext>(),
+      &bbox_outside_weights, 0.0);
+
+  auto* bbox_targets_single_data = bbox_targets_single.data<T>();
+  auto* sampled_labels_data = sampled_labels.data<int>();
+  auto* bbox_targets_data = bbox_targets.data<T>();
+  auto* bbox_inside_weights_data = bbox_inside_weights.data<T>();
+  auto* bbox_outside_weights_data = bbox_outside_weights.data<T>();
+  int width = kBoxDim * class_nums;
   for (int64_t i = 0; i < boxes_num; ++i) {
-    int label = sampled_labels_et(i);
+    int label = sampled_labels_data[i];
     if (label > 0) {
-      bbox_targets_et(i, 4 * label) = bbox_targets_single_et(4 * i);
-      bbox_targets_et(i, 4 * label + 1) = bbox_targets_single_et(4 * i + 1);
-      bbox_targets_et(i, 4 * label + 2) = bbox_targets_single_et(4 * i + 2);
-      bbox_targets_et(i, 4 * label + 3) = bbox_targets_single_et(4 * i + 3);
-      bbox_inside_weights_et(i, 4 * label) = 1;
-      bbox_inside_weights_et(i, 4 * label + 1) = 1;
-      bbox_inside_weights_et(i, 4 * label + 2) = 1;
-      bbox_inside_weights_et(i, 4 * label + 3) = 1;
-      bbox_outside_weights_et(i, 4 * label) = 1;
-      bbox_outside_weights_et(i, 4 * label + 1) = 1;
-      bbox_outside_weights_et(i, 4 * label + 2) = 1;
-      bbox_outside_weights_et(i, 4 * label + 3) = 1;
+      bbox_targets_data[i * width + kBoxDim * label] =
+          bbox_targets_single_data[kBoxDim * i];
+      bbox_targets_data[i * width + kBoxDim * label + 1] =
+          bbox_targets_single_data[kBoxDim * i + 1];
+      bbox_targets_data[i * width + kBoxDim * label + 2] =
+          bbox_targets_single_data[kBoxDim * i + 2];
+      bbox_targets_data[i * width + kBoxDim * label + 3] =
+          bbox_targets_single_data[kBoxDim * i + 3];
+      bbox_inside_weights_data[i * width + kBoxDim * label] = 1;
+      bbox_inside_weights_data[i * width + kBoxDim * label + 1] = 1;
+      bbox_inside_weights_data[i * width + kBoxDim * label + 2] = 1;
+      bbox_inside_weights_data[i * width + kBoxDim * label + 3] = 1;
+      bbox_outside_weights_data[i * width + kBoxDim * label] = 1;
+      bbox_outside_weights_data[i * width + kBoxDim * label + 1] = 1;
+      bbox_outside_weights_data[i * width + kBoxDim * label + 2] = 1;
+      bbox_outside_weights_data[i * width + kBoxDim * label + 3] = 1;
     }
   }
   std::vector<Tensor> res;
@@ -489,25 +469,16 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                         "GenerateProposalLabelsOp needs 1 level of LoD");
     }
-    rois->Resize({n * batch_size_per_im, 4});
-    labels_int32->Resize({n * batch_size_per_im});
-    bbox_targets->Resize({n * batch_size_per_im, 4 * class_nums});
-    bbox_inside_weights->Resize({n * batch_size_per_im, 4 * class_nums});
-    bbox_outside_weights->Resize({n * batch_size_per_im, 4 * class_nums});
-    framework::VisitDataType(framework::ToDataType(rpn_rois->type()),
-                             DyDataTypeVisitor(context.GetPlace(), rois));
-    framework::VisitDataType(
-        framework::ToDataType(gt_classes->type()),
-        DyDataTypeVisitor(context.GetPlace(), labels_int32));
-    framework::VisitDataType(
-        framework::ToDataType(rpn_rois->type()),
-        DyDataTypeVisitor(context.GetPlace(), bbox_targets));
-    framework::VisitDataType(
-        framework::ToDataType(rpn_rois->type()),
-        DyDataTypeVisitor(context.GetPlace(), bbox_inside_weights));
-    framework::VisitDataType(
-        framework::ToDataType(rpn_rois->type()),
-        DyDataTypeVisitor(context.GetPlace(), bbox_outside_weights));
+    const int kBoxDim = 4;
+    rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
+    labels_int32->mutable_data<int>({n * batch_size_per_im},
+                                    context.GetPlace());
+    bbox_targets->mutable_data<T>({n * batch_size_per_im, kBoxDim * class_nums},
+                                  context.GetPlace());
+    bbox_inside_weights->mutable_data<T>(
+        {n * batch_size_per_im, kBoxDim * class_nums}, context.GetPlace());
+    bbox_outside_weights->mutable_data<T>(
+        {n * batch_size_per_im, kBoxDim * class_nums}, context.GetPlace());
 
     std::random_device rnd;
     std::minstd_rand engine;
@@ -534,24 +505,14 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
       Tensor sampled_bbox_inside_weights = tensor_output[3];
       Tensor sampled_bbox_outside_weights = tensor_output[4];
 
-      framework::VisitDataType(
-          framework::ToDataType(rois->type()),
-          AppendRoisFunctor(rois, 4 * num_rois, &sampled_rois));
-      framework::VisitDataType(
-          framework::ToDataType(labels_int32->type()),
-          AppendRoisFunctor(labels_int32, num_rois, &sampled_labels_int32));
-      framework::VisitDataType(
-          framework::ToDataType(bbox_targets->type()),
-          AppendRoisFunctor(bbox_targets, 4 * num_rois * class_nums,
-                            &sampled_bbox_targets));
-      framework::VisitDataType(
-          framework::ToDataType(bbox_inside_weights->type()),
-          AppendRoisFunctor(bbox_inside_weights, 4 * num_rois * class_nums,
-                            &sampled_bbox_inside_weights));
-      framework::VisitDataType(
-          framework::ToDataType(bbox_outside_weights->type()),
-          AppendRoisFunctor(bbox_outside_weights, 4 * num_rois * class_nums,
-                            &sampled_bbox_outside_weights));
+      AppendRois<T>(rois, kBoxDim * num_rois, &sampled_rois);
+      AppendRois<int>(labels_int32, num_rois, &sampled_labels_int32);
+      AppendRois<T>(bbox_targets, kBoxDim * num_rois * class_nums,
+                    &sampled_bbox_targets);
+      AppendRois<T>(bbox_inside_weights, kBoxDim * num_rois * class_nums,
+                    &sampled_bbox_inside_weights);
+      AppendRois<T>(bbox_outside_weights, kBoxDim * num_rois * class_nums,
+                    &sampled_bbox_outside_weights);
 
       num_rois += sampled_rois.dims()[0];
       lod0.emplace_back(num_rois);
@@ -576,24 +537,15 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         Tensor sampled_bbox_targets = tensor_output[2];
         Tensor sampled_bbox_inside_weights = tensor_output[3];
         Tensor sampled_bbox_outside_weights = tensor_output[4];
-        framework::VisitDataType(
-            framework::ToDataType(rois->type()),
-            AppendRoisFunctor(rois, 4 * num_rois, &sampled_rois));
-        framework::VisitDataType(
-            framework::ToDataType(labels_int32->type()),
-            AppendRoisFunctor(labels_int32, num_rois, &sampled_labels_int32));
-        framework::VisitDataType(
-            framework::ToDataType(bbox_targets->type()),
-            AppendRoisFunctor(bbox_targets, 4 * num_rois * class_nums,
-                              &sampled_bbox_targets));
-        framework::VisitDataType(
-            framework::ToDataType(bbox_inside_weights->type()),
-            AppendRoisFunctor(bbox_inside_weights, 4 * num_rois * class_nums,
-                              &sampled_bbox_inside_weights));
-        framework::VisitDataType(
-            framework::ToDataType(bbox_outside_weights->type()),
-            AppendRoisFunctor(bbox_outside_weights, 4 * num_rois * class_nums,
-                              &sampled_bbox_outside_weights));
+
+        AppendRois<T>(rois, kBoxDim * num_rois, &sampled_rois);
+        AppendRois<int>(labels_int32, num_rois, &sampled_labels_int32);
+        AppendRois<T>(bbox_targets, kBoxDim * num_rois * class_nums,
+                      &sampled_bbox_targets);
+        AppendRois<T>(bbox_inside_weights, kBoxDim * num_rois * class_nums,
+                      &sampled_bbox_inside_weights);
+        AppendRois<T>(bbox_outside_weights, kBoxDim * num_rois * class_nums,
+                      &sampled_bbox_outside_weights);
 
         num_rois += sampled_rois.dims()[0];
         lod0.emplace_back(num_rois);
@@ -606,11 +558,11 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     bbox_targets->set_lod(lod);
     bbox_inside_weights->set_lod(lod);
     bbox_outside_weights->set_lod(lod);
-    rois->Resize({num_rois, 4});
+    rois->Resize({num_rois, kBoxDim});
     labels_int32->Resize({num_rois});
-    bbox_targets->Resize({num_rois, 4 * class_nums});
-    bbox_inside_weights->Resize({num_rois, 4 * class_nums});
-    bbox_outside_weights->Resize({num_rois, 4 * class_nums});
+    bbox_targets->Resize({num_rois, kBoxDim * class_nums});
+    bbox_inside_weights->Resize({num_rois, kBoxDim * class_nums});
+    bbox_outside_weights->Resize({num_rois, kBoxDim * class_nums});
   }
 };
 
