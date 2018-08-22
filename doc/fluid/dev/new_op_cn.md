@@ -119,10 +119,29 @@ $$Out = scale*X$$
 
 这个例子有`AddAttr<AttrType>("scale", "...").SetDefault(1.0);` : 增加`scale`系数，作为参数属性，并且设置默认值为1.0。
 
+### 定义GradProtoMaker类
+每个Op的必须有一个对应的GraProtoMaker，若未定制对应前向Op的GradProtoMaker，fluid提供了DefaultGradProtoMaker，默认注册会使用全部输入输出，包括Input, Output, Output@Grad等，使用不需要的变量的会造成显存浪费。
+下面示例定义了ScaleOp的GradProtoMaker。
+
+```cpp
+class ScaleGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("scale");
+    grad_op->SetInput("X", OutputGrad("Out"));
+    grad_op->SetOutput("Out", InputGrad("X"));
+    grad_op->SetAttr("scale", GetAttr("scale"));
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+```
 
 ### 定义Operator类
 
-下面的点实现了MulOp的定义：
+下面实现了MulOp的定义：
 
 ```cpp
 class MulOp : public framework::OperatorWithKernel {
@@ -382,6 +401,19 @@ PADDLE_ENFORCE(i != nullptr, "I must be set"); // I是什么？
 PADDLE_ENFORCE(forward_pd != nullptr,
                     "Fail to find eltwise_fwd_pd in device context");  //eltwise_fwd_pd用户可能看不懂
 ```
+
+3. OP内部调用非法接口：Op内部如果出现Output = ShareDataWith(Input) 
+问题示例：
+```cpp
+auto *out = ctx.Output<framework::LoDTensor>("Out");
+auto *in = ctx.Input<framework::LoDTensor>("X");
+out->ShareDataWith(*in);
+```
+Op内部如果出现Output = ShareDataWith(Input)，相当于operator图的中有一条隐藏边，连接了Input和Output，这条边无法在图分析中表达，引发基于图优化的错误。
+
+4. OP实现的性能实践
+调用了eigen的broadcast, chop等操作，性能会比手写cuda kernel差几倍以上。此时cpu的实现可以复用eigen，gpu实现可以实现cuda kernel.
+
 
 #### OP InferShape检查提示信息特别说明
 
