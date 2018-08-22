@@ -157,6 +157,9 @@ class Blas {
   T DOT(int n, const T* x, const T* y) const;
 
   template <typename T>
+  void SCAL(int n, const T a, const T* x) const;
+
+  template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
                    int K, T alpha, const T* A, const T* B, T beta, T* C,
                    int batchCount, int64_t strideA, int64_t strideB) const;
