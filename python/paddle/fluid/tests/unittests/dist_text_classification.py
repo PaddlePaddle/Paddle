@@ -41,8 +41,8 @@ DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/text_classification.tar.gz'
 DATA_MD5 = '29ebfc94f11aea9362bbb7f5e9d86b8a'
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+# fluid.default_startup_program().random_seed = 1
+# fluid.default_main_program().random_seed = 1
 
 
 # Load the dictionary.
@@ -58,7 +58,7 @@ def get_worddict(dict_path):
     word_dict = load_vocab(dict_path)
     word_dict["<unk>"] = len(word_dict)
     dict_dim = len(word_dict)
-    return (word_dict, dict_dim)
+    return word_dict, dict_dim
 
 
 def conv_net(input,
@@ -69,17 +69,34 @@ def conv_net(input,
              fc0_dim=96,
              class_dim=2):
     emb = fluid.layers.embedding(
-        input=input, size=[dict_dim, emb_dim], is_sparse=False)
+        input=input,
+        size=[dict_dim, emb_dim],
+        is_sparse=False,
+        param_attr=fluid.ParamAttr(initializer=fluid.initializer.Constant(
+            value=0.01)))
 
     conv_3 = fluid.nets.sequence_conv_pool(
         input=emb,
         num_filters=num_filters,
         filter_size=window_size,
         act="tanh",
-        pool_type="max")
+        pool_type="max",
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01)))
 
-    fc_0 = fluid.layers.fc(input=[conv_3], size=fc0_dim)
-    prediction = fluid.layers.fc(input=[fc_0], size=class_dim, act="softmax")
+    fc_0 = fluid.layers.fc(
+        input=[conv_3],
+        size=fc0_dim,
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01)))
+
+    prediction = fluid.layers.fc(
+        input=[fc_0],
+        size=class_dim,
+        act="softmax",
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01)))
+
     return prediction
 
 
