@@ -11,19 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
+
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/for_range.h"
+
+#ifdef __NVCC__
+#include <thrust/device_vector.h>
+#include "paddle/fluid/framework/array.h"
+#endif
 
 namespace paddle {
 namespace operators {
-
-inline void GetPrePostForStackOp(const framework::DDim &dim, int axis, int *pre,
-                                 int *post) {
-  *pre = 1;
-  for (auto i = 0; i < axis; ++i) (*pre) *= dim[i];
-  *post = 1;
-  for (auto i = axis; i < dim.size(); ++i) (*post) *= dim[i];
-}
 
 class StackOp : public framework::OperatorWithKernel {
  public:
@@ -72,7 +72,61 @@ class StackOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
-template <typename DeviceContext, typename T, typename Functor>
+template <typename VecXType, typename T>
+struct StackFunctor {
+  HOSTDEVICE StackFunctor(const VecXType &x, T *y, int n, int post)
+      : x_(x), y_(y), n_(n), post_(post) {}
+
+  HOSTDEVICE void operator()(int idx) {
+    int i = idx / (n_ * post_);
+    int which_x = idx / post_ - i * n_;
+    int x_index = i * post_ + idx % post_;
+    y_[idx] = x_[which_x][x_index];
+  }
+
+ private:
+  VecXType x_;
+  T *y_;
+  int n_;
+  int post_;
+};
+
+template <typename VecDxType, typename T>
+struct StackGradFunctor {
+  HOSTDEVICE StackGradFunctor(const VecDxType &dx, const T *dy, int n, int post)
+      : dx_(dx), dy_(dy), n_(n), post_(post) {}
+
+  HOSTDEVICE void operator()(int idx) {
+    int i = idx / (n_ * post_);
+    int which_x = idx / post_ - i * n_;
+    int x_index = i * post_ + idx % post_;
+    dx_[which_x][x_index] = dy_[idx];
+  }
+
+ private:
+  VecDxType dx_;
+  const T *dy_;
+  int n_;
+  int post_;
+};
+
+template <typename DeviceContext, typename VecXType, typename T>
+static inline void StackFunctorForRange(const DeviceContext &ctx,
+                                        const VecXType &x, T *y, int total_num,
+                                        int n, int post) {
+  platform::ForRange<DeviceContext> for_range(ctx, total_num);
+  for_range(StackFunctor<VecXType, T>(x, y, n, post));
+}
+
+template <typename DeviceContext, typename VecDxType, typename T>
+static inline void StackGradFunctorForRange(const DeviceContext &ctx,
+                                            const VecDxType &dx, const T *dy,
+                                            int total_num, int n, int post) {
+  platform::ForRange<DeviceContext> for_range(ctx, total_num);
+  for_range(StackGradFunctor<VecDxType, T>(dx, dy, n, post));
+}
+
+template <typename DeviceContext, typename T>
 class StackKernel : public framework::OpKernel<T> {
   using Tensor = framework::LoDTensor;
 
@@ -93,10 +147,29 @@ class StackKernel : public framework::OpKernel<T> {
     auto &dim = x[0]->dims();
     for (auto i = 0; i < axis; ++i) pre *= dim[i];
     for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
+    int total_num = pre * n * post;
 
-    Functor functor;
-    functor(ctx.template device_context<DeviceContext>(), x_datas, y_data, pre,
-            n, post);
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+    constexpr auto kMaxThreshold = 16;
+    if (std::is_same<DeviceContext, platform::CPUDeviceContext>::value ||
+        n > kMaxThreshold) {
+#ifdef __NVCC__
+      thrust::device_vector<const T *> device_x_vec(x_datas);
+      auto x_data_arr = device_x_vec.data().get();
+#else
+      auto x_data_arr = x_datas.data();
+#endif
+      StackFunctorForRange(dev_ctx, x_data_arr, y_data, total_num, n, post);
+    }
+#ifdef __NVCC__
+    else {  // NOLINT
+      VLOG(10) << "Stack more than " << kMaxThreshold
+               << " tensors on GPU may be slow.";
+      framework::Array<const T *, kMaxThreshold> x_data_arr;
+      for (int i = 0; i < n; ++i) x_data_arr[i] = x_datas[i];
+      StackFunctorForRange(dev_ctx, x_data_arr, y_data, total_num, n, post);
+    }
+#endif
   }
 };
 
@@ -127,31 +200,11 @@ class StackOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-class StackGradOpDescMaker
-    : public framework::
-          SingleGradOpDescMaker /*framework::GradOpDescMakerBase*/ {
+class StackGradOpDescMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
-  /*
-  using framework::GradOpDescMakerBase::GradOpDescMakerBase;
 
-  std::vector<std::unique_ptr<framework::OpDesc>> operator ()() const override {
-                auto x_grads = InputGrad("X", false);
-    std::vector<std::unique_ptr<framework::OpDesc>> grad_ops;
-    grad_ops.reserve(x_grads.size());
-    auto og = OutputGrad("Y");
-    std::transform(x_grads.begin(), x_grads.end(), std::back_inserter(grad_ops),
-                   [&og](const std::string& x_grad) {
-                     auto* grad_op = new framework::OpDesc();
-                     grad_op->SetInput("X", og);
-                     grad_op->SetOutput("Y", {x_grad});
-                     grad_op->SetAttrMap(Attrs());
-                     return std::unique_ptr<framework::OpDesc>(grad_op);
-                   });
-    return grad_ops;
-  }
-  */
-
+ protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
     std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
     op->SetType("stack_grad");
@@ -162,7 +215,7 @@ class StackGradOpDescMaker
   }
 };
 
-template <typename DeviceContext, typename T, typename GradFunctor>
+template <typename DeviceContext, typename T>
 class StackGradKernel : public framework::OpKernel<T> {
   using Tensor = framework::LoDTensor;
 
@@ -175,16 +228,39 @@ class StackGradKernel : public framework::OpKernel<T> {
 
     int n = dy->dims()[axis];
     std::vector<T *> dx_datas(n);  // NOLINT
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
       dx_datas[i] = dx[i]->mutable_data<T>(ctx.GetPlace());
+    }
     auto dy_data = dy->data<T>();
 
     int pre = 1;
     for (int i = 0; i < axis; ++i) pre *= dy->dims()[i];
-    int post = dy->numel() / (n * pre);
-    GradFunctor functor;
-    functor(ctx.template device_context<DeviceContext>(), dx_datas, dy_data,
-            pre, n, post);
+    int total_num = dy->numel();
+    int post = total_num / (n * pre);
+
+    auto &dev_ctx = ctx.template device_context<DeviceContext>();
+    constexpr auto kMaxThreshold = 16;
+    if (std::is_same<DeviceContext, platform::CPUDeviceContext>::value ||
+        n > kMaxThreshold) {
+#ifdef __NVCC__
+      thrust::device_vector<T *> device_dx_vec(dx_datas);
+      auto dx_data_arr = device_dx_vec.data().get();
+#else
+      auto dx_data_arr = dx_datas.data();
+#endif
+      StackGradFunctorForRange(dev_ctx, dx_data_arr, dy_data, total_num, n,
+                               post);
+    }
+#ifdef __NVCC__
+    else {  // NOLINT
+      VLOG(10) << "Stack more than " << kMaxThreshold
+               << " tensors on GPU may be slow.";
+      framework::Array<T *, kMaxThreshold> dx_data_arr;
+      for (int i = 0; i < n; ++i) dx_data_arr[i] = dx_datas[i];
+      StackGradFunctorForRange(dev_ctx, dx_data_arr, dy_data, total_num, n,
+                               post);
+    }
+#endif
   }
 };
 

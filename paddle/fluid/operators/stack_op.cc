@@ -14,53 +14,15 @@
 
 #include "paddle/fluid/operators/stack_op.h"
 
-namespace paddle {
-namespace operators {
-
-struct CPUStackFunctor {
-  template <typename DeviceContext, typename T>
-  void operator()(const DeviceContext& ctx, const std::vector<const T*>& x,
-                  T* y, int pre, int n, int post) const {
-    int total_num = pre * post * n;
-    for (int idx = 0; idx < total_num; ++idx) {
-      int i = idx / (n * post);
-      int which_x = idx / post - i * n;
-      int x_index = i * post + idx % post;
-      y[idx] = x[which_x][x_index];
-    }
-  }
-};
-
-struct CPUStackGradFunctor {
-  template <typename DeviceContext, typename T>
-  void operator()(const DeviceContext& ctx, std::vector<T*>& dx,  // NOLINT
-                  const T* dy, int pre, int n, int post) const {
-    int total_num = pre * post * n;
-    for (int idx = 0; idx < total_num; ++idx) {
-      int i = idx / (n * post);
-      int which_x = idx / post - i * n;
-      int x_index = i * post + idx % post;
-      dx[which_x][x_index] = dy[idx];
-    }
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace plat = paddle::platform;
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(stack, ops::StackOp, ops::StackOpMaker,
                   ops::StackGradOpDescMaker);
 REGISTER_OPERATOR(stack_grad, ops::StackOpGrad);
 
-REGISTER_OP_CPU_KERNEL(
-    stack,
-    ops::StackKernel<plat::CPUDeviceContext, float, ops::CPUStackFunctor>,
-    ops::StackKernel<plat::CPUDeviceContext, double, ops::CPUStackFunctor>);
+REGISTER_OP_CPU_KERNEL(stack, ops::StackKernel<plat::CPUDeviceContext, float>,
+                       ops::StackKernel<plat::CPUDeviceContext, double>);
 
 REGISTER_OP_CPU_KERNEL(stack_grad,
-                       ops::StackGradKernel<plat::CPUDeviceContext, float,
-                                            ops::CPUStackGradFunctor>,
-                       ops::StackGradKernel<plat::CPUDeviceContext, double,
-                                            ops::CPUStackGradFunctor>);
+                       ops::StackGradKernel<plat::CPUDeviceContext, float>,
+                       ops::StackGradKernel<plat::CPUDeviceContext, double>);
