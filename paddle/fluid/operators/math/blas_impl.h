@@ -97,6 +97,11 @@ struct CBlas<float> {
   static void VMUL(ARGS... args) {
     platform::dynload::vsMul(args...);
   }
+
+  template <typename... ARGS>
+  static void VEXP(ARGS... args) {
+    platform::dynload::vsExp(args...);
+  }
 };
 
 template <>
@@ -172,6 +177,11 @@ struct CBlas<double> {
   static void VMUL(ARGS... args) {
     platform::dynload::vdMul(args...);
   }
+
+  template <typename... ARGS>
+  static void VEXP(ARGS... args) {
+    platform::dynload::vdExp(args...);
+  }
 };
 
 #else
@@ -230,6 +240,7 @@ struct CBlas<platform::float16> {
     PADDLE_THROW("float16 SMM_GEMM not supported on CPU");
   }
   static void VMUL(...) { PADDLE_THROW("float16 VMUL not supported on CPU"); }
+  static void VEXP(...) { PADDLE_THROW("float16 VEXP not supported on CPU"); }
   static void DOT(...) { PADDLE_THROW("float16 DOT not supported on CPU"); };
   static void SCAL(...) { PADDLE_THROW("float16 SCAL not supported on CPU"); };
 #ifdef PADDLE_WITH_MKLML
@@ -370,6 +381,19 @@ void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
   // try to find if openblas support vmul
   for (int i = 0; i < n; ++i) {
     z[i] = x[i] * y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VEXP(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VEXP(n, x, y);
+#else
+  // try to find if openblas support vexp
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
   }
 #endif
 }
