@@ -13,7 +13,6 @@
    run_anakin_on_arm.md
    anakin_tutorial.md
    anakin_example.md
-   anakin_cpu_benchmark.md
    anakin_gpu_benchmark.md
    anakin_arm_benchmark.md
 
