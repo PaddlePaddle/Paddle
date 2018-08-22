@@ -81,7 +81,7 @@ inline static void CheckDims(const framework::DDim& seq_tensor_dims,
 template <typename DeviceContext, typename T>
 class PaddingLoDTensorFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::LoDTensor& seq_tensor,
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value, int pad_seq_len = -1,
@@ -92,7 +92,7 @@ class PaddingLoDTensorFunctor {
 template <typename DeviceContext, typename T>
 class UnpaddingLoDTensorFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
