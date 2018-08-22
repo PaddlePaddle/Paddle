@@ -58,45 +58,45 @@ class IdentityDistribution<uint16_t> {
   inline HOSTDEVICE uint16_t operator()(Philox32x4 &eng) {  // NOLINT
     if (pos_ == result_.size) {
       pos_ = 0;
-      high_ = false;
+      low_ = true;
       result_ = eng();
     }
 
     uint32_t tmp = result_[pos_];
     uint16_t result;
-    if (high_) {
-      result = (tmp >> 16) | 0xFFFF;
-      ++pos_;
+    if (low_) {
+      result = static_cast<uint16_t>(tmp & 0xFFFFU);
     } else {
-      result = tmp | 0xFFFF;
+      result = static_cast<uint16_t>((tmp >> 16) & 0xFFFFU);
+      ++pos_;
     }
-    high_ = !high_;
+    low_ = !low_;
     return result;
   }
 
  private:
   Philox32x4::ResultType result_;
   size_t pos_{result_.size};
-  bool high_{false};
+  bool low_{false};
 };
 
 template <>
 class IdentityDistribution<uint8_t> {
  public:
-  using ResultType = uint16_t;
+  using ResultType = uint8_t;
   constexpr static size_t N = 16;
   constexpr static ResultType Max = UINT8_MAX;
   constexpr static ResultType Min = 0;
 
-  inline HOSTDEVICE uint16_t operator()(Philox32x4 &eng) {  // NOLINT
+  inline HOSTDEVICE uint8_t operator()(Philox32x4 &eng) {  // NOLINT
     if (pos_ == result_.size) {
       pos_ = 0;
       shift_ = 0;
       result_ = eng();
     }
 
-    uint32_t tmp = result_[pos_];
-    uint8_t result = static_cast<uint8_t>((tmp >> shift_) | 0xFF);
+    uint32_t tmp = result_[pos_] >> shift_;
+    uint8_t result = static_cast<uint8_t>(tmp & 0xFF);
     shift_ += 8;
     if (shift_ == 32) {
       shift_ = 0;

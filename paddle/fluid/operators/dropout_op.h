@@ -31,7 +31,7 @@ class FillMaskAndY {
       : mask_(mask), x_(x), y_(y), prob_(prob) {}
 
   HOSTDEVICE inline void operator()(size_t i, ProbType prob) {
-    if (prob < prob_) {
+    if (prob <= prob_) {
       mask_[i] = static_cast<T>(0);
       y_[i] = static_cast<T>(0);
     } else {
@@ -45,20 +45,6 @@ class FillMaskAndY {
   const T *x_;
   T *y_;
   ProbType prob_;
-};
-
-template <typename T>
-class FillZeroYAndMask {
- public:
-  FillZeroYAndMask(T *mask, T *y) : mask_(mask), y_(y) {}
-  HOSTDEVICE inline void operator()(size_t i) {
-    mask_[i] = static_cast<T>(0);
-    y_[i] = static_cast<T>(0);
-  }
-
- private:
-  T *mask_;
-  T *y_;
 };
 
 template <typename DeviceContext, typename T>
@@ -90,21 +76,11 @@ class DropoutKernel : public framework::OpKernel<T> {
       uint64_t uint8_prob = static_cast<uint64_t>(
           static_cast<uint64_t>(UINT8_MAX) * static_cast<double>(dropout_prob));
 
-      if (uint32_prob >=
-          (1UL << 32)) {  // speical case. Dropout rate = 1. always fill zero.
-        // Fill Zero
-        platform::ForRange<DeviceContext> for_range(
-            context.template device_context<DeviceContext>(), x->numel());
-        FillZeroYAndMask<T> fill_functor(mask_data, y_data);
-        for_range(fill_functor);
-        return;
-      }
-
       constexpr double epsilon = 1e-3;
       auto uint8_err = std::abs((static_cast<double>(uint8_prob) / UINT8_MAX) -
                                 dropout_prob);
       if (uint8_err < epsilon) {
-        VLOG(10) << "Fast dropout use uint8_t";
+        VLOG(10) << "Fast dropout use uint8_t " << uint8_prob;
         DropoutImpl<uint8_t>(context, x, x_data, y_data, mask_data, seed,
                              uint8_prob);
         return;

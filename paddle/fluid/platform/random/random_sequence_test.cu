@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <string.h>
 #include <vector>
 #include "gtest/gtest.h"
 #include "paddle/fluid/platform/random/identity_distribution.h"
@@ -68,35 +69,12 @@ TEST(RandomSequence, NormalSame) {
 }
 
 TEST(RandomSequence, IdentityCPUGPUSame) {
-  TestMain(IdentityDistribution<uint32_t>());
+  //  TestMain(IdentityDistribution<uint32_t>());
   TestMain(IdentityDistribution<uint16_t>());
 }
 
-template <typename Dist>
-void TestIdentityMean(Dist dist) {
-  using T = typename Dist::ResultType;
-  constexpr size_t length = 1U << 18;
-  std::vector<T> cpu(length);
-  RandomFill(CPUDeviceContext(), 0, dist, cpu.data(), length);
-
-  __uint128_t sum = 0;
-  for (auto &item : cpu) {
-    sum += item;
-  }
-  sum /= length;
-
-  ASSERT_LE(
-      std::abs(static_cast<double>(sum) - static_cast<double>(Dist::Max / 2)) /
-          (Dist::Max / 2),
-      1e-3);
-}
-
-TEST(RandomSequence, IdentityMean) {
-  TestIdentityMean(IdentityDistribution<uint32_t>());
-}
-
 TEST(RandomSequenceIdentity, IdentitySame) {
-  constexpr size_t length = 1U << 18;
+  constexpr size_t length = 1U << 16;
   std::vector<uint32_t> cpu(length);
   RandomFill(CPUDeviceContext(), 0, IdentityDistribution<uint32_t>(),
              cpu.data(), length);
@@ -112,11 +90,24 @@ TEST(RandomSequenceIdentity, IdentitySame) {
   }
 
   for (size_t i = 0; i < length; ++i) {
-    if (cpu[i] != cpu2[i]) {
-      std::cerr << i << std::endl;
-    }
     ASSERT_EQ(cpu[i], cpu2[i]);
   }
+}
+
+TEST(RandomSequenceIdentity, IdentityMemSame) {
+  constexpr size_t length = 1U << 16;
+  std::vector<uint32_t> uint32_vec(length);
+  std::vector<uint16_t> uint16_vec(length * 2);
+  std::vector<uint8_t> uint8_vec(length * 4);
+
+  RandomFill(CPUDeviceContext(), 0, IdentityDistribution<uint32_t>(),
+             uint32_vec.data(), uint32_vec.size());
+  RandomFill(CPUDeviceContext(), 0, IdentityDistribution<uint16_t>(),
+             uint16_vec.data(), uint16_vec.size());
+  RandomFill(CPUDeviceContext(), 0, IdentityDistribution<uint8_t>(),
+             uint8_vec.data(), uint8_vec.size());
+  ASSERT_EQ(memcmp(uint32_vec.data(), uint16_vec.data(), uint8_vec.size()), 0);
+  ASSERT_EQ(memcmp(uint32_vec.data(), uint8_vec.data(), uint8_vec.size()), 0);
 }
 
 }  // namespace random
