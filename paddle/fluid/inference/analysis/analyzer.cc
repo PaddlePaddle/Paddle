@@ -23,8 +23,6 @@
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_node_mark_pass.h"
 #include "paddle/fluid/inference/analysis/tensorrt_subgraph_pass.h"
 
-namespace paddle {
-
 DEFINE_bool(IA_enable_tensorrt_subgraph_engine, false,
             "Enable subgraph to TensorRT engine for acceleration");
 
@@ -35,6 +33,7 @@ DEFINE_string(IA_graphviz_log_root, "./",
 
 DEFINE_string(IA_output_storage_path, "", "optimized model output path");
 
+namespace paddle {
 namespace inference {
 namespace analysis {
 
@@ -72,7 +71,8 @@ class DfgPassManagerImpl final : public DfgPassManager {
     if (FLAGS_IA_enable_tensorrt_subgraph_engine) {
       auto trt_teller = [&](const Node* node) {
         std::unordered_set<std::string> teller_set(
-            {"elementwise_add", "mul", "conv2d", "pool2d", "relu", "softmax"});
+            {"elementwise_add", "mul", "conv2d", "pool2d", "relu", "softmax",
+             "depthwise_conv2d", "batch_norm"});
         if (!node->IsFunction()) return false;
 
         const auto* func = static_cast<const Function*>(node);
