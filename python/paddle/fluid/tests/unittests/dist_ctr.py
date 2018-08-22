@@ -20,7 +20,7 @@ import paddle.fluid as fluid
 import dist_ctr_reader
 from test_dist_base import TestDistRunnerBase, runtime_main
 
-IS_SPARSE = False
+IS_SPARSE = True
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1

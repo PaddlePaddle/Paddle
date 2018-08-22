@@ -54,6 +54,11 @@ class TestDistRunnerBase(object):
                                 trainers)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+        index = pserver_endpoints.index(current_endpoint)
+        with open("/tmp/pserver." + str(index) + ".startup.proto", 'w') as f:
+            f.write(str(startup_prog))
+        with open("/tmp/pserver." + str(index) + ".main.proto", "w") as f:
+            f.write(str(pserver_prog))
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -75,8 +80,20 @@ class TestDistRunnerBase(object):
                                     fluid.default_main_program(), endpoints,
                                     trainers)
             trainer_prog = t.get_trainer_program()
+            with open("/tmp/trainer." + str(trainer_id) + ".startup.proto",
+                      'w') as f:
+                f.write(str(fluid.default_startup_program()))
+            with open("/tmp/trainer." + str(trainer_id) + ".main.proto",
+                      "w") as f:
+                f.write(str(fluid.default_main_program()))
         else:
             trainer_prog = fluid.default_main_program()
+            with open("/tmp/trainer." + str(trainer_id) + ".startup.proto",
+                      'w') as f:
+                f.write(str(fluid.default_startup_program()))
+            with open("/tmp/trainer." + str(trainer_id) + ".main.proto",
+                      "w") as f:
+                f.write(str(trainer_prog))
 
         startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())
@@ -105,6 +122,7 @@ class TestDistRunnerBase(object):
         for i in six.moves.xrange(5):
             data = next(reader_generator)
             loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
+            print(loss)
 
         data = next(reader_generator)
         last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
@@ -276,7 +294,7 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('dist_loss: %s\n' % loss_data0)
         lines = loss_data0.split("\n")
         dist_first_loss = eval(lines[0].replace(" ", ","))[0]
-        dist_last_loss = eval(lines[1].replace(" ", ","))[0]
+        dist_last_loss = eval(lines[-1].replace(" ", ","))[0]
 
         local_lines = local_ret.split("\n")
         local_first_loss = eval(local_lines[0])[0]

@@ -159,13 +159,12 @@ def load_data_meta(path):
     '''
     load data meta info from path, return (dnn_input_dim, lr_input_dim)
     '''
-    with open(path) as f:
-        lines = f.read().split('\n')
-        err_info = "wrong meta format"
-        assert len(lines) == 2, err_info
-        assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[
-            1], err_info
-        res = map(int, [_.split(':')[1] for _ in lines])
-        logger.info('dnn input dim: %d' % res[0])
-        logger.info('lr input dim: %d' % res[1])
-        return res
+    lines = read_data('data.meta.txt')
+    err_info = "wrong meta format"
+    assert len(lines) == 2, err_info
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[
+        1], err_info
+    res = map(int, [_.split(':')[1] for _ in lines])
+    logger.info('dnn input dim: %d' % res[0])
+    logger.info('lr input dim: %d' % res[1])
+    return res
