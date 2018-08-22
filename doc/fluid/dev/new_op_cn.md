@@ -334,3 +334,70 @@ ctest -R test_mul_op
 - 注册Op时的类型名，需要和该Op的名字一样。即不允许在`A_op.cc`里面，注册`REGISTER_OPERATOR(B, ...)`等，这将会导致单元测试出错。
 - 如果Op没有实现CUDA Kernel，请不要创建空的`*_op.cu`，这将会导致单元测试出错。
 - 如果多个Op依赖一些共用的函数，可以创建非`*_op.*`格式的文件来存放，如`gather.h`文件。
+
+### PADDLE_ENFORCE使用注意
+
+实现Op时检查数据的合法性需要使用PADDLE_ENFORCE以及PADDLE_ENFORCE_EQ等宏定义，基本格式如下：
+
+```
+PADDLE_ENFORCE(表达式, 错误提示信息)
+PADDLE_ENFORCE_EQ(比较对象A, 比较对象B, 错误提示信息)
+```
+
+如果表达式为真，或者比较对象A=B，则检查通过，否则会终止程序运行，向用户反馈相应的错误提示信息。
+为了确保提示友好易懂，开发者需要注意其使用方法。
+
+#### 总体原则
+
+任何使用了PADDLE_ENFORCE与PADDLE_ENFORCE_**检查的地方，必须有详略得当的备注解释！**错误提示信息**不能为空！
+
+#### 提示信息书写标准
+
+1. [required] 哪里错了？为什么错了？
+    - 例如：`ValueError: Mismatched label shape`
+2. [optional] 期望的输入是什么样的？实际的输入是怎样的？
+    - 例如：`Expected labels dimension=1. Received 4.`
+3. [optional] 能否给出修改意见？
+    - 例如：`Suggested Fix:If your classifier expects one-hot encoding label,check your n_classes argument to the estimatorand/or the shape of your label.Otherwise, check the shape of your label.`
+
+如果并非必要或者简洁的描述即可表达清楚以上要点，根据情况书写亦可。
+
+##### FAQ 典型问题
+
+1. 无报错信息或报错信息过于简单，不能给用户提供有效的提示！
+
+问题示例1 ：未写提示信息
+```
+PADDLE_ENFORCE(ctx->HasInput("X"), "");
+```
+问题示例2 ：提示信息过于简单
+```
+PADDLE_ENFORCE(i != nullptr, "I must be set"); // I是什么？
+```
+
+2. 在报错信息中使用开发人员定义的变量缩写，不易理解！
+
+问题示例：
+```
+PADDLE_ENFORCE(forward_pd != nullptr,
+                    "Fail to find eltwise_fwd_pd in device context");  //eltwise_fwd_pd用户可能看不懂
+```
+
+#### OP InferShape检查提示信息特别说明
+
+- 检查输入输出变量，请统一遵循以下格式
+`Input(变量名) of OP名 operator should not be null.`  
+
+正确示例：
+```
+PADDLE_ENFORCE(ctx->HasInput("Input"),
+                        "Input(Input) of LSTMP operator should not be null.");
+```
+
+- 反向Op的输入输出检查，要写明反向Op的名字
+
+正确示例：
+```
+PADDLE_ENFORCE(ctx->HasInput("X"),
+                        "Input(X) of LoDResetGrad opreator should not be null.");
+```
