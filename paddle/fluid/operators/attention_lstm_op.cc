@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/attention_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
-// #include "paddle/fluid/operators/math/detail/activation_functions.h"
-// #include "paddle/fluid/operators/math/cpu_vec.h"
+#include "paddle/fluid/platform/cpu_info.h"
 
 namespace paddle {
 namespace operators {
@@ -230,13 +230,6 @@ use lstm_x_t as input and compute as standard LSTM.
 )DOC");
 }
 
-template <typename T>
-inline void vec_relu(const int n, const T* x, T* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = x[i] > 0 ? x[i] : 0;
-  }
-}
-
 // y[i] = (x[i] + bias[0]) > 0 ? (x[i] + bias[0]) : 0;
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
@@ -244,9 +237,9 @@ inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
     for (int i = 0; i < n; ++i) {
       y[i] = x[i] + bias[0];
     }
-    vec_relu<T>(n, y, y);
+    math::vec_relu<T>(n, y, y);
   } else {
-    vec_relu<T>(n, x, y);
+    math::vec_relu<T>(n, x, y);
   }
 }
 
@@ -275,37 +268,6 @@ inline void vec_softmax(const math::BlasT<DeviceContext, T>& blas, const int n,
 
   // scale
   blas.SCAL(n, static_cast<T>(1) / scalar, y);
-}
-
-#define SIGMOID_THRESHOLD_MIN -40.0
-#define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
-
-template <typename T>
-inline T sigmoid(T x) {
-  return 1. / (1. + exp(-x));
-}
-
-template <typename T>
-inline T tanh(T x) {
-  return 2. * sigmoid(2. * x) - 1.;
-}
-
-template <typename T>
-inline void vec_sigmoid(const int n, const T* x, T* y) {
-  const T min = SIGMOID_THRESHOLD_MIN;
-  const T max = SIGMOID_THRESHOLD_MAX;
-  for (int i = 0; i < n; ++i) {
-    T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
-    y[i] = 1.0 / (1.0 + std::exp(-tmp));
-  }
-}
-
-template <typename T>
-inline void vec_tanh(const int n, const T* x, T* y) {
-  for (int i = 0; i < n; ++i) {
-    y[i] = tanh<T>(x[i]);
-  }
 }
 
 template <typename T>
@@ -351,6 +313,10 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
     fc_out->Resize({max_seq_len, 1});
 
     // TODO(TJ): act functor init here
+    // if (platform::jit::MayIUse(platform::jit::avx2)) {
+    // } else if (platform::jit::MayIUse(platform::jit::avx)) {
+    // } else {
+    // }
 
     const T* x_data = x->data<T>();
     const T* h0_data = h0->data<T>();
@@ -418,9 +384,9 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
         blas.VADD(D4, lstm_b_data, lstm_out_data, lstm_out_data);
 
         // gate act: sigmoid
-        vec_sigmoid(D3, lstm_out_data, lstm_out_data);
+        math::vec_sigmoid(D3, lstm_out_data, lstm_out_data);
         // candicate act: tanh
-        vec_tanh(D, lstm_out_data + D3, lstm_out_data + D3);
+        math::vec_tanh(D, lstm_out_data + D3, lstm_out_data + D3);
 
         // a = forget * prev_cell
         blas.VMUL(D, lstm_out_data, prev_cell_data, lstm_out_data);
@@ -432,7 +398,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
         blas.VADD(D, lstm_out_data, lstm_out_data + D, cur_cell_out_data);
 
         // state act tanh(cell_out) * output_gate
-        vec_tanh(D, cur_cell_out_data, lstm_out_data);
+        math::vec_tanh(D, cur_cell_out_data, lstm_out_data);
         blas.VMUL(D, lstm_out_data, lstm_out_data + D2, cur_hidden_out_data);
 
         prev_hidden_data = cur_hidden_out_data;
