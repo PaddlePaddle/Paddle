@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -136,9 +137,11 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
 }
 
 template <typename DeviceContext, typename T>
-class ElementwiseAddGradKernel : public framework::OpKernel<T> {
+class ElementwiseAddGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
+
     using Tensor = framework::Tensor;
 
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
