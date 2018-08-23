@@ -331,7 +331,17 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    if [ "$1" != "" ]; then
+        echo "checking python abi: $1"
+        if [ "$1" == "cp35-cp35m" ]; then
+            # Always use python2 to generate api signature
+            LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:} PATH=/opt/python/cp27-cp27mu/bin/:${PATH} python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+        else
+            python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+        fi
+    else
+        python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    fi
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 
@@ -625,7 +635,7 @@ function main() {
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
-        assert_api_not_changed
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       *)
         print_usage
