@@ -31,7 +31,7 @@ class FillMaskAndY {
       : mask_(mask), x_(x), y_(y), prob_(prob) {}
 
   HOSTDEVICE inline void operator()(size_t i, ProbType prob) {
-    if (prob <= prob_) {
+    if (prob < prob_) {
       mask_[i] = static_cast<T>(0);
       y_[i] = static_cast<T>(0);
     } else {
@@ -45,6 +45,21 @@ class FillMaskAndY {
   const T *x_;
   T *y_;
   ProbType prob_;
+};
+
+template <typename T>
+class FillZeroMaskAndY {
+ public:
+  FillZeroMaskAndY(T *mask, T *y) : mask_(mask), y_(y) {}
+
+  HOSTDEVICE inline void operator()(size_t i) {
+    mask_[i] = static_cast<T>(0);
+    y_[i] = static_cast<T>(0);
+  }
+
+ private:
+  T *mask_;
+  T *y_;
 };
 
 template <typename DeviceContext, typename T>
@@ -65,6 +80,15 @@ class DropoutKernel : public framework::OpKernel<T> {
       // Guarantee to use random seed in training.
       int seed = context.Attr<bool>("fix_seed") ? context.Attr<int>("seed")
                                                 : std::random_device()();
+      constexpr double epsilon = 1e-3;
+      if (std::abs(dropout_prob - 1.0f) < epsilon) {
+        VLOG(3) << "dropout_prob is almost 1.0";
+        FillZeroMaskAndY<T> functor(mask_data, y_data);
+        platform::ForRange<DeviceContext> for_range(
+            context.template device_context<DeviceContext>(), x->numel());
+        for_range(functor);
+        return;
+      }
 
       uint64_t uint32_prob =
           static_cast<uint64_t>(static_cast<uint64_t>(UINT32_MAX) *
@@ -76,7 +100,6 @@ class DropoutKernel : public framework::OpKernel<T> {
       uint64_t uint8_prob = static_cast<uint64_t>(
           static_cast<uint64_t>(UINT8_MAX) * static_cast<double>(dropout_prob));
 
-      constexpr double epsilon = 1e-3;
       auto uint8_err = std::abs((static_cast<double>(uint8_prob) / UINT8_MAX) -
                                 dropout_prob);
       if (uint8_err < epsilon) {
