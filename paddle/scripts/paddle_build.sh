@@ -329,16 +329,11 @@ function assert_api_not_changed() {
     virtualenv .env
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
-    if [ "$1" != "" ]; then
-        echo "checking python abi: $1"
-        if [ "$1" == "cp35-cp35m" ]; then
-            # Always use python2 to generate api signature
-            LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:} PATH=/opt/python/cp27-cp27mu/bin/:${PATH} python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
-        else
-            python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
-        fi
-    else
-        python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    if [ "$1" == "cp35-cp35m" ]; then
+        # Use sed to make python2 and python3 sepc keeps the same
+        sed -i 's/arg0: str/arg0: unicode/g' new.spec
+        sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
     fi
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
