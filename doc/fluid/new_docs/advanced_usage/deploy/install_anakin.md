@@ -10,7 +10,6 @@
 *  GCC / G++ / C++: 4.8 ~ 5.4
 *  Protobuf: 3.1.0 +
 
-
 ## 2、安装步骤 ##
 
 本节将叙述 Anakin 在 Nvidia GPU、Intel CPU 和 AMD GPU 上的安装步骤。Anakin 移动版安装请参考 [ARM 安装指南](run_on_arm_ch.md)，我们将在后续版本提供寒武纪和比特大陆的解决方案。
