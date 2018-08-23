@@ -30,6 +30,8 @@ class TopkOp : public framework::OperatorWithKernel {
                    "Output(Indices) of TopkOp should not be null.");
 
     auto input_dims = ctx->GetInputDim("X");
+    PADDLE_ENFORCE_EQ(input_dims.size(), 2,
+                      "Rank of TopK op's input must be 2.");
     const int k = static_cast<int>(ctx->Attrs().Get<int>("k"));
 
     PADDLE_ENFORCE_GE(k, 1, "k must >= 1");
