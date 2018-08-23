@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 from paddle.fluid.executor import Executor
@@ -56,6 +58,8 @@ class TestPrintOpCPU(unittest.TestCase):
                        return_numpy=False)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestPrintOpGPU(TestPrintOpCPU):
     def setUp(self):
         self.place = core.CUDAPlace(0)

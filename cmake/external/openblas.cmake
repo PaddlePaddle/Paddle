@@ -121,6 +121,11 @@ ELSE()
   TARGET_LINK_LIBRARIES(cblas ${CBLAS_LIBRARIES})
 ENDIF("${CBLAS_PROVIDER}" STREQUAL "MKLML")
 
+IF(WITH_LIBXSMM)
+  TARGET_LINK_LIBRARIES(cblas ${LIBXSMM_LIBS})
+  ADD_DEPENDENCIES(cblas extern_libxsmm)
+ENDIF()
+
 IF(NOT ${CBLAS_FOUND})
     ADD_DEPENDENCIES(cblas extern_openblas)
     LIST(APPEND external_project_dependencies cblas)

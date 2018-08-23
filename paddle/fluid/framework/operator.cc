@@ -11,14 +11,17 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-
+#include "paddle/fluid/framework/operator.h"
 #include <algorithm>
-
+#include <sstream>
+#include <string>
+#include <vector>
+#include "gflags/gflags.h"
+#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -57,7 +60,11 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().dims();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return DDim({-1});
+    }
+    return tensor.dims();
   } else if (var->IsType<SelectedRows>()) {
     if (get_actual_dim) {
       return var->Get<SelectedRows>().value().dims();
@@ -66,6 +73,26 @@ static DDim GetDims(const Scope& scope, const std::string& name,
     }
   } else {
     return DDim({-1});
+  }
+}
+
+static std::string GetDtype(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) {
+    return "";
+  }
+
+  if (var->IsType<LoDTensor>()) {
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "";
+    }
+    return DataTypeToString(ToDataType(tensor.type()));
+  } else if (var->IsType<SelectedRows>()) {
+    return DataTypeToString(
+        ToDataType(var->Get<SelectedRows>().value().type()));
+  } else {
+    return "";
   }
 }
 
@@ -91,24 +118,59 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>().lod();
+    const LoDTensor& tensor = var->Get<LoDTensor>();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return default_lod;
+    }
+    return tensor.lod();
   } else {
     return default_lod;
   }
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(10) << "- " << DebugStringEx(&scope);
-  if (platform::is_gpu_place(place)) {
+  try {
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << place << " " << DebugStringEx(&scope);
+    }
+    if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-    platform::SetDeviceId(dev_id);
+      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      platform::SetDeviceId(dev_id);
 #endif
+    }
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    platform::RecordEvent record_event(Type(), pool.Get(place));
+    RunImpl(scope, place);
+    if (VLOG_IS_ON(3)) {
+      VLOG(3) << place << " " << DebugStringEx(&scope);
+    }
+  } catch (platform::EnforceNotMet exception) {
+    if (Attrs().count("sub_block") != 0) {
+      throw exception;
+    }
+
+    auto& callstack = Attr<std::vector<std::string>>(
+        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
+    if (callstack.empty()) {
+      throw exception;
+    }
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python Callstacks: \n";
+    for (auto& line : callstack) {
+      sout << line;
+    }
+    sout << "C++ Callstacks: \n";
+    sout << exception.err_str_;
+    exception.err_str_ = sout.str();
+    throw exception;
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
-  RunImpl(scope, place);
-  VLOG(10) << "+ " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -136,7 +198,7 @@ const std::vector<std::string>& OperatorBase::Inputs(
 }
 
 bool OperatorBase::HasOutputs(const std::string& name) const {
-  if (outputs_.find(name) != outputs_.end()) {
+  if (outputs_.end() != outputs_.find(name)) {
     return true;
   } else {
     return false;
@@ -172,6 +234,8 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
         if (row_size >= 0) {
           ss << "[row_size=" << row_size << "]";
         }
+        std::string dtype = GetDtype(*scope, input.second[i]);
+        ss << ":" << dtype;
         ss << "[" << GetDims(*scope, input.second[i], true) << "]";
         ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
@@ -608,9 +672,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
-  // For profiling, don't move out of this function because that will result
-  // in the failure of multi-GPU profiling.
-  platform::RecordEvent record_event(Type(), dev_ctx);
   // check if op[type] has kernel registered.
   auto& all_op_kernels = AllOpKernels();
   auto kernels_iter = all_op_kernels.find(type_);
@@ -679,6 +740,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       if (var == nullptr) continue;
       if (var->IsType<framework::LoDTensor>()) {
         CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
+      } else if (var->IsType<framework::SelectedRows>()) {
+        CheckTensorNANOrInf(vname, var->Get<framework::SelectedRows>().value());
       }
     }
   }
@@ -746,6 +809,7 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
     const ExecutionContext& ctx) const {
   auto& scope = ctx.scope();
   int data_type = -1;
+  std::string last_input_name;
   for (auto& input : this->inputs_) {
     for (auto& ipt_name : input.second) {
       auto* var = scope.FindVar(ipt_name);
@@ -762,9 +826,10 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
           int tmp = static_cast<int>(ToDataType(t->type()));
           PADDLE_ENFORCE(
               tmp == data_type || data_type == -1,
-              "DataType of Paddle Op %s must be the same. Get %d != %d", Type(),
-              data_type, tmp);
+              "DataType of Paddle Op %s must be the same. Get %s(%d) != %s(%d)",
+              Type(), last_input_name, data_type, ipt_name, tmp);
           data_type = tmp;
+          last_input_name = ipt_name;
         }
       }
     }

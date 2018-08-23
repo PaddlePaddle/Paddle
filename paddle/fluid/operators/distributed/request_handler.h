@@ -43,13 +43,28 @@ constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 #define BATCH_BARRIER_MESSAGE "BATCH_BARRIER@RECV"
 #define FETCH_BARRIER_MESSAGE "FETCH_BARRIER@RECV"
 #define COMPLETE_MESSAGE "COMPLETE@RECV"
-#define BEGIN_PASS_MESSAGE "BEGIN_PASS@RECV"
-#define END_PASS_MESSAGE "END_PASS@RECV"
 
 #define CHECKPOINT_SAVE_MESSAGE "SAVE@CHECKPOINTNOTIFY"
 #define CHECKPOINT_LOAD_MESSAGE "LOAD@CHECKPOINTNOTIFY"
 
 class RPCServer;
+
+struct VarHandle {
+  // RPC endpoint.
+  std::string ep;
+  const platform::DeviceContext* ctx;
+  const framework::Scope* scope;
+  // Variable name.
+  std::string name;
+  // RPC method name.
+  std::string method;
+
+  std::string String() const {
+    std::ostringstream s;
+    s << method << " name:[" << name << "], ep:[" << ep << "]";
+    return s.str();
+  }
+};
 
 class RequestHandler {
  public:

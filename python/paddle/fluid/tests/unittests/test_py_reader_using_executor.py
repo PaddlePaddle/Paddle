@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -52,11 +54,13 @@ def simple_fc_net(in_size,
                   batch_size,
                   queue_capacity,
                   use_double_buffer=False):
-    reader, feed_queue = fluid.layers.py_reader(
+    reader = fluid.layers.py_reader(
         capacity=queue_capacity,
         shapes=[[-1, in_size], [-1, 1]],
         lod_levels=[0, 0],
-        dtypes=['float32', 'int64'])
+        dtypes=['float32', 'int64'],
+        use_double_buffer=False)
+    feed_queue = reader.queue
     reader = fluid.layers.batch(reader, batch_size=batch_size)
     if use_double_buffer:
         reader = fluid.layers.double_buffer(reader)

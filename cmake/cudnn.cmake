@@ -21,11 +21,29 @@ list(APPEND CUDNN_CHECK_LIBRARY_DIRS
     ${CUDNN_ROOT}/lib64
     ${CUDNN_ROOT}/lib
     ${CUDNN_ROOT}/lib/${TARGET_ARCH}-linux-gnu
+    ${CUDNN_ROOT}/local/cuda-${CUDA_VERSION}/targets/${TARGET_ARCH}-linux/lib/
     $ENV{CUDNN_ROOT}
     $ENV{CUDNN_ROOT}/lib64
     $ENV{CUDNN_ROOT}/lib
-    /usr/lib)
-find_library(CUDNN_LIBRARY NAMES libcudnn.so libcudnn.dylib # libcudnn_static.a
+    /usr/lib
+	${CUDA_TOOLKIT_ROOT_DIR}
+	${CUDA_TOOLKIT_ROOT_DIR}/lib/x64
+	)
+set(CUDNN_LIB_NAME "")
+if (LINUX)
+set(CUDNN_LIB_NAME "libcudnn.so")
+endif(LINUX)
+
+if(WIN32)
+# only support cudnn7
+set(CUDNN_LIB_NAME "cudnn.lib" "cudnn64_7.dll")
+endif(WIN32)
+
+if(Apple)
+set(CUDNN_LIB_NAME "libcudnn.dylib" "libcudnn.so")
+endif(Apple)
+
+find_library(CUDNN_LIBRARY NAMES ${CUDNN_LIB_NAME} # libcudnn_static.a
     PATHS ${CUDNN_CHECK_LIBRARY_DIRS} ${CUDNN_INCLUDE_DIR} ${__libpath_hist}
           NO_DEFAULT_PATH
     DOC "Path to cuDNN library.")

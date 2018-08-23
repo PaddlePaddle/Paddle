@@ -20,7 +20,7 @@ from .utils import deprecated
 try:
     import cPickle as pickle
 except ImportError:
-    import pickle
+    import six.moves.cPickle as pickle
 
 __all__ = ['define_py_data_sources2']
 

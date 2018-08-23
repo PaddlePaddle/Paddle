@@ -136,7 +136,13 @@ std::string callPythonFunc(const std::string& moduleName,
                            const std::string& funcName,
                            const std::vector<std::string>& args) {
   PyObjectPtr obj = callPythonFuncRetPyObj(moduleName, funcName, args);
+#if PY_MAJOR_VERSION >= 3
+  Py_ssize_t str_size = 0u;
+  const char* str = PyUnicode_AsUTF8AndSize(obj.get(), &str_size);
+  return std::string(str, (size_t)str_size);
+#else
   return std::string(PyString_AsString(obj.get()), PyString_Size(obj.get()));
+#endif  // PY_MAJOR_VERSION >= 3
 }
 
 PyObjectPtr createPythonClass(

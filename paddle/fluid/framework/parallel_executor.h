@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 #include "paddle/fluid/framework/details/execution_strategy.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_builder.h"
+#include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -66,11 +66,10 @@ class ParallelExecutor {
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
 
-  void BCastParamsToDevs(const std::unordered_set<std::string> &vars) const;
+  void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
  private:
   ParallelExecutorPrivate *member_;
-  std::unique_ptr<details::SSAGraphBuilder> builder_;
 };
 
 }  // namespace framework

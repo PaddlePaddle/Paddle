@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
-import paddle.v2 as paddle
+import paddle
 import numpy as np
 
 
 class TestDataBalance(unittest.TestCase):
     def prepare_data(self):
         def fake_data_generator():
-            for n in xrange(self.total_ins_num):
+            for n in range(self.total_ins_num):
                 yield np.ones((3, 4)) * n, n
 
         # Prepare data
@@ -41,7 +43,7 @@ class TestDataBalance(unittest.TestCase):
 
     def prepare_lod_data(self):
         def fake_data_generator():
-            for n in xrange(1, self.total_ins_num + 1):
+            for n in range(1, self.total_ins_num + 1):
                 d1 = (np.ones((n, 3)) * n).astype('float32')
                 d2 = (np.array(n).reshape((1, 1))).astype('int32')
                 yield d1, d2
@@ -58,9 +60,9 @@ class TestDataBalance(unittest.TestCase):
                             (0, 1))
                     ]
                     lod = [0]
-                    for _ in xrange(self.batch_size):
+                    for _ in range(self.batch_size):
                         try:
-                            ins = generator.next()
+                            ins = next(generator)
                         except StopIteration:
                             eof = True
                             break
@@ -142,8 +144,7 @@ class TestDataBalance(unittest.TestCase):
                 filenames=[self.lod_data_file_name],
                 shapes=[[-1, 3], [-1, 1]],
                 lod_levels=[1, 0],
-                dtypes=['float32', 'int32'],
-                thread_num=1)
+                dtypes=['float32', 'int32'])
             ins, label = fluid.layers.read_file(data_reader)
 
             place = fluid.CUDAPlace(0) if self.use_cuda else fluid.CPUPlace()
@@ -156,7 +157,7 @@ class TestDataBalance(unittest.TestCase):
                 main_program=main_prog,
                 build_strategy=build_strategy)
 
-            if (parallel_exe.device_count > self.batch_size):
+            if parallel_exe.device_count > self.batch_size:
                 print("WARNING: Unittest TestDataBalance skipped. \
                     For the result is not correct when device count \
                     is larger than batch size.")
@@ -190,3 +191,7 @@ class TestDataBalance(unittest.TestCase):
     def test_all(self):
         self.main()
         self.main_lod()
+
+
+if __name__ == '__main__':
+    unittest.main()

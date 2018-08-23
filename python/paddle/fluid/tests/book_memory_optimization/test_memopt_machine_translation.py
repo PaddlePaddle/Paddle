@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import numpy as np
 import paddle
 import paddle.fluid as fluid
@@ -118,7 +120,7 @@ def main():
     feeder = fluid.DataFeeder(feed_list, place)
 
     batch_id = 0
-    for pass_id in xrange(10):
+    for pass_id in range(10):
         for data in train_data():
             outs = exe.run(fluid.default_main_program(),
                            feed=feeder.feed(data),

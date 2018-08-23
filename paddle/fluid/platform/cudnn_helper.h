@@ -59,13 +59,12 @@ inline const char* cudnnGetErrorString(cudnnStatus_t status) {
 #define CUDNN_VERSION_MIN(major, minor, patch) \
   (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
 
-#define CUDNN_ENFORCE(condition)                                  \
-  do {                                                            \
-    cudnnStatus_t status = condition;                             \
-    if (status != CUDNN_STATUS_SUCCESS) {                         \
-      VLOG(1) << ::paddle::platform::cudnnGetErrorString(status); \
-      PADDLE_THROW("cuDNN call failed");                          \
-    }                                                             \
+#define CUDNN_ENFORCE(condition)                                     \
+  do {                                                               \
+    cudnnStatus_t status = condition;                                \
+    if (UNLIKELY(status != CUDNN_STATUS_SUCCESS)) {                  \
+      PADDLE_THROW(::paddle::platform::cudnnGetErrorString(status)); \
+    }                                                                \
   } while (false)
 
 enum class DataLayout {  // Not use

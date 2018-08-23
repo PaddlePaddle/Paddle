@@ -26,6 +26,7 @@
 
 namespace paddle {
 namespace inference {
+
 namespace analysis {
 class DataFlowGraphToFluidPass final : public DataFlowGraphPass {
  public:

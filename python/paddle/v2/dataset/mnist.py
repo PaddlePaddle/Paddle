@@ -68,8 +68,14 @@ def reader_creator(image_filename, label_filename, buffer_size):
                 for i in xrange(buffer_size):
                     yield images[i, :], int(labels[i])
         finally:
-            m.terminate()
-            l.terminate()
+            try:
+                m.terminate()
+            except:
+                pass
+            try:
+                l.terminate()
+            except:
+                pass
 
     return reader
 

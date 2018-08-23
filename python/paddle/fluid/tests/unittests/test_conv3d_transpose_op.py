@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -25,7 +27,7 @@ def conv3dtranspose_forward_naive(input_, filter_, attrs):
     groups = attrs['groups']
     assert in_c == f_c
     out_c = f_out_c * groups
-    sub_in_c = in_c / groups
+    sub_in_c = in_c // groups
 
     stride, pad, dilations = attrs['strides'], attrs['paddings'], attrs[
         'dilations']
@@ -197,12 +199,16 @@ class TestWithDilation(TestConv3dTransposeOp):
 
 
 # ------------ test_cudnn ------------
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNN(TestConv3dTransposeOp):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv3d_transpose"
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNWithPad(TestWithPad):
     def init_test_case(self):
         self.pad = [1, 1, 1]
@@ -218,6 +224,8 @@ class TestCUDNNWithPad(TestWithPad):
         self.op_type = "conv3d_transpose"
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNWithStride(TestWithStride):
     def init_test_case(self):
         self.pad = [1, 1, 1]
@@ -233,6 +241,8 @@ class TestCUDNNWithStride(TestWithStride):
         self.op_type = "conv3d_transpose"
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestCUDNNWithGroups(TestWithGroups):
     def init_test_case(self):
         self.pad = [1, 1, 1]

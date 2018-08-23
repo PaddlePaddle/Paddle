@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid as fluid
 import numpy as np
@@ -45,12 +47,12 @@ class TestPyReader(unittest.TestCase):
             ) else fluid.CPUPlace()
             executor = fluid.Executor(place)
 
-            data_file, feed_queue = fluid.layers.py_reader(
+            data_file = fluid.layers.py_reader(
                 capacity=self.capacity,
                 dtypes=self.dtypes,
                 lod_levels=self.lod_levels,
                 shapes=self.shapes)
-
+            feed_queue = data_file.queue
             read_out_data = fluid.layers.read_file(data_file)
             self.inputs = []
 
@@ -62,7 +64,8 @@ class TestPyReader(unittest.TestCase):
                     next_data = np.random.uniform(
                         low=0, high=1000,
                         size=(batch_size, ) + shape[1:]).astype(dtype)
-                    in_data.append(executor.as_lodtensor(next_data))
+                    in_data.append(
+                        fluid.executor._as_lodtensor(next_data, place))
 
                 self.inputs.append(in_data)
 

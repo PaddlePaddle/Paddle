@@ -42,9 +42,6 @@ class SendOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
-
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
@@ -59,7 +56,7 @@ class SendOp : public framework::OperatorBase {
       }
     }
     if (sync_send) {
-      rpc_client->Wait();
+      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
     }
   }
 };
@@ -68,6 +65,8 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
+        .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
 Send operator

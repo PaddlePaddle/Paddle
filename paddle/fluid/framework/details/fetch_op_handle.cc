@@ -21,13 +21,16 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-FetchOpHandle::FetchOpHandle(FeedFetchList *data, size_t offset,
+FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                              std::vector<Scope *> *local_scopes)
-    : data_(data), offset_(offset), local_scopes_(local_scopes) {}
+    : OpHandleBase(node),
+      data_(data),
+      offset_(offset),
+      local_scopes_(local_scopes) {}
 
 FetchOpHandle::~FetchOpHandle() {
   for (auto *input_var : inputs_) {
-    input_var->pending_ops_.erase(this);
+    input_var->RemoveOutput(this, this->Node());
   }
 }
 
@@ -77,8 +80,8 @@ void FetchOpHandle::RunImpl() {
 void FetchOpHandle::WaitInputVarGenerated(const platform::Place &place) {
   auto cpu_ctx = platform::DeviceContextPool::Instance().Get(place);
   for (auto *input : inputs_) {
-    if (input->generated_op_) {
-      input->generated_op_->RecordWaitEventOnCtx(cpu_ctx);
+    if (input->GeneratedOp()) {
+      input->GeneratedOp()->RecordWaitEventOnCtx(cpu_ctx);
     }
   }
 }
