@@ -26,6 +26,8 @@ limitations under the License. */
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
+constexpr char kEndPointMap[] = "epmap";
+
 namespace paddle {
 namespace {
 
@@ -34,12 +36,14 @@ class Timer {
  public:
   double start;
   double startu;
+
   void tic() {
     struct timeval tp;
     gettimeofday(&tp, NULL);
     start = tp.tv_sec;
     startu = tp.tv_usec;
   }
+
   double toc() {
     struct timeval tp;
     gettimeofday(&tp, NULL);
@@ -55,6 +59,16 @@ std::string num2str(T a) {
   istr << a;
   return istr.str();
 }
+
+template <typename T>
+std::string vec2str(const std::vector<T> &vec) {
+  std::stringstream ss;
+  for (const auto &c : vec) {
+    ss << c << " ";
+  }
+  return ss.str();
+}
+
 }  // namespace
 
 bool NativePaddlePredictor::Init(
@@ -101,6 +115,18 @@ bool NativePaddlePredictor::Init(
   } else {
     LOG(ERROR) << "fail to load inference model.";
     return false;
+  }
+
+  if (!config_.pserver_endpoints.empty()) {
+    auto *global_block = inference_program_.get()->MutableBlock(0);
+    for (auto *op : global_block->AllOps()) {
+      if (op->HasAttr(kEndPointMap)) {
+        op->SetAttr(kEndPointMap, config_.pserver_endpoints);
+        op->CheckAttrs();
+        VLOG(3) << "set " << kEndPointMap << " in OP " << op->Type() << " to "
+                << vec2str(config_.pserver_endpoints);
+      }
+    }
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);

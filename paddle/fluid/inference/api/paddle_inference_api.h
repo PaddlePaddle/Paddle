@@ -36,36 +36,49 @@ enum PaddleDType {
 class PaddleBuf {
  public:
   PaddleBuf() = default;
-  PaddleBuf(PaddleBuf&& other);
+
+  PaddleBuf(PaddleBuf &&other);
+
   // Copy only available when memory is managed externally.
-  explicit PaddleBuf(const PaddleBuf&);
-  PaddleBuf& operator=(const PaddleBuf&);
-  PaddleBuf& operator=(PaddleBuf&&);
+  explicit PaddleBuf(const PaddleBuf &);
+
+  PaddleBuf &operator=(const PaddleBuf &);
+
+  PaddleBuf &operator=(PaddleBuf &&);
+
   // Do not own the memory.
-  PaddleBuf(void* data, size_t length)
+  PaddleBuf(void *data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
+
   // Own memory.
   explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
+
   // Resize to `length` bytes.
   void Resize(size_t length);
+
   // Reset to external memory.
-  void Reset(void* data, size_t length);
+  void Reset(void *data, size_t length);
+
   bool empty() const { return length_ == 0; }
-  void* data() const { return data_; }
+
+  void *data() const { return data_; }
+
   size_t length() const { return length_; }
 
   ~PaddleBuf() { Free(); }
 
  private:
   void Free();
-  void* data_{nullptr};  // pointer to the data memory.
+
+  void *data_{nullptr};  // pointer to the data memory.
   size_t length_{0};     // number of memory bytes.
   bool memory_owned_{true};
 };
 
 struct PaddleTensor {
   PaddleTensor() = default;
+
   std::string name;  // variable name.
   std::vector<int> shape;
   PaddleBuf data;  // blob of data.
@@ -89,17 +102,20 @@ enum class PaddleEngineKind {
 class PaddlePredictor {
  public:
   struct Config;
+
   PaddlePredictor() = default;
-  PaddlePredictor(const PaddlePredictor&) = delete;
-  PaddlePredictor& operator=(const PaddlePredictor&) = delete;
+
+  PaddlePredictor(const PaddlePredictor &) = delete;
+
+  PaddlePredictor &operator=(const PaddlePredictor &) = delete;
 
   // Predict an record.
   // The caller should be responsible for allocating and releasing the memory of
   // `inputs`. `inputs` should be available until Run returns. Caller should be
   // responsible for the output tensor's buffer, either allocated or passed from
   // outside.
-  virtual bool Run(const std::vector<PaddleTensor>& inputs,
-                   std::vector<PaddleTensor>* output_data,
+  virtual bool Run(const std::vector<PaddleTensor> &inputs,
+                   std::vector<PaddleTensor> *output_data,
                    int batch_size = -1) = 0;
 
   // Clone a predictor that share the model weights, the Cloned predictor should
@@ -123,6 +139,7 @@ struct NativeConfig : public PaddlePredictor::Config {
 
   std::string prog_file;
   std::string param_file;
+  std::vector<std::string> pserver_endpoints;
 };
 
 // Configurations for Anakin engine.
@@ -148,7 +165,7 @@ struct TensorRTConfig : public NativeConfig {
 //
 // Similarly, each engine kind should map to a unique predictor implementation.
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT &config);
 
 int PaddleDtypeSize(PaddleDType dtype);
 

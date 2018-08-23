@@ -23,9 +23,11 @@
 
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#include "paddle/fluid/inference/io.h"
 
 namespace paddle {
 
@@ -48,6 +50,7 @@ class NativePaddlePredictor : public PaddlePredictor {
  protected:
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                std::vector<framework::LoDTensor> *feeds);
+
   bool GetFetch(const std::vector<framework::LoDTensor> &fetchs,
                 std::vector<PaddleTensor> *output_data);
 
