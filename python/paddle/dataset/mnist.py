@@ -24,7 +24,6 @@ import paddle.dataset.common
 import subprocess
 import numpy
 import platform
-import six
 import tempfile
 from six.moves import range
 __all__ = ['train', 'test', 'convert']

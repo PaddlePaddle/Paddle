@@ -189,7 +189,7 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
-                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  const std::vector<const framework::LoDTensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
     // TODO(zcd): Add input data validity checking
     int o_num = outputs->size();

@@ -22,7 +22,7 @@ namespace analysis {
 bool PassManager::Initialize(Argument* argument) {
   argument_ = argument;
   for (auto& pass : data_) {
-    LOG(INFO) << "Initializing pass " << pass->repr();
+    LOG(WARNING) << "Initializing pass [" << pass->repr() << "]";
     if (!pass->Initialize(argument)) {
       LOG(ERROR) << "Failed to initialize pass [" << pass->repr() << "]";
       return false;
@@ -33,8 +33,9 @@ bool PassManager::Initialize(Argument* argument) {
 
 void DfgPassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
+  LOG(INFO) << "Total " << data_.size() << " passes";
   for (auto& pass : data_) {
-    VLOG(4) << "Running pass [" << pass->repr() << "]";
+    LOG(WARNING) << "Running pass [" << pass->repr() << "]";
     pass->Run(argument_->main_dfg.get());
   }
 }
@@ -42,8 +43,7 @@ void DfgPassManager::RunAll() {
 void NodePassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
   PADDLE_ENFORCE(argument_->main_dfg.get());
-  auto trait =
-      GraphTraits<DataFlowGraph>(argument_->main_dfg.get()).nodes_in_DFS();
+  auto trait = GraphTraits<DataFlowGraph>(*argument_->main_dfg).nodes_in_DFS();
   for (auto& node : trait) {
     for (auto& pass : data_) {
       pass->Run(&node);

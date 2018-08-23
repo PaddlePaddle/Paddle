@@ -54,7 +54,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
         static_cast<T>(context.Attr<float>("max")));
 
     std::vector<T> ids(batch_size);
-    for (size_t i = 0; i < batch_size; ++i) {
+    for (int i = 0; i < batch_size; ++i) {
       T r = dist(engine);
       int idx = width - 1;
       for (int j = 0; j < width; ++j) {
@@ -63,7 +63,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
           break;
         }
       }
-      ids[i] = ins_vector[i * width + idx];
+      ids[i] = ins_vector[idx];
     }
 
     std::vector<int64_t> out_dim;
