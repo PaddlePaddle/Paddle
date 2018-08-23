@@ -5525,13 +5525,46 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def sequence_mask(x, max_len, mask_dtype='int64'):
+def sequence_mask(x, maxlen=None, dtype='int64', name=None):
+    """
+    **SequenceMask Layer**
+
+    This layer outputs a mask according to the input :code:`x` and
+    :code:`maxlen` with data type of :code:`dtype`.
+
+    Supposing :code:`x` is a Tensor with shape [d_1, d_2, ..., d_n], the
+    :code:`y` is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
+    
+    .. math::
+     
+        y(i_1, i_2,..., i_n, j) = (j < x(i_1, i_2,..., i_n))
+
+    Args:
+        x (Variable): Input tensor of sequence_mask layer, 
+                      whose elements are integers less than :code:`maxlen`.
+        maxlen (int|None): Maximum length of the sequence. If :code:`maxlen`
+                           is None, it would be replace with :math:`max(x)`.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of the output.
+        name (str|None): A name for this layer(optional). If set None, the 
+                         layer will be named automatically.  
+    
+    Returns:
+        Variable: The output sequence mask.
+    
+    """
+
     helper = LayerHelper('sequence_mask', **locals())
-    y = helper.create_tmp_variable(dtype=mask_dtype)
+    if name is None:
+        out = helper.create_tmp_variable(dtype=dtype)
+    else:
+        out = helper.create_tmp_variable(dtype=dtype, name=name)
+
     helper.append_op(
         type='sequence_mask',
         inputs={'X': [x]},
-        outputs={'Y': y},
-        attrs={'max_len': max_len,
-               'out_dtype': y.dtype})
-    return y
+        outputs={'Y': out},
+        attrs={
+            'max_len': maxlen if maxlen is not None else -1,
+            'out_dtype': out.dtype
+        })
+    return out
