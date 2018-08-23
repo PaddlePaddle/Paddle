@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
@@ -84,9 +85,10 @@ struct MulGradDY {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseMulGradKernel : public framework::OpKernel<T> {
+class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
     auto* x = ctx.Input<Tensor>("X");
