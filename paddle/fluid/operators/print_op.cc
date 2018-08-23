@@ -21,6 +21,7 @@
 
 namespace paddle {
 namespace operators {
+using framework::GradVarName;
 
 #define CLOG std::cout
 
@@ -143,10 +144,10 @@ class TensorPrintOp : public framework::OperatorBase {
     if (inputs.find("In") != inputs.end() && !Inputs("In").empty()) {
       in_var_ptr = scope.FindVar(Input("In"));
       printed_var_name = Inputs("In").front();
-    } else if (inputs.find("In@GRAD") != inputs.end() &&
-               !Inputs("In@GRAD").empty()) {
-      in_var_ptr = scope.FindVar(Input("In@GRAD"));
-      printed_var_name = Inputs("In@GRAD").front();
+    } else if (inputs.find(GradVarName("In")) != inputs.end() &&
+               !Inputs(GradVarName("In")).empty()) {
+      in_var_ptr = scope.FindVar(GradVarName(Input("In")));
+      printed_var_name = Inputs(GradVarName("In")).front();
       phase = std::string(kBackward);
     } else {
       PADDLE_THROW("Unknown phase, should be forward or backward.");
@@ -155,13 +156,6 @@ class TensorPrintOp : public framework::OperatorBase {
     PADDLE_ENFORCE_NOT_NULL(in_var_ptr);
 
     auto& in_tensor = in_var_ptr->Get<framework::LoDTensor>();
-    auto* out_var_ptr = scope.FindVar(Output("Out"));
-    auto& out_tensor = *out_var_ptr->GetMutable<framework::LoDTensor>();
-
-    // Just copy data from input tensor to output tensor
-    // output tensor share same memory with input tensor
-    out_tensor.ShareDataWith(in_tensor);
-    out_tensor.set_lod(in_tensor.lod());
 
     std::string print_phase = Attr<std::string>("print_phase");
     if (print_phase != phase && print_phase != std::string(kBoth)) {
@@ -219,14 +213,13 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
     AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");
     AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.");
-    AddAttr<std::string>(
-        "print_phase",
-        "(string, default 'BOTH') Which phase to display including 'FORWARD' "
-        "'BACKWARD' and 'BOTH'.")
-        .SetDefault(std::string(kBoth))
+    AddAttr<std::string>("print_phase",
+                         "(string, default 'FORWARD') Which phase to display "
+                         "including 'FORWARD' "
+                         "'BACKWARD' and 'BOTH'.")
+        .SetDefault(std::string(kForward))
         .InEnum({std::string(kForward), std::string(kBackward),
                  std::string(kBoth)});
-    AddOutput("Out", "Output tensor with same data as input tensor.");
     AddComment(R"DOC(
 Creates a print op that will print when a tensor is accessed.
 
@@ -240,38 +233,19 @@ class InferShapeForward : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* context) const override {
     PADDLE_ENFORCE(context->HasInput("In"), "Input(In) should not be null.");
-    context->ShareLoD("In", /*->*/ "Out");
-    context->SetOutputDim("Out", context->GetInputDim("In"));
   }
 };
 
-class InferShapeBackward : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE(context->HasInput("In@GRAD"),
-                   "Input(In@GRAD) should not be null.");
-    context->ShareLoD("In@GRAD", /*->*/ "Out");
-    context->SetOutputDim("Out", context->GetInputDim("In@GRAD"));
-  }
-};
-
-class InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {}
-};
-
-class PrintOpProtoAndCheckGradOpMaker
-    : public framework::SingleGradOpDescMaker {
+class PrintOpGradientMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto* op_desc_ptr = new framework::OpDesc();
-    op_desc_ptr->SetType("print_grad");
-    op_desc_ptr->SetInput("In@GRAD", OutputGrad("Out"));
-    op_desc_ptr->SetOutput("Out", InputGrad("In"));
+    op_desc_ptr->SetType("print");
+    op_desc_ptr->SetInput("In", InputGrad("In"));
     op_desc_ptr->SetAttrMap(Attrs());
+    op_desc_ptr->SetAttr("print_phase", std::string(kBackward));
     return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
   }
 };
@@ -282,6 +256,4 @@ class PrintOpProtoAndCheckGradOpMaker
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(print, ops::TensorPrintOp, ops::PrintOpProtoAndCheckMaker,
-                  ops::PrintOpProtoAndCheckGradOpMaker, ops::InferShapeForward,
-                  ops::InferVarType);
-REGISTER_OPERATOR(print_grad, ops::TensorPrintOp, ops::InferShapeBackward);
+                  ops::PrintOpGradientMaker, ops::InferShapeForward);
