@@ -313,9 +313,7 @@ function run_test() {
     Running unit tests ...
     ========================================
 EOF
-        #ctest --output-on-failure
-        ctest -R test_dist_se_resnext -V
-        ctest -R test_parallel_executor_fetch_feed -V
+        ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
         pip install /usr/local/opt/paddle/share/wheels/*.whl
