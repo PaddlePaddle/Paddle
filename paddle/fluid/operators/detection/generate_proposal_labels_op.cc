@@ -23,35 +23,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
-
-struct DyDataTypeVisitor {
-  const platform::Place place_;
-  LoDTensor* in_;
-  DyDataTypeVisitor(const platform::Place& place, LoDTensor* in)
-      : place_(place), in_(in) {}
-
-  template <typename T>
-  T* operator()() {
-    auto* p = in_->mutable_data<T>(place_);
-    return p;
-  }
-};
-
-struct AppendRoisFunctor {
-  LoDTensor* out_;
-  int64_t offset_;
-  Tensor* to_add_;
-
-  AppendRoisFunctor(LoDTensor* out, int64_t offset, Tensor* to_add)
-      : out_(out), offset_(offset), to_add_(to_add) {}
-
-  template <typename T>
-  void operator()() const {
-    auto* out_data = out_->data<T>();
-    auto* to_add_data = to_add_->data<T>();
-    memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
-  }
-};
+const int kBoxDim = 4;
 
 template <typename T>
 void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
@@ -138,16 +110,15 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-void Concat(const framework::ExecutionContext& context,
+void Concat(const platform::CPUDeviceContext& context,
             const Tensor& in_tensor_a, const Tensor& in_tensor_b,
             Tensor* out_tensor) {
   int axis = 0;
   std::vector<Tensor> inputs;
   inputs.emplace_back(in_tensor_a);
   inputs.emplace_back(in_tensor_b);
-  auto& dev_ctx = context.template device_context<platform::CPUDeviceContext>();
   math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
-  concat_functor(dev_ctx, inputs, axis, out_tensor);
+  concat_functor(context, inputs, axis, out_tensor);
 }
 
 template <typename T>
@@ -206,7 +177,7 @@ void BoxToDelta(int box_num, const Tensor& ex_boxes, const Tensor& gt_boxes,
 
 template <typename T>
 std::vector<std::vector<int>> SampleFgBgGt(
-    const framework::ExecutionContext& context, Tensor* iou,
+    const platform::CPUDeviceContext& context, Tensor* iou,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
     const float bg_thresh_hi, const float bg_thresh_lo,
     std::minstd_rand engine) {
@@ -280,7 +251,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
 }
 
 template <typename T>
-void GatherBoxesLabels(const framework::ExecutionContext& context,
+void GatherBoxesLabels(const platform::CPUDeviceContext& context,
                        const Tensor& boxes, const Tensor& gt_boxes,
                        const Tensor& gt_classes,
                        const std::vector<int>& fg_inds,
@@ -302,31 +273,23 @@ void GatherBoxesLabels(const framework::ExecutionContext& context,
   std::copy(gt_inds.begin(), gt_inds.end(), gt_box_inds_data);
   std::copy(gt_inds.begin(), gt_inds.end(), gt_label_inds_data);
 
-  const int kBoxDim = 4;
-  Tensor fg_boxes;
+  Tensor fg_boxes, bg_boxes, fg_labels, bg_labels;
   fg_boxes.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
-  CPUGather<T>(context.device_context(), boxes, fg_inds_t, &fg_boxes);
-  Tensor bg_boxes;
+  CPUGather<T>(context, boxes, fg_inds_t, &fg_boxes);
   bg_boxes.mutable_data<T>({bg_num, kBoxDim}, context.GetPlace());
-  CPUGather<T>(context.device_context(), boxes, bg_inds_t, &bg_boxes);
+  CPUGather<T>(context, boxes, bg_inds_t, &bg_boxes);
   Concat<T>(context, fg_boxes, bg_boxes, sampled_boxes);
-  CPUGather<T>(context.device_context(), gt_boxes, gt_box_inds_t, sampled_gts);
-  Tensor fg_labels;
+  CPUGather<T>(context, gt_boxes, gt_box_inds_t, sampled_gts);
   fg_labels.mutable_data<int>({fg_num}, context.GetPlace());
-  CPUGather<int>(context.device_context(), gt_classes, gt_label_inds_t,
-                 &fg_labels);
-  Tensor bg_labels;
+  CPUGather<int>(context, gt_classes, gt_label_inds_t, &fg_labels);
   bg_labels.mutable_data<int>({bg_num}, context.GetPlace());
-  framework::AttributeMap attrs;
-  math::set_constant(
-      context.template device_context<platform::CPUDeviceContext>(), &bg_labels,
-      0);
+  math::set_constant(context, &bg_labels, 0);
   Concat<int>(context, fg_labels, bg_labels, sampled_labels);
 }
 
 template <typename T>
 std::vector<Tensor> SampleRoisForOneImage(
-    const framework::ExecutionContext& context, Tensor* rpn_rois,
+    const platform::CPUDeviceContext& context, Tensor* rpn_rois,
     Tensor* gt_classes, Tensor* gt_boxes, Tensor* im_scale,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
     const float bg_thresh_hi, const float bg_thresh_lo,
@@ -336,7 +299,6 @@ std::vector<Tensor> SampleRoisForOneImage(
   auto im_scale_data = im_scale->data<T>()[0];
   rpn_rois_et = rpn_rois_et / im_scale_data;
 
-  const int kBoxDim = 4;
   Tensor boxes;
   int proposals_num = (gt_boxes->dims()[0]) + (rpn_rois->dims()[0]);
   boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
@@ -357,9 +319,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   std::vector<int> gt_inds = fg_bg_gt[2];
 
   // Gather boxes and labels
-  Tensor sampled_boxes;
-  Tensor sampled_labels;
-  Tensor sampled_gts;
+  Tensor sampled_boxes, sampled_labels, sampled_gts;
   int boxes_num = fg_inds.size() + bg_inds.size();
   framework::DDim bbox_dim({boxes_num, kBoxDim});
   sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
@@ -387,15 +347,9 @@ std::vector<Tensor> SampleRoisForOneImage(
   bbox_targets.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_inside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
   bbox_outside_weights.mutable_data<T>(bbox_expand_dim, context.GetPlace());
-  math::set_constant(
-      context.template device_context<platform::CPUDeviceContext>(),
-      &bbox_targets, 0.0);
-  math::set_constant(
-      context.template device_context<platform::CPUDeviceContext>(),
-      &bbox_inside_weights, 0.0);
-  math::set_constant(
-      context.template device_context<platform::CPUDeviceContext>(),
-      &bbox_outside_weights, 0.0);
+  math::set_constant(context, &bbox_targets, 0.0);
+  math::set_constant(context, &bbox_inside_weights, 0.0);
+  math::set_constant(context, &bbox_outside_weights, 0.0);
 
   auto* bbox_targets_single_data = bbox_targets_single.data<T>();
   auto* sampled_labels_data = sampled_labels.data<int>();
@@ -406,22 +360,20 @@ std::vector<Tensor> SampleRoisForOneImage(
   for (int64_t i = 0; i < boxes_num; ++i) {
     int label = sampled_labels_data[i];
     if (label > 0) {
-      bbox_targets_data[i * width + kBoxDim * label] =
-          bbox_targets_single_data[kBoxDim * i];
-      bbox_targets_data[i * width + kBoxDim * label + 1] =
-          bbox_targets_single_data[kBoxDim * i + 1];
-      bbox_targets_data[i * width + kBoxDim * label + 2] =
-          bbox_targets_single_data[kBoxDim * i + 2];
-      bbox_targets_data[i * width + kBoxDim * label + 3] =
-          bbox_targets_single_data[kBoxDim * i + 3];
-      bbox_inside_weights_data[i * width + kBoxDim * label] = 1;
-      bbox_inside_weights_data[i * width + kBoxDim * label + 1] = 1;
-      bbox_inside_weights_data[i * width + kBoxDim * label + 2] = 1;
-      bbox_inside_weights_data[i * width + kBoxDim * label + 3] = 1;
-      bbox_outside_weights_data[i * width + kBoxDim * label] = 1;
-      bbox_outside_weights_data[i * width + kBoxDim * label + 1] = 1;
-      bbox_outside_weights_data[i * width + kBoxDim * label + 2] = 1;
-      bbox_outside_weights_data[i * width + kBoxDim * label + 3] = 1;
+      int dst_idx = i * width + kBoxDim * label;
+      int src_idx = kBoxDim * i;
+      bbox_targets_data[dst_idx] = bbox_targets_single_data[src_idx];
+      bbox_targets_data[dst_idx + 1] = bbox_targets_single_data[src_idx + 1];
+      bbox_targets_data[dst_idx + 2] = bbox_targets_single_data[src_idx + 2];
+      bbox_targets_data[dst_idx + 3] = bbox_targets_single_data[src_idx + 3];
+      bbox_inside_weights_data[dst_idx] = 1;
+      bbox_inside_weights_data[dst_idx + 1] = 1;
+      bbox_inside_weights_data[dst_idx + 2] = 1;
+      bbox_inside_weights_data[dst_idx + 3] = 1;
+      bbox_outside_weights_data[dst_idx] = 1;
+      bbox_outside_weights_data[dst_idx + 1] = 1;
+      bbox_outside_weights_data[dst_idx + 2] = 1;
+      bbox_outside_weights_data[dst_idx + 3] = 1;
     }
   }
   std::vector<Tensor> res;
@@ -458,18 +410,21 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<float>>("bbox_reg_weights");
     int class_nums = context.Attr<int>("class_nums");
 
-    int64_t n = rpn_rois->lod().size() == 0UL
-                    ? 1
-                    : static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
-    if (rpn_rois->lod().size()) {
-      PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
-                        "GenerateProposalLabelsOp needs 1 level of LoD");
-      PADDLE_ENFORCE_EQ(gt_classes->lod().size(), 1UL,
-                        "GenerateProposalLabelsOp needs 1 level of LoD");
-      PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
-                        "GenerateProposalLabelsOp needs 1 level of LoD");
-    }
-    const int kBoxDim = 4;
+    // int64_t n = rpn_rois->lod().size() == 0UL
+    //                 ? 1
+    //                 : static_cast<int64_t>(rpn_rois->lod().back().size() -
+    //                 1);
+    // if (rpn_rois->lod().size()) {
+    PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
+                      "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD");
+    PADDLE_ENFORCE_EQ(
+        gt_classes->lod().size(), 1UL,
+        "GenerateProposalLabelsOp gt_classes needs 1 level of LoD");
+    PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
+                      "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD");
+    int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
+    // }
+
     rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
     labels_int32->mutable_data<int>({n * batch_size_per_im},
                                     context.GetPlace());
@@ -490,13 +445,21 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     std::vector<size_t> lod0(1, 0);
 
     int64_t num_rois = 0;
-    if (n == 1) {
-      Tensor rpn_rois_slice = rpn_rois->Slice(0, rpn_rois->dims()[0]);
-      Tensor gt_classes_slice = gt_classes->Slice(0, gt_classes->dims()[0]);
-      Tensor gt_boxes_slice = gt_boxes->Slice(0, gt_boxes->dims()[0]);
-      Tensor im_scales_slice = im_scales->Slice(0, 1);
+    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
+
+    auto rpn_rois_lod = rpn_rois->lod().back();
+    auto gt_classes_lod = gt_classes->lod().back();
+    auto gt_boxes_lod = gt_boxes->lod().back();
+    for (size_t i = 0; i < rpn_rois_lod.size() - 1; ++i) {
+      Tensor rpn_rois_slice =
+          rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
+      Tensor gt_classes_slice =
+          gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
+      Tensor gt_boxes_slice =
+          gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
+      Tensor im_scales_slice = im_scales->Slice(i, i + 1);
       std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
-          context, &rpn_rois_slice, &gt_classes_slice, &gt_boxes_slice,
+          dev_ctx, &rpn_rois_slice, &gt_classes_slice, &gt_boxes_slice,
           &im_scales_slice, batch_size_per_im, fg_fraction, fg_thresh,
           bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums, engine);
       Tensor sampled_rois = tensor_output[0];
@@ -516,40 +479,6 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 
       num_rois += sampled_rois.dims()[0];
       lod0.emplace_back(num_rois);
-    } else {
-      auto rpn_rois_lod = rpn_rois->lod().back();
-      auto gt_classes_lod = gt_classes->lod().back();
-      auto gt_boxes_lod = gt_boxes->lod().back();
-      for (size_t i = 0; i < rpn_rois_lod.size(); ++i) {
-        Tensor rpn_rois_slice =
-            rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
-        Tensor gt_classes_slice =
-            gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
-        Tensor gt_boxes_slice =
-            gt_boxes->Slice(gt_boxes_lod[i], gt_boxes_lod[i + 1]);
-        Tensor im_scales_slice = im_scales->Slice(i, i + 1);
-        std::vector<Tensor> tensor_output = SampleRoisForOneImage<T>(
-            context, &rpn_rois_slice, &gt_classes_slice, &gt_boxes_slice,
-            &im_scales_slice, batch_size_per_im, fg_fraction, fg_thresh,
-            bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums, engine);
-        Tensor sampled_rois = tensor_output[0];
-        Tensor sampled_labels_int32 = tensor_output[1];
-        Tensor sampled_bbox_targets = tensor_output[2];
-        Tensor sampled_bbox_inside_weights = tensor_output[3];
-        Tensor sampled_bbox_outside_weights = tensor_output[4];
-
-        AppendRois<T>(rois, kBoxDim * num_rois, &sampled_rois);
-        AppendRois<int>(labels_int32, num_rois, &sampled_labels_int32);
-        AppendRois<T>(bbox_targets, kBoxDim * num_rois * class_nums,
-                      &sampled_bbox_targets);
-        AppendRois<T>(bbox_inside_weights, kBoxDim * num_rois * class_nums,
-                      &sampled_bbox_inside_weights);
-        AppendRois<T>(bbox_outside_weights, kBoxDim * num_rois * class_nums,
-                      &sampled_bbox_outside_weights);
-
-        num_rois += sampled_rois.dims()[0];
-        lod0.emplace_back(num_rois);
-      }
     }
 
     lod.emplace_back(lod0);

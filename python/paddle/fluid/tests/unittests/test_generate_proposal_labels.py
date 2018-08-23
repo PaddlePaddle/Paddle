@@ -206,9 +206,9 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.init_test_input()
         self.init_test_output()
         self.inputs = {
-            'RpnRois': self.rpn_rois[0],
-            'GtClasses': self.gt_classes[0],
-            'GtBoxes': self.gt_boxes[0],
+            'RpnRois': (self.rpn_rois[0], self.rpn_rois_lod),
+            'GtClasses': (self.gt_classes[0], self.gts_lod),
+            'GtBoxes': (self.gt_boxes[0], self.gts_lod),
             'ImScales': self.im_scales[0]
         }
         self.attrs = {
@@ -255,9 +255,10 @@ class TestGenerateProposalLabelsOp(OpTest):
             images_shape.append(np.random.randint(200, size=2))
             self.im_scales.append(np.ones((1)).astype(np.float32))
 
-        self.rpn_rois = _generate_proposals(images_shape, proposal_nums)
-        ground_truth = _generate_groundtruth(images_shape, self.class_nums,
-                                             gt_nums)
+        self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
+                                                               proposal_nums)
+        ground_truth, self.gts_lod = _generate_groundtruth(
+            images_shape, self.class_nums, gt_nums)
         self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
         self.gt_boxes = [gt['boxes'] for gt in ground_truth]
 
@@ -274,21 +275,29 @@ class TestGenerateProposalLabelsOp(OpTest):
 
 def _generate_proposals(images_shape, proposal_nums):
     rpn_rois = []
+    rpn_rois_lod = []
+    num_proposals = 0
     for i, image_shape in enumerate(images_shape):
         proposals = _generate_boxes(image_shape, proposal_nums)
         rpn_rois.append(proposals)
-    return rpn_rois
+        num_proposals += len(proposals)
+        rpn_rois_lod.append(num_proposals)
+    return rpn_rois, [rpn_rois_lod]
 
 
 def _generate_groundtruth(images_shape, class_nums, gt_nums):
     ground_truth = []
+    gts_lod = []
+    num_gts = 0
     for i, image_shape in enumerate(images_shape):
         # Avoid background
         gt_classes = np.random.randint(
             low=1, high=class_nums, size=gt_nums).astype(np.int32)
         gt_boxes = _generate_boxes(image_shape, gt_nums)
         ground_truth.append(dict(gt_classes=gt_classes, boxes=gt_boxes))
-    return ground_truth
+        num_gts += len(gt_classes)
+        gts_lod.append(num_gts)
+    return ground_truth, [gts_lod]
 
 
 def _generate_boxes(image_size, box_nums):
