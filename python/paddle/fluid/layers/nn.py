@@ -105,6 +105,7 @@ __all__ = [
     'prelu',
     'flatten',
     'sequence_mask',
+    'stack',
 ]
 
 
@@ -5567,4 +5568,41 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
             'max_len': maxlen if maxlen is not None else -1,
             'out_dtype': out.dtype
         })
+    return out
+
+
+def stack(x, axis=0):
+    """
+    **Stack Layer**
+
+    This layer stacks all of the input :code:`x` along axis.
+   
+    Input :code:`x` can be a single variable, a :code:`list` of variables, 
+    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or 
+    :code:`tuple`, the shapes of all these variables must be the same.  
+    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`, 
+    the shape of the output variable would be 
+    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`. 
+    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
+    If :code:`axis` is None, it would be replaced with 0. 
+
+    Args:
+        x (Variable|list(Variable)|tuple(Variable)): Input variables. 
+        axis (int|None): The axis along which all inputs are stacked.
+    
+    Returns:
+        Variable: The stacked variable.
+    
+    """
+
+    helper = LayerHelper('stack', **locals())
+    axis = 0 if axis is None else axis
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        x = [x]
+
+    out = helper.create_tmp_variable(x[0].dtype)
+    helper.append_op(
+        type='stack', inputs={'X': x}, outputs={'Y': out},
+        attrs={'axis': axis})
     return out
