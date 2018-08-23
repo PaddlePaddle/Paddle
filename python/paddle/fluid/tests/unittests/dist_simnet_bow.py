@@ -91,16 +91,21 @@ def train_network(batch_size, is_distributed=False, is_sparse=False):
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            name="__emb__", learning_rate=emb_lr),
+            initializer=fluid.initializer.Constant(value=0.01),
+            name="__emb__",
+            learning_rate=emb_lr),
         is_sparse=is_sparse)
     ## vsum
     q_sum = fluid.layers.sequence_pool(input=q_emb, pool_type='sum')
     q_ss = fluid.layers.softsign(q_sum)
     ## fc layer after conv
-    q_fc = fluid.layers.fc(input=q_ss,
-                           size=hid_dim,
-                           param_attr=fluid.ParamAttr(
-                               name="__q_fc__", learning_rate=base_lr))
+    q_fc = fluid.layers.fc(
+        input=q_ss,
+        size=hid_dim,
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01),
+            name="__q_fc__",
+            learning_rate=base_lr))
     # label data
     label = fluid.layers.data(name="label", shape=[1], dtype="int64")
     # pt
@@ -112,17 +117,22 @@ def train_network(batch_size, is_distributed=False, is_sparse=False):
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            name="__emb__", learning_rate=emb_lr),
+            initializer=fluid.initializer.Constant(value=0.01),
+            name="__emb__",
+            learning_rate=emb_lr),
         is_sparse=is_sparse)
     ## vsum
     pt_sum = fluid.layers.sequence_pool(input=pt_emb, pool_type='sum')
     pt_ss = fluid.layers.softsign(pt_sum)
     ## fc layer
-    pt_fc = fluid.layers.fc(input=pt_ss,
-                            size=hid_dim,
-                            param_attr=fluid.ParamAttr(
-                                name="__fc__", learning_rate=base_lr),
-                            bias_attr=fluid.ParamAttr(name="__fc_b__"))
+    pt_fc = fluid.layers.fc(
+        input=pt_ss,
+        size=hid_dim,
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01),
+            name="__fc__",
+            learning_rate=base_lr),
+        bias_attr=fluid.ParamAttr(name="__fc_b__"))
     # nt
     nt = fluid.layers.data(
         name="neg_title_ids", shape=[1], dtype="int64", lod_level=1)
@@ -132,17 +142,22 @@ def train_network(batch_size, is_distributed=False, is_sparse=False):
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
         param_attr=fluid.ParamAttr(
-            name="__emb__", learning_rate=emb_lr),
+            initializer=fluid.initializer.Constant(value=0.01),
+            name="__emb__",
+            learning_rate=emb_lr),
         is_sparse=is_sparse)
     ## vsum
     nt_sum = fluid.layers.sequence_pool(input=nt_emb, pool_type='sum')
     nt_ss = fluid.layers.softsign(nt_sum)
     ## fc layer
-    nt_fc = fluid.layers.fc(input=nt_ss,
-                            size=hid_dim,
-                            param_attr=fluid.ParamAttr(
-                                name="__fc__", learning_rate=base_lr),
-                            bias_attr=fluid.ParamAttr(name="__fc_b__"))
+    nt_fc = fluid.layers.fc(
+        input=nt_ss,
+        size=hid_dim,
+        param_attr=fluid.ParamAttr(
+            initializer=fluid.initializer.Constant(value=0.01),
+            name="__fc__",
+            learning_rate=base_lr),
+        bias_attr=fluid.ParamAttr(name="__fc_b__"))
     cos_q_pt = fluid.layers.cos_sim(q_fc, pt_fc)
     cos_q_nt = fluid.layers.cos_sim(q_fc, nt_fc)
     # loss
@@ -163,7 +178,6 @@ def get_one_data(file_list):
         with open(file, "r") as fin:
             for i in fin:
                 contents.append(i.strip())
-            random.shuffle(contents)
             for index, q in enumerate(contents):
                 try:
                     one_data = [[int(j) for j in i.split(" ")]
@@ -205,7 +219,8 @@ def get_train_reader(batch_size):
 class TestDistSimnetBow2x2(TestDistRunnerBase):
     def get_model(self, batch_size=2):
         # Train program
-        avg_cost, acc, predict = train_network(batch_size, False, False)
+        avg_cost, acc, predict = \
+            train_network(batch_size, bool(int(os.environ["IS_DISTRIBUTED"])), bool(int(os.environ["IS_SPARSE"])))
 
         inference_program = fluid.default_main_program().clone()
 
@@ -219,7 +234,15 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
+    paddle.dataset.common.download(DATA_URL, 'simnet', DATA_MD5, "train")
+
     import os
     os.environ['CPU_NUM'] = '1'
-    paddle.dataset.common.download(DATA_URL, 'simnet', DATA_MD5, "train")
+
+    os.environ["IS_DISTRIBUTED"] = '0'
+    os.environ["IS_SPARSE"] = '0'
     runtime_main(TestDistSimnetBow2x2)
+
+#    os.environ["IS_DISTRIBUTED"] = '0'
+#    os.environ["IS_SPARSE"] = '1'
+#    runtime_main(TestDistSimnetBow2x2)

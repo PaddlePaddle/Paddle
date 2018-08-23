@@ -155,7 +155,7 @@ class TestDistBase(unittest.TestCase):
         self._sync_mode = True
         self._setup_config()
 
-    def start_pserver(self, model_file, check_error_log):
+    def start_pserver(self, model_file, check_error_log, required_envs):
         sync_mode_str = "TRUE" if self._sync_mode else "FALSE"
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps0_cmd = "%s %s pserver %s 0 %s %d TRUE %s" % \
@@ -168,15 +168,23 @@ class TestDistBase(unittest.TestCase):
         ps0_pipe = subprocess.PIPE
         ps1_pipe = subprocess.PIPE
         if check_error_log:
+            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_logtostderr"] = "1"
             print("ps0_cmd:", ps0_cmd)
             print("ps1_cmd:", ps1_cmd)
             ps0_pipe = open("/tmp/ps0_err.log", "wb")
             ps1_pipe = open("/tmp/ps1_err.log", "wb")
 
         ps0_proc = subprocess.Popen(
-            ps0_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps0_pipe)
+            ps0_cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=ps0_pipe,
+            env=required_envs)
         ps1_proc = subprocess.Popen(
-            ps1_cmd.split(" "), stdout=subprocess.PIPE, stderr=ps1_pipe)
+            ps1_cmd.split(" "),
+            stdout=subprocess.PIPE,
+            stderr=ps1_pipe,
+            env=required_envs)
 
         if not check_error_log:
             return ps0_proc, ps1_proc, None, None
