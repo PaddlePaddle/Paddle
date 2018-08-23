@@ -129,6 +129,10 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                     "Optimized for variable")
       .SetDefault({});
 
+  AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
+                                    "Callstack for Op Creatation.")
+      .SetDefault({});
+
   Validate();
 }
 
