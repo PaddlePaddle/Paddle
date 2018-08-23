@@ -39,6 +39,7 @@ __all__ = [
     'detection_map',
     'rpn_target_assign',
     'anchor_generator',
+    'generate_proposal_labels',
 ]
 
 __auto__ = [
@@ -1255,18 +1256,17 @@ def anchor_generator(input,
     return anchor, var
 
 
-def generate_proposal_labels(
-        rpn_rois,
-        gt_classes,
-        gt_boxes,
-        im_scales,
-        batch_size_per_im=256,
-        fg_fraction=0.25,
-        fg_thresh=0.25,
-        bg_thresh_hi=0.5,
-        bg_thresh_lo=0.0,
-        bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-        class_nums=None, ):
+def generate_proposal_labels(rpn_rois,
+                             gt_classes,
+                             gt_boxes,
+                             im_scales,
+                             batch_size_per_im=256,
+                             fg_fraction=0.25,
+                             fg_thresh=0.25,
+                             bg_thresh_hi=0.5,
+                             bg_thresh_lo=0.0,
+                             bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+                             class_nums=None):
     """
     ** Generate proposal labels Faster-RCNN **
     """
