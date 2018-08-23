@@ -42,4 +42,3 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 # clone anakin source and build on x86
 RUN git clone --branch developing --recursive "https://github.com/PaddlePaddle/Anakin.git" && cd Anakin/tools/ && ./x86_build.sh && cd -
-
