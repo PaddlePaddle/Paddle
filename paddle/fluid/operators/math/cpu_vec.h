@@ -82,7 +82,7 @@ inline void vec_tanh(const int n, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = static_cast<T>(2) * x[i];
   }
-  vec_exp<T>(n, y, y);
+  vec_sigmoid<T>(n, y, y);
   for (int i = 0; i < n; ++i) {
     y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
   }
