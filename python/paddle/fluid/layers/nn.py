@@ -66,6 +66,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'sequence_expand',
+    'sequence_pad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
