@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <cmath>
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
 #ifdef __AVX__
@@ -31,14 +32,23 @@ namespace math {
 #define SIGMOID_THRESHOLD_MAX 13.0
 
 template <typename T>
-inline T sigmoid(T x) {
-  return 1. / (1. + exp(-x));
+inline void vec_exp(const int n, const T* x, T* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
+  }
 }
 
-template <typename T>
-inline T tanh(T x) {
-  return 2. * sigmoid(2. * x) - 1.;
+#ifdef PADDLE_WITH_MKLML
+template <>
+inline void vec_exp<float>(const int n, const float* x, float* y) {
+  platform::dynload::vsExp(n, x, y);
 }
+
+template <>
+inline void vec_exp<double>(const int n, const double* x, double* y) {
+  platform::dynload::vdExp(n, x, y);
+}
+#endif
 
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_identity(const int n, const T* x, T* y) {
@@ -51,15 +61,23 @@ inline void vec_sigmoid(const int n, const T* x, T* y) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
   for (int i = 0; i < n; ++i) {
-    T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
-    y[i] = sigmoid<T>(tmp);
+    y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+    y[i] = static_cast<T>(0) - y[i];
+  }
+  vec_exp<T>(n, y, y);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
   }
 }
 
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_tanh(const int n, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
-    y[i] = tanh<T>(x[i]);
+    y[i] = static_cast<T>(2) * x[i];
+  }
+  vec_exp<T>(n, y, y);
+  for (int i = 0; i < n; ++i) {
+    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
   }
 }
 
