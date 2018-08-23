@@ -211,8 +211,10 @@ class DistributeTranspiler(object):
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
         self.param_name_to_grad_name = dict()
+        self.grad_name_to_param_name = dict()
         for param_var, grad_var in self.params_grads:
             self.param_name_to_grad_name[param_var.name] = grad_var.name
+            self.grad_name_to_param_name[grad_var.name] = param_var.name
 
         # step 1: split and create vars, then put splited vars in dicts for later use.
         self._init_splited_vars()
@@ -254,8 +256,10 @@ class DistributeTranspiler(object):
                 AssertionError("Can not insert the send op by original "
                                "variable name :", splited_grad_varname)
 
-            dummy_output = program.global_block().create_var()
+            dummy_output = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
             grad_name_to_send_dummy_out[grad_varname] = dummy_output
+
             program.global_block()._insert_op(
                 index=index + 1,
                 type="send",
@@ -264,6 +268,8 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                    OP_ROLE_VAR_ATTR_NAME:
+                    [self.grad_name_to_param_name[grad_varname], grad_varname],
                     "sync_mode": not self.sync_mode,
                 })
             for _, var in enumerate(splited_vars):
@@ -305,6 +311,10 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                    OP_ROLE_VAR_ATTR_NAME: [
+                        param_varname,
+                        self.param_name_to_grad_name[param_varname]
+                    ],
                     "sync_mode": not self.sync_mode
                 })
 
@@ -934,7 +944,11 @@ class DistributeTranspiler(object):
                     attrs={
                         "sync_mode": True,
                         "epmap": pserver_endpoints,
-                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+                        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
+                        OP_ROLE_VAR_ATTR_NAME: [
+                            self.grad_name_to_param_name[table_grad_name],
+                            table_grad_name
+                        ]
                     })
                 break
 
