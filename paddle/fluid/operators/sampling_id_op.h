@@ -63,7 +63,7 @@ class SamplingIdKernel : public framework::OpKernel<T> {
           break;
         }
       }
-      ids[i] = ins_vector[i * width + idx];
+      ids[i] = ins_vector[idx];
     }
 
     std::vector<int64_t> out_dim;
