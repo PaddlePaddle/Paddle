@@ -4486,7 +4486,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     return helper.append_activation(out)
 
 
-def squeeze(input, axes, inplace=False, name=None):
+def squeeze(input, axes, name=None):
     """
     Remove single-dimensional entries from the shape of a tensor. Takes a 
     parameter axes with a list of axes to squeeze. If axes is not provided, all 
@@ -4534,7 +4534,7 @@ def squeeze(input, axes, inplace=False, name=None):
     return out
 
 
-def unsqueeze(input, axes, inplace=False, name=None):
+def unsqueeze(input, axes, name=None):
     """
     Insert single-dimensional entries to the shape of a tensor. Takes one 
     required argument axes, a list of dimensions that will be inserted. 
