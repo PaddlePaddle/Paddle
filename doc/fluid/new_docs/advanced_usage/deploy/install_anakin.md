@@ -10,6 +10,7 @@
 *  GCC / G++ / C++: 4.8 ~ 5.4
 *  Protobuf: 3.1.0 +
 
+
 ## 2、安装步骤 ##
 
 本节将叙述 Anakin 在 Nvidia GPU、Intel CPU 和 AMD GPU 上的安装步骤。Anakin 移动版安装请参考 [ARM 安装指南](run_on_arm_ch.md)，我们将在后续版本提供寒武纪和比特大陆的解决方案。
@@ -18,11 +19,11 @@
 
 首先，请获取 Anakin 开发分支的源码。
 
-    git clone -b developing https://github.com/PaddlePaddle/Anakin.git  
+    git clone -b developing https://github.com/PaddlePaddle/Anakin.git
 
 如果您需要安装 Protobuf，请运行下列命令。
 
-    wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz  
+    wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
     tar -zxvf protobuf-cpp-3.1.0.tar.gz
     cd protobuf-3.1.0
     ./autogen.sh
@@ -87,5 +88,5 @@
 
 ## 3、其它 ##
 
-1、遇到任何问题，请提 [Issue](https://github.com/PaddlePaddle/Anakin/issues) 或邮件至 Anakin@baidu.com；  
+1、遇到任何问题，请提 [Issue](https://github.com/PaddlePaddle/Anakin/issues) 或邮件至 Anakin@baidu.com；
 2、模型解析器使用说明请移步 [这里](Converter_ch.md)。
