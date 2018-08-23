@@ -15,16 +15,12 @@
 This file contains some common interfaces for image preprocess.
 Many users are confused about the image layout. We introduce
 the image layout as follows.
-
 - CHW Layout
-
   - The abbreviations: C=channel, H=Height, W=Width
   - The default layout of image opened by cv2 or PIL is HWC.
     PaddlePaddle only supports the CHW layout. And CHW is simply
     a transpose of HWC. It must transpose the input image.
-
 - Color format: RGB or BGR
-
   OpenCV use BGR color format. PIL use RGB color format. Both
   formats can be used for training. Noted that, the format should
   be keep consistent between the training and inference peroid.
@@ -36,11 +32,6 @@ import numpy as np
 try:
     import cv2
 except ImportError:
-    import sys
-    sys.stderr.write(
-        '''Warning with paddle image module: opencv-python should be imported,
-    or paddle image module could NOT work; please install opencv-python first.'''
-    )
     cv2 = None
 import os
 import tarfile
@@ -53,13 +44,24 @@ __all__ = [
 ]
 
 
+def check_cv2():
+    if cv2 is None:
+        import sys
+        sys.stderr.write(
+            '''Warning with paddle image module: opencv-python should be imported,
+        or paddle image module could NOT work; please install opencv-python first.'''
+        )
+        return False
+    else:
+        return True
+
+
 def batch_images_from_tar(data_file,
                           dataset_name,
                           img2label,
                           num_per_batch=1024):
     """
     Read images from tar file and batch them into batch file.
-
     :param data_file: path of image tar file
     :type data_file: string
     :param dataset_name: 'train','test' or 'valid'
@@ -119,14 +121,10 @@ def batch_images_from_tar(data_file,
 def load_image_bytes(bytes, is_color=True):
     """
     Load an color or gray image from bytes array.
-
     Example usage:
-
     .. code-block:: python
-
         with open('cat.jpg') as f:
             im = load_image_bytes(f.read())
-
     :param bytes: the input image bytes array.
     :type bytes: str
     :param is_color: If set is_color True, it will load and
@@ -134,7 +132,7 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert cv2 is not None
+    assert check_cv2() is True
 
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
@@ -145,13 +143,9 @@ def load_image_bytes(bytes, is_color=True):
 def load_image(file, is_color=True):
     """
     Load an color or gray image from the file path.
-
     Example usage:
-
     .. code-block:: python
-
         im = load_image('cat.jpg')
-
     :param file: the input image path.
     :type file: string
     :param is_color: If set is_color True, it will load and
@@ -159,7 +153,7 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert cv2 is not None
+    assert check_cv2() is True
 
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
@@ -175,20 +169,16 @@ def load_image(file, is_color=True):
 def resize_short(im, size):
     """
     Resize an image so that the length of shorter edge is size.
-
     Example usage:
-
     .. code-block:: python
-
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
-
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    assert cv2 is not None
+    assert check_cv2() is True
 
     h, w = im.shape[:2]
     h_new, w_new = size, size
@@ -205,15 +195,11 @@ def to_chw(im, order=(2, 0, 1)):
     Transpose the input image order. The image layout is HWC format
     opened by cv2 or PIL. Transpose the input image to CHW layout
     according the order (2,0,1).
-
     Example usage:
-
     .. code-block:: python
-
         im = load_image('cat.jpg')
         im = resize_short(im, 256)
         im = to_chw(im)
-
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param order: the transposed order.
@@ -227,13 +213,9 @@ def to_chw(im, order=(2, 0, 1)):
 def center_crop(im, size, is_color=True):
     """
     Crop the center of image with size.
-
     Example usage:
-
     .. code-block:: python
-
         im = center_crop(im, 224)
-
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param size: the cropping size.
@@ -255,13 +237,9 @@ def center_crop(im, size, is_color=True):
 def random_crop(im, size, is_color=True):
     """
     Randomly crop input image with size.
-
     Example usage:
-
     .. code-block:: python
-
         im = random_crop(im, 224)
-
     :param im: the input image with HWC layout.
     :type im: ndarray
     :param size: the cropping size.
@@ -284,13 +262,9 @@ def left_right_flip(im, is_color=True):
     """
     Flip an image along the horizontal direction.
     Return the flipped image.
-
     Example usage:
-
     .. code-block:: python
-
         im = left_right_flip(im)
-
     :param im: input image with HWC layout or HW layout for gray image
     :type im: ndarray
     :param is_color: whether input image is color or not
@@ -311,13 +285,9 @@ def simple_transform(im,
     """
     Simply data argumentation for training. These operations include
     resizing, croping and flipping.
-
     Example usage:
-
     .. code-block:: python
-
         im = simple_transform(im, 256, 224, True)
-
     :param im: The input image with HWC layout.
     :type im: ndarray
     :param resize_size: The shorter edge length of the resized image.
@@ -369,13 +339,9 @@ def load_and_transform(filename,
     Load image from the input file `filename` and transform image for
     data argumentation. Please refer to the `simple_transform` interface
     for the transform operations.
-
     Example usage:
-
     .. code-block:: python
-
         im = load_and_transform('cat.jpg', 256, 224, True)
-
     :param filename: The file name of input image.
     :type filename: string
     :param resize_size: The shorter edge length of the resized image.
