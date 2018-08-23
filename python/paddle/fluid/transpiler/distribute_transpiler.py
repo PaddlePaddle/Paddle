@@ -336,7 +336,6 @@ class DistributeTranspiler(object):
                 })
 
         if self.sync_mode:
-            print("##### fetch_barrier out: ", all_recv_outputs)
             # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",

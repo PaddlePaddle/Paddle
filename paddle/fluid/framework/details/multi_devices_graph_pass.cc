@@ -754,10 +754,6 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
                  node->Op()->Type());
 
   CreateComputationalOp(result, node, op_dev_id);
-  // if (node->Op()->Type() == "concat") {
-  //   ConnectOp(result, result->Get<GraphOps>(kGraphOps).back().get(),
-  //             "fetch_barrier");
-  // }
 }
 
 void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
@@ -812,8 +808,6 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
     }
     auto recv_param_grad = boost::get<std::vector<std::string>>(
         node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-    // FIXME(typhoonzero): assume each recv op output one param
-    // Use the same place as send.
     if (recv_param_grad.size() == 2U) {
       op_dev_id = GetVarDeviceID(*result, recv_param_grad[1]);
       VLOG(10) << "recv param " << recv_param_grad[0]
@@ -827,8 +821,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
-    // send_barrier and fetch_barrier is like allreduce op
-    // it should use inputs on different places to form the dependence.
+    // send_barrier, fetch_barrier will run on place 0;
     op_dev_id = 0;
   }
 
