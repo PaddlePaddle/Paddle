@@ -13,7 +13,9 @@
 # limitations under the License.
 
 from op_test import OpTest
+import paddle.fluid as fluid
 from paddle.fluid.framework import convert_np_dtype_to_dtype_
+import paddle.fluid.core as core
 import numpy as np
 import copy
 import unittest
@@ -22,7 +24,7 @@ import unittest
 class SequenceMaskTestBase(OpTest):
     def initDefaultParameters(self):
         self.op_type = 'sequence_mask'
-        self.max_len = 10
+        self.maxlen = 10
         self.mask_dtype = 'int64'
         self.x = [[0, 3, 4], [5, 7, 9]]
 
@@ -38,15 +40,16 @@ class SequenceMaskTestBase(OpTest):
         self.inputs = {'X': self.x}
         self.outputs = {'Y': self.calc_ground_truth_mask()}
         self.attrs = {
-            'max_len': self.max_len,
+            'maxlen': self.maxlen,
             'out_dtype': convert_np_dtype_to_dtype_(self.mask_dtype)
         }
 
     def calc_ground_truth_mask(self):
-        shape = self.x.shape + (self.max_len, )
+        maxlen = np.max(self.x) if self.maxlen < 0 else self.maxlen
+        shape = self.x.shape + (maxlen, )
         index_broadcast = np.broadcast_to(
             np.reshape(
-                range(self.max_len), newshape=[1] * self.x.ndim + [-1]),
+                range(maxlen), newshape=[1] * self.x.ndim + [-1]),
             shape=shape)
         x_broadcast = np.broadcast_to(
             np.reshape(
@@ -80,6 +83,11 @@ class SequenceMaskTest4(SequenceMaskTestBase):
 class SequenceMaskTest5(SequenceMaskTestBase):
     def initParameters(self):
         self.mask_dtype = 'float64'
+
+
+class SequenceMaskTest6(SequenceMaskTestBase):
+    def initParameters(self):
+        self.maxlen = -1
 
 
 if __name__ == '__main__':
