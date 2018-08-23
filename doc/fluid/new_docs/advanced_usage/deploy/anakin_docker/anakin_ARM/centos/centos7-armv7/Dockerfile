@@ -29,9 +29,9 @@ RUN wget --no-check-certificate https://mirror.sobukus.de/files/src/protobuf/pro
     && rm -f protobuf-cpp-3.4.0.tar.gz
 
 # Clone Anakin source code(arm branch).
-RUN git clone --branch arm --recursive "https://github.com/PaddlePaddle/Anakin.git" 
+RUN git clone --branch arm --recursive "https://github.com/PaddlePaddle/Anakin.git"
 
-#Copy  /usr/local/include/google to 
+#Copy  /usr/local/include/google to
 # Anakin/third-party/arm-android/protobuf/
 RUN if [ ! -d "Anakin/third-party/arm-android/protobuf/include" ]; then mkdir -p Anakin/third-party/arm-android/protobuf/include; fi
 RUN cp -r /usr/local/include/google Anakin/third-party/arm-android/protobuf/include
@@ -44,8 +44,8 @@ RUN unzip -q android-ndk-r14b-linux-x86_64.zip && rm -f android-ndk-r14b-linux-x
 # set cross-compile environment.
 ENV ANDROID_NDK /android-ndk-r14b
 ENV ARCH_ABI "arm-linux-androideabi-4.9"
-ENV HOSTOSN "linux-x86_64"   
-ENV SYSROOT $ANDROID_NDK/platforms/android-9/arch-arm  
+ENV HOSTOSN "linux-x86_64"
+ENV SYSROOT $ANDROID_NDK/platforms/android-9/arch-arm
 ENV PREBUILT $ANDROID_NDK/toolchains/$ARCH_ABI
 ENV LDFLAGS "--sysroot=$SYSROOT"
 ENV LD  "$ANDROID_NDK/toolchains/$ARCH_ABI/prebuilt/$HOSTOSN/arm-linux-androideabi/bin/ld $LDFLAGS"
@@ -56,12 +56,12 @@ ENV CXXFLAGS "-march=armv7-a -mfloat-abi=softfp -DGOOGLE_PROTOBUF_NO_RTTI --sysr
 ENV CCFLAGS "$CXXFLAGS"
 ENV CXX "$PREBUILT/prebuilt/$HOSTOSN/bin/arm-linux-androideabi-g++ $CXXFLAGS"
 ENV CC "$CXX"
-ENV RANLIB "$ANDROID_NDK/toolchains/$ARCH_ABI/prebuilt/$HOSTOSN/bin/arm-linux-androideabi-ranlib"  
+ENV RANLIB "$ANDROID_NDK/toolchains/$ARCH_ABI/prebuilt/$HOSTOSN/bin/arm-linux-androideabi-ranlib"
 
 # Cross-compile Android armeabi-v7a's protobuf.
 # if you want to compile shared libs, please repalce '--disable-shared' with 'disable-static --enbale-shared'.
 RUN cd protobuf-3.4.0 \
-    && ./autogen.sh \  
+    && ./autogen.sh \
     && ./configure --host=arm-linux-androideabi --with-sysroot=$SYSROOT --enable-cross-compile --with-protoc=protoc --disable-shared CXX="$CXX" CC="$CC" LD="$LD" \
     && make
 
