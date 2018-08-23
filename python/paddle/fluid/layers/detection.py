@@ -1236,16 +1236,16 @@ def anchor_generator(input,
     var.stop_gradient = True
     return anchor, var
 
-def generate_proposals(
-    	scoreis,
-    	bbox_deltas,
-    	im_info,
-    	anchors,
-    	variances,
-    	pre_nms_topN = 6000,
-    	post_nms_topN = 1000,
-    	nms_thresh = 0.5,
-    	min_size = 0.1):
+
+def generate_proposals(scoreis,
+                       bbox_deltas,
+                       im_info,
+                       anchors,
+                       variances,
+                       pre_nms_topN=6000,
+                       post_nms_topN=1000,
+                       nms_thresh=0.5,
+                       min_size=0.1):
     """
     ** Generate proposal labels Faster-RCNN **
     """
@@ -1253,28 +1253,25 @@ def generate_proposals(
 
     rpn_rois = helper.create_tmp_variable(dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_tmp_variable(dtype=scores.dtype)
-    
+
     helper.append_op(
-    	type="generate_proposals",
-     	inputs={
- 	    'Scores': scores,
+        type="generate_proposals",
+        inputs={
+            'Scores': scores,
             'BboxDeltas': bbox_deltas,
             'ImInfo': im_info,
             'Anchors': anchors,
             'Variances': variances
-    	},
-  	attrs = {
+        },
+        attrs={
             'pre_nms_topN': pre_nms_topN,
             'post_nms_topN': post_nms_topN,
             'nms_thresh': nms_thresh,
             'min_size': min_size
         },
- 	outputs = {
-            'RpnRois': rpn_rois,
-            'RpnRoiProbs': rpn_roi_probs
-        })
+        outputs={'RpnRois': rpn_rois,
+                 'RpnRoiProbs': rpn_roi_probs})
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
 
     return rpn_roi, rpn_roi_probs
-

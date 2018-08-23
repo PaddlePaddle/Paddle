@@ -24,7 +24,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-
 struct DyDataTypeVisitor {
   const platform::Place place_;
   LoDTensor *in_;
@@ -54,17 +53,16 @@ struct AppendProposalsFunctor {
   }
 };
 
-
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
-   /*
-   GenerateProposalsOp(const std::string &type, 
-	  const framework::VariableNameMap &inputs,
-          const framework::VariableNameMap &outputs,
-          const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-   */
-   using framework::OperatorWithKernel::OperatorWithKernel;
+  /*
+  GenerateProposalsOp(const std::string &type,
+         const framework::VariableNameMap &inputs,
+         const framework::VariableNameMap &outputs,
+         const framework::AttributeMap &attrs)
+     : OperatorWithKernel(type, inputs, outputs, attrs) {}
+  */
+  using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Scores"), "Input(Scores) shouldn't be null.");
@@ -85,7 +83,8 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("RpnRois", anchors_dims);
     ctx->SetOutputDim("RpnRoiProbs", scores_dims);
   }
-  protected:
+
+ protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
@@ -95,74 +94,75 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
 };
 
 template <typename DeviceContext>
-void Trans(const DeviceContext& ctx,
-           const Tensor &in_tensor, Tensor *out_tensor,
-           const std::vector<int>& axis) {
+void Trans(const DeviceContext &ctx, const Tensor &in_tensor,
+           Tensor *out_tensor, const std::vector<int> &axis) {
   math::Transpose<DeviceContext, float, 3> trans;
   trans(ctx, in_tensor, out_tensor, axis);
   out_tensor->Resize(out_tensor->dims());
 }
 
-void Gather(const platform::DeviceContext& ctx, const Tensor &in, const Tensor &index, Tensor *out) {
-    CPUGather<float>(ctx, in, index, out);
-    out->Resize({index.numel(),in.dims()[1]});
+void Gather(const platform::DeviceContext &ctx, const Tensor &in,
+            const Tensor &index, Tensor *out) {
+  CPUGather<float>(ctx, in, index, out);
+  out->Resize({index.numel(), in.dims()[1]});
 }
 
-Tensor BoxCoder(const platform::DeviceContext& ctx,
-                Tensor *all_anchors, Tensor *bbox_deltas,
-                Tensor *variances) {
+Tensor BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
+                Tensor *bbox_deltas, Tensor *variances) {
   std::vector<int64_t> bbox_deltas_dims =
       framework::vectorize(bbox_deltas->dims());
   framework::DDim bbox_deltas_shape = framework::make_ddim(bbox_deltas_dims);
   bbox_deltas->Resize(bbox_deltas_shape);
-  
+
   Tensor proposals;
   proposals.Resize(all_anchors->dims());
   proposals.mutable_data(ctx.GetPlace(), all_anchors->type());
-  float* proposals_data = proposals.mutable_data<float>(ctx.GetPlace());
- 
+  float *proposals_data = proposals.mutable_data<float>(ctx.GetPlace());
+
   int64_t row = all_anchors->dims()[0];
   int64_t len = all_anchors->dims()[1];
-  
-  auto* bbox_deltas_data = bbox_deltas->data<float>();
-  auto* anchor_data = all_anchors->data<float>();
-  const float* variances_data = nullptr;
-  if (variances){
+
+  auto *bbox_deltas_data = bbox_deltas->data<float>();
+  auto *anchor_data = all_anchors->data<float>();
+  const float *variances_data = nullptr;
+  if (variances) {
     variances_data = variances->data<float>();
   }
-  
-  for (int64_t i=0; i<row; ++i){
+
+  for (int64_t i = 0; i < row; ++i) {
     float anchor_width = anchor_data[i * len + 2] - anchor_data[i * len];
     float anchor_height = anchor_data[i * len + 3] - anchor_data[i * len + 1];
 
-    float anchor_center_x = (anchor_data[i * len + 2] + anchor_data[i * len]) / 2;
-    float anchor_center_y = (anchor_data[i * len + 3] + anchor_data[i * len + 1]) / 2;
+    float anchor_center_x =
+        (anchor_data[i * len + 2] + anchor_data[i * len]) / 2;
+    float anchor_center_y =
+        (anchor_data[i * len + 3] + anchor_data[i * len + 1]) / 2;
 
     float bbox_center_x = 0, bbox_center_y = 0;
     float bbox_width = 0, bbox_height = 0;
 
-    if(variances){
-      bbox_center_x = variances_data[i * len] *
-                                    bbox_deltas_data[i * len] * anchor_width +
-                                anchor_center_x;
+    if (variances) {
+      bbox_center_x =
+          variances_data[i * len] * bbox_deltas_data[i * len] * anchor_width +
+          anchor_center_x;
       bbox_center_y = variances_data[i * len + 1] *
-                                    bbox_deltas_data[i * len + 1] *
-                                    anchor_height +
-                                anchor_center_y;
+                          bbox_deltas_data[i * len + 1] * anchor_height +
+                      anchor_center_y;
       bbox_width = std::exp(variances_data[i * len + 2] *
-                                      bbox_deltas_data[i * len + 2]) *
-                             anchor_width;
+                            bbox_deltas_data[i * len + 2]) *
+                   anchor_width;
       bbox_height = std::exp(variances_data[i * len + 3] *
-                                       bbox_deltas_data[i * len + 3]) *
-                              anchor_height;
-    } 
-    else{
-      bbox_center_x = bbox_deltas_data[i * len] * anchor_width +anchor_center_x;
-      bbox_center_y = bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
+                             bbox_deltas_data[i * len + 3]) *
+                    anchor_height;
+    } else {
+      bbox_center_x =
+          bbox_deltas_data[i * len] * anchor_width + anchor_center_x;
+      bbox_center_y =
+          bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
       bbox_width = std::exp(bbox_deltas_data[i * len + 2]) * anchor_width;
       bbox_height = std::exp(bbox_deltas_data[i * len + 3]) * anchor_height;
     }
-  
+
     proposals_data[i * len] = bbox_center_x - bbox_width / 2;
     proposals_data[i * len + 1] = bbox_center_y - bbox_height / 2;
     proposals_data[i * len + 2] = bbox_center_x + bbox_width / 2;
@@ -171,7 +171,7 @@ Tensor BoxCoder(const platform::DeviceContext& ctx,
   return proposals;
 }
 
-void ClipTiledBoxes(const platform::DeviceContext& ctx, Tensor *boxes,
+void ClipTiledBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
                     Tensor *im_info) {
   float *boxes_data = boxes->mutable_data<float>(ctx.GetPlace());
   float *im_info_data = im_info->mutable_data<float>(ctx.GetPlace());
@@ -192,7 +192,8 @@ void ClipTiledBoxes(const platform::DeviceContext& ctx, Tensor *boxes,
   }
 }
 
-Tensor FilterBoxes(const platform::DeviceContext& ctx, Tensor *boxes, float min_size, Tensor *im_info) {
+Tensor FilterBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
+                   float min_size, Tensor *im_info) {
   float *im_info_data = im_info->mutable_data<float>(ctx.GetPlace());
   float *boxes_data = boxes->mutable_data<float>(ctx.GetPlace());
   min_size *= im_info_data[2];
@@ -215,16 +216,14 @@ Tensor FilterBoxes(const platform::DeviceContext& ctx, Tensor *boxes, float min_
   return keep;
 }
 
-
-bool SortScorePairDescend(const std::pair<float, int>& pair1,
-                          const std::pair<float, int>& pair2) {
+bool SortScorePairDescend(const std::pair<float, int> &pair1,
+                          const std::pair<float, int> &pair2) {
   return pair1.first > pair2.first;
 }
 
 template <class T>
-void GetMaxScoreIndex(
-    const std::vector<T>& scores, 
-    std::vector<std::pair<T, int>>* sorted_indices) {
+void GetMaxScoreIndex(const std::vector<T> &scores,
+                      std::vector<std::pair<T, int>> *sorted_indices) {
   for (size_t i = 0; i < scores.size(); ++i) {
     sorted_indices->push_back(std::make_pair(scores[i], i));
   }
@@ -234,7 +233,7 @@ void GetMaxScoreIndex(
 }
 
 template <class T>
-T BBoxArea(const T* box, const bool normalized) {
+T BBoxArea(const T *box, const bool normalized) {
   if (box[2] < box[0] || box[3] < box[1]) {
     // If coordinate values are is invalid
     // (e.g. xmax < xmin or ymax < ymin), return 0.
@@ -252,8 +251,7 @@ T BBoxArea(const T* box, const bool normalized) {
 }
 
 template <class T>
-T JaccardOverlap(const T* box1, const T* box2,
-                               const bool normalized) {
+T JaccardOverlap(const T *box1, const T *box2, const bool normalized) {
   if (box2[0] > box1[2] || box2[2] < box1[0] || box2[1] > box1[3] ||
       box2[3] < box1[1]) {
     return static_cast<T>(0.);
@@ -272,7 +270,8 @@ T JaccardOverlap(const T* box1, const T* box2,
 }
 
 template <class T>
-Tensor NMS(const platform::DeviceContext& ctx, Tensor* bbox, Tensor* scores, const T nms_threshold, const float eta){
+Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
+           const T nms_threshold, const float eta) {
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -281,12 +280,12 @@ Tensor NMS(const platform::DeviceContext& ctx, Tensor* bbox, Tensor* scores, con
   std::copy_n(scores->data<T>(), num_boxes, scores_data.begin());
   std::vector<std::pair<T, int>> sorted_indices;
   GetMaxScoreIndex<T>(scores_data, &sorted_indices);
-  
+
   std::vector<int> selected_indices;
   int selected_num = 0;
-  //selected_indices->clear(); 
+  // selected_indices->clear();
   T adaptive_threshold = nms_threshold;
-  const T* bbox_data = bbox->data<T>();
+  const T *bbox_data = bbox->data<T>();
   bool flag;
   int idx = sorted_indices.front().second;
   selected_indices.push_back(idx);
@@ -297,9 +296,9 @@ Tensor NMS(const platform::DeviceContext& ctx, Tensor* bbox, Tensor* scores, con
     flag = true;
     for (size_t k = 0; k < selected_indices.size(); ++k) {
       if (flag) {
-        const int kept_idx = selected_indices[k]; 
+        const int kept_idx = selected_indices[k];
         T overlap = JaccardOverlap<T>(bbox_data + idx * box_size,
-                                       bbox_data + kept_idx * box_size, false);
+                                      bbox_data + kept_idx * box_size, false);
         flag = (overlap <= adaptive_threshold);
       } else {
         break;
@@ -317,35 +316,35 @@ Tensor NMS(const platform::DeviceContext& ctx, Tensor* bbox, Tensor* scores, con
   Tensor keep_nms;
   keep_nms.Resize({selected_num});
   int *keep_data = keep_nms.mutable_data<int>(ctx.GetPlace());
-  for (int i=0; i<selected_num; ++i){
+  for (int i = 0; i < selected_num; ++i) {
     keep_data[i] = selected_indices[i];
   }
   return keep_nms;
 }
 
-
-template<typename DeviceContext, typename T>
+template <typename DeviceContext, typename T>
 class GenerateProposalsKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* scores = context.Input<LoDTensor>("Scores");
-    auto* bbox_deltas = context.Input<LoDTensor>("BboxDeltas");
-    auto* im_info = context.Input<LoDTensor>("ImInfo");
-    auto* anchors = context.Input<LoDTensor>("Anchors");
-    auto* variances = context.Input<LoDTensor>("Variances");
-    
-    auto* rpn_rois = context.Output<LoDTensor>("RpnRois");
-    auto* rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *scores = context.Input<LoDTensor>("Scores");
+    auto *bbox_deltas = context.Input<LoDTensor>("BboxDeltas");
+    auto *im_info = context.Input<LoDTensor>("ImInfo");
+    auto *anchors = context.Input<LoDTensor>("Anchors");
+    auto *variances = context.Input<LoDTensor>("Variances");
 
-    //rpn_rois->mutable_data(context.GetPlace(), anchors->type());
-    //rpn_roi_probs->mutable_data(context.GetPlace(), scores->type());
-    
+    auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
+    auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
+
+    // rpn_rois->mutable_data(context.GetPlace(), anchors->type());
+    // rpn_roi_probs->mutable_data(context.GetPlace(), scores->type());
+
     rpn_rois->Resize(anchors->dims());
     rpn_roi_probs->Resize(scores->dims());
     framework::VisitDataType(framework::ToDataType(anchors->type()),
                              DyDataTypeVisitor(context.GetPlace(), rpn_rois));
-    framework::VisitDataType(framework::ToDataType(scores->type()),
-                             DyDataTypeVisitor(context.GetPlace(), rpn_roi_probs));
+    framework::VisitDataType(
+        framework::ToDataType(scores->type()),
+        DyDataTypeVisitor(context.GetPlace(), rpn_roi_probs));
 
     int pre_nms_topN = context.Attr<int>("pre_nms_topN");
     int post_nms_topN = context.Attr<int>("post_nms_topN");
@@ -353,8 +352,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     float min_size = context.Attr<float>("min_size");
     float eta = context.Attr<float>("eta");
 
-    //paddle::framework::Scope &local_scope = scope.NewScope();
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    // paddle::framework::Scope &local_scope = scope.NewScope();
+    auto &dev_ctx = context.template device_context<DeviceContext>();
 
     framework::LoD lod;
     std::vector<size_t> lod0(1, 0);
@@ -365,12 +364,13 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       Tensor im_info_slice = im_info->Slice(i, i + 1);
       Tensor bbox_deltas_slice = bbox_deltas->Slice(i, i + 1);
       Tensor scores_slice = scores->Slice(i, i + 1);
-      std::pair<Tensor, Tensor> tensor_pair = ProposalForOneImage(dev_ctx, &im_info_slice, *anchors, *variances,
-          &bbox_deltas_slice, &scores_slice, pre_nms_topN, post_nms_topN,
-          nms_thresh, min_size, eta);
+      std::pair<Tensor, Tensor> tensor_pair =
+          ProposalForOneImage(dev_ctx, &im_info_slice, *anchors, *variances,
+                              &bbox_deltas_slice, &scores_slice, pre_nms_topN,
+                              post_nms_topN, nms_thresh, min_size, eta);
       Tensor proposals = tensor_pair.first;
       Tensor scores = tensor_pair.second;
-      
+
       framework::VisitDataType(
           framework::ToDataType(rpn_rois->type()),
           AppendProposalsFunctor(rpn_rois, 4 * num_proposals, &proposals));
@@ -390,39 +390,38 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
   }
 
   std::pair<Tensor, Tensor> ProposalForOneImage(
-    const DeviceContext& ctx,
-    Tensor *im_info_slice, const Tensor &anchors, const Tensor &variances,
-    Tensor *bbox_deltas_slice, Tensor *scores_slice, int pre_nms_topN,
-    int post_nms_topN, float nms_thresh, float min_size, float eta) const {
-
+      const DeviceContext &ctx, Tensor *im_info_slice, const Tensor &anchors,
+      const Tensor &variances, Tensor *bbox_deltas_slice, Tensor *scores_slice,
+      int pre_nms_topN, int post_nms_topN, float nms_thresh, float min_size,
+      float eta) const {
     Tensor bbox_deltas, bbox_deltas_swap;
     Tensor scores, scores_swap;
-  
+
     framework::DDim bbox_deltas_shape = framework::slice_ddim(
         bbox_deltas_slice->dims(), 1, bbox_deltas_slice->dims().size());
     framework::DDim scores_shape = framework::slice_ddim(
         scores_slice->dims(), 1, scores_slice->dims().size());
-  
+
     bbox_deltas = *bbox_deltas_slice;
     scores = *scores_slice;
     bbox_deltas.Resize(bbox_deltas_shape);
     scores.Resize(scores_shape);
-  
+
     bbox_deltas_swap.Resize(bbox_deltas_shape);
     scores_swap.Resize(scores_shape);
     bbox_deltas_swap.mutable_data(ctx.GetPlace(), bbox_deltas.type());
     scores_swap.mutable_data(ctx.GetPlace(), scores.type());
-  
+
     // Transpose bbox_deltas
-    std::vector<int> axis = {1,2,0};
+    std::vector<int> axis = {1, 2, 0};
     Trans<DeviceContext>(ctx, bbox_deltas, &bbox_deltas_swap, axis);
-  
+
     // Transpose scores
     Trans<DeviceContext>(ctx, scores, &scores_swap, axis);
-  
+
     scores_swap.Resize({scores_swap.numel(), 1});
     auto *scores_data = scores_swap.mutable_data<float>(ctx.GetPlace());
-  
+
     // Sort index
     Tensor index_t;
     index_t.Resize({scores_swap.numel()});
@@ -430,10 +429,10 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     for (int64_t i = 0; i < scores.numel(); ++i) {
       index[i] = i;
     }
-    std::function<bool(const int64_t &, const int64_t &)> compare = [scores_data](
-        const int64_t &i, const int64_t &j) {
-      return scores_data[i] > scores_data[j];
-    };
+    std::function<bool(const int64_t &, const int64_t &)> compare =
+        [scores_data](const int64_t &i, const int64_t &j) {
+          return scores_data[i] > scores_data[j];
+        };
     if (pre_nms_topN <= 0 || pre_nms_topN >= scores_swap.numel()) {
       std::sort(index, index + scores.numel(), compare);
     } else {
@@ -441,36 +440,34 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
                        compare);
       index_t.Resize({pre_nms_topN});
     }
-  
+
     Gather(ctx, scores_swap, index_t, &scores);
     bbox_deltas_swap.Resize({bbox_deltas_swap.numel() / 4, 4});
     Gather(ctx, bbox_deltas_swap, index_t, &bbox_deltas);
-    
+
     Tensor all_anchors, all_anchors_swap;
     all_anchors_swap = anchors;
     all_anchors_swap.Resize({all_anchors_swap.numel() / 4, 4});
     all_anchors.Resize(all_anchors_swap.dims());
     all_anchors.mutable_data(ctx.GetPlace(), all_anchors_swap.type());
-  
-    Gather(ctx, all_anchors_swap, index_t, &all_anchors); 
-    
-   
+
+    Gather(ctx, all_anchors_swap, index_t, &all_anchors);
+
     Tensor box_var;
     box_var = variances;
     box_var.Resize({box_var.numel() / 4, 4});
     box_var.mutable_data(ctx.GetPlace(), box_var.type());
-    
-    Tensor proposals = BoxCoder(ctx, &all_anchors, &bbox_deltas,
-                                &box_var);
-     
+
+    Tensor proposals = BoxCoder(ctx, &all_anchors, &bbox_deltas, &box_var);
+
     ClipTiledBoxes(ctx, &proposals, im_info_slice);
 
     Tensor keep = FilterBoxes(ctx, &proposals, min_size, im_info_slice);
-        
+
     Tensor proposals_swap;
     proposals_swap.Resize(proposals.dims());
     proposals_swap.mutable_data(ctx.GetPlace(), proposals.type());
-    
+
     Gather(ctx, proposals, keep, &proposals_swap);
     Gather(ctx, scores, keep, &scores_swap);
 
@@ -478,15 +475,15 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       return std::make_pair(proposals_swap, scores_swap);
     }
 
-    
-    Tensor keep_nms = NMS<T>(ctx, &proposals_swap, &scores_swap, nms_thresh, eta);
-    
-    if (post_nms_topN > 0&& post_nms_topN<keep_nms.numel()) {
+    Tensor keep_nms =
+        NMS<T>(ctx, &proposals_swap, &scores_swap, nms_thresh, eta);
+
+    if (post_nms_topN > 0 && post_nms_topN < keep_nms.numel()) {
       keep_nms.Resize({post_nms_topN});
     }
     Gather(ctx, proposals_swap, keep_nms, &proposals);
     Gather(ctx, scores_swap, keep_nms, &scores);
-    
+
     return std::make_pair(proposals, scores);
   }
 };
@@ -506,7 +503,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("post_nms_topN", "post_nms_topN");
     AddAttr<float>("nms_thresh", "nms_thres");
     AddAttr<float>("min_size", "min size");
-    AddAttr<float>("eta","eta");
+    AddAttr<float>("eta", "eta");
     AddComment(R"DOC(
 Generate Proposals Operator.
 
@@ -521,6 +518,7 @@ Generate Proposals Operator.
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(generate_proposals, ops::GenerateProposalsOp,
                   ops::GenerateProposalsOpMaker,
-		  paddle::framework::EmptyGradOpMaker);
+                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(
-    generate_proposals, ops::GenerateProposalsKernel<paddle::platform::CPUDeviceContext, float>);
+    generate_proposals,
+    ops::GenerateProposalsKernel<paddle::platform::CPUDeviceContext, float>);
