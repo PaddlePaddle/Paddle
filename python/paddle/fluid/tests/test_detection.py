@@ -146,6 +146,40 @@ class TestAnchorGenerator(unittest.TestCase):
         assert anchor.shape[3] == 4
 
 
+class TestGenerateProposalLabels(unittest.TestCase):
+    def test_generate_proposal_labels(self):
+        rpn_rois = layers.data(
+            name='rpn_rois', shape=[1, 4], dtype='float32', lod_level=1)
+        gt_classes = layers.data(
+            name='gt_classes', shape=[1], dtype='int32', lod_level=1)
+        gt_boxes = layers.data(
+            name='gt_boxes', shape=[1, 4], dtype='float32', lod_level=1)
+        im_scales = layers.data(
+            name='im_scales', shape=[1], dtype='float32', lod_level=1)
+        class_nums = 5
+        rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            rpn_rois=rpn_rois,
+            gt_classes=gt_classes,
+            gt_boxes=gt_boxes,
+            im_scales=im_scales,
+            batch_size_per_im=2,
+            fg_fraction=0.5,
+            fg_thresh=0.5,
+            bg_thresh_hi=0.5,
+            bg_thresh_lo=0.0,
+            bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+            class_nums=class_nums)
+        assert rois.shape[1] == 4
+        assert rois.shape[0] == labels_int32.shape[0]
+        assert rois.shape[0] == bbox_targets.shape[0]
+        assert rois.shape[0] == bbox_inside_weights.shape[0]
+        assert rois.shape[0] == bbox_outside_weights.shape[0]
+        assert bbox_targets.shape[1] == 4 * class_nums
+        assert bbox_inside_weights.shape[1] == 4 * class_nums
+        assert bbox_outside_weights.shape[1] == 4 * class_nums
+        assert anchor.shape[3] == 4
+
+
 class TestMultiBoxHead(unittest.TestCase):
     def test_multi_box_head(self):
         data_shape = [3, 224, 224]
