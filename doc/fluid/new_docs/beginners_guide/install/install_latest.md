@@ -707,7 +707,7 @@
 	* *GPU运算能力超过1.0的硬件设备*-->
 
 #### 选择如何编译PaddlePaddle
-我们提供在CentOS的系统下提供2种的编译方式：
+我们在CentOS的系统下提供2种的编译方式：
 
 * Docker源码编译（不支持CentOS 6 / 7的GPU版本）
 * 直接本机源码编译（不支持CentOS 6的全部版本以及CentOS 7的GPU版本）
