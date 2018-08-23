@@ -33,12 +33,13 @@ inline T _sigmoid(T x) {
   const T min = SIGMOID_THRESHOLD_MIN;
   const T max = SIGMOID_THRESHOLD_MAX;
   T tmp = (x < min) ? min : ((x > max) ? max : x);
-  return 1. / (1. + std::exp(-tmp));
+  return static_cast<T>(1) / (static_cast<T>(1) + std::exp(-tmp));
 }
 
 template <typename T>
 inline T _tanh(T x) {
-  return 2. * _sigmoid<T>(2. * x) - 1.;
+  return static_cast<T>(2) * _sigmoid<T>(static_cast<T>(2) * x) -
+         static_cast<T>(1);
 }
 
 template <typename T>
