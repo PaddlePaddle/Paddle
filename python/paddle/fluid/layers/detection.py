@@ -1237,7 +1237,7 @@ def anchor_generator(input,
     return anchor, var
 
 
-def generate_proposals(scoreis,
+def generate_proposals(scores,
                        bbox_deltas,
                        im_info,
                        anchors,
