@@ -1282,7 +1282,7 @@ def generate_proposal_labels(rpn_rois,
     helper.append_op(
         type="generate_proposal_labels",
         inputs={
-            'RpnRois': rpns_rois,
+            'RpnRois': rpn_rois,
             'GtClasses': gt_classes,
             'GtBoxes': gt_boxes,
             'ImScales': im_scales

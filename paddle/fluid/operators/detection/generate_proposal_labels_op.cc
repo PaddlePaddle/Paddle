@@ -99,6 +99,14 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
                       "The rank of Input(GtBoxes) must be 2.");
     PADDLE_ENFORCE_EQ(im_scales_dims.size(), 1,
                       "The rank of Input(ImScales) must be 1.");
+
+    int class_nums = ctx->Attrs().Get<int>("class_nums");
+
+    ctx->SetOutputDim("Rois", {-1, 4});
+    ctx->SetOutputDim("LabelsInt32", {-1});
+    ctx->SetOutputDim("BboxTargets", {-1, 4 * class_nums});
+    ctx->SetOutputDim("BboxInsideWeights", {-1, 4 * class_nums});
+    ctx->SetOutputDim("BboxOutsideWeights", {-1, 4 * class_nums});
   }
 
  protected:
@@ -450,7 +458,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();
     auto gt_boxes_lod = gt_boxes->lod().back();
-    for (size_t i = 0; i < rpn_rois_lod.size() - 1; ++i) {
+    for (size_t i = 0; i < n; ++i) {
       Tensor rpn_rois_slice =
           rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       Tensor gt_classes_slice =
