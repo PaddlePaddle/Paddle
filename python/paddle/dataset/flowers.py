@@ -41,6 +41,7 @@ from paddle.reader import *
 import os
 import numpy as np
 from multiprocessing import cpu_count
+import six
 from six.moves import cPickle as pickle
 from six.moves import zip
 __all__ = ['train', 'test', 'valid']
