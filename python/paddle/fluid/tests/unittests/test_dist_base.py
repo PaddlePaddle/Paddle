@@ -37,7 +37,7 @@ class TestDistRunnerBase(object):
         import paddle
         import paddle.fluid as fluid
         config = fluid.DistributeTranspilerConfig()
-        config.slice_var_up = False
+        # config.slice_var_up = False
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
