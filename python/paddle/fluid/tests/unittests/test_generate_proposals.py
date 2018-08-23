@@ -19,13 +19,12 @@ import math
 import paddle.fluid as fluid
 from op_test import OpTest
 from test_multiclass_nms_op import nms
-from test_box_coder_op import box_coder
 from test_anchor_generator_op import anchor_generator_in_python
-
+import copy
 
 def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
                                  variances, pre_nms_topN, post_nms_topN,
-                                 nms_thresh, min_size):
+                                 nms_thresh, min_size, eta):
     all_anchors = anchors.reshape(-1, 4)
     rois = np.empty((0, 5), dtype=np.float32)
     roi_probs = np.empty((0, 1), dtype=np.float32)
@@ -38,7 +37,7 @@ def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
         img_i_boxes, img_i_probs = proposal_for_one_image(
             im_info[img_idx, :], all_anchors, variances,
             bbox_deltas[img_idx, :, :, :], scores[img_idx, :, :, :],
-            pre_nms_topN, post_nms_topN, nms_thresh, min_size)
+            pre_nms_topN, post_nms_topN, nms_thresh, min_size, eta)
         lod.append(img_i_probs.shape[0])
         rpn_rois.append(img_i_boxes)
         rpn_roi_probs.append(img_i_probs)
@@ -46,8 +45,7 @@ def generate_proposals_in_python(scores, bbox_deltas, im_info, anchors,
     return rpn_rois, rpn_roi_probs, lod
 
 
-def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
-                           pre_nms_topN, post_nms_topN, nms_thresh, min_size):
+def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores, pre_nms_topN, post_nms_topN, nms_thresh, min_size, eta):
     # Transpose and reshape predicted bbox transformations to get them
     # into the same order as the anchors:
     #   - bbox deltas will be (4 * A, H, W) format from conv output
@@ -75,50 +73,71 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
-
-    print order
+    
     scores = scores[order, :]
     bbox_deltas = bbox_deltas[order, :]
     all_anchors = all_anchors[order, :]
-    print(scores, bbox_deltas, all_anchors)
-    # Transform anchors into proposals via bbox encoder
-    proposals = np.expand_dims(np.zeros_like(all_anchors), axis=0)
-    bbox_deltas = np.expand_dims(bbox_deltas, axis=0)
-    box_coder(
-        prior_box=all_anchors,
-        target_box=bbox_deltas,
-        prior_box_var=variances,
-        output_box=proposals,
-        code_type='DecodeCenterSize',
-        box_normalized=False)
-    proposals = proposals.squeeze()
-    bbox_deltas = bbox_deltas.squeeze()
-
+    proposals = box_coder(all_anchors, bbox_deltas, variances);
+    
     # clip proposals to image (may result in proposals with zero area
     # that will be removed in the next step)
     proposals = clip_tiled_boxes(proposals, im_info[:2])
-
     # remove predicted boxes with height or width < min_size
     keep = filter_boxes(proposals, min_size, im_info)
     proposals = proposals[keep, :]
     scores = scores[keep, :]
-
     # apply loose nms (e.g. threshold = 0.7)
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
+    
     if nms_thresh > 0:
         keep = nms(boxes=proposals,
                    scores=scores,
-                   score_threshold=0.0,
                    nms_threshold=nms_thresh,
-                   top_k=post_nms_topN + 1,
-                   eta=1.0)
-        if post_nms_topN > 0:
+                   eta=eta)
+        if post_nms_topN > 0 and post_nms_topN<len(keep):
             keep = keep[:post_nms_topN]
         proposals = proposals[keep, :]
         scores = scores[keep, :]
+
     return proposals, scores
 
+def box_coder(all_anchors, bbox_deltas, variances):
+    """
+    Decode proposals by anchors and bbox_deltas from RPN 
+    """
+    #proposals: xmin, ymin, xmax, ymax
+    proposals = np.zeros_like(bbox_deltas,dtype=np.float32)
+
+    #anchor_loc: width, height, center_x, center_y
+    anchor_loc = np.zeros_like(bbox_deltas,dtype=np.float32)
+    
+    anchor_loc[:,0] = all_anchors[:,2] - all_anchors[:,0]
+    anchor_loc[:,1] = all_anchors[:,3] - all_anchors[:,1] 
+    anchor_loc[:,2] = (all_anchors[:,2] + all_anchors[:,0])/2
+    anchor_loc[:,3] = (all_anchors[:,3] + all_anchors[:,1])/2
+
+    #predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height 
+    pred_bbox = np.zeros_like(bbox_deltas,dtype=np.float32)
+    if variances is not None:
+      for i in range(bbox_deltas.shape[0]):
+	pred_bbox[i,0] = variances[i,0]*bbox_deltas[i,0]*anchor_loc[i,0]+anchor_loc[i,2]
+	pred_bbox[i,1] = variances[i,1]*bbox_deltas[i,1]*anchor_loc[i,1]+anchor_loc[i,3]
+     	pred_bbox[i,2] = math.exp(variances[i,2]*bbox_deltas[i,2])*anchor_loc[i,0]
+	pred_bbox[i,3] = math.exp(variances[i,3]*bbox_deltas[i,3])*anchor_loc[i,1]
+    else:
+      for i in range(bbox_deltas.shape[0]):
+	pred_bbox[i,0] = bbox_deltas[i,0]*anchor_loc[i,0]+anchor_loc[i,2]
+        pred_bbox[i,1] = bbox_deltas[i,1]*anchor_loc[i,1]+anchor_loc[i,3]
+        pred_bbox[i,2] = math.exp(bbox_deltas[i,2])*anchor_loc[i,0]
+        pred_bbox[i,3] = math.exp(bbox_deltas[i,3])*anchor_loc[i,1]
+    
+    proposals[:,0] = pred_bbox[:,0]-pred_bbox[:,2]/2
+    proposals[:,1] = pred_bbox[:,1]-pred_bbox[:,3]/2
+    proposals[:,2] = pred_bbox[:,0]+pred_bbox[:,2]/2
+    proposals[:,3] = pred_bbox[:,1]+pred_bbox[:,3]/2
+
+    return proposals
 
 def clip_tiled_boxes(boxes, im_shape):
     """Clip boxes to image boundaries. im_shape is [height, width] and boxes
@@ -151,6 +170,77 @@ def filter_boxes(boxes, min_size, im_info):
                     (y_ctr < im_info[0]))[0]
     return keep
 
+def iou(box_a, box_b):
+    """
+	Apply intersection-over-union overlap between box_a and box_b
+    """
+    xmin_a = min(box_a[0], box_a[2])
+    ymin_a = min(box_a[1], box_a[3])
+    xmax_a = max(box_a[0], box_a[2])
+    ymax_a = max(box_a[1], box_a[3])
+
+    xmin_b = min(box_b[0], box_b[2])
+    ymin_b = min(box_b[1], box_b[3])
+    xmax_b = max(box_b[0], box_b[2])
+    ymax_b = max(box_b[1], box_b[3])
+
+    area_a = (ymax_a - ymin_a) * (xmax_a - xmin_a)
+    area_b = (ymax_b - ymin_b) * (xmax_b - xmin_b)
+    if area_a <= 0 and area_b <= 0:
+        return 0.0
+
+    xa = max(xmin_a, xmin_b)
+    ya = max(ymin_a, ymin_b)
+    xb = min(xmax_a, xmax_b)
+    yb = min(ymax_a, ymax_b)
+
+    inter_area = max(xb - xa, 0.0) * max(yb - ya, 0.0)
+
+    box_a_area = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
+    box_b_area = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
+
+    iou_ratio = inter_area / (area_a + area_b - inter_area)
+
+    return iou_ratio
+
+
+def nms(boxes, scores, nms_threshold, eta=1.0):
+    """Apply non-maximum suppression at test time to avoid detecting too many
+    overlapping bounding boxes for a given object.
+    Args:
+        boxes: (tensor) The location preds for the img, Shape: [num_priors,4].
+        scores: (tensor) The class predscores for the img, Shape:[num_priors].
+        score_threshold: (float) The confidence thresh for filtering low
+            confidence boxes.
+        nms_threshold: (float) The overlap thresh for suppressing unnecessary
+            boxes.
+        top_k: (int) The maximum number of box preds to consider.
+        eta: (float) The parameter for adaptive NMS.
+    Return:
+        The indices of the kept boxes with respect to num_priors.
+    """
+    all_scores = copy.deepcopy(scores)
+    all_scores = all_scores.flatten()
+ 
+    sorted_indices = np.argsort(-all_scores, axis=0, kind='mergesort')
+    sorted_scores = all_scores[sorted_indices]
+    selected_indices = []
+    adaptive_threshold = nms_threshold
+    for i in range(sorted_scores.shape[0]):
+        idx = sorted_indices[i]
+        keep = True
+        for k in range(len(selected_indices)):
+            if keep:
+                kept_idx = selected_indices[k]
+                overlap = iou(boxes[idx], boxes[kept_idx])
+                keep = True if overlap <= adaptive_threshold else False
+            else:
+                break
+        if keep:
+            selected_indices.append(idx)
+        if keep and eta < 1 and adaptive_threshold > 0.5:
+            adaptive_threshold *= eta
+    return selected_indices
 
 class TestGenerateProposalsOp(OpTest):
     def set_data(self):
@@ -169,7 +259,8 @@ class TestGenerateProposalsOp(OpTest):
             'pre_nms_topN': self.pre_nms_topN,
             'post_nms_topN': self.post_nms_topN,
             'nms_thresh': self.nms_thresh,
-            'min_size': self.min_size
+            'min_size': self.min_size,
+	    'eta': self.eta
         }
 
         self.outputs = {
@@ -186,15 +277,15 @@ class TestGenerateProposalsOp(OpTest):
 
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
-        self.post_nms_topN = 2000  # train 6000, test 1000
-        self.nms_thresh = 0.7
-        self.min_size = 0.0
-
+        self.post_nms_topN = 5  # train 6000, test 1000
+        self.nms_thresh = 0.1
+        self.min_size = 0.5
+    	self.eta = 0.0
     def init_test_input(self):
         batch_size = 1
-        input_channels = 2
-        layer_h = 2
-        layer_w = 2
+        input_channels = 20
+        layer_h = 8
+        layer_w = 8
         input_feat = np.random.random(
             (batch_size, input_channels, layer_h, layer_w)).astype('float32')
         self.anchors, self.variances = anchor_generator_in_python(
@@ -204,7 +295,7 @@ class TestGenerateProposalsOp(OpTest):
             variances=[1.0, 1.0, 1.0, 1.0],
             stride=[16.0, 16.0],
             offset=0.5)
-        self.im_info = np.array([[32., 32., 1]])  #im_height, im_width, scale
+        self.im_info = np.array([[64., 64., 8.]])  #im_height, im_width, scale
         num_anchors = self.anchors.shape[2]
         self.scores = np.random.random(
             (batch_size, num_anchors, layer_h, layer_w)).astype('float32')
@@ -215,8 +306,7 @@ class TestGenerateProposalsOp(OpTest):
         self.rpn_rois, self.rpn_roi_probs, self.lod = generate_proposals_in_python(
             self.scores, self.bbox_deltas, self.im_info, self.anchors,
             self.variances, self.pre_nms_topN, self.post_nms_topN,
-            self.nms_thresh, self.min_size)
-
+            self.nms_thresh, self.min_size, self.eta)
 
 if __name__ == '__main__':
     unittest.main()
