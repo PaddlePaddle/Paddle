@@ -35,15 +35,16 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
     def set_args(self):
         self.num_bits = 8
         self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "float32"
 
     def setUp(self):
         self.set_args()
         self.op_type = "fake_dequantize_max_abs"
-        x = np.random.randn(31, 65).astype("float32")
+        x = np.random.randn(31, 65).astype(self.data_type)
         yq, scale = quantize_max_abs(x, self.max_range)
         ydq = dequantize_max_abs(yq, scale, self.max_range)
 
-        self.inputs = {'X': yq, 'Scale': np.array(scale).astype("float32")}
+        self.inputs = {'X': yq, 'Scale': np.array(scale).astype(self.data_type)}
         self.attrs = {'max_range': self.max_range}
         self.outputs = {'Out': ydq}
 
@@ -51,9 +52,18 @@ class TestFakeDequantizeMaxAbsOp(OpTest):
         self.check_output()
 
 
-class TestFakeDequantizeMaxAbsOp5Bits(OpTest):
+class TestFakeDequantizeMaxAbsOpDouble(TestFakeDequantizeMaxAbsOp):
+    def set_args(self):
+        self.num_bits = 8
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "float64"
+
+
+class TestFakeDequantizeMaxAbsOp5Bits(TestFakeDequantizeMaxAbsOp):
     def set_args(self):
         self.num_bits = 5
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "float32"
 
 
 if __name__ == "__main__":

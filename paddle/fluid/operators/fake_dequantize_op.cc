@@ -22,7 +22,7 @@ template <typename T>
 struct DequantizeFunctor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor* scale,
-                  float max_range, framework::Tensor* out) {
+                  T max_range, framework::Tensor* out) {
     auto in_e = framework::EigenVector<T>::Flatten(*in);
     const T* scale_factor = scale->data<T>();
     auto out_e = framework::EigenVector<T>::Flatten(*out);
