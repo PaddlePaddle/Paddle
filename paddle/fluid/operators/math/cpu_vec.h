@@ -15,6 +15,13 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -22,7 +29,6 @@ namespace math {
 
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
-#define EXP_MAX_INPUT 40.0
 
 template <typename T>
 inline T sigmoid(T x) {
@@ -46,7 +52,7 @@ inline void vec_sigmoid(const int n, const T* x, T* y) {
   const T max = SIGMOID_THRESHOLD_MAX;
   for (int i = 0; i < n; ++i) {
     T tmp = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
-    y[i] = 1.0 / (1.0 + std::exp(-tmp));
+    y[i] = sigmoid<T>(tmp);
   }
 }
 
@@ -96,7 +102,7 @@ class VecActivations {
     } else if (type == "identity" || type == "") {
       return vec_identity<T, isa>;
     }
-    PADDLE_THROW("Not support type %s.", type);
+    LOG(FATAL) << "Not support type: " << type;
   }
 };
 
