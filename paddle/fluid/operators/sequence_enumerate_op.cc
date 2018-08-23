@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_enumerate_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -30,16 +31,21 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
         "Output(X) of SequenceEnumerate operator should not be null.");
 
     const auto x_dims = ctx->GetInputDim("X");
-    PADDLE_ENFORCE(
-        x_dims.size() == 2 && x_dims[1] == 1,
-        "Input(X) of SequenceEnumerate operator should be a 2-D LoDTensor "
-        "with the 2nd dimension equal to 1.");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 2UL,
+        "Input(X) of SequenceEnumerate operator's rank should be 2.");
 
     const auto win_size = ctx->Attrs().Get<int>("win_size");
-    PADDLE_ENFORCE(win_size <= x_dims[0],
+    // TODO(chenweihang): unittest doesn't has batch size, but test_layers has
+    auto first_dim = x_dims[0] == -1 ? x_dims[1] : x_dims[0];
+    PADDLE_ENFORCE(win_size <= first_dim,
                    "The enumerate window size should be less than or equal to "
                    "input sequence length.");
-    ctx->SetOutputDim("Out", {x_dims[0], win_size});
+
+    std::vector<int64_t> out_shape(x_dims.size() + 1, 0);
+    for (int i = 0; i < x_dims.size(); ++i) out_shape.emplace_back(x_dims[i]);
+    out_shape.emplace_back(win_size);
+    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
     ctx->ShareLoD("X", "Out");
   }
 };
@@ -82,8 +88,6 @@ Case 1:
     Out.lod = [[0, 3, 5]]
     Out.data = [[1, 2], [2, 3], [3, 4], [4, 5], [0, 0]]
     Out.dims = [5, 2]
-
-  Currently, only 1-level LoDTensor is supported.
 
 )DOC");
   }

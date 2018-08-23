@@ -32,8 +32,6 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
     auto in_dims = in->dims();
     auto in_lod = in->lod();
 
-    PADDLE_ENFORCE_EQ(in_lod.size(), 1UL,
-                      "Only support one level sequence now.");
     PADDLE_ENFORCE_EQ(
         static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
         "The actual input data's size mismatched with LoD information.");
