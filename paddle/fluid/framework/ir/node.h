@@ -41,8 +41,7 @@ class Node {
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
-        op_desc_(new OpDesc(*op_desc)),  // TODO(panyx0718) the pointer in the
-                                         // original OpDesc might go out.
+        op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation) {}
 
   Type NodeType() const { return type_; }
