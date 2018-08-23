@@ -18,11 +18,11 @@
 
 首先，请获取 Anakin 开发分支的源码。
 
-    git clone -b developing https://github.com/PaddlePaddle/Anakin.git  
+    git clone -b developing https://github.com/PaddlePaddle/Anakin.git
 
 如果您需要安装 Protobuf，请运行下列命令。
 
-    wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz  
+    wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
     tar -zxvf protobuf-cpp-3.1.0.tar.gz
     cd protobuf-3.1.0
     ./autogen.sh
@@ -39,7 +39,6 @@
 #### Anakin - NVGPU ###
 
 除了环境要求中列举的部分，Anakin - NVGPU 版本还依赖 [CUDA 8.0 +](https://developer.nvidia.com/cuda-zone) 和 [cuDNN 7.0 +](https://developer.nvidia.com/cudnn)，请您注意版本的匹配。
-
 
 #### Anakin - CPU ###
 
@@ -87,5 +86,5 @@
 
 ## 3、其它 ##
 
-1、遇到任何问题，请提 [Issue](https://github.com/PaddlePaddle/Anakin/issues) 或邮件至 Anakin@baidu.com；  
+1、遇到任何问题，请提 [Issue](https://github.com/PaddlePaddle/Anakin/issues) 或邮件至 Anakin@baidu.com；
 2、模型解析器使用说明请移步 [这里](Converter_ch.md)。
