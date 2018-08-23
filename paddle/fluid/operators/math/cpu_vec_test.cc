@@ -68,7 +68,7 @@ void RandomVec(const int n, T* a) {
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
   const T lower = static_cast<T>(-20.f);
-  const T upper = static_cast<T>(-20.f);
+  const T upper = static_cast<T>(20.f);
   for (int i = 0; i < n; ++i) {
     a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
   }
