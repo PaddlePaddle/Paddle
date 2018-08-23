@@ -33,6 +33,7 @@ void TensorRTEngine::Build(const DescType &paddle_model) {
 }
 
 void TensorRTEngine::Execute(int batch_size) {
+  freshDeviceId();
   batch_size_ = batch_size;
   std::vector<void *> buffers;
   for (auto &buf : buffers_) {
@@ -60,6 +61,7 @@ TensorRTEngine::~TensorRTEngine() {
 }
 
 void TensorRTEngine::FreezeNetwork() {
+  freshDeviceId();
   PADDLE_ENFORCE(infer_builder_ != nullptr,
                  "Call InitNetwork first to initialize network.");
   PADDLE_ENFORCE(infer_network_ != nullptr,
@@ -240,6 +242,13 @@ void TensorRTEngine::SetRuntimeBatch(size_t batch_size) {
 }
 
 int TensorRTEngine::GetRuntimeBatch() { return runtime_batch_; }
+
+void TensorRTEngine::freshDeviceId() {
+  int count;
+  cudaGetDeviceCount(&count);
+  PADDLE_ENFORCE_LT(device_, count);
+  cudaSetDevice(device_);
+}
 
 }  // namespace tensorrt
 }  // namespace inference

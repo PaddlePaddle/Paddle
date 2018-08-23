@@ -46,7 +46,7 @@ class SumKernel : public framework::OpKernel<T> {
       if (!in_place) {
         math::SetConstant<DeviceContext, T> constant_functor;
         constant_functor(context.template device_context<DeviceContext>(), out,
-                         static_cast<T>(0));
+                         0.0);
       }
 
       math::SelectedRowsAddToTensor<DeviceContext, T> functor;
@@ -105,18 +105,30 @@ class SumKernel : public framework::OpKernel<T> {
         auto &sel_row = get_selected_row(i);
         first_dim += sel_row.rows().size();
       }
-      auto in_dim =
-          framework::vectorize(get_selected_row(N - 1).value().dims());
-      in_dim[0] = static_cast<int64_t>(first_dim);
+
+      std::vector<int64_t> in_dim;
+      for (int i = 0; i < N; i++) {
+        auto &sel_row = get_selected_row(i);
+        if (sel_row.rows().size() > 0) {
+          in_dim = framework::vectorize(sel_row.value().dims());
+          break;
+        }
+      }
+      if (in_dim.empty()) {
+        VLOG(3) << "WARNING: all the inputs are empty";
+        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+      } else {
+        in_dim[0] = static_cast<int64_t>(first_dim);
+      }
 
       out_value->Resize(framework::make_ddim(in_dim));
+      out_value->mutable_data<T>(context.GetPlace());
 
       // if all the input sparse vars are empty, no need to
       // merge these vars.
       if (first_dim == 0UL) {
         return;
       }
-      out_value->mutable_data<T>(context.GetPlace());
 
       math::SelectedRowsAddTo<DeviceContext, T> functor;
 

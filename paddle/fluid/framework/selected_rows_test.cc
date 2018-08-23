@@ -9,8 +9,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/selected_rows.h"
+#include <time.h>
+#include <thread>  // NOLINT
+
 #include "gtest/gtest.h"
+#include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
 namespace framework {
@@ -59,39 +62,129 @@ TEST_F(SelectedRowsTester, SerializeAndDeseralize) {
   ASSERT_EQ(selected_rows_->GetCompleteDims(), dst_tensor.GetCompleteDims());
 }
 
-TEST_F(SelectedRowsTester, SparseTable) {
+TEST(SelectedRows, SparseTable) {
   platform::CPUPlace cpu;
   SelectedRows table;
+
+  int64_t table_size = 100;
+  int64_t embedding_width = 8;
   // initialize a sparse table
-  table.mutable_value()->Resize(framework::make_ddim({1, 100}));
-  table.mutable_value()->mutable_data<float>(cpu);
-  table.mutable_rows()->push_back(1);
+  table.mutable_value()->Resize(
+      framework::make_ddim({table_size, embedding_width}));
+  auto* data = table.mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+  ASSERT_EQ(table.AutoGrownIndex(10, true), 0);
+  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
+  ASSERT_EQ(table.AutoGrownIndex(8, true), 1);
+  ASSERT_EQ(table.AutoGrownIndex(6, true), 2);
+  ASSERT_TRUE(table.HasKey(10));
+  ASSERT_TRUE(table.HasKey(8));
+  ASSERT_TRUE(table.HasKey(6));
+  ASSERT_EQ(table.rows().size(), 3);
 
-  int64_t key = 10000;
-  int64_t non_key = 999;
-  framework::Tensor value;
-  value.Resize(framework::make_ddim({1, 100}));
-  auto ptr = value.mutable_data<float>(cpu);
-  ptr[0] = static_cast<float>(10);
-
-  ASSERT_EQ(table.rows().size(), static_cast<size_t>(1));
-  ASSERT_EQ(table.HasKey(key), false);
-
-  table.Set(key, value);
-
-  ASSERT_EQ(table.rows().size(), static_cast<size_t>(2));
-  ASSERT_EQ(table.HasKey(key), true);
-  // check re-allocate
-  ASSERT_EQ(table.value().dims()[0], static_cast<int64_t>(4));
+  framework::Tensor ids;
+  ids.Resize(framework::make_ddim({4}));
+  auto* ids_data = ids.mutable_data<int64_t>(cpu);
+  ids_data[0] = static_cast<int64_t>(6);
+  ids_data[1] = static_cast<int64_t>(6);
+  ids_data[2] = static_cast<int64_t>(8);
+  ids_data[3] = static_cast<int64_t>(10);
 
   framework::Tensor get_value;
-  get_value.mutable_data<float>(framework::make_ddim({2, 100}), cpu);
-  std::vector<int64_t> keys({non_key, key});
-  auto non_key_pairs = table.Get(keys, &get_value);
+  auto* value_data = get_value.mutable_data<float>(
+      framework::make_ddim({4, embedding_width}), cpu);
+  table.Get(ids, &get_value);
 
-  ASSERT_EQ(get_value.data<float>()[100], static_cast<float>(10));
-  ASSERT_EQ(non_key_pairs.size(), static_cast<size_t>(1));
-  ASSERT_EQ(non_key_pairs[0].first, non_key);
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[0 * embedding_width + j], 2);
+  }
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[1 * embedding_width + j], 2);
+  }
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[2 * embedding_width + j], 1);
+  }
+  for (int j = 0; j < embedding_width; ++j) {
+    ASSERT_EQ(value_data[3 * embedding_width + j], 0);
+  }
+}
+
+void f1(SelectedRows* table, int table_size) {
+  for (int i = 1000000; i > 0; --i) {
+    auto id = i % table_size;
+    int64_t index1 = table->AutoGrownIndex(id, true);
+    int64_t index2 = table->AutoGrownIndex(id, false);
+    int64_t index3 = table->AutoGrownIndex(id, true);
+    ASSERT_EQ(index1, index2);
+    ASSERT_EQ(index2, index3);
+  }
+}
+
+void f2(SelectedRows* table, int table_size) {
+  for (int i = 0; i < 1000000; ++i) {
+    auto id = i % table_size;
+    int64_t index1 = table->AutoGrownIndex(id, true);
+    int64_t index2 = table->AutoGrownIndex(id, false);
+    int64_t index3 = table->AutoGrownIndex(id, true);
+    ASSERT_EQ(index1, index2);
+    ASSERT_EQ(index2, index3);
+  }
+}
+
+void f3(SelectedRows* table, int table_size) {
+  clock_t t1 = clock();
+  for (int i = 100000; i > 0; --i) {
+    auto id1 = table->AutoGrownIndex(i % table_size, true);
+    auto id2 = table->Index(i % table_size);
+    ASSERT_EQ(id1, id2);
+  }
+  clock_t t2 = clock();
+  std::cout << "f3 run time:" << t2 - t1 << std::endl;
+}
+
+void f4(SelectedRows* table, int table_size) {
+  clock_t t1 = clock();
+  for (int i = 0; i < 100000; ++i) {
+    auto id1 = table->AutoGrownIndex(i % table_size, true);
+    auto id2 = table->Index(i % table_size);
+    ASSERT_EQ(id1, id2);
+  }
+  clock_t t2 = clock();
+  std::cout << "f4 run time:" << t2 - t1 << std::endl;
+}
+
+TEST(SelectedRows, MultiThreadAutoIndex) {
+  platform::CPUPlace cpu;
+  SelectedRows table;
+
+  int64_t table_size = 100000;
+  int64_t embedding_width = 8;
+  // initialize a sparse table
+  table.mutable_value()->Resize(
+      framework::make_ddim({table_size, embedding_width}));
+  auto* data = table.mutable_value()->mutable_data<float>(cpu);
+  for (int64_t i = 0; i < table_size; ++i) {
+    for (int64_t j = 0; j < embedding_width; ++j) {
+      data[i * embedding_width + j] = static_cast<float>(i);
+    }
+  }
+
+  std::thread t1(f1, &table, table_size);
+  std::thread t11(f1, &table, table_size);
+  std::thread t2(f2, &table, table_size);
+  std::thread t22(f2, &table, table_size);
+  t1.join();
+  t11.join();
+  t2.join();
+  t22.join();
+  std::thread t3(f3, &table, table_size);
+  std::thread t4(f4, &table, table_size);
+  t3.join();
+  t4.join();
 }
 
 }  // namespace framework

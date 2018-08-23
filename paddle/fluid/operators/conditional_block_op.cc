@@ -29,9 +29,9 @@ class ConditionalOp : public framework::OperatorBase {
 
  protected:
   std::vector<const framework::LoDTensor *> InputTensors(
-      const framework::Scope &scope) const {
+      const framework::Scope &scope, const std::string &in_name) const {
     std::vector<const framework::LoDTensor *> retv;
-    auto xs = Inputs("X");
+    auto xs = Inputs(in_name);
     retv.resize(xs.size(), nullptr);
     std::transform(
         xs.begin(), xs.end(), retv.begin(),
@@ -81,12 +81,18 @@ class ConditionalBlockOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto xs = InputTensors(scope);
-
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
+      // When is_scalar_condition is True, the conditional variable is a scalar,
+      // whether need to execute the operators in sub-block depends on the
+      // conditional variable (Cond).
+      auto xs = InputTensors(scope, "Cond");
       need_run = ScalarCondition(xs);
     } else {
+      // When is_scalar_condition is False, the conditional variable maybe a
+      // vector or tensor, whether need to execute the operators in sub-block
+      // depends on the input variables (Input).
+      auto xs = InputTensors(scope, "Input");
       need_run = std::all_of(
           xs.begin(), xs.end(),
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
@@ -110,11 +116,11 @@ class ConditionalBlockOp : public ConditionalOp {
 class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "The conditional variable of this operator. If X is empty, the "
+    AddInput("Cond",
+             "The conditional variable of this operator. If Cond is empty, the "
              "whole sub-block will not be executed.")
         .AsDuplicable();
-    AddInput("Params", "The input variables of the sub-block.").AsDuplicable();
+    AddInput("Input", "The input variables of the sub-block.").AsDuplicable();
     AddOutput("Out", "The output variables of the sub-block.").AsDuplicable();
     AddOutput("Scope",
               "(std::vector<Scope*>) The step scope of conditional block. To "
@@ -123,13 +129,18 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<framework::BlockDesc *>(
         "sub_block", "The step block of conditional block operator");
     AddAttr<bool>("is_scalar_condition",
-                  "the input X is used as scalar "
-                  "condition")
+                  "The conditional variable (Cond) is used as scalar "
+                  "condition.")
         .SetDefault(false);
     AddComment(R"DOC(Conditional block operator
 
-Run the sub-block if X is not empty. Params is the other inputs and Out is the
-outputs of the sub-block.
+If `is_scalar_condition` is True, the conditional variable (Cond) is a scalar,
+run the operators in sub-block if Cond is True.
+
+If `is_scalar_condition` is False, the conditional variable (Cond) is a vector or
+tensor, run the operators in sub-block if all of input variables are not empty.
+
+
 )DOC");
   }
 };
@@ -145,12 +156,12 @@ class ConditionalBlockGradOp : public ConditionalOp {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
-    auto xs = this->InputTensors(scope);
-
     bool need_run;
     if (Attr<bool>("is_scalar_condition")) {
+      auto xs = this->InputTensors(scope, "Cond");
       need_run = ScalarCondition(xs);
     } else {
+      auto xs = this->InputTensors(scope, "Input");
       need_run = std::all_of(
           xs.begin(), xs.end(),
           [](const framework::LoDTensor *t) { return t->numel() != 0; });
@@ -166,11 +177,11 @@ class ConditionalBlockGradOp : public ConditionalOp {
       auto *block = Attr<framework::BlockDesc *>("sub_block");
       exec.Run(*block->Program(), &cur_scope, block->ID(), false);
 
-      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Params"),
-                                  Outputs(framework::GradVarName("Params")));
+      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Input"),
+                                  Outputs(framework::GradVarName("Input")));
 
-      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("X"),
-                                  Outputs(framework::GradVarName("X")));
+      AssignLocalGradientToGlobal(dev_place, cur_scope, Inputs("Cond"),
+                                  Outputs(framework::GradVarName("Cond")));
     }
   }
 
@@ -199,15 +210,15 @@ class ConditionalBlockGradOp : public ConditionalOp {
 class ConditionalBlockGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    PADDLE_ENFORCE(context->HasInputs("X"));
-    if (context->HasInputs("Params")) {
-      PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("Params")));
-      context->SetOutputsDim(framework::GradVarName("Params"),
-                             context->GetInputsDim("Params"));
+    PADDLE_ENFORCE(context->HasInputs("Cond"));
+    if (context->HasInputs("Input")) {
+      PADDLE_ENFORCE(context->HasOutputs(framework::GradVarName("Input")));
+      context->SetOutputsDim(framework::GradVarName("Input"),
+                             context->GetInputsDim("Input"));
     }
-    if (context->HasOutputs(framework::GradVarName("X"))) {
-      context->SetOutputsDim(framework::GradVarName("X"),
-                             context->GetInputsDim("X"));
+    if (context->HasOutputs(framework::GradVarName("Cond"))) {
+      context->SetOutputsDim(framework::GradVarName("Cond"),
+                             context->GetInputsDim("Cond"));
     }
   }
 };
@@ -220,14 +231,15 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
   std::unique_ptr<framework::OpDesc> Apply() const override {
     auto grad_op = new framework::OpDesc();
     grad_op->SetType("conditional_block_grad");
-    grad_op->SetInput("X", Input("X"));
-    grad_op->SetInput("Params", Input("Params"));
+    grad_op->SetInput("Cond", Input("Cond"));
+    grad_op->SetInput("Input", Input("Input"));
     grad_op->SetInput("Out", Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     grad_op->SetInput("Scope", Output("Scope"));
-    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X", false));
-    grad_op->SetOutput(framework::GradVarName("Params"),
-                       InputGrad("Params", false));
+    grad_op->SetOutput(framework::GradVarName("Cond"),
+                       InputGrad("Cond", false));
+    grad_op->SetOutput(framework::GradVarName("Input"),
+                       InputGrad("Input", false));
     grad_op->SetBlockAttr("sub_block", this->grad_block_[0]);
     grad_op->SetAttr("is_scalar_condition", GetAttr("is_scalar_condition"));
     return std::unique_ptr<framework::OpDesc>(grad_op);
