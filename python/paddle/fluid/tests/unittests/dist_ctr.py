@@ -107,6 +107,4 @@ class TestDistCTR2x2(TestDistRunnerBase):
 if __name__ == "__main__":
     import os
     os.environ['CPU_NUM'] = '1'
-    import sys
-    # sys.argv = ["dist_ctr.py", "pserver", "127.0.0.1:9123,127.0.0.1:9124", "0", "127.0.0.1:9123", "2", "TRUE", "TRUE"]
     runtime_main(TestDistCTR2x2)

@@ -61,9 +61,6 @@ class TestDistRunnerBase(object):
                                 trainers, sync_mode)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
-        index = pserver_endpoints.index(current_endpoint)
-        # with open("/tmp/pserver." + str(index) + ".main.proto", "w") as f:
-        #     f.write(str(pserver_prog))
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -89,8 +86,6 @@ class TestDistRunnerBase(object):
             trainer_prog = t.get_trainer_program()
         else:
             trainer_prog = fluid.default_main_program()
-            with open("/tmp/local.main.proto", "w") as f:
-                f.write(str(trainer_prog))
 
         startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())
