@@ -65,7 +65,6 @@ __all__ = [
     'uniform_random_batch_size_like',
     'gaussian_random',
     'gaussian_random_batch_size_like',
-    'scatter',
     'sum',
     'slice',
     'shape',

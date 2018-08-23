@@ -27,24 +27,85 @@ from . import utils
 import random
 from .. import unique_name
 from functools import reduce
+import warnings
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
-    'sequence_expand', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
-    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
-    'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance', 'l2_normalize',
-    'matmul', 'topk', 'warpctc', 'sequence_reshape', 'transpose', 'im2sequence',
-    'nce', 'hsigmoid', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
-    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
-    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
-    'mean_iou', 'relu', 'log', 'crop', 'rank_loss', 'prelu', 'flatten',
-    'sequence_enumerate'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'hsigmoid',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'scatter',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'log',
+    'crop',
+    'rank_loss',
+    'prelu',
+    'flatten',
+    'stack',
+    'sequence_enumerate',
 ]
 
 
@@ -1988,7 +2049,7 @@ def batch_norm(input,
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
         data_layout(string, default NCHW): NCHW|NHWC
-        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
+        in_place(bool, Default False): This argument is deprecated since 0.15.0.
         use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -2009,6 +2070,10 @@ def batch_norm(input,
     """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
+
+    if in_place:
+        raise warnings.warn("The argument in_place is deprecated since 0.15.0, "
+                            "please do not set it True.")
 
     input_shape = input.shape
     if data_layout == 'NCHW':
@@ -2059,7 +2124,7 @@ def batch_norm(input,
     saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
+    batch_norm_out = helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -4979,6 +5044,47 @@ def gather(input, index):
     return out
 
 
+def scatter(input, index, updates, name=None):
+    """
+    **Scatter Layer**
+
+    Output is obtained by updating the input on selected indices on the first
+    axis.
+
+    .. math::
+
+        Out = X
+        Out[Ids] = Updates
+
+    Args:
+        input (Variable): The source input with rank>=1.
+        index (Variable): The index input with rank=1. Its dtype should be
+                          int32 or int64 as it is used as indexes.
+        updates (Variable): The updated value of scatter op.
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.scatter(input, index, updates)
+
+    """
+    helper = LayerHelper('scatter', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="scatter",
+        inputs={"X": input,
+                "Ids": index,
+                "Updates": updates},
+        outputs={"Out": out})
+    return out
+
+
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
@@ -5464,4 +5570,18 @@ def sequence_enumerate(input, win_size, pad_value, name=None):
         outputs={'Out': out},
         attrs={'win_size': win_size,
                'pad_value': pad_value})
+
+    
+def stack(x, axis=0):
+    helper = LayerHelper('stack', **locals())
+    axis = 0 if axis is None else axis
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        x = [x]
+
+    out = helper.create_tmp_variable(x[0].dtype)
+    helper.append_op(
+        type='stack', inputs={'X': x}, outputs={'Y': out},
+        attrs={'axis': axis})
+
     return out
