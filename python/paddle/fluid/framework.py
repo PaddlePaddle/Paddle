@@ -18,6 +18,7 @@ import collections
 import contextlib
 import re
 import six
+import traceback
 
 import numpy as np
 
@@ -49,6 +50,12 @@ EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+
+def generate_control_dev_var_name():
+    import random
+    return CONTROL_DEP_VAR_PREFIX + "@" + str(random.random())
 
 
 def grad_var_name(var_name):
@@ -498,6 +505,10 @@ class Operator(object):
 
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
+
+        callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+        op_attrs[callstack_var_name] = list(
+            reversed(traceback.format_stack()))[1:]
 
         if len(self.desc.type()) != 0:
             return

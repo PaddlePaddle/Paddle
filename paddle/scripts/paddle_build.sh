@@ -116,7 +116,6 @@ function cmake_gen() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
-        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
 EOF
@@ -146,7 +145,6 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON} \
         -DPY_VERSION=${PY_VERSION:-2.7}
 }
 
