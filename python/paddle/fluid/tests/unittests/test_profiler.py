@@ -25,9 +25,6 @@ import paddle.fluid.core as core
 
 class TestProfiler(unittest.TestCase):
     def net_profiler(self, state, profile_path='/tmp/profile'):
-        enable_if_gpu = state == 'GPU' or state == "All"
-        if enable_if_gpu and not core.is_compiled_with_cuda():
-            return
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
@@ -81,8 +78,6 @@ class TestProfiler(unittest.TestCase):
                 pass_acc_calculator.add(value=acc, weight=b_size)
                 pass_acc = pass_acc_calculator.eval()
 
-    @unittest.skipIf(not core.is_compiled_with_cuda(),
-                     "profiler is enabled only with GPU")
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
 
