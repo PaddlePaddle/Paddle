@@ -94,7 +94,7 @@ def download(url, module_name, md5sum, save_name=None):
                 dl = 0
                 total_length = int(total_length)
                 for data in r.iter_content(chunk_size=4096):
-		    if six.PY2:
+                    if six.PY2:
                         data = six.b(data)
                     dl += len(data)
                     f.write(data)
