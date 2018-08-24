@@ -17,10 +17,10 @@ class TrainTaskConfig(object):
     # only support GPU currently
     use_gpu = True
     # the epoch number to train.
-    pass_num = 30
+    pass_num = 1
     # the number of sequences contained in a mini-batch.
     # deprecated, set batch_size in args.
-    batch_size = 32
+    batch_size = 20
     # the hyper parameters for Adam optimizer.
     # This static learning_rate will be multiplied to the LearningRateScheduler
     # derived learning rate the to get the final learning rate.
@@ -46,6 +46,20 @@ class TrainTaskConfig(object):
     # include the training step counter currently.
     start_step = 0
     check_acc = True
+
+    src_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
+    trg_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
+    train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de.train_0"
+    val_file_pattern = "test_data/newstest2013.tok.bpe.32000.en-de"
+    pool_size = 2000
+    sort_type = None
+    shuffle = False
+    shuffle_batch = False
+    special_token = ['<s>', '<e>', '<unk>']
+    token_delimiter = ' '
+    local = True
+    sync = True
+    use_token_batch = False
 
 
 class InferTaskConfig(object):

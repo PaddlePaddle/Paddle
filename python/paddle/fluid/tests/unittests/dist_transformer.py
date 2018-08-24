@@ -32,28 +32,47 @@ import paddle.dataset.wmt16 as wmt16
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
-from transformer_config import ModelHyperParams
-from transformer_train import prepare_batch_input
+from transformer_config import ModelHyperParams, TrainTaskConfig
+from transformer_train import train_loop
 
 
-def transformer(use_feed):
-    assert not use_feed, "transfomer doesn't support feed yet"
-    return transformer_model.transformer(
-        ModelHyperParams.src_vocab_size + 1,
-        ModelHyperParams.trg_vocab_size + 1, ModelHyperParams.max_length + 1,
-        ModelHyperParams.n_layer, ModelHyperParams.n_head,
-        ModelHyperParams.d_key, ModelHyperParams.d_value,
-        ModelHyperParams.d_model, ModelHyperParams.d_inner_hid,
-        ModelHyperParams.dropout, ModelHyperParams.src_pad_idx,
-        ModelHyperParams.trg_pad_idx, ModelHyperParams.pos_pad_idx)
+def get_model(is_dist, is_async):
+    sum_cost, avg_cost, predict, token_num = transformer(
+        ModelHyperParams.src_vocab_size, ModelHyperParams.trg_vocab_size,
+        ModelHyperParams.max_length + 1, ModelHyperParams.n_layer,
+        ModelHyperParams.n_head, ModelHyperParams.d_key,
+        ModelHyperParams.d_value, ModelHyperParams.d_model,
+        ModelHyperParams.d_inner_hid, ModelHyperParams.dropout,
+        ModelHyperParams.weight_sharing, TrainTaskConfig.label_smooth_eps)
 
+    local_lr_scheduler = LearningRateScheduler(ModelHyperParams.d_model,
+                                               TrainTaskConfig.warmup_steps,
+                                               TrainTaskConfig.learning_rate)
 
-def get_model():
-    avg_cost = transformer(use_feed=False)
-    optimizer = fluid.optimizer.Adam()
-    optimizer.minimize(avg_cost)
-    fluid.memory_optimize(fluid.default_main_program())
-    return avg_cost
+    if not is_dist:
+        optimizer = fluid.optimizer.Adam(
+            learning_rate=lr_scheduler.learning_rate,
+            beta1=TrainTaskConfig.beta1,
+            beta2=TrainTaskConfig.beta2,
+            epsilon=TrainTaskConfig.eps)
+        optimizer.minimize(sum_cost)
+    elif is_async:
+        optimizer = fluid.optimizer.SGD(0.003)
+        optimizer.minimize(sum_cost)
+    else:
+        lr_decay = fluid.layers\
+         .learning_rate_scheduler\
+         .noam_decay(ModelHyperParams.d_model,
+            TrainTaskConfig.warmup_steps)
+
+        optimizer = fluid.optimizer.Adam(
+            learning_rate=lr_decay,
+            beta1=TrainTaskConfig.beta1,
+            beta2=TrainTaskConfig.beta2,
+            epsilon=TrainTaskConfig.eps)
+        optimizer.minimize(sum_cost)
+
+    return sum_cost, avg_cost, predict, token_num, local_lr_scheduler
 
 
 def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
@@ -68,8 +87,8 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 
 class DistTransformer2x2(object):
     def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
-                    trainer_id):
-        get_model()
+                    trainer_id, is_async):
+        get_model(True, is_async)
         t = get_transpiler(trainer_id,
                            fluid.default_main_program(), pserver_endpoints,
                            trainers)
@@ -95,31 +114,31 @@ class DistTransformer2x2(object):
             except os.error:
                 retry_times -= 1
 
-    def run_trainer(self, place, endpoints, trainer_id, trainers, is_dist=True):
-        avg_cost = get_model()
+    def run_trainer(self,
+                    place,
+                    dev_count,
+                    endpoints,
+                    trainer_id,
+                    trainers,
+                    is_dist=True,
+                    is_async=False):
+
+        sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
+            is_dist, is_async)
+
         if is_dist:
             t = get_transpiler(trainer_id,
                                fluid.default_main_program(), endpoints,
                                trainers)
             trainer_prog = t.get_trainer_program()
+            TrainTaskConfig.batch_size = 10
         else:
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)
-        startup_exe.run(fluid.default_startup_program())
 
-        strategy = fluid.ExecutionStrategy()
-        strategy.num_threads = 1
-        strategy.allow_op_delay = False
-        exe = fluid.ParallelExecutor(
-            True, loss_name=avg_cost.name, exec_strategy=strategy)
-
-        first_loss, = exe.run(fetch_list=[avg_cost.name])
-        print(first_loss)
-        for i in six.moves.xrange(5):
-            _ = exe.run(fetch_list=[avg_cost.name])
-        last_loss, = exe.run(fetch_list=[avg_cost.name])
-        print(last_loss)
+        train_loop(exe, trainer_prog, dev_count, sum_cost, avg_cost,
+                   local_lr_scheduler, token_num, predict)
 
 
 def main(role="pserver",
@@ -127,31 +146,24 @@ def main(role="pserver",
          trainer_id=0,
          current_endpoint="127.0.0.1:9123",
          trainers=1,
-         is_dist=True):
-
-    reader = paddle.batch(
-        wmt16.train(ModelHyperParams.src_vocab_size,
-                    ModelHyperParams.trg_vocab_size),
-        batch_size=transformer_model.batch_size)
-
-    with fluid.recordio_writer.create_recordio_writer(
-            WMT16_RECORDIO_FILE) as writer:
-        for batch in reader():
-            for tensor in prepare_batch_input(
-                    batch, ModelHyperParams.src_pad_idx,
-                    ModelHyperParams.trg_pad_idx, ModelHyperParams.n_head):
-                t = fluid.LoDTensor()
-                t.set(tensor, fluid.CPUPlace())
-                writer.append_tensor(t)
-            writer.complete_append_tensor()
+         is_dist=True,
+         is_async=False):
 
     model = DistTransformer2x2()
-    if role == "pserver":
-        model.run_pserver(endpoints, trainers, current_endpoint, trainer_id)
+
+    if training_role == "PSERVER" or (not TrainTaskConfig.use_gpu):
+        place = fluid.CPUPlace()
+        dev_count = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
     else:
-        p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist)
+        place = fluid.CUDAPlace(0)
+        dev_count = fluid.core.get_cuda_device_count()
+
+    if role == "pserver":
+        model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
+                          is_async)
+    else:
+        model.run_trainer(place, dev_count, endpoints, trainer_id, trainers,
+                          is_dist, is_async)
 
 
 if __name__ == "__main__":
@@ -173,4 +185,5 @@ if __name__ == "__main__":
         trainer_id=trainer_id,
         current_endpoint=current_endpoint,
         trainers=trainers,
-        is_dist=is_dist)
+        is_dist=is_dist,
+        is_async=is_async)
