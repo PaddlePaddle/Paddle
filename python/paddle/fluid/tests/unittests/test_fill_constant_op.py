@@ -62,8 +62,10 @@ class TestFillConstantOpWithSelectedRows(OpTest):
         fill_constant_op.run(scope, place)
 
         # get result from Out
-        result_array = np.array(out)
-        self.assertEqual(result_array, np.full((123, 92), 3.8))
+        result_array = np.array(out.get_tensor())
+        full_array = np.full((123, 92), 3.8, 'float32')
+
+        self.assertTrue(np.array_equal(result_array, full_array))
 
     def test_fill_constant_with_selected_rows(self):
         places = [core.CPUPlace()]
