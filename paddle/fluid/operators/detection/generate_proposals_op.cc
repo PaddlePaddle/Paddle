@@ -42,13 +42,6 @@ struct AppendProposalsFunctor {
 
 class GenerateProposalsOp : public framework::OperatorWithKernel {
  public:
-  /*
-  GenerateProposalsOp(const std::string &type,
-         const framework::VariableNameMap &inputs,
-         const framework::VariableNameMap &outputs,
-         const framework::AttributeMap &attrs)
-     : OperatorWithKernel(type, inputs, outputs, attrs) {}
-  */
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {

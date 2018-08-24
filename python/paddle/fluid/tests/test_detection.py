@@ -19,7 +19,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 import unittest
 
-"""
+
 class TestDetection(unittest.TestCase):
     def test_detection_output(self):
         program = Program()
@@ -199,44 +199,46 @@ class TestDetectionMAP(unittest.TestCase):
             self.assertIsNotNone(map_out)
             self.assertEqual(map_out.shape, (1, ))
         print(str(program))
-"""
+
+
 class TestGenerateProposals(unittest.TestCase):
-    def test_generate_proposals(self):	
+    def test_generate_proposals(self):
         data_shape = [20, 64, 64]
         images = fluid.layers.data(
             name='images', shape=data_shape, dtype='float32')
-	im_info = fluid.layers.data(
-            name='im_info', shape=[1,3], dtype='float32')
-	anchors, variances = fluid.layers.anchor_generator(
+        im_info = fluid.layers.data(
+            name='im_info', shape=[1, 3], dtype='float32')
+        anchors, variances = fluid.layers.anchor_generator(
             name='anchor_generator',
-	      input=images,
+            input=images,
             anchor_sizes=[32, 64],
             aspect_ratios=[1.0],
             variance=[0.1, 0.1, 0.2, 0.2],
             stride=[16.0, 16.0],
             offset=0.5)
-	num_anchors = anchors.shape[2]
-	scores = fluid.layers.data(
-            name='scores', shape = [1,num_anchors,8,8], dtype='float32')
-	bbox_deltas = fluid.layers.data(
-            name='bbox_deltas', shape = [1,num_anchors*4,8,8], dtype='float32')
-	rpn_rois, rpn_roi_probs = fluid.layers.generate_proposals(
-			        	name='generate_proposals',
-					scores=scores,
-                       		bbox_deltas=bbox_deltas,
-                       		im_info=im_info,
-                       		anchors=anchors,
-                       		variances=variances,
-			        	pre_nms_topN=6000,
-                      		post_nms_topN=1000,
-                       		nms_thresh=0.5,
-                       		min_size=0.1,
-					eta=1.0
-					)
-	self.assertIsNotNone(rpn_rois)
-	self.assertIsNotNone(rpn_roi_probs)
-	print(rpn_rois.shape)
-	print(rpn_roi_probs.shape)
+        num_anchors = anchors.shape[2]
+        scores = fluid.layers.data(
+            name='scores', shape=[1, num_anchors, 8, 8], dtype='float32')
+        bbox_deltas = fluid.layers.data(
+            name='bbox_deltas',
+            shape=[1, num_anchors * 4, 8, 8],
+            dtype='float32')
+        rpn_rois, rpn_roi_probs = fluid.layers.generate_proposals(
+            name='generate_proposals',
+            scores=scores,
+            bbox_deltas=bbox_deltas,
+            im_info=im_info,
+            anchors=anchors,
+            variances=variances,
+            pre_nms_topN=6000,
+            post_nms_topN=1000,
+            nms_thresh=0.5,
+            min_size=0.1,
+            eta=1.0)
+        self.assertIsNotNone(rpn_rois)
+        self.assertIsNotNone(rpn_roi_probs)
+        print(rpn_rois.shape)
+
 
 if __name__ == '__main__':
     unittest.main()
