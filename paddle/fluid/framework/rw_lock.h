@@ -16,7 +16,7 @@ limitations under the License. */
 
 #if !defined(_WIN32)
 #include <pthread.h>
-#endif // !_WIN32
+#endif  // !_WIN32
 
 #include "paddle/fluid/platform/enforce.h"
 

@@ -33,8 +33,8 @@ limitations under the License. */
 #include <string>
 
 #include "glog/logging.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
@@ -261,20 +261,21 @@ inline void throw_on_error(T e) {
     throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
                                            __LINE__);                          \
   } while (false)
-  
+
 #else
 #define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif
-#else // !_WIN32
+#else  // !_WIN32
 #define GLOG_NO_ABBREVIATED_SEVERITIES
-  // disable enforce, caused by the varardic macro exception error
-#define PADDLE_THROW(x) \
-  do { \
-    throw std::make_exception_ptr(std::runtime_error("Windows disable the enforce.")); \
+// disable enforce, caused by the varardic macro exception error
+#define PADDLE_THROW(x)                                      \
+  do {                                                       \
+    throw std::make_exception_ptr(                           \
+        std::runtime_error("Windows disable the enforce.")); \
   } while (false)
 
 #define PADDLE_ENFORCE(x) x
-#endif // !_WIN32
+#endif  // !_WIN32
 
 /*
  * Some enforce helpers here, usage:

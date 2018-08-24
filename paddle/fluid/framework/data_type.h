@@ -58,7 +58,7 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
       PADDLE_THROW("Not supported %d", type);
   }
 }
-#else 
+#else
 // the msvc compiler do not implement two-stage name lookup correctly.
 template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
@@ -91,7 +91,7 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
       PADDLE_THROW("Not supported %d", type);
   }
 }
-#endif // _WIN32
+#endif  // _WIN32
 
 extern std::string DataTypeToString(const proto::VarType::Type type);
 extern size_t SizeOfType(std::type_index type);

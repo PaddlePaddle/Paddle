@@ -17,7 +17,7 @@ limitations under the License. */
 #include <sys/time.h>
 #else
 #include <windows.h>
-#endif // !_WIN32
+#endif  // !_WIN32
 
 #include <time.h>
 #include <chrono>  // NOLINT
@@ -36,13 +36,11 @@ namespace platform {
 inline uint64_t PosixInNsec() {
   struct timeval tv;
   gettimeofday(&tv, nullptr);
-   return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
+  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 #else
-	inline uint64_t PosixInNsec() {
-		return static_cast<uint64_t>(0);
-}
-#endif // !_WIN32
+inline uint64_t PosixInNsec() { return static_cast<uint64_t>(0); }
+#endif  // !_WIN32
 
 // DeviceTracer performs the following tasks:
 // 1. Register cuda callbacks for various events: kernel, memcpy, etc.
