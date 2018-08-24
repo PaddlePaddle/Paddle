@@ -63,7 +63,8 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
 		graph_viz_pass
 		infer_clean_graph_pass
 		graph_pattern_detecter
-        infer_clean_graph_pass
+    infer_clean_graph_pass
+    attention_lstm_fuse_pass
 		pass
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model

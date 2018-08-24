@@ -30,7 +30,7 @@ class ParamOptTestPass : public ParamOptPassBase {
   }
 
   // Much operation here.
-  void Operate(Scope* scope) const override {
+  void Operate(Graph *graph, Scope *scope) const override {
     ASSERT_TRUE(scope->FindVar("tmp1"));
     ASSERT_TRUE(scope->FindVar("tmp2"));
   }

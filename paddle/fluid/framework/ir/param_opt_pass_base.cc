@@ -76,7 +76,7 @@ std::unique_ptr<ir::Graph> ir::ParamOptPassBase::ApplyImpl(
   }
 
   // Run modify.
-  Operate(scope);
+  Operate(graph.get(), scope);
 
   // Delete all the parameters need to drop.
   for (auto &param : reg_params_[kToDrop]) {
