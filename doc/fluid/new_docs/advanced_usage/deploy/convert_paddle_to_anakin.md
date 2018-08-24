@@ -13,9 +13,9 @@ Anakin 模型转换器输入支持 Caffe 和 Fluid 两种格式的预测模型�
 
 ## 系统要求
 
-- Python 2.7+ 
-- Protobuf 3.1+（务必注意 Python 与系统环境 Protobuf 版本一致）
-- PaddlePaddle 0.12.0+ (Fluid 模式下) 
+- Python 2.7+
+- Protobuf 3.1+（务必注意 Python 与系统环境 Protobuf 版本一致)
+- PaddlePaddle 0.12.0+ (Fluid 模式下)
 - flask, bson, matplotlib, scikit-image 
 - tkinter
 
