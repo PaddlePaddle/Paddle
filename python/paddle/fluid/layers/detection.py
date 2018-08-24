@@ -1264,7 +1264,9 @@ def generate_proposals(scores,
                        pre_nms_topN=6000,
                        post_nms_topN=1000,
                        nms_thresh=0.5,
-                       min_size=0.1):
+                       min_size=0.1,
+		       eta=1.0,
+		       name=None):
     """
     ** Generate proposal labels Faster-RCNN **
     """
@@ -1272,7 +1274,6 @@ def generate_proposals(scores,
 
     rpn_rois = helper.create_tmp_variable(dtype=bbox_deltas.dtype)
     rpn_roi_probs = helper.create_tmp_variable(dtype=scores.dtype)
-
     helper.append_op(
         type="generate_proposals",
         inputs={
@@ -1286,11 +1287,13 @@ def generate_proposals(scores,
             'pre_nms_topN': pre_nms_topN,
             'post_nms_topN': post_nms_topN,
             'nms_thresh': nms_thresh,
-            'min_size': min_size
+            'min_size': min_size,
+	    'eta':eta
         },
         outputs={'RpnRois': rpn_rois,
-                 'RpnRoiProbs': rpn_roi_probs})
+                 'RpnRoiProbs':rpn_roi_probs
+	})
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
 
-    return rpn_roi, rpn_roi_probs
+    return rpn_rois, rpn_roi_probs
