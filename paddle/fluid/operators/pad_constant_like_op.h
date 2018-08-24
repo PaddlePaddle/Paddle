@@ -26,7 +26,7 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
-class PadConstantBatchSizeLikeKernel : public framework::OpKernel<T> {
+class PadConstantLikeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto in_x = context.Input<framework::Tensor>("X");
@@ -45,7 +45,11 @@ class PadConstantBatchSizeLikeKernel : public framework::OpKernel<T> {
     int rank = context.Input<framework::Tensor>("X")->dims().size();
 
     std::vector<int> pads(rank * 2, 0);
-    pads[1] = static_cast<int>(in_x->dims()[0] - in_y->dims()[0]);
+
+    for (int j = 0; j < rank; ++j) {
+      pads[j * 2] = 0;
+      pads[j * 2 + 1] = static_cast<int>(in_x->dims()[j] - in_y->dims()[j]);
+    }
 
     math::PaddingFunctor<DeviceContext, T>(rank, context, pads, pad_value,
                                            *in_y, out);
@@ -53,10 +57,9 @@ class PadConstantBatchSizeLikeKernel : public framework::OpKernel<T> {
 };
 
 template <typename DeviceContext, typename T>
-class PadConstantBatchSizeLikeGradKernel : public framework::OpKernel<T> {
+class PadConstantLikeGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto in_x = context.Input<framework::Tensor>("X");
     auto in_y = context.Input<framework::Tensor>("Y");
     auto in_dout =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
@@ -66,16 +69,20 @@ class PadConstantBatchSizeLikeGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    if (in_x->dims() == in_y->dims()) {
-      // TensorCopy(in_y, context.GetPlace(), context, out);
+    if (in_dout->dims() == in_y->dims()) {
+      // TensorCopy(in_dout, context.GetPlace(), context, d_y);
       d_y->ShareDataWith(*in_dout);
       return;
     }
 
     d_y->mutable_data<T>(context.GetPlace());
     int rank = in_dout->dims().size();
+
     std::vector<int> pads(static_cast<size_t>(rank) * 2, 0);
-    pads[1] = static_cast<int>(in_y->dims()[0] - in_x->dims()[0]);
+    for (int j = 0; j < rank; ++j) {
+      pads[j * 2] = 0;
+      pads[j * 2 + 1] = static_cast<int>(in_dout->dims()[j] - in_y->dims()[j]);
+    }
 
     math::PaddingGradFunctor<DeviceContext, T>(rank, context, pads, *in_dout,
                                                d_y);

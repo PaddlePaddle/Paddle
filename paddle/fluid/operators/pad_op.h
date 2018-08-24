@@ -52,7 +52,7 @@ class PadGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    d_x->mutable_data(context.GetPlace());
+    d_x->mutable_data<T>(context.GetPlace());
     int rank = d_out->dims().size();
     math::PaddingGradFunctor<DeviceContext, T>(rank, context, pads, *d_out,
                                                d_x);

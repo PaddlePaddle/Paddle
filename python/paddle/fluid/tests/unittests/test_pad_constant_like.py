@@ -22,7 +22,7 @@ from op_test import OpTest
 class TestPadOp(OpTest):
     def setUp(self):
         self.initTestCase()
-        self.op_type = "pad_constant_batch_size_like"
+        self.op_type = "pad_constant_like"
         self.inputs = {
             'X': np.random.random(self.x_shape).astype("float32"),
             'Y': np.random.random(self.y_shape).astype("float32")
@@ -54,6 +54,14 @@ class TestCase1(TestPadOp):
         self.x_shape = (4, 3, 4, 4)
         self.y_shape = (2, 3, 4, 4)
         self.paddings = [(0, 2), (0, 0), (0, 0), (0, 0)]
+        self.pad_value = 0.5
+
+
+class TestCase2(TestPadOp):
+    def initTestCase(self):
+        self.x_shape = (4, 3, 4, 4)
+        self.y_shape = (2, 3, 2, 4)
+        self.paddings = [(0, 2), (0, 0), (0, 2), (0, 0)]
         self.pad_value = 0.5
 
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -93,8 +93,7 @@ void PaddingFunctor(int rank, const framework::ExecutionContext& context,
 template <typename DeviceContext, typename T>
 void PaddingGradFunctor(int rank, const framework::ExecutionContext& context,
                         const std::vector<int>& pads,
-                        const framework::Tensor& src,
-                        framework::Tensor* out) const {
+                        const framework::Tensor& src, framework::Tensor* out) {
   switch (rank) {
     case 1:
       PadGradFunction<DeviceContext, T, 1>(context, pads, src, out);
