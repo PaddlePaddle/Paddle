@@ -51,7 +51,7 @@ class ParamOptPassBase : public Pass {
   // to operate on.
   virtual void RegisterParamOperations() const = 0;
   // Perform the opration.
-  virtual void Operate(Scope *scope) const = 0;
+  virtual void Operate(Graph *graph, Scope *scope) const = 0;
 
   // Register a parameter that will operate on (some check will be performed).
   void ToRead(const std::string &param) const;
