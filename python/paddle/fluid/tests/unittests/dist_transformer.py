@@ -133,7 +133,7 @@ class DistTransformer2x2(object):
                                trainers)
             trainer_prog = t.get_trainer_program()
             TrainTaskConfig.batch_size = 10
-            TrainTaskConfig.train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de.train_{}".format(
+            TrainTaskConfig.train_file_pattern = TrainTaskConfig.data_path + "train.tok.clean.bpe.32000.en-de.train_{}".format(
                 trainer_id)
         else:
             trainer_prog = fluid.default_main_program()
@@ -163,7 +163,7 @@ def download_files():
     paddle.dataset.common.download(train0_url, 'test_dist_transformer',
                                    train0_md5)
 
-    train1_url = url_prefix + 'train.tok.clean.bpe.32000.en-de.train_0'
+    train1_url = url_prefix + 'train.tok.clean.bpe.32000.en-de.train_1'
     train1_md5 = '8757798200180285b1a619cd7f408747'
     paddle.dataset.common.download(train1_url, 'test_dist_transformer',
                                    train1_md5)

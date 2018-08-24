@@ -48,10 +48,11 @@ class TrainTaskConfig(object):
 
     check_acc = True
 
-    src_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
-    trg_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
-    train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de"
-    val_file_pattern = "test_data/newstest2013.tok.bpe.32000.en-de"
+    data_path = "~/.cache/paddle/dataset/test_dist_transformer/"
+    src_vocab_fpath = data_path + "vocab.bpe.32000"
+    trg_vocab_fpath = data_path + "vocab.bpe.32000"
+    train_file_pattern = data_path + "train.tok.clean.bpe.32000.en-de"
+    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de"
     pool_size = 2000
     sort_type = None
     local = True
