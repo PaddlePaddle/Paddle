@@ -90,6 +90,7 @@ void Trans(const DeviceContext &ctx, const Tensor &in_tensor,
 
 void Gather(const platform::DeviceContext &ctx, const Tensor &in,
             const Tensor &index, Tensor *out) {
+  out->Resize({index.numel(), 1});
   CPUGather<float>(ctx, in, index, out);
   out->Resize({index.numel(), in.dims()[1]});
 }
@@ -259,6 +260,7 @@ T JaccardOverlap(const T *box1, const T *box2, const bool normalized) {
 template <class T>
 Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
            const T nms_threshold, const float eta) {
+  PADDLE_ENFORCE_NOT_NULL(bbox);
   int64_t num_boxes = bbox->dims()[0];
   // 4: [xmin ymin xmax ymax]
   int64_t box_size = bbox->dims()[1];
@@ -270,14 +272,9 @@ Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
 
   std::vector<int> selected_indices;
   int selected_num = 0;
-  // selected_indices->clear();
   T adaptive_threshold = nms_threshold;
   const T *bbox_data = bbox->data<T>();
   bool flag;
-  int idx = sorted_indices.front().second;
-  selected_indices.push_back(idx);
-  selected_num++;
-  sorted_indices.erase(sorted_indices.begin());
   while (sorted_indices.size() != 0) {
     int idx = sorted_indices.front().second;
     flag = true;
