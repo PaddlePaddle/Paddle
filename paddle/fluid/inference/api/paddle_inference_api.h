@@ -51,7 +51,7 @@ class PaddleBuf {
       : data_(data), length_(length), memory_owned_{false} {}
 
   // Own memory.
-  PaddleBuf(size_t length)
+  explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
 
   // Resize to `length` bytes.
@@ -88,6 +88,7 @@ struct PaddleTensor {
 
 enum class PaddleEngineKind {
   kNative = 0,         // Use the native Fluid facility.
+  KNativeDistributed,  // Use the native Fluid with parameter server.
   kAnakin,             // Use Anakin for inference.
   kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
   // TODO(Superjomn) support following engines latter.
@@ -141,7 +142,6 @@ struct NativeConfig : public PaddlePredictor::Config {
 
   std::string prog_file;
   std::string param_file;
-  std::vector<std::string> pserver_endpoints;
 };
 
 // Configurations for Anakin engine.
@@ -164,6 +164,15 @@ struct TensorRTConfig : public NativeConfig {
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
   int workspace_size{1 << 30};
+};
+
+struct NativeDistributedConfig : public NativeConfig {
+  // This is for parameter server endpoints.
+  // Such as lookup table, the selectedRows data stored in parameter server
+  // endpoints.
+  // But in the ```__model__``` saved by ```save_inference_model```,
+  // the parameter server ips need by inference maybe not same as training.
+  std::vector<std::string> pserver_endpoints;
 };
 
 // A factory to help create different predictors.

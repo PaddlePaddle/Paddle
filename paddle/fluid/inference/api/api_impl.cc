@@ -26,8 +26,6 @@ limitations under the License. */
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
-constexpr char kEndPointMap[] = "epmap";
-
 namespace paddle {
 namespace {
 
@@ -115,18 +113,6 @@ bool NativePaddlePredictor::Init(
   } else {
     LOG(ERROR) << "fail to load inference model.";
     return false;
-  }
-
-  if (!config_.pserver_endpoints.empty()) {
-    auto *global_block = inference_program_.get()->MutableBlock(0);
-    for (auto *op : global_block->AllOps()) {
-      if (op->HasAttr(kEndPointMap)) {
-        op->SetAttr(kEndPointMap, config_.pserver_endpoints);
-        op->CheckAttrs();
-        VLOG(3) << "set " << kEndPointMap << " in OP " << op->Type() << " to "
-                << vec2str(config_.pserver_endpoints);
-      }
-    }
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);
