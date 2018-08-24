@@ -232,40 +232,28 @@ use lstm_x_t as input and compute as standard LSTM.
 template <typename T>
 inline void bias_relu(const int n, const T* x, const T* bias, T* y) {
   if (bias) {
-    for (int i = 0; i < n; ++i) {
-      y[i] = x[i] + bias[0];
-    }
-    math::vec_relu<T>(n, y, y);
+    math::vec_add_bias<T, platform::jit::avx>(n, *bias, x, y);
+    math::vec_relu<T, platform::jit::avx>(n, y, y);
   } else {
-    math::vec_relu<T>(n, x, y);
+    math::vec_relu<T, platform::jit::avx>(n, x, y);
   }
 }
 
-template <typename DeviceContext, typename T>
-inline void vec_softmax(const math::BlasT<DeviceContext, T>& blas, const int n,
-                        const T* x, T* y) {
+template <typename T>
+inline void vec_softmax(const int n, const T* x, T* y) {
   T scalar = x[0];
   // max
   for (int i = 1; i < n; ++i) {
     scalar = scalar < x[i] ? x[i] : scalar;
   }
-
-  // sub
-  for (int i = 0; i < n; ++i) {
-    y[i] = x[i] - scalar;
-  }
-
-  // exp
-  blas.VEXP(n, y, y);
-
+  math::vec_add_bias<T, platform::jit::avx>(n, -scalar, x, y);  // sub
+  math::vec_exp<T>(n, y, y);                                    // exp
   // sum
   scalar = T(0);
   for (int i = 0; i < n; ++i) {
     scalar += y[i];
   }
-
-  // scale
-  blas.SCAL(n, static_cast<T>(1) / scalar, y);
+  math::vec_scal<T>(n, static_cast<T>(1) / scalar, y);  // scale
 }
 
 template <typename T>
@@ -363,7 +351,7 @@ class AttentionLSTMKernel : public framework::OpKernel<T> {
                        fc_out_data);
         }
         // 1d. softmax
-        vec_softmax<DeviceContext, T>(blas, seq_len, fc_out_data, fc_out_data);
+        vec_softmax<T>(seq_len, fc_out_data, fc_out_data);
         // mul x(seq_len*M) and sum pool
         math::FCCompute<DeviceContext, T>(blas, 1, M, seq_len, fc_out_data,
                                           cur_x_data, lstm_x_data);
