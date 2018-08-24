@@ -90,6 +90,8 @@ class TestDistRunnerBase(object):
         startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())
 
+        os.environ['CPU_NUM'] = '1'
+
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
         strategy.allow_op_delay = False
