@@ -32,8 +32,8 @@ function(copy TARGET)
         list(GET copy_lib_SRCS ${index} src)
         list(GET copy_lib_DSTS ${index} dst)
         add_custom_command(TARGET ${TARGET} PRE_BUILD 
-          COMMAND mkdir -p "${dst}"
-          COMMAND cp -r "${src}" "${dst}"
+          COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
+          COMMAND ${CMAKE_COMMAND} -E copy_directory "${src}" "${dst}"
           COMMENT "copying ${src} -> ${dst}")
     endforeach()
 endfunction()
