@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 set(PYBIND_DEPS pybind python proto_desc memory executor prune  feed_fetch_method)
 set(PYBIND_SRCS pybind.cc exception.cc protobuf.cc const_value.cc)
 if(NOT WIN32)
@@ -8,20 +8,12 @@ endif()
 if(WITH_PYTHON)
   if(WITH_AMD_GPU)
     hip_library(paddle_pybind SHARED
-<<<<<<< HEAD
       SRCS ${PYBIND_SRCS}
-=======
-      SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc
->>>>>>> origin/develop
       DEPS ${PYBIND_DEPS}
       ${GLOB_OP_LIB})
   else()
     cc_library(paddle_pybind SHARED
-<<<<<<< HEAD
       SRCS ${PYBIND_SRCS}
-=======
-      SRCS pybind.cc exception.cc protobuf.cc const_value.cc recordio.cc
->>>>>>> origin/develop
       DEPS ${PYBIND_DEPS}
       ${GLOB_OP_LIB})
     if(NOT APPLE AND NOT ANDROID AND NOT WIN32)

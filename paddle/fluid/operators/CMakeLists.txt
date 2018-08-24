@@ -85,11 +85,7 @@ function(op_library TARGET)
 
     #remove windows unsupported op
     if (WIN32)
-<<<<<<< HEAD
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op")
-=======
-    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op")
->>>>>>> origin/develop
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()

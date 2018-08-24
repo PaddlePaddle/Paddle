@@ -18,6 +18,11 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
 
+#if defined(_WIN32)
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -34,7 +39,6 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/fluid/platform/macros.h"
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/to_string.h"
@@ -263,10 +267,10 @@ inline void throw_on_error(T e) {
   } while (false)
 
 #else
-#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
-#endif
+#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__)
+#endif  // REPLACE_ENFORCE_GLOG
+
 #else  // !_WIN32
-#define GLOG_NO_ABBREVIATED_SEVERITIES
 // disable enforce, caused by the varardic macro exception error
 #define PADDLE_THROW(x)                                      \
   do {                                                       \
@@ -274,7 +278,7 @@ inline void throw_on_error(T e) {
         std::runtime_error("Windows disable the enforce.")); \
   } while (false)
 
-#define PADDLE_ENFORCE(x) x
+#define PADDLE_ENFORCE(x, ...) x
 #endif  // !_WIN32
 
 /*
