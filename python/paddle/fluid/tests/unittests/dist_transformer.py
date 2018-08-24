@@ -146,6 +146,33 @@ class DistTransformer2x2(object):
                    local_lr_scheduler, token_num, predict)
 
 
+def download_files():
+    url_prefix = 'http://paddle-unittest-data.cdn.bcebos.com/dist_transformer/'
+    vocab_url = url_prefix + 'vocab.bpe.32000'
+    vocab_md5 = 'a86d345ca6e27f6591d0dccb1b9be853'
+    paddle.dataset.common.download(vocab_url, 'test_dist_transformer',
+                                   vocab_md5)
+
+    local_train_url = url_prefix + 'train.tok.clean.bpe.32000.en-de'
+    local_train_md5 = '033eb02b9449e6dd823f050782ac8914'
+    paddle.dataset.common.download(local_train_url, 'test_dist_transformer',
+                                   local_train_md5)
+
+    train0_url = url_prefix + 'train.tok.clean.bpe.32000.en-de.train_0'
+    train0_md5 = 'ddce7f602f352a0405267285379a38b1'
+    paddle.dataset.common.download(train0_url, 'test_dist_transformer',
+                                   train0_md5)
+
+    train1_url = url_prefix + 'train.tok.clean.bpe.32000.en-de.train_0'
+    train1_md5 = '8757798200180285b1a619cd7f408747'
+    paddle.dataset.common.download(train1_url, 'test_dist_transformer',
+                                   train1_md5)
+
+    test_url = url_prefix + 'newstest2013.tok.bpe.32000.en-de'
+    test_md5 = '9dd74a266dbdb25314183899f269b4a2'
+    paddle.dataset.common.download(test_url, 'test_dist_transformer', test_md5)
+
+
 def main(role="pserver",
          endpoints="127.0.0.1:9123",
          trainer_id=0,
@@ -153,6 +180,8 @@ def main(role="pserver",
          trainers=1,
          is_dist=True,
          is_async=False):
+
+    download_files()
 
     model = DistTransformer2x2()
 
