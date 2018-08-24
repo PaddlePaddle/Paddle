@@ -9,6 +9,7 @@ cc_library(fc_fuse_pass SRCS fc_fuse_pass.cc DEPS graph graph_pattern_detecter)
 cc_library(infer_clean_graph_pass SRCS infer_clean_graph_pass.cc DEPS graph pass)
 cc_library(fc_lstm_fuse_pass SRCS fc_lstm_fuse_pass.cc DEPS graph graph_pattern_detecter)
 
+cc_library(param_opt_pass_base SRCS param_opt_pass_base.cc DEPS pass graph)
 
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)
@@ -16,3 +17,4 @@ cc_test(graph_helper_test SRCS graph_helper_test.cc DEPS graph graph_helper op_r
 cc_test(test_graph_pattern_detecter SRCS graph_pattern_detecter_tester.cc DEPS graph_pattern_detecter)
 cc_test(test_fc_fuse_pass SRCS fc_fuse_pass_tester.cc DEPS fc_fuse_pass graph_pattern_detecter graph pass graph_traits framework_proto)
 cc_test(test_fc_lstm_fuse_pass SRCS fc_lstm_fuse_pass_tester.cc DEPS fc_lstm_fuse_pass graph_pattern_detecter graph pass graph_traits framework_proto)
+cc_test(test_param_opt_pass_base SRCS param_opt_pass_base_test.cc DEPS pass graph param_opt_pass_base)
