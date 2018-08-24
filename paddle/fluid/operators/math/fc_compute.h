@@ -25,17 +25,25 @@ namespace math {
 template <typename DeviceContext, typename T>
 inline void FCCompute(const BlasT<DeviceContext, T>& blas, const int M,
                       const int N, const int K, const T* X, const T* W, T* Y,
-                      const T* B = NULL) {
-  blas.GEMM(CblasNoTrans, CblasNoTrans, M, N, K, static_cast<T>(1), X, W,
-            static_cast<T>(0), Y);
-  if (B) {
+                      const T* B = NULL, bool relu = false) {
+  blas.MatMul(M, N, K, X, W, Y);
+  if (B == NULL) {
+    return;
+  }
+
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for if (FLAGS_paddle_num_threads > 1)
 #endif
-    for (int i = 0; i < M; i++) {
-      blas.AXPY(N, static_cast<T>(1), B, Y + i * N);
-    }
+  for (int i = 0; i < M; i++) {
+    blas.AXPY(N, static_cast<T>(1), B, Y + i * N);
   }
+
+  if (!relu) {
+    return;
+  }
+
+  // TODO(TJ): fuse relu
+  LOG(FATAL) << "Not implemented!";
 }
 
 }  // namespace math
