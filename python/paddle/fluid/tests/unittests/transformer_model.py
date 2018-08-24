@@ -205,12 +205,21 @@ def prepare_encoder(src_word,
     [batch_size, max_src_length_in_batch, d_model].
     This module is used at the bottom of the encoder stacks.
     """
-    src_word_emb = layers.embedding(
-        src_word,
-        size=[src_vocab_size, src_emb_dim],
-        param_attr=fluid.ParamAttr(
-            name=word_emb_param_name,
-            initializer=fluid.initializer.Normal(0., src_emb_dim**-0.5)))
+    if TrainTaskConfig.check_acc:
+        src_word_emb = layers.embedding(
+            src_word,
+            size=[src_vocab_size, src_emb_dim],
+            param_attr=fluid.ParamAttr(
+                name=word_emb_param_name,
+                initializer=fluid.initializer.UniformInitializer(
+                    low=-1.0, high=1.0)))
+    else:
+        src_word_emb = layers.embedding(
+            src_word,
+            size=[src_vocab_size, src_emb_dim],
+            param_attr=fluid.ParamAttr(
+                name=word_emb_param_name,
+                initializer=fluid.initializer.Normal(0., src_emb_dim**-0.5)))
 
     src_word_emb = layers.scale(x=src_word_emb, scale=src_emb_dim**0.5)
     src_pos_enc = layers.embedding(
