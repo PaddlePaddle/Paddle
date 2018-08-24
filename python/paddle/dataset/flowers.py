@@ -42,7 +42,6 @@ import numpy as np
 from multiprocessing import cpu_count
 __all__ = ['train', 'test', 'valid']
 
-
 DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
 LABEL_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/imagelabels.mat'
 SETID_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/setid.mat'
