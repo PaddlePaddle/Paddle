@@ -1,4 +1,5 @@
 # internal library.
+message("why it hurts!")
 cc_library(header SRCS header.cc)
 cc_test(header_test SRCS header_test.cc DEPS header)
 cc_library(chunk SRCS chunk.cc DEPS snappystream snappy header zlib)

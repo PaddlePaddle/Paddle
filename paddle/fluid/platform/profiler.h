@@ -69,6 +69,7 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
+#if !defined(_WIN32)
 struct RecordEvent {
   RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
@@ -94,6 +95,16 @@ struct RecordBlock {
   std::string name_;
   uint64_t start_ns_;
 };
+#else
+// Our profiler deeply coupled in many operators.
+// use fake object to avoid large modifies these files.
+struct RecordEvent {
+  RecordEvent(const std::string& name, const DeviceContext* dev_ctx) {}
+};
+struct RecordBlock {
+  explicit RecordBlock(int block_id) {}
+};
+#endif
 
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
