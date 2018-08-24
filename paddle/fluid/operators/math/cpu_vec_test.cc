@@ -104,7 +104,7 @@ void TestAndBench(const int n, std::function<void(const int, const T*, T*)> tgt,
 TEST(CpuVecTest, sigmoid) {
   namespace jit = paddle::platform::jit;
   using namespace paddle::operators::math;  // NOLINT
-  for (auto sz : {1, 2, 15, 16, 32, 128, 200, 512}) {
+  for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
     TestAndBench<float>(sz, vec_sigmoid<float, jit::avx>, ref_sigmoid<float>);
     TestAndBench<float>(sz, vec_sigmoid<float, jit::avx2>, ref_sigmoid<float>);
@@ -117,7 +117,7 @@ TEST(CpuVecTest, sigmoid) {
 TEST(CpuVecTest, tanh) {
   namespace jit = paddle::platform::jit;
   using namespace paddle::operators::math;  // NOLINT
-  for (auto sz : {1, 2, 15, 16, 32, 128, 200, 512}) {
+  for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_tanh<float>, ref_tanh<float>);
     TestAndBench<float>(sz, vec_tanh<float, jit::avx>, ref_tanh<float>);
     TestAndBench<float>(sz, vec_tanh<float, jit::avx2>, ref_tanh<float>);
@@ -130,7 +130,7 @@ TEST(CpuVecTest, tanh) {
 TEST(CpuVecTest, relu) {
   namespace jit = paddle::platform::jit;
   using namespace paddle::operators::math;  // NOLINT
-  for (auto sz : {1, 2, 15, 16, 32, 128, 200, 512}) {
+  for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
     TestAndBench<float>(sz, vec_relu<float>, ref_relu<float>);
     TestAndBench<float>(sz, vec_relu<float, jit::avx>, ref_relu<float>);
     TestAndBench<float>(sz, vec_relu<float, jit::avx2>, ref_relu<float>);
