@@ -24,19 +24,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-struct DyDataTypeVisitor {
-  const platform::Place place_;
-  LoDTensor *in_;
-  DyDataTypeVisitor(const platform::Place &place, LoDTensor *in)
-      : place_(place), in_(in) {}
-
-  template <typename T>
-  T *operator()() {
-    auto *p = in_->mutable_data<T>(place_);
-    return p;
-  }
-};
-
 struct AppendProposalsFunctor {
   LoDTensor *out_;
   int64_t offset_;
@@ -335,17 +322,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     auto *rpn_rois = context.Output<LoDTensor>("RpnRois");
     auto *rpn_roi_probs = context.Output<LoDTensor>("RpnRoiProbs");
 
-    // rpn_rois->mutable_data(context.GetPlace(), anchors->type());
-    // rpn_roi_probs->mutable_data(context.GetPlace(), scores->type());
-
-    rpn_rois->Resize(anchors->dims());
-    rpn_roi_probs->Resize(scores->dims());
-    framework::VisitDataType(framework::ToDataType(anchors->type()),
-                             DyDataTypeVisitor(context.GetPlace(), rpn_rois));
-    framework::VisitDataType(
-        framework::ToDataType(scores->type()),
-        DyDataTypeVisitor(context.GetPlace(), rpn_roi_probs));
-
+    rpn_rois->mutable_data(context.GetPlace(), anchors->type());
+    rpn_roi_probs->mutable_data(context.GetPlace(), scores->type());
     int pre_nms_topN = context.Attr<int>("pre_nms_topN");
     int post_nms_topN = context.Attr<int>("post_nms_topN");
     float nms_thresh = context.Attr<float>("nms_thresh");
