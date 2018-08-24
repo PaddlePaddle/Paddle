@@ -1,4 +1,11 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
+set(analysis_deps
+    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
+
+if(WITH_DISTRIBUTE)
+    set(analysis_deps ${analysis_deps} grpc)
+endif()
+
 cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
   helper.cc
@@ -10,7 +17,7 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   tensorrt_subgraph_node_mark_pass.cc
   fluid_to_ir_pass.cc
   model_store_pass.cc
-  DEPS framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
+  DEPS ${analysis_deps})
 
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
@@ -58,20 +65,22 @@ endif()
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
+    analysis_predictor
 		# ir
 		fc_fuse_pass
 		graph_viz_pass
 		infer_clean_graph_pass
 		graph_pattern_detecter
     infer_clean_graph_pass
+    paddle_inference_api
 		pass
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
-inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
-inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc EXTRA_DEPS paddle_inference_api)
+inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc EXTRA_DEPS paddle_inference_api)
+inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc EXTRA_DEPS paddle_fluid)
 inference_analysis_test(test_fluid_to_data_flow_graph_pass SRCS fluid_to_data_flow_graph_pass_tester.cc)
 inference_analysis_test(test_subgraph_splitter SRCS subgraph_splitter_tester.cc)
 inference_analysis_test(test_dfg_graphviz_draw_pass SRCS dfg_graphviz_draw_pass_tester.cc)

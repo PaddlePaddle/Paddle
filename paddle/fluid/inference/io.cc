@@ -143,8 +143,8 @@ std::unique_ptr<framework::ProgramDesc> Load(
   return main_program;
 }
 
-void SaveVars(const std::vector<std::string>& vars,
-              const framework::Scope& scope, const std::string& dirname,
+void SaveVars(const framework::Scope& scope,
+              const std::vector<std::string>& vars, const std::string& dirname,
               bool predicate) {
   framework::ProgramDesc prog;
   auto* block = prog.MutableBlock(0);
