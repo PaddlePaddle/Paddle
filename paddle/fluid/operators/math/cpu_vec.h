@@ -77,6 +77,122 @@ inline void vec_sigmoid(const int n, const T* x, T* y) {
   }
 }
 
+template <>
+inline void vec_sigmoid<float, platform::jit::avx>(const int n, const float* x,
+                                                   float* y) {
+#ifdef __AVX__
+  constexpr int block = AVX_FLOAT_BLOCK;
+  if (n < block) {  // can use larger threshold if necessary
+    vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
+    return;
+  }
+  const int rest = n % block;
+  const int end = n - rest;
+  int i = 0;
+  __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);
+  __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);
+  __m256 zeros = _mm256_setzero_ps();
+  __m256 tmp;
+#define MOVE_ONE_STEP              \
+  tmp = _mm256_loadu_ps(x + i);    \
+  tmp = _mm256_max_ps(tmp, min);   \
+  tmp = _mm256_min_ps(tmp, max);   \
+  tmp = _mm256_sub_ps(zeros, tmp); \
+  _mm256_storeu_ps(y + i, tmp)
+  for (i = 0; i < end; i += block) {
+    MOVE_ONE_STEP;
+  }
+  if (rest != 0) {
+    i = n - block;
+    MOVE_ONE_STEP;
+  }
+#undef MOVE_ONE_STEP
+
+  vec_exp<float>(n, y, y);
+
+  __m256 ones = _mm256_set1_ps(1.0f);
+#define MOVE_ONE_STEP             \
+  tmp = _mm256_loadu_ps(y + i);   \
+  tmp = _mm256_add_ps(ones, tmp); \
+  tmp = _mm256_div_ps(ones, tmp); \
+  _mm256_storeu_ps(y + i, tmp)
+  for (i = 0; i < end; i += block) {
+    MOVE_ONE_STEP;
+  }
+#undef MOVE_ONE_STEP
+  if (rest == 0) {
+    return;
+  }
+  // can not continue move step
+  for (i = n - rest; i < n; ++i) {
+    y[i] = 1.f / (1.f + y[i]);
+  }
+#else
+  vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
+#endif
+}
+
+template <>
+inline void vec_sigmoid<float, platform::jit::avx2>(const int n, const float* x,
+                                                    float* y) {
+  vec_sigmoid<float, platform::jit::avx>(n, x, y);
+}
+
+template <>
+inline void vec_sigmoid<float, platform::jit::avx512_common>(const int n,
+                                                             const float* x,
+                                                             float* y) {
+#ifdef __AVX512F__
+  constexpr int block = AVX512_FLOAT_BLOCK;
+  if (n < block) {
+    vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
+    return;
+  }
+  const int rest = n % block;
+  const int end = n - rest;
+  int i = 0;
+  __m512 max = _mm512_set1_ps(SIGMOID_THRESHOLD_MAX);
+  __m512 min = _mm512_set1_ps(SIGMOID_THRESHOLD_MIN);
+  __m512 zeros = _mm512_setzero_ps();
+  __m512 tmp;
+#define MOVE_ONE_STEP              \
+  tmp = _mm512_loadu_ps(x + i);    \
+  tmp = _mm512_max_ps(tmp, min);   \
+  tmp = _mm512_min_ps(tmp, max);   \
+  tmp = _mm512_sub_ps(zeros, tmp); \
+  _mm512_storeu_ps(y + i, tmp)
+  for (i = 0; i < end; i += block) {
+    MOVE_ONE_STEP;
+  }
+  if (rest != 0) {
+    i = n - block;
+    MOVE_ONE_STEP;
+  }
+#undef MOVE_ONE_STEP
+
+  vec_exp<float>(n, y, y);
+
+  __m512 ones = _mm512_set1_ps(1.0f);
+#define MOVE_ONE_STEP             \
+  tmp = _mm512_loadu_ps(y + i);   \
+  tmp = _mm512_add_ps(ones, tmp); \
+  tmp = _mm512_div_ps(ones, tmp); \
+  _mm512_storeu_ps(y + i, tmp)
+  for (i = 0; i < end; i += block) {
+    MOVE_ONE_STEP;
+  }
+#undef MOVE_ONE_STEP
+  if (rest == 0) {
+    return;
+  }
+  for (i = n - rest; i < n; ++i) {
+    y[i] = 1.f / (1.f + y[i]);
+  }
+#else
+  vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
+#endif
+}
+
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_tanh(const int n, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
