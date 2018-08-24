@@ -28,11 +28,12 @@ Graphics and Image Processing (2008)
 http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
-import cPickle
 import itertools
 import functools
 from common import download
 import tarfile
+import six
+from six.moves import cPickle as pickle
 import scipy.io as scio
 from paddle.dataset.image import *
 from paddle.reader import *
@@ -40,6 +41,7 @@ import os
 import numpy as np
 from multiprocessing import cpu_count
 __all__ = ['train', 'test', 'valid']
+
 
 DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
 LABEL_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
@@ -111,8 +113,11 @@ def reader_creator(data_file,
         for file in open(file_list):
             file = file.strip()
             batch = None
-            with open(file, 'r') as f:
-                batch = cPickle.load(f)
+            with open(file, 'rb') as f:
+                if six.PY2:
+                    batch = pickle.load(f)
+                else:
+                    batch = pickle.load(f, encoding='bytes')
             data = batch['data']
             labels = batch['label']
             for sample, label in itertools.izip(data, batch['label']):
