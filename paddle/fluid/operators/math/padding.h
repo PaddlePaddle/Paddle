@@ -26,9 +26,9 @@ template <typename T, size_t D, int MajorType = Eigen::RowMajor,
 using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T, size_t D>
-void PadConstantBatchSizeLikeFunction(
-    const framework::ExecutionContext& context, const std::vector<int>& pads,
-    const framework::Tensor& src, T pad_value, framework::Tensor* out) {
+void PadFunction(const framework::ExecutionContext& context,
+                 const std::vector<int>& pads, const framework::Tensor& src,
+                 T pad_value, framework::Tensor* out) {
   Eigen::array<std::pair<int, int>, D> paddings;
 
   for (size_t i = 0; i < paddings.size(); ++i) {
@@ -45,9 +45,9 @@ void PadConstantBatchSizeLikeFunction(
 }
 
 template <typename DeviceContext, typename T, size_t D>
-void PadConstantBatchSizeLikeGradFunction(
-    const framework::ExecutionContext& context, const std::vector<int>& pads,
-    const framework::Tensor& src, framework::Tensor* d_out) {
+void PadGradFunction(const framework::ExecutionContext& context,
+                     const std::vector<int>& pads, const framework::Tensor& src,
+                     framework::Tensor* d_out) {
   Eigen::array<std::pair<int, int>, D> paddings;
   for (size_t i = 0; i < paddings.size(); ++i) {
     paddings[i].first = -pads[i * 2];
@@ -59,6 +59,65 @@ void PadConstantBatchSizeLikeGradFunction(
   auto& place =
       *context.template device_context<DeviceContext>().eigen_device();
   d_out_tensor.device(place) = src_tensor.pad(paddings, 0);
+}
+
+template <typename DeviceContext, typename T>
+void PaddingFunctor(int rank, const framework::ExecutionContext& context,
+                    const std::vector<int>& pads, T pad_value,
+                    const framework::Tensor& src, framework::Tensor* out) {
+  switch (rank) {
+    case 1:
+      PadFunction<DeviceContext, T, 1>(context, pads, src, pad_value, out);
+      break;
+    case 2:
+      PadFunction<DeviceContext, T, 2>(context, pads, src, pad_value, out);
+      break;
+    case 3:
+      PadFunction<DeviceContext, T, 3>(context, pads, src, pad_value, out);
+      break;
+    case 4:
+      PadFunction<DeviceContext, T, 4>(context, pads, src, pad_value, out);
+      break;
+    case 5:
+      PadFunction<DeviceContext, T, 5>(context, pads, src, pad_value, out);
+      break;
+    case 6:
+      PadFunction<DeviceContext, T, 6>(context, pads, src, pad_value, out);
+      break;
+    default:
+      PADDLE_THROW(
+          "PadOp only support tensors with no more than 6 dimensions.");
+  }
+}
+
+template <typename DeviceContext, typename T>
+void PaddingGradFunctor(int rank, const framework::ExecutionContext& context,
+                        const std::vector<int>& pads,
+                        const framework::Tensor& src,
+                        framework::Tensor* out) const {
+  switch (rank) {
+    case 1:
+      PadGradFunction<DeviceContext, T, 1>(context, pads, src, out);
+      break;
+    case 2:
+      PadGradFunction<DeviceContext, T, 2>(context, pads, src, out);
+      break;
+    case 3:
+      PadGradFunction<DeviceContext, T, 3>(context, pads, src, out);
+      break;
+    case 4:
+      PadGradFunction<DeviceContext, T, 4>(context, pads, src, out);
+      break;
+    case 5:
+      PadGradFunction<DeviceContext, T, 5>(context, pads, src, out);
+      break;
+    case 6:
+      PadGradFunction<DeviceContext, T, 6>(context, pads, src, out);
+      break;
+    default:
+      PADDLE_THROW(
+          "PadOp only support tensors with no more than 6 dimensions.");
+  }
 }
 
 }  // namespace math

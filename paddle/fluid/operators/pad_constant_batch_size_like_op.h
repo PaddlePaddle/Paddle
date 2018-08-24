@@ -33,8 +33,8 @@ class PadConstantBatchSizeLikeKernel : public framework::OpKernel<T> {
     auto in_y = context.Input<framework::Tensor>("Y");
     auto* out = context.Output<framework::Tensor>("Out");
 
-    if (in_x->dims()[0] == in_y->dims()[0]) {
-      //      TensorCopy(in_y, context.GetPlace(), context, out);
+    if (in_x->dims() == in_y->dims()) {
+      // TensorCopy(in_y, context.GetPlace(), context, out);
       out->ShareDataWith(*in_y);
       return;
     }
@@ -47,36 +47,8 @@ class PadConstantBatchSizeLikeKernel : public framework::OpKernel<T> {
     std::vector<int> pads(rank * 2, 0);
     pads[1] = static_cast<int>(in_x->dims()[0] - in_y->dims()[0]);
 
-    switch (rank) {
-      case 1:
-        math::PadConstantBatchSizeLikeFunction<DeviceContext, T, 1>(
-            context, pads, *in_y, pad_value, out);
-        break;
-      case 2:
-        math::PadConstantBatchSizeLikeFunction<DeviceContext, T, 2>(
-            context, pads, *in_y, pad_value, out);
-        break;
-      case 3:
-        math::PadConstantBatchSizeLikeFunction<DeviceContext, T, 3>(
-            context, pads, *in_y, pad_value, out);
-        break;
-      case 4:
-        math::PadConstantBatchSizeLikeFunction<DeviceContext, T, 4>(
-            context, pads, *in_y, pad_value, out);
-        break;
-      case 5:
-        math::PadConstantBatchSizeLikeFunction<DeviceContext, T, 5>(
-            context, pads, *in_y, pad_value, out);
-        break;
-      case 6:
-        math::PadConstantBatchSizeLikeFunction<DeviceContext, T, 6>(
-            context, pads, *in_y, pad_value, out);
-        break;
-      default:
-        PADDLE_THROW(
-            "PadConstantBatchSizeLikeOp only support tensors with no more than "
-            "6 dimensions.");
-    }
+    math::PaddingFunctor<DeviceContext, T>(rank, context, pads, pad_value,
+                                           *in_y, out);
   }
 };
 
@@ -94,7 +66,7 @@ class PadConstantBatchSizeLikeGradKernel : public framework::OpKernel<T> {
       return;
     }
 
-    if (in_x->dims()[0] == in_y->dims()[0]) {
+    if (in_x->dims() == in_y->dims()) {
       // TensorCopy(in_y, context.GetPlace(), context, out);
       d_y->ShareDataWith(*in_dout);
       return;
@@ -102,40 +74,11 @@ class PadConstantBatchSizeLikeGradKernel : public framework::OpKernel<T> {
 
     d_y->mutable_data<T>(context.GetPlace());
     int rank = in_dout->dims().size();
-
     std::vector<int> pads(static_cast<size_t>(rank) * 2, 0);
     pads[1] = static_cast<int>(in_y->dims()[0] - in_x->dims()[0]);
 
-    switch (rank) {
-      case 1:
-        math::PadConstantBatchSizeLikeGradFunction<DeviceContext, T, 1>(
-            context, pads, *in_dout, d_y);
-        break;
-      case 2:
-        math::PadConstantBatchSizeLikeGradFunction<DeviceContext, T, 2>(
-            context, pads, *in_dout, d_y);
-        break;
-      case 3:
-        math::PadConstantBatchSizeLikeGradFunction<DeviceContext, T, 3>(
-            context, pads, *in_dout, d_y);
-        break;
-      case 4:
-        math::PadConstantBatchSizeLikeGradFunction<DeviceContext, T, 4>(
-            context, pads, *in_dout, d_y);
-        break;
-      case 5:
-        math::PadConstantBatchSizeLikeGradFunction<DeviceContext, T, 5>(
-            context, pads, *in_dout, d_y);
-        break;
-      case 6:
-        math::PadConstantBatchSizeLikeGradFunction<DeviceContext, T, 6>(
-            context, pads, *in_dout, d_y);
-        break;
-      default:
-        PADDLE_THROW(
-            "PadConstantBatchSizeLikeOp only support tensors with no more than "
-            "6 dimensions.");
-    }
+    math::PaddingGradFunctor<DeviceContext, T>(rank, context, pads, *in_dout,
+                                               d_y);
   }
 };
 

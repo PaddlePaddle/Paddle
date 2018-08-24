@@ -113,7 +113,7 @@ class PadConstantBatchSizeLikeOpGrad : public framework::OperatorWithKernel {
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(y_grad_name)) {
       ctx->SetOutputDim(y_grad_name, y_dims);
-      ctx->ShareLoD(y_grad_name, /*->*/ "Y");
+      ctx->ShareLoD("Y", /*->*/ y_grad_name);
     }
   }
 };
