@@ -22,7 +22,6 @@
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
-
 namespace paddle {
 namespace platform {
 namespace dynload {
