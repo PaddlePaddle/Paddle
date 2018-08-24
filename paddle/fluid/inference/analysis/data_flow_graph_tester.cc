@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 
 namespace paddle {
@@ -24,20 +25,18 @@ TEST(DataFlowGraph, BFS) {
   auto dfg = ProgramDescToDFG(desc);
   dfg.Build();
 
-  for (auto *in : dfg.inputs) {
+  for (auto* in : dfg.inputs()) {
     LOG(INFO) << "inputs: " << in->name() << " "
               << static_cast<int>(in->type());
   }
-  for (auto *out : dfg.outputs) {
+  for (auto* out : dfg.outputs()) {
     LOG(INFO) << "outputs: " << out->name() << " "
               << static_cast<int>(out->type());
   }
 
-  GraphTraits<DataFlowGraph> trait(&dfg);
-  auto nodes = trait.nodes();
   size_t count = 0;
-  for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    LOG(INFO) << "visiting " << it->name();
+  for (auto& node : GraphTraits<DataFlowGraph>(dfg).nodes()) {
+    LOG(INFO) << "visiting " << node.name();
     ++count;
   }
   ASSERT_EQ(count, dfg.nodes.size());
@@ -45,13 +44,11 @@ TEST(DataFlowGraph, BFS) {
 
 TEST(DataFlowGraph, DFS) {
   auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
-  auto dfg = ProgramDescToDFG(desc);
-  dfg.Build();
-  GraphTraits<DataFlowGraph> trait(&dfg);
-  auto nodes = trait.nodes_in_DFS();
+  DataFlowGraph dfg;
+  dfg.Build(desc);
   size_t count = 0;
-  for (auto it = nodes.begin(); it != nodes.end(); ++it) {
-    LOG(INFO) << "visiting " << it->name();
+  for (auto& node : GraphTraits<DataFlowGraph>(dfg).nodes_in_DFS()) {
+    LOG(INFO) << "visiting " << node.name();
     ++count;
   }
   ASSERT_EQ(count, dfg.nodes.size());
@@ -74,20 +71,16 @@ TEST(DataFlowGraph, TS) {
   DataFlowGraph graph;
 
   for (int i = 0; i < 8; i++) {
-    auto *node = graph.nodes.Create(Node::Type::kValue);
+    auto* node = graph.nodes.Create(Node::Type::kValue);
     node->SetName("node-" + std::to_string(i));
   }
 
   auto add_link = [&](int i, int j) {
-    Node *source = graph.nodes.GetMutable(i);
-    Node *target = graph.nodes.GetMutable(j);
+    Node* source = graph.nodes.GetMutable(i);
+    Node* target = graph.nodes.GetMutable(j);
     target->inlinks.push_back(source);
     source->outlinks.push_back(target);
   };
-
-  graph.inputs.push_back(graph.nodes.GetMutable(0));
-  graph.inputs.push_back(graph.nodes.GetMutable(1));
-  graph.inputs.push_back(graph.nodes.GetMutable(2));
 
   add_link(0, 4);
   add_link(0, 5);
@@ -97,8 +90,9 @@ TEST(DataFlowGraph, TS) {
   add_link(4, 7);
   add_link(4, 3);
   add_link(7, 3);
+  graph.Build();
 
-  auto its = GraphTraits<DataFlowGraph>(&graph).nodes_in_TS();
+  auto its = GraphTraits<DataFlowGraph>(graph).nodes_in_TS();
   std::vector<int> sorted_ids;
   for (auto it = its.begin(); it != its.end(); ++it) {
     LOG(INFO) << it->name();
@@ -120,6 +114,50 @@ TEST(DataFlowGraph, TS) {
   assert_positive_sequence_pair(1, 6);
   assert_positive_sequence_pair(4, 5);
   assert_positive_sequence_pair(4, 7);
+}
+
+TEST(DataFlowGraph, Build_ProgramDesc) {
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
+  DataFlowGraph graph;
+  graph.Build(desc);
+  ASSERT_EQ(graph.nodes.size(), 38UL);
+}
+
+void SetOp(framework::ProgramDesc* prog, const std::string& type,
+           const std::vector<std::string>& inputs,
+           const std::vector<std::string>& outputs) {
+  auto* op = prog->MutableBlock(0)->AppendOp();
+  op->SetType(type);
+  op->SetInput("Xs", inputs);
+  op->SetOutput("Xs", outputs);
+}
+
+TEST(DataFlowGraph, Build_IR_Graph) {
+  framework::ProgramDesc prog;
+  for (auto& v : std::vector<std::string>({"a", "b", "c", "d", "e", "f"})) {
+    auto* var = prog.MutableBlock(0)->Var(v);
+    var->SetType(framework::proto::VarType::SELECTED_ROWS);
+    if (v == "c") {
+      var->SetPersistable(true);
+    }
+  }
+
+  SetOp(&prog, "OP0", std::vector<std::string>({"a"}),
+        std::vector<std::string>({"b"}));
+  SetOp(&prog, "OP1", std::vector<std::string>({"a"}),
+        std::vector<std::string>({"c"}));
+  SetOp(&prog, "mul", std::vector<std::string>({"b", "c"}),
+        std::vector<std::string>({"d"}));
+  SetOp(&prog, "elementwise_add", std::vector<std::string>({"d", "e"}),
+        std::vector<std::string>({"f"}));
+
+  DataFlowGraph graph;
+
+  framework::ir::Graph ir_graph(prog);
+
+  graph.Build(ir_graph);
+
+  ASSERT_EQ(graph.nodes.size(), ir_graph.Nodes().size());
 }
 
 }  // namespace analysis

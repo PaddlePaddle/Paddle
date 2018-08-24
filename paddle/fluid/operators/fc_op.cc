@@ -35,9 +35,14 @@ void FCOp::InferShape(framework::InferShapeContext* ctx) const {
 
   if (ctx->HasInput("Bias")) {
     auto bias_dims = ctx->GetInputDim("Bias");
-    PADDLE_ENFORCE_EQ(bias_dims[0], 1, "The shape of Bias must be [1, dim].");
-    PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
-                      "The shape of Bias must be [1, dim].");
+    if (bias_dims.size() == 2) {
+      PADDLE_ENFORCE_EQ(bias_dims[0], 1, "The shape of Bias must be [1, dim].");
+      PADDLE_ENFORCE_EQ(bias_dims[1], w_dims[1],
+                        "The shape of Bias must be [1, dim].");
+    } else if (bias_dims.size() == 1) {
+      PADDLE_ENFORCE_EQ(bias_dims[0], w_dims[1],
+                        "The shape of Bias must be [1, dim].");
+    }
   }
   PADDLE_ENFORCE(in_dims.size() == 2 || in_dims.size() == 4,
                  "Fully Connected input should be 2-D or 4-D tensor.");
