@@ -17,7 +17,6 @@ import hashlib
 import os
 import errno
 import shutil
-import six
 import sys
 import importlib
 import paddle.dataset
@@ -94,8 +93,6 @@ def download(url, module_name, md5sum, save_name=None):
                 dl = 0
                 total_length = int(total_length)
                 for data in r.iter_content(chunk_size=4096):
-                    if six.PY2:
-                        data = six.b(data)
                     dl += len(data)
                     f.write(data)
                     done = int(50 * dl / total_length)

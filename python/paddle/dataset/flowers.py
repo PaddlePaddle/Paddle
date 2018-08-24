@@ -28,12 +28,11 @@ Graphics and Image Processing (2008)
 http://www.robots.ox.ac.uk/~vgg/publications/papers/nilsback08.{pdf,ps.gz}.
 
 """
+import cPickle
 import itertools
 import functools
 from common import download
 import tarfile
-import six
-from six.moves import cPickle as pickle
 import scipy.io as scio
 from paddle.dataset.image import *
 from paddle.reader import *
@@ -42,10 +41,10 @@ import numpy as np
 from multiprocessing import cpu_count
 __all__ = ['train', 'test', 'valid']
 
-DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
-LABEL_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/imagelabels.mat'
-SETID_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/setid.mat'
-DATA_MD5 = '52808999861908f626f3c1f4e79d11fa'
+DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
+LABEL_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
+SETID_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat'
+DATA_MD5 = '33bfc11892f1e405ca193ae9a9f2a118'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
 # In official 'readme', tstid is the flag of test data
@@ -112,11 +111,8 @@ def reader_creator(data_file,
         for file in open(file_list):
             file = file.strip()
             batch = None
-            with open(file, 'rb') as f:
-                if six.PY2:
-                    batch = pickle.load(f)
-                else:
-                    batch = pickle.load(f, encoding='bytes')
+            with open(file, 'r') as f:
+                batch = cPickle.load(f)
             data = batch['data']
             labels = batch['label']
             for sample, label in itertools.izip(data, batch['label']):
