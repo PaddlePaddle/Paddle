@@ -750,6 +750,11 @@ def load_inference_model(dirname,
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
+    # TODO(panyx0718): Link to our version and compatibility guide.
+    if program._version() != 0:
+        raise ValueError("Unsupported program version: %d\n" %
+                         program._version())
+    # Binary data also need versioning.
     load_persistables(executor, dirname, program, params_filename)
 
     if pserver_endpoints:

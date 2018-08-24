@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
+#include "paddle/fluid/framework/version.h"
 
 namespace paddle {
 namespace framework {
@@ -31,6 +32,10 @@ void ProgramDesc::Flush() {
   for (auto &block : blocks_) {
     block->Flush();
   }
+  // If not loaded, use current code version.
+  if (desc_.version().version() < 0) {
+    desc_.mutable_version()->set_version(kCurProgramVersion);
+  }
 }
 
 proto::ProgramDesc *ProgramDesc::Proto() {
@@ -38,7 +43,10 @@ proto::ProgramDesc *ProgramDesc::Proto() {
   return &desc_;
 }
 
+int ProgramDesc::Version() const { return desc_.version().version(); }
+
 ProgramDesc::ProgramDesc() {
+  desc_.mutable_version()->set_version(kCurProgramVersion);
   auto *block = desc_.mutable_blocks()->Add();
   block->set_idx(kRootBlockIndex);
   block->set_parent_idx(kNoneBlockIndex);
