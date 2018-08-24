@@ -231,8 +231,8 @@ class TestGenerateProposals(unittest.TestCase):
                       		post_nms_topN=1000,
                        		nms_thresh=0.5,
                        		min_size=0.1,
-				eta=1.0
-				)
+					eta=1.0
+					)
 	self.assertIsNotNone(rpn_rois)
 	self.assertIsNotNone(rpn_roi_probs)
 	print(rpn_rois.shape)
