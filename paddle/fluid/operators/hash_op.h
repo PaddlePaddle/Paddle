@@ -16,6 +16,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+extern "C" {
+    #include <xxhash.h>
+}
 
 namespace paddle {
 namespace operators {
@@ -26,10 +29,9 @@ class HashKerel : public framework::OpKernel<T> {
   virtual void Compute(const framework::ExecutionContext& context) const {
     auto* out_t = context.Output<framework::LoDTensor>("Out");
     auto* in_t = context.Input<framework::LoDTensor>("X");
-    //int mod_by = context.Attr<int>("mod_by");
+    int mod_by = context.Attr<int>("mod_by");
     int num_hash = context.Attr<int>("num_hash");
     auto* output = out_t->mutable_data<T>(context.GetPlace());
-	//auto input = in_t->data<T>();
 
     auto in_dims = in_t->dims();
     auto in_lod = in_t->lod();
@@ -37,8 +39,13 @@ class HashKerel : public framework::OpKernel<T> {
 					  "The actual input data's size mismatched with LoD information.");
 
 	auto seq_length = in_dims[0];
-    for (int idx = 0; idx < seq_length * num_hash; ++idx) {
-        output[idx] = 1;
+    auto last_dim = in_dims[in_dims.size() - 1];
+	auto* input = in_t->data<T>();
+    for (int idx = 0; idx < seq_length; ++idx) {
+        for (int ihash = 0; ihash != num_hash; ++ihash) {
+            output[idx * num_hash + ihash] = XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
+        }
+        input += last_dim;
     }
   }
 };

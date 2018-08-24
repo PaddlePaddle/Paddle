@@ -177,6 +177,7 @@ include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
+include(external/xxhash)    # download xxhash
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
