@@ -18,6 +18,52 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+class FakeQuantizeAbsMaxOp : public framework::OperatorWithKernel {
+ public:
+  FakeQuantizeAbsMaxOp(const std::string &type,
+                       const framework::VariableNameMap &inputs,
+                       const framework::VariableNameMap &outputs,
+                       const framework::AttributeMap &attrs)
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("X"),
+                   "Input(X) of FakeQuantizeOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Out"),
+                   "Output(Out) of FakeQuantizeOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("OutScale"),
+                   "Output(Scale) of FakeQuantizeOp should not be null.");
+    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutScale", {1});
+    ctx->ShareLoD("X", /*->*/ "Out");
+  }
+};
+
+class FakeQuantizeAbsMaxOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X", "(Tensor) Input is float data type.");
+    AddOutput("Out",
+              "(Tensor) Output of quantized low level tensor, "
+              "but also saved as float data type.");
+    AddOutput("OutScale", "(Tensor) Current scale");
+    AddAttr<int>("bit_length", "(int, default 8)")
+        .SetDefault(8)
+        .AddCustomChecker([](const int &bit_length) {
+          PADDLE_ENFORCE(bit_length >= 1 && bit_length <= 16,
+                         "'bit_length' should be between 1 and 16.");
+        });
+    AddComment(R"DOC(
+FakeQuantize operator
+
+$$scale = max(abs(X))$$ 
+$$range = 2^{bit_length - 1} - 1$$
+$$Out = round(X/scale * range)$$
+
+)DOC");
+  }
+};
+
 class FakeQuantizeOp : public framework::OperatorWithKernel {
  public:
   FakeQuantizeOp(const std::string &type,
