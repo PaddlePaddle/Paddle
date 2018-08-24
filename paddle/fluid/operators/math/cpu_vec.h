@@ -45,6 +45,13 @@ inline void vec_exp(const int n, const T* x, T* y) {
   }
 }
 
+template <typename T>
+inline void vec_scal(const int n, const T a, T* x) {
+  for (int i = 0; i < n; ++i) {
+    x[i] = a * x[i];
+  }
+}
+
 #ifdef PADDLE_WITH_MKLML
 template <>
 inline void vec_exp<float>(const int n, const float* x, float* y) {
@@ -55,7 +62,74 @@ template <>
 inline void vec_exp<double>(const int n, const double* x, double* y) {
   platform::dynload::vdExp(n, x, y);
 }
+
+template <>
+inline void vec_scal<float>(const int n, const float a, float* x) {
+  platform::dynload::cblas_sscal(n, a, x, 1);
+}
+
+template <>
+inline void vec_scal<double>(const int n, const double a, double* x) {
+  platform::dynload::cblas_dscal(n, a, x, 1);
+}
 #endif
+
+// MKL scal only support inplace, choose this if src and dst are not equal
+template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+inline void vec_scal(const int n, const T a, const T* x, T* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = a * x[i];
+  }
+}
+
+template <>
+inline void vec_scal<float, platform::jit::avx>(const int n, const float a,
+                                                const float* x, float* y) {
+#ifdef __AVX__
+  constexpr int block = AVX_FLOAT_BLOCK;
+  if (n < block * 4) {  // use larger threshold, since small ones has no boost
+    vec_scal<float, platform::jit::isa_any>(n, a, x, y);
+    return;
+  }
+  const int rest = n % block;
+  const int end = n - rest;
+  int i = 0;
+  __m256 scalar = _mm256_set1_ps(a);
+  __m256 tmp;
+#define MOVE_ONE_STEP               \
+  tmp = _mm256_loadu_ps(x + i);     \
+  tmp = _mm256_mul_ps(tmp, scalar); \
+  _mm256_storeu_ps(y + i, tmp)
+  for (i = 0; i < end; i += block) {
+    MOVE_ONE_STEP;
+  }
+#undef MOVE_ONE_STEP
+  if (rest == 0) {
+    return;
+  }
+  // can not continue move step if src and dst are inplace
+  for (i = n - rest; i < n; ++i) {
+    y[i] = a * x[i];
+  }
+#else
+  vec_scal<float, platform::jit::isa_any>(n, a, x, y);
+#endif
+}
+
+template <>
+inline void vec_scal<float, platform::jit::avx2>(const int n, const float a,
+                                                 const float* x, float* y) {
+  vec_scal<float, platform::jit::avx>(n, a, x, y);
+}
+
+template <>
+inline void vec_scal<float, platform::jit::avx512_common>(const int n,
+                                                          const float a,
+                                                          const float* x,
+                                                          float* y) {
+  // TODO(TJ): enable me
+  vec_scal<float, platform::jit::avx2>(n, a, x, y);
+}
 
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_identity(const int n, const T* x, T* y) {
@@ -82,7 +156,7 @@ inline void vec_sigmoid<float, platform::jit::avx>(const int n, const float* x,
                                                    float* y) {
 #ifdef __AVX__
   constexpr int block = AVX_FLOAT_BLOCK;
-  if (n < block) {  // can use larger threshold if necessary
+  if (n < block) {
     vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
     return;
   }
@@ -102,11 +176,15 @@ inline void vec_sigmoid<float, platform::jit::avx>(const int n, const float* x,
   for (i = 0; i < end; i += block) {
     MOVE_ONE_STEP;
   }
-  if (rest != 0) {
-    i = n - block;
-    MOVE_ONE_STEP;
-  }
 #undef MOVE_ONE_STEP
+  if (rest != 0) {
+    // can not continue move step since the src and dst address could be equal
+    const float xmin = SIGMOID_THRESHOLD_MIN;
+    const float xmax = SIGMOID_THRESHOLD_MAX;
+    for (i = n - rest; i < n; ++i) {
+      y[i] = 0.f - ((x[i] < xmin) ? xmin : ((x[i] > xmax) ? xmax : x[i]));
+    }
+  }
 
   vec_exp<float>(n, y, y);
 
@@ -142,65 +220,17 @@ template <>
 inline void vec_sigmoid<float, platform::jit::avx512_common>(const int n,
                                                              const float* x,
                                                              float* y) {
-#ifdef __AVX512F__
-  constexpr int block = AVX512_FLOAT_BLOCK;
-  if (n < block) {
-    vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
-    return;
-  }
-  const int rest = n % block;
-  const int end = n - rest;
-  int i = 0;
-  __m512 max = _mm512_set1_ps(SIGMOID_THRESHOLD_MAX);
-  __m512 min = _mm512_set1_ps(SIGMOID_THRESHOLD_MIN);
-  __m512 zeros = _mm512_setzero_ps();
-  __m512 tmp;
-#define MOVE_ONE_STEP              \
-  tmp = _mm512_loadu_ps(x + i);    \
-  tmp = _mm512_max_ps(tmp, min);   \
-  tmp = _mm512_min_ps(tmp, max);   \
-  tmp = _mm512_sub_ps(zeros, tmp); \
-  _mm512_storeu_ps(y + i, tmp)
-  for (i = 0; i < end; i += block) {
-    MOVE_ONE_STEP;
-  }
-  if (rest != 0) {
-    i = n - block;
-    MOVE_ONE_STEP;
-  }
-#undef MOVE_ONE_STEP
-
-  vec_exp<float>(n, y, y);
-
-  __m512 ones = _mm512_set1_ps(1.0f);
-#define MOVE_ONE_STEP             \
-  tmp = _mm512_loadu_ps(y + i);   \
-  tmp = _mm512_add_ps(ones, tmp); \
-  tmp = _mm512_div_ps(ones, tmp); \
-  _mm512_storeu_ps(y + i, tmp)
-  for (i = 0; i < end; i += block) {
-    MOVE_ONE_STEP;
-  }
-#undef MOVE_ONE_STEP
-  if (rest == 0) {
-    return;
-  }
-  for (i = n - rest; i < n; ++i) {
-    y[i] = 1.f / (1.f + y[i]);
-  }
-#else
-  vec_sigmoid<float, platform::jit::isa_any>(n, x, y);
-#endif
+  // TODO(TJ): enable me
+  vec_sigmoid<float, platform::jit::avx2>(n, x, y);
 }
 
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_tanh(const int n, const T* x, T* y) {
+  vec_scal<T, isa>(n, static_cast<T>(2), x, y);
+  vec_sigmoid<T, isa>(n, y, y);
+  vec_scal<T>(n, static_cast<T>(2), y);
   for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(2) * x[i];
-  }
-  vec_sigmoid<T>(n, y, y);
-  for (int i = 0; i < n; ++i) {
-    y[i] = static_cast<T>(2) * y[i] - static_cast<T>(1);
+    y[i] = y[i] - static_cast<T>(1);
   }
 }
 
@@ -255,35 +285,10 @@ template <>
 inline void vec_relu<float, platform::jit::avx512_common>(const int n,
                                                           const float* x,
                                                           float* y) {
-#ifdef __AVX512F__
-  // test me
-  constexpr int block = AVX512_FLOAT_BLOCK;
-  if (n < block) {
-    vec_relu<float, platform::jit::avx2>(n, x, y);
-    return;
-  }
-  const int rest = n % block;
-  const int end = n - rest;
-  int i = 0;
-  __m512 zeros = _mm512_setzero_ps();
-  __m512 tmp;
-#define MOVE_ONE_STEP              \
-  tmp = _mm512_loadu_ps(x + i);    \
-  tmp = _mm512_max_ps(tmp, zeros); \
-  _mm512_storeu_ps(y + i, tmp)
-  for (i = 0; i < end; i += block) {
-    MOVE_ONE_STEP;
-  }
-  if (rest == 0) {
-    return;
-  }
-  i = n - block;
-  MOVE_ONE_STEP;
-#undef MOVE_ONE_STEP
-#else
+  // TODO(TJ): enable me
   vec_relu<float, platform::jit::avx2>(n, x, y);
-#endif
 }
+// TODO(TJ): add vec add bias, make relu clip
 
 // TODO(TJ): optimize double of sigmoid, tanh and relu if necessary
 
