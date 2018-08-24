@@ -54,7 +54,8 @@ void GraphvizSSAGraphPrinter::Print(const ir::Graph &graph,
       sout << "var_" << cur_var_id << " [label=\"" << var_handle_ptr->name_
            << "\\n"
            << var_handle_ptr->place_ << "\\n"
-           << var_handle_ptr->version_ << "\"]" << std::endl;
+           << "scope: " << var_handle_ptr->scope_idx_ << "\\n"
+           << "v" << var_handle_ptr->version_ << "\"]" << std::endl;
     } else if (dummy_ptr) {
       sout << "var_" << cur_var_id << " [label=\"dummy\"]" << std::endl;
     }
