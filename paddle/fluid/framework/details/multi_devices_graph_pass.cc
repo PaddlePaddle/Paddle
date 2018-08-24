@@ -827,7 +827,6 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
 
   PADDLE_ENFORCE(op_dev_id != -1, "can not find the right place for rpc op: %s",
                  node->Op()->Type());
-
   result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
       result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
       node->Op()->Type(), places_[op_dev_id]));
@@ -844,6 +843,12 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
 
     SetOpInputsAllPlaces(result, node, places_.size());
     for (ir::Node *output : node->outputs) {
+      int outvar_dev_id = op_dev_id;
+      if (node->Op()->Type() == "fetch_barrier") {
+        outvar_dev_id = GetVarDeviceID(*result, output->Name());
+        PADDLE_ENFORCE_NE(outvar_dev_id, -1);
+      }
+      p = places_[outvar_dev_id];
       ir::Node *new_node = nullptr;
       if (output->Var()) {
         new_node = result->CreateVarNode(output->Var());
@@ -851,7 +856,7 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
         new_node =
             result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
       }
-      CreateOpOutput(result, op_handle, new_node, p, op_dev_id);
+      CreateOpOutput(result, op_handle, new_node, p, outvar_dev_id);
     }
   }
 }
