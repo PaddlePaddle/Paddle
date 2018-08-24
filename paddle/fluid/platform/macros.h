@@ -14,8 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES
-
 // Disable the copy and assignment operator for a class.
 #ifndef DISABLE_COPY_AND_ASSIGN
 #define DISABLE_COPY_AND_ASSIGN(classname)         \
