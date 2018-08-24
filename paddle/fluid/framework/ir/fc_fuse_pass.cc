@@ -21,46 +21,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-bool VarOutLinksToOp(Node* node, const std::string& op_type) {
-  for (auto* out : node->outputs) {
-    if (out->IsOp() && out->Op()->Type() == op_type) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void BuildFCPattern(PDPattern* pattern) {
-  // make sure the selected MUL op has one input argument is a parameter.
-  auto* mul_parameter_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() && node->outputs.size() == 1UL &&
-               node->outputs.front()->Op()->Type() == "mul" && node->Var() &&
-               node->Var()->Persistable();  // check is a parameter
-      },
-      "mul_weight" /*name*/);
-
-  auto* mul_tmp_input_var = pattern->NewNode(
-      [](Node* node) {
-        bool result =
-            node->IsVar() && node->outputs.size() >= 1UL && node->Var() &&
-            !node->Var()->Persistable();  // this input is not an parameter.
-        if (!result) return false;
-        // check whether one output is MUL op.
-        for (auto* op : node->outputs) {
-          if (op->IsOp() && op->Op()->Type() == "mul") return true;
-        }
-        return false;
-      },
-      "mul_tmp_var" /*name*/);
-
   // select a MUL op
   auto* mul_op = pattern->NewNode(
       [](Node* node) {
-        return node->IsOp() &&               // start from an Op
-               node->Op()->Type() == "mul";  // type is mul
-        // the output should be consumed only by one element_add, that check
-        // leaves in a Var PDNode.
+        return node->IsOp() &&                 // start from an Op
+               node->inputs.size() == 2UL &&   // it has only two inputs
+               node->outputs.size() == 1UL &&  // it has only one output
+               node->Op()->Type() == "mul";    // type is mul
       },
       "mul" /*name*/);
 
@@ -68,48 +36,35 @@ void BuildFCPattern(PDPattern* pattern) {
   // ELEMENTWISE_ADD op.
   auto* mul_out_var = pattern->NewNode(
       [](Node* node) {
-        return node->IsVar() &&                  // starts from a Var
-               node->outputs.size() == 1UL &&    // only has one consumer
+        return node->IsVar() &&                 // starts from a Var
+               node->Var() &&                   // not a ControlDepVar
+               node->inputs.size() == 1UL &&    // it has only one input
+               node->outputs.size() == 1UL &&   // it has only one output
+               node->inputs.front()->IsOp() &&  // check basic logic
+               node->inputs.front()->Op()->Type() ==
+                   "mul" &&                      // a very strong validation
                node->outputs.front()->IsOp() &&  // check basic logic
-               node->Var() &&                    // not a ControlDepVar
                node->outputs.front()->Op()->Type() ==
                    "elementwise_add";  // a very strong validation
       },
       "mul_out");
-  // this check is not essential, just to make the corresponding variable Node
-  // retrival easier.
-  auto* elementwise_add_tmp_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() && node->outputs.size() >= 1UL && node->Var() &&
-               VarOutLinksToOp(node, "elementwise_add");
-      },
-      "elementwise_add_tmpvar");
 
   // select an ELEMENTWISE_ADD op
   auto* elementwise_add_op = pattern->NewNode(
       [](Node* node) {
-        return node->IsOp() && node->Op()->Type() == "elementwise_add";
+        return node->IsOp() && node->inputs.size() == 2UL &&
+               node->outputs.size() == 1UL &&
+               node->Op()->Type() == "elementwise_add";
       },
       "elementwise_add" /*name*/);
-
-  // get the ELEMENTWISE_ADD op's output
-  auto* elementwise_add_out_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() && node->inputs.size() == 1UL && node->Var() &&
-               node->inputs.front()->Op()->Type() == "elementwise_add";
-      },
-      "elementwise_add_out");
-
-  pattern->AddEdge(mul_parameter_var, mul_op);
-  pattern->AddEdge(mul_tmp_input_var, mul_op);
   pattern->AddEdge(mul_op, mul_out_var);
   pattern->AddEdge(mul_out_var, elementwise_add_op);
-  pattern->AddEdge(elementwise_add_tmp_var, elementwise_add_op);
-  pattern->AddEdge(elementwise_add_op, elementwise_add_out_var);
 }
 
 // Replace the node `from` in the links to `to`
 bool LinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
+  // auto*& -> the reference of pointer, int order to change the element value
+  // of vector
   for (auto*& n : *links) {
     if (n == from) {
       n = to;
@@ -128,34 +83,47 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
   GraphPatternDetecter gpd;
   BuildFCPattern(gpd.mutable_pattern());
 
-#define GET_NODE(id)                                             \
-  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetriveNode(#id)), \
-                 "pattern has no Node called %s", #id);          \
-  auto* id = subgraph.at(gpd.pattern().RetriveNode(#id));        \
+#define GET_NODE(id)                                              \
+  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetrieveNode(#id)), \
+                 "pattern has no Node called %s", #id);           \
+  auto* id = subgraph.at(gpd.pattern().RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
   auto handler = [&](const GraphPatternDetecter::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle FC fuse";
     // Currently, there is no FC op available, so I will just simulate the
-    // scenerio.
+    // scenario.
     // FC's fusion is simple, just op fuse, no need to process the
     // parameters.
-    GET_NODE(mul_tmp_var);             // x
-    GET_NODE(mul_weight);              // Y
-    GET_NODE(elementwise_add_tmpvar);  // bias
-    GET_NODE(elementwise_add_out);     // Out
-    GET_NODE(mul);                     // MUL op
-    GET_NODE(elementwise_add);         // ELEMENT_ADD op
-    GET_NODE(mul_out);                 // tmp
+    GET_NODE(mul);              // MUL op
+    GET_NODE(elementwise_add);  // ELEMENT_ADD op
+    GET_NODE(mul_out);          // tmp
 #undef GET_NODE
 
+    // Input
+    auto* mul_input_var =
+        (mul->inputs.front() && !mul->inputs.front()->Var()->Persistable())
+            ? mul->inputs.front()
+            : mul->inputs.back();
+    // W
+    auto* mul_weight_var =
+        (mul->inputs.front() && mul->inputs.front()->Var()->Persistable())
+            ? mul->inputs.front()
+            : mul->inputs.back();
+    // Bias
+    auto* fc_bias_var = (elementwise_add->inputs.front() &&
+                         elementwise_add->inputs.front() != mul_out)
+                            ? elementwise_add->inputs.front()
+                            : elementwise_add->inputs.back();
+    // Out
+    auto* fc_out_var = elementwise_add->outputs.front();
     // Create an FC Node.
     OpDesc desc;
-    std::string fc_x_in = mul_tmp_var->Name();
-    std::string fc_Y_in = mul_weight->Name();
-    std::string fc_bias_in = elementwise_add_tmpvar->Name();
-    std::string fc_out = elementwise_add_out->Name();
+    std::string fc_x_in = mul_input_var->Name();
+    std::string fc_Y_in = mul_weight_var->Name();
+    std::string fc_bias_in = fc_bias_var->Name();
+    std::string fc_out = fc_out_var->Name();
     desc.SetInput("Input", std::vector<std::string>({fc_x_in}));
     desc.SetInput("W", std::vector<std::string>({fc_Y_in}));
     desc.SetInput("Bias", std::vector<std::string>({fc_bias_in}));
@@ -163,16 +131,15 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     desc.SetType("fc");
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     fc_node->inputs =
-        std::vector<Node*>({mul_tmp_var, mul_weight, elementwise_add_tmpvar});
-    fc_node->outputs.push_back(elementwise_add_out);
+        std::vector<Node*>({mul_input_var, mul_weight_var, fc_bias_var});
+    fc_node->outputs.push_back(fc_out_var);
 
-    // Update link relatons
-    PADDLE_ENFORCE(LinksReplace(&mul_tmp_var->outputs, mul, fc_node));
-    PADDLE_ENFORCE(LinksReplace(&mul_weight->outputs, mul, fc_node));
-    PADDLE_ENFORCE(LinksReplace(&elementwise_add_tmpvar->outputs,
-                                elementwise_add, fc_node));
+    // Update link relations
+    PADDLE_ENFORCE(LinksReplace(&mul_input_var->outputs, mul, fc_node));
+    PADDLE_ENFORCE(LinksReplace(&mul_weight_var->outputs, mul, fc_node));
     PADDLE_ENFORCE(
-        LinksReplace(&elementwise_add_out->inputs, elementwise_add, fc_node));
+        LinksReplace(&fc_bias_var->outputs, elementwise_add, fc_node));
+    PADDLE_ENFORCE(LinksReplace(&fc_out_var->inputs, elementwise_add, fc_node));
 
     // Drop old nodes
     graph->RemoveNode(mul);

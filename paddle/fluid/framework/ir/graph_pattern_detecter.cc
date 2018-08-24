@@ -40,7 +40,7 @@ PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
   return cur;
 }
 
-PDNode* PDPattern::RetriveNode(const std::string& id) const {
+PDNode* PDPattern::RetrieveNode(const std::string& id) const {
   auto it = node_map_.find(id);
   if (it == node_map_.end()) {
     return nullptr;

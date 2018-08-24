@@ -19,6 +19,9 @@
 #endif
 
 #include <numeric>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 
@@ -37,7 +40,7 @@ struct PDNode {
   // tell whether an ir::Node* is a candidation for a PDNode.
   using teller_t = std::function<bool(Node*)>;
 
-  PDNode(teller_t&& teller, const std::string& name = "")
+  explicit PDNode(teller_t&& teller, const std::string& name = "")
       : teller_(teller), name_(name) {
     PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
   }
@@ -97,7 +100,7 @@ class PDPattern {
   void AddEdge(PDNode* a, PDNode* b);
 
   PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
-  PDNode* RetriveNode(const std::string& id) const;
+  PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
