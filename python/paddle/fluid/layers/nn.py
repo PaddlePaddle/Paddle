@@ -5563,7 +5563,7 @@ def sequence_enumerate(input, win_size, pad_value, name=None):
             out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
     """
     helper = LayerHelper('sequence_enumerate', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
+    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
     helper.append_op(
         type='sequence_enumerate',
         inputs={'X': input},
@@ -5571,7 +5571,7 @@ def sequence_enumerate(input, win_size, pad_value, name=None):
         attrs={'win_size': win_size,
                'pad_value': pad_value})
 
-    
+
 def stack(x, axis=0):
     helper = LayerHelper('stack', **locals())
     axis = 0 if axis is None else axis

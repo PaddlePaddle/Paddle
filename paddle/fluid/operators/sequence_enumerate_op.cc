@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/operators/sequence_enumerate_op.h"
-#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -34,18 +33,12 @@ class SequenceEnumerateOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         x_dims.size(), 2UL,
         "Input(X) of SequenceEnumerate operator's rank should be 2.");
+    PADDLE_ENFORCE_EQ(
+        x_dims[1], 1UL,
+        "Input(X) of SequenceEnumerate operator's 2nd dimension should be 1.");
 
     const auto win_size = ctx->Attrs().Get<int>("win_size");
-    // TODO(chenweihang): unittest doesn't has batch size, but test_layers has
-    auto first_dim = x_dims[0] == -1 ? x_dims[1] : x_dims[0];
-    PADDLE_ENFORCE(win_size <= first_dim,
-                   "The enumerate window size should be less than or equal to "
-                   "input sequence length.");
-
-    std::vector<int64_t> out_shape(x_dims.size() + 1, 0);
-    for (int i = 0; i < x_dims.size(); ++i) out_shape.emplace_back(x_dims[i]);
-    out_shape.emplace_back(win_size);
-    ctx->SetOutputDim("Out", framework::make_ddim(out_shape));
+    ctx->SetOutputDim("Out", {x_dims[0], win_size});
     ctx->ShareLoD("X", "Out");
   }
 };
