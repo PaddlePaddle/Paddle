@@ -162,7 +162,7 @@ def split_data(data, num_part):
 
 
 def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
-                 util_input_names, sum_cost, token_num):
+                 sum_cost, token_num):
     # Context to do validation.
     test_program = train_progm.clone()
     with fluid.program_guard(test_program):
@@ -188,6 +188,8 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
         shuffle_batch=False)
 
     build_strategy = fluid.BuildStrategy()
+
+    strategy = fluid.ExecutionStrategy()
     strategy.num_threads = 1
 
     test_exe = fluid.ParallelExecutor(
@@ -208,9 +210,9 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
                     split_data(
                         data, num_part=dev_count)):
                 data_input_dict, _ = prepare_batch_input(
-                    data_buffer, data_input_names, util_input_names,
-                    ModelHyperParams.eos_idx, ModelHyperParams.eos_idx,
-                    ModelHyperParams.n_head, ModelHyperParams.d_model)
+                    data_buffer, data_input_names, ModelHyperParams.eos_idx,
+                    ModelHyperParams.eos_idx, ModelHyperParams.n_head,
+                    ModelHyperParams.d_model)
                 feed_list.append(data_input_dict)
 
             outs = exe.run(feed=feed_list,
@@ -273,12 +275,10 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
 
     data_input_names = encoder_data_input_fields + decoder_data_input_fields[:
                                                                              -1] + label_data_input_fields
-    util_input_names = encoder_util_input_fields + decoder_util_input_fields
 
     if TrainTaskConfig.val_file_pattern is not None:
         test = test_context(train_progm, avg_cost, train_exe, dev_count,
-                            data_input_names, util_input_names, sum_cost,
-                            token_num)
+                            data_input_names, sum_cost, token_num)
 
     # the best cross-entropy value with label smoothing
     loss_normalizer = -((1. - TrainTaskConfig.label_smooth_eps) * np.log(
@@ -300,6 +300,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             for place_id, data_buffer in enumerate(
                     split_data(
                         data, num_part=dev_count)):
+                print("place_id:", place_id)
                 data_input_dict, num_token = prepare_batch_input(
                     data_buffer, data_input_names, ModelHyperParams.eos_idx,
                     ModelHyperParams.eos_idx, ModelHyperParams.n_head,
@@ -320,6 +321,8 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                         feed_list[place_id][pos_enc_param_name] = pos_enc
             for feed_dict in feed_list:
                 feed_dict[sum_cost.name + "@GRAD"] = 1. / total_num_token
+
+            print("fedd_list:", len(feed_list))
 
             outs = train_exe.run(fetch_list=[sum_cost.name, token_num.name],
                                  feed=feed_list)

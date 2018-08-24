@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from os.path import expanduser
+
 
 class TrainTaskConfig(object):
     # only support GPU currently
@@ -48,7 +50,8 @@ class TrainTaskConfig(object):
 
     check_acc = True
 
-    data_path = "~/.cache/paddle/dataset/test_dist_transformer/"
+    data_path = expanduser("~") + (
+        "/.cache/paddle/dataset/test_dist_transformer/")
     src_vocab_fpath = data_path + "vocab.bpe.32000"
     trg_vocab_fpath = data_path + "vocab.bpe.32000"
     train_file_pattern = data_path + "train.tok.clean.bpe.32000.en-de"

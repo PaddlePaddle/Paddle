@@ -192,10 +192,13 @@ def main(role="pserver",
         place = fluid.CUDAPlace(0)
         dev_count = 1
 
+    print(sys.stderr, "place:", place)
     if role == "pserver":
+        print(sys.stderr, "begin pserver")
         model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
                           is_async)
     else:
+        print(sys.stderr, "begin trainer")
         model.run_trainer(place, dev_count, endpoints, trainer_id, trainers,
                           is_dist, is_async)
 
