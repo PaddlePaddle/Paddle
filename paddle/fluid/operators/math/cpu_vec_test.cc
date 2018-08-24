@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <sys/time.h>
 #include <cmath>
+#include <cstring>
 #include <vector>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -138,4 +139,64 @@ TEST(CpuVecTest, relu) {
                         ref_relu<float>);
   }
   TestAndBench<double>(30, vec_relu<double>, ref_relu<double>);
+}
+
+template <typename T>
+void TestInplace(const int n, std::function<void(const int, const T*, T*)> tgt,
+                 std::function<void(const int, const T*, T*)> ref) {
+  std::vector<T> x(n);
+  std::vector<T> ytgt(n), yref(n);
+  RandomVec<T>(n, x.data());
+
+  const T* x_data = x.data();
+  T* yref_data = yref.data();
+  T* ytgt_data = ytgt.data();
+  std::memcpy(yref_data, x_data, sizeof(T) * n);
+  std::memcpy(ytgt_data, x_data, sizeof(T) * n);
+
+  ref(n, yref_data, yref_data);
+  tgt(n, ytgt_data, ytgt_data);
+
+  for (int i = 0; i < n; ++i) {
+    EXPECT_NEAR(ytgt_data[i], yref_data[i], 1e-3);
+  }
+}
+
+TEST(CpuVecTest, inplace_sigmoid) {
+  namespace jit = paddle::platform::jit;
+  using namespace paddle::operators::math;  // NOLINT
+  for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    TestInplace<float>(sz, vec_sigmoid<float>, ref_sigmoid<float>);
+    TestInplace<float>(sz, vec_sigmoid<float, jit::avx>, ref_sigmoid<float>);
+    TestInplace<float>(sz, vec_sigmoid<float, jit::avx2>, ref_sigmoid<float>);
+    TestInplace<float>(sz, vec_sigmoid<float, jit::avx512_common>,
+                       ref_sigmoid<float>);
+  }
+  TestInplace<double>(30, vec_sigmoid<double>, ref_sigmoid<double>);
+}
+
+TEST(CpuVecTest, inplace_tanh) {
+  namespace jit = paddle::platform::jit;
+  using namespace paddle::operators::math;  // NOLINT
+  for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    TestInplace<float>(sz, vec_tanh<float>, ref_tanh<float>);
+    TestInplace<float>(sz, vec_tanh<float, jit::avx>, ref_tanh<float>);
+    TestInplace<float>(sz, vec_tanh<float, jit::avx2>, ref_tanh<float>);
+    TestInplace<float>(sz, vec_tanh<float, jit::avx512_common>,
+                       ref_tanh<float>);
+  }
+  TestInplace<double>(30, vec_tanh<double>, ref_tanh<double>);
+}
+
+TEST(CpuVecTest, inplace_relu) {
+  namespace jit = paddle::platform::jit;
+  using namespace paddle::operators::math;  // NOLINT
+  for (auto sz : {1, 2, 15, 16, 30, 32, 128, 200, 512}) {
+    TestInplace<float>(sz, vec_relu<float>, ref_relu<float>);
+    TestInplace<float>(sz, vec_relu<float, jit::avx>, ref_relu<float>);
+    TestInplace<float>(sz, vec_relu<float, jit::avx2>, ref_relu<float>);
+    TestInplace<float>(sz, vec_relu<float, jit::avx512_common>,
+                       ref_relu<float>);
+  }
+  TestInplace<double>(30, vec_relu<double>, ref_relu<double>);
 }
