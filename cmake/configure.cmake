@@ -57,6 +57,11 @@ if(NOT CMAKE_CROSSCOMPILING)
     endif()
 endif()
 
+if(WIN32)
+  # windows stupid compile option for all targets.
+  add_definitions(-D_XKEYCHECK_H)
+endif(WIN32)
+
 if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)

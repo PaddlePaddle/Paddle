@@ -37,16 +37,17 @@ set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 include_directories(${BOOST_INCLUDE_DIR})
 set(COMMAND "wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
                           && tar zxf ${BOOST_TAR}.tar.gz")
-if (NOT WIN32)
-set(COMMAND "")
-message(WARNING "Windows do not support automaticlly download and install boost. Please manually install it in the thrid_party/install/boost.")
-endif(NOT WIN32)
+#if (WIN32)
+#set(COMMAND "")
+#message(WARNING "Windows do not support automaticlly download and install boost. Please manually install it in the thrid_party/install/boost.")
+#endif(WIN32)
 
+if (NOT WIN32)
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND     
+    DOWNLOAD_COMMAND      ${COMMAND}
     DOWNLOAD_NO_PROGRESS  1
     PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
@@ -54,6 +55,7 @@ ExternalProject_Add(
     INSTALL_COMMAND       ""
     UPDATE_COMMAND        ""
 )
+endif(NOT WIN32)
 
 if (${CMAKE_VERSION} VERSION_LESS "3.3.0")
     set(dummyfile ${CMAKE_CURRENT_BINARY_DIR}/boost_dummy.c)

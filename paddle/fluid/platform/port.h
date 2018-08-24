@@ -7,6 +7,7 @@
 #include <dlfcn.h>     // for dladdr
 #include <execinfo.h>  // for backtrace
 #else
+#define NOMINMAX // windows min(), max() macro will mess std::min,max
 #include <Shlwapi.h>
 #include <Windows.h>
 namespace {

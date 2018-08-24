@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+// for windows compile eigen with logging
+#define GLOG_NO_ABBREVIATED_SEVERITIES
 
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
