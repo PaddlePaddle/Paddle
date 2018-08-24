@@ -24,8 +24,8 @@ limitations under the License. */
 #include <sys/types.h>
 #elif defined(_WIN32)
 #define NOMINMAX
-#include <windows.h>
 #include <psapi.h>
+#include <windows.h>
 #else
 #include <unistd.h>
 #endif
@@ -47,8 +47,9 @@ DEFINE_uint64(initial_cpu_memory_in_mb,
 #endif
               "Initial CPU memory for PaddlePaddle, in MD unit.");
 #else
-DEFINE_uint64(initial_cpu_memory_in_mb, 500ul, "Initial CPU memory for PaddlePaddle, in MD unit.");
-#endif // !defined(_WIN32)
+DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
+              "Initial CPU memory for PaddlePaddle, in MD unit.");
+#endif  // !defined(_WIN32)
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
@@ -68,10 +69,10 @@ inline size_t CpuTotalPhysicalMemory() {
   if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
   return 0L;
 #elif defined(_WIN32)
-MEMORYSTATUSEX sMeminfo;
-sMeminfo.dwLength = sizeof(sMeminfo);
-GlobalMemoryStatusEx(&sMeminfo);
-return sMeminfo.ullTotalPhys;
+  MEMORYSTATUSEX sMeminfo;
+  sMeminfo.dwLength = sizeof(sMeminfo);
+  GlobalMemoryStatusEx(&sMeminfo);
+  return sMeminfo.ullTotalPhys;
 #else
   int64_t pages = sysconf(_SC_PHYS_PAGES);
   int64_t page_size = sysconf(_SC_PAGE_SIZE);

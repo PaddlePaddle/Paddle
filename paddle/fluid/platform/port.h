@@ -1,31 +1,3 @@
-<<<<<<< HEAD
-#pragma once
-
-#include <string>
-#include <stdexcept>
-
-#if !defined(_WIN32)
-#include <dlfcn.h>     // for dladdr
-#include <execinfo.h>  // for backtrace
-#else
-#define NOMINMAX // windows min(), max() macro will mess std::min,max
-#include <Shlwapi.h>
-#include <Windows.h>
-namespace {
-
-static void* dlsym(void *handle, const char* symbol_name) {
-	FARPROC found_symbol;
-    found_symbol = GetProcAddress((HMODULE)handle, symbol_name);
-
-    if (found_symbol == NULL) {
-    	throw std::runtime_error(std::string(symbol_name) + " not found.");
-    }
-    return (void*)found_symbol;
-}
-} // namespace anoymous
-
-#endif
-=======
 // Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,4 +35,3 @@ static void* dlsym(void* handle, const char* symbol_name) {
 }
 
 #endif
->>>>>>> origin/develop

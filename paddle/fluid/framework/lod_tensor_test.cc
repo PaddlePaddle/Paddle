@@ -321,7 +321,7 @@ TEST(LoDTensor, RecordIO) {
   TestRecordIO<float>();
   TestRecordIO<double>();
 }
-#endif // !defined(_WIN32)
+#endif  // !defined(_WIN32)
 
 }  // namespace framework
 }  // namespace paddle

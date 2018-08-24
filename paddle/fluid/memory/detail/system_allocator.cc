@@ -16,13 +16,13 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/system_allocator.h"
 
 #ifdef _WIN32
-#include <windows.h>
 #include <malloc.h>
+#include <windows.h>
 #else
 #include <sys/mman.h>  // for mlock and munlock
 #endif
-#include <stdlib.h>    // for malloc and free
-#include <algorithm>   // for std::max
+#include <stdlib.h>   // for malloc and free
+#include <algorithm>  // for std::max
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/assert.h"
@@ -44,15 +44,15 @@ namespace detail {
 void* AlignedMalloc(size_t size) {
   void* p = nullptr;
   size_t alignment = 32ul;
-  #ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_MKLDNN
   // refer to https://github.com/01org/mkl-dnn/blob/master/include/mkldnn.hpp
   // memory alignment
   alignment = 4096ul;
-  #endif
+#endif
 #ifdef _WIN32
   p = _aligned_malloc(size, alignment);
 #else
-   PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
+  PADDLE_ENFORCE_EQ(posix_memalign(&p, alignment, size), 0, "Alloc %ld error!",
                     size);
 #endif
   PADDLE_ENFORCE(p, "Fail to allocate CPU memory: size = %d .", size);
