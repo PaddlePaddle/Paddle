@@ -45,20 +45,18 @@ class TrainTaskConfig(object):
     # It should be provided if use checkpoints, since the checkpoint doesn't
     # include the training step counter currently.
     start_step = 0
-    check_acc = True
 
     src_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
     trg_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
-    train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de.train_0"
+    train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de"
     val_file_pattern = "test_data/newstest2013.tok.bpe.32000.en-de"
     pool_size = 2000
     sort_type = None
+    local = True
     shuffle = False
     shuffle_batch = False
     special_token = ['<s>', '<e>', '<unk>']
     token_delimiter = ' '
-    local = True
-    sync = True
     use_token_batch = False
 
 

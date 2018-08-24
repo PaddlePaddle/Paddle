@@ -132,10 +132,14 @@ class DistTransformer2x2(object):
                                trainers)
             trainer_prog = t.get_trainer_program()
             TrainTaskConfig.batch_size = 10
+            TrainTaskConfig.train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de.train_{}".format(
+                trainer_id)
         else:
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)
+
+        TrainTaskConfig.local = not is_dist
 
         train_loop(exe, trainer_prog, dev_count, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
@@ -156,7 +160,7 @@ def main(role="pserver",
         dev_count = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
     else:
         place = fluid.CUDAPlace(0)
-        dev_count = fluid.core.get_cuda_device_count()
+        dev_count = 1
 
     if role == "pserver":
         model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
