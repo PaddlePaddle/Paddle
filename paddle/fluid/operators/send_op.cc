@@ -66,6 +66,8 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
         .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
+        .AsDuplicable();
     AddComment(R"DOC(
 Send operator
 

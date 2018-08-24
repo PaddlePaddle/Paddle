@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <mutex>  // NOLINT
-#include "paddle/fluid/platform/port.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 #include "warpctc/include/ctc.h"
 
 namespace paddle {
