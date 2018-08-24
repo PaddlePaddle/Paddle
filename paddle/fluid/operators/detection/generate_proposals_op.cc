@@ -473,9 +473,19 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("min_size", "min size");
     AddAttr<float>("eta", "eta");
     AddComment(R"DOC(
-Generate Proposals Operator.
+Generate Proposals OP
 
+This operator proposes rois according to each box with their probability to be a foreground object and 
+the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
+could be used to train detection net.
 
+Scores is the probability for each box to be an object. In format of (N, A, H, W) where N is batch size, A is number
+of anchors, H and W are height and width of the feature map.
+BboxDeltas is the differece between predicted box locatoin and anchor location. In format of (N, 4*A, H, W)
+
+For generating proposals, this operator transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4) and 
+ calculate box locations as proposals candidates. Then clip boxes to image and remove predicted boxes with small area. 
+Finally, apply nms to get final proposals as output.
 )DOC");
   }
 };
