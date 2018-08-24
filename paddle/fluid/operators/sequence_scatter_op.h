@@ -60,7 +60,7 @@ class SequenceScatterOpKernel : public framework::OpKernel<T> {
       if (i >= lower_bound && i < upper_bound) {
         T* p_out = out->data<T>();
         const T* p_updates = updates->data<T>();
-        const int* p_index = ids->data<int>();
+        const int64_t* p_index = ids->data<int64_t>();
         p_out[seg * slice_size + p_index[i]] += p_updates[i];
       } else {
         ++seg;
@@ -108,7 +108,7 @@ class SequenceScatterGradientOpKernel : public framework::OpKernel<T> {
       int upper_bound = lod_vec[seg + 1];
       if (i >= lower_bound && i < upper_bound) {
         const T* p_dOut = dOut->data<T>();
-        const int* p_index = ids->data<int>();
+        const int64_t* p_index = ids->data<int64_t>();
         T* p_dUpdates = dUpdates->data<T>();
         p_dUpdates[i] = p_dOut[seg * slice_size + p_index[i]];
       } else {
