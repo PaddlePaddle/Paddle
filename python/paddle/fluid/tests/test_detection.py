@@ -18,7 +18,6 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 import unittest
-"""
 class TestDetection(unittest.TestCase):
     def test_detection_output(self):
         program = Program()
@@ -198,8 +197,6 @@ class TestDetectionMAP(unittest.TestCase):
             self.assertIsNotNone(map_out)
             self.assertEqual(map_out.shape, (1, ))
         print(str(program))
-"""
-
 
 class TestGenerateProposals(unittest.TestCase):
     def test_generate_proposals(self):
@@ -238,7 +235,6 @@ class TestGenerateProposals(unittest.TestCase):
         self.assertIsNotNone(rpn_rois)
         self.assertIsNotNone(rpn_roi_probs)
         print(rpn_rois.shape)
-        print(rpn_roi_probs.shape)
 
 
 if __name__ == '__main__':
