@@ -86,8 +86,6 @@ TEST(GraphToProgramPass, Basic) {
   pass->SetNotOwned<paddle::framework::ProgramDesc>("program", &compiled_prog);
   pass->Apply(std::move(g));
   std::vector<OpDesc*> ops = compiled_prog.Block(0).AllOps();
-  compiled_prog.Flush();
-  LOG(ERROR) << compiled_prog.Proto()->DebugString();
   EXPECT_EQ(ops[0]->Type(), "op1");
   EXPECT_EQ(ops[1]->Type(), "op2");
   if (ops[2]->Type() == "op3") {
