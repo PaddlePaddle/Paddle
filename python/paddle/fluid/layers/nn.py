@@ -27,7 +27,6 @@ from . import utils
 import random
 from .. import unique_name
 from functools import reduce
-import warnings
 
 __all__ = [
     'fc',
@@ -104,6 +103,7 @@ __all__ = [
     'rank_loss',
     'prelu',
     'flatten',
+    'stack',
 ]
 
 
@@ -2047,7 +2047,7 @@ def batch_norm(input,
         param_attr(ParamAttr): The parameter attribute for Parameter `scale`.
         bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
         data_layout(string, default NCHW): NCHW|NHWC
-        in_place(bool, Default False): This argument is deprecated since 0.15.0.
+        in_place(bool, Default False): Make the input and output of batch norm reuse memory.
         use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -2068,10 +2068,6 @@ def batch_norm(input,
     """
     helper = LayerHelper('batch_norm', **locals())
     dtype = helper.input_dtype()
-
-    if in_place:
-        raise warnings.warn("The argument in_place is deprecated since 0.15.0, "
-                            "please do not set it True.")
 
     input_shape = input.shape
     if data_layout == 'NCHW':
@@ -2122,7 +2118,7 @@ def batch_norm(input,
     saved_mean = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
     saved_variance = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
 
-    batch_norm_out = helper.create_tmp_variable(dtype)
+    batch_norm_out = input if in_place else helper.create_tmp_variable(dtype)
 
     helper.append_op(
         type="batch_norm",
@@ -5521,4 +5517,18 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out},
         attrs={"axis": axis})
+    return out
+
+
+def stack(x, axis=0):
+    helper = LayerHelper('stack', **locals())
+    axis = 0 if axis is None else axis
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        x = [x]
+
+    out = helper.create_tmp_variable(x[0].dtype)
+    helper.append_op(
+        type='stack', inputs={'X': x}, outputs={'Y': out},
+        attrs={'axis': axis})
     return out
