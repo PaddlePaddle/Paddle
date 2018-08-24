@@ -32,31 +32,6 @@ void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
-void PrintTensor(Tensor t) {
-  auto et = framework::EigenTensor<float, 2>::From(t);
-  int r = t.dims()[0];
-  int c = t.dims()[1];
-  for (int i = 0; i < r; ++i) {
-    for (int j = 0; j < c; ++j) {
-      std::cout << et(i, j) << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-void PrintVector(Tensor v) {
-  auto et = framework::EigenTensor<int, 1>::From(v);
-  int r = v.dims()[0];
-  for (int i = 0; i < r; ++i) {
-    std::cout << et(i) << ", ";
-  }
-  std::cout << std::endl;
-  std::cout << std::endl;
-}
-
-void PrintFlag(char c) { std::cout << c << c << c << std::endl; }
-
 class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -308,7 +283,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   rpn_rois_et = rpn_rois_et / im_scale_data;
 
   Tensor boxes;
-  int proposals_num = (gt_boxes->dims()[0]) + (rpn_rois->dims()[0]);
+  int proposals_num = gt_boxes->dims()[0] + rpn_rois->dims()[0];
   boxes.mutable_data<T>({proposals_num, kBoxDim}, context.GetPlace());
   Concat<T>(context, *gt_boxes, *rpn_rois, &boxes);
 
@@ -418,11 +393,6 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
         context.Attr<std::vector<float>>("bbox_reg_weights");
     int class_nums = context.Attr<int>("class_nums");
 
-    // int64_t n = rpn_rois->lod().size() == 0UL
-    //                 ? 1
-    //                 : static_cast<int64_t>(rpn_rois->lod().back().size() -
-    //                 1);
-    // if (rpn_rois->lod().size()) {
     PADDLE_ENFORCE_EQ(rpn_rois->lod().size(), 1UL,
                       "GenerateProposalLabelsOp rpn_rois needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(
@@ -431,7 +401,6 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                       "GenerateProposalLabelsOp gt_boxes needs 1 level of LoD");
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
-    // }
 
     rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
     labels_int32->mutable_data<int>({n * batch_size_per_im},
@@ -506,6 +475,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
 class GenerateProposalLabelsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    // TODO(buxingyuan): Add Document
     AddInput("RpnRois", "RpnRois.");
     AddInput("GtClasses", "GtClasses.");
     AddInput("GtBoxes", "GtBoxes.");

@@ -1269,6 +1269,7 @@ def generate_proposal_labels(rpn_rois,
                              class_nums=None):
     """
     ** Generate proposal labels Faster-RCNN **
+    TODO(buxingyuan): Add Document
     """
 
     helper = LayerHelper('generate_proposal_labels', **locals())
