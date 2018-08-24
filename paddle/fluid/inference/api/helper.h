@@ -77,26 +77,13 @@ std::string to_string(const std::vector<T> &vec) {
   return ss.str();
 }
 template <>
-static std::string to_string<std::vector<float>>(
-    const std::vector<std::vector<float>> &vec) {
-  std::stringstream ss;
-  for (const auto &piece : vec) {
-    ss << to_string(piece) << "\n";
-  }
-  return ss.str();
-}
+std::string to_string<std::vector<float>>(
+    const std::vector<std::vector<float>> &vec);
+
 template <>
-static std::string to_string<std::vector<std::vector<float>>>(
-    const std::vector<std::vector<std::vector<float>>> &vec) {
-  std::stringstream ss;
-  for (const auto &line : vec) {
-    for (const auto &rcd : line) {
-      ss << to_string(rcd) << ";\t";
-    }
-    ss << '\n';
-  }
-  return ss.str();
-}
+std::string to_string<std::vector<std::vector<float>>>(
+    const std::vector<std::vector<std::vector<float>>> &vec);
+
 // clang-format off
 static void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>> &data) {
   // Assign buffer

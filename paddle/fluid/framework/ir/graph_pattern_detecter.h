@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// Some basic torminolygies:
+// Some basic terminologies:
 //   - PDPattern: a pattern defined as a data flow graph.
 //   - PDNode: the node in the pattern, each PDNode represents an `ir::Node`
 //     that meets some conditions defined in `PDNode.teller`.
@@ -177,7 +177,6 @@ class GraphPatternDetecter {
   using hit_rcd_t =
       std::pair<Node* /*node in graph*/, PDNode* /*node in pattern*/>;
   PDPattern pattern_;
-  std::vector<hit_rcd_t> marked_records_;
   std::unordered_map<const PDNode*, std::unordered_set<Node*>> pdnodes2nodes_;
 };
 

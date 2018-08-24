@@ -135,38 +135,45 @@ PDNode* CreateVarPDNode(PDPattern* pattern,
 
 #define LINKS(a, b) pattern->AddEdge(a, b);
 
+#define NO_ARG_OP(func_name__, op_type__)                   \
+  PDNode* func_name__(PDPattern* pattern) {                 \
+    auto* out = CreateVarPDNode(pattern, {#op_type__}, {}); \
+    return out;                                             \
+  }
+
+#define ONE_ARG_OP(func_name__, op_type__)                  \
+  PDNode* func_name__(PDPattern* pattern, PDNode* x) {      \
+    auto* op = CreateOpPNode(pattern, #op_type__);          \
+    auto* out = CreateVarPDNode(pattern, {#op_type__}, {}); \
+    LINKS(x, op);                                           \
+    LINKS(op, out);                                         \
+    return out;                                             \
+  }
+
+#define TWO_ARG_OP(func_name__, op_type__)                        \
+  PDNode* func_name__(PDPattern* pattern, PDNode* x, PDNode* y) { \
+    auto* op = CreateOpPNode(pattern, #op_type__);                \
+    auto* out = CreateVarPDNode(pattern, {#op_type__}, {});       \
+    LINKS(x, op);                                                 \
+    LINKS(y, op);                                                 \
+    LINKS(op, out);                                               \
+    return out;                                                   \
+  }
+#define THREE_ARG_OP(func_name__, op_type__)                                 \
+  PDNode* func_name__(PDPattern* pattern, PDNode* x, PDNode* y, PDNode* z) { \
+    auto* op = CreateOpPNode(pattern, #op_type__);                           \
+    auto* out = CreateVarPDNode(pattern, {#op_type__}, {});                  \
+    LINKS(x, op);                                                            \
+    LINKS(y, op);                                                            \
+    LINKS(z, op);                                                            \
+    LINKS(op, out);                                                          \
+    return out;                                                              \
+  }
+
 // simulate the pythoin DynamicRNN
-PDNode* LoDTensorToArray(PDPattern* pattern, PDNode* x, PDNode* table) {
-  auto* op = CreateOpPNode(pattern, "lod_tensor_to_array");
-  auto* array = CreateVarPDNode(pattern, {"lod_tensor_to_array"}, {});
-  // input
-  LINKS(x, op);
-  LINKS(table, op);
-  // output
-  LINKS(op, array);
-  return array;
-}
-
-PDNode* ArrayToLoDTensor(PDPattern* pattern, PDNode* x, PDNode* table) {
-  auto* op = CreateOpPNode(pattern, "array_to_lod_tensor");
-  auto* tmp = CreateVarPDNode(pattern, {"array_to_lod_tensor"}, {});
-  // inputs
-  LINKS(x, op);
-  LINKS(table, op);
-  // outputs
-  LINKS(op, tmp);
-  return tmp;
-}
-
-PDNode* Increment(PDPattern* pattern, PDNode* x) {
-  auto* op = CreateOpPNode(pattern, "increment");
-  auto* out = CreateVarPDNode(pattern, {"increment"}, {});
-  // inputs
-  LINKS(x, op);
-  // outputs
-  LINKS(op, out);
-  return out;
-}
+TWO_ARG_OP(LoDTensorToArray, "lod_tensor_to_array");
+TWO_ARG_OP(ArrayToLoDTensor, "array_to_lod_tensor");
+ONE_ARG_OP(Increment, increment);
 
 PDNode* ArrayWrite(PDPattern* pattern, PDNode* x, PDNode* i,
                    PDNode* array = nullptr) {
@@ -184,76 +191,185 @@ PDNode* CreateArray(PDPattern* pattern) {
   return CreateVarPDNode(pattern, {}, {});
 }
 
-PDNode* LessThan(PDPattern* pattern, PDNode* x, PDNode* y) {
-  auto* op = CreateOpPNode(pattern, "less_than");
-  auto* out = CreateVarPDNode(pattern, {"less_than"}, {});
-  LINKS(x, op);
-  LINKS(y, op);
-  LINKS(op, out);
+TWO_ARG_OP(LessThan, less_than);
+TWO_ARG_OP(Equal, equal);
+TWO_ARG_OP(ArrayRead, array_read);
+ONE_ARG_OP(LoDRankTable, lod_rank_table);
+ONE_ARG_OP(MaxSequenceLen, max_sequence_len);
+TWO_ARG_OP(ReorderLodTensorByRank, reorder_lod_tensor_by_rank);
+THREE_ARG_OP(ShrinkMemory, shrink_rnn_memory);
+NO_ARG_OP(FillConstant, fill_constant);
+TWO_ARG_OP(SequenceExpand, sequence_expand)
+TWO_ARG_OP(Concat, concat);
+TWO_ARG_OP(Mul, mul);
+TWO_ARG_OP(ElementwiseAdd, elementwise_add);
+ONE_ARG_OP(SequenceSoftmax, sequence_softmax);
+TWO_ARG_OP(ElementwiseMul, elementwise_mul);
+ONE_ARG_OP(SequencePool, sequence_pool);
+ONE_ARG_OP(Sigmoid, sigmoid);
+ONE_ARG_OP(Tanh, sigmoid);
+
+PDNode* Sums(PDPattern* pattern, const std::vector<PDNode*>& xs) {
+  auto* sum_op = CreateOpPNode(pattern, "sum");
+  auto* out = CreateVarPDNode(pattern, {"sum"}, {});
+  for (auto* x : xs) {
+    LINKS(x, sum_op);
+  }
+  LINKS(sum_op, out);
   return out;
 }
 
-PDNode* Equal(PDPattern* pattern, PDNode* x, PDNode* y) {
-  auto* op = CreateOpPNode(pattern, "equal");
-  auto* out = CreateO
+PDNode* FC(PDPattern* pattern, PDNode* input, bool has_bias = false) {
+  std::vector<std::string> mul_out_outlink({"elementwise_add"});
+  if (!has_bias) {
+    mul_out_outlink.clear();
+  }
+  auto* w = CreateVarPDNode(pattern, {}, {"mul"});
+  auto* mul_out = Mul(pattern, input, w);
+
+  PDNode* res;
+
+  if (has_bias) {
+    auto* bias = CreateVarPDNode(pattern, {}, {"elementwise_add"});
+    res = ElementwiseAdd(pattern, mul_out, bias);
+  } else
+    res = mul_out;
+  return res;
 }
 
+PDNode* Linear(PDPattern* pattern, const std::vector<PDNode*>& xs,
+               bool with_bias = true) {
+  auto* sum_op = CreateOpPNode(pattern, "sum");
+  auto* out = CreateVarPDNode(pattern, {"sum"}, {});
+  std::vector<PDNode*> outs;
+  for (auto* x : xs) {
+    auto* y = FC(pattern, x, with_bias);
+    outs.push_back(y);
+    LINKS(y, sum_op);
+  }
+  LINKS(sum_op, out);
+  return out;
+}
 
+// This pattern just match the external logic of DynamicRNN, its sub-block is
+// not considered.
+class DynamicRNN {
+ public:
+  DynamicRNN(PDPattern* external_p, PDPattern* subblock_p)
+      : external_p_(external_p), subblock_p_(subblock_p) {
+    step_index_ = CreateVarPDNode(external_p_, {"fill_constant"}, {});
+    zero_idx_ = FillConstant(external_p_);
+  }
+
+  PDNode* StepInput(PDNode* x) {
+    if (!lod_rank_table_) {
+      lod_rank_table_ = LoDRankTable(external_p_, x);
+      auto* max_seq_len = MaxSequenceLen(external_p_, lod_rank_table_);
+      LessThan(external_p_, step_index_, max_seq_len);
+    }
+
+    auto* dynamic_rnn_input_array =
+        LoDTensorToArray(external_p_, x, lod_rank_table_);
+    return ArrayRead(external_p_, dynamic_rnn_input_array, step_index_);
+  }
+
+  PDNode* StaticInput(PDNode* x) {
+    PADDLE_THROW("not implemented");
+    return nullptr;
+  }
+
+  PDNode* Memory(PDNode* init_tensor, bool need_reorder = true) {
+    if (init_tensor) {
+      if (need_reorder) {
+        init_tensor =
+            ReorderLodTensorByRank(external_p_, init_tensor, lod_rank_table_);
+      }
+
+      // write to array
+      auto* mem_array = CreateVarPDNode(external_p_, {"write_to_array"}, {});
+      auto* write_to_array_op = CreateOpPNode(external_p_, "write_to_array");
+      auto* pattern = external_p_;
+      LINKS(init_tensor, write_to_array_op);
+      LINKS(zero_idx_, write_to_array_op);
+
+      auto* retv = ArrayRead(external_p_, mem_array, step_index_);
+      ShrinkMemory(external_p_, retv, step_index_, lod_rank_table_);
+      return retv;
+    } else {
+      PADDLE_THROW("not implemented");
+    }
+    return nullptr;
+  }
+
+  void UpdateMemory(PDNode* ex_mem, PDNode* new_mem) {
+    LOG(WARNING) << "nothing will happen in UpdateMemory";
+  }
+
+  void Output(PDPattern* pattern, const std::vector<PDNode*>& outputs) {
+    for (auto* x : outputs) {
+      auto* outside_array = CreateVarPDNode(external_p_, {"array_write"}, {});
+      ArrayWrite(external_p_, x, step_index_, outside_array);
+    }
+  }
+
+ protected:
+  PDNode* lod_rank_table_;
+  PDNode* step_index_;
+  PDNode* zero_idx_;
+
+  PDPattern* external_p_;
+  PDPattern* subblock_p_;
+};
 
 }  // namespace
 
-// void BuildWhileExternalPattern(PDPattern* pattern,
-//                                WhilePatternInfo<Node>* nodes_info,
-//                                WhilePatternInfo<PDNode*>* pdnodes_info) {
-// // Create operators
-// #define CREATE_OP_PNODE(key, op_type)   \
-//   pdnodes_info->key = pattern->NewNode( \
-//       [](Node* x) { return x && x->IsOp() && x->Op()->Type() == #op_type });
-//   CREATE_OP_PNODE(sequence_expand_op, sequence_expand);
-//   CREATE_OP_PNODE(lod_reset_op, lod_reset);
-//   CREATE_OP_PNODE(lod_rank_table_op, lod_rank_table);
-//   CREATE_OP_PNODE(lod_tensor_to_array_op, lod_tensor_to_array);
-//   CREATE_OP_PNODE(fill_constant_op, fill_constant);
-//   CREATE_OP_PNODE(less_than_op, less_than);
-//   CREATE_OP_PNODE(max_sequence_len_op, max_sequence_len);
-//   CREATE_OP_PNODE(fill_constant_op1, fill_constant);
-//   CREATE_OP_PNODE(write_to_array_op, write_to_array);
-//   CREATE_OP_PNODE(reorder_lod_tensor_by_rank_op, reorder_lod_tensor_by_rank);
-//   CREATE_OP_PNODE(write_to_array_op1, write_to_array);
-//   CREATE_OP_PNODE(array_to_lod_tensor_op, array_to_lod_tensor);
-// #undef CREATE_OP_PNODE
+class AttentionLSTM : public DynamicRNN {
+ public:
+  AttentionLSTM(PDPattern* external_p, PDPattern* subblock_p)
+      : DynamicRNN(external_p, subblock_p) {}
 
-// // Create variables
-// #define CREATE_VAR_PNODE(key, in_op, out_op)                  \
-//   pdnodes_info->key = pattern->NewNode([](Node* x) {          \
-//     return x && x->IsVar() &&                                 \
-//            VarInLinksToOp(x, inference::split(in_op, ',')) && \
-//            VarOutLinksToOp(x, inference::split(out_op, ',')); \
-//   });
-//   CREATE_VAR_PNODE(sequence_expand_out, "sequence_expand", "lod_reset");
-//   CREATE_VAR_PNODE(lod_reset_out, "lod_reset",
-//                    "lod_tensor_to_array,lod_rank_table");
-//   CREATE_VAR_PNODE(lod_rank_table_out, "lod_rank_table",
-//                    "lod_tensor_to_array,array_to_lod_tensor,reorder_lod_tensor_"
-//                    "by_rank,max_sequence_len");
-//   CREATE_VAR_PNODE(fill_constant_out, "fill_constant", "less_than,while");
-//   CREATE_VAR_PNODE(max_sequence_len_out, "max_sequence_len",
-//   "less_than,while");
-//   CREATE_VAR_PNODE(less_than_out, "less_than", "while");
-//   CREATE_VAR_PNODE(fill_constant_out1, "fill_constant",
-//                    "write_to_array,write_to_array");
-//   CREATE_VAR_PNODE(while_out, "while", "array_to_lod_tensor");
-//   CREATE_VAR_PNODE(array_to_lod_tensor_out, "array_to_lod_tensor",
-//                    "sequence_expand,sequence_expand");
-//   CREATE_VAR_PNODE(lod_tensor_to_array_out, "lod_tensor_to_array", "while");
-// // TODO(Superjomn) add two write_to_array_outs
+  void Block(PDNode* data_repeat, PDNode* cell_init, PDNode* hidden_init) {
+    auto* encoder_vec = StepInput(data_repeat);
+    auto* cell_mem = Memory(cell_init, true);
+    auto* hidden_mem = Memory(hidden_init, true);
+    auto lstm_step_out =
+        LstmStep(subblock_p_, encoder_vec, hidden_mem, cell_mem);
+    PADDLE_ENFORCE_EQ(lstm_step_out.size(), 2UL);
+    auto* h = lstm_step_out[0];
+    auto* c = lstm_step_out[1];
+    UpdateMemory(hidden_mem, h);
+    UpdateMemory(cell_mem, c);
+    Output(external_p_, {h});
+  }
 
-// #undef CREATE_VAR_PNODE
-// }
+  std::vector<PDNode*> LstmStep(PDPattern* pattern, PDNode* x_t,
+                                PDNode* hidden_t_pre, PDNode* cell_t_prev) {
+    auto* cell_t_repeat = SequenceExpand(pattern, cell_t_prev, x_t);
+    auto* attention_input = Concat(pattern, x_t, cell_t_repeat);
+    auto* attention_fc = FC(pattern, attention_input, true);
+    auto* attention_output = FC(pattern, attention_fc, true);
+    auto* attention_output_actived = attention_output;
+    auto* attention_weights =
+        SequenceSoftmax(pattern, attention_output_actived);
+    auto* scaled = ElementwiseMul(pattern, x_t, attention_weights);
+    auto* context = SequencePool(pattern, scaled);
 
-void BuildWhileBlockPattern(PDPattern* pattern,
-                            WhilePatternInfo<Node>* nodes_info,
-                            WhilePatternInfo<PDNode*>* pdnodes_info);
+    auto* forget_gate =
+        Sigmoid(pattern, Linear(pattern, {hidden_t_pre, context}, true));
+    auto* input_gate =
+        Sigmoid(pattern, Linear(pattern, {hidden_t_pre, context}, true));
+    auto* output_gate =
+        Sigmoid(pattern, Linear(pattern, {hidden_t_pre, context}, true));
+    auto* cell_tilde =
+        Tanh(pattern, Linear(pattern, {hidden_t_pre, context}, true));
+    auto* tmp0 = ElementwiseMul(pattern, forget_gate, cell_t_prev);
+    auto* tmp1 = ElementwiseMul(pattern, input_gate, cell_tilde);
+    auto* cell_t = Sums(pattern, {tmp0, tmp1});
+    auto* hidden_t =
+        ElementwiseMul(pattern, output_gate, Tanh(pattern, cell_t));
+    return {hidden_t, cell_t};
+  }
+};
 
 }  // namespace ir
 }  // namespace framework
