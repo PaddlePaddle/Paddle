@@ -138,6 +138,7 @@ std::unique_ptr<framework::ProgramDesc> Load(
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
+
   LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
 }
