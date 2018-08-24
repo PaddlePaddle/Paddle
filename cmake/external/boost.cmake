@@ -28,26 +28,26 @@ if((NOT DEFINED BOOST_TAR) OR (NOT DEFINED BOOST_URL))
     set(BOOST_TAR "boost_1_41_0" CACHE STRING "" FORCE)
     set(BOOST_URL "http://paddlepaddledeps.cdn.bcebos.com/${BOOST_TAR}.tar.gz" CACHE STRING "" FORCE)
 endif()
-MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
+IF (WIN32)
+    MESSAGE(WARNING, "In windows, boost can not be downloaded automaticlly, please build it manually and put it at " ${THIRD_PARTY_PATH}install/boost)
+else()
+    MESSAGE(STATUS "BOOST_TAR: ${BOOST_TAR}, BOOST_URL: ${BOOST_URL}")
+ENDIF(WIN32)
+
 set(BOOST_SOURCES_DIR ${THIRD_PARTY_PATH}/boost)
 set(BOOST_DOWNLOAD_DIR  "${BOOST_SOURCES_DIR}/src/${BOOST_PROJECT}")
 set(BOOST_INCLUDE_DIR "${BOOST_DOWNLOAD_DIR}/${BOOST_TAR}" CACHE PATH "boost include directory." FORCE)
 set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM 1)
 
 include_directories(${BOOST_INCLUDE_DIR})
-set(COMMAND "wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
-                          && tar zxf ${BOOST_TAR}.tar.gz")
-#if (WIN32)
-#set(COMMAND "")
-#message(WARNING "Windows do not support automaticlly download and install boost. Please manually install it in the thrid_party/install/boost.")
-#endif(WIN32)
 
 if (NOT WIN32)
 ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-    DOWNLOAD_COMMAND      ${COMMAND}
+    DOWNLOAD_COMMAND      "wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
+                          && tar zxf ${BOOST_TAR}.tar.gz"
     DOWNLOAD_NO_PROGRESS  1
     PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
