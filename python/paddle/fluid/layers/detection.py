@@ -1265,8 +1265,8 @@ def generate_proposals(scores,
                        post_nms_topN=1000,
                        nms_thresh=0.5,
                        min_size=0.1,
-		       eta=1.0,
-		       name=None):
+                       eta=1.0,
+                       name=None):
     """
     ** Generate proposal labels Faster-RCNN **
     """
@@ -1288,11 +1288,10 @@ def generate_proposals(scores,
             'post_nms_topN': post_nms_topN,
             'nms_thresh': nms_thresh,
             'min_size': min_size,
-	    'eta':eta
+            'eta': eta
         },
         outputs={'RpnRois': rpn_rois,
-                 'RpnRoiProbs':rpn_roi_probs
-	})
+                 'RpnRoiProbs': rpn_roi_probs})
     rpn_rois.stop_gradient = True
     rpn_roi_probs.stop_gradient = True
 
