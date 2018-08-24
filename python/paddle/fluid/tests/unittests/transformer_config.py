@@ -46,6 +46,8 @@ class TrainTaskConfig(object):
     # include the training step counter currently.
     start_step = 0
 
+    check_acc = True
+
     src_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
     trg_vocab_fpath = "test_data/transformer/vocab.bpe.32000"
     train_file_pattern = "test_data/transformer/train.tok.clean.bpe.32000.en-de"

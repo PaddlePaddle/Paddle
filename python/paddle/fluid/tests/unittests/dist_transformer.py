@@ -25,8 +25,6 @@ from paddle.fluid import core
 import os
 import sys
 import six
-import transformer_model
-import paddle.dataset.wmt16 as wmt16
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
@@ -34,6 +32,9 @@ fluid.default_main_program().random_seed = 1
 
 from transformer_config import ModelHyperParams, TrainTaskConfig
 from transformer_train import train_loop
+
+from transformer_model import transformer
+from optim import LearningRateScheduler
 
 
 def get_model(is_dist, is_async):
@@ -51,7 +52,7 @@ def get_model(is_dist, is_async):
 
     if not is_dist:
         optimizer = fluid.optimizer.Adam(
-            learning_rate=lr_scheduler.learning_rate,
+            learning_rate=local_lr_scheduler.learning_rate,
             beta1=TrainTaskConfig.beta1,
             beta2=TrainTaskConfig.beta2,
             epsilon=TrainTaskConfig.eps)
@@ -141,7 +142,7 @@ class DistTransformer2x2(object):
 
         TrainTaskConfig.local = not is_dist
 
-        train_loop(exe, trainer_prog, dev_count, sum_cost, avg_cost,
+        train_loop(startup_exe, trainer_prog, dev_count, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
 
 
@@ -155,7 +156,7 @@ def main(role="pserver",
 
     model = DistTransformer2x2()
 
-    if training_role == "PSERVER" or (not TrainTaskConfig.use_gpu):
+    if role == "PSERVER" or (not TrainTaskConfig.use_gpu):
         place = fluid.CPUPlace()
         dev_count = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
     else:

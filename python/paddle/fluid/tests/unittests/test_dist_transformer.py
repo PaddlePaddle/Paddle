@@ -18,15 +18,23 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistTransformer2x2(TestDistBase):
+class TestDistTransformer2x2Sync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
     def test_transformer(self):
-        # TODO(paddle-dev): check if the delta is OK.
-        # Usually start around ~8000 and converge to ~5000
-        self.check_with_place("dist_transformer.py", delta=400)
+        self.check_with_place(
+            "dist_transformer.py", delta=400, check_error_log=True)
 
+
+"""
+class TestDistTransformer2x2Async(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+
+    def test_transformer(self):
+        self.check_with_place("dist_transformer.py", delta=400)
+"""
 
 if __name__ == "__main__":
     unittest.main()
