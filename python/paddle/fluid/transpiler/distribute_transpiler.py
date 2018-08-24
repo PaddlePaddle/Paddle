@@ -278,8 +278,7 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                     OP_ROLE_VAR_ATTR_NAME:
                     [self.grad_name_to_param_name[grad_varname], grad_varname],
-                    # "sync_mode": not self.sync_mode
-                    "sync_mode": True
+                    "sync_mode": not self.sync_mode
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
@@ -324,8 +323,7 @@ class DistributeTranspiler(object):
                         param_varname,
                         self.param_name_to_grad_name[param_varname]
                     ],
-                    # "sync_mode": not self.sync_mode
-                    "sync_mode": True,
+                    "sync_mode": not self.sync_mode
                 })
 
         if self.sync_mode:
