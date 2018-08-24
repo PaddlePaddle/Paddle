@@ -80,6 +80,12 @@ ProgramDesc::ProgramDesc(const proto::ProgramDesc &desc) {
   InitFromProto();
 }
 
+void ProgramDesc::CopyFrom(const proto::ProgramDesc &desc) {
+  blocks_.clear();
+  desc_ = desc;
+  InitFromProto();
+}
+
 ProgramDesc::ProgramDesc(const std::string &binary_str) {
   PADDLE_ENFORCE(desc_.ParseFromString(binary_str),
                  "Fail to parse program_desc from binary string.");
