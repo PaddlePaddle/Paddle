@@ -21,7 +21,7 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-class FusionLSTMOp : public framework::OperatorWithKernel {
+class AttentionLSTMOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -32,7 +32,7 @@ class FusionLSTMOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 };
 
-class FusionLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
+class AttentionLSTMOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
 };
