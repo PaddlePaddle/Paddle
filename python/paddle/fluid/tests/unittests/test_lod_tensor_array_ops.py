@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import numpy
@@ -35,8 +37,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
-        expect = map(lambda x: numpy.array(x).astype('int32'),
-                     [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
+        expect = [
+            numpy.array(x).astype('int32')
+            for x in [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]]
+        ]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -48,8 +52,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 0, 1]])
-        expect = map(lambda x: numpy.array(x).astype('int32'),
-                     [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
+        expect = [
+            numpy.array(x).astype('int32')
+            for x in [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]]
+        ]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -111,8 +117,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect = [
             numpy.array(
                 item, dtype='int32')
-            for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49], range(
-                22, 39) + range(7, 21), range(39, 46)]
+            for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49], list(
+                range(22, 39)) + list(range(7, 21)), list(range(39, 46))]
         ]
         lod = [[[1, 2, 1], [1, 3, 4, 4]], [[4, 3], [1, 4, 4, 8, 4, 6, 4]],
                [[2], [6, 1]]]

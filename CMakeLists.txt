@@ -73,6 +73,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
 endif()
+set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -137,12 +138,6 @@ else()
     set(THIRD_PARTY_BUILD_TYPE Release)
 endif()
 
-if(WITH_MKL)
-  option(MKL_SPLIT_GEMM "PaddlePaddle MKL gemm would split to small ones" OFF)
-  if (MKL_SPLIT_GEMM)
-    add_definitions(-DPADDLE_MKL_SPLIT_GEMM)
-  endif()
-endif()
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
     if (WITH_MKL AND AVX2_FOUND)
@@ -159,6 +154,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
@@ -175,6 +171,7 @@ include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
+include(external/cub)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -201,23 +198,24 @@ include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
 
+include(flags)              # set paddle compile flags
+include(cudnn)              # set cudnn libraries, must before configure
+include(cupti)
+include(configure)          # add paddle env configuration
+
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
     include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
+elseif()
+    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
 endif()
 
-include(cudnn)              # set cudnn libraries, must before configure
-include(cupti)
-include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
-include(flags)              # set paddle compile flags
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries

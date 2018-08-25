@@ -37,6 +37,7 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
+
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   int groups = ctx->Attrs().Get<int>("groups");
@@ -57,7 +58,6 @@ void ConvOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(in_dims[1], filter_dims[1] * groups,
                     "The number of input channels should be equal to filter "
                     "channels * groups.");
-
   PADDLE_ENFORCE_EQ(
       filter_dims[0] % groups, 0,
       "The number of output channels should be divided by groups.");
@@ -122,6 +122,11 @@ void Conv2DOpMaker::Make() {
            "H is the height of the filter, and W is the width of the filter. "
            "If the groups attribute is greater than 1, C equals the number of "
            "input image channels divided by the groups.");
+  AddInput("Bias",
+           "(Tensor) Bias to be added to each output of filter application."
+           "The format of output tensor is X (one-dimensional) of size equal"
+           "to the number of output channels. Only used with MKL-DNN.")
+      .AsDispensable();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.")

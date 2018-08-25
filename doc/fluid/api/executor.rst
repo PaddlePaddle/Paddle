@@ -38,11 +38,3 @@ _switch_scope
 ..  autofunction:: paddle.fluid.executor._switch_scope
     :noindex:
 
-.. _api_fluid_executor_fetch_var:
-
-fetch_var
----------
-
-..  autofunction:: paddle.fluid.executor.fetch_var
-    :noindex:
-

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
@@ -28,7 +30,8 @@ import numpy as np
 
 
 class TestMNISTIfElseOp(unittest.TestCase):
-    def test_raw_api(self):
+    # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379
+    def not_test_raw_api(self):
         prog = Program()
         startup_prog = Program()
         with program_guard(prog, startup_prog):
@@ -76,20 +79,21 @@ class TestMNISTIfElseOp(unittest.TestCase):
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for data in train_reader():
-                x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-                y_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                x_data = np.array([x[0] for x in data]).astype("float32")
+                y_data = np.array([x[1] for x in data]).astype("int64")
                 y_data = np.expand_dims(y_data, axis=1)
 
                 outs = exe.run(prog,
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])
-                print outs[0]
+                print(outs[0])
                 if outs[0] < 1.0:
                     return
         self.assertFalse(True)
 
-    def test_ifelse(self):
+    # FIXME: https://github.com/PaddlePaddle/Paddle/issues/12245#issuecomment-406462379
+    def not_test_ifelse(self):
         prog = Program()
         startup_prog = Program()
         with program_guard(prog, startup_prog):
@@ -131,15 +135,15 @@ class TestMNISTIfElseOp(unittest.TestCase):
         PASS_NUM = 100
         for pass_id in range(PASS_NUM):
             for data in train_reader():
-                x_data = np.array(map(lambda x: x[0], data)).astype("float32")
-                y_data = np.array(map(lambda x: x[1], data)).astype("int64")
+                x_data = np.array([x[0] for x in data]).astype("float32")
+                y_data = np.array([x[1] for x in data]).astype("int64")
                 y_data = y_data.reshape((y_data.shape[0], 1))
 
                 outs = exe.run(prog,
                                feed={'x': x_data,
                                      'y': y_data},
                                fetch_list=[avg_loss])
-                print outs[0]
+                print(outs[0])
                 if outs[0] < 1.0:
                     return
         self.assertFalse(True)
@@ -150,6 +154,13 @@ class TestIfElse(unittest.TestCase):
         # condiction is: self.data < self.cond_value
         self.cond_value = 0.5
         self.data = np.random.rand(25, 1).astype(np.float32)
+
+    def numpy_cal(self):
+        s1 = self.data[np.where(self.data < self.cond_value)]
+        res = np.sum(np.exp(s1))
+        s2 = self.data[np.where(self.data >= self.cond_value)]
+        res += np.sum(np.tanh(s2))
+        return res
 
     def compare_ifelse_op_and_numpy(self, place):
         self.set_test_case()
@@ -164,10 +175,12 @@ class TestIfElse(unittest.TestCase):
             ie = layers.IfElse(ifcond)
             with ie.true_block():
                 true_target = ie.input(src)
+                true_target = fluid.layers.exp(true_target)
                 ie.output(true_target)
 
             with ie.false_block():
                 false_target = ie.input(src)
+                false_target = fluid.layers.tanh(false_target)
                 ie.output(false_target)
             if_out = ie()
             out = layers.reduce_sum(if_out)
@@ -178,7 +191,8 @@ class TestIfElse(unittest.TestCase):
             o1, = exe.run(fluid.default_main_program(),
                           feed={'data': self.data},
                           fetch_list=[out])
-            o2 = np.sum(self.data)
+            o2 = self.numpy_cal()
+
             self.assertTrue(
                 np.allclose(
                     o1, o2, atol=1e-8),

@@ -18,7 +18,11 @@ else()
 endif()
 cc_test(enforce_test SRCS enforce_test.cc DEPS stringpiece enforce)
 
-cc_library(cpu_info SRCS cpu_info.cc DEPS gflags glog enforce)
+set(CPU_INFO_DEPS gflags glog enforce)
+IF(WITH_XBYAK)
+    list(APPEND CPU_INFO_DEPS xbyak)
+ENDIF()
+cc_library(cpu_info SRCS cpu_info.cc DEPS ${CPU_INFO_DEPS})
 cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce)
@@ -46,7 +50,7 @@ ENDIF()
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
 cc_library(device_context SRCS device_context.cc init.cc DEPS malloc
-    place eigen3 stringpiece cpu_helper framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
+    place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)

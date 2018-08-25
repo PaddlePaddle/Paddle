@@ -101,6 +101,7 @@ if(WITH_MKLDNN)
   )
 endif()
 
+if (NOT WIN32)
 if(NOT MOBILE_INFERENCE AND NOT RPI)
   set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
   copy(snappy_lib
@@ -120,15 +121,23 @@ if(NOT MOBILE_INFERENCE AND NOT RPI)
     DSTS ${dst_dir} ${dst_dir}/lib
     DEPS zlib)
 endif()
+endif(NOT WIN32)
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
+if (NOT WIN32)
 copy(framework_lib DEPS framework_py_proto 
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
 )
+else()
+copy(framework_lib
+  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
+)
+endif(NOT WIN32)
 
 set(module "memory")
 copy(memory_lib
@@ -143,7 +152,7 @@ if (WITH_ANAKIN AND WITH_GPU)
     copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
         SRCS
         ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
-        ${PADDLE_BINARY_DIR}/third_party/install/anakin/*.tar.gz # anakin release
+        ${ANAKIN_INSTALL_DIR} # anakin release
         DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
      list(APPEND inference_deps anakin_inference_lib)
 endif()

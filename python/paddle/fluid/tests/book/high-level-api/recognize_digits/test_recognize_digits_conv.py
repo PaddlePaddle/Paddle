@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 from __future__ import print_function
+
 import argparse
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -89,8 +91,10 @@ def train(use_cuda, train_program, params_dirname):
                 if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
         elif isinstance(event, fluid.EndStepEvent):
-            print("Step {0}, Epoch {1} Metrics {2}".format(
-                event.step, event.epoch, map(numpy.array, event.metrics)))
+            print(
+                ("Step {0}, Epoch {1} Metrics {2}".format(
+                    event.step, event.epoch,
+                    list(map(numpy.array, event.metrics)))))
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
