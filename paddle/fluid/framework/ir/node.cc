@@ -17,7 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-constexpr char Node::kControlDepVarName[];
+char Node::kControlDepVarName[] = "__control_var";
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

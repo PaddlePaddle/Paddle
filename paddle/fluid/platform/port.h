@@ -23,6 +23,7 @@
 #include <dlfcn.h>     // for dladdr
 #include <execinfo.h>  // for backtrace
 #include <sys/stat.h>
+
 #else
 #include <io.h>  // _popen, _pclose
 #include <windows.h>
@@ -79,5 +80,3 @@ static bool PathExists(const std::string &path) {
 #endif  // !_WIN32
   return false;
 }
-
-static FILE
