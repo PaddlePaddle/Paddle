@@ -267,7 +267,7 @@ inline void throw_on_error(T e) {
   } while (false)
 
 #else
-#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__)
+#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif  // REPLACE_ENFORCE_GLOG
 
 #else  // !_WIN32
