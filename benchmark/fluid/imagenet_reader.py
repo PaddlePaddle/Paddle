@@ -149,23 +149,12 @@ class XmapEndSignal():
     pass
 
 
-def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
-    """
-    Use multiprocess to map samples from reader by a mapper defined by user.
-    And this function contains a buffered decorator.
-    :param mapper:  a function to map sample.
-    :type mapper: callable
-    :param reader: the data reader to read from
-    :type reader: callable
-    :param process_num: process number to handle original sample
-    :type process_num: int
-    :param buffer_size: max buffer size
-    :type buffer_size: int
-    :param order: keep the order of reader
-    :type order: bool
-    :return: the decarated reader
-    :rtype: callable
-    """
+def xmap_readers(mapper,
+                 reader,
+                 process_num,
+                 buffer_size,
+                 order=False,
+                 print_queue_state=True):
     end = XmapEndSignal()
 
     # define a worker to read samples from reader to in_queue
@@ -175,7 +164,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         in_queue.put(end)
 
     # define a worker to read samples from reader to in_queue with order flag
-    def order_read_worker(reader, in_queue):
+    def order_read_worker(reader, in_queue, file_queue):
         in_order = 0
         for i in reader():
             in_queue.put((in_order, i))
@@ -186,12 +175,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     # and put mapped samples into out_queue
     def handle_worker(in_queue, out_queue, mapper):
         sample = in_queue.get()
-        st = time.time()
         while not isinstance(sample, XmapEndSignal):
-            if time.time() - st > 5:
-                print("in/out queue sizes: ", in_queue.qsize(),
-                      out_queue.qsize())
-                st = time.time()
             r = mapper(sample)
             out_queue.put(r)
             sample = in_queue.get()
@@ -202,12 +186,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     # and put mapped samples into out_queue by order
     def order_handle_worker(in_queue, out_queue, mapper, out_order):
         ins = in_queue.get()
-        st = time.time()
         while not isinstance(ins, XmapEndSignal):
-            if time.time() - st > 5:
-                print("in/out queue sizes: ", in_queue.qsize(),
-                      out_queue.qsize())
-                st = time.time()
             order, sample = ins
             r = mapper(sample)
             while order != out_order[0]:
@@ -218,12 +197,8 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
         in_queue.put(end)
         out_queue.put(end)
 
-    def queue_stat_worker(in_queue, out_queue):
-        while True:
-            print("in/out queue sizes: ", in_queue.qsize(), out_queue.qsize())
-            time.sleep(5)
-
     def xreader():
+        file_queue = Queue()
         in_queue = Queue(buffer_size)
         out_queue = Queue(buffer_size)
         out_order = [0]
@@ -245,9 +220,14 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
             w.start()
 
         sample = out_queue.get()
+        start_t = time.time()
         while not isinstance(sample, XmapEndSignal):
             yield sample
             sample = out_queue.get()
+            if time.time() - start_t > 3:
+                if print_queue_state:
+                    print("queue sizes: ", in_queue.qsize(), out_queue.qsize())
+                start_t = time.time()
         finish = 1
         while finish < process_num:
             sample = out_queue.get()
@@ -304,6 +284,37 @@ def _reader_creator(file_list,
     return paddle.reader.xmap_readers(mapper, reader, THREAD, BUF_SIZE)
 
 
+def load_raw_image_uint8(sample):
+    img_arr = np.array(Image.open(sample[0])).astype('int64')
+    return img_arr, int(sample[1])
+
+
+def train_raw(file_list=TRAIN_LIST, shuffle=True):
+    def reader():
+        with open(file_list) as flist:
+            full_lines = [line.strip() for line in flist]
+            if shuffle:
+                random.shuffle(full_lines)
+
+            trainer_id = int(os.getenv("PADDLE_TRAINER_ID"))
+            trainer_count = int(os.getenv("PADDLE_TRAINERS"))
+            per_node_lines = len(full_lines) / trainer_count
+            lines = full_lines[trainer_id * per_node_lines:(trainer_id + 1) *
+                               per_node_lines]
+            print("read images from %d, length: %d, lines length: %d, total: %d"
+                  % (trainer_id * per_node_lines, per_node_lines, len(lines),
+                     len(full_lines)))
+
+            for line in lines:
+                img_path, label = line.split()
+                img_path = img_path.replace("JPEG", "jpeg")
+                img_path = os.path.join(DATA_DIR, "train", img_path)
+                yield (img_path, int(label))
+
+    return paddle.reader.xmap_readers(load_raw_image_uint8, reader, THREAD,
+                                      BUF_SIZE)
+
+
 def train(file_list=TRAIN_LIST, xmap=True):
     return _reader_creator(
         file_list,
@@ -320,3 +331,14 @@ def val(file_list=TEST_LIST, xmap=True):
 
 def test(file_list=TEST_LIST):
     return _reader_creator(file_list, 'test', shuffle=False)
+
+
+if __name__ == "__main__":
+    c = 0
+    start_t = time.time()
+    for d in train()():
+        c += 1
+        if c >= 10000:
+            break
+    spent = time.time() - start_t
+    print("read 10000 speed: ", 10000 / spent, spent)
