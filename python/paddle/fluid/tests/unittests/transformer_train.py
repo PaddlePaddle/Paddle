@@ -290,6 +290,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
     for pass_id in xrange(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
+            print("batch_id:", batch_id)
             if batch_id >= 5:
                 break
 
@@ -334,6 +335,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
 
             init = True
 
+            print("begin test")
             # Validate and save the model for inference.
             if TrainTaskConfig.val_file_pattern is not None:
                 val_avg_cost, val_ppl = test()

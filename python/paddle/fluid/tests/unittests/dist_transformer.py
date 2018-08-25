@@ -26,11 +26,13 @@ import os
 import sys
 import six
 
+import transformer_reader as reader
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
 
-from transformer_config import ModelHyperParams, TrainTaskConfig
+from transformer_config import ModelHyperParams, TrainTaskConfig, merge_cfg_from_list
 from transformer_train import train_loop
 
 from transformer_model import transformer
@@ -84,6 +86,20 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
         pservers=pserver_endpoints,
         trainers=trainers)
     return t
+
+
+def update_args():
+    src_dict = reader.DataReader.load_dict(TrainTaskConfig.src_vocab_fpath)
+    trg_dict = reader.DataReader.load_dict(TrainTaskConfig.trg_vocab_fpath)
+    dict_args = [
+        "src_vocab_size", str(len(src_dict)), "trg_vocab_size",
+        str(len(trg_dict)), "bos_idx",
+        str(src_dict[TrainTaskConfig.special_token[0]]), "eos_idx",
+        str(src_dict[TrainTaskConfig.special_token[1]]), "unk_idx",
+        str(src_dict[TrainTaskConfig.special_token[2]])
+    ]
+    print("dict_args:", dict_args)
+    merge_cfg_from_list(dict_args, [TrainTaskConfig, ModelHyperParams])
 
 
 class DistTransformer2x2(object):
@@ -141,6 +157,7 @@ class DistTransformer2x2(object):
         startup_exe = fluid.Executor(place)
 
         TrainTaskConfig.local = not is_dist
+        print("train config:", TrainTaskConfig.__dict__)
 
         train_loop(startup_exe, trainer_prog, dev_count, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
@@ -216,6 +233,9 @@ if __name__ == "__main__":
     is_dist = True if sys.argv[6] == "TRUE" else False
     # FIXME(typhoonzero): refine this test.
     is_async = True if sys.argv[7] == "TRUE" else False
+
+    update_args()
+
     main(
         role=role,
         endpoints=endpoints,
