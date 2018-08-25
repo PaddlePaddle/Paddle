@@ -66,10 +66,22 @@ struct Argument {
     PADDLE_ENFORCE_NOT_NULL(data);
     PADDLE_ENFORCE(!attrs_.count(key), "duplicate attr called %s", key);
     attrs_[key] = data;
-    attr_deleters_[key] = [data]() { delete data; };
+    attr_deleters_[key] = [data, key]() {
+      VLOG(4) << "argument delete attr: " << key;
+      delete data;
+    };
   }
 
   bool Has(const std::string& name) const { return attrs_.count(name); }
+
+  template <typename T>
+  T* Release(const std::string& key) {
+    PADDLE_ENFORCE(attrs_.count(key));
+    auto* res = boost::any_cast<T*>(attrs_.at(key));
+    attrs_.erase(key);
+    attr_deleters_.erase(key);
+    return res;
+  }
 
   template <typename T>
   T& Get(const std::string& key) {

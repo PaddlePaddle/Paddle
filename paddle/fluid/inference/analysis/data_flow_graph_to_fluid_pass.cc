@@ -67,13 +67,7 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
   }
 
   if (argument_->Has("param_scope")) {
-    PADDLE_ENFORCE(argument_->model_output_store_path.get());
-    const std::string param_out_path =
-        *argument_->model_output_store_path + "/param";
-    LOG(WARNING) << "persist the parameters from analysis to disk "
-                 << param_out_path;
-    SaveVars(argument_->Get<framework::Scope>("param_scope"), param_out_path,
-             true);
+    LOG(INFO) << "get param_scope";
   }
 
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());

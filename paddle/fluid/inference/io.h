@@ -42,7 +42,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              const std::string& param_filename);
 
 // Save the variables from a scope to disk.
-void SaveVars(const framework::Scope& scope, const std::string& dirname,
+void SaveVars(const framework::Scope& scope,
+              const std::vector<std::string>& vars, const std::string& dirname,
               bool predicate = true);
 
 }  // namespace inference

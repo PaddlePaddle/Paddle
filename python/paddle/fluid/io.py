@@ -406,6 +406,9 @@ def load_vars(executor,
                 attrs={'file_path': os.path.join(dirname, filename)})
         executor.run(load_prog)
 
+        if main_program is None:
+            main_program = default_main_program()
+
         # load slice vars on pserver, if have it.
         _load_slice_up_vars(executor, dirname,
                             main_program._slice_vars_and_attrs)
