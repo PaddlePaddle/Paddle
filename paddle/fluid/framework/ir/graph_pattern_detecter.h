@@ -21,6 +21,7 @@
 #include <numeric>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 
 namespace paddle {
 namespace framework {
@@ -36,9 +37,11 @@ namespace ir {
 struct PDNode {
   // tell whether an ir::Node* is a candidation for a PDNode.
   using teller_t = std::function<bool(Node*)>;
+  enum class Type { kOp, kVar };
 
-  PDNode(teller_t&& teller, const std::string& name = "")
-      : teller_(teller), name_(name) {
+  PDNode(teller_t&& teller, const std::string& name = "",
+         Type type = Type::kVar)
+      : teller_(std::move(teller)), name_(name), type_(type) {
     PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
   }
 
@@ -52,6 +55,9 @@ struct PDNode {
     return teller_(node);
   }
 
+  bool IsOp() const { return type_ == Type::kOp; }
+  bool IsVar() const { return type_ == Type::kVar; }
+
   const std::string& name() const { return name_; }
 
   PDNode(const PDNode&) = delete;
@@ -60,6 +66,7 @@ struct PDNode {
  private:
   teller_t teller_;
   std::string name_;
+  Type type_;
 };
 
 /*
@@ -101,6 +108,32 @@ class PDPattern {
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
+
+  std::string DotString() {
+    using inference::analysis::Dot;
+    Dot dot;
+    int id = 0;
+    // Create Nodes
+    std::unordered_map<PDNode*, std::string> node2dot;
+    for (const auto& node : nodes()) {
+      LOG(INFO) << "draw node " << node->name();
+      std::string node_id = "Node" + std::to_string(id++);
+      dot.AddNode(node_id, {}, node->name());
+      node2dot[node.get()] = node_id;
+    }
+    // Create Edges
+    for (const auto& edge : edges()) {
+      if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
+        LOG(ERROR) << "no node " << edge.first << " " << edge.second;
+        continue;
+      }
+      auto& src = node2dot.at(edge.first);
+      auto& trg = node2dot.at(edge.second);
+      dot.AddEdge(src, trg, {});
+    }
+    LOG(INFO) << dot.Build();
+    return dot.Build();
+  }
 
  private:
 #ifdef PADDLE_WITH_TESTING

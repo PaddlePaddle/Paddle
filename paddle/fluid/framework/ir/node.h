@@ -69,6 +69,7 @@ class Node {
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;
+  int id_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(Node);

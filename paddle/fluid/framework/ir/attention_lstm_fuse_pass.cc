@@ -1,5 +1,6 @@
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
+#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
 
@@ -56,6 +57,12 @@ void FindWhileOp(Graph* graph) {
       },
       "while");
 
+  if (!graph->Has(kGraphvizMarkedNodeAttr)) {
+    graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
+  }
+  auto& marked_nodes =
+      graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
+
   auto handle = [&](const GraphPatternDetecter::subgraph_t& subgraph,
                     Graph* g) {
     auto* while_pat_node = gpd.pattern().RetriveNode("while");
@@ -63,6 +70,7 @@ void FindWhileOp(Graph* graph) {
     LOG(INFO) << "find while";
     LOG(INFO) << "inputs " << while_node->inputs.size();
     LOG(INFO) << "outputs " << while_node->outputs.size();
+    marked_nodes.insert(while_node);
   };
   gpd(graph, handle);
 }
@@ -73,10 +81,9 @@ void BuildFusePattern(PDPattern* pattern) {}
 void PrepareLSTMWeight(const LoDTensor& W_forget, const LoDTensor& W_input,
                        const LoDTensor& W_output, const LoDTensor& W_cell,
                        LoDTensor* out) {
-  PADDLE_ENFORCE(W_forget.dims()[0], W_input.dims()[0]);
-  PADDLE_ENFORCE(W_input.dims()[0], W_output.dims()[0]);
-  PADDLE_ENFORCE(W_output.dims()[0], W_cell.dims()[0]);
-
+  PADDLE_ENFORCE_EQ(W_forget.dims()[0], W_input.dims()[0]);
+  PADDLE_ENFORCE_EQ(W_input.dims()[0], W_output.dims()[0]);
+  PADDLE_ENFORCE_EQ(W_output.dims()[0], W_cell.dims()[0]);
 }
 
 void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
@@ -115,20 +122,44 @@ bool VarOutLinksToOp(Node* x, const std::vector<std::string>& op_types) {
 
 namespace {
 
-PDNode* CreateOpPNode(PDPattern* pattern, const std::string& op_type) {
-  return pattern->NewNode([op_type](Node* x) -> bool {
-    return x && x->IsOp() && x->Op()->Type() == op_type;
-  });
+std::string UniqueName(const std::string& prefix) {
+  static int id = 0;
+  return prefix + "/" + std::to_string(id++);
+}
+
+std::string UniqueOpName(const std::string& prefix) {
+  return UniqueName(prefix);
+}
+std::string UniqueVarName(const std::string& prefix) {
+  return UniqueName(prefix + "_out");
+}
+
+PDNode* CreateOpPNode(PDPattern* pattern, const std::string& op_type,
+                      const std::string& name = "") {
+  return pattern->NewNode(
+      [op_type](Node* x) -> bool {
+        return x && x->IsOp() && x->Op()->Type() == op_type;
+      },
+      UniqueOpName(op_type));
 }
 
 PDNode* CreateVarPDNode(PDPattern* pattern,
                         const std::vector<std::string>& in_op_types,
-                        const std::vector<std::string>& out_op_types) {
-  return pattern->NewNode([in_op_types, out_op_types](Node* x) -> bool {
-    return x && x->IsVar() && VarInLinksToOp(x, in_op_types) &&
-           VarOutLinksToOp(x, out_op_types);
-  });
+                        const std::vector<std::string>& out_op_types,
+                        const std::string& op_type = "") {
+  std::string name;
+  if (!in_op_types.empty())
+    name = UniqueVarName(in_op_types.front());
+  else if (!out_op_types.empty())
+    name = UniqueName(out_op_types.front() + "_in");
+  return pattern->NewNode(
+      [in_op_types, out_op_types](Node* x) -> bool {
+        return x && x->IsVar() && VarInLinksToOp(x, in_op_types) &&
+               VarOutLinksToOp(x, out_op_types);
+      },
+      name);
 }
+
 #define CHECK_P1(x) PADDLE_ENFORCE_NOT_NULL(x);
 #define CHECK_P2(x, y) \
   CHECK_P1(x);         \
@@ -142,11 +173,12 @@ PDNode* CreateVarPDNode(PDPattern* pattern,
 
 #define LINKS(a, b) pattern->AddEdge(a, b);
 
-#define NO_ARG_OP(func_name__, op_type__)                   \
-  PDNode* func_name__(PDPattern* pattern) {                 \
-    CHECK_P1(pattern);                                      \
-    auto* out = CreateVarPDNode(pattern, {#op_type__}, {}); \
-    return out;                                             \
+#define NO_ARG_OP(func_name__, op_type__)                                      \
+  PDNode* func_name__(PDPattern* pattern) {                                    \
+    CHECK_P1(pattern);                                                         \
+    auto* out =                                                                \
+        CreateVarPDNode(pattern, {#op_type__}, {}, UniqueVarName(#op_type__)); \
+    return out;                                                                \
   }
 
 #define ONE_ARG_OP(func_name__, op_type__)                  \
@@ -182,8 +214,8 @@ PDNode* CreateVarPDNode(PDPattern* pattern,
   }
 
 // simulate the pythoin DynamicRNN
-TWO_ARG_OP(LoDTensorToArray, "lod_tensor_to_array");
-TWO_ARG_OP(ArrayToLoDTensor, "array_to_lod_tensor");
+TWO_ARG_OP(LoDTensorToArray, lod_tensor_to_array);
+TWO_ARG_OP(ArrayToLoDTensor, array_to_lod_tensor);
 ONE_ARG_OP(Increment, increment);
 
 PDNode* ArrayWrite(PDPattern* pattern, PDNode* x, PDNode* i,
@@ -414,13 +446,13 @@ class AttentionLSTM : public DynamicRNN {
 
 // Parameters
 
-
-
 void AttentionLSTMFusePass::Operate(Graph* graph, Scope* scope) const {
   PDPattern external_pattern, subblock_pattern;
 
   AttentionLSTM lstm(&external_pattern, &subblock_pattern);
   lstm();
+  std::ofstream file("./ir_lstm_pattern.dot");
+  file << external_pattern.DotString();
 
   FindWhileOp(graph);
 }
