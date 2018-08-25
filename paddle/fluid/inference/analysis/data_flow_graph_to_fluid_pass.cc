@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
+#include "paddle/fluid/inference/io.h"
 
 namespace paddle {
 namespace inference {
@@ -63,6 +64,16 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
       default:
         continue;
     }
+  }
+
+  if (argument_->Has("param_scope")) {
+    PADDLE_ENFORCE(argument_->model_output_store_path.get());
+    const std::string param_out_path =
+        *argument_->model_output_store_path + "/param";
+    LOG(WARNING) << "persist the parameters from analysis to disk "
+                 << param_out_path;
+    SaveVars(argument_->Get<framework::Scope>("param_scope"), param_out_path,
+             true);
   }
 
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());

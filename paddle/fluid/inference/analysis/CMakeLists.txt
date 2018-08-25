@@ -65,14 +65,15 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
 		graph_pattern_detecter
     infer_clean_graph_pass
     attention_lstm_fuse_pass
+    paddle_inference_api
 		pass
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
-inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
-inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc)
+inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc EXTRA_DEPS paddle_inference_api)
+inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc EXTRA_DEPS paddle_fluid)
 inference_analysis_test(test_fluid_to_data_flow_graph_pass SRCS fluid_to_data_flow_graph_pass_tester.cc)
 inference_analysis_test(test_subgraph_splitter SRCS subgraph_splitter_tester.cc)
 inference_analysis_test(test_dfg_graphviz_draw_pass SRCS dfg_graphviz_draw_pass_tester.cc)
