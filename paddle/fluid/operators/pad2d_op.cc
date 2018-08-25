@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pad2d_op.h"
+#include <algorithm>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -23,7 +25,7 @@ template <typename T>
 void Pad2DConstNCHW(const T* in_data, const int num, const int channels,
                     const int in_height, const int in_width,
                     const int out_height, const int out_width,
-                    const int pad_top, const int pad_lelft, T value,
+                    const int pad_top, const int pad_left, T value,
                     T* out_data) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
@@ -34,7 +36,7 @@ void Pad2DConstNCHW(const T* in_data, const int num, const int channels,
           out_data[out_h * out_width + out_w] =
               (in_h < 0 || in_w < 0 || in_h >= in_height || in_w >= in_width)
                   ? value
-                  : in_data[in_h * width + in_w];
+                  : in_data[in_h * in_width + in_w];
         }
       }
       in_data += in_height * in_width;
@@ -47,7 +49,7 @@ template <typename T>
 void Pad2DConstNHWC(const T* in_data, const int num, const int channels,
                     const int in_height, const int in_width,
                     const int out_height, const int out_width,
-                    const int pad_top, const int pad_lelft, T value,
+                    const int pad_top, const int pad_left, T value,
                     T* out_data) {
   for (int n = 0; n < num; ++n) {
     for (int out_h = 0; out_h < out_height; ++out_h) {
@@ -76,17 +78,19 @@ template <typename T>
 void Pad2DReflectNCHW(const T* in_data, const int num, const int channels,
                       const int in_height, const int in_width,
                       const int out_height, const int out_width,
-                      const int pad_top, const int pad_lelft, T* out_data) {
+                      const int pad_top, const int pad_left, T* out_data) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
       for (int out_h = 0; out_h < out_height; ++out_h) {
         for (int out_w = 0; out_w < out_width; ++out_w) {
           int in_h = out_h - pad_top;
           int in_w = out_w - pad_left;
-          in_h = max(in_h, -in_h);                     // reflect by 0
-          in_h = min(in_h, 2 * in_height - in_h - 2);  // reflect by in_height
-          in_w = max(in_w, -in_w);                     // reflect by 0
-          in_w = min(in_w, 2 * in_width - in_w - 2);   // reflect by in_width
+          in_h = std::max(in_h, -in_h);  // reflect by 0
+          in_h =
+              std::min(in_h, 2 * in_height - in_h - 2);  // reflect by in_height
+          in_w = std::max(in_w, -in_w);                  // reflect by 0
+          in_w =
+              std::min(in_w, 2 * in_width - in_w - 2);  // reflect by in_width
           out_data[out_h * out_width + out_w] = in_data[in_h * in_width + in_w];
         }
       }
@@ -100,17 +104,18 @@ template <typename T>
 void Pad2DReflectNHWC(const T* in_data, const int num, const int channels,
                       const int in_height, const int in_width,
                       const int out_height, const int out_width,
-                      const int pad_top, const int pad_lelft, T* out_data) {
+                      const int pad_top, const int pad_left, T* out_data) {
   for (int n = 0; n < num; ++n) {
     for (int out_h = 0; out_h < out_height; ++out_h) {
       for (int out_w = 0; out_w < out_width; ++out_w) {
         const int out_index = (out_h * out_width + out_w) * channels;
         int in_h = out_h - pad_top;
         int in_w = out_w - pad_left;
-        in_h = max(h, -h);
-        in_h = min(h, 2 * in_height - h - 2) in_w = max(w, -w);
-        in_w = min(w, 2 * in_width - w - 2) const int in_index =
-            (in_h * in_width + in_w) * channels;
+        in_h = std::max(in_h, -in_h);
+        in_h = std::min(in_h, 2 * in_height - in_h - 2);
+        in_w = std::max(in_w, -in_w);
+        in_w = std::min(in_w, 2 * in_width - in_w - 2);
+        const int in_index = (in_h * in_width + in_w) * channels;
 
         for (int c = 0; c < channels; ++c) {
           out_data[out_index + c] = in_data[in_index + c];
@@ -126,13 +131,13 @@ template <typename T>
 void Pad2DEdgeNCHW(const T* in_data, const int num, const int channels,
                    const int in_height, const int in_width,
                    const int out_height, const int out_width, const int pad_top,
-                   const int pad_lelft, T* out_data) {
+                   const int pad_left, T* out_data) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
       for (int out_h = 0; out_h < out_height; ++out_h) {
         for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_h = min(in_height - 1, max(out_h - pad_top, 0));
-          int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+          int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+          int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
           out_data[out_h * out_width + out_w] = in_data[in_h * in_width + in_w];
         }
       }
@@ -146,13 +151,13 @@ template <typename T>
 void Pad2DEdgeNHWC(const T* in_data, const int num, const int channels,
                    const int in_height, const int in_width,
                    const int out_height, const int out_width, const int pad_top,
-                   const int pad_lelft, T* out_data) {
+                   const int pad_left, T* out_data) {
   for (int n = 0; n < num; ++n) {
     for (int out_h = 0; out_h < out_height; ++out_h) {
       for (int out_w = 0; out_w < out_width; ++out_w) {
         const int out_index = (out_h * out_width + out_w) * channels;
-        int in_h = min(in_height - 1, max(out_h - pad_top, 0));
-        int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+        int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+        int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
         const int in_index = (in_h * in_width + in_w) * channels;
         for (int c = 0; c < channels; ++c) {
           out_data[out_index + c] = in_data[in_index + c];
@@ -168,7 +173,7 @@ template <typename T>
 void Pad2DGradConstNCHW(T* d_in_data, const int num, const int channels,
                         const int in_height, const int in_width,
                         const int out_height, const int out_width,
-                        const int pad_top, const int pad_lelft,
+                        const int pad_top, const int pad_left,
                         const T* d_out_data) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
@@ -178,13 +183,13 @@ void Pad2DGradConstNCHW(T* d_in_data, const int num, const int channels,
           int in_w = out_w - pad_left;
           if (!(in_h < 0 || in_w < 0 || in_h >= in_height ||
                 in_w >= in_width)) {
-            d_in_data[in_h * width + in_w] =
+            d_in_data[in_h * in_width + in_w] =
                 d_out_data[out_h * out_width + out_w];
           }
         }
       }
-      in_data += in_height * in_width;
-      out_data += out_height * out_width;
+      d_in_data += in_height * in_width;
+      d_out_data += out_height * out_width;
     }
   }
 }
@@ -193,7 +198,7 @@ template <typename T>
 void Pad2DGradConstNHWC(T* d_in_data, const int num, const int channels,
                         const int in_height, const int in_width,
                         const int out_height, const int out_width,
-                        const int pad_top, const int pad_lelft, T value,
+                        const int pad_top, const int pad_left,
                         const T* d_out_data) {
   for (int n = 0; n < num; ++n) {
     for (int out_h = 0; out_h < out_height; ++out_h) {
@@ -218,7 +223,7 @@ template <typename T>
 void Pad2DGradReflectNCHW(T* d_in_data, const int num, const int channels,
                           const int in_height, const int in_width,
                           const int out_height, const int out_width,
-                          const int pad_top, const int pad_lelft,
+                          const int pad_top, const int pad_left,
                           const T* d_out_data) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
@@ -226,43 +231,46 @@ void Pad2DGradReflectNCHW(T* d_in_data, const int num, const int channels,
         for (int out_w = 0; out_w < out_width; ++out_w) {
           int in_h = out_h - pad_top;
           int in_w = out_w - pad_left;
-          in_h = max(in_h, -in_h);                     // reflect over 0
-          in_h = min(in_h, 2 * in_height - in_h - 2);  // reflect over in_height
-          in_w = max(in_w, -in_w);                     // reflect over 0
-          in_w = min(in_w, 2 * in_width - in_w - 2);   // reflect over in_width
+          in_h = std::max(in_h, -in_h);  // reflect over 0
+          in_h = std::min(in_h,
+                          2 * in_height - in_h - 2);  // reflect over in_height
+          in_w = std::max(in_w, -in_w);               // reflect over 0
+          in_w =
+              std::min(in_w, 2 * in_width - in_w - 2);  // reflect over in_width
           d_in_data[in_h * in_width + in_w] +=
               d_out_data[out_h * out_width + out_w];
         }
       }
-      in_data += in_height * in_width;
-      out_data += out_height * out_width;
+      d_in_data += in_height * in_width;
+      d_out_data += out_height * out_width;
     }
   }
 }
 
 template <typename T>
-void Pad2DGradReflectNHWC(T* in_data, const int num, const int channels,
+void Pad2DGradReflectNHWC(T* d_in_data, const int num, const int channels,
                           const int in_height, const int in_width,
                           const int out_height, const int out_width,
-                          const int pad_top, const int pad_lelft,
-                          const T* out_data) {
+                          const int pad_top, const int pad_left,
+                          const T* d_out_data) {
   for (int n = 0; n < num; ++n) {
     for (int out_h = 0; out_h < out_height; ++out_h) {
       for (int out_w = 0; out_w < out_width; ++out_w) {
         const int out_index = (out_h * out_width + out_w) * channels;
         int in_h = out_h - pad_top;
         int in_w = out_w - pad_left;
-        in_h = max(h, -h);
-        in_h = min(h, 2 * in_height - h - 2) in_w = max(w, -w);
-        in_w = min(w, 2 * in_width - w - 2) const int in_index =
-            (in_h * in_width + in_w) * channels;
+        in_h = std::max(in_h, -in_h);
+        in_h = std::min(in_h, 2 * in_height - in_h - 2);
+        in_w = std::max(in_w, -in_w);
+        in_w = std::min(in_w, 2 * in_width - in_w - 2);
+        const int in_index = (in_h * in_width + in_w) * channels;
         for (int c = 0; c < channels; ++c) {
           d_in_data[in_index + c] += d_out_data[out_index + c];
         }
       }
     }
-    in_data += in_height * in_width * channels;
-    out_data += out_height * out_width * channels;
+    d_in_data += in_height * in_width * channels;
+    d_out_data += out_height * out_width * channels;
   }
 }
 
@@ -270,20 +278,20 @@ template <typename T>
 void Pad2DGradEdgeNCHW(T* d_in_data, const int num, const int channels,
                        const int in_height, const int in_width,
                        const int out_height, const int out_width,
-                       const int pad_top, const int pad_lelft,
+                       const int pad_top, const int pad_left,
                        const T* d_out_data) {
   for (int n = 0; n < num; ++n) {
     for (int c = 0; c < channels; ++c) {
       for (int out_h = 0; out_h < out_height; ++out_h) {
         for (int out_w = 0; out_w < out_width; ++out_w) {
-          int in_h = min(in_height - 1, max(out_h - pad_top, 0));
-          int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+          int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+          int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
           d_in_data[in_h * in_width + in_w] +=
               d_out_data[out_h * out_width + out_w];
         }
       }
-      in_data += in_height * in_width;
-      out_data += out_height * out_width;
+      d_in_data += in_height * in_width;
+      d_out_data += out_height * out_width;
     }
   }
 }
@@ -292,22 +300,22 @@ template <typename T>
 void Pad2DGradEdgeNHWC(T* d_in_data, const int num, const int channels,
                        const int in_height, const int in_width,
                        const int out_height, const int out_width,
-                       const int pad_top, const int pad_lelft,
+                       const int pad_top, const int pad_left,
                        const T* d_out_data) {
   for (int n = 0; n < num; ++n) {
     for (int out_h = 0; out_h < out_height; ++out_h) {
       for (int out_w = 0; out_w < out_width; ++out_w) {
         const int out_index = (out_h * out_width + out_w) * channels;
-        int in_h = min(in_height - 1, max(out_h - pad_top, 0));
-        int in_w = min(in_width - 1, max(out_w - pad_left, 0));
+        int in_h = std::min(in_height - 1, std::max(out_h - pad_top, 0));
+        int in_w = std::min(in_width - 1, std::max(out_w - pad_left, 0));
         const int in_index = (in_h * in_width + in_w) * channels;
         for (int c = 0; c < channels; ++c) {
           d_in_data[in_index + c] += d_out_data[out_index + c];
         }
       }
     }
-    in_data += in_height * in_width * channels;
-    out_data += out_height * out_width * channels;
+    d_in_data += in_height * in_width * channels;
+    d_out_data += out_height * out_width * channels;
   }
 }
 
@@ -315,51 +323,60 @@ template <typename T>
 class Pad2dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
+    LOG(ERROR)
+        << "-------------------Pad2dCPUKernel Compute ---------------------";
     auto pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T pad_value = context.Attr<T>("pad_value");
+    T value = context.Attr<T>("pad_value");
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     auto in_dims = x->dims();
     auto out_dims = out->dims();
     const T* in_data = x->data<T>();
-    T* ou_data = out->mutable_data<T>(context.GetPlace());
+    T* out_data = out->mutable_data<T>(context.GetPlace());
     const int pad_top = pads[0];
     const int pad_left = pads[2];
     const int num = in_dims[0];
-    const int channels = in_dims[1];
     if (data_format == "NCHW") {
-      const in_height = in_dims[2];
-      const in_width = in_dims[3];
-      const out_height = out_dims[2];
-      const out_width = out_dims[3];
+      const int channels = in_dims[1];
+      const int in_height = in_dims[2];
+      const int in_width = in_dims[3];
+      const int out_height = out_dims[2];
+      const int out_width = out_dims[3];
       if (mode == "reflect") {
         Pad2DReflectNCHW(in_data, num, channels, in_height, in_width,
-                         out_height, out_width, pad_top, pad_lelft, out_data);
+                         out_height, out_width, pad_top, pad_left, out_data);
       } else if (mode == "edge") {
         Pad2DEdgeNCHW(in_data, num, channels, in_height, in_width, out_height,
-                      out_width, pad_top, pad_lelft, out_data);
+                      out_width, pad_top, pad_left, out_data);
       } else {
         Pad2DConstNCHW(in_data, num, channels, in_height, in_width, out_height,
-                       out_width, pad_top, pad_lelft, value, out_data);
+                       out_width, pad_top, pad_left, value, out_data);
       }
     } else {
-      in_height = in_dims[1];
-      in_width = in_dims[2];
-      out_height = out_dims[1];
-      out_width = out_dims[2];
+      const int channels = in_dims[3];
+      const int in_height = in_dims[1];
+      const int in_width = in_dims[2];
+      const int out_height = out_dims[1];
+      const int out_width = out_dims[2];
       if (mode == "reflect") {
         Pad2DReflectNHWC(in_data, num, channels, in_height, in_width,
-                         out_height, out_width, pad_top, pad_lelft, out_data);
+                         out_height, out_width, pad_top, pad_left, out_data);
       } else if (mode == "edge") {
         Pad2DEdgeNHWC(in_data, num, channels, in_height, in_width, out_height,
-                      out_width, pad_top, pad_lelft, out_data);
+                      out_width, pad_top, pad_left, out_data);
       } else {
         Pad2DConstNHWC(in_data, num, channels, in_height, in_width, out_height,
-                       out_width, pad_top, pad_lelft, value, out_data);
+                       out_width, pad_top, pad_left, value, out_data);
       }
     }
+    LOG(ERROR) << "out_dims[0]: " << out_dims[0]
+               << "; out_dims[1]: " << out_dims[1]
+               << "; out_dims[2]: " << out_dims[2]
+               << "; out_dims[3]:" << out_dims[3];
+    LOG(ERROR)
+        << "-------------------Pad2dCPUKernel Compute end---------------------";
   }
 };
 
@@ -370,51 +387,52 @@ class Pad2dGradCPUKernel : public framework::OpKernel<T> {
     auto pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T pad_value = context.Attr<T>("pad_value");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
     auto d_in_dims = d_in->dims();
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
+    math::SetConstant<platform::CPUDeviceContext, T> set_zero;
+    set_zero(context.template device_context<platform::CPUDeviceContext>(),
+             d_in, static_cast<T>(0));
     const int pad_top = pads[0];
     const int pad_left = pads[2];
     const int num = d_in_dims[0];
-    const int channels = d_in_dims[1];
     if (data_format == "NCHW") {
-      const in_height = d_in_dims[2];
-      const in_width = d_in_dims[3];
-      const out_height = d_out_dims[2];
-      const out_width = d_out_dims[3];
+      const int channels = d_in_dims[1];
+      const int in_height = d_in_dims[2];
+      const int in_width = d_in_dims[3];
+      const int out_height = d_out_dims[2];
+      const int out_width = d_out_dims[3];
       if (mode == "reflect") {
         Pad2DGradReflectNCHW(d_in_data, num, channels, in_height, in_width,
-                             out_height, out_width, pad_top, pad_lelft,
+                             out_height, out_width, pad_top, pad_left,
                              d_out_data);
       } else if (mode == "edge") {
         Pad2DGradEdgeNCHW(d_in_data, num, channels, in_height, in_width,
-                          out_height, out_width, pad_top, pad_lelft,
-                          d_out_data);
+                          out_height, out_width, pad_top, pad_left, d_out_data);
       } else {
         Pad2DGradConstNCHW(d_in_data, num, channels, in_height, in_width,
-                           out_height, out_width, pad_top, pad_lelft,
+                           out_height, out_width, pad_top, pad_left,
                            d_out_data);
       }
     } else {
-      const in_height = d_in_dims[1];
-      const in_width = d_in_dims[2];
-      const out_height = d_out_dims[1];
-      const out_width = d_out_dims[2];
+      const int channels = d_in_dims[3];
+      const int in_height = d_in_dims[1];
+      const int in_width = d_in_dims[2];
+      const int out_height = d_out_dims[1];
+      const int out_width = d_out_dims[2];
       if (mode == "reflect") {
         Pad2DGradReflectNHWC(d_in_data, num, channels, in_height, in_width,
-                             out_height, out_width, pad_top, pad_lelft,
+                             out_height, out_width, pad_top, pad_left,
                              d_out_data);
       } else if (mode == "edge") {
         Pad2DGradEdgeNHWC(d_in_data, num, channels, in_height, in_width,
-                          out_height, out_width, pad_top, pad_lelft,
-                          d_out_data);
+                          out_height, out_width, pad_top, pad_left, d_out_data);
       } else {
         Pad2DGradConstNHWC(d_in_data, num, channels, in_height, in_width,
-                           out_height, out_width, pad_top, pad_lelft,
+                           out_height, out_width, pad_top, pad_left,
                            d_out_data);
       }
     }
@@ -438,12 +456,15 @@ class Pad2dOp : public framework::OperatorWithKernel {
     std::vector<int64_t> out_dims(x_dim.size());
 
     auto data_format = ctx->Attrs().Get<std::string>("data_format");
+    out_dims[0] = x_dim[0];
     if (data_format == "NCHW") {
+      out_dims[1] = x_dim[1];
       out_dims[2] = x_dim[2] + paddings[0] + paddings[1];  // height
       out_dims[3] = x_dim[3] + paddings[2] + paddings[3];  // width
     } else {                                               // NHWC
-      out_dims[1] = x_dims[1] + paddings[0] + paddings[1];
-      out_dims[2] = x_dims[2] + paddings[2] + paddings[3];
+      out_dims[3] = x_dim[3];
+      out_dims[1] = x_dim[1] + paddings[0] + paddings[1];
+      out_dims[2] = x_dim[2] + paddings[2] + paddings[3];
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
@@ -483,8 +504,7 @@ class Pad2dOpMaker : public framework::OpProtoAndCheckerMaker {
         "data_format",
         "(string, default NCHW) Only used in "
         "An optional string from: \"NHWC\", \"NCHW\". "
-        "Defaults to \"NHWC\". Specify the data format of the output data, "
-        "the input will be transformed automatically. ")
+        "Defaults to \"NHWC\". Specify the data format of the input data.")
         .SetDefault("NCHW");
     AddComment(R"DOC(
 Pad2d Operator.

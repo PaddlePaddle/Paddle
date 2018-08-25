@@ -12,7 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/pad2d_op.h"
+#include <algorithm>
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -32,7 +34,7 @@ __global__ void Pad2DConstNCHW(const int nthreads, const T* in_data,
                                const int num, const int channels,
                                const int in_height, const int in_width,
                                const int out_height, const int out_width,
-                               const int pad_top, const int pad_lelft, T value,
+                               const int pad_top, const int pad_left, T value,
                                T* out_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     int nc = index / out_width;
@@ -44,7 +46,7 @@ __global__ void Pad2DConstNCHW(const int nthreads, const T* in_data,
     out_data[index] =
         (in_h < 0 || in_w < 0 || in_h >= in_height || in_w >= in_width)
             ? value
-            : in_data[(nc * in_height + in_h) * width + in_w];
+            : in_data[(nc * in_height + in_h) * in_width + in_w];
   }
 }
 
@@ -53,7 +55,7 @@ __global__ void Pad2DConstNHWC(const int nthreads, const T* in_data,
                                const int num, const int channels,
                                const int in_height, const int in_width,
                                const int out_height, const int out_width,
-                               const int pad_top, const int pad_lelft, T value,
+                               const int pad_top, const int pad_left, T value,
                                T* out_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     int n = index / channels;
@@ -77,7 +79,7 @@ __global__ void Pad2DReflectNCHW(const int nthreads, const T* in_data,
                                  const int num, const int channels,
                                  const int in_height, const int in_width,
                                  const int out_height, const int out_width,
-                                 const int pad_top, const int pad_lelft,
+                                 const int pad_top, const int pad_left,
                                  T* out_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     int nc = index / out_width;
@@ -90,7 +92,7 @@ __global__ void Pad2DReflectNCHW(const int nthreads, const T* in_data,
     in_h = min(in_h, 2 * in_height - in_h - 2);  // reflect by in_height
     in_w = max(in_w, -in_w);                     // reflect by 0
     in_w = min(in_w, 2 * in_width - in_w - 2);   // reflect by in_width
-    out_data[index] = in_data[(nc * in_height + in_h) * width + in_w];
+    out_data[index] = in_data[(nc * in_height + in_h) * in_width + in_w];
   }
 }
 
@@ -99,7 +101,7 @@ __global__ void Pad2DReflectNHWC(const int nthreads, const T* in_data,
                                  const int num, const int channels,
                                  const int in_height, const int in_width,
                                  const int out_height, const int out_width,
-                                 const int pad_top, const int pad_lelft,
+                                 const int pad_top, const int pad_left,
                                  T* out_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     int n = index / channels;
@@ -110,9 +112,11 @@ __global__ void Pad2DReflectNHWC(const int nthreads, const T* in_data,
     n /= out_height;
     int in_h = out_h - pad_top;
     int in_w = out_w - pad_left;
-    in_h = max(h, -h);
-    in_h = min(h, 2 * in_height - h - 2) in_w = max(w, -w);
-    in_w = min(w, 2 * in_width - w - 2) out_data[index] =
+    in_h = max(in_h, -in_h);
+    in_h = min(in_h, 2 * in_height - in_h - 2);
+    in_w = max(in_w, -in_w);
+    in_w = min(in_w, 2 * in_width - in_w - 2);
+    out_data[index] =
         in_data[((n * in_height + in_h) * in_width + in_w) * channels + c];
   }
 }
@@ -122,7 +126,7 @@ __global__ void Pad2DEdgeNCHW(const int nthreads, const T* in_data,
                               const int num, const int channels,
                               const int in_height, const int in_width,
                               const int out_height, const int out_width,
-                              const int pad_top, const int pad_lelft,
+                              const int pad_top, const int pad_left,
                               T* out_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     int nc = index / out_width;
@@ -131,7 +135,7 @@ __global__ void Pad2DEdgeNCHW(const int nthreads, const T* in_data,
     nc /= out_height;
     int in_h = min(in_height - 1, max(out_h - pad_top, 0));
     int in_w = min(in_width - 1, max(out_w - pad_left, 0));
-    out_data[index] = in_data[(nc * in_height + in_h) * width + in_w];
+    out_data[index] = in_data[(nc * in_height + in_h) * in_width + in_w];
   }
 }
 
@@ -140,7 +144,7 @@ __global__ void Pad2DEdgeNHWC(const int nthreads, const T* in_data,
                               const int num, const int channels,
                               const int in_height, const int in_width,
                               const int out_height, const int out_width,
-                              const int pad_top, const int pad_lelft,
+                              const int pad_top, const int pad_left,
                               T* out_data) {
   CUDA_1D_KERNEL_LOOP(index, nthreads) {
     int n = index / channels;
@@ -161,7 +165,7 @@ __global__ void Pad2DGradConstNCHW(const int in_size, T* d_in_data,
                                    const int num, const int channels,
                                    const int in_height, const int in_width,
                                    const int out_height, const int out_width,
-                                   const int pad_top, const int pad_lelft,
+                                   const int pad_top, const int pad_left,
                                    const T* d_out_data) {
   CUDA_1D_KERNEL_LOOP(in_index, in_size) {
     int nc = in_index / in_width;
@@ -178,8 +182,8 @@ __global__ void Pad2DGradConstNHWC(const int in_size, T* d_in_data,
                                    const int num, const int channels,
                                    const int in_height, const int in_width,
                                    const int out_height, const int out_width,
-                                   const int pad_top, const int pad_lelft,
-                                   T value, const T* d_out_data) {
+                                   const int pad_top, const int pad_left,
+                                   const T* d_out_data) {
   CUDA_1D_KERNEL_LOOP(in_index, in_size) {
     int n = in_index / channels;
     const int c = in_index % channels;
@@ -198,7 +202,7 @@ __global__ void Pad2DGradReflectNCHW(const int out_size, T* d_in_data,
                                      const int num, const int channels,
                                      const int in_height, const int in_width,
                                      const int out_height, const int out_width,
-                                     const int pad_top, const int pad_lelft,
+                                     const int pad_top, const int pad_left,
                                      const T* d_out_data) {
   CUDA_1D_KERNEL_LOOP(out_index, out_size) {
     int nc = out_index / out_width;
@@ -217,12 +221,12 @@ __global__ void Pad2DGradReflectNCHW(const int out_size, T* d_in_data,
 }
 
 template <typename T>
-__global__ void Pad2DGradReflectNHWC(const int out_size, T* in_data,
+__global__ void Pad2DGradReflectNHWC(const int out_size, T* d_in_data,
                                      const int num, const int channels,
                                      const int in_height, const int in_width,
                                      const int out_height, const int out_width,
-                                     const int pad_top, const int pad_lelft,
-                                     const T* out_data) {
+                                     const int pad_top, const int pad_left,
+                                     const T* d_out_data) {
   CUDA_1D_KERNEL_LOOP(out_index, out_size) {
     const int c = out_index % channels;
     int n = out_index / channels;
@@ -247,7 +251,7 @@ __global__ void Pad2DGradEdgeNCHW(const int out_size, T* d_in_data,
                                   const int num, const int channels,
                                   const int in_height, const int in_width,
                                   const int out_height, const int out_width,
-                                  const int pad_top, const int pad_lelft,
+                                  const int pad_top, const int pad_left,
                                   const T* d_out_data) {
   CUDA_1D_KERNEL_LOOP(out_index, out_size) {
     int nc = out_index / out_width;
@@ -266,7 +270,7 @@ __global__ void Pad2DGradEdgeNHWC(const int out_size, T* d_in_data,
                                   const int num, const int channels,
                                   const int in_height, const int in_width,
                                   const int out_height, const int out_width,
-                                  const int pad_top, const int pad_lelft,
+                                  const int pad_top, const int pad_left,
                                   const T* d_out_data) {
   CUDA_1D_KERNEL_LOOP(out_index, out_size) {
     const int c = out_index % channels;
@@ -290,17 +294,16 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     auto pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T pad_value = context.Attr<T>("pad_value");
+    T value = context.Attr<T>("pad_value");
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     auto in_dims = x->dims();
     auto out_dims = out->dims();
     const T* in_data = x->data<T>();
-    T* ou_data = out->mutable_data<T>(context.GetPlace());
+    T* out_data = out->mutable_data<T>(context.GetPlace());
     const int pad_top = pads[0];
     const int pad_left = pads[1];
     const int num = in_dims[0];
-    const int channels = in_dims[1];
 
     auto stream = context.cuda_device_context().stream();
     int block = PADDLE_CUDA_NUM_THREADS;
@@ -308,40 +311,42 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     int grid = (out_size + block - 1) / block;
 
     if (data_format == "NCHW") {
-      const in_height = in_dims[2];
-      const in_width = in_dims[3];
-      const out_height = out_dims[2];
-      const out_width = out_dims[3];
+      const int channels = in_dims[1];
+      const int in_height = in_dims[2];
+      const int in_width = in_dims[3];
+      const int out_height = out_dims[2];
+      const int out_width = out_dims[3];
       if (mode == "reflect") {
         Pad2DReflectNCHW<T><<<grid, block, 0, stream>>>(
             out_size, in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, out_data);
+            out_width, pad_top, pad_left, out_data);
       } else if (mode == "edge") {
         Pad2DEdgeNCHW<T><<<grid, block, 0, stream>>>(
             out_size, in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, out_data);
+            out_width, pad_top, pad_left, out_data);
       } else {
         Pad2DConstNCHW<T><<<grid, block, 0, stream>>>(
             out_size, in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, value, out_data);
+            out_width, pad_top, pad_left, value, out_data);
       }
     } else {
-      in_height = in_dims[1];
-      in_width = in_dims[2];
-      out_height = out_dims[1];
-      out_width = out_dims[2];
+      const int channels = in_dims[3];
+      const int in_height = in_dims[1];
+      const int in_width = in_dims[2];
+      const int out_height = out_dims[1];
+      const int out_width = out_dims[2];
       if (mode == "reflect") {
         Pad2DReflectNHWC<T><<<grid, block, 0, stream>>>(
             out_size, in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, out_data);
+            out_width, pad_top, pad_left, out_data);
       } else if (mode == "edge") {
         Pad2DEdgeNHWC<T><<<grid, block, 0, stream>>>(
             out_size, in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, out_data);
+            out_width, pad_top, pad_left, out_data);
       } else {
         Pad2DConstNHWC<T><<<grid, block, 0, stream>>>(
             out_size, in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, value, out_data);
+            out_width, pad_top, pad_left, value, out_data);
       }
     }
   }
@@ -354,61 +359,66 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
     auto pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
-    T pad_value = context.Attr<T>("pad_value");
     auto* d_out = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* d_in = context.Output<Tensor>(framework::GradVarName("X"));
     auto d_in_dims = d_in->dims();
     auto d_out_dims = d_out->dims();
     const T* d_out_data = d_out->data<T>();
     T* d_in_data = d_in->mutable_data<T>(context.GetPlace());
+
+    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
+    set_zero(context.template device_context<platform::CUDADeviceContext>(),
+             d_in, static_cast<T>(0));
+
     const int pad_top = pads[0];
     const int pad_left = pads[1];
     const int num = d_in_dims[0];
-    const int channels = d_in_dims[1];
 
     auto stream = context.cuda_device_context().stream();
     int block = PADDLE_CUDA_NUM_THREADS;
-    const int out_size = out->numel();
-    const int in_size = in->numel();
+    const int out_size = d_out->numel();
+    const int in_size = d_in->numel();
     int grid = (out_size + block - 1) / block;
 
     if (data_format == "NCHW") {
-      const in_height = d_in_dims[2];
-      const in_width = d_in_dims[3];
-      const out_height = d_out_dims[2];
-      const out_width = d_out_dims[3];
+      const int channels = d_in_dims[1];
+      const int in_height = d_in_dims[2];
+      const int in_width = d_in_dims[3];
+      const int out_height = d_out_dims[2];
+      const int out_width = d_out_dims[3];
       if (mode == "reflect") {
         Pad2DGradReflectNCHW<T><<<grid, block, 0, stream>>>(
             out_size, d_in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, d_out_data);
+            out_width, pad_top, pad_left, d_out_data);
       } else if (mode == "edge") {
         Pad2DGradEdgeNCHW<T><<<grid, block, 0, stream>>>(
             out_size, d_in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, d_out_data);
+            out_width, pad_top, pad_left, d_out_data);
       } else {
         grid = (in_size + block - 1) / block;
         Pad2DGradConstNCHW<T><<<grid, block, 0, stream>>>(
             in_size, d_in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, d_out_data);
+            out_width, pad_top, pad_left, d_out_data);
       }
     } else {
-      const in_height = d_in_dims[1];
-      const in_width = d_in_dims[2];
-      const out_height = d_out_dims[1];
-      const out_width = d_out_dims[2];
+      const int channels = d_in_dims[3];
+      const int in_height = d_in_dims[1];
+      const int in_width = d_in_dims[2];
+      const int out_height = d_out_dims[1];
+      const int out_width = d_out_dims[2];
       if (mode == "reflect") {
         Pad2DGradReflectNHWC<T><<<grid, block, 0, stream>>>(
             out_size, d_in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, d_out_data);
+            out_width, pad_top, pad_left, d_out_data);
       } else if (mode == "edge") {
         Pad2DGradEdgeNHWC<T><<<grid, block, 0, stream>>>(
             out_size, d_in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, d_out_data);
+            out_width, pad_top, pad_left, d_out_data);
       } else {
         grid = (in_size + block - 1) / block;
         Pad2DGradConstNHWC<T><<<grid, block, 0, stream>>>(
             in_size, d_in_data, num, channels, in_height, in_width, out_height,
-            out_width, pad_top, pad_lelft, d_out_data);
+            out_width, pad_top, pad_left, d_out_data);
       }
     }
   }

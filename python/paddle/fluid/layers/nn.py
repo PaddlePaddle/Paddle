@@ -5360,3 +5360,135 @@ def rank_loss(label, left, right, name=None):
                 "Right": right},
         outputs={'Out': out})
     return out
+
+
+def pad2d(input,
+          paddings=[0, 0, 0, 0],
+          mode='constant',
+          pad_value=0.0,
+          data_format="NCHW",
+          name=None):
+    """
+    Pad 2-d images accordding to 'paddings' and 'mode'.
+    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    than height-1. And the width dimension has the same condition.
+
+    Example:
+
+      Given that X is a channel of image from input:
+      
+      X = [[1, 2, 3],
+           [4, 5, 6]]
+      
+      Case 0:
+      
+        paddings = [0, 1, 2, 3],
+        mode = 'constant'
+        pad_value = 0
+        
+        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+               [0, 0, 4, 5, 6, 0, 0, 0]
+               [0, 0, 0, 0, 0, 0, 0, 0]]
+      
+      Case 1:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'reflect'
+        
+        Out = [[3, 2, 1, 2, 3, 2]
+               [6, 5, 4, 5, 6, 5]
+               [3, 2, 1, 2, 3, 2]]
+        
+      Case 2:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'edge'
+        
+        Out = [[1, 1, 1, 2, 3, 3]
+               [4, 4, 4, 5, 6, 6]
+               [4, 4, 4, 5, 6, 6]]
+    
+  
+    Args:
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
+        paddings (tuple|list): The padding size. If padding is a tuple, it must
+            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
+            Default: padding = [0, 0, 0, 0].
+        mode (str): Three modes: constant(default), reflect, edge. Default: constant
+        pad_value (float32): The value to fill the padded areas in constant mode. Default: 0
+        data_format (str): An optional string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default: "NCHW"
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable padded accordding to paddings and mode.
+
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
+    """
+
+    num_channels = input.shape[1]
+
+    l_type = 'conv2d'
+    if (num_channels == groups and num_filters % num_channels == 0 and
+            not use_cudnn):
+        l_type = 'depthwise_conv2d'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype()
+
+    if groups is None:
+        num_filter_channels = num_channels
+    else:
+        if num_channels % groups != 0:
+            raise ValueError("num_channels must be divisible by groups.")
+        num_filter_channels = num_channels / groups
+
+    filter_size = utils.convert_to_list(filter_size, 2, 'filter_size')
+    stride = utils.convert_to_list(stride, 2, 'stride')
+    padding = utils.convert_to_list(padding, 2, 'padding')
+    dilation = utils.convert_to_list(dilation, 2, 'dilation')
+
+    if not isinstance(use_cudnn, bool):
+        raise ValueError("use_cudnn should be True or False")
+
+    input_shape = input.shape
+    filter_shape = [num_filters, num_filter_channels] + filter_size
+
+    def _get_default_param_initializer():
+        std = (2.0 / (filter_size[0]**2 * num_channels))**0.5
+        return Normal(0.0, std, 0)
+
+    filter_param = helper.create_parameter(
+        attr=helper.param_attr,
+        shape=filter_shape,
+        dtype=dtype,
+        default_initializer=_get_default_param_initializer())
+
+    pre_bias = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type=l_type,
+        inputs={
+            'Input': input,
+            'Filter': filter_param,
+        },
+        outputs={"Output": pre_bias},
+        attrs={
+            'strides': stride,
+            'paddings': padding,
+            'dilations': dilation,
+            'groups': groups,
+            'use_cudnn': use_cudnn,
+            'use_mkldnn': use_mkldnn
+        })
+
+    pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
+
+    return helper.append_activation(pre_act)
