@@ -60,6 +60,20 @@ class AucKernel : public framework::OpKernel<T> {
     const T* inference_data = predict->data<T>();
     const auto* label_data = label->data<int64_t>();
 
+    // check if states are inited.
+    PADDLE_ENFORCE(true_positive->IsInitialized(),
+                   "true_positive is not inited!");
+    PADDLE_ENFORCE(false_negative->IsInitialized(),
+                   "false_negative is not inited!");
+    PADDLE_ENFORCE(true_negative->IsInitialized(),
+                   "true_negative is not inited!");
+    PADDLE_ENFORCE(false_positive->IsInitialized(),
+                   "false_positive is not inited!");
+    PADDLE_ENFORCE_EQ(true_positive->numel(), num_thresholds, "");
+    PADDLE_ENFORCE_EQ(false_negative->numel(), num_thresholds, "");
+    PADDLE_ENFORCE_EQ(true_negative->numel(), num_thresholds, "");
+    PADDLE_ENFORCE_EQ(false_positive->numel(), num_thresholds, "");
+
     auto* tp_data = true_positive->mutable_data<int64_t>(ctx.GetPlace());
     auto* fn_data = false_negative->mutable_data<int64_t>(ctx.GetPlace());
     auto* tn_data = true_negative->mutable_data<int64_t>(ctx.GetPlace());
