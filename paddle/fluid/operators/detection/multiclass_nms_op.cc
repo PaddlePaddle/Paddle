@@ -260,8 +260,8 @@ class MultiClassNMSKernel : public framework::OpKernel<T> {
                         const std::map<int, std::vector<int>>& selected_indices,
                         Tensor* outs) const {
     int64_t predict_dim = scores.dims()[1];
-    int64_t box_size = bboxes.dims()[2];
-    int64_t out_dim = bboxes.dims()[2] + 2;
+    int64_t box_size = bboxes.dims()[1];
+    int64_t out_dim = bboxes.dims()[1] + 2;
     auto* scores_data = scores.data<T>();
     auto* bboxes_data = bboxes.data<T>();
     auto* odata = outs->data<T>();
