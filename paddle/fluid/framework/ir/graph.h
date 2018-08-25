@@ -142,12 +142,19 @@ class Graph {
     nodes_.erase(node);
   }
 
+  Node *RetriveNode(int id) {
+    auto it = id2node_.find(id);
+    if (it != id2node_.end()) return it->second;
+    return nullptr;
+  }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
     nodes_[node].reset(node);
     node_set_.insert(node);
+    id2node_[node->id()] = node;
     return node;
   }
 
@@ -157,6 +164,7 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
+  std::map<int, Node *> id2node_;
 };
 
 bool IsControlDepVar(const ir::Node &var);

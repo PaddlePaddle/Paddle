@@ -82,8 +82,8 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
     ir_passes.Apply(std::vector<std::string>(
         {// Manual update the passes here.
-         "graph_viz_pass", "attention_lstm_fuse_pass", "graph_viz_pass",
-         "infer_clean_graph_pass", "graph_viz_pass", "fc_fuse_pass",
+         "graph_viz_pass", "infer_clean_graph_pass", "graph_viz_pass",
+         "attention_lstm_fuse_pass", "graph_viz_pass", "fc_fuse_pass",
          "graph_viz_pass"}));
 
     PADDLE_ENFORCE(argument_->main_dfg.get());

@@ -36,33 +36,32 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
 
   Dot dot;
 
-  std::vector<Dot::Attr> op_attrs({Dot::Attr("style", "filled,rounded"),
+  std::vector<Dot::Attr> op_attrs({Dot::Attr("style", "filled"),
                                    Dot::Attr("shape", "box"),
-                                   Dot::Attr("fillcolor", "blue")});
+                                   Dot::Attr("fillcolor", "red")});
   std::vector<Dot::Attr> var_attrs({Dot::Attr("style", "filled,rounded"),
-                                    Dot::Attr("shape", "diamond"),
+                                    // Dot::Attr("shape", "diamond"),
                                     Dot::Attr("fillcolor", "yellow")});
 
-  std::vector<Dot::Attr> marked_op_attrs({Dot::Attr("style", "filled,rounded"),
+  std::vector<Dot::Attr> marked_op_attrs({Dot::Attr("style", "filled"),
                                           Dot::Attr("shape", "box"),
-                                          Dot::Attr("fillcolor", "red")});
+                                          Dot::Attr("fillcolor", "lightgray")});
   std::vector<Dot::Attr> marked_var_attrs({Dot::Attr("style", "filled,rounded"),
-                                           Dot::Attr("shape", "diamond"),
-                                           Dot::Attr("fillcolor", "red")});
+                                           // Dot::Attr("shape", "diamond"),
+                                           Dot::Attr("fillcolor", "lightgray")});
 
   auto marked_nodes = ConsumeMarkedNodes(graph.get());
   // Create nodes
-  int id = 0;
   for (const Node* n : graph->Nodes()) {
-    std::string node_id = n->Name() + ":" + std::to_string(id++);
+    std::string node_id = n->Name() + "(" + std::to_string(n->id()) + ")";
     if (n->IsOp()) {
       decltype(op_attrs) attr =
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
-      dot.AddNode(node_id, attr, n->Name());
+      dot.AddNode(node_id, attr, node_id);
     } else if (n->IsVar()) {
       decltype(op_attrs) attr =
           marked_nodes.count(n) ? marked_var_attrs : var_attrs;
-      dot.AddNode(node_id, attr, n->Name());
+      dot.AddNode(node_id, attr, node_id);
     }
     node2dot[n] = node_id;
   }

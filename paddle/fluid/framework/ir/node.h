@@ -23,6 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
+static int unique_id = 0;
 
 class Node {
  public:
@@ -30,19 +31,25 @@ class Node {
   static constexpr char kControlDepVarName[] = "__control_var";
 
   explicit Node(const std::string& name, Type type)
-      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
+      : name_(name),
+        var_desc_(nullptr),
+        op_desc_(nullptr),
+        type_(type),
+        id_(unique_id++) {}
 
   explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
-        type_(Type::kVariable) {}
+        type_(Type::kVariable),
+        id_(unique_id++) {}
 
   explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
-        type_(Type::kOperation) {}
+        type_(Type::kOperation),
+        id_(unique_id++) {}
 
   Type NodeType() const { return type_; }
 
@@ -57,6 +64,8 @@ class Node {
     PADDLE_ENFORCE(IsOp());
     return op_desc_.get();
   }
+
+  int id() const { return id_; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }

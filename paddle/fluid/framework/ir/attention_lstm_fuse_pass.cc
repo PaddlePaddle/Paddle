@@ -8,54 +8,34 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-template <typename T>
-struct WhilePatternInfo {
-  // inputs related.
-  T* sequence_expand_op;              //
-  T* sequence_expand_out;             // sequence_expand_0.tmp_0
-  T* lod_reset_op;                    //
-  T* lod_reset_out;                   // lod_reset_0.tmp_0
-  T* lod_rank_table_op;               //
-  T* lod_rank_table_out;              // lod_rank_table_0
-  T* lod_tensor_to_array_op;          //
-  T* lod_tensor_to_array_out;         // dynamic_rnn_iput_array_0
-  T* fill_constant_op;                //
-  T* fill_constant_out;               // fill_constant_1.tmp_0
-  T* less_than_op;                    //
-  T* less_than_out;                   // dynamic_rnn_0.tmp_0
-  T* max_sequence_len_op;             //
-  T* max_sequence_len_out;            // dynamic_rnn_max_seq_len_0
-  T* fill_constant_op1;               //
-  T* fill_constant_out1;              // fill_constant_0.tmp_0
-  T* write_to_array_op;               //
-  T* write_to_array_out;              // dynamic_rnn_mem_array_1
-  T* reorder_lod_tensor_by_rank_op;   //
-  T* reorder_lod_tensor_by_rank_out;  // dynamic_rnn_mem_init_reordered_0
-  T* write_to_array_op1;              //
-  T* write_to_array_out1;             // dynamic_rnn_mem_array_0
-  T* cell_init;                       // cell_init
-  T* hidden_init;                     // hidden_init
-  // outputs related
-  T* while_out;  // dynamic_rnn_0_output_array-elementwise_mul_3.tmp_0_0
-  T* array_to_lod_tensor_op;   //
-  T* array_to_lod_tensor_out;  // array_to_lod_tensor_0.tmp_0
+struct Param {
+  std::string X = "concat_9.tmp_0";
+  std::string C0 = "cell_init";
+  std::string H0 = "hidden_init";
+  std::string AttentionWeight = "attention_fc.w_0";
+  std::string AttentionBias = "attention_fc.b_0";
+  std::string AttentionScalar = "attention_output.w_0";
+  std::string AttentionScalarBias = "attention_output.b_0";
+  std::string LSTMWeight = "attention_w.new";
+  std::string LSTMBias = "attention_b.new";
+  std::string Hidden = "at.h.new";
+  std::string Cell = "at.cell.new";
+  std::string AttentionedX = "at.x.new";
+  std::string AttentionFCOut = "at.fc.new";
+  std::string LSTMX = "at.lstmx.new";
+  std::string LSTMOUT = "array_to_lod_tensor_2.tmp_0";
 };
 
-void BuildWhileExternalPattern(PDPattern* pattern,
-                               WhilePatternInfo<Node>* nodes_info,
-                               WhilePatternInfo<PDNode*>* pdnodes_info);
-void BuildWhileBlockPattern(PDPattern* pattern,
-                            WhilePatternInfo<Node>* nodes_info,
-                            WhilePatternInfo<PDNode*>* pdnodes_info);
+void PrepareParameters(Graph* graph, const Param& param);
 
 void FindWhileOp(Graph* graph) {
   GraphPatternDetecter gpd;
+  std::unordered_set<int> fused_external_ops(
+      {35, 36, 37, 38, 43, 44, 49, 45, 46, 47, 41, 42, 53, 54, 48,
+       57, 55, 56, 52, 74, 80, 77, 78, 79, 50, 77, 39, 40, 51});
+
   gpd.mutable_pattern()->NewNode(
-      [](Node* n) {
-        return n->IsOp() && n->Op()->Type() == "while" &&
-               n->inputs.size() == 27UL && n->outputs.size() == 6UL;
-      },
-      "while");
+      [&](Node* n) { return fused_external_ops.count(n->id()); }, "while");
 
   if (!graph->Has(kGraphvizMarkedNodeAttr)) {
     graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
@@ -67,392 +47,214 @@ void FindWhileOp(Graph* graph) {
                     Graph* g) {
     auto* while_pat_node = gpd.pattern().RetriveNode("while");
     auto* while_node = subgraph.at(while_pat_node);
-    LOG(INFO) << "find while";
-    LOG(INFO) << "inputs " << while_node->inputs.size();
-    LOG(INFO) << "outputs " << while_node->outputs.size();
     marked_nodes.insert(while_node);
   };
   gpd(graph, handle);
+
+  Param param;
+  // Add AttentionLSTM node
+  OpDesc op_desc;
+  op_desc.SetType("attention_lstm");
+
+#define OP_SET_IN(x) op_desc.SetInput(#x, {param.x});
+#define OP_SET_OUT(x) op_desc.SetOutput(#x, {param.x});
+  OP_SET_IN(X);
+  OP_SET_IN(C0);
+  OP_SET_IN(H0);
+  OP_SET_IN(AttentionWeight);
+  OP_SET_IN(AttentionBias);
+  OP_SET_IN(AttentionScalar);
+  OP_SET_IN(AttentionScalarBias);
+  OP_SET_IN(LSTMWeight);
+  OP_SET_IN(LSTMBias);
+
+  OP_SET_OUT(Hidden);
+  OP_SET_OUT(Cell);
+  OP_SET_OUT(AttentionedX);
+  OP_SET_OUT(AttentionFCOut);
+  OP_SET_OUT(LSTMX);
+  OP_SET_OUT(LSTMOUT);
+#undef OP_SET_IN
+#undef OP_SET_OUT
+
+  auto* X = graph->RetriveNode(34);
+  auto* LSTMOUT = graph->RetriveNode(81);
+  auto* cell_init = graph->RetriveNode(6);
+  auto* hidden_init = graph->RetriveNode(8);
+
+#define LINK_TO(node0, node1)      \
+  node0->outputs.push_back(node1); \
+  node1->inputs.push_back(node0);
+
+  auto* lstm_op = graph->CreateOpNode(&op_desc);
+  PrepareParameters(graph, param);
+
+  LINK_TO(X, lstm_op);
+  LINK_TO(cell_init, lstm_op);
+  LINK_TO(hidden_init, lstm_op);
+  LINK_TO(lstm_op, LSTMOUT);
+
+  // remove the unneeded nodes
+  LOG(INFO) << "clean nodes";
+  for (auto* node : marked_nodes) {
+    graph->RemoveNode(const_cast<Node*>(node));
+  }
+
+  LOG(INFO) << "clean edge";
+
+  for (auto* node : graph->Nodes()) {
+    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
+      if (marked_nodes.count(*it)) {
+        it = const_cast<Node*>(node)->inputs.erase(it);
+      } else
+        it++;
+    }
+    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
+      if (marked_nodes.count(*it)) {
+        it = const_cast<Node*>(node)->outputs.erase(it);
+      } else
+        it++;
+    }
+  }
+  LOG(INFO) << "finished";
 }
 
-void BuildFusePattern(PDPattern* pattern) {}
+#define CHECK_P1(x) PADDLE_ENFORCE_NOT_NULL(x);
+#define CHECK_P2(x0, x1) \
+  CHECK_P1(x0);          \
+  CHECK_P1(x1);
+#define CHECK_P3(x0, x1, x2) \
+  CHECK_P2(x0, x1);          \
+  CHECK_P1(x2);
+#define CHECK_P4(x0, x1, x2, x3) \
+  CHECK_P3(x0, x1, x2);          \
+  CHECK_P1(x3);
+#define CHECK_P5(x0, x1, x2, x3, x4) \
+  CHECK_P4(x0, x1, x2, x3);          \
+  CHECK_P1(x4);
 
-// Prepare parameters
-void PrepareLSTMWeight(const LoDTensor& W_forget, const LoDTensor& W_input,
-                       const LoDTensor& W_output, const LoDTensor& W_cell,
-                       LoDTensor* out) {
-  PADDLE_ENFORCE_EQ(W_forget.dims()[0], W_input.dims()[0]);
-  PADDLE_ENFORCE_EQ(W_input.dims()[0], W_output.dims()[0]);
-  PADDLE_ENFORCE_EQ(W_output.dims()[0], W_cell.dims()[0]);
-}
+void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
+                       const LoDTensor& W_forget_w1,
+                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
+                       const LoDTensor& W_output_w0,
+                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
+                       const LoDTensor& W_cell_w1, LoDTensor* out);
 
 void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out);
 
-bool Contains(const std::vector<Node*>& nodes, const std::string& op_type,
-              int count = 1) {
-  for (auto* x : nodes) {
-    if (x->IsOp() && x->Op() && x->Op()->Type() == op_type) --count;
-  }
-  return count <= 0;
+void PrepareParameters(Graph* graph, const Param& param) {
+  // Check parameters
+  PADDLE_ENFORCE(graph->Has("param_scope"));
+  auto* scope = graph->Get<Scope*>("param_scope");
+
+  // Create new parameters.
+  scope->Var(param.LSTMWeight)->GetMutable<LoDTensor>();
+  scope->Var(param.LSTMBias)->GetMutable<LoDTensor>();
+  scope->Var(param.Hidden)->GetMutable<LoDTensor>();
+  scope->Var(param.Cell)->GetMutable<LoDTensor>();
+  scope->Var(param.AttentionedX)->GetMutable<LoDTensor>();
+  scope->Var(param.AttentionFCOut)->GetMutable<LoDTensor>();
+  scope->Var(param.LSTMX)->GetMutable<LoDTensor>();
+  scope->Var(param.LSTMOUT)->GetMutable<LoDTensor>();
+
+#define GATE_W(name__)                                                 \
+  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");              \
+  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");              \
+  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");              \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);         \
+  LOG(INFO) << #name__ "_w0"                                           \
+            << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
+  LOG(INFO) << #name__ "_w1"                                           \
+            << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
+  LOG(INFO) << #name__ "_b0"                                           \
+            << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();         \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();         \
+  auto& W_##name__##_b0_t = W_##name__##_b0->Get<LoDTensor>();
+
+  GATE_W(forget);
+  GATE_W(input);
+  GATE_W(output);
+  GATE_W(c);
+#undef GATE_W
+
+  auto* attention_fc_w = scope->FindVar("attention_fc.w_0");
+  auto* attention_fc_b = scope->FindVar("attention_fc.b_0");
+  auto* attention_output_w = scope->FindVar("attention_output.w_0");
+  auto* attention_output_b = scope->FindVar("attention_output.b_0");
+  CHECK_P4(attention_fc_w, attention_fc_b, attention_output_w,
+           attention_output_b);
+
+  auto* lstm_weight = scope->Var(param.AttentionWeight);
+  auto* lstm_weight_t = lstm_weight->GetMutable<LoDTensor>();
+  auto* lstm_bias = scope->Var(param.AttentionBias);
+  auto* lstm_bias_t = lstm_bias->GetMutable<LoDTensor>();
+
+  PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
+                    W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,
+                    lstm_weight_t);
+  PrepareLSTMBias(W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t,
+                  lstm_bias_t);
 }
 
-bool ContainsWithFrequency(const std::vector<Node*>& nodes,
-                           const std::vector<std::string> op_types) {
-  if (op_types.empty()) return true;
-  std::map<std::string, int> counts;
-  for (const auto& op_type : op_types) {
-    ++counts[op_type];
-  }
-  for (const auto& op_type : op_types) {
-    if (!Contains(nodes, op_type, counts.at(op_type))) return false;
-  }
+// Prepare parameters
+void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
+                       const LoDTensor& W_forget_w1,
+                       const LoDTensor& W_input_w0, const LoDTensor& W_input_w1,
+                       const LoDTensor& W_output_w0,
+                       const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
+                       const LoDTensor& W_cell_w1, LoDTensor* out) {
+  int D = W_forget_w0.dims()[0];
+  int M = W_forget_w1.dims()[1];
+  out->Resize(make_ddim({D + M, 4 * D}));
 
-  return true;
-}
+  float* out_data = out->mutable_data<float>(platform::CPUPlace());
+  std::array<const float*, 4> tensors(
+      {W_forget_w0.data<float>(), W_input_w0.data<float>(),
+       W_output_w0.data<float>(), W_cell_w0.data<float>()});
+  std::array<const float*, 4> tensors1(
+      {W_forget_w1.data<float>(), W_input_w1.data<float>(),
+       W_output_w1.data<float>(), W_cell_w1.data<float>()});
 
-bool VarInLinksToOp(Node* x, const std::vector<std::string>& op_types) {
-  return ContainsWithFrequency(x->inputs, op_types);
-}
-
-bool VarOutLinksToOp(Node* x, const std::vector<std::string>& op_types) {
-  return ContainsWithFrequency(x->outputs, op_types);
-}
-
-namespace {
-
-std::string UniqueName(const std::string& prefix) {
-  static int id = 0;
-  return prefix + "/" + std::to_string(id++);
-}
-
-std::string UniqueOpName(const std::string& prefix) {
-  return UniqueName(prefix);
-}
-std::string UniqueVarName(const std::string& prefix) {
-  return UniqueName(prefix + "_out");
-}
-
-PDNode* CreateOpPNode(PDPattern* pattern, const std::string& op_type,
-                      const std::string& name = "") {
-  return pattern->NewNode(
-      [op_type](Node* x) -> bool {
-        return x && x->IsOp() && x->Op()->Type() == op_type;
-      },
-      UniqueOpName(op_type));
-}
-
-PDNode* CreateVarPDNode(PDPattern* pattern,
-                        const std::vector<std::string>& in_op_types,
-                        const std::vector<std::string>& out_op_types,
-                        const std::string& op_type = "") {
-  std::string name;
-  if (!in_op_types.empty())
-    name = UniqueVarName(in_op_types.front());
-  else if (!out_op_types.empty())
-    name = UniqueName(out_op_types.front() + "_in");
-  return pattern->NewNode(
-      [in_op_types, out_op_types](Node* x) -> bool {
-        return x && x->IsVar() && VarInLinksToOp(x, in_op_types) &&
-               VarOutLinksToOp(x, out_op_types);
-      },
-      name);
-}
-
-#define CHECK_P1(x) PADDLE_ENFORCE_NOT_NULL(x);
-#define CHECK_P2(x, y) \
-  CHECK_P1(x);         \
-  CHECK_P1(y);
-#define CHECK_P3(x, y, z) \
-  CHECK_P1(x);            \
-  CHECK_P2(y, z);
-#define CHECK_P4(x, y, z, f) \
-  CHECK_P1(x);               \
-  CHECK_P3(y, z, f);
-
-#define LINKS(a, b) pattern->AddEdge(a, b);
-
-#define NO_ARG_OP(func_name__, op_type__)                                      \
-  PDNode* func_name__(PDPattern* pattern) {                                    \
-    CHECK_P1(pattern);                                                         \
-    auto* out =                                                                \
-        CreateVarPDNode(pattern, {#op_type__}, {}, UniqueVarName(#op_type__)); \
-    return out;                                                                \
-  }
-
-#define ONE_ARG_OP(func_name__, op_type__)                  \
-  PDNode* func_name__(PDPattern* pattern, PDNode* x) {      \
-    CHECK_P2(pattern, x);                                   \
-    auto* op = CreateOpPNode(pattern, #op_type__);          \
-    auto* out = CreateVarPDNode(pattern, {#op_type__}, {}); \
-    LINKS(x, op);                                           \
-    LINKS(op, out);                                         \
-    return out;                                             \
-  }
-
-#define TWO_ARG_OP(func_name__, op_type__)                        \
-  PDNode* func_name__(PDPattern* pattern, PDNode* x, PDNode* y) { \
-    CHECK_P3(pattern, x, y);                                      \
-    auto* op = CreateOpPNode(pattern, #op_type__);                \
-    auto* out = CreateVarPDNode(pattern, {#op_type__}, {});       \
-    LINKS(x, op);                                                 \
-    LINKS(y, op);                                                 \
-    LINKS(op, out);                                               \
-    return out;                                                   \
-  }
-#define THREE_ARG_OP(func_name__, op_type__)                                 \
-  PDNode* func_name__(PDPattern* pattern, PDNode* x, PDNode* y, PDNode* z) { \
-    CHECK_P4(pattern, x, y, z);                                              \
-    auto* op = CreateOpPNode(pattern, #op_type__);                           \
-    auto* out = CreateVarPDNode(pattern, {#op_type__}, {});                  \
-    LINKS(x, op);                                                            \
-    LINKS(y, op);                                                            \
-    LINKS(z, op);                                                            \
-    LINKS(op, out);                                                          \
-    return out;                                                              \
-  }
-
-// simulate the pythoin DynamicRNN
-TWO_ARG_OP(LoDTensorToArray, lod_tensor_to_array);
-TWO_ARG_OP(ArrayToLoDTensor, array_to_lod_tensor);
-ONE_ARG_OP(Increment, increment);
-
-PDNode* ArrayWrite(PDPattern* pattern, PDNode* x, PDNode* i,
-                   PDNode* array = nullptr) {
-  if (!array) {
-    array = CreateVarPDNode(pattern, {}, {});
-  }
-  auto* op = CreateOpPNode(pattern, "write_to_array");
-  LINKS(x, op);
-  LINKS(i, op);
-  LINKS(op, array);
-  return array;
-}
-
-PDNode* CreateArray(PDPattern* pattern) {
-  return CreateVarPDNode(pattern, {}, {});
-}
-
-TWO_ARG_OP(LessThan, less_than);
-TWO_ARG_OP(Equal, equal);
-TWO_ARG_OP(ArrayRead, array_read);
-ONE_ARG_OP(LoDRankTable, lod_rank_table);
-ONE_ARG_OP(MaxSequenceLen, max_sequence_len);
-TWO_ARG_OP(ReorderLodTensorByRank, reorder_lod_tensor_by_rank);
-THREE_ARG_OP(ShrinkMemory, shrink_rnn_memory);
-NO_ARG_OP(FillConstant, fill_constant);
-TWO_ARG_OP(SequenceExpand, sequence_expand)
-TWO_ARG_OP(Concat, concat);
-TWO_ARG_OP(Mul, mul);
-TWO_ARG_OP(ElementwiseAdd, elementwise_add);
-ONE_ARG_OP(SequenceSoftmax, sequence_softmax);
-TWO_ARG_OP(ElementwiseMul, elementwise_mul);
-ONE_ARG_OP(SequencePool, sequence_pool);
-ONE_ARG_OP(Sigmoid, sigmoid);
-ONE_ARG_OP(Tanh, sigmoid);
-TWO_ARG_OP(LodReset, lod_reset);
-
-PDNode* Sums(PDPattern* pattern, const std::vector<PDNode*>& xs) {
-  CHECK_P1(pattern);
-  auto* sum_op = CreateOpPNode(pattern, "sum");
-  auto* out = CreateVarPDNode(pattern, {"sum"}, {});
-  for (auto* x : xs) {
-    LINKS(x, sum_op);
-  }
-  LINKS(sum_op, out);
-  return out;
-}
-
-PDNode* FC(PDPattern* pattern, PDNode* input, bool has_bias = false) {
-  CHECK_P2(pattern, input);
-  std::vector<std::string> mul_out_outlink({"elementwise_add"});
-  if (!has_bias) {
-    mul_out_outlink.clear();
-  }
-  auto* w = CreateVarPDNode(pattern, {}, {"mul"});
-  auto* mul_out = Mul(pattern, input, w);
-
-  PDNode* res;
-
-  if (has_bias) {
-    auto* bias = CreateVarPDNode(pattern, {}, {"elementwise_add"});
-    res = ElementwiseAdd(pattern, mul_out, bias);
-  } else
-    res = mul_out;
-  return res;
-}
-
-PDNode* Linear(PDPattern* pattern, const std::vector<PDNode*>& xs,
-               bool with_bias = true) {
-  CHECK_P1(pattern);
-  auto* sum_op = CreateOpPNode(pattern, "sum");
-  auto* out = CreateVarPDNode(pattern, {"sum"}, {});
-  std::vector<PDNode*> outs;
-  for (auto* x : xs) {
-    CHECK_P1(x);
-    auto* y = FC(pattern, x, with_bias);
-    outs.push_back(y);
-    LINKS(y, sum_op);
-  }
-  LINKS(sum_op, out);
-  return out;
-}
-
-// This pattern just match the external logic of DynamicRNN, its sub-block is
-// not considered.
-class DynamicRNN {
- public:
-  DynamicRNN(PDPattern* external_p, PDPattern* subblock_p)
-      : external_p_(external_p), subblock_p_(subblock_p) {
-    step_index_ = CreateVarPDNode(external_p_, {"fill_constant"}, {});
-    zero_idx_ = FillConstant(external_p_);
-  }
-
-  PDNode* StepInput(PDNode* x) {
-    CHECK_P1(x);
-    if (!lod_rank_table_) {
-      lod_rank_table_ = LoDRankTable(external_p_, x);
-      auto* max_seq_len = MaxSequenceLen(external_p_, lod_rank_table_);
-      LessThan(external_p_, step_index_, max_seq_len);
-    }
-
-    auto* dynamic_rnn_input_array =
-        LoDTensorToArray(external_p_, x, lod_rank_table_);
-    return ArrayRead(external_p_, dynamic_rnn_input_array, step_index_);
-  }
-
-  PDNode* StaticInput(PDNode* x) {
-    CHECK_P1(x);
-    PADDLE_THROW("not implemented");
-    return nullptr;
-  }
-
-  PDNode* Memory(PDNode* init_tensor, bool need_reorder = true) {
-    CHECK_P1(init_tensor);
-    if (init_tensor) {
-      if (need_reorder) {
-        init_tensor =
-            ReorderLodTensorByRank(external_p_, init_tensor, lod_rank_table_);
-      }
-
-      // write to array
-      auto* mem_array = CreateVarPDNode(external_p_, {"write_to_array"}, {});
-      auto* write_to_array_op = CreateOpPNode(external_p_, "write_to_array");
-      auto* pattern = external_p_;
-      LINKS(init_tensor, write_to_array_op);
-      LINKS(zero_idx_, write_to_array_op);
-
-      auto* retv = ArrayRead(external_p_, mem_array, step_index_);
-      ShrinkMemory(external_p_, retv, step_index_, lod_rank_table_);
-      return retv;
-    } else {
-      PADDLE_THROW("not implemented");
-    }
-    return nullptr;
-  }
-
-  void UpdateMemory(PDNode* ex_mem, PDNode* new_mem) {
-    CHECK_P2(ex_mem, new_mem);
-    LOG(WARNING) << "nothing will happen in UpdateMemory";
-  }
-
-  void Output(PDPattern* pattern, const std::vector<PDNode*>& outputs) {
-    CHECK_P1(pattern);
-    for (auto* x : outputs) {
-      CHECK_P1(x);
-      auto* outside_array = CreateVarPDNode(external_p_, {"array_write"}, {});
-      ArrayWrite(external_p_, x, step_index_, outside_array);
+  for (int row = 0; row < D; row++) {
+    for (int col = 0; col < 4; col++) {
+      float* dst = out_data + 4 * D * row + D * col;
+      const float* src = tensors[col] + D * row;
+      memcpy(dst, src, D * sizeof(float));
     }
   }
 
- protected:
-  PDNode* lod_rank_table_;
-  PDNode* step_index_;
-  PDNode* zero_idx_;
-
-  PDPattern* external_p_;
-  PDPattern* subblock_p_;
-};
-
-}  // namespace
-
-class AttentionLSTM : public DynamicRNN {
- public:
-  AttentionLSTM(PDPattern* external_p, PDPattern* subblock_p)
-      : DynamicRNN(external_p, subblock_p) {}
-
-  void operator()() {
-    auto* encoded_vector = CreateVarPDNode(external_p_, {"concat"}, {});
-    auto* data_tmp =
-        SequenceExpand(external_p_, encoded_vector, encoded_vector);
-    auto* data_lod_attention =
-        CreateVarPDNode(external_p_, {"data"}, {"lod_reset"});
-    auto* data_repeat = LodReset(external_p_, data_tmp, data_lod_attention);
-    auto* cell_init = CreateVarPDNode(external_p_, {"data"}, {"while"});
-    auto* hidden_init = CreateVarPDNode(external_p_, {"data"}, {"while"});
-
-    Block(data_repeat, cell_init, hidden_init);
-
-    LOG(INFO) << "Pattern nodes " << external_p_->nodes().size() << " "
-              << subblock_p_->nodes().size();
-
-    LOG(INFO) << "Pattern edges " << external_p_->edges().size() << " "
-              << subblock_p_->edges().size();
+  for (int row = 0; row < M; row++) {
+    for (int col = 0; col < 4; col++) {
+      float* dst = out_data + 4 * D * (D + row) + D * col;
+      const float* src = tensors[col] + D * row;
+      memcpy(dst, src, D * sizeof(float));
+    }
   }
+}
 
-  void Block(PDNode* data_repeat, PDNode* cell_init, PDNode* hidden_init) {
-    auto* encoder_vec = StepInput(data_repeat);
-    auto* cell_mem = Memory(cell_init, true);
-    auto* hidden_mem = Memory(hidden_init, true);
-    auto lstm_step_out =
-        LstmStep(subblock_p_, encoder_vec, hidden_mem, cell_mem);
-    PADDLE_ENFORCE_EQ(lstm_step_out.size(), 2UL);
-    auto* h = lstm_step_out[0];
-    auto* c = lstm_step_out[1];
-    UpdateMemory(hidden_mem, h);
-    UpdateMemory(cell_mem, c);
-    Output(external_p_, {h});
+void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
+                     const LoDTensor& B_output, const LoDTensor& B_cell,
+                     LoDTensor* out) {
+  std::array<const float*, 4> tensors(
+      {B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
+       B_cell.data<float>()});
+
+  PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
+  int D = B_forget.dims()[0];
+  out->Resize(make_ddim({1, 4 * D}));
+  auto* out_data = out->mutable_data<float>(platform::CPUPlace());
+  for (size_t i = 0; i < tensors.size(); i++) {
+    memcpy(out_data + D * i, tensors[i], D * sizeof(float));
   }
-
-  std::vector<PDNode*> LstmStep(PDPattern* pattern, PDNode* x_t,
-                                PDNode* hidden_t_pre, PDNode* cell_t_prev) {
-    auto* cell_t_repeat = SequenceExpand(pattern, cell_t_prev, x_t);
-    auto* attention_input = Concat(pattern, x_t, cell_t_repeat);
-    auto* attention_fc = FC(pattern, attention_input, true);
-    auto* attention_output = FC(pattern, attention_fc, true);
-    auto* attention_output_actived = attention_output;
-    auto* attention_weights =
-        SequenceSoftmax(pattern, attention_output_actived);
-    auto* scaled = ElementwiseMul(pattern, x_t, attention_weights);
-    auto* context = SequencePool(pattern, scaled);
-
-    auto* forget_gate =
-        Sigmoid(pattern, Linear(pattern, {hidden_t_pre, context}, true));
-    auto* input_gate =
-        Sigmoid(pattern, Linear(pattern, {hidden_t_pre, context}, true));
-    auto* output_gate =
-        Sigmoid(pattern, Linear(pattern, {hidden_t_pre, context}, true));
-    auto* cell_tilde =
-        Tanh(pattern, Linear(pattern, {hidden_t_pre, context}, true));
-    auto* tmp0 = ElementwiseMul(pattern, forget_gate, cell_t_prev);
-    auto* tmp1 = ElementwiseMul(pattern, input_gate, cell_tilde);
-    auto* cell_t = Sums(pattern, {tmp0, tmp1});
-    auto* hidden_t =
-        ElementwiseMul(pattern, output_gate, Tanh(pattern, cell_t));
-    return {hidden_t, cell_t};
-  }
-};
+}
 
 // Parameters
 
 void AttentionLSTMFusePass::Operate(Graph* graph, Scope* scope) const {
   PDPattern external_pattern, subblock_pattern;
-
-  AttentionLSTM lstm(&external_pattern, &subblock_pattern);
-  lstm();
-  std::ofstream file("./ir_lstm_pattern.dot");
-  file << external_pattern.DotString();
 
   FindWhileOp(graph);
 }

@@ -28,7 +28,6 @@ namespace ir {
 size_t PDPattern::id_ = 0UL;
 
 PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
-  LOG(INFO) << "new node " << name;
   if (!name.empty()) {
     PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
                       "PDNode's name should be unique, get duplicate [%s]",
