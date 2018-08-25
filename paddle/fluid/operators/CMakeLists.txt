@@ -307,10 +307,12 @@ op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
 op_library(concat_op DEPS concat)
 
+if (NOT WIN32)
 # FIXME(thuan): Move CSP operators to paddle/fluid/framework/operators/concurrency
 add_subdirectory(concurrency)
 op_library(channel_send_op DEPS concurrency)
 op_library(channel_recv_op DEPS concurrency)
+endif(NOT WIN32)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 
