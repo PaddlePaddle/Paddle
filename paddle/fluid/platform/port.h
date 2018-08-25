@@ -20,6 +20,8 @@
 #include <string>
 
 #if !defined(_WIN32)
+#define UNUSED __attribute__((unused))
+
 #include <dlfcn.h>     // for dladdr
 #include <execinfo.h>  // for backtrace
 #include <sys/stat.h>
@@ -27,6 +29,9 @@
 #else
 #include <io.h>  // _popen, _pclose
 #include <windows.h>
+
+// windows version of __attribute__((unused))
+#define UNUSED __pragma(warning(suppress : 4100))
 
 #ifndef S_ISDIR  // windows port for sys/stat.h
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
