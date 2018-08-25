@@ -274,6 +274,7 @@ TEST(LoD, ConvertToOffsetBasedLoD) {
   EXPECT_EQ(offset_lod, expected);
 }
 
+#if !defined(_WIN32)
 template <typename T>
 static void TestRecordIO() {
   LoDTensor tensor;
@@ -301,11 +302,12 @@ static void TestRecordIO() {
   {
     std::unique_ptr<std::istream> stream_ptr(stream);
     recordio::Scanner scanner(std::move(stream_ptr));
-    auto tensors = ReadFromRecordIO(&scanner, ctx);
+    std::vector<framework::LoDTensor> tensors;
+    ASSERT_TRUE(ReadFromRecordIO(&scanner, ctx, &tensors));
     ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
-    tensors = ReadFromRecordIO(&scanner, ctx);
+    ASSERT_TRUE(ReadFromRecordIO(&scanner, ctx, &tensors));
     ASSERT_EQ(tensors.size(), static_cast<size_t>(2));
     assert_tensor_ok(tensors[0]);
     assert_tensor_ok(tensors[1]);
@@ -319,6 +321,7 @@ TEST(LoDTensor, RecordIO) {
   TestRecordIO<float>();
   TestRecordIO<double>();
 }
+#endif  // !defined(_WIN32)
 
 }  // namespace framework
 }  // namespace paddle

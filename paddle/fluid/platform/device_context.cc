@@ -10,6 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -35,7 +36,7 @@ DeviceContextPool::DeviceContextPool(
     const std::vector<platform::Place>& places) {
   PADDLE_ENFORCE_GT(places.size(), 0);
   using PtrType = std::unique_ptr<DeviceContext>;
-  std::unordered_set<Place, PlaceHash> set;
+  std::set<Place> set;
   for (auto& p : places) {
     set.insert(p);
   }

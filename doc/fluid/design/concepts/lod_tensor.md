@@ -173,6 +173,7 @@ are transformed into offsets of elements/words as follows:
 
 ## Slicing of LoD Tensors
 
+
 When we use the above 2-level LoD Tensor as the input to a nested-RNN, we need to retrieve certain sequences.  Here we define the sequence identified by branch <i,j,...> as the **<i,j,...>-slice**.
 
 For example, the <2>-slice of above example is
@@ -188,4 +189,23 @@ and the <2,0>-slice of above slice is
 ```
 10  12
   ||
+```
+
+## Length Representation vs Offset Representation
+
+The offset representation is an implementation-oriented decision and it makes understanding the idea behind LoDTensor difficult.
+Hence, we encapsulate this implementation detail in C++ and expose the original length representation in our Python API. 
+Specifically, we call this length representation `recursive_sequence_lengths` and users can use the following code to set or get the `recursive_sequence_lengths` of a LoDTensor in Python:
+```Python
+# length representation of lod called recursive_sequence_lengths
+recursive_seq_lens = [[3, 1, 2], [2, 2, 1, 3, 1, 2]]
+# Create a LoDTensor that has the above recursive_sequence_lengths info.
+# This recursive_sequence_lengths will be converted to an offset representation of LoD in the C++ implementation under the hood.
+tensor = fluid.LoDTensor(lod)
+
+# Set/Change the recursive_sequence_lengths info of LoDTensor
+tensor.set_recursive_sequence_lengths([[3, 1, 2]])
+# Get the recursive_sequence_lengths info of a LoDTensor (the offset-based LoD representation stored in C++ will be converted 
+# back to length-based recursive_sequence_lengths), new_recursive_seq_lens = [[3, 1, 2]]
+new_recursive_seq_lens = tensor.recursive_sequence_lengths()
 ```

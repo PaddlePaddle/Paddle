@@ -1468,6 +1468,14 @@ argmax
 ..  autofunction:: paddle.fluid.layers.argmax
     :noindex:
 
+.. _api_fluid_layers_argsort:
+
+argsort
+-------
+
+..  autofunction:: paddle.fluid.layers.argsort
+    :noindex:
+
 .. _api_fluid_layers_ones:
 
 ones
@@ -1758,5 +1766,13 @@ reverse
 -------
 
 ..  autofunction:: paddle.fluid.layers.reverse
+    :noindex:
+
+.. _api_fluid_layers_rank_loss:
+
+rank_loss
+-------
+
+..  autofunction:: paddle.fluid.layers.rank_loss
     :noindex:
 

@@ -97,7 +97,7 @@ inline bool NeedTransformLayout(const DataLayout& l, const DataLayout& r) {
   return ret;
 }
 
-inline bool TransFromNeeded(const OpKernelType& l, const OpKernelType& r) {
+inline bool NeedTransform(const OpKernelType& l, const OpKernelType& r) {
   return (!platform::places_are_same_class(l.place_, r.place_)) ||
          (l.data_type_ != r.data_type_) ||
          NeedTransformLayout(l.data_layout_, r.data_layout_);

@@ -23,7 +23,7 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
-    apt-get install -y --allow-downgrades \
+    apt-get install -y --allow-downgrades patchelf \
     git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
@@ -80,7 +80,7 @@ RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install opencv-python
 
 #For docstring checker
-RUN pip install pylint pytest astroid isort
+RUN pip install pylint pytest astroid isort LinkChecker
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt

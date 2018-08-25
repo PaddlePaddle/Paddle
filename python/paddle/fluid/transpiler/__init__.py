@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from distribute_transpiler import DistributeTranspiler
-from inference_transpiler import InferenceTranspiler
-from memory_optimization_transpiler import memory_optimize, release_memory
-# from memory_transpiler import MemoryTranspiler
-from ps_dispatcher import HashName, RoundRobin
+from __future__ import print_function
+
+from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig
+from .inference_transpiler import InferenceTranspiler
+from .memory_optimization_transpiler import memory_optimize, release_memory
+from .ps_dispatcher import HashName, RoundRobin
+from memory_transpiler import MemoryTranspiler
 
 __all__ = [
-    "DistributeTranspiler",
-    "InferenceTranspiler",
-    "memory_optimize",
-    "release_memory",
-    "HashName",
-    "RoundRobin",
-    # "MemoryTranspiler",
+    "DistributeTranspiler", "InferenceTranspiler", "memory_optimize",
+    "release_memory", "HashName", "RoundRobin", "DistributeTranspilerConfig",
+    "MemoryTranspiler"
 ]

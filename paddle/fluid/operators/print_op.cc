@@ -16,6 +16,7 @@
 #include <ctime>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/framework/variable.h"
 
 namespace paddle {
@@ -62,7 +63,7 @@ struct Formater {
     }
   }
   void PrintDtype() {
-    if (dtype.hash_code() != typeid(const char).hash_code()) {
+    if (!framework::IsType<const char>(dtype)) {
       CLOG << "\tdtype: " << dtype.name() << std::endl;
     }
   }
@@ -83,15 +84,15 @@ struct Formater {
   void PrintData(size_t size) {
     PADDLE_ENFORCE_NOT_NULL(data);
     // print float
-    if (dtype.hash_code() == typeid(const float).hash_code()) {
+    if (framework::IsType<const float>(dtype)) {
       Display<float>(size);
-    } else if (dtype.hash_code() == typeid(const double).hash_code()) {
+    } else if (framework::IsType<const double>(dtype)) {
       Display<double>(size);
-    } else if (dtype.hash_code() == typeid(const int).hash_code()) {
+    } else if (framework::IsType<const int>(dtype)) {
       Display<int>(size);
-    } else if (dtype.hash_code() == typeid(const int64_t).hash_code()) {
+    } else if (framework::IsType<const int64_t>(dtype)) {
       Display<int64_t>(size);
-    } else if (dtype.hash_code() == typeid(const bool).hash_code()) {
+    } else if (framework::IsType<const bool>(dtype)) {
       Display<bool>(size);
     } else {
       CLOG << "\tdata: unprintable type: " << dtype.name() << std::endl;

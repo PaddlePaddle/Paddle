@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 
 import paddle.fluid as fluid
-import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
+import paddle
+import paddle.dataset.mnist as mnist
 
 
 class TestRecordIO(unittest.TestCase):
@@ -68,8 +70,7 @@ class TestRecordIO(unittest.TestCase):
             while True:
                 try:
                     tmp, = exe.run(fetch_list=[avg_loss])
-                except fluid.core.EnforceNotMet as ex:
-                    self.assertIn("There is no next data.", ex.message)
+                except fluid.core.EOFException:
                     break
 
                 avg_loss_np.append(tmp)

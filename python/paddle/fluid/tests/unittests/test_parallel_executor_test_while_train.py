@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy as np
 import unittest
 import os
+import sys
+import math
 
 
 def simple_fc_net():
     img = fluid.layers.data(name='image', shape=[784], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = img
-    for _ in xrange(4):
+    for _ in range(4):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
@@ -68,12 +73,19 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
                 share_vars_from=train_exe,
                 build_strategy=build_strategy)
 
-            for i in xrange(5):
+            for i in range(5):
                 test_loss, = test_exe.run([loss.name], feed=feed_dict)
-                test_loss = np.array(test_loss)
 
                 train_loss, = train_exe.run([loss.name], feed=feed_dict)
-                train_loss = np.array(train_loss)
+
+                avg_test_loss_val = np.array(test_loss).mean()
+                if math.isnan(float(avg_test_loss_val)):
+                    sys.exit("got NaN loss, testing failed.")
+
+                avg_train_loss_val = np.array(train_loss).mean()
+                if math.isnan(float(avg_train_loss_val)):
+                    sys.exit("got NaN loss, training failed.")
+
                 self.assertTrue(
                     np.allclose(
                         train_loss, test_loss, atol=1e-8),
@@ -83,16 +95,18 @@ class ParallelExecutorTestingDuringTraining(unittest.TestCase):
     def test_parallel_testing(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
-        self.check_network_convergence(
-            use_cuda=True, build_strategy=build_strategy)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(
+                use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
         build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
-        self.check_network_convergence(
-            use_cuda=True, build_strategy=build_strategy)
+        if core.is_compiled_with_cuda():
+            self.check_network_convergence(
+                use_cuda=True, build_strategy=build_strategy)
         self.check_network_convergence(
             use_cuda=False, build_strategy=build_strategy)
 

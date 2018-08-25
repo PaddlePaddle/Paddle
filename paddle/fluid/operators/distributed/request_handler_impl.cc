@@ -41,6 +41,7 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
   // Async
   if (!sync_mode_) {
+    rpc_server_->Profiler().OneStep();
     try {
       executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
                                     scope);
@@ -53,20 +54,18 @@ bool RequestSendHandler::Handle(const std::string& varname,
 
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
-    VLOG(3) << "sync: recv batch barrier message";
+    VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
     rpc_server_->IncreaseBatchBarrier(kRequestSend);
   } else if (varname == COMPLETE_MESSAGE) {
     VLOG(3) << "sync: recv complete message";
-    rpc_server_->DecreaseClientNum();
+    rpc_server_->Complete();
   } else {
     VLOG(3) << "sync: received var_name: " << varname;
-    if (sync_mode_) {
-      rpc_server_->WaitCond(kRequestSend);
-    }
+    rpc_server_->WaitCond(kRequestSend);
+    VLOG(3) << "sync: processing received var: " << varname;
 
     if (invar == nullptr) {
-      LOG(ERROR) << "sync: Can not find server side var: " << varname;
-      PADDLE_THROW("sync: Can not find server side var");
+      LOG(FATAL) << "sync: Can not find server side var: " << varname;
       return false;
     }
     if (invar->IsType<framework::SelectedRows>()) {
@@ -91,21 +90,19 @@ bool RequestGetHandler::Handle(const std::string& varname,
                                framework::Variable** outvar,
                                const std::string& out_var_name) {
   VLOG(4) << "RequestGetHandler:" << varname;
-
-  if (varname != FETCH_BARRIER_MESSAGE) {
-    if (sync_mode_) {
-      rpc_server_->WaitCond(kRequestGet);
-    }
-    *outvar = scope_->FindVar(varname);
-    return true;
-  }
-
-  // FETCH_BARRIER_MESSAGE
   if (sync_mode_) {
-    VLOG(3) << "sync: recv fetch barrier message";
-    rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    if (varname == FETCH_BARRIER_MESSAGE) {
+      VLOG(3) << "sync: recv fetch barrier message";
+      rpc_server_->IncreaseBatchBarrier(kRequestGet);
+    } else {
+      rpc_server_->WaitCond(kRequestGet);
+      *outvar = scope_->FindVar(varname);
+    }
+  } else {
+    if (varname != FETCH_BARRIER_MESSAGE && varname != COMPLETE_MESSAGE) {
+      *outvar = scope_->FindVar(varname);
+    }
   }
-
   return true;
 }
 
@@ -133,12 +130,13 @@ bool RequestCheckpointHandler::Handle(const std::string& varname,
       checkpoint_notify_id != -1,
       "when checkpoint_notify_id = -1, there should be no RPC invoke.");
 
-  auto* lt_var = scope->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
+  // TODO(tangwei12): find out why scope will be error.
+  auto* lt_var = scope_->FindVar(LOOKUP_TABLE_PATH)->GetMutable<std::string>();
   lt_var->clear();
   lt_var->append(out_var_name);
   VLOG(4) << "RequestCheckpointHandler update var kLookupTablePath to: "
           << out_var_name;
-  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope);
+  executor_->RunPreparedContext(checkpoint_prepared_ctx_.get(), scope_);
   return true;
 }
 

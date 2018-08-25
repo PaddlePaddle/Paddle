@@ -95,11 +95,6 @@ struct RecordBlock {
   uint64_t start_ns_;
 };
 
-struct RecordThread {
-  explicit RecordThread(int thread_id);
-  ~RecordThread();
-};
-
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
 std::vector<std::vector<Event>> GetAllEvents();

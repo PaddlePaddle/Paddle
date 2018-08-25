@@ -197,12 +197,12 @@ def get_model(args):
     optimizer = fluid.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
 
     batched_train_reader = paddle.batch(
-        paddle.reader.shuffle(
+        train_reader if args.no_random else paddle.reader.shuffle(
             train_reader, buf_size=5120),
         batch_size=args.batch_size * args.gpus,
         drop_last=True)
     batched_test_reader = paddle.batch(
-        train_reader, batch_size=args.batch_size, drop_last=True)
+        test_reader, batch_size=args.batch_size, drop_last=True)
 
     return avg_cost, inference_program, optimizer, batched_train_reader,\
                    batched_test_reader, batch_acc

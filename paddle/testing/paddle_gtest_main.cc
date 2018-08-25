@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/platform/init.h"
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);

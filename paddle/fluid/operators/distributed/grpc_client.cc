@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/threadpool.h"
+#include "paddle/fluid/operators/distributed/grpc_serde.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -36,12 +37,19 @@ void GRPCClient::InitEventLoop() {
 }
 
 void GRPCClient::SendComplete() {
-  for (auto& it : channels_) {
-    this->AsyncSendComplete(it.first);
+  std::unique_lock<std::mutex> lk(completed_mutex_);
+  if (!completed_) {
+    for (auto& it : channels_) {
+      VLOG(3) << "send complete message to " << it.first;
+      this->AsyncSendComplete(it.first);
+    }
+    PADDLE_ENFORCE(this->Wait(), "internal grpc error");
+    completed_ = true;
   }
 }
 
 GRPCClient::~GRPCClient() {
+  stopped_ = true;
   Wait();
   cq_.Shutdown();
   {
@@ -49,7 +57,9 @@ GRPCClient::~GRPCClient() {
     for (auto& it : channels_) {
       it.second.reset();
     }
+    channels_.clear();
   }
+
   client_thread_->join();
 }
 
@@ -256,22 +266,31 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   req_count_++;
 }
 
-void GRPCClient::Wait() {
+bool GRPCClient::Wait() {
   std::unique_lock<std::mutex> lk(sync_mutex_);
-  sync_cond_.wait(lk, [this] { return req_count_ == 0; });
+  sync_cond_.wait(lk, [this] { return (req_count_ == 0 || ok_ == false); });
+  return ok_;
 }
 
 void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
-  while (cq_.Next(&tag, &ok)) {
+  while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
     PADDLE_ENFORCE(c);
     if (c->status_.ok()) {
       VLOG(3) << c->var_h_.String() << " process";
       c->Process();
+    } else if (c->status_.error_code() == grpc::StatusCode::DEADLINE_EXCEEDED) {
+      LOG(ERROR) << c->var_h_.String()
+                 << " meets grpc error:" << c->status_.error_message();
+      {
+        std::lock_guard<std::mutex> lk(sync_mutex_);
+        ok_ = false;
+      }
+      sync_cond_.notify_all();
     } else {
       LOG(FATAL) << c->var_h_.String()
                  << " meets grpc error:" << c->status_.error_message();

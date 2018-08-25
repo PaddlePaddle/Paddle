@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import logging
 from paddle.fluid.op import Operator, DynamicRecurrentOp
 import paddle.fluid.core as core
@@ -26,9 +28,12 @@ def create_tensor(scope, name, np_data):
 
 
 class BeamSearchOpTester(unittest.TestCase):
+    """unittest of beam_search_op"""
+
     def setUp(self):
         self.scope = core.Scope()
         self._create_ids()
+        self._create_pre_scores()
         self._create_scores()
         self._create_pre_ids()
         self.scope.var('selected_ids')
@@ -37,7 +42,8 @@ class BeamSearchOpTester(unittest.TestCase):
     def test_run(self):
         op = Operator(
             'beam_search',
-            pre_ids="pre_ids",
+            pre_ids='pre_ids',
+            pre_scores='pre_scores',
             ids='ids',
             scores='scores',
             selected_ids='selected_ids',
@@ -47,19 +53,30 @@ class BeamSearchOpTester(unittest.TestCase):
             end_id=0, )
         op.run(self.scope, core.CPUPlace())
         selected_ids = self.scope.find_var("selected_ids").get_tensor()
-        print 'selected_ids', np.array(selected_ids)
-        print 'lod', selected_ids.recursive_sequence_lengths()
+        selected_scores = self.scope.find_var("selected_scores").get_tensor()
+        self.assertTrue(
+            np.allclose(
+                np.array(selected_ids), np.array([4, 2, 3, 8])[:, np.newaxis]))
+        self.assertTrue(
+            np.allclose(
+                np.array(selected_scores),
+                np.array([0.5, 0.6, 0.9, 0.7])[:, np.newaxis]))
+        self.assertEqual(selected_ids.lod(), [[0, 2, 4], [0, 1, 2, 3, 4]])
 
     def _create_pre_ids(self):
         np_data = np.array([[1, 2, 3, 4]], dtype='int64')
-        tensor = create_tensor(self.scope, "pre_ids", np_data)
+        tensor = create_tensor(self.scope, 'pre_ids', np_data)
+
+    def _create_pre_scores(self):
+        np_data = np.array([[0.1, 0.2, 0.3, 0.4]], dtype='float32')
+        tensor = create_tensor(self.scope, 'pre_scores', np_data)
 
     def _create_ids(self):
-        self.lod = [[1, 3], [1, 1, 1, 1]]
+        self.lod = [[0, 2, 4], [0, 1, 2, 3, 4]]
         np_data = np.array(
             [[4, 2, 5], [2, 1, 3], [3, 5, 2], [8, 2, 1]], dtype='int64')
         tensor = create_tensor(self.scope, "ids", np_data)
-        tensor.set_recursive_sequence_lengths(self.lod)
+        tensor.set_lod(self.lod)
 
     def _create_scores(self):
         np_data = np.array(
@@ -71,7 +88,7 @@ class BeamSearchOpTester(unittest.TestCase):
             ],
             dtype='float32')
         tensor = create_tensor(self.scope, "scores", np_data)
-        tensor.set_recursive_sequence_lengths(self.lod)
+        tensor.set_lod(self.lod)
 
 
 if __name__ == '__main__':

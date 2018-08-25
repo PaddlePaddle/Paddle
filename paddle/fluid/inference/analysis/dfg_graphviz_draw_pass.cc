@@ -18,12 +18,19 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+int DFG_GraphvizDrawPass::counter_{0};
+
 void DFG_GraphvizDrawPass::Run(DataFlowGraph *graph) {
   auto content = Draw(graph);
-  std::ofstream file(GenDotPath());
+  auto dot_path = GenDotPath();
+  std::ofstream file(dot_path);
   file.write(content.c_str(), content.size());
   file.close();
-  LOG(INFO) << "draw dot to " << GenDotPath();
+
+  auto png_path = dot_path.substr(0, dot_path.size() - 4) + ".png";
+  std::string message;
+  VLOG(3) << "draw to " << png_path;
+  ExecShellCommand("dot -Tpng " + dot_path + " -o " + png_path, &message);
 }
 
 std::string DFG_GraphvizDrawPass::Draw(DataFlowGraph *graph) {
@@ -39,11 +46,9 @@ std::string DFG_GraphvizDrawPass::Draw(DataFlowGraph *graph) {
   for (size_t i = 0; i < graph->nodes.size(); i++) {
     const Node &node = graph->nodes.Get(i);
     if (!config_.display_deleted_node && node.deleted()) continue;
-    for (auto &in : node.inlinks) {
-      if (!config_.display_deleted_node && in->deleted()) continue;
-      for (auto &in : node.inlinks) {
-        dot.AddEdge(in->repr(), node.repr(), {});
-      }
+    for (auto &out : node.outlinks) {
+      if (!config_.display_deleted_node && out->deleted()) continue;
+      dot.AddEdge(node.repr(), out->repr(), {});
     }
   }
   return dot.Build();

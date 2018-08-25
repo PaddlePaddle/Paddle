@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.dataset.conll05 as conll05
 import paddle.fluid as fluid
 import unittest
@@ -167,11 +169,10 @@ class TestCRFModel(unittest.TestCase):
                 place=fluid.CPUPlace())
 
             data = train_data()
-            for i in xrange(10):
+            for i in range(10):
                 cur_batch = next(data)
-                print map(np.array,
-                          pe.run(feed=feeder.feed(cur_batch),
-                                 fetch_list=[avg_cost.name]))[0]
+                print(pe.run(feed=feeder.feed(cur_batch),
+                             fetch_list=[avg_cost.name])[0])
 
     @unittest.skip(reason="CI hangs")
     def test_update_sparse_parameter_all_reduce(self):

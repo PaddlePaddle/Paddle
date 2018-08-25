@@ -62,12 +62,6 @@ inline MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
   return MKLDNNDataType::data_undef;
 }
 
-inline MKLDNNFormat MKLDNNFormatForSize(size_t dims_size,
-                                        MKLDNNFormat default_format) {
-  return (dims_size == 1
-              ? mkldnn::memory::format::x
-              : dims_size == 2 ? mkldnn::memory::format::nc : default_format);
-}
 #endif
 
 void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,

@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
 
 namespace paddle {
 namespace framework {
@@ -69,7 +70,22 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
     PADDLE_ENFORCE(platform::is_gpu_place(ctx_place));
     auto stream =
         reinterpret_cast<const platform::CUDADeviceContext&>(ctx).stream();
-    memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size, stream);
+    if (platform::is_same_place(src_place, dst_place)) {
+      memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                   stream);
+    } else {
+      if (platform::is_same_place(ctx_place, src_place)) {
+        memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                     stream);
+        platform::DeviceContextPool::Instance().Get(src.place())->Wait();
+      } else if (platform::is_same_place(ctx_place, dst_place)) {
+        platform::DeviceContextPool::Instance().Get(src.place())->Wait();
+        memory::Copy(dst_gpu_place, dst_ptr, src_gpu_place, src_ptr, size,
+                     stream);
+      } else {
+        PADDLE_THROW("ctx is not belong to dst_gpu_place or src_gpu_place.");
+      }
+    }
   }
 #endif
 }
@@ -78,10 +94,10 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   const platform::DeviceContext* dev_ctx;
-  if (platform::is_gpu_place(src.place())) {
-    dev_ctx = pool.Get(src.place());
-  } else {
+  if (platform::is_gpu_place(dst_place)) {
     dev_ctx = pool.Get(dst_place);
+  } else {
+    dev_ctx = pool.Get(src.place());
   }
   TensorCopy(src, dst_place, *dev_ctx, dst);
 }
@@ -246,7 +262,8 @@ void TensorToStream(std::ostream& os, const Tensor& tensor,
     os.write(out.data(), size);
   }
   {  // the 3rd field, tensor data
-    uint64_t size = tensor.memory_size();
+    uint64_t size = tensor.numel() * framework::SizeOfType(tensor.type());
+
     auto* data_ptr = tensor.data<void>();
     PADDLE_ENFORCE(size < std::numeric_limits<std::streamsize>::max(),
                    "Index overflow when writing tensor");
@@ -316,6 +333,9 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
     tensor->Resize(framework::make_ddim(dims));
     void* buf;
     auto ctx = platform::CPUDeviceContext();
+    size_t size =
+        tensor->numel() *
+        framework::SizeOfType(framework::ToTypeIndex(desc.data_type()));
     if (platform::is_gpu_place(dev_ctx.GetPlace())) {
 #ifdef PADDLE_WITH_CUDA
       Tensor cpu_tensor;
@@ -323,7 +343,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, &cpu_tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), cpu_tensor.memory_size());
+      is.read(static_cast<char*>(buf), size);
       auto dst_place = dev_ctx.GetPlace();
       framework::TensorCopy(cpu_tensor, dst_place, dev_ctx, tensor);
 #else
@@ -333,7 +353,7 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
       framework::VisitDataType(
           desc.data_type(),
           DeserializedDataFunctor(&buf, tensor, ctx.GetPlace()));
-      is.read(static_cast<char*>(buf), tensor->memory_size());
+      is.read(static_cast<char*>(buf), size);
     }
   }
 }

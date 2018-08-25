@@ -34,15 +34,15 @@
 namespace paddle {
 namespace operators {
 
-using paddle::framework::Tensor;
-using paddle::platform::MKLDNNDeviceContext;
-using paddle::platform::CPUDeviceContext;
 using framework::DataLayout;
 using mkldnn::memory;
 using mkldnn::primitive;
+using mkldnn::reorder;
 using mkldnn::stream;
 using mkldnn::sum;
-using mkldnn::reorder;
+using paddle::framework::Tensor;
+using paddle::platform::CPUDeviceContext;
+using paddle::platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
 template <typename T>
@@ -88,7 +88,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         input_format = memory::format::nc;
       }
 
-      for (int i = in_place ? 1 : 0; i < N; i++) {
+      for (int i = 0; i < N; i++) {
         PADDLE_ENFORCE(in_vars[i]->IsType<LoDTensor>(),
                        "all inputs must be all LoDTensors");
         auto& input = in_vars[i]->Get<LoDTensor>();
@@ -175,18 +175,35 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         auto& sel_row = get_selected_row(i);
         first_dim += sel_row.rows().size();
       }
-      auto in_dim =
-          framework::vectorize(get_selected_row(N - 1).value().dims());
+
+      std::vector<int64_t> in_dim;
+      for (int i = 0; i < N; i++) {
+        auto& sel_row = get_selected_row(i);
+        if (sel_row.rows().size() > 0) {
+          in_dim = framework::vectorize(sel_row.value().dims());
+          break;
+        }
+      }
+
+      if (in_dim.empty()) {
+        VLOG(3) << "WARNING: all the inputs are empty";
+        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+      } else {
+        in_dim[0] = static_cast<int64_t>(first_dim);
+      }
+
       in_dim[0] = static_cast<int64_t>(first_dim);
 
       out_value->Resize(framework::make_ddim(in_dim));
+
+      out_value->mutable_data<T>(ctx.GetPlace());
 
       // if all the input sparse vars are empty, no need to
       // merge these vars.
       if (first_dim == 0UL) {
         return;
       }
-      out_value->mutable_data<T>(ctx.GetPlace());
+
       math::SelectedRowsAddTo<CPUDeviceContext, T> functor;
       int64_t offset = 0;
       for (int i = 0; i < N; i++) {

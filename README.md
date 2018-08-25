@@ -4,7 +4,6 @@
 [![Build Status](https://travis-ci.org/PaddlePaddle/Paddle.svg?branch=develop)](https://travis-ci.org/PaddlePaddle/Paddle)
 [![Documentation Status](https://img.shields.io/badge/docs-latest-brightgreen.svg?style=flat)](http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html)
 [![Documentation Status](https://img.shields.io/badge/中文文档-最新-brightgreen.svg)](http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html)
-[![Coverage Status](https://coveralls.io/repos/github/PaddlePaddle/Paddle/badge.svg?branch=develop)](https://coveralls.io/github/PaddlePaddle/Paddle?branch=develop)
 [![Release](https://img.shields.io/github/release/PaddlePaddle/Paddle.svg)](https://github.com/PaddlePaddle/Paddle/releases)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
@@ -18,6 +17,22 @@ learning to many products at Baidu.
 
 Our vision is to enable deep learning for everyone via PaddlePaddle.
 Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddle/releases) to track the latest feature of PaddlePaddle.
+
+
+### Latest PaddlePaddle Release: [Fluid 0.14.0](https://github.com/PaddlePaddle/Paddle/tree/v0.14.0)
+### Install Latest Stable Release:
+```
+# Linux CPU
+pip install paddlepaddle
+# Linux GPU cuda9cudnn7
+pip install paddlepaddle-gpu
+# Linux GPU cuda8cudnn7
+pip install paddlepaddle-gpu==0.14.0.post87
+# Linux GPU cuda8cudnn5
+pip install paddlepaddle-gpu==0.14.0.post85
+
+# For installation on other platform, refer to http://paddlepaddle.org/
+```
 
 ## Features
 
