@@ -302,7 +302,7 @@ class Pad2dCUDAKernel : public framework::OpKernel<T> {
     const T* in_data = x->data<T>();
     T* out_data = out->mutable_data<T>(context.GetPlace());
     const int pad_top = pads[0];
-    const int pad_left = pads[1];
+    const int pad_left = pads[2];
     const int num = in_dims[0];
 
     auto stream = context.cuda_device_context().stream();
@@ -371,7 +371,7 @@ class Pad2dGradCUDAKernel : public framework::OpKernel<T> {
              d_in, static_cast<T>(0));
 
     const int pad_top = pads[0];
-    const int pad_left = pads[1];
+    const int pad_left = pads[2];
     const int num = d_in_dims[0];
 
     auto stream = context.cuda_device_context().stream();

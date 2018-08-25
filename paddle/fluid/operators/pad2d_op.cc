@@ -323,8 +323,6 @@ template <typename T>
 class Pad2dCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    LOG(ERROR)
-        << "-------------------Pad2dCPUKernel Compute ---------------------";
     auto pads = context.Attr<std::vector<int>>("paddings");
     auto mode = context.Attr<std::string>("mode");
     auto data_format = context.Attr<std::string>("data_format");
@@ -371,12 +369,6 @@ class Pad2dCPUKernel : public framework::OpKernel<T> {
                        out_width, pad_top, pad_left, value, out_data);
       }
     }
-    LOG(ERROR) << "out_dims[0]: " << out_dims[0]
-               << "; out_dims[1]: " << out_dims[1]
-               << "; out_dims[2]: " << out_dims[2]
-               << "; out_dims[3]:" << out_dims[3];
-    LOG(ERROR)
-        << "-------------------Pad2dCPUKernel Compute end---------------------";
   }
 };
 

@@ -50,7 +50,7 @@ class TestPad2dOp(OpTest):
         self.check_grad(['X'], 'Out', max_relative_error=0.006)
 
     def initTestCase(self):
-        self.shape = (2, 3, 16, 16)
+        self.shape = (2, 3, 4, 4)
         self.paddings = [0, 1, 2, 3]
         self.mode = "constant"
         self.data_format = "NCHW"
