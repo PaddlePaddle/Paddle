@@ -323,8 +323,9 @@ class TestDistBase(unittest.TestCase):
         FNULL.close()
 
         for step_id in range(RUN_STEP):
+            local_loss = eval(local_lines[step_id])[0]
             tr0_loss = eval(tr0_losses[step_id])[0]
             tr1_loss = eval(tr1_losses[step_id])[0]
-            self.assertAlmostEqual(
-                eval(local_lines[step_id])[0], (tr0_loss + tr1_loss) / 2,
-                delta=delta)
+            dist_loss = (tr0_loss + tr1_loss) / 2
+            print(str(local_loss) + ":" + str(dist_loss))
+            self.assertAlmostEqual(local_loss, dist_loss, delta=delta)

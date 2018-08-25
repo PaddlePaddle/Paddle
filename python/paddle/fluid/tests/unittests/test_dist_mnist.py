@@ -22,7 +22,7 @@ class TestDistMnist2x2(TestDistBase):
         self._sync_mode = True
 
     def test_se_resnext(self):
-        self.check_with_place("dist_mnist.py", delta=1e-7)
+        self.check_with_place("dist_mnist.py", delta=1e-6)
 
 
 class TestDistMnistAsync(TestDistBase):
