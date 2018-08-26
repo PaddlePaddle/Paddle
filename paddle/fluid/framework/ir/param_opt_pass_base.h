@@ -49,7 +49,7 @@ class ParamOptPassBase : public Pass {
  protected:
   // Use `Require`, `ToDrop`, `ToCreate` methods to register the parameters need
   // to operate on.
-  virtual void RegisterParamOperations() const = 0;
+  virtual void RegisterParamOperations(Graph *graph, Scope *scope) const = 0;
   // Perform the opration.
   virtual void Operate(Graph *graph, Scope *scope) const = 0;
 
@@ -62,6 +62,8 @@ class ParamOptPassBase : public Pass {
   // Register a parameter to create before the pass run, this will done
   // automatically.
   void ToCreate(const std::string &param) const;
+  //  Is called after a series of operation definitions.
+  void CheckOrCreateParam(Graph *graph, Scope *scope) const;
 
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 

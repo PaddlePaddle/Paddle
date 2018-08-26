@@ -40,10 +40,7 @@ void ir::ParamOptPassBase::ToDrop(const std::string &param) const {
   reg_params_[kToDrop].insert(param);
 }
 
-std::unique_ptr<ir::Graph> ir::ParamOptPassBase::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  RegisterParamOperations();
-  // Require any one parameter to modify.
+void ParamOptPassBase::CheckOrCreateParam(Graph *graph, Scope *scope) const {
   bool any_one_not_empty = false;
   for (size_t i = 0; i < reg_params_.size(); i++) {
     if (!reg_params_[i].empty()) {
@@ -53,11 +50,6 @@ std::unique_ptr<ir::Graph> ir::ParamOptPassBase::ApplyImpl(
   }
   PADDLE_ENFORCE(any_one_not_empty);
 
-  PADDLE_ENFORCE(
-      graph->Has("param_scope"),
-      "PassOptPass require the graph has the [param_scope] attribute");
-
-  auto *scope = graph->Get<Scope *>("param_scope");
   // Check all the parameters to operate on exist in the scope.
   for (int i = kToRead; i <= kToDrop; i++) {
     for (auto &param : reg_params_[i]) {
@@ -74,8 +66,18 @@ std::unique_ptr<ir::Graph> ir::ParamOptPassBase::ApplyImpl(
     VLOG(4) << "to create parameter " << param;
     scope->Var(param);
   }
+}
 
+std::unique_ptr<ir::Graph> ir::ParamOptPassBase::ApplyImpl(
+    std::unique_ptr<ir::Graph> graph) const {
+  // Require any one parameter to modify.
   // Run modify.
+  PADDLE_ENFORCE(
+      graph->Has("param_scope"),
+      "PassOptPass require the graph has the [param_scope] attribute");
+
+  auto *scope = graph->Get<Scope *>("param_scope");
+  RegisterParamOperations(graph.get(), scope);
   Operate(graph.get(), scope);
 
   // Delete all the parameters need to drop.

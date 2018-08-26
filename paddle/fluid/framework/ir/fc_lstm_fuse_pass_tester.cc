@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 #include <gtest/gtest.h>
 
@@ -23,11 +24,16 @@ namespace ir {
 void SetOp(ProgramDesc* prog, const std::string& type,
            const std::vector<std::string>& inputs,
            const std::vector<std::string>& outputs) {
-  auto* op = prog->MutableBlock(0)->AppendOp();
-  op->SetType(type);
-  op->SetInput("Xs", inputs);
-  op->SetOutput("Ys", outputs);
   if (type == "lstm") {
+    auto* op = prog->MutableBlock(0)->AppendOp();
+    op->SetInput("Input", {inputs[0]});
+    op->SetInput("Weight", {inputs[1]});
+    op->SetInput("Bias", {inputs[2]});
+    op->SetOutput("BatchCellPreAct", {outputs[0]});
+    op->SetOutput("BatchGate", {outputs[1]});
+    op->SetOutput("Cell", {outputs[2]});
+    op->SetOutput("Hidden", {outputs[3]});
+    op->SetType(type);
     std::string candidate_act = "tanh";
     std::string cell_act = "tanh";
     std::string gate_act = "tanh";
@@ -38,15 +44,31 @@ void SetOp(ProgramDesc* prog, const std::string& type,
     op->SetAttr("gate_activation", gate_act);
     op->SetAttr("is_reverse", is_reverse);
     op->SetAttr("use_peepholes", use_peepholes);
+  } else {
+    auto* op = prog->MutableBlock(0)->AppendOp();
+    op->SetType(type);
+    op->SetInput("Xs", inputs);
+    op->SetOutput("Ys", outputs);
   }
 }
 
 // (a, b)->mul->c
 // (c, d)->elementwise_add->e
-// (e, f, h)->elementwise_add->(i, j, k, m)
-ProgramDesc BuildProgramDesc() {
+// (e, f, g)->lstm->(h, i, j, k)
+ProgramDesc BuildProgramDesc(Scope* scope) {
   ProgramDesc prog;
   std::unordered_set<std::string> persistable_var = {"b", "d", "f", "g"};
+  platform::CPUPlace cpu_place;
+  auto input_bias_var = scope->Var("d");
+  auto input_bias_tensor = input_bias_var->GetMutable<framework::Tensor>();
+  input_bias_tensor->Resize({1, 4 * 10});
+  input_bias_tensor->mutable_data<float>(cpu_place);
+
+  auto lstm_bias_var = scope->Var("g");
+  auto lstm_bias_tensor = lstm_bias_var->GetMutable<framework::Tensor>();
+  lstm_bias_tensor->Resize({1, 4 * 10});
+  lstm_bias_tensor->mutable_data<float>(cpu_place);
+
   for (auto& v : std::vector<std::string>(
            {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"})) {
     auto* var = prog.MutableBlock(0)->Var(v);
@@ -67,10 +89,12 @@ ProgramDesc BuildProgramDesc() {
 }
 
 TEST(FCFusePass, basic) {
-  auto prog = BuildProgramDesc();
+  std::unique_ptr<Scope> scope(new Scope);
 
+  auto prog = BuildProgramDesc(scope.get());
   std::unique_ptr<ir::Graph> graph(new ir::Graph(prog));
 
+  graph->Set("param_scope", new Scope*(scope.get()));
   auto pass = PassRegistry::Instance().Get("fc_lstm_fuse_pass");
 
   int pre_nodes = graph->Nodes().size();
@@ -79,8 +103,6 @@ TEST(FCFusePass, basic) {
 
   int after_nodes = graph->Nodes().size();
 
-  std::cout << pre_nodes << std::endl;
-  std::cout << after_nodes << std::endl;
   // Remove 5 Nodes: MUL,ELEMENTWISE_ADD, mul_out
   // elementwise_add_out, LSTM
   // Add 1 Node: FUSION_LSTM

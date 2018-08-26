@@ -31,7 +31,7 @@ function (inference_analysis_test TARGET)
         endif()
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
-                DEPS analysis graph fc_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detecter pass ${analysis_test_EXTRA_DEPS}
+                DEPS analysis graph fc_fuse_pass fc_lstm_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detecter pass ${analysis_test_EXTRA_DEPS}
                 ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
@@ -60,6 +60,7 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
 		# ir
 		fc_fuse_pass
+                fc_lstm_fuse_pass
 		graph_viz_pass
 		infer_clean_graph_pass
 		graph_pattern_detecter

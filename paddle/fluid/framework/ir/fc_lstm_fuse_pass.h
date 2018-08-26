@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
+#include "paddle/fluid/framework/ir/param_opt_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
@@ -23,12 +24,14 @@ namespace ir {
 /*
  * Fuse the FC and LSTM to a FusionLSTMOp.
  */
-class FcLstmFusePass : public Pass {
+class FcLstmFusePass : public ParamOptPassBase {
  public:
-  virtual ~FcLstmFusePass() {}
+  FcLstmFusePass() = default;
+  ~FcLstmFusePass() = default;
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  void RegisterParamOperations(Graph *graph, Scope *scope) const override {}
+  void Operate(Graph *graph, Scope *scope) const override;
 };
 
 }  // namespace ir

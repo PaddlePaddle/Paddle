@@ -15,13 +15,14 @@
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-bool VarOutLinksToOp(Node* node, const std::string& op_type) {
+bool FcLstmVarOutLinksToOp(Node* node, const std::string& op_type) {
   for (auto* out : node->outputs) {
     if (out->IsOp() && out->Op()->Type() == op_type) {
       return true;
@@ -81,7 +82,7 @@ void BuildFcLstmPattern(PDPattern* pattern) {
   auto* elementwise_add_tmp_var = pattern->NewNode(
       [](Node* node) {
         return node->IsVar() && node->outputs.size() >= 1UL && node->Var() &&
-               VarOutLinksToOp(node, "elementwise_add");
+               FcLstmVarOutLinksToOp(node, "elementwise_add");
       },
       "elementwise_add_tmpvar");
 
@@ -167,7 +168,7 @@ void BuildFcLstmPattern(PDPattern* pattern) {
 }
 
 // Replace the node `from` in the links to `to`
-bool LinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
+bool FcLstmLinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
   for (auto*& n : *links) {
     if (n == from) {
       n = to;
@@ -177,10 +178,7 @@ bool LinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
   return false;
 }
 
-std::unique_ptr<ir::Graph> FcLstmFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
-  PADDLE_ENFORCE(graph.get());
-
+void FcLstmFusePass::Operate(Graph* graph, Scope* scope) const {
   std::unordered_set<Node*> nodes2delete;
 
   GraphPatternDetecter gpd;
@@ -194,7 +192,7 @@ std::unique_ptr<ir::Graph> FcLstmFusePass::ApplyImpl(
 
   auto handler = [&](const GraphPatternDetecter::subgraph_t& subgraph,
                      Graph* g) {
-    VLOG(4) << "handle FCLSTMfuse";
+    VLOG(4) << "handle FcLstmfuse";
     GET_NODE(mul_tmp_var);
     GET_NODE(mul_weight);
     GET_NODE(elementwise_add_tmpvar);
@@ -240,11 +238,11 @@ std::unique_ptr<ir::Graph> FcLstmFusePass::ApplyImpl(
     desc.SetOutput("BatchCellPreAct",
                    std::vector<std::string>({lstm_BatchCellPreAct}));
 
-    desc.SetOutput("XX", std::vector<std::string>({elementwise_add_out_name}));
+    desc.SetOutput("XX", std::vector<std::string>(
+                             {elementwise_add_out_name + "_temp_" + "XX"}));
     desc.SetType("fusion_lstm");
 
     OpDesc* lstm_desc = lstm->Op();
-
     // set attr for fusion_lstm
     std::string candidate_activation =
         boost::get<std::string>(lstm_desc->GetAttr("candidate_activation"));
@@ -262,6 +260,32 @@ std::unique_ptr<ir::Graph> FcLstmFusePass::ApplyImpl(
     desc.SetAttr("use_peepholes", use_peepholes);
 
     auto fusion_lstm_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
+
+    //  modify the param
+    ToRead(elementwise_add_tmpvar->Name());
+    ToWrite(lstm_bias->Name());
+    ToDrop(elementwise_add_tmpvar->Name());
+    CheckOrCreateParam(graph, scope);
+
+    auto* input_bias_var = scope->FindVar(elementwise_add_tmpvar->Name());
+    auto input_bias_tensor = input_bias_var->Get<Tensor>();
+    auto input_bias_place = input_bias_tensor.place();
+    auto* input_bias_data = input_bias_tensor.data<float>();
+
+    auto* lstm_bias_var = scope->FindVar(lstm_bias->Name());
+    auto* lstm_bias_tensor = lstm_bias_var->GetMutable<Tensor>();
+    auto lstm_bias_place = lstm_bias_tensor->place();
+    auto* lstm_bias_data =
+        lstm_bias_tensor->mutable_data<float>(lstm_bias_place);
+
+    PADDLE_ENFORCE(platform::is_cpu_place(input_bias_place));
+    PADDLE_ENFORCE(platform::is_cpu_place(lstm_bias_place));
+    PADDLE_ENFORCE_EQ(input_bias_tensor.numel(), lstm_bias_tensor->numel());
+
+    for (int i = 0; i < lstm_bias_tensor->numel(); i++) {
+      lstm_bias_data[i] += input_bias_data[i];
+    }
+
     fusion_lstm_node->inputs =
         std::vector<Node*>({mul_tmp_var, mul_weight, lstm_weight, lstm_bias});
     fusion_lstm_node->outputs =
@@ -269,20 +293,24 @@ std::unique_ptr<ir::Graph> FcLstmFusePass::ApplyImpl(
                             lstm_batchedgate_out, lstm_batch_cell_preact_out});
 
     // Update link relatons
-    PADDLE_ENFORCE(LinksReplace(&mul_tmp_var->outputs, mul, fusion_lstm_node));
-    PADDLE_ENFORCE(LinksReplace(&mul_weight->outputs, mul, fusion_lstm_node));
-    PADDLE_ENFORCE(LinksReplace(&lstm_weight->outputs, lstm, fusion_lstm_node));
-    PADDLE_ENFORCE(LinksReplace(&lstm_bias->outputs, lstm, fusion_lstm_node));
+    PADDLE_ENFORCE(
+        FcLstmLinksReplace(&mul_tmp_var->outputs, mul, fusion_lstm_node));
+    PADDLE_ENFORCE(
+        FcLstmLinksReplace(&mul_weight->outputs, mul, fusion_lstm_node));
+    PADDLE_ENFORCE(
+        FcLstmLinksReplace(&lstm_weight->outputs, lstm, fusion_lstm_node));
+    PADDLE_ENFORCE(
+        FcLstmLinksReplace(&lstm_bias->outputs, lstm, fusion_lstm_node));
     //  PADDLE_ENFORCE(LinksReplace(&utputs,
     //                            elementwise_add, fc_node));
     PADDLE_ENFORCE(
-        LinksReplace(&lstm_hidden_out->inputs, lstm, fusion_lstm_node));
+        FcLstmLinksReplace(&lstm_hidden_out->inputs, lstm, fusion_lstm_node));
     PADDLE_ENFORCE(
-        LinksReplace(&lstm_cell_out->inputs, lstm, fusion_lstm_node));
-    PADDLE_ENFORCE(
-        LinksReplace(&lstm_batchedgate_out->inputs, lstm, fusion_lstm_node));
-    PADDLE_ENFORCE(LinksReplace(&lstm_batch_cell_preact_out->inputs, lstm,
-                                fusion_lstm_node));
+        FcLstmLinksReplace(&lstm_cell_out->inputs, lstm, fusion_lstm_node));
+    PADDLE_ENFORCE(FcLstmLinksReplace(&lstm_batchedgate_out->inputs, lstm,
+                                      fusion_lstm_node));
+    PADDLE_ENFORCE(FcLstmLinksReplace(&lstm_batch_cell_preact_out->inputs, lstm,
+                                      fusion_lstm_node));
 
     // Drop old nodes
     graph->RemoveNode(mul);
@@ -292,9 +320,7 @@ std::unique_ptr<ir::Graph> FcLstmFusePass::ApplyImpl(
     graph->RemoveNode(lstm);
   };
 
-  gpd(graph.get(), handler);
-
-  return graph;
+  gpd(graph, handler);
 }
 
 }  // namespace ir
