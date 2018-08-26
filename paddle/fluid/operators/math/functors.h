@@ -27,8 +27,8 @@ struct MulFunctor {
 
 template <typename T>
 struct MulGradFunctor {
-  inline HOSTDEVICE T Dx()(T x, T y) { return y; }
-  inline HOSTDEVICE T Dy()(T x, T y) { return x; }
+  inline HOSTDEVICE T Dx(T x, T y) { return y; }
+  inline HOSTDEVICE T Dy(T x, T y) { return x; }
 };
 
 // AddFunctor
@@ -40,8 +40,8 @@ struct AddFunctor {
 
 template <typename T>
 struct AddGradFunctor {
-  inline HOSTDEVICE T Dx()(T x, T y) { return 1; }
-  inline HOSTDEVICE T Dy()(T x, T y) { return 1; }
+  inline HOSTDEVICE T Dx(T x, T y) { return 1; }
+  inline HOSTDEVICE T Dy(T x, T y) { return 1; }
 };
 
 template <typename T>
