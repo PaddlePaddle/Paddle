@@ -381,6 +381,7 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace paddle
 
 USE_PASS(fc_fuse_pass);
+USE_PASS(fc_lstm_fuse_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(infer_clean_graph_pass);
 USE_PASS(attention_lstm_fuse_pass);

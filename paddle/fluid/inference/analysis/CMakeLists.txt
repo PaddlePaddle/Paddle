@@ -68,6 +68,7 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     analysis_predictor
 		# ir
 		fc_fuse_pass
+		fc_lstm_fuse_pass
 		graph_viz_pass
 		infer_clean_graph_pass
 		graph_pattern_detecter

@@ -80,11 +80,14 @@ class FluidToIrPass final : public DataFlowGraphPass {
                              &argument_->Get<framework::Scope>("param_scope")));
     }
 
-    ir_passes.Apply(std::vector<std::string>(
-        {// Manual update the passes here.
-         "graph_viz_pass", "infer_clean_graph_pass", "graph_viz_pass",
-         "attention_lstm_fuse_pass", "graph_viz_pass", "fc_fuse_pass",
-         "graph_viz_pass"}));
+    ir_passes.Apply(std::vector<std::string>({
+        // Manual update the passes here.
+        "graph_viz_pass",                              //
+        "infer_clean_graph_pass", "graph_viz_pass",    //
+        "attention_lstm_fuse_pass", "graph_viz_pass",  //
+        "fc_lstm_fuse_pass", "graph_viz_pass",         //
+        "fc_fuse_pass", "graph_viz_pass"               //
+    }));
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
