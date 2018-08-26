@@ -122,14 +122,15 @@ class TestFusionLSTMOpInit(TestFusionLSTMOp):
         self.has_initial_state = True
 
 
-# class TestFusionLSTMOpReverse(TestFusionLSTMOp):
-#     def set_conf(self):
-#         self.is_reverse = True
+class TestFusionLSTMOpReverse(TestFusionLSTMOp):
+    def set_conf(self):
+        self.is_reverse = True
 
-# class TestFusionLSTMOpInitReverse(TestFusionLSTMOp):
-#     def set_conf(self):
-#         self.has_initial_state = True
-#         self.is_reverse = True
+
+class TestFusionLSTMOpInitReverse(TestFusionLSTMOp):
+    def set_conf(self):
+        self.has_initial_state = True
+        self.is_reverse = True
 
 
 class TestFusionLSTMOpMD1(TestFusionLSTMOp):
