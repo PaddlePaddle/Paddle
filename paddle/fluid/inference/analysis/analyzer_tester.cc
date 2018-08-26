@@ -264,6 +264,7 @@ void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
                            bool use_analysis, bool activate_ir,
                            int num_times = 1) {
+  /*
   FLAGS_IA_enable_ir = activate_ir;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "./analysis.out";
@@ -271,6 +272,10 @@ void TestDituRNNPrediction(const std::string &model_path,
   std::string model_out;
   if (use_analysis) {
     Argument argument(model_path);
+    argument.fluid_model_param_path.reset(
+        new std::string(model_path + "/param"));
+    argument.fluid_model_program_path.reset(
+        new std::string(model_path + "/__model__"));
     argument.model_output_store_path.reset(new std::string("./analysis.out"));
 
     Analyzer analyzer;
@@ -282,21 +287,26 @@ void TestDituRNNPrediction(const std::string &model_path,
   } else {
     model_out = FLAGS_infer_ditu_rnn_model;
   }
+   */
 
   NativeConfig config;
-  config.prog_file = model_out + "/__model__";
-  config.param_file = model_out + "/param";
+  config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
+  config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
 
+  auto base_predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
   PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs;
+  std::vector<PaddleTensor> outputs, base_outputs;
+
+  base_predictor->Run(input_slots, &base_outputs);
 
   Timer timer;
   timer.tic();
@@ -308,14 +318,17 @@ void TestDituRNNPrediction(const std::string &model_path,
             << ", latency: " << timer.toc() / num_times << "ms";
   LOG(INFO) << "=====================================";
 
-  for (auto &out : outputs) {
+  PADDLE_ENFORCE_GT(outputs.size(), 0);
+  for (size_t i = 0; i < outputs.size(); i++) {
+    auto &out = outputs[i];
+    auto &base_out = base_outputs[i];
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
+    PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
-    for (size_t i = 0;
-         i < std::min(sizeof(ditu_rnn_target_data) / sizeof(float), size);
-         i++) {
-      EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);
+    float *base_data = static_cast<float *>(base_out.data.data());
+    for (size_t i = 0; i < size; i++) {
+      EXPECT_NEAR(data[i], base_data[i], 1e-3);
     }
   }
 }
@@ -365,5 +378,7 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace paddle
 
 USE_PASS(fc_fuse_pass);
+USE_PASS(fc_lstm_fuse_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(infer_clean_graph_pass);
+USE_PASS(attention_lstm_fuse_pass);
