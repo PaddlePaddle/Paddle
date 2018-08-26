@@ -61,13 +61,13 @@ class AucKernel : public framework::OpKernel<T> {
     const auto* label_data = label->data<int64_t>();
 
     // check if states are inited.
-    PADDLE_ENFORCE(true_positive->IsInitialized(),
+    PADDLE_ENFORCE(ctx.Input<Tensor>("TP")->IsInitialized(),
                    "true_positive is not inited!");
-    PADDLE_ENFORCE(false_negative->IsInitialized(),
+    PADDLE_ENFORCE(ctx.Input<Tensor>("FP")->IsInitialized(),
                    "false_negative is not inited!");
-    PADDLE_ENFORCE(true_negative->IsInitialized(),
+    PADDLE_ENFORCE(ctx.Input<Tensor>("TN")->IsInitialized(),
                    "true_negative is not inited!");
-    PADDLE_ENFORCE(false_positive->IsInitialized(),
+    PADDLE_ENFORCE(ctx.Input<Tensor>("FN")->IsInitialized(),
                    "false_positive is not inited!");
     PADDLE_ENFORCE_EQ(true_positive->numel(), num_thresholds, "");
     PADDLE_ENFORCE_EQ(false_negative->numel(), num_thresholds, "");
