@@ -126,6 +126,7 @@ class TestDistRunnerBase(object):
 
 
 def runtime_main(test_class):
+    import os
     import paddle
     import paddle.fluid as fluid
     import paddle.fluid.core as core
@@ -141,6 +142,7 @@ def runtime_main(test_class):
     trainers = int(sys.argv[5])
     is_dist = True if sys.argv[6] == "TRUE" else False
     sync_mode = True if sys.argv[7] == "TRUE" else False
+    use_cuda = True if os.getenv("USE_CUDA", "TRUE") == "TRUE" else False
 
     model = test_class()
     if role == "pserver":
@@ -150,7 +152,7 @@ def runtime_main(test_class):
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         model.run_trainer(p, endpoints, trainer_id, trainers, is_dist,
-                          sync_mode)
+                          sync_mode, use_cuda)
 
 
 import paddle.compat as cpt
