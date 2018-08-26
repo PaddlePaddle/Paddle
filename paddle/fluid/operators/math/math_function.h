@@ -19,6 +19,10 @@ limitations under the License. */
 
 #ifdef PADDLE_USE_OPENBLAS
 #include <cblas.h>
+// remove typedef in openblas
+#undef FLOAT
+#undef INT
+#undef SIZE
 #endif
 
 #include <cmath>
