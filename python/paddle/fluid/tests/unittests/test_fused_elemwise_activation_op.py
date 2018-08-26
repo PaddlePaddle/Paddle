@@ -242,34 +242,51 @@ def create_test_class(test_case, callback, attrs):
       "_channelwise_add"] = TestFusedElementwiseActivationOp_channelwise_add
 
 
-def scale_add_func(x, y, x_bcast, y_bcast, scale):
-    return x, y, (x_bcast + y_bcast), (x_bcast + y_bcast) * scale
+def scale_add_func(x, y, x_bcast, y_bcast, scale, mode=0):
+    if mode == 0:
+        return x, y, (x_bcast + y_bcast), (x_bcast + y_bcast) * scale
+    else:
+        return y, x, (x_bcast + y_bcast), (x_bcast + y_bcast) * scale
 
 
-def add_scale_func(x, y, x_bcast, y_bcast, scale):
-    return x, y, y * scale, x_bcast + y_bcast * scale
+def add_scale_func(x, y, x_bcast, y_bcast, scale, mode=0):
+    if mode == 0:
+        return x, y, y * scale, x_bcast + y_bcast * scale
+    else:
+        return y, x, x * scale, y_bcast + x_bcast * scale
 
 
-def add_relu_func(x, y, x_bcast, y_bcast):
+def add_relu_func(x, y, x_bcast, y_bcast, mode=0):
     # Copy from test_activation_op.py
     # Because we set delta = 0.005 in calculating numeric gradient,
     # if x is too small, such as 0.002, x_neg will be -0.003
     # x_pos will be 0.007, so the numeric gradient is inaccurate.
     # we should avoid this
-    y[np.abs(y) < 0.005] = 0.02
-    y_bcast[np.abs(y_bcast) < 0.005] = 0.02
-    return x, y, np.maximum(y, 0), x_bcast + np.maximum(y_bcast, 0)
+    if mode == 0:
+        y[np.abs(y) < 0.005] = 0.02
+        y_bcast[np.abs(y_bcast) < 0.005] = 0.02
+        return x, y, np.maximum(y, 0), x_bcast + np.maximum(y_bcast, 0)
+    else:
+        x[np.abs(x) < 0.005] = 0.02
+        x_bcast[np.abs(x_bcast) < 0.005] = 0.02
+        return y, x, np.maximum(x, 0), y_bcast + np.maximum(x_bcast, 0)
 
 
-def relu_add_func(x, y, x_bcast, y_bcast):
+def relu_add_func(x, y, x_bcast, y_bcast, mode=0):
     intermediate_out = x_bcast + y_bcast
     out = np.maximum(intermediate_out, 0)
     out[np.abs(out) < 0.005] = 0.02
-    return x, y, intermediate_out, out
+    if mode == 0:
+        return x, y, intermediate_out, out
+    else:
+        return y, x, intermediate_out, out
 
 
-def mul_scale_func(x, y, x_bcast, y_bcast, scale):
-    return x, y, y * scale, x_bcast * (y_bcast * scale)
+def mul_scale_func(x, y, x_bcast, y_bcast, scale, mode=0):
+    if mode == 0:
+        return x, y, y * scale, x_bcast * (y_bcast * scale)
+    else:
+        return y, x, x * scale, y_bcast * (x_bcast * scale)
 
 
 scale = 0.1
@@ -277,38 +294,46 @@ scale_add_func = partial(scale_add_func, scale=scale)
 add_scale_func = partial(add_scale_func, scale=scale)
 mul_scale_func = partial(mul_scale_func, scale=scale)
 
-for recomputation in {False, True}:
-    for keep_intermediate_value in {False, True}:
-        suffix = ("_keep_intermediate_value" if keep_intermediate_value else ""
-                  ) + ("_recomputation" if recomputation else "")
-        create_test_class('scale_add' + suffix, scale_add_func, {
-            'scale': scale,
-            'functor_list': ["scale", "elementwise_add"],
-            'keep_intermediate_value': keep_intermediate_value,
-            'recomputation': recomputation
-        })
-        create_test_class('add_scale' + suffix, add_scale_func, {
-            'scale': scale,
-            'functor_list': ["elementwise_add", "scale"],
-            'keep_intermediate_value': keep_intermediate_value,
-            'recomputation': recomputation
-        })
-        create_test_class('add_relu' + suffix, add_relu_func, {
-            'functor_list': ["elementwise_add", "relu"],
-            'keep_intermediate_value': keep_intermediate_value,
-            'recomputation': recomputation
-        })
-        create_test_class('relu_add' + suffix, relu_add_func, {
-            'functor_list': ["relu", "elementwise_add"],
-            'keep_intermediate_value': keep_intermediate_value,
-            'recomputation': recomputation
-        })
-        create_test_class('mul_scale' + suffix, mul_scale_func, {
-            'scale': scale,
-            'functor_list': ["elementwise_mul", "scale"],
-            'keep_intermediate_value': keep_intermediate_value,
-            'recomputation': recomputation
-        })
+for mode in {0, 1}:
+    scale_add_func = partial(scale_add_func, mode=mode)
+    add_scale_func = partial(add_scale_func, mode=mode)
+    mul_scale_func = partial(mul_scale_func, mode=mode)
+    relu_add_func = partial(relu_add_func, mode=mode)
+    add_relu_func = partial(add_relu_func, mode=mode)
+
+    for recomputation in {True, False}:
+        for keep_intermediate_value in {True, False}:
+            suffix = ("_keep_intermediate_value" if keep_intermediate_value else "") \
+                     + ("_recomputation" if recomputation else "") \
+                     + ("_mode_"+ str(mode))
+            create_test_class('scale_add' + suffix, scale_add_func, {
+                'scale': scale,
+                'functor_list': ["scale", "elementwise_add"],
+                'keep_intermediate_value': keep_intermediate_value,
+                'recomputation': recomputation
+            })
+            create_test_class('add_scale' + suffix, add_scale_func, {
+                'scale': scale,
+                'functor_list': ["elementwise_add", "scale"],
+                'keep_intermediate_value': keep_intermediate_value,
+                'recomputation': recomputation
+            })
+            create_test_class('add_relu' + suffix, add_relu_func, {
+                'functor_list': ["elementwise_add", "relu"],
+                'keep_intermediate_value': keep_intermediate_value,
+                'recomputation': recomputation
+            })
+            create_test_class('relu_add' + suffix, relu_add_func, {
+                'functor_list': ["relu", "elementwise_add"],
+                'keep_intermediate_value': keep_intermediate_value,
+                'recomputation': recomputation
+            })
+            create_test_class('mul_scale' + suffix, mul_scale_func, {
+                'scale': scale,
+                'functor_list': ["elementwise_mul", "scale"],
+                'keep_intermediate_value': keep_intermediate_value,
+                'recomputation': recomputation
+            })
 
 if __name__ == '__main__':
     unittest.main()

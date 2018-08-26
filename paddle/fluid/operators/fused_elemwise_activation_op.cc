@@ -62,19 +62,16 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
 
-    // TODO(zcd): whether Y can broadcast to X or X can broadcast to Y
-    //    bool bcast_y = x_dim.size() >= y_dim.size();
-    //    if (x_dim.size() == y_dim.size()) {
-    //      for (int i = 0; i < x_dim.size(); ++i) {
-    //        if (x_dim[i] < y_dim[i]) {
-    //          bcast_y = false;
-    //          break;
-    //        }
-    //      }
-    //    }
-    //    auto &out_dim = bcast_y ? x_dim : y_dim;
-
-    auto &out_dim = x_dim;
+    bool bcast_y = x_dim.size() >= y_dim.size();
+    if (x_dim.size() == y_dim.size()) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (x_dim[i] < y_dim[i]) {
+          bcast_y = false;
+          break;
+        }
+      }
+    }
+    auto &out_dim = bcast_y ? x_dim : y_dim;
 
     if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
       PADDLE_ENFORCE_EQ(
@@ -163,10 +160,36 @@ operators (elementwise_op and activation_op):
     Z = Binary(X, Unary(Y))
     Z = Unary(Binary(X, Y))
 
-The input 'Y' or Unary(Y) can be summed with 'X' by broadcasting.
+There are two cases for this operator:
+
+1. The shape of $Y$ and $X$ is the same.
+2. The shape of $Y$ is a continuous subsequence of $X$ or the shape of $X$ is a continuous subsequence of $Y$.
+
+For case 2 (assume that the shape of $Y$ is a continuous subsequence of $X$ ):
+
+1. Broadcast $Y$ to match the shape of $X$, where $axis$ is the start dimension index
+   for broadcasting $Y$ onto $X$.
+2. If $axis$ is -1 (default), $axis = rank(X) - rank(Y)$.
+3. The trailing dimensions of size 1 for $Y$ will be ignored for the consideration of
+   subsequence, such as shape(Y) = (2, 1) => (2).
+
+For example:
+
+  .. code-block:: python
+
+    shape(X) = (2, 3, 4, 5), shape(Y) = (,)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (5,)
+    shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5), with axis=-1(default) or axis=2
+    shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4), with axis=1
+    shape(X) = (2, 3, 4, 5), shape(Y) = (2), with axis=0
+    shape(X) = (2, 3, 4, 5), shape(Y) = (2, 1), with axis=0
+
+
+The inputs $X$ and $Y$ can carry the different LoD information.
+But the output only shares the LoD information with the one whose shape is the same with Out.
 The attributions of activation_op can be get from fused_elemwise_activation_op's.
 The functor_list records the functions to be fused, for example
-"scale and elementwise_add".
+["scale", "elementwise_add"].
 
 )DOC");
   }
@@ -220,10 +243,8 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
-      PADDLE_ENFORCE(ctx->HasInputs(framework::GradVarName("Out")),
-                     "Input(Out@GRAD) should not be null");
-      auto out_dims = ctx->GetInputsDim(framework::GradVarName("Out"));
-      ctx->SetOutputDim(x_grad_name, out_dims[0]);
+      PADDLE_ENFORCE(ctx->HasInputs("X"), "Input(X) should not be null");
+      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
     }
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");

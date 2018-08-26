@@ -687,6 +687,10 @@ struct FusedElemwiseAndActNoBroadcast {
   T *intermediate_out_;
 };
 
+// FusedElemwiseAndActBroadcast1:
+// In this case, X and Y can be reshaped to a matrix.
+// For example shape(X) = (2, 3, 4, 5), shape(Y) = (4, 5) and axis = -1 or 2,
+// X can be reshaped to (6, 20) and Y can be reshaped to (1, 20)
 template <typename T, typename CompoundFunctor, bool BcastY,
           bool KeepIntermediateOut, bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActBroadcast1CPU(const T *x, const T *y,
@@ -721,6 +725,11 @@ static void FusedElemwiseAndActBroadcast1CPU(const T *x, const T *y,
   }
 }
 
+// FusedElemwiseAndActBroadcast2
+// In this case, X and Y can be reshaped to a matrix.
+// For example shape(X) = (2, 3, 4, 5), shape(Y) = (3, 4) and axis = 1,
+// X can be reshaped to (2, 12, 5) and Y can be reshaped to (1, 12, 1)
+// pre = 2, n = 12, post = 5
 template <typename T, typename CompoundFunctor, bool BcastY,
           bool KeepIntermediateOut, bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActBroadcast2CPU(const T *x, const T *y, int pre,
@@ -1013,35 +1022,118 @@ static void FusedElemwiseAndActGradBroadcast1CPU(const T *x, const T *y,
                                                  const T *out, const T *dout,
                                                  int h, int w, DX_OP dx_op,
                                                  DY_OP dy_op, T *dx, T *dy) {
+  int64_t tmp_out_idx, x_idx, y_idx;
   for (int i = 0; i < h; ++i) {
     for (int j = 0; j < w; ++j) {
-      int x_offset = i * w + j;
-      int64_t tmp_out_dix;
+      int offset = i * w + j;
+
+      if (BcastY) {
+        tmp_out_idx = j;
+        y_idx = j;
+        x_idx = offset;
+      } else {
+        tmp_out_idx = offset;
+        y_idx = offset;
+        x_idx = j;
+      }
 
       if (SameShapeOfIntermediateOutAndOut) {
-        tmp_out_dix = x_offset;
-      } else if (BcastY) {
-        tmp_out_dix = j;
-      } else {
-        tmp_out_dix = x_offset;
+        tmp_out_idx = offset;
       }
 
       if (dx != nullptr) {
-        dx[x_offset] =
-            UseIntermediateOut
-                ? dx_op(x[x_offset], y[j], intermediate_out[tmp_out_dix],
-                        out[x_offset], dout[x_offset])
-                : dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+        T tmp = UseIntermediateOut
+                    ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                            out[offset], dout[offset])
+                    : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+
+        if (BcastY) {
+          dx[x_idx] = tmp;
+        } else {
+          if (i == 0) {
+            dx[x_idx] = tmp;
+          } else {
+            dx[x_idx] += tmp;
+          }
+        }
       }
       if (dy != nullptr) {
         T tmp = UseIntermediateOut
-                    ? dy_op(x[x_offset], y[j], intermediate_out[tmp_out_dix],
-                            out[x_offset], dout[x_offset])
-                    : dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-        if (i == 0) {
-          dy[j] = tmp;
+                    ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                            out[offset], dout[offset])
+                    : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+        if (BcastY) {
+          if (i == 0) {
+            dy[y_idx] = tmp;
+          } else {
+            dy[y_idx] += tmp;
+          }
         } else {
-          dy[j] += tmp;
+          dy[y_idx] = tmp;
+        }
+      }
+    }
+  }
+}
+
+template <typename T, typename DX_OP, typename DY_OP, bool UseIntermediateOut,
+          bool BcastY, bool SameShapeOfIntermediateOutAndOut>
+static void FusedElemwiseAndActGradBroadcast2CPU(const T *x, const T *y,
+                                                 const T *intermediate_out,
+                                                 const T *out, const T *dout,
+                                                 int pre, int n, int post,
+                                                 DX_OP dx_op, DY_OP dy_op,
+                                                 T *dx, T *dy) {
+  int64_t tmp_out_idx, x_idx, y_idx;
+  for (int i = 0; i < pre; ++i) {
+    for (int j = 0; j < n; ++j) {
+      for (int k = 0; k < post; ++k) {
+        int offset = i * n * post + j * post + k;
+
+        if (BcastY) {
+          tmp_out_idx = j;
+          y_idx = j;
+          x_idx = offset;
+        } else {
+          tmp_out_idx = offset;
+          y_idx = offset;
+          x_idx = j;
+        }
+
+        if (SameShapeOfIntermediateOutAndOut) {
+          tmp_out_idx = offset;
+        }
+
+        if (dx != nullptr) {
+          T tmp = UseIntermediateOut
+                      ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                              out[offset], dout[offset])
+                      : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+
+          if (BcastY) {
+            dx[x_idx] = tmp;
+          } else {
+            if (i == 0 && k == 0) {
+              dx[x_idx] = tmp;
+            } else {
+              dx[x_idx] += tmp;
+            }
+          }
+        }
+        if (dy != nullptr) {
+          T tmp = UseIntermediateOut
+                      ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                              out[offset], dout[offset])
+                      : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+          if (BcastY) {
+            if (i == 0 && k == 0) {
+              dy[y_idx] = tmp;
+            } else {
+              dy[y_idx] += tmp;
+            }
+          } else {
+            dy[y_idx] = tmp;
+          }
         }
       }
     }
@@ -1052,45 +1144,73 @@ static void FusedElemwiseAndActGradBroadcast1CPU(const T *x, const T *y,
 template <typename T, typename DX_OP, typename DY_OP, bool UseIntermediateOut,
           bool BcastY, bool SameShapeOfIntermediateOutAndOut>
 static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
-    const T *x, const T *y, const T *intemediate_out, const T *out,
+    const T *x, const T *y, const T *intermediate_out, const T *out,
     const T *dout, int h, int w, DX_OP dx_op, DY_OP dy_op, T *dx, T *dy) {
   int j = blockIdx.x;
   int i = threadIdx.x;
   int tid = threadIdx.x;
   T val(0);
+  int64_t tmp_out_idx, x_idx, y_idx;
 
   do {
-    int x_offset = i * w + j;
-    int64_t tmp_out_dix;
-    if (SameShapeOfIntermediateOutAndOut) {
-      tmp_out_dix = x_offset;
-    } else if (BcastY) {
-      tmp_out_dix = j;
+    int offset = i * w + j;
+
+    if (BcastY) {
+      tmp_out_idx = j;
+      y_idx = j;
+      x_idx = offset;
     } else {
-      tmp_out_dix = x_offset;
+      tmp_out_idx = offset;
+      y_idx = offset;
+      x_idx = j;
     }
 
-    if (dx) {
-      dx[x_offset] =
-          UseIntermediateOut
-              ? dx_op(x[x_offset], y[j], intemediate_out[tmp_out_dix],
-                      out[x_offset], dout[x_offset])
-              : dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+    if (SameShapeOfIntermediateOutAndOut) {
+      tmp_out_idx = offset;
     }
-    if (dy) {
-      val += UseIntermediateOut
-                 ? dy_op(x[x_offset], y[j], intemediate_out[tmp_out_dix],
-                         out[x_offset], dout[x_offset])
-                 : dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+
+    if (dx != nullptr) {
+      T tmp = UseIntermediateOut
+                  ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                          out[offset], dout[offset])
+                  : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+
+      if (BcastY) {
+        dx[x_idx] = tmp;
+      } else {
+        val += tmp;
+      }
     }
+    if (dy != nullptr) {
+      T tmp = UseIntermediateOut
+                  ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                          out[offset], dout[offset])
+                  : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      if (BcastY) {
+        val += tmp;
+      } else {
+        dy[y_idx] = tmp;
+      }
+    }
+
     i += ELEMWISE_MAX_BLOCK_DIM;
   } while (i < h);
 
-  if (dy) {
-    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-    val = paddle::platform::reduceSum(val, tid, h);
-    if (threadIdx.x == 0) {
-      dy[j] = val;
+  if (BcastY) {
+    if (dy) {
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dy[j] = val;
+      }
+    }
+  } else {
+    if (dx) {
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dx[j] = val;
+      }
     }
   }
 }
@@ -1099,7 +1219,7 @@ template <typename T, typename DX_OP, typename DY_OP, bool UseIntermediateOut,
           bool BcastY, bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast1CUDA(cudaStream_t stream,
                                                   const T *x, const T *y,
-                                                  const T *intemediate_out,
+                                                  const T *intermediate_out,
                                                   const T *out, const T *dout,
                                                   int h, int w, DX_OP dx_op,
                                                   DY_OP dy_op, T *dx, T *dy) {
@@ -1108,55 +1228,9 @@ static void FusedElemwiseAndActGradBroadcast1CUDA(cudaStream_t stream,
   FusedElemwiseAndActGradBroadcast1CUDAKernel<
       T, DX_OP, DY_OP, UseIntermediateOut, BcastY,
       SameShapeOfIntermediateOutAndOut><<<gird_size, block_size, 0, stream>>>(
-      x, y, intemediate_out, out, dout, h, w, dx_op, dy_op, dx, dy);
+      x, y, intermediate_out, out, dout, h, w, dx_op, dy_op, dx, dy);
 }
 
-#endif
-
-template <typename T, typename DX_OP, typename DY_OP, bool UseIntermediateOut,
-          bool BcastY, bool SameShapeOfIntermediateOutAndOut>
-static void FusedElemwiseAndActGradBroadcast2CPU(const T *x, const T *y,
-                                                 const T *intermediate_out,
-                                                 const T *out, const T *dout,
-                                                 int pre, int n, int post,
-                                                 DX_OP dx_op, DY_OP dy_op,
-                                                 T *dx, T *dy) {
-  for (int i = 0; i < pre; ++i) {
-    for (int j = 0; j < n; ++j) {
-      for (int k = 0; k < post; ++k) {
-        int x_offset = i * n * post + j * post + k;
-        int64_t tmp_out_dix;
-        if (SameShapeOfIntermediateOutAndOut) {
-          tmp_out_dix = x_offset;
-        } else if (BcastY) {
-          tmp_out_dix = j;
-        } else {
-          tmp_out_dix = x_offset;
-        }
-        if (dx != nullptr) {
-          dx[x_offset] =
-              UseIntermediateOut
-                  ? dx_op(x[x_offset], y[j], intermediate_out[tmp_out_dix],
-                          out[x_offset], dout[x_offset])
-                  : dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-        }
-        if (dy != nullptr) {
-          T tmp = UseIntermediateOut
-                      ? dy_op(x[x_offset], y[j], intermediate_out[tmp_out_dix],
-                              out[x_offset], dout[x_offset])
-                      : dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-          if (i == 0 && k == 0) {
-            dy[j] = tmp;
-          } else {
-            dy[j] += tmp;
-          }
-        }
-      }
-    }
-  }
-}
-
-#ifdef __NVCC__
 template <typename T, typename DX_OP, typename DY_OP, bool UseIntermediateOut,
           bool BcastY, bool SameShapeOfIntermediateOutAndOut>
 static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
@@ -1168,45 +1242,72 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
 
   T val(0);
   int ttid = tid;
-
+  int64_t tmp_out_idx, x_idx, y_idx;
   while (true) {
     int i = ttid / post;
     int k = ttid % post;
     if (i >= pre) break;
 
-    int x_offset = i * n * post + j * post + k;
-    int64_t tmp_out_dix;
-    if (SameShapeOfIntermediateOutAndOut) {
-      tmp_out_dix = x_offset;
-    } else if (BcastY) {
-      tmp_out_dix = j;
+    int offset = i * n * post + j * post + k;
+
+    if (BcastY) {
+      tmp_out_idx = j;
+      y_idx = j;
+      x_idx = offset;
     } else {
-      tmp_out_dix = x_offset;
+      tmp_out_idx = offset;
+      y_idx = offset;
+      x_idx = j;
+    }
+
+    if (SameShapeOfIntermediateOutAndOut) {
+      tmp_out_idx = offset;
     }
 
     if (dx != nullptr) {
-      dx[x_offset] =
-          UseIntermediateOut
-              ? dx_op(x[x_offset], y[j], intermediate_out[tmp_out_dix],
-                      out[x_offset], dout[x_offset])
-              : dx_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
+      T tmp = UseIntermediateOut
+                  ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                          out[offset], dout[offset])
+                  : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+
+      if (BcastY) {
+        dx[x_idx] = tmp;
+      } else {
+        val += tmp;
+      }
+    }
+    if (dy != nullptr) {
+      T tmp = UseIntermediateOut
+                  ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
+                          out[offset], dout[offset])
+                  : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      if (BcastY) {
+        val += tmp;
+      } else {
+        dy[y_idx] = tmp;
+      }
     }
 
-    if (dy != nullptr) {
-      val += UseIntermediateOut
-                 ? dy_op(x[x_offset], y[j], intermediate_out[tmp_out_dix],
-                         out[x_offset], dout[x_offset])
-                 : dy_op(x[x_offset], y[j], out[x_offset], dout[x_offset]);
-    }
     ttid += ELEMWISE_MAX_BLOCK_DIM;
   }
 
-  if (dy) {
-    int h = pre * post;
-    h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-    val = paddle::platform::reduceSum(val, tid, h);
-    if (threadIdx.x == 0) {
-      dy[j] = val;
+  if (BcastY) {
+    if (dy) {
+      int h = pre * post;
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dy[j] = val;
+      }
+    }
+  } else {
+    if (dx) {
+      int h = pre * post;
+      h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
+      val = paddle::platform::reduceSum(val, tid, h);
+      if (threadIdx.x == 0) {
+        dx[j] = val;
+      }
     }
   }
 }
@@ -1224,7 +1325,6 @@ static void FusedElemwiseAndActGradBroadcast2CUDA(
       SameShapeOfIntermediateOutAndOut><<<gird_size, block_size, 0, stream>>>(
       x, y, intermediate_out, out, dout, pre, n, post, dx_op, dy_op, dx, dy);
 }
-
 #endif
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP,
@@ -1331,10 +1431,11 @@ void FusedElemwiseAndActGradComputeEx(
                                             intermediate_out, out, dout, axis,
                                             dx, dy, dx_op, dy_op);
     } else {
-      PADDLE_THROW("Doesn't support");
-      //      FusedElemwiseAndActGradComputeWithBroadcast<DeviceContext, T,
-      //      DX_OP, DY_OP, true /*BcastY*/,SameShapeOfIntermediateOutAndOut>(
-      //        ctx, y_dim, x_dim,y, x,  out, dout, axis, dy, dx, dy_op, dx_op);
+      FusedElemwiseAndActGradComputeWithBroadcast<
+          DeviceContext, T, DX_OP, DY_OP, UseIntermediateOut, false /*BcastY*/,
+          SameShapeOfIntermediateOutAndOut>(ctx, y_dim, x_dim, x, y,
+                                            intermediate_out, out, dout, axis,
+                                            dx, dy, dx_op, dy_op);
     }
   }
 }
