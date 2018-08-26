@@ -229,6 +229,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     auto* xx = ctx.Output<LoDTensor>("XX");
     auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
     auto* cell_out = ctx.Output<LoDTensor>("Cell");
+    bool is_reverse = ctx.Attr<bool>("is_reverse");
 
     std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand;
     auto& act_gate_str = ctx.Attr<std::string>("gate_activation");
@@ -247,8 +248,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
 
     auto x_lod = x->lod();
-    auto x_dims = x->dims();            // T x M
-    auto wh_dims = wh->dims();          // D x 4D
+    auto x_dims = x->dims();    // T x M
+    auto wh_dims = wh->dims();  // D x 4D
+    const int total_T = x_dims[0];
     const int N = x_lod[0].size() - 1;  // batch size
     const int M = x_dims[1];            // x frame size
     const int D = wh_dims[0];
@@ -266,17 +268,34 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* cell_out_data = cell_out->mutable_data<T>(ctx.GetPlace());
 
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, x_data, wx_data,
+    math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
                                       xx_data, bias->data<T>());
+    int xx_offset = D4;
+    int gate_offset = D;
+    if (is_reverse) {
+      const int offset = (total_T - 1) * D;
+      xx_data = xx_data + offset * 4;
+      hidden_out_data = hidden_out_data + offset;
+      cell_out_data = cell_out_data + offset;
+      xx_offset = -D4;
+      gate_offset = -D;
+    }
+
+    auto move_step = [&]() {
+      xx_data = xx_data + xx_offset;
+      hidden_out_data = hidden_out_data + gate_offset;
+      cell_out_data = cell_out_data + gate_offset;
+    };
 
     for (int i = 0; i < N; ++i) {
-      int seq_len = x_lod[0][i + 1] - x_lod[0][i];
+      int bid = is_reverse ? N - 1 - i : i;
+      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
       const T* prev_cell_data = NULL;
       const T* prev_hidden_data = NULL;
       int tstart = 0;
       if (h0_data) {
-        prev_hidden_data = h0_data + i * D;
-        prev_cell_data = c0_data + i * D;
+        prev_hidden_data = h0_data + bid * D;
+        prev_cell_data = c0_data + bid * D;
       } else {
         // W_ch, W_ih, W_fh, W_oh
         act_gate(D3, xx_data + D, xx_data + D);
@@ -292,10 +311,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         prev_cell_data = cell_out_data;
         tstart = 1;
 
-        // move offset
-        xx_data = xx_data + D4;
-        hidden_out_data = hidden_out_data + D;
-        cell_out_data = cell_out_data + D;
+        move_step();
       }
       for (int step = tstart; step < seq_len; ++step) {
         blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
@@ -323,10 +339,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         prev_hidden_data = hidden_out_data;
         prev_cell_data = cell_out_data;
 
-        // move offset
-        xx_data = xx_data + D4;
-        hidden_out_data = hidden_out_data + D;
-        cell_out_data = cell_out_data + D;
+        move_step();
       }
     }
   }
