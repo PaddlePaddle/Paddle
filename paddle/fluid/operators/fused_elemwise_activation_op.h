@@ -210,6 +210,13 @@ static void RunFunctors(const framework::ExecutionContext &ctx,
                              math::AddFunctor<T>>(ctx, math::ReluFunctor<T>(),
                                                   math::AddFunctor<T>(), in_x,
                                                   in_y, outputs);
+  } else if (funcs_str == "elementwise_mul,scale") {
+    // Z = Binary(X, Unary(Y))
+    T scale = static_cast<T>(ctx.Attr<float>("scale"));
+    RunBinaryCompoundFunctor<DeviceContext, T, math::MulFunctor<T>,
+                             math::ScaleFunctor<T>>(
+        ctx, math::MulFunctor<T>(), math::ScaleFunctor<T>(scale), in_x, in_y,
+        outputs);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }
@@ -260,6 +267,15 @@ static void RunGradFunctors(const framework::ExecutionContext &ctx,
         ctx, math::ReluGradFunctor<T>(), math::AddFunctor<T>(),
         math::AddGradFunctor<T>(), in_x, in_y, in_out, in_intermediate_out,
         in_out_grad, x_grad, y_grad);
+  } else if (funcs_str == "elementwise_mul_grad,scale_grad") {
+    // The backward of Z = Binary(X, Unary(Y))
+    T scale = static_cast<T>(ctx.Attr<float>("scale"));
+    RunBinaryCompoundGradFunctors<DeviceContext, T, math::MulGradFunctor<T>,
+                                  math::ScaleFunctor<T>,
+                                  math::ScaleGradFunctor<T>>(
+        ctx, math::MulGradFunctor<T>(), math::ScaleFunctor<T>(scale),
+        math::ScaleGradFunctor<T>(scale), in_x, in_y, in_out,
+        in_intermediate_out, in_out_grad, x_grad, y_grad);
   } else {
     PADDLE_THROW("%s has not been implemented.", funcs_str);
   }

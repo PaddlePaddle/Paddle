@@ -268,9 +268,14 @@ def relu_add_func(x, y, x_bcast, y_bcast):
     return x, y, intermediate_out, out
 
 
+def mul_scale_func(x, y, x_bcast, y_bcast, scale):
+    return x, y, y * scale, x_bcast + y_bcast * scale
+
+
 scale = 0.1
 scale_add_func = partial(scale_add_func, scale=scale)
 add_scale_func = partial(add_scale_func, scale=scale)
+mul_scale_func = partial(mul_scale_func, scale=scale)
 
 for recomputation in {False, True}:
     for keep_intermediate_value in {False, True}:
@@ -295,6 +300,12 @@ for recomputation in {False, True}:
         })
         create_test_class('relu_add' + suffix, relu_add_func, {
             'functor_list': ["relu", "elementwise_add"],
+            'keep_intermediate_value': keep_intermediate_value,
+            'recomputation': recomputation
+        })
+        create_test_class('mul_scale' + suffix, mul_scale_func, {
+            'scale': scale,
+            'functor_list': ["elementwise_mul", "scale"],
             'keep_intermediate_value': keep_intermediate_value,
             'recomputation': recomputation
         })
