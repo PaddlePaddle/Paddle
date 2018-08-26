@@ -53,6 +53,7 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
   auto marked_nodes = ConsumeMarkedNodes(graph.get());
   // Create nodes
   for (const Node* n : graph->Nodes()) {
+    LOG(INFO) << n->Name() << "-" << "n.id " << n->id();
     std::string node_id = n->Name() + "(" + std::to_string(n->id()) + ")";
     if (n->IsOp()) {
       decltype(op_attrs) attr =

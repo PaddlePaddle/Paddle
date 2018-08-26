@@ -99,13 +99,13 @@ class Graph {
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
     PADDLE_ENFORCE(var_desc);
-    return AddNode(new ir::Node(var_desc));
+    return AddNode(new ir::Node(var_desc, node_count_++));
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
     PADDLE_ENFORCE(op_desc);
-    return AddNode(new ir::Node(op_desc));
+    return AddNode(new ir::Node(op_desc, node_count_++));
   }
 
   // Create a control dependency var that connects 2 operations. The
@@ -115,7 +115,8 @@ class Graph {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
-    return AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    return AddNode(
+        new ir::Node(name, ir::Node::Type::kVariable, node_count_++));
   }
 
   // A more free style way of creating a graph node. Mostly use for test
@@ -154,6 +155,9 @@ class Graph {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
     nodes_[node].reset(node);
     node_set_.insert(node);
+    LOG(INFO) << node->id() << " "
+              << "node ptr: " << node;
+    PADDLE_ENFORCE(!id2node_.count(node->id()), "duplicate id %d", node->id());
     id2node_[node->id()] = node;
     return node;
   }
@@ -165,6 +169,7 @@ class Graph {
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
   std::map<int, Node *> id2node_;
+  int node_count_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

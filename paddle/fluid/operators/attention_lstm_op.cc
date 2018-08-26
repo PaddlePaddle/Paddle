@@ -24,61 +24,45 @@ namespace paddle {
 namespace operators {
 
 void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  LOG(INFO) << "Infershaping";
   PADDLE_ENFORCE(ctx->HasInput("X"),
                  "Input(X) of AttentionLSTM should not be null.");
-  LOG(INFO) << 1;
   PADDLE_ENFORCE(ctx->HasInput("C0"),
                  "Input(C0) of AttentionLSTM should not be null.");
-  LOG(INFO) << 2;
   PADDLE_ENFORCE(ctx->HasInput("LSTMWeight"),
                  "Input(LSTMWeight) of AttentionLSTM should not be null.");
-  LOG(INFO) << 3;
   PADDLE_ENFORCE(ctx->HasInput("LSTMBias"),
                  "Input(LSTMBias) of AttentionLSTM should not be null.");
-  LOG(INFO) << 4;
   PADDLE_ENFORCE(ctx->HasInput("AttentionWeight"),
                  "Input(AttentionWeight) of AttentionLSTM should not be null.");
-  LOG(INFO) << 5;
 
   PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
                  "Output(Hidden) of AttentionLSTM should not be null.");
-  LOG(INFO) << 6;
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
                  "Output(Cell) of AttentionLSTM should not be null.");
-  LOG(INFO) << 7;
   PADDLE_ENFORCE(ctx->HasOutput("AttentionedX"),
                  "Output(AttentionedX) of AttentionLSTM should not be null.");
-  LOG(INFO) << 8;
   PADDLE_ENFORCE(ctx->HasOutput("AttentionFCOut"),
                  "Output(AttentionFCOut) of AttentionLSTM should not be null.");
-  LOG(INFO) << 9;
   PADDLE_ENFORCE(ctx->HasOutput("LSTMX"),
                  "Output(LSTMX) of AttentionLSTM should not be null.");
-  LOG(INFO) << 10;
   PADDLE_ENFORCE(ctx->HasOutput("LSTMOUT"),
                  "Output(LSTMOUT) of AttentionLSTM should not be null.");
-  LOG(INFO) << 11;
 
   auto x_dims = ctx->GetInputDim("X");
   const int M = x_dims[1];
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
 
-  LOG(INFO) << 12;
   auto w_dims = ctx->GetInputDim("LSTMWeight");
-  LOG(INFO) << "w_dims: " << w_dims;
   const int D = w_dims[1] / 4;
   PADDLE_ENFORCE_EQ(w_dims.size(), 2, "Input(LSTMWeight)'s rank must be 2.");
   PADDLE_ENFORCE_EQ(w_dims[0], D + M,
                     "LSTMWeight dims should be (%d + %d) * %d.", D + M, 4 * D);
-  LOG(INFO) << 13;
 
   auto b_dims = ctx->GetInputDim("LSTMBias");
   PADDLE_ENFORCE_EQ(b_dims.size(), 2, "Input(LSTMBias)'s rank must be 2.");
   PADDLE_ENFORCE_EQ(b_dims[0], 1, "LSTMBias dims should be 1 x %d.", 4 * D);
   PADDLE_ENFORCE_EQ(b_dims[1], 4 * D, "LSTMBias dims should be 1 x %d.", 4 * D);
 
-  LOG(INFO) << 14;
   auto c_dims = ctx->GetInputDim("C0");
   PADDLE_ENFORCE_EQ(c_dims.size(), 2, "Input(C0)'s rank must be 2.");
   PADDLE_ENFORCE_EQ(c_dims[1], D, "C0 dims should be N x %d.", D);
@@ -288,7 +272,6 @@ template <typename T>
 class AttentionLSTMKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    LOG(INFO) << "to compute";
     using DeviceContext = paddle::platform::CPUDeviceContext;
 
     auto* x = ctx.Input<LoDTensor>("X");

@@ -85,7 +85,6 @@ class AnalysisPredictor : public NativePaddlePredictor {
   bool Run(const std::vector<PaddleTensor>& inputs,
            std::vector<PaddleTensor>* output_data,
            int batch_size = -1) override {
-    LOG(INFO) << "begin to run";
     return NativePaddlePredictor::Run(inputs, output_data, batch_size);
   }
 
