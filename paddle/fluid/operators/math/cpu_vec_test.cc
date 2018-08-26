@@ -15,6 +15,7 @@ limitations under the License. */
 #include <sys/time.h>
 #include <cmath>
 #include <cstring>
+#include <random>
 #include <vector>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
