@@ -216,20 +216,22 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
                        const LoDTensor& W_output_w0,
                        const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
                        const LoDTensor& W_cell_w1, LoDTensor* out) {
-  int D = W_forget_w0.dims()[0];
-  int M = W_forget_w1.dims()[0];
+  int D = W_forget_w1.dims()[0];
+  int M = W_forget_w0.dims()[0];
+  LOG(INFO) << "D " << D;
+  LOG(INFO) << "M " << M;
   out->Resize(make_ddim({D + M, 4 * D}));
   LOG(INFO) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
-  std::array<const float*, 4> tensors(
+  std::array<const float*, 4> tensors( // M
       {W_forget_w0.data<float>(), W_input_w0.data<float>(),
        W_output_w0.data<float>(), W_cell_w0.data<float>()});
-  std::array<const float*, 4> tensors1(
+  std::array<const float*, 4> tensors1( // D
       {W_forget_w1.data<float>(), W_input_w1.data<float>(),
        W_output_w1.data<float>(), W_cell_w1.data<float>()});
 
-  for (int row = 0; row < D; row++) {
+  for (int row = 0; row < M; row++) {
     for (int col = 0; col < 4; col++) {
       float* dst = out_data + 4 * D * row + D * col;
       const float* src = tensors[col] + D * row;
@@ -237,10 +239,10 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
     }
   }
 
-  for (int row = 0; row < M; row++) {
+  for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
-      float* dst = out_data + 4 * D * (D + row) + D * col;
-      const float* src = tensors[col] + D * row;
+      float* dst = out_data + 4 * D * (M + row) + D * col;
+      const float* src = tensors1[col] + D * row;
       memcpy(dst, src, D * sizeof(float));
     }
   }

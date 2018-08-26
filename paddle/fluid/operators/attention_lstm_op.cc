@@ -56,7 +56,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   const int D = w_dims[1] / 4;
   PADDLE_ENFORCE_EQ(w_dims.size(), 2, "Input(LSTMWeight)'s rank must be 2.");
   PADDLE_ENFORCE_EQ(w_dims[0], D + M,
-                    "LSTMWeight dims should be (%d + %d) * %d.", D + M, 4 * D);
+                    "LSTMWeight dims should be (%d + %d) * %d.", D, M, 4 * D);
 
   auto b_dims = ctx->GetInputDim("LSTMBias");
   PADDLE_ENFORCE_EQ(b_dims.size(), 2, "Input(LSTMBias)'s rank must be 2.");

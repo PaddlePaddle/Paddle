@@ -55,7 +55,6 @@ class Node {
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation),
         id_(id) {
-    LOG(INFO) << "create node " << id_;
     PADDLE_ENFORCE(id_ != -1);
   }
 
