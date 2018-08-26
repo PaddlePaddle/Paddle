@@ -18,12 +18,12 @@ struct Param {
   std::string AttentionScalarBias = "attention_output.b_0";
   std::string LSTMWeight = "attention_w.new";
   std::string LSTMBias = "attention_b.new";
-  std::string Hidden = "at.h.new";
+  std::string Hidden = "array_to_lod_tensor_0.tmp_0";
   std::string Cell = "at.cell.new";
   std::string AttentionedX = "at.x.new";
   std::string AttentionFCOut = "at.fc.new";
   std::string LSTMX = "at.lstmx.new";
-  std::string LSTMOUT = "array_to_lod_tensor_0.tmp_0";
+  std::string LSTMOUT = "at.lstmout.new";
 };
 
 void PrepareParameters(Graph* graph, const Param& param);
