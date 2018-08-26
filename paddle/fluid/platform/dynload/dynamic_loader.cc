@@ -117,10 +117,15 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     // search xxx.so from custom path
     dlPath = join(search_root, dso_name);
     dso_handle = dlopen(dlPath.c_str(), dynload_flags);
+#if !defined(_WIN32)
+    auto errorno = dlerror();
+#else
+    auto errorno = GetLastError();
+#endif  // !_WIN32
     // if not found, search from default path
     if (nullptr == dso_handle) {
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
-                   << dlerror() << ")";
+                   << errorno << ")";
       dlPath = dso_name;
       dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
     }
@@ -134,9 +139,9 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
   if (throw_on_error) {
-    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, dlerror());
+    PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, errorno);
   } else if (nullptr == dso_handle) {
-    LOG(WARNING) << string::Sprintf(error_msg, dlPath, dlerror());
+    LOG(WARNING) << string::Sprintf(error_msg, dlPath, errorno);
   }
 
   return dso_handle;
