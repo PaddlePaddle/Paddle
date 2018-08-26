@@ -1017,6 +1017,7 @@ static void FusedElemwiseAndActGradBroadcast1CPU(const T *x, const T *y,
     for (int j = 0; j < w; ++j) {
       int x_offset = i * w + j;
       int64_t tmp_out_dix;
+
       if (SameShapeOfIntermediateOutAndOut) {
         tmp_out_dix = x_offset;
       } else if (BcastY) {
@@ -1346,15 +1347,14 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                   CompoundFunctor compound_functor,
                                   framework::Tensor *out,
                                   framework::Tensor *intermediate_out) {
-  const framework::DDim &x_dim = x.dims();
-  const framework::DDim &y_dim = y.dims();
-
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE(intermediate_out,
                    "The keep_intermediate_value is opened, "
                    "intermediate_out should not be nullptr.");
   }
 
+  const framework::DDim &x_dim = x.dims();
+  const framework::DDim &y_dim = y.dims();
   if (x.dims() == y.dims()) {
     FusedElemwiseAndActComputeNoBroadcast<DeviceContext, T, CompoundFunctor,
                                           KeepIntermediateOut>(

@@ -71,11 +71,11 @@ struct BinaryCompoundGradDxFunctor {
       : d_binary_fun_(d_binary_fun), unary_fun_(unary_fun) {}
 
   inline HOSTDEVICE T operator()(T x, T y, T out, T dout) {
-    return dout * d_binary_fun_(x, unary_fun_(y));
+    return dout * d_binary_fun_.Dx(x, unary_fun_(y));
   }
 
   inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
-    return dout * d_binary_fun_(x, intermediate_out);
+    return dout * d_binary_fun_.Dx(x, intermediate_out);
   }
 
  private:
@@ -94,11 +94,11 @@ struct BinaryCompoundGradDyFunctor {
         d_unary_fun_(d_unary_fun) {}
 
   inline HOSTDEVICE T operator()(T x, T y, T out, T dout) {
-    return dout * d_binary_fun_(unary_fun_(y), x) * d_unary_fun_(y);
+    return dout * d_binary_fun_.Dy(x, unary_fun_(y)) * d_unary_fun_(y);
   }
 
   inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
-    return dout * d_binary_fun_(intermediate_out, x) *
+    return dout * d_binary_fun_.Dy(x, intermediate_out) *
            d_unary_fun_(y, intermediate_out);
   }
 
@@ -125,7 +125,7 @@ struct UnaryCompoundGradDxFunctor {
     } else {
       base = dout * d_unary_fun_(binary_fun_(x, y), out);
     }
-    return base * d_binary_fun_(x, y);
+    return base * d_binary_fun_.Dx(x, y);
   }
 
   inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
@@ -135,7 +135,7 @@ struct UnaryCompoundGradDxFunctor {
     } else {
       base = dout * d_unary_fun_(intermediate_out, out);
     }
-    return base * d_binary_fun_(x, y);
+    return base * d_binary_fun_.Dx(x, y);
   }
 
  private:
@@ -161,7 +161,7 @@ struct UnaryCompoundGradDyFunctor {
     } else {
       base = dout * d_unary_fun_(binary_fun_(x, y), out);
     }
-    return base * d_binary_fun_(y, x);
+    return base * d_binary_fun_.Dy(x, y);
   }
 
   inline HOSTDEVICE T operator()(T x, T y, T intermediate_out, T out, T dout) {
@@ -171,7 +171,7 @@ struct UnaryCompoundGradDyFunctor {
     } else {
       base = dout * d_unary_fun_(intermediate_out, out);
     }
-    return base * d_binary_fun_(y, x);
+    return base * d_binary_fun_.Dy(x, y);
   }
 
  private:

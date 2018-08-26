@@ -38,11 +38,9 @@ static void RunBinaryCompoundFunctor(
   // intermediate_out = Unary(Y)
   // out = Binary(X, Unary(Y))
   // In this case, the shape of intermediate_out and out are different.
-  int axis = ctx.Attr<int>("axis");
-
   math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor> compound_func(
       binary_functor, unary_functor);
-
+  int axis = ctx.Attr<int>("axis");
   if (ctx.Attr<bool>("keep_intermediate_value")) {
     FusedElemwiseAndActComputeEx<
         DeviceContext, T,
