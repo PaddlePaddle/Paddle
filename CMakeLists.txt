@@ -24,6 +24,9 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+if(WIN32)
+    set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
     find_package(CUDA QUIET)
@@ -165,13 +168,20 @@ include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
-include(external/warpctc)   # download, build, install warpctc
 include(external/boost)     # download boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
+
+if (NOT WIN32)
+# there is no official support of snappystream, warpctc, nccl, cupti in windows
+include(external/snappy)    # download snappy
+include(external/snappystream) # download snappystream
+include(external/warpctc)   # download, build, install warpctc
+include(cupti)
+endif (NOT WIN32)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -194,13 +204,10 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-include(external/snappy)    # download snappy
-include(external/snappystream)
-include(external/threadpool)
 
+include(external/threadpool)
 include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
-include(cupti)
 include(configure)          # add paddle env configuration
 
 if(WITH_GPU)

@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import traceback
 import collections
+import six
 
 
 class TranspilerTest(unittest.TestCase):
@@ -644,18 +645,18 @@ class TestLoadSliceVar(TranspilerTest):
         self.assertTrue(pserver._slice_vars_and_attrs)
         self.assertTrue(pserver2._slice_vars_and_attrs)
 
-        for idx in xrange(len(pserver._slice_vars_and_attrs)):
+        for idx in six.moves.xrange(len(pserver._slice_vars_and_attrs)):
             self.assertEqual(pserver._slice_vars_and_attrs[idx][0],
                              pserver2._slice_vars_and_attrs[idx][0])
 
-            total_numel = reduce(lambda x, y: x * y,
-                                 pserver._slice_vars_and_attrs[idx][0].shape)
+            total_numel = six.moves.reduce(
+                lambda x, y: x * y, pserver._slice_vars_and_attrs[idx][0].shape)
             self.assertEqual(
                 total_numel,
-                reduce(lambda x, y: x * y,
-                       pserver._slice_vars_and_attrs[idx][2].shape) + reduce(
-                           lambda x, y: x * y,
-                           pserver2._slice_vars_and_attrs[idx][2].shape))
+                six.moves.reduce(lambda x, y: x * y,
+                                 pserver._slice_vars_and_attrs[idx][2].shape) +
+                six.moves.reduce(lambda x, y: x * y,
+                                 pserver2._slice_vars_and_attrs[idx][2].shape))
 
 
 if __name__ == "__main__":
