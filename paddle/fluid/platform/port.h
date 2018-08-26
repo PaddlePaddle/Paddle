@@ -19,23 +19,23 @@
 
 #include <string>
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#include "glog/logging.h"
+
 #if !defined(_WIN32)
 #define UNUSED __attribute__((unused))
-
 #include <dlfcn.h>     // for dladdr
 #include <execinfo.h>  // for backtrace
 #include <sys/stat.h>
-
 #else
 #include <io.h>  // _popen, _pclose
 #include <windows.h>
-
 // windows version of __attribute__((unused))
 #define UNUSED __pragma(warning(suppress : 4100))
 
 #ifndef S_ISDIR  // windows port for sys/stat.h
 #define S_ISDIR(mode) (((mode)&S_IFMT) == S_IFDIR)
-#endif
+#endif  // S_ISDIR
 
 static void *dlsym(void *handle, const char *symbol_name) {
   FARPROC found_symbol;
@@ -49,8 +49,8 @@ static void *dlsym(void *handle, const char *symbol_name) {
 
 static void *dlopen(const char *filename, int flag) {
   std::string file_name(filename);
-  std::replace(file_name.begin(), file_name.end(), '/', '\\');
-  HMODULE hModule = LoadLibrary(file_name);
+  file_name.replace(0, file_name.size() - 1, '/', '\\');
+  HMODULE hModule = LoadLibrary(file_name.c_str());
   if (!hModule) {
     throw std::runtime_error(file_name + " not found.");
   }
@@ -123,14 +123,20 @@ static std::string DirName(const std::string &filepath) {
 }
 
 static void MkDir(const char *path) {
+  std::string path_error(path);
+  path_error += " mkdir failed!";
 #if !defined(_WIN32)
   if (mkdir(path, 0755)) {
-    PADDLE_ENFORCE_EQ(errno, EEXIST, "%s mkdir failed!", path);
+    if (errno != EEXIST) {
+      throw std::runtime_error(path_error);
+    }
   }
 #else
   CreateDirectory(path, NULL);
   auto errorno = GetLastError();
-  PADDLE_ENFORCE_EQ(errorno, ERROR_ALREADY_EXISTS, "%s mkdir failed!", path);
+  if (errorno != ERROR_ALREADY_EXISTS) {
+    throw std::runtime_error(path_error);
+  }
 #endif  // !_WIN32
 }
 
