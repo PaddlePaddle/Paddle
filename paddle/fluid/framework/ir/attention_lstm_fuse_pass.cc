@@ -288,7 +288,7 @@ void AttentionLSTMFusePass::Operate(Graph* graph, Scope* scope) const {
   FindWhileOp(graph);
 }
 
-void AttentionLSTMFusePass::RegisterParamOperations() const {
+void AttentionLSTMFusePass::RegisterParamOperations(Graph* graph, Scope* scope) const {
   ToCreate("hello");
 }
 

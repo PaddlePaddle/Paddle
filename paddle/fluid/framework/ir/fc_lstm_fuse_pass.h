@@ -12,17 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 #include "paddle/fluid/framework/ir/param_opt_pass_base.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class AttentionLSTMFusePass : public ParamOptPassBase {
+/*
+ * Fuse the FC and LSTM to a FusionLSTMOp.
+ */
+class FcLstmFusePass : public ParamOptPassBase {
+ public:
+  FcLstmFusePass() = default;
+  ~FcLstmFusePass() = default;
+
  protected:
-  void RegisterParamOperations(Graph*, Scope*) const override;
+  void RegisterParamOperations(Graph *graph, Scope *scope) const override {}
   void Operate(Graph *graph, Scope *scope) const override;
 };
 

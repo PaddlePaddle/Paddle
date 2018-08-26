@@ -22,11 +22,12 @@ namespace ir {
 
 class ParamOptTestPass : public ParamOptPassBase {
  protected:
-  void RegisterParamOperations() const override {
+  void RegisterParamOperations(Graph* graph, Scope* scope) const override {
     ToRead("tmp1");
     ToWrite("tmp2");
     ToDrop("tmp1");
     ToCreate("tmp3");
+    CheckOrCreateParam(graph, scope);
   }
 
   // Much operation here.
