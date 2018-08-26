@@ -269,7 +269,7 @@ def relu_add_func(x, y, x_bcast, y_bcast):
 
 
 def mul_scale_func(x, y, x_bcast, y_bcast, scale):
-    return x, y, y * scale, x_bcast + y_bcast * scale
+    return x, y, y * scale, x_bcast * (y_bcast * scale)
 
 
 scale = 0.1
