@@ -46,9 +46,10 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
   std::vector<Dot::Attr> marked_op_attrs({Dot::Attr("style", "filled"),
                                           Dot::Attr("shape", "box"),
                                           Dot::Attr("fillcolor", "lightgray")});
-  std::vector<Dot::Attr> marked_var_attrs({Dot::Attr("style", "filled,rounded"),
-                                           // Dot::Attr("shape", "diamond"),
-                                           Dot::Attr("fillcolor", "lightgray")});
+  std::vector<Dot::Attr> marked_var_attrs(
+      {Dot::Attr("style", "filled,rounded"),
+       // Dot::Attr("shape", "diamond"),
+       Dot::Attr("fillcolor", "lightgray")});
 
   auto marked_nodes = ConsumeMarkedNodes(graph.get());
   // Create nodes

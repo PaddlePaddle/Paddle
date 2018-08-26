@@ -112,7 +112,8 @@ class AnalysisPredictor : public NativePaddlePredictor {
     Singleton<Analyzer>::Global().Run(&argument);
     CHECK(argument.transformed_program_desc);
     VLOG(5) << "to prepare executor";
-    //LOG(INFO) << "transformed_parogram_desc " << argument.transformed_program_desc->DebugString();
+    // LOG(INFO) << "transformed_parogram_desc " <<
+    // argument.transformed_program_desc->DebugString();
     inference_program_.reset(
         new framework::ProgramDesc(*argument.transformed_program_desc));
     PADDLE_ENFORCE(argument.Has("param_scope"));
@@ -126,9 +127,8 @@ class AnalysisPredictor : public NativePaddlePredictor {
 };
 
 template <>
-std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
-    const NativeConfig& config) {
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    NativeConfig, PaddleEngineKind::kAnalysis>(const NativeConfig& config) {
   VLOG(3) << "create NativePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy

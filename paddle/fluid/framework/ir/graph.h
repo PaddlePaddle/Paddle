@@ -155,8 +155,6 @@ class Graph {
     PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
     nodes_[node].reset(node);
     node_set_.insert(node);
-    LOG(INFO) << node->id() << " "
-              << "node ptr: " << node;
     PADDLE_ENFORCE(!id2node_.count(node->id()), "duplicate id %d", node->id());
     id2node_[node->id()] = node;
     return node;

@@ -68,7 +68,7 @@ struct Argument {
     attrs_[key] = data;
     attr_deleters_[key] = [data, key, this]() {
       VLOG(3) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
-      LOG(INFO) << "argument delete attr: " << key;
+      VLOG(3) << "argument delete attr: " << key;
       delete data;
     };
   }

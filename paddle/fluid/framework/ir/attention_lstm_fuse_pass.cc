@@ -1,3 +1,17 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -159,19 +173,19 @@ void PrepareParameters(Graph* graph, const Param& param) {
   scope->Var(param.LSTMX)->GetMutable<LoDTensor>();
   scope->Var(param.LSTMOUT)->GetMutable<LoDTensor>();
 
-#define GATE_W(name__)                                                 \
-  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");              \
-  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");              \
-  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");              \
-  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);         \
-  LOG(INFO) << #name__ "_w0"                                           \
-            << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
-  LOG(INFO) << #name__ "_w1"                                           \
-            << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
-  LOG(INFO) << #name__ "_b0"                                           \
-            << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
-  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();         \
-  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();         \
+#define GATE_W(name__)                                               \
+  auto* W_##name__##_w0 = scope->FindVar(#name__ ".w_0");            \
+  auto* W_##name__##_w1 = scope->FindVar(#name__ ".w_1");            \
+  auto* W_##name__##_b0 = scope->FindVar(#name__ ".b_0");            \
+  CHECK_P3(W_##name__##_w0, W_##name__##_w1, W_##name__##_b0);       \
+  VLOG(4) << #name__ "_w0"                                           \
+          << " shape: " << W_##name__##_w0->Get<LoDTensor>().dims(); \
+  VLOG(4) << #name__ "_w1"                                           \
+          << " shape: " << W_##name__##_w1->Get<LoDTensor>().dims(); \
+  VLOG(4) << #name__ "_b0"                                           \
+          << " shape: " << W_##name__##_b0->Get<LoDTensor>().dims(); \
+  auto& W_##name__##_w0_t = W_##name__##_w0->Get<LoDTensor>();       \
+  auto& W_##name__##_w1_t = W_##name__##_w1->Get<LoDTensor>();       \
   auto& W_##name__##_b0_t = W_##name__##_b0->Get<LoDTensor>();
 
   GATE_W(forget);
@@ -193,12 +207,15 @@ void PrepareParameters(Graph* graph, const Param& param) {
   auto* lstm_bias_t = lstm_bias->GetMutable<LoDTensor>();
 
   // reshape attention_bias
-  auto* attention_bias_t = scope->FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
+  auto* attention_bias_t =
+      scope->FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
   PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1);
   attention_bias_t->Resize(make_ddim({1, attention_bias_t->dims()[0]}));
 
-  auto* attention_scalar_bias_t = scope->FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
-  attention_scalar_bias_t->Resize(make_ddim({1, attention_scalar_bias_t->dims()[0]}));
+  auto* attention_scalar_bias_t =
+      scope->FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
+  attention_scalar_bias_t->Resize(
+      make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
   PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
                     W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,
@@ -206,7 +223,8 @@ void PrepareParameters(Graph* graph, const Param& param) {
   PrepareLSTMBias(W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t,
                   lstm_bias_t);
   LOG(INFO) << "LSTMWeight : " << lstm_weight << " " << lstm_weight_t->dims();
-  LOG(INFO) << "get from scope LSTMWeigth: " << scope->FindVar(param.LSTMWeight) << scope->FindVar(param.LSTMWeight)->Get<LoDTensor>().dims();
+  LOG(INFO) << "get from scope LSTMWeigth: " << scope->FindVar(param.LSTMWeight)
+            << scope->FindVar(param.LSTMWeight)->Get<LoDTensor>().dims();
 }
 
 // Prepare parameters
