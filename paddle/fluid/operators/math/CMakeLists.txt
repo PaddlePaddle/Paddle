@@ -1,4 +1,6 @@
+if (NOT WIN32)
 add_subdirectory(detail)
+endif(NOT WIN32)
 
 function(math_library TARGET)
     # math_library is a function to create math library. 
