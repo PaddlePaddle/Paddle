@@ -45,7 +45,7 @@ def fusion_lstm(
 
 class TestLstmOp(OpTest):
     def set_argument(self):
-        self.lod = [[2, 3, 2]]
+        pass
 
     def setUp(self):
         self.op_type = 'fusion_lstm'
