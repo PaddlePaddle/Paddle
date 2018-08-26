@@ -20,6 +20,7 @@
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
 DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
@@ -308,6 +309,8 @@ void TestDituRNNPrediction(const std::string &model_path,
 
   base_predictor->Run(input_slots, &base_outputs);
 
+
+  platform::EnableProfiler(platform::ProfilerState::kCPU);
   Timer timer;
   timer.tic();
   for (int i = 0; i < num_times; i++) {
