@@ -67,31 +67,31 @@ inline constexpr size_t FindLastSet(size_t x) {
              : (std::is_same<size_t, unsigned long>::value  // NOLINT
                     ? (x ? 8 * sizeof(x) - __builtin_clzl(x) : 0)
                     : (x ? 8 * sizeof(x) - __builtin_clzll(x) : 0));
+
 #else
 // windows don't have built-in clz, ctz function
 template <typename T>
-unint32_t __inline ctz(const T& value) {
+inline int  ctz(const T& value) {
   DWORD trailing_zero = 0;
   if (_BitScanForward(&trailing_zero, value)) {
-    return static_cast<unint32_t>(trailing_zero);
+    return static_cast<int>(trailing_zero);
   } else {
-    return static_cast<unint32_t>(0);
+    return static_cast<int>(0);
   }
 }
 
 template <typename T>
-unint32_t __inline clz(const T& value) {
+inline int  clz(const T& value) {
   DWORD leadning_zero = 0;
   if (_BitScanReverse(&leadning_zero, value)) {
-    return sizeof(T) * 8 - leadning_zero;
+    return static_cast<int>(sizeof(T) * 8 - leadning_zero);
   } else {
-    return static_cast<unint32_t>(0);
+    return static_cast<int>(0);
   }
 }
 
-template <typename T>
-inline size_t FindLastSet(const T& x) {
-  return sizeof(T) * 8 - clz(x);
+inline size_t FindLastSet(size_t x) {
+  return sizeof(size_t) * 8 - clz(x);
 }
 #endif  // !_WIN32
 }

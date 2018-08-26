@@ -97,9 +97,13 @@ SET(CMAKE_EXTRA_INCLUDE_FILES "")
 
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
+
+# https://github.com/PaddlePaddle/Paddle/issues/12773
+if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
+    -Werror
     -Wall
     -Wextra
     -Wnon-virtual-dtor
@@ -113,11 +117,6 @@ set(COMMON_FLAGS
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
 )
-
-# https://github.com/PaddlePaddle/Paddle/issues/12773
-if (NOT WIN32)
-list(APPEND COMMON_FLAGS -Werror)
-endif()
 
 set(GPU_COMMON_FLAGS
     -fPIC
@@ -133,18 +132,28 @@ set(GPU_COMMON_FLAGS
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
 
+else(NOT WIN32)
+set(COMMON_FLAGS
+    "/w") #disable all warnings
+set(GPU_COMMON_FLAGS
+    "/w") #disable all warnings
+
+endif(NOT WIN32)
+
 if (APPLE)
     if(NOT CMAKE_CROSSCOMPILING)
         # On Mac OS X build fat binaries with x86_64 architectures by default.
         set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
     endif()
-else()
+endif(APPLE)
+
+if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
         -Wextra
         -Werror
         ${GPU_COMMON_FLAGS})
-endif()
+endif(LINUX)
 
 if(UNIX AND NOT APPLE)
   # except apple from nix*Os family
