@@ -274,6 +274,7 @@ TEST(LoD, ConvertToOffsetBasedLoD) {
   EXPECT_EQ(offset_lod, expected);
 }
 
+#if !defined(_WIN32)
 template <typename T>
 static void TestRecordIO() {
   LoDTensor tensor;
@@ -320,6 +321,7 @@ TEST(LoDTensor, RecordIO) {
   TestRecordIO<float>();
   TestRecordIO<double>();
 }
+#endif  // !defined(_WIN32)
 
 }  // namespace framework
 }  // namespace paddle
