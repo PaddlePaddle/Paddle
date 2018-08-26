@@ -17,6 +17,8 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from op_test import OpTest
+import paddle.fluid.core as core
+from paddle.fluid.op import Operator
 
 
 class TestScaleOp(OpTest):
@@ -31,6 +33,51 @@ class TestScaleOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
+
+
+class TestScaleOpSelectedRows(unittest.TestCase):
+    def check_with_place(self, place):
+        scope = core.Scope()
+
+        # create and initialize Grad Variable
+        in_height = 10
+        in_rows = [0, 4, 7]
+        in_row_numel = 12
+        scale = 2.0
+
+        in_selected_rows = scope.var('in').get_selected_rows()
+        in_selected_rows.set_height(in_height)
+        in_selected_rows.set_rows(in_rows)
+        in_array = np.random.random(
+            (len(in_rows), in_row_numel)).astype("float32")
+
+        in_tensor = in_selected_rows.get_tensor()
+        in_tensor.set(in_array, place)
+
+        # create and initialize Param Variable
+        out_selected_rows = scope.var('out').get_selected_rows()
+        out_tensor = out_selected_rows.get_tensor()
+        out_tensor._set_dims(in_tensor._get_dims())
+
+        # create and run sgd operator
+        scale_op = Operator("scale", X='in', Out='out', scale=scale)
+        scale_op.run(scope, place)
+
+        # get and compare result
+        out_height = out_selected_rows.height()
+        out_rows = out_selected_rows.rows()
+        result_array = np.array(out_tensor)
+
+        assert (in_array * scale == result_array).all()
+        assert in_height == out_height
+        assert in_rows == out_rows
+
+    def test_scale_selected_rows(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_with_place(place)
 
 
 if __name__ == "__main__":
