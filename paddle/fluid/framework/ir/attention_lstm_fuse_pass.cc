@@ -9,7 +9,7 @@ namespace framework {
 namespace ir {
 
 struct Param {
-  std::string X = "concat_9.tmp_0";
+  std::string X = "concat_0.tmp_0";
   std::string C0 = "cell_init";
   std::string H0 = "hidden_init";
   std::string AttentionWeight = "attention_fc.w_0";
@@ -23,7 +23,7 @@ struct Param {
   std::string AttentionedX = "at.x.new";
   std::string AttentionFCOut = "at.fc.new";
   std::string LSTMX = "at.lstmx.new";
-  std::string LSTMOUT = "array_to_lod_tensor_2.tmp_0";
+  std::string LSTMOUT = "array_to_lod_tensor_0.tmp_0";
 };
 
 void PrepareParameters(Graph* graph, const Param& param);
@@ -187,16 +187,26 @@ void PrepareParameters(Graph* graph, const Param& param) {
   CHECK_P4(attention_fc_w, attention_fc_b, attention_output_w,
            attention_output_b);
 
-  auto* lstm_weight = scope->Var(param.AttentionWeight);
+  auto* lstm_weight = scope->Var(param.LSTMWeight);
   auto* lstm_weight_t = lstm_weight->GetMutable<LoDTensor>();
-  auto* lstm_bias = scope->Var(param.AttentionBias);
+  auto* lstm_bias = scope->Var(param.LSTMBias);
   auto* lstm_bias_t = lstm_bias->GetMutable<LoDTensor>();
+
+  // reshape attention_bias
+  auto* attention_bias_t = scope->FindVar(param.AttentionBias)->GetMutable<LoDTensor>();
+  PADDLE_ENFORCE_EQ(attention_bias_t->dims().size(), 1);
+  attention_bias_t->Resize(make_ddim({1, attention_bias_t->dims()[0]}));
+
+  auto* attention_scalar_bias_t = scope->FindVar(param.AttentionScalarBias)->GetMutable<LoDTensor>();
+  attention_scalar_bias_t->Resize(make_ddim({1, attention_scalar_bias_t->dims()[0]}));
 
   PrepareLSTMWeight(W_forget_w0_t, W_forget_w1_t, W_input_w0_t, W_input_w1_t,
                     W_output_w0_t, W_output_w1_t, W_c_w0_t, W_c_w1_t,
                     lstm_weight_t);
   PrepareLSTMBias(W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t,
                   lstm_bias_t);
+  LOG(INFO) << "LSTMWeight : " << lstm_weight << " " << lstm_weight_t->dims();
+  LOG(INFO) << "get from scope LSTMWeigth: " << scope->FindVar(param.LSTMWeight) << scope->FindVar(param.LSTMWeight)->Get<LoDTensor>().dims();
 }
 
 // Prepare parameters
@@ -207,8 +217,9 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
                        const LoDTensor& W_output_w1, const LoDTensor& W_cell_w0,
                        const LoDTensor& W_cell_w1, LoDTensor* out) {
   int D = W_forget_w0.dims()[0];
-  int M = W_forget_w1.dims()[1];
+  int M = W_forget_w1.dims()[0];
   out->Resize(make_ddim({D + M, 4 * D}));
+  LOG(INFO) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
   std::array<const float*, 4> tensors(

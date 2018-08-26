@@ -66,8 +66,9 @@ struct Argument {
     PADDLE_ENFORCE_NOT_NULL(data);
     PADDLE_ENFORCE(!attrs_.count(key), "duplicate attr called %s", key);
     attrs_[key] = data;
-    attr_deleters_[key] = [data, key]() {
-      VLOG(4) << "argument delete attr: " << key;
+    attr_deleters_[key] = [data, key, this]() {
+      VLOG(3) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
+      LOG(INFO) << "argument delete attr: " << key;
       delete data;
     };
   }

@@ -127,6 +127,7 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
+  LOG(INFO) << "------------------------------------------------------";
   VLOG(4) << place << " " << DebugStringEx(&scope);
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
@@ -138,6 +139,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   }
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
+  LOG(INFO) << "to run this op " << type_;
+  LOG(INFO) << place << " " << DebugStringEx(&scope);
   RunImpl(scope, place);
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
@@ -636,6 +639,7 @@ static void CheckTensorNANOrInf(const std::string& name,
 
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
+  LOG(INFO) << "run impl";
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
   this->InferShape(&infer_shape_ctx);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -714,6 +718,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
     }
   }
+  LOG(INFO) << "finish running op";
 }
 void OperatorWithKernel::TransferInplaceVarsBack(
     const Scope& scope, const std::vector<std::string>& inplace_vars,
