@@ -136,10 +136,13 @@ def runtime_main(test_class):
         model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
                           sync_mode)
     else:
-        p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist,
-                          sync_mode, use_cuda)
+        if use_cuda and core.is_compiled_with_cuda():
+            p = fluid.CUDAPlace(0)
+        else:
+            p = fluid.CPUPlace()
+
+        model.run_trainer(p, endpoints, trainer_id, trainers, use_cuda, is_dist,
+                          sync_mode)
 
 
 import paddle.compat as cpt
