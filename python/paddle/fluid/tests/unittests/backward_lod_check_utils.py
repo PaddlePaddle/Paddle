@@ -32,7 +32,8 @@ def get_all_lod_tensors_with_grad(main_prog=None, startup_prog=None):
 
     all_vars = dict()
 
-    check_func = lambda var: var.type == core.VarDesc.VarType.LOD_TENSOR  #and var.lod_level > 0
+    check_func = lambda var: var.type == core.VarDesc.VarType.LOD_TENSOR \
+        and not var.stop_gradient
 
     for var in startup_prog.list_vars():
         if check_func(var):

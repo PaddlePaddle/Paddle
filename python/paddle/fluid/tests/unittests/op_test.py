@@ -30,6 +30,8 @@ from paddle.fluid.executor import Executor
 from paddle.fluid.framework import Program, OpProtoHolder, Variable
 from testsuite import create_op, set_input, append_input_output, append_loss_ops
 
+from backward_lod_check_utils import get_all_lod_tensors_with_grad
+
 
 def randomize_probability(batch_size, class_num, dtype='float32'):
     prob = np.random.uniform(
@@ -444,6 +446,14 @@ class OpTest(unittest.TestCase):
                                max_relative_error,
                                "Gradient Check On %s" % str(place))
 
+        # check backward lod
+        self._get_gradient(
+            inputs_to_check,
+            place,
+            output_names,
+            no_grad_set,
+            check_backward_lod=True)
+
     @staticmethod
     def _numpy_to_lod_tensor(np_value, lod, place):
         tensor = core.LoDTensor()
@@ -494,7 +504,8 @@ class OpTest(unittest.TestCase):
                       place,
                       output_names,
                       no_grad_set,
-                      parallel=False):
+                      parallel=False,
+                      check_backward_lod=False):
         prog = Program()
         block = prog.global_block()
         self._append_ops(block)
@@ -505,15 +516,47 @@ class OpTest(unittest.TestCase):
         inputs = self._get_inputs(block)
         feed_dict = self.feed_var(inputs, place)
 
-        fetch_list = [g for p, g in param_grad_list]
-        if parallel:
-            use_cuda = False
-            if isinstance(place, fluid.CUDAPlace(0)):
-                use_cuda = True
-            executor = fluid.ParallelExecutor(
-                use_cuda=use_cuda, loss_name=loss.name, main_program=prog)
+        if not check_backward_lod:
+            fetch_list = [g for p, g in param_grad_list]
+            if parallel:
+                use_cuda = False
+                if isinstance(place, fluid.CUDAPlace(0)):
+                    use_cuda = True
+                executor = fluid.ParallelExecutor(
+                    use_cuda=use_cuda, loss_name=loss.name, main_program=prog)
+            else:
+                executor = Executor(place)
+            return list(
+                map(np.array,
+                    executor.run(
+                        prog, feed_dict, fetch_list, return_numpy=False)))
         else:
-            executor = Executor(place)
-        return list(
-            map(np.array,
-                executor.run(prog, feed_dict, fetch_list, return_numpy=False)))
+            lod_tensor_vars, grad_vars = get_all_lod_tensors_with_grad(prog)
+            lod_tensor_num = len(lod_tensor_vars)
+            if lod_tensor_num == 0:
+                return
+
+            for _, tensor in feed_dict.items():
+                if len(tensor.lod()) == 0:
+                    tensor.set_lod([[0, tensor.shape()[0]]])
+
+            exe = Executor(place)
+            for i in xrange(lod_tensor_num):
+                fetch_list = [lod_tensor_vars[i], grad_vars[i]]
+                try:
+                    ret = exe.run(prog,
+                                  feed_dict,
+                                  fetch_list=fetch_list,
+                                  return_numpy=False)
+                except:
+                    print(
+                        'Fetch exception: maybe Variable `{}` has no gradient. Please check it.'.
+                        format(lod_tensor_vars[i].name))
+                    continue
+
+                lod = ret[0].lod()
+                grad_lod = ret[1].lod()
+                assert cmp(
+                    lod, grad_lod
+                ) == 0, "Lod of Variable `{}`: {} and lod of its gradient `{}`: {} do not match".format(
+                    lod_tensor_vars[i].name, lod, grad_vars[i].name, grad_lod)
