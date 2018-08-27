@@ -36,7 +36,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from test_dist_base import TestDistRunnerBase, runtime_main
-from paddle.fluid.compat import long_type
+from paddle.compat import long_type
 
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
