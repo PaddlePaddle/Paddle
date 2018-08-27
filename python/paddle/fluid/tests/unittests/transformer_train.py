@@ -290,7 +290,6 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
     for pass_id in xrange(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
-            #print("batch_id:", batch_id)
             if batch_id >= 5:
                 break
 
@@ -301,7 +300,6 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             for place_id, data_buffer in enumerate(
                     split_data(
                         data, num_part=dev_count)):
-                #print("place_id:", place_id)
                 data_input_dict, num_token = prepare_batch_input(
                     data_buffer, data_input_names, ModelHyperParams.eos_idx,
                     ModelHyperParams.eos_idx, ModelHyperParams.n_head,
@@ -323,8 +321,6 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             for feed_dict in feed_list:
                 feed_dict[sum_cost.name + "@GRAD"] = 1. / total_num_token
 
-            #print("fedd_list:", len(feed_list))
-
             outs = train_exe.run(fetch_list=[sum_cost.name, token_num.name],
                                  feed=feed_list)
 
@@ -335,11 +331,9 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
 
             init = True
 
-            #print("begin test")
             # Validate and save the model for inference.
             if TrainTaskConfig.val_file_pattern is not None:
                 val_avg_cost, val_ppl = test()
                 print("[%f]" % val_avg_cost)
             else:
                 assert (False)
-                #print("epoch: %d, consumed %fs" % (pass_id, time_consumed))

@@ -24,17 +24,16 @@ class TestDistTransformer2x2Sync(TestDistBase):
 
     def test_transformer(self):
         self.check_with_place(
-            "dist_transformer.py", delta=400, check_error_log=False)
+            "dist_transformer.py", delta=0.00001, check_error_log=False)
 
 
-"""
 class TestDistTransformer2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
 
     def test_transformer(self):
-        self.check_with_place("dist_transformer.py", delta=400)
-"""
+        self.check_with_place("dist_transformer.py", delta=0.1)
+
 
 if __name__ == "__main__":
     unittest.main()

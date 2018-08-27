@@ -98,7 +98,6 @@ def update_args():
         str(src_dict[TrainTaskConfig.special_token[1]]), "unk_idx",
         str(src_dict[TrainTaskConfig.special_token[2]])
     ]
-    #print("dict_args:", dict_args)
     merge_cfg_from_list(dict_args, [TrainTaskConfig, ModelHyperParams])
 
 
@@ -157,7 +156,6 @@ class DistTransformer2x2(object):
         startup_exe = fluid.Executor(place)
 
         TrainTaskConfig.local = not is_dist
-        #print("train config:", TrainTaskConfig.__dict__)
 
         train_loop(startup_exe, trainer_prog, dev_count, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
@@ -209,13 +207,10 @@ def main(role="pserver",
         place = fluid.CUDAPlace(0)
         dev_count = 1
 
-    #print(sys.stderr, "place:", place)
     if role == "pserver":
-        #print(sys.stderr, "begin pserver")
         model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
                           is_async)
     else:
-        #print(sys.stderr, "begin trainer")
         model.run_trainer(place, dev_count, endpoints, trainer_id, trainers,
                           is_dist, is_async)
 
