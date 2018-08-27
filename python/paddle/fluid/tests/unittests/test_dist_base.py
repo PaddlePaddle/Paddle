@@ -212,8 +212,8 @@ class TestDistBase(unittest.TestCase):
         # *ATTENTION* THIS TEST NEEDS AT LEAST 2GPUS TO RUN
         required_envs = {
             "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH"),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH"),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1"
         }
