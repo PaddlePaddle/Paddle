@@ -69,6 +69,7 @@ __all__ = [
     'slice',
     'shape',
     'maxout',
+    'sampling_id',
 ] + __activations__
 
 for _OP in set(__all__):

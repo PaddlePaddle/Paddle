@@ -17,7 +17,8 @@
                            executor,
                            main_program=None,
                            model_filename=None,
-                           params_filename=None):
+                           params_filename=None
+                           export_for_deployment=True):
   ```
   Inference模型和参数将会保存到`dirname`目录下：
   - 序列化的模型
@@ -49,7 +50,9 @@
   def load_inference_model(dirname,
                            executor,
                            model_filename=None,
-                           params_filename=None):
+                           params_filename=None,
+                           pserver_endpoints=None
+                           ):
     ...
     return [program, feed_target_names, fetch_targets]
   ```

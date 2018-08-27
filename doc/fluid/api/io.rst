@@ -77,30 +77,6 @@ get_inference_program
 ..  autofunction:: paddle.fluid.io.get_inference_program
     :noindex:
 
-.. _api_fluid_io_save_checkpoint:
-
-save_checkpoint
----------------
-
-..  autofunction:: paddle.fluid.io.save_checkpoint
-    :noindex:
-
-.. _api_fluid_io_load_checkpoint:
-
-load_checkpoint
----------------
-
-..  autofunction:: paddle.fluid.io.load_checkpoint
-    :noindex:
-
-.. _api_fluid_io_clean_checkpoint:
-
-clean_checkpoint
-----------------
-
-..  autofunction:: paddle.fluid.io.clean_checkpoint
-    :noindex:
-
 .. _api_fluid_io_load_persist_vars_without_grad:
 
 load_persist_vars_without_grad
