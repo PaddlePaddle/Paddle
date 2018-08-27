@@ -41,13 +41,10 @@ math_library(cross_entropy)
 math_library(cos_sim_functor)
 math_library(depthwise_conv)
 math_library(im2col)
-if (NOT WIN32)
+
+if (NOT WIN32) # windows do not support avx functions yet.
 math_library(gru_compute DEPS activation_functions math_function)
 math_library(lstm_compute DEPS activation_functions)
-else()
-# windows do not support avx functions yet.
-math_library(gru_compute DEPS math_function)
-math_library(lstm_compute DEPS math_function)
 endif (NOT WIN32)
 
 cc_library(blas SRCS blas.cc DEPS cblas framework_proto device_context)

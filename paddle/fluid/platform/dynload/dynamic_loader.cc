@@ -107,7 +107,11 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
 static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
                                                const std::string& dso_name,
                                                bool throw_on_error = true) {
+#if !defined(_WIN32)
   int dynload_flags = RTLD_LAZY | RTLD_LOCAL;
+#else
+  int dynload_flags = 0;
+#endif  // !_WIN32
   void* dso_handle = nullptr;
 
   std::string dlPath = dso_name;
@@ -138,6 +142,11 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
       "export LD_LIBRARY_PATH=... \n Note: After Mac OS 10.11, "
       "using the DYLD_LIBRARY_PATH is impossible unless System "
       "Integrity Protection (SIP) is disabled.";
+#if !defined(_WIN32)
+  auto errorno = dlerror();
+#else
+  auto errorno = GetLastError();
+#endif  // !_WIN32
   if (throw_on_error) {
     PADDLE_ENFORCE(nullptr != dso_handle, error_msg, dlPath, errorno);
   } else if (nullptr == dso_handle) {
