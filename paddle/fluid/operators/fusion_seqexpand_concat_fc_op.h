@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
-class FusionSeqConcatFCOp : public framework::OperatorWithKernel {
+class FusionSeqExpandConcatFCOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
@@ -32,7 +32,8 @@ class FusionSeqConcatFCOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override;
 };
 
-class FusionSeqConcatFCOpMaker : public framework::OpProtoAndCheckerMaker {
+class FusionSeqExpandConcatFCOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override;
 };
