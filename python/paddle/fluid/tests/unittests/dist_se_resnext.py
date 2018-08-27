@@ -130,7 +130,7 @@ class SE_ResNeXt():
         drop = fluid.layers.dropout(x=pool, dropout_prob=0.2)
         stdv = 1.0 / math.sqrt(drop.shape[1] * 1.0)
         out = fluid.layers.fc(
-            input=pool,
+            input=drop,
             size=class_dim,
             act='softmax',
             param_attr=fluid.ParamAttr(
