@@ -625,6 +625,12 @@ function main() {
         test_fluid_inference_lib
         assert_api_not_changed
         ;;
+      cicheck_py35)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_test
+        assert_api_not_changed
+        ;;
       *)
         print_usage
         exit 0
