@@ -17,16 +17,22 @@ limitations under the License. */
  * embeded, this API can only support Anakin models.
  */
 
-#pragma once
-
 #include <vector>
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/profiler.h"
 
 constexpr char kEndPointMap[] = "epmap";
 
 namespace paddle {
 namespace {
+
+template <class T>
+std::string num2str(T a) {
+  std::stringstream istr;
+  istr << a;
+  return istr.str();
+}
 
 template <typename T>
 std::string vec2str(const std::vector<T> &vec) {
@@ -39,20 +45,12 @@ std::string vec2str(const std::vector<T> &vec) {
 
 }  // namespace
 class NativeDistributedPredictor : public NativePaddlePredictor {
-  explicit NativeDistributedPredictor(const NativeDistributedPredictor &config)
+ public:
+  explicit NativeDistributedPredictor(const NativeDistributedConfig &config)
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope) {
     VLOG(3) << "Predictor::init()";
-
-    if (FLAGS_profile) {
-      LOG(WARNING) << "Profiler is actived, might affect the performance";
-      LOG(INFO) << "You can turn off by set gflags '-profile false'";
-
-      auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
-                                             : platform::ProfilerState::kCPU;
-      platform::EnableProfiler(tracking_device);
-    }
 
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
