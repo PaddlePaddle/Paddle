@@ -35,7 +35,7 @@ class ScaleKernel : public framework::OpKernel<T> {
 
     auto scale = static_cast<T>(ctx.Attr<float>("scale"));
 
-    if (in_var->IsType<framework::SelectedRows>()) {
+    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
       auto& in_slr = in_var->Get<framework::SelectedRows>();
       auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
       out_slr->set_rows(in_slr.rows());

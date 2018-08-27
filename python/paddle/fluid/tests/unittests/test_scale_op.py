@@ -36,7 +36,7 @@ class TestScaleOp(OpTest):
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
-    def check_with_place(self, place):
+    def check_with_place(self, place, in_name, out_name):
         scope = core.Scope()
 
         # create and initialize Grad Variable
@@ -45,7 +45,7 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         in_row_numel = 12
         scale = 2.0
 
-        in_selected_rows = scope.var('in').get_selected_rows()
+        in_selected_rows = scope.var(in_name).get_selected_rows()
         in_selected_rows.set_height(in_height)
         in_selected_rows.set_rows(in_rows)
         in_array = np.random.random(
@@ -55,12 +55,12 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         in_tensor.set(in_array, place)
 
         # create and initialize Param Variable
-        out_selected_rows = scope.var('out').get_selected_rows()
+        out_selected_rows = scope.var(out_name).get_selected_rows()
         out_tensor = out_selected_rows.get_tensor()
         out_tensor._set_dims(in_tensor._get_dims())
 
         # create and run sgd operator
-        scale_op = Operator("scale", X='in', Out='out', scale=scale)
+        scale_op = Operator("scale", X=in_name, Out=out_name, scale=scale)
         scale_op.run(scope, place)
 
         # get and compare result
@@ -77,7 +77,14 @@ class TestScaleOpSelectedRows(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_with_place(place)
+            self.check_with_place(place, 'in', 'out')
+
+    def test_scale_selected_rows_inplace(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+        for place in places:
+            self.check_with_place(place, 'in', 'in')
 
 
 if __name__ == "__main__":
