@@ -14,13 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+#if !defined(_WIN32)
 #include <pthread.h>
+#endif  // !_WIN32
 
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
 
+#if !defined(_WIN32)
 struct RWLock {
   RWLock() { pthread_rwlock_init(&lock_, nullptr); }
 
@@ -43,6 +46,15 @@ struct RWLock {
  private:
   pthread_rwlock_t lock_;
 };
+#else
+// https://stackoverflow.com/questions/7125250/making-pthread-rwlock-wrlock-recursive
+// In windows, rw_lock seems like a hack. Use empty object and do nothing.
+struct RWLock {
+  void RDLock() {}
+  void WRLock() {}
+  void UNLock() {}
+};
+#endif
 
 }  // namespace framework
 }  // namespace paddle
