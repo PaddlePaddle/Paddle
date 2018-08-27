@@ -30,7 +30,7 @@ struct BinaryCompoundFunctor {
 
   inline HOSTDEVICE T GetOut(T x, T y) { return func1_(x, func2_(y)); }
 
-  inline HOSTDEVICE T GetOut(T x, T y, T intermediat_out) {
+  inline HOSTDEVICE T GetOutUseIntermediateOut(T x, T intermediat_out) {
     return func1_(x, intermediat_out);
   }
 
@@ -48,7 +48,7 @@ struct UnaryCompoundFunctor {
 
   inline HOSTDEVICE T GetOut(T x, T y) { return func1_(func2_(x, y)); }
 
-  inline HOSTDEVICE T GetOut(T x, T y, T intermediat_out) {
+  inline HOSTDEVICE T GetOutUseIntermediateOut(T x, T intermediat_out) {
     return func1_(intermediat_out);
   }
 

@@ -677,7 +677,8 @@ struct FusedElemwiseAndActNoBroadcast {
     if (KeepIntermediateOut) {
       T intermeidiate_out = compound_functor_.GetIntermediateOut(x_val, y_val);
       intermediate_out_[i] = intermeidiate_out;
-      out_[i] = compound_functor_.GetOut(x_val, y_val, intermeidiate_out);
+      out_[i] =
+          compound_functor_.GetOutUseIntermediateOut(x_val, intermeidiate_out);
     } else {
       out_[i] = compound_functor_.GetOut(x_val, y_val);
     }
@@ -720,7 +721,8 @@ static void FusedElemwiseAndActBroadcast1CPU(const T *x, const T *y,
         }
 
         intermediate_out[intermediate_out_offset] = intermeidiate_out;
-        out[offset] = compound_functor.GetOut(x_val, y_val, intermeidiate_out);
+        out[offset] =
+            compound_functor.GetOutUseIntermediateOut(x_val, intermeidiate_out);
       } else {
         out[offset] = compound_functor.GetOut(x_val, y_val);
       }
@@ -762,8 +764,8 @@ static void FusedElemwiseAndActBroadcast2CPU(const T *x, const T *y, int pre,
           }
 
           intermediate_out[intermediate_out_offset] = intermeidiate_out;
-          out[offset] =
-              compound_functor.GetOut(x_val, y_val, intermeidiate_out);
+          out[offset] = compound_functor.GetOutUseIntermediateOut(
+              x_val, intermeidiate_out);
         } else {
           out[offset] = compound_functor.GetOut(x_val, y_val);
         }
@@ -801,7 +803,8 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
       }
 
       intermediate_out[intermediate_out_offset] = intermeidiate_out;
-      out[offset] = compound_functor.GetOut(x_val, y_val, intermeidiate_out);
+      out[offset] =
+          compound_functor.GetOutUseIntermediateOut(x_val, intermeidiate_out);
     } else {
       out[offset] = compound_functor.GetOut(x_val, y_val);
     }
@@ -857,7 +860,8 @@ static __global__ void FusedElemwiseAndActBroadcast2CUDAKernel(
       }
 
       intermediate_out[intermediate_out_offset] = intermeidiate_out;
-      out[offset] = compound_functor.GetOut(x_val, y_val, intermeidiate_out);
+      out[offset] =
+          compound_functor.GetOutUseIntermediateOut(x_val, intermeidiate_out);
     } else {
       out[offset] = compound_functor.GetOut(x_val, y_val);
     }
@@ -1030,15 +1034,9 @@ static void FusedElemwiseAndActGradBroadcast1CPU(const T *x, const T *y,
     for (int j = 0; j < w; ++j) {
       int offset = i * w + j;
 
-      if (BcastY) {
-        tmp_out_idx = j;
-        y_idx = j;
-        x_idx = offset;
-      } else {
-        tmp_out_idx = offset;
-        y_idx = offset;
-        x_idx = j;
-      }
+      tmp_out_idx = BcastY ? j : offset;
+      y_idx = BcastY ? j : offset;
+      x_idx = BcastY ? offset : j;
 
       if (SameShapeOfIntermediateOutAndOut) {
         tmp_out_idx = offset;
@@ -1093,15 +1091,9 @@ static void FusedElemwiseAndActGradBroadcast2CPU(const T *x, const T *y,
       for (int k = 0; k < post; ++k) {
         int offset = i * n * post + j * post + k;
 
-        if (BcastY) {
-          tmp_out_idx = j;
-          y_idx = j;
-          x_idx = offset;
-        } else {
-          tmp_out_idx = offset;
-          y_idx = offset;
-          x_idx = j;
-        }
+        tmp_out_idx = BcastY ? j : offset;
+        y_idx = BcastY ? j : offset;
+        x_idx = BcastY ? offset : j;
 
         if (SameShapeOfIntermediateOutAndOut) {
           tmp_out_idx = offset;
@@ -1158,15 +1150,9 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
   do {
     int offset = i * w + j;
 
-    if (BcastY) {
-      tmp_out_idx = j;
-      y_idx = j;
-      x_idx = offset;
-    } else {
-      tmp_out_idx = offset;
-      y_idx = offset;
-      x_idx = j;
-    }
+    tmp_out_idx = BcastY ? j : offset;
+    y_idx = BcastY ? j : offset;
+    x_idx = BcastY ? offset : j;
 
     if (SameShapeOfIntermediateOutAndOut) {
       tmp_out_idx = offset;
@@ -1253,15 +1239,9 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
 
     int offset = i * n * post + j * post + k;
 
-    if (BcastY) {
-      tmp_out_idx = j;
-      y_idx = j;
-      x_idx = offset;
-    } else {
-      tmp_out_idx = offset;
-      y_idx = offset;
-      x_idx = j;
-    }
+    tmp_out_idx = BcastY ? j : offset;
+    y_idx = BcastY ? j : offset;
+    x_idx = BcastY ? offset : j;
 
     if (SameShapeOfIntermediateOutAndOut) {
       tmp_out_idx = offset;
@@ -1415,7 +1395,6 @@ void FusedElemwiseAndActGradComputeEx(
         ctx, x_dim, y_dim, x, y, intermediate_out, out, dout, axis, dx, dy,
         dx_op, dy_op);
   } else {  // Y is a scalar
-    // TODO(zcd): whether Y should be broadcast?
     bool bcast_y = x_dim.size() >= y_dim.size();
     if (x_dim.size() == y_dim.size()) {
       for (int i = 0; i < x_dim.size(); ++i) {
@@ -1425,6 +1404,7 @@ void FusedElemwiseAndActGradComputeEx(
         }
       }
     }
+
     // z = f1(x, f2(y))
     // z = f1(f2(x, y))
     if (bcast_y) {  // Y should be broadcast.

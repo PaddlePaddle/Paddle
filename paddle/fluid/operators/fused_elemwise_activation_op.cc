@@ -72,6 +72,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
       }
     }
     auto &out_dim = bcast_y ? x_dim : y_dim;
+    std::string out_lod = bcast_y ? "X" : "Y";
 
     if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
       PADDLE_ENFORCE_EQ(
@@ -81,21 +82,26 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 
       if (IsUnaryCompound(
               ctx->Attrs().Get<std::vector<std::string>>("functor_list"))) {
-        // for UnaryFunctor(BinaryFunctor(X, Y)), the shape of out and
+        // for UnaryFunctor(BinaryFunctor(X, Y)), the shape and lod of out and
         // intermediate_out are the same.
         ctx->SetOutputsDim("Out", {out_dim, out_dim});
+        // set the lod of intermediate_out
+        ctx->ShareLoD(out_lod, /*->*/ "Out", 0, 1);
       } else {
+        // for BinaryFunctor(X, UnaryFunctor(Y)), the shape and lod of Y and
+        // intermediate_out are the same.
         ctx->SetOutputsDim("Out", {out_dim, y_dim});
+        // set the lod of intermediate_out
+        ctx->ShareLoD("Y", /*->*/ "Out", 0, 1);
       }
     } else {
       PADDLE_ENFORCE_EQ(
           ctx->Outputs("Out").size(), 1,
           "The option of 'keep_intermediate_value' is not opened, "
           "so the 'Out' should contain 'out'.");
-
       ctx->SetOutputsDim("Out", {out_dim});
-      ctx->ShareLoD("X", /*->*/ "Out");  // Is it necessary?
     }
+    ctx->ShareLoD(out_lod, /*->*/ "Out", 0, 0);
   }
 
  protected:
@@ -245,10 +251,12 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     if (ctx->HasOutput(x_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInputs("X"), "Input(X) should not be null");
       ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+      ctx->ShareLoD("X", x_grad_name);
     }
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
+      ctx->ShareLoD("Y", y_grad_name);
     }
   }
 
