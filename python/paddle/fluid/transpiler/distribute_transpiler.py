@@ -561,7 +561,7 @@ class DistributeTranspiler(object):
                 __clone_lr_op_sub_block__(cloned_op, pserver_program,
                                           lr_decay_block)
 
-            # append op to the current block
+        # append op to the current block
         grad_to_block_id = []
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):

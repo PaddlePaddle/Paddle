@@ -28,8 +28,6 @@ import six
 import transformer_model
 import paddle.dataset.wmt16 as wmt16
 
-from paddle.fluid.transpiler.details import program_to_code, block_to_code
-
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
