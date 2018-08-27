@@ -1,5 +1,4 @@
 # Anakin 2.0 Docker
----
 
 ## 依赖软件
 
@@ -21,7 +20,9 @@ Usage: anakin_docker_build_and_run.sh -p <place> -o <os> -m <Optional>
 ```
 
 ### GPU Docker
+
 #### 构建镜像
+
 ```bash
 /usr/bash anakin_docker_build_and_run.sh  -p NVIDIA-GPU -o Centos -m Build
 或者
@@ -30,6 +31,7 @@ chmod +x ./anakin_docker_build_and_run.sh
 ```
 
 #### 运行 docker容器
+
 ```bash
 /usr/bash anakin_docker_build_and_run.sh  -p NVIDIA-GPU -o Centos -m Run
 或者
@@ -37,10 +39,76 @@ chmod +x ./anakin_docker_build_and_run.sh
 ./anakin_docker_build_and_run.sh  -p NVIDIA-GPU -o Centos -m Run
 ```
 
+当docker运行成功后，你可以在./Anakin目录下找到Anakin代码
+
 ### X86 Docker
 
-> Not support yet
+#### 构建镜像
+
+```bash
+$/usr/bash anakin_docker_build_and_run.sh  -p X86-ONLY -o Centos -m Build
+
+# or
+$chmod +x ./anakin_docker_build_and_run.sh
+$./anakin_docker_build_and_run.sh  -p X86-ONLY -o Centos -m Build
+```
+
+#### 运行 docker容器
+
+```bash
+$/usr/bash anakin_docker_build_and_run.sh  -p X86-ONLY -o Centos -m Run
+
+# or
+$chmod +x ./anakin_docker_build_and_run.sh
+$./anakin_docker_build_and_run.sh  -p X86-ONLY -o Centos -m Run
+
+# or
+# run docker by docker run command.
+# firt find the x86 image you just built.
+
+$docker images
+
+# This command will list all docker images you have built.
+#Then, find anakin and it's tag. finally, run x86 docker.
+# for ubuntu, type anakin:x86_ubuntu16.04-x86 instead.
+$docker run -it anakin:x86_centos7-x86 /bin/bash
+```
+
+当docker运行成功后，你可以在./Anakin目录下找到Anakin代码
 
 ### ARM Docer
 
-> Not support yet
+我们目前只支持centos系统系统下的arm docker
+
+#### 构建镜像
+
+```bash
+$/usr/bash anakin_docker_build_and_run.sh  -p ARM -o Centos -m Build
+
+# or
+$chmod +x ./anakin_docker_build_and_run.sh
+$./anakin_docker_build_and_run.sh  -p ARM -o Centos -m Build
+```
+
+#### 运行 docker容器
+
+```bash
+$/usr/bash anakin_docker_build_and_run.sh  -p ARM -o Centos -m Run
+
+# or
+$chmod +x ./anakin_docker_build_and_run.sh
+$./anakin_docker_build_and_run.sh  -p ARM -o Centos -m Run
+
+# or run docker by docker run command.
+# firt find the arm image you just built.
+
+$docker images
+
+# This command will list all docker images you have built.
+#Then, find anakin and it's tag. finally, run arm docker.
+
+$docker run -it anakin:arm_centos7-armv7 /bin/bash
+
+```
+
+当docker运行成功后，你可以在./Anakin目录下找到Anakin代码
