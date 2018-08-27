@@ -1,5 +1,7 @@
-add_subdirectory(details)
 add_subdirectory(ir)
+if (NOT WIN32)
+add_subdirectory(details)
+endif (NOT WIN32)
 # ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
@@ -28,8 +30,12 @@ if(WITH_GPU)
 else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
-
+if (NOT WIN32)
 cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
+else()
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
+endif (NOT WIN32)
+
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
 nv_test(lod_tensor_gpu_test SRCS lod_tensor_test.cu DEPS lod_tensor)
 
@@ -69,14 +75,22 @@ cc_library(op_proto_maker SRCS op_proto_maker.cc DEPS framework_proto attribute 
 cc_test(op_proto_maker_test SRCS op_proto_maker_test.cc DEPS op_proto_maker)
 cc_library(op_info SRCS op_info.cc DEPS attribute framework_proto)
 cc_library(shape_inference SRCS shape_inference.cc DEPS ddim attribute device_context)
+
+if (NOT WIN32)
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
     shape_inference data_transform lod_tensor profiler)
+else()
+cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog
+    shape_inference data_transform lod_tensor)
+endif(NOT WIN32)
+
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 
+if (NOT WIN32)
 py_proto_compile(framework_py_proto SRCS framework.proto)
 # Generate an empty __init__.py to make framework_py_proto as a valid python module.
 add_custom_target(framework_py_proto_init ALL COMMAND ${CMAKE_COMMAND} -E touch __init__.py)
@@ -86,6 +100,7 @@ add_custom_command(TARGET framework_py_proto POST_BUILD
     COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
     COMMENT "Copy generated python proto into directory paddle/fluid/proto."
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif(NOT WIN32)
 
 cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
@@ -120,7 +135,9 @@ cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 # cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 
+if (NOT WIN32)
 cc_test(rw_lock_test SRCS rw_lock_test.cc)
+endif (NOT WIN32)
 
 # disable test temporarily.
 # TODO https://github.com/PaddlePaddle/Paddle/issues/11971

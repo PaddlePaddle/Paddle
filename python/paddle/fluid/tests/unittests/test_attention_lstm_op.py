@@ -37,7 +37,7 @@ def attention_lstm(
     T = sum(lod[0])
     N = len(lod[0])
     M = x.shape[1]
-    D = b.shape[1] / 4
+    D = b.shape[1] // 4
     assert T == x.shape[0]
     assert len(fcws) == len(fcbs)
     hidden = []
