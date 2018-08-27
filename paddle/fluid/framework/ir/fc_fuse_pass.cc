@@ -125,7 +125,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
 
   std::unordered_set<Node*> nodes2delete;
 
-  GraphPatternDetecter gpd;
+  GraphPatternDetector gpd;
   BuildFCPattern(gpd.mutable_pattern());
 
 #define GET_NODE(id)                                             \
@@ -134,7 +134,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
   auto* id = subgraph.at(gpd.pattern().RetriveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
-  auto handler = [&](const GraphPatternDetecter::subgraph_t& subgraph,
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle FC fuse";
     // Currently, there is no FC op available, so I will just simulate the

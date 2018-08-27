@@ -35,7 +35,6 @@ class Node {
         op_desc_(nullptr),
         type_(type),
         id_(id) {
-    LOG(INFO) << "create node " << id_;
     PADDLE_ENFORCE(id_ != -1);
   }
 
@@ -45,7 +44,6 @@ class Node {
         op_desc_(nullptr),
         type_(Type::kVariable),
         id_(id) {
-    LOG(INFO) << "create node " << id_;
     PADDLE_ENFORCE(id_ != -1);
   }
 

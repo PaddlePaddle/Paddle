@@ -86,7 +86,9 @@ class FluidToIrPass final : public DataFlowGraphPass {
         "infer_clean_graph_pass", "graph_viz_pass",    //
         "attention_lstm_fuse_pass", "graph_viz_pass",  //
         "fc_lstm_fuse_pass", "graph_viz_pass",         //
-        "fc_fuse_pass", "graph_viz_pass"               //
+        "seq_concat_fc_fuse_pass", "graph_viz_pass",   //
+        "fc_fuse_pass",
+        "graph_viz_pass"  //
     }));
 
     PADDLE_ENFORCE(argument_->main_dfg.get());

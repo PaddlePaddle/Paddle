@@ -309,7 +309,6 @@ void TestDituRNNPrediction(const std::string &model_path,
 
   base_predictor->Run(input_slots, &base_outputs);
 
-
   platform::EnableProfiler(platform::ProfilerState::kCPU);
   Timer timer;
   timer.tic();
@@ -381,6 +380,7 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace paddle
 
 USE_PASS(fc_fuse_pass);
+USE_PASS(seq_concat_fc_fuse_pass);
 USE_PASS(fc_lstm_fuse_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(infer_clean_graph_pass);

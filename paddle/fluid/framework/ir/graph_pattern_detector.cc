@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -56,8 +56,8 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
   edges_.emplace_back(a, b);
 }
 
-void GraphPatternDetecter::operator()(Graph* graph,
-                                      GraphPatternDetecter::handle_t handler) {
+void GraphPatternDetector::operator()(Graph* graph,
+                                      GraphPatternDetector::handle_t handler) {
   if (!MarkPDNodesInGraph(*graph)) return;
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
@@ -68,7 +68,7 @@ void GraphPatternDetecter::operator()(Graph* graph,
   }
 }
 
-bool GraphPatternDetecter::MarkPDNodesInGraph(const ir::Graph& graph) {
+bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
   VLOG(4) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
@@ -114,10 +114,10 @@ bool IsNodesLink(Node* a, Node* b) {
   return false;
 }
 
-std::vector<GraphPatternDetecter::subgraph_t>
-GraphPatternDetecter::DetectPatterns() {
+std::vector<GraphPatternDetector::subgraph_t>
+GraphPatternDetector::DetectPatterns() {
   // Init empty subgraphs.
-  std::vector<GraphPatternDetecter::subgraph_t> result;
+  std::vector<GraphPatternDetector::subgraph_t> result;
   std::vector<HitGroup> init_groups;
   std::array<std::vector<HitGroup>, 2> bi_records;
   // PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
@@ -142,6 +142,7 @@ GraphPatternDetecter::DetectPatterns() {
     auto& pre_groups = bi_records[step % 2];
     auto& cur_groups = bi_records[1 - (step++ % 2)];
     cur_groups.clear();
+    if (pre_groups.empty()) break;
     // source -> target
     for (Node* source : pdnodes2nodes_[edge.first]) {
       for (Node* target : pdnodes2nodes_[edge.second]) {
@@ -164,7 +165,7 @@ GraphPatternDetecter::DetectPatterns() {
   }
 
   for (auto& group : bi_records[step % 2]) {
-    GraphPatternDetecter::subgraph_t subgraph;
+    GraphPatternDetector::subgraph_t subgraph;
     for (auto& role : group.roles) {
       subgraph.emplace(role.first, role.second);
     }
@@ -173,10 +174,10 @@ GraphPatternDetecter::DetectPatterns() {
   return result;
 }
 
-void GraphPatternDetecter::UniquePatterns(
-    std::vector<GraphPatternDetecter::subgraph_t>* subgraphs) {
+void GraphPatternDetector::UniquePatterns(
+    std::vector<GraphPatternDetector::subgraph_t>* subgraphs) {
   if (subgraphs->empty()) return;
-  std::vector<GraphPatternDetecter::subgraph_t> result;
+  std::vector<GraphPatternDetector::subgraph_t> result;
 
   std::unordered_set<size_t> set;
   for (auto& g : *subgraphs) {
@@ -193,7 +194,7 @@ void GraphPatternDetecter::UniquePatterns(
   *subgraphs = result;
 }
 
-void GraphPatternDetecter::RemoveOverlappedMatch(
+void GraphPatternDetector::RemoveOverlappedMatch(
     std::vector<subgraph_t>* subgraphs) {
   std::vector<subgraph_t> result;
   std::unordered_set<Node*> node_set;
@@ -215,6 +216,31 @@ void GraphPatternDetecter::RemoveOverlappedMatch(
   }
   *subgraphs = result;
 }
+
+std::string PDPattern::DotString() {
+  using inference::analysis::Dot;
+  Dot dot;
+  int id = 0;
+  // Create Nodes
+  std::unordered_map<PDNode*, std::string> node2dot;
+  for (const auto& node : nodes()) {
+    std::string node_id = "Node" + std::to_string(id++);
+    dot.AddNode(node_id, {}, node->name());
+    node2dot[node.get()] = node_id;
+  }
+  // Create Edges
+  for (const auto& edge : edges()) {
+    if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
+      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
+      continue;
+    }
+    auto& src = node2dot.at(edge.first);
+    auto& trg = node2dot.at(edge.second);
+    dot.AddEdge(src, trg, {});
+  }
+  return dot.Build();
+}
+
 
 }  // namespace ir
 }  // namespace framework

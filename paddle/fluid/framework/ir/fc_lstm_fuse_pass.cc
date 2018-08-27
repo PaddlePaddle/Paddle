@@ -6,7 +6,7 @@ namespace ir {
 
 std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  GraphPatternDetecter gpd;
+  GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
   std::unordered_set<int> fused_ops({// first lstm
@@ -19,7 +19,7 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
 
   std::unordered_set<Node*> marked_nodes;
 
-  auto handler = [&](const GraphPatternDetecter::subgraph_t& subgraph,
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
 
     auto* id = subgraph.at(gpd.pattern().RetriveNode("any_node"));

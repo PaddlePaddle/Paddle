@@ -109,31 +109,7 @@ class PDPattern {
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
 
-  std::string DotString() {
-    using inference::analysis::Dot;
-    Dot dot;
-    int id = 0;
-    // Create Nodes
-    std::unordered_map<PDNode*, std::string> node2dot;
-    for (const auto& node : nodes()) {
-      LOG(INFO) << "draw node " << node->name();
-      std::string node_id = "Node" + std::to_string(id++);
-      dot.AddNode(node_id, {}, node->name());
-      node2dot[node.get()] = node_id;
-    }
-    // Create Edges
-    for (const auto& edge : edges()) {
-      if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
-        LOG(ERROR) << "no node " << edge.first << " " << edge.second;
-        continue;
-      }
-      auto& src = node2dot.at(edge.first);
-      auto& trg = node2dot.at(edge.second);
-      dot.AddEdge(src, trg, {});
-    }
-    LOG(INFO) << dot.Build();
-    return dot.Build();
-  }
+  std::string DotString();
 
  private:
 #ifdef PADDLE_WITH_TESTING
@@ -150,7 +126,7 @@ class PDPattern {
 };
 
 /*
- * GraphPatternDetecter helps to detect the specific patterns in the graph.
+ * GraphPatternDetector helps to detect the specific patterns in the graph.
  * Input a pattern, output a list of the matched subgraphs/nodes.
  * This helper can be used to support fuse(conv+batchnorm => batchnorm e.g.).
  *
@@ -162,7 +138,7 @@ class PDPattern {
  *
  * Usage:
  *    // Create a detector
- *    GraphPatternDetecter detector;
+ *    GraphPatternDetector detector;
  *    // Define the detector's pattern, by adding PDNode and define the edges.
  *    auto* node0 = detector.mutable_pattern().AddNode(...)
  *    auto* node1 = detector.mutable_pattern().AddNode(...)
@@ -171,11 +147,11 @@ class PDPattern {
  *    detector.mutable_pattern().AddEdge(node0, node1);
  *    // Create an handler, to define the behavior of treating the filtered
  *    // subgraphs that comply with the patterns.
- *    GraphPatternDetecter::handle_t handler = some labmda
+ *    GraphPatternDetector::handle_t handler = some labmda
  *    // Execute the detector.
  *    detector(&graph, handler);
  */
-class GraphPatternDetecter {
+class GraphPatternDetector {
  public:
   using subgraph_t = std::unordered_map<PDNode*, Node*>;
 
@@ -212,6 +188,61 @@ class GraphPatternDetecter {
   PDPattern pattern_;
   std::unordered_map<const PDNode*, std::unordered_set<Node*>> pdnodes2nodes_;
 };
+
+// some helper methods.
+
+// Op's input.
+static bool VarLinksToOp(Node* node, const std::string& op_type) {
+  for (auto* out : node->outputs) {
+    if (out->IsOp() && out->Op()->Type() == op_type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Op's output.
+static bool VarLinksFromOp(Node* node, const std::string& op_type) {
+  for (auto* out : node->inputs) {
+    if (out->IsOp() && out->Op()->Type() == op_type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Check whether a var node is a op node's nth input.
+static bool IsNthInput(Node* var, Node* op, const std::string& argument,
+                       int nth) {
+  PADDLE_ENFORCE(var->IsVar());
+  PADDLE_ENFORCE(op->IsOp());
+  if (op->inputs.size() <= nth) return false;
+  return var->Name() == op->Op()->Input(argument)[nth];
+}
+
+static void GraphSafeRemoveNodes(
+    Graph* graph, const std::unordered_set<const Node*>& nodes) {
+  for (auto* node : nodes) {
+    graph->RemoveNode(const_cast<Node*>(node));
+  }
+
+  for (auto* node : graph->Nodes()) {
+    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
+      if (nodes.count(*it)) {
+        it = const_cast<Node*>(node)->inputs.erase(it);
+      } else
+        it++;
+    }
+    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
+      if (nodes.count(*it)) {
+        it = const_cast<Node*>(node)->outputs.erase(it);
+      } else
+        it++;
+    }
+  }
+}
+
+#define PDLINK(a, b) pattern->AddEdge(a, b);
 
 }  // namespace ir
 }  // namespace framework

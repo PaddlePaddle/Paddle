@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -43,7 +43,7 @@ struct Param {
 void PrepareParameters(Graph* graph, const Param& param);
 
 void FindWhileOp(Graph* graph) {
-  GraphPatternDetecter gpd;
+  GraphPatternDetector gpd;
   std::unordered_set<int> fused_external_ops(
       {35, 36, 37, 38, 43, 44, 49, 45, 46, 47, 41, 42, 53, 54, 48,
        57, 55, 56, 52, 74, 80, 77, 78, 79, 50, 77, 39, 40, 51});
@@ -57,7 +57,7 @@ void FindWhileOp(Graph* graph) {
   auto& marked_nodes =
       graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
 
-  auto handle = [&](const GraphPatternDetecter::subgraph_t& subgraph,
+  auto handle = [&](const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* g) {
     auto* while_pat_node = gpd.pattern().RetriveNode("while");
     auto* while_node = subgraph.at(while_pat_node);
@@ -108,29 +108,7 @@ void FindWhileOp(Graph* graph) {
   LINK_TO(hidden_init, lstm_op);
   LINK_TO(lstm_op, LSTMOUT);
 
-  // remove the unneeded nodes
-  LOG(INFO) << "clean nodes";
-  for (auto* node : marked_nodes) {
-    graph->RemoveNode(const_cast<Node*>(node));
-  }
-
-  LOG(INFO) << "clean edge";
-
-  for (auto* node : graph->Nodes()) {
-    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
-      if (marked_nodes.count(*it)) {
-        it = const_cast<Node*>(node)->inputs.erase(it);
-      } else
-        it++;
-    }
-    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
-      if (marked_nodes.count(*it)) {
-        it = const_cast<Node*>(node)->outputs.erase(it);
-      } else
-        it++;
-    }
-  }
-  LOG(INFO) << "finished";
+  GraphSafeRemoveNodes(graph, marked_nodes);
 }
 
 #define CHECK_P1(x) PADDLE_ENFORCE_NOT_NULL(x);
@@ -222,9 +200,6 @@ void PrepareParameters(Graph* graph, const Param& param) {
                     lstm_weight_t);
   PrepareLSTMBias(W_forget_b0_t, W_input_b0_t, W_output_b0_t, W_c_b0_t,
                   lstm_bias_t);
-  LOG(INFO) << "LSTMWeight : " << lstm_weight << " " << lstm_weight_t->dims();
-  LOG(INFO) << "get from scope LSTMWeigth: " << scope->FindVar(param.LSTMWeight)
-            << scope->FindVar(param.LSTMWeight)->Get<LoDTensor>().dims();
 }
 
 // Prepare parameters
