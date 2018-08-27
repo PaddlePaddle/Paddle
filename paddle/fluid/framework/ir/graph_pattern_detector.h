@@ -220,8 +220,8 @@ static bool IsNthInput(Node* var, Node* op, const std::string& argument,
   return var->Name() == op->Op()->Input(argument)[nth];
 }
 
-static void GraphSafeRemoveNodes(
-    Graph* graph, const std::unordered_set<const Node*>& nodes) {
+static void GraphSafeRemoveNodes(Graph* graph,
+                                 const std::unordered_set<const Node*>& nodes) {
   for (auto* node : nodes) {
     graph->RemoveNode(const_cast<Node*>(node));
   }

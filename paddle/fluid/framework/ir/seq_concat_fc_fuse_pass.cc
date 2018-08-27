@@ -1,3 +1,17 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
@@ -178,8 +192,6 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
 
-  LOG(INFO) << "\n" << pattern->DotString();
-
   if (!graph->Has(kGraphvizMarkedNodeAttr)) {
     graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
   }
@@ -212,7 +224,7 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
                            sequence_expand1_in->Name()});
     op_desc.SetInput("FCWeight", {fc_w->Name()});
     op_desc.SetInput("FCBias", {fc_bias->Name()});
-    op_desc.SetOutput("FCOut", {});
+    op_desc.SetOutput("FCOut", {fc_out->Name()});
     op_desc.SetOutput("Out", {fc_out->Name()});
     op_desc.SetAttr("fc_activation", act->Op()->Type());
 
@@ -227,6 +239,12 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     NODE_LINKS(sequence_expand0_in, op_node);
     NODE_LINKS(sequence_expand1_in, op_node);
     NODE_LINKS(op_node, fc_out);
+
+    marked_nodes.erase(fc_w);
+    marked_nodes.erase(fc_bias);
+    marked_nodes.erase(concat_in0);
+    marked_nodes.erase(sequence_expand0_in);
+    marked_nodes.erase(sequence_expand1_in);
 
     GraphSafeRemoveNodes(graph, marked_nodes);
   });

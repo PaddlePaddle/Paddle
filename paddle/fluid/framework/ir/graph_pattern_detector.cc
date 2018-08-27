@@ -241,7 +241,6 @@ std::string PDPattern::DotString() {
   return dot.Build();
 }
 
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
