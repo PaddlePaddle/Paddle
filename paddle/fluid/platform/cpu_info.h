@@ -51,7 +51,7 @@ typedef enum {
 } cpu_isa_t;  // Instruction set architecture
 
 // May I use some instruction
-inline bool MayIUse(const cpu_isa_t cpu_isa);
+bool MayIUse(const cpu_isa_t cpu_isa);
 
 }  // namespace jit
 

@@ -148,7 +148,8 @@ function(merge_static_libs TARGET_NAME)
       COMMAND rm "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a"
       COMMAND /usr/bin/libtool -static -o "${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.a" ${libfiles}
       )
-  else() # general UNIX: use "ar" to extract objects and re-add to a common lib
+  endif(APPLE)
+  if(LINUX) # general UNIX: use "ar" to extract objects and re-add to a common lib
     set(target_DIR ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.dir)
 
     foreach(lib ${libs})
@@ -187,7 +188,36 @@ function(merge_static_libs TARGET_NAME)
         COMMAND ${CMAKE_AR} crs ${target_LIBNAME} `find ${target_DIR} -name '*.o'`
         COMMAND ${CMAKE_RANLIB} ${target_LIBNAME}
         WORKING_DIRECTORY ${target_DIR})
-  endif()
+  endif(LINUX)
+  if(WIN32) # windows do not support gcc/nvcc combined compiling. Use msvc lib.exe to merge libs.
+    # Make the generated dummy source file depended on all static input
+    # libs. If input lib changes,the source file is touched
+    # which causes the desired effect (relink).
+    add_custom_command(OUTPUT ${target_SRCS}
+      COMMAND ${CMAKE_COMMAND} -E touch ${target_SRCS}
+      DEPENDS ${libs})
+
+    # Generate dummy staic lib
+    file(WRITE ${target_SRCS} "const char *dummy_${TARGET_NAME} = \"${target_SRCS}\";")
+    add_library(${TARGET_NAME} STATIC ${target_SRCS})
+    target_link_libraries(${TARGET_NAME} ${libs_deps})
+
+    foreach(lib ${libs})
+      # Get the file names of the libraries to be merged
+      #if(NOT $<TARGET_FILE:${lib}> MATCHES "lib.*\\.lib")
+      #  message("library" ${lib})
+      #  set(libfiles ${libfiles} lib$<TARGET_FILE:${lib}>)
+      #else()
+      set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+      #endif()
+    endforeach()
+   
+    # windows cmd return error in clean env.
+    # COMMAND del "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
+    add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.lib ${libfiles}
+      )
+  endif(WIN32)
 endfunction(merge_static_libs)
 
 function(cc_library TARGET_NAME)
@@ -195,6 +225,10 @@ function(cc_library TARGET_NAME)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
   cmake_parse_arguments(cc_library "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  if(WIN32)
+      # add libxxx.lib prefix in windows
+      set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
+  endif(WIN32)
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})
