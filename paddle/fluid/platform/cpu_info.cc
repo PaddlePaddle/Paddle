@@ -22,9 +22,13 @@ limitations under the License. */
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/types.h>
+
+#elif defined(_WIN32)
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#include <windows.h>
 #else
 #include <unistd.h>
-#endif
+#endif  // _WIN32
 
 #include <algorithm>
 #include "gflags/gflags.h"
@@ -32,16 +36,20 @@ limitations under the License. */
 DEFINE_double(fraction_of_cpu_memory_to_use, 1,
               "Default use 100% of CPU memory for PaddlePaddle,"
               "reserve the rest for page tables, etc");
-
+#if !defined(_WIN32)
 DEFINE_uint64(initial_cpu_memory_in_mb,
 #ifdef PADDLE_WITH_MKLDNN
               /* Aligned with mozga-intel, MKLDNN need at least 5000 MB
                * to obtain the best performance*/
-              5000,
+              5000ul,
 #else
-              500,
+              500ul,
 #endif
               "Initial CPU memory for PaddlePaddle, in MD unit.");
+#else
+DEFINE_uint64(initial_cpu_memory_in_mb, 500ul,
+              "Initial CPU memory for PaddlePaddle, in MD unit.");
+#endif  // !defined(_WIN32)
 
 DEFINE_double(
     fraction_of_cuda_pinned_memory_to_use, 0.5,
@@ -60,6 +68,11 @@ inline size_t CpuTotalPhysicalMemory() {
   size_t len = sizeof(size);
   if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
   return 0L;
+#elif defined(_WIN32)
+  MEMORYSTATUSEX sMeminfo;
+  sMeminfo.dwLength = sizeof(sMeminfo);
+  GlobalMemoryStatusEx(&sMeminfo);
+  return sMeminfo.ullTotalPhys;
 #else
   int64_t pages = sysconf(_SC_PHYS_PAGES);
   int64_t page_size = sysconf(_SC_PAGE_SIZE);

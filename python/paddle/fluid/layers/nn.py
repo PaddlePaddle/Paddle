@@ -105,6 +105,7 @@ __all__ = [
     'flatten',
     'sequence_mask',
     'stack',
+    'unstack',
 ]
 
 
@@ -5601,3 +5602,44 @@ def stack(x, axis=0):
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
     return out
+
+
+def unstack(x, axis=0, num=None):
+    """
+    **UnStack Layer**
+
+    This layer unstacks input :code:`x` into several tensors along axis.
+   
+    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
+    If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
+    and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
+    raised. 
+
+    Args:
+        x (Variable): Input variable. 
+        axis (int): The axis along which the input is unstacked.
+        num (int|None): The number of output variables.
+    
+    Returns:
+        list(Variable): The unstacked variables.
+    
+    """
+
+    helper = LayerHelper('unstack', **locals())
+    if num is None:
+        if axis is None or x.shape[axis] <= 0:
+            raise ValueError('unknown unstack number')
+        else:
+            num = x.shape[axis]
+
+    outs = []
+    for _ in num:
+        outs.append(helper.create_tmp_variable(x.dtype))
+
+    helper.append_op(
+        type='unstack',
+        inputs={'X': [x]},
+        outputs={'Y': outs},
+        attrs={'axis': axis,
+               'num': num})
+    return outs
