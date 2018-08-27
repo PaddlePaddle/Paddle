@@ -50,6 +50,33 @@ pop-up box, choose the current release branch and click "Run Build" button. You 
 * pypi does not allow overwrite the already uploaded version of wheel package, even if you delete the
   old version. you must change the version number before upload a new one.
 
+### Publish wheel Packages for MacOS
+
+You need to build the binary wheel package for MacOS before publishing, to
+make sure that the package can be used by many versions of MacOS
+(10.11, 10.12, 10.13) and different python installs (python.org, homebrew, etc.),
+you must build the package ***exactly*** following below steps:
+
+Build steps:
+
+1. install python from python.org downloads, and make sure it's currently in use
+   in your system.
+1. `export MACOSX_DEPLOYMENT_TARGET=10.11`, use `10.11` is enough for recent versions.
+1. `git clone https://github.com/PaddlePaddle/Paddle.git && cd Paddle && mkdir build && cd build`
+1. `cmake -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_SYSTEM_BLAS=OFF  ..`, make sure the output of `cmake` command is using the correct python interpreter installed from python.org
+1. `make -j`
+1. `pip install delocate`
+1. `mkdir fixed_wheel && delocate-wheel -w fixed_wheel python/dist/*.whl`
+
+Then the whl under `fixed_wheel` is ready to upload.
+
+Install steps:
+
+1. run `pip install paddlepaddle...whl`
+1. find the `libpython.dylib` that are currently in use:
+    - for python.org package installs, do nothing.
+    - for other python installs, find the path of `libpython*.dylib` and `export LD_LIBRARY_PATH=you path && DYLD_LIBRARY_PATH=your path`
+
 ## Publish Docker Images
 
 Our CI tool will push latest images to DockerHub, so we only need to push a version tag like:

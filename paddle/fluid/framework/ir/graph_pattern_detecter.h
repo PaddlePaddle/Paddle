@@ -96,7 +96,8 @@ class PDPattern {
 
   void AddEdge(PDNode* a, PDNode* b);
 
-  PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = "");
+  PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
+  PDNode* RetriveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
@@ -107,8 +108,12 @@ class PDPattern {
   FRIEND_TEST(PDPattern, NewNode);
 #endif
 
+  static std::string NewID() { return "pdnode-" + std::to_string(id_++); }
+
   std::vector<std::unique_ptr<PDNode>> nodes_;
   std::vector<edge_t> edges_;
+  std::unordered_map<std::string, PDNode*> node_map_;
+  static size_t id_;
 };
 
 /*

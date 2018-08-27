@@ -9,7 +9,6 @@ function(op_library TARGET)
     # op_library is a function to create op library. The interface is same as
     # cc_library. But it handle split GPU/CPU code and link some common library
     # for ops.
-    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
     set(cc_srcs)
     set(cu_srcs)
     set(hip_cu_srcs)
@@ -86,12 +85,13 @@ function(op_library TARGET)
 
     #remove windows unsupported op
     if (WIN32)
-    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op")
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
     endforeach()
     endif(WIN32)
+    set(OP_LIBRARY ${TARGET} ${OP_LIBRARY} PARENT_SCOPE)
 
     list(LENGTH op_library_DEPS op_library_DEPS_len)
     if (${op_library_DEPS_len} GREATER 0)
@@ -319,8 +319,9 @@ foreach(src ${GENERAL_OPS})
 endforeach()
 
 file(APPEND ${pybind_file} "USE_OP(less_than);\nUSE_OP(logical_and);\nUSE_NO_KERNEL_OP(read_from_array);\n")
-
+if (NOT WIN32)
 add_subdirectory(reader)
+endif(NOT WIN32)
 foreach(src ${READER_LIBRARY})
     set(OP_LIBRARY ${src} ${OP_LIBRARY})
 endforeach()
