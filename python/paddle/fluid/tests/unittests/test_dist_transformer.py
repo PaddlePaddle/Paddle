@@ -24,7 +24,7 @@ class TestDistTransformer2x2Sync(TestDistBase):
 
     def test_transformer(self):
         self.check_with_place(
-            "dist_transformer.py", delta=400, check_error_log=True)
+            "dist_transformer.py", delta=400, check_error_log=False)
 
 
 """
