@@ -40,7 +40,8 @@ class SequencePadOp : public framework::OperatorWithKernel {
                    "The Input(PadValue) must be a scalar or a tensor whose "
                    "shape equals to time steps in sequences");
 
-    int batch_dim_size = -1;
+    int out_dim_0 = -1;
+    int out_dim_1 = -1;
 
     if (ctx->IsRuntime()) {
       // run time
@@ -64,7 +65,8 @@ class SequencePadOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GE(padded_length, max_seq_len,
                         "The Attr(padded_length) must be -1 or an int greater "
                         "than the length of the longest original sequence.");
-      batch_dim_size = padded_length * seq_num;
+      out_dim_0 = seq_num;
+      out_dim_1 = padded_length;
     } else {
       // compile time
       framework::VarDesc* x_desc =
@@ -72,9 +74,11 @@ class SequencePadOp : public framework::OperatorWithKernel {
       PADDLE_ENFORCE_GE(x_desc->GetLoDLevel(), 1);
     }
 
-    auto out_dims = x_dims;
-    out_dims[0] = batch_dim_size;
-    ctx->SetOutputDim("Out", out_dims);
+    std::vector<int> out_dims_vec{out_dim_0, out_dim_1};
+    auto time_step_dims_vec = framework::vectorize2int(time_step_dims);
+    out_dims_vec.insert(out_dims_vec.end(), time_step_dims_vec.begin(),
+                        time_step_dims_vec.end());
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dims_vec));
   }
 };
 
@@ -118,9 +122,9 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
       and Input(PadValue):
           PadValue.data = [0]
       and attribite 'padded_length' = 4,
-      then we get 1-level LoDTensor:
-          Out.lod = [[0,       4,          8]]
-          Out.data = [a, b, 0, 0, c, d, e, 0]
+      then we get LoDTensor:
+          Out.data = [[a, b, 0, 0], 
+                      [c, d, e, 0]]
       
       Case 2:
 
@@ -131,9 +135,9 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           PadValue.data = [0]
       and attribite 'padded_length' = -1, which mean using the length 
       of longest input sequence(3 in this case),
-      then we get 1-level LoDTensor:
-          Out.lod = [[0,                       3,                           6]]
-          Out.data = [[a1, a2], [b1, b2], [0, 0], [c1, c2], [d1, d2], [e1, e2]]
+      then we get LoDTensor:
+          Out.data = [[[a1, a2], [b1, b2], [0, 0]], 
+                      [[c1, c2], [d1, d2], [e1, e2]]]
 
       Case 3:
 
@@ -144,9 +148,9 @@ class SequencePadOpMaker : public framework::OpProtoAndCheckerMaker {
           PadValue.data = [p1, p2]
       and attribite 'padded_length' = -1, which mean using the length 
       of longest input sequence(3 in this case),
-      then we get 1-level LoDTensor:
-          Out.lod = [[0,                         3,                           6]]
-          Out.data = [[a1, a2], [b1, b2], [p1, p2], [c1, c2], [d1, d2], [e1, e2]]
+      then we get LoDTensor:
+          Out.data = [[[a1, a2], [b1, b2], [p1, p2]], 
+                      [[c1, c2], [d1, d2], [e1, e2]]]
 
     )DOC");
   }
