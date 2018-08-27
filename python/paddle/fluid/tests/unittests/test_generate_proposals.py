@@ -87,7 +87,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
     keep = filter_boxes(proposals, min_size, im_info)
     proposals = proposals[keep, :]
     scores = scores[keep, :]
-
+    
     # apply loose nms (e.g. threshold = 0.7)
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
@@ -205,7 +205,7 @@ def iou(box_a, box_b):
     yb = min(ymax_a, ymax_b)
 
     inter_area = max(xb - xa, 0.0) * max(yb - ya, 0.0)
-
+     
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 
     return iou_ratio

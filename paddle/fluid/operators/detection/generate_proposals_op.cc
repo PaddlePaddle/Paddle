@@ -273,7 +273,7 @@ Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
   for (int i = 0; i < selected_num; ++i) {
     keep_data[i] = selected_indices[i];
   }
-
+  
   return keep_nms;
 }
 
@@ -386,21 +386,22 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
         [scores_data](const int64_t &i, const int64_t &j) {
           return scores_data[i] > scores_data[j];
         };
-
+    
     if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
       std::sort(index, index + scores_slice.numel(), compare);
     } else {
-      std::nth_element(index, index + pre_nms_top_n,
-                       index + scores_slice.numel(), compare);
+      std::nth_element(index, index + pre_nms_top_n, index + scores_slice.numel(),
+                       compare);
       index_t.Resize({pre_nms_top_n});
     }
+
 
     Tensor scores_sel, bbox_sel, anchor_sel, var_sel;
     scores_sel.mutable_data<T>({index_t.numel(), 1}, ctx.GetPlace());
     bbox_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     anchor_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     var_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
-
+    
     CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
     CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
     CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
