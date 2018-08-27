@@ -20,29 +20,10 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/timer.h"
 
 namespace paddle {
 namespace inference {
-
-// Timer for timer
-class Timer {
- public:
-  double start;
-  double startu;
-  void tic() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    start = tp.tv_sec;
-    startu = tp.tv_usec;
-  }
-  double toc() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    double used_time_ms =
-        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
-    return used_time_ms;
-  }
-};
 
 void split(const std::string &str, char sep, std::vector<std::string> *pieces) {
   pieces->clear();
@@ -95,14 +76,18 @@ std::string to_string<std::vector<std::vector<float>>>(
   }
   return ss.str();
 }
-// clang-format off
-void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>> &data) {
+
+void TensorAssignData(PaddleTensor *tensor,
+                      const std::vector<std::vector<float>> &data) {
   // Assign buffer
-  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1, [](int a, int b) { return a * b; });
+  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1,
+                            [](int a, int b) { return a * b; });
   tensor->data.Resize(sizeof(float) * dim);
   int c = 0;
   for (const auto &f : data) {
-    for (float v : f) { static_cast<float *>(tensor->data.data())[c++] = v; }
+    for (float v : f) {
+      static_cast<float *>(tensor->data.data())[c++] = v;
+    }
   }
 }
 

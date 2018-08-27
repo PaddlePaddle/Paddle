@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {
