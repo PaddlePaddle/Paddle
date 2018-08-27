@@ -273,6 +273,7 @@ Tensor NMS(const platform::DeviceContext &ctx, Tensor *bbox, Tensor *scores,
   for (int i = 0; i < selected_num; ++i) {
     keep_data[i] = selected_indices[i];
   }
+  
   return keep_nms;
 }
 
@@ -385,20 +386,22 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
         [scores_data](const int64_t &i, const int64_t &j) {
           return scores_data[i] > scores_data[j];
         };
+    
     if (pre_nms_top_n <= 0 || pre_nms_top_n >= scores_slice.numel()) {
       std::sort(index, index + scores_slice.numel(), compare);
     } else {
-      std::nth_element(index, index + pre_nms_top_n,
-                       index + scores_slice.numel(), compare);
+      std::nth_element(index, index + pre_nms_top_n, index + scores_slice.numel(),
+                       compare);
       index_t.Resize({pre_nms_top_n});
     }
+
 
     Tensor scores_sel, bbox_sel, anchor_sel, var_sel;
     scores_sel.mutable_data<T>({index_t.numel(), 1}, ctx.GetPlace());
     bbox_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     anchor_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     var_sel.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
-
+    
     CPUGather<T>(ctx, scores_slice, index_t, &scores_sel);
     CPUGather<T>(ctx, bbox_deltas_slice, index_t, &bbox_sel);
     CPUGather<T>(ctx, anchors, index_t, &anchor_sel);
@@ -407,7 +410,9 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     Tensor proposals;
     proposals.mutable_data<T>({index_t.numel(), 4}, ctx.GetPlace());
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
+
     ClipTiledBoxes<T>(ctx, im_info_slice, &proposals);
+
     Tensor keep;
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, &keep);
 
@@ -416,7 +421,6 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     scores_filter.mutable_data<T>({keep.numel(), 1}, ctx.GetPlace());
     CPUGather<T>(ctx, proposals, keep, &bbox_sel);
     CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
-
     if (nms_thresh <= 0) {
       return std::make_pair(bbox_sel, scores_sel);
     }
@@ -429,8 +433,8 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     proposals.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
     scores_sel.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());
-    CPUGather<T>(ctx, bbox_sel, keep, &proposals);
-    CPUGather<T>(ctx, scores_filter, keep, &scores_sel);
+    CPUGather<T>(ctx, bbox_sel, keep_nms, &proposals);
+    CPUGather<T>(ctx, scores_filter, keep_nms, &scores_sel);
 
     return std::make_pair(proposals, scores_sel);
   }

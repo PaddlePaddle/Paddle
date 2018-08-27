@@ -76,25 +76,21 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
         inds = np.argpartition(-scores.squeeze(), pre_nms_topN)[:pre_nms_topN]
         order = np.argsort(-scores[inds].squeeze())
         order = inds[order]
-
     scores = scores[order, :]
     bbox_deltas = bbox_deltas[order, :]
     all_anchors = all_anchors[order, :]
-
     proposals = box_coder(all_anchors, bbox_deltas, variances)
-
     # clip proposals to image (may result in proposals with zero area
     # that will be removed in the next step)
     proposals = clip_tiled_boxes(proposals, im_info[:2])
-
     # remove predicted boxes with height or width < min_size
     keep = filter_boxes(proposals, min_size, im_info)
     proposals = proposals[keep, :]
     scores = scores[keep, :]
+   
     # apply loose nms (e.g. threshold = 0.7)
     # take post_nms_topN (e.g. 1000)
     # return the top proposals
-
     if nms_thresh > 0:
         keep = nms(boxes=proposals,
                    scores=scores,
@@ -198,8 +194,8 @@ def iou(box_a, box_b):
     xmax_b = max(box_b[0], box_b[2])
     ymax_b = max(box_b[1], box_b[3])
 
-    area_a = (ymax_a - ymin_a) * (xmax_a - xmin_a)
-    area_b = (ymax_b - ymin_b) * (xmax_b - xmin_b)
+    area_a = (ymax_a - ymin_a + 1) * (xmax_a - xmin_a + 1)
+    area_b = (ymax_b - ymin_b + 1) * (xmax_b - xmin_b + 1)
     if area_a <= 0 and area_b <= 0:
         return 0.0
 
@@ -209,10 +205,7 @@ def iou(box_a, box_b):
     yb = min(ymax_a, ymax_b)
 
     inter_area = max(xb - xa, 0.0) * max(yb - ya, 0.0)
-
-    box_a_area = (box_a[2] - box_a[0]) * (box_a[3] - box_a[1])
-    box_b_area = (box_b[2] - box_b[0]) * (box_b[3] - box_b[1])
-
+     
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 
     return iou_ratio
@@ -290,22 +283,22 @@ class TestGenerateProposalsOp(OpTest):
 
     def init_test_params(self):
         self.pre_nms_topN = 12000  # train 12000, test 2000
-        self.post_nms_topN = 5  # train 6000, test 1000
-        self.nms_thresh = 0.1
-        self.min_size = 0.5
-        self.eta = 0.0
+        self.post_nms_topN = 5000  # train 6000, test 1000
+        self.nms_thresh = 0.7
+        self.min_size = 3.0
+        self.eta = 0.8
 
     def init_test_input(self):
         batch_size = 1
         input_channels = 20
-        layer_h = 8
-        layer_w = 8
+        layer_h = 16
+        layer_w = 16
         input_feat = np.random.random(
             (batch_size, input_channels, layer_h, layer_w)).astype('float32')
         self.anchors, self.variances = anchor_generator_in_python(
             input_feat=input_feat,
-            anchor_sizes=[64., 128.],
-            aspect_ratios=[1.0],
+            anchor_sizes=[16., 32.],
+            aspect_ratios=[0.5, 1.0],
             variances=[1.0, 1.0, 1.0, 1.0],
             stride=[16.0, 16.0],
             offset=0.5)
