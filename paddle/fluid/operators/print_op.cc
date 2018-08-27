@@ -13,8 +13,8 @@
    limitations under the License. */
 
 #include <algorithm>
-
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace operators {
