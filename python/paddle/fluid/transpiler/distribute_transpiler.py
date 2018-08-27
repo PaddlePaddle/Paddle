@@ -43,6 +43,8 @@ from ..framework import Program, default_main_program, \
 from .details import *
 from functools import reduce
 
+from paddle.fluid.transpiler.details import program_to_code, block_to_code
+
 LOOKUP_TABLE_TYPE = "lookup_table"
 LOOKUP_TABLE_GRAD_TYPE = "lookup_table_grad"
 OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
@@ -207,6 +209,8 @@ class DistributeTranspiler(object):
         pserver_endpoints = pservers.split(",")
         self.pserver_endpoints = pserver_endpoints
         self.optimize_ops, self.params_grads = self._get_optimize_pass()
+        #print("ops:", self.optimize_ops)
+        #print("ops_vars:", self.params_grads)
 
         ps_dispatcher = self.config.split_method(self.pserver_endpoints)
         self.has_distributed_lookup_table = self._has_distributed_lookup_table()
@@ -534,7 +538,13 @@ class DistributeTranspiler(object):
                 __clone_lr_op_sub_block__(cloned_op, pserver_program,
                                           lr_decay_block)
 
-        # append op to the current block
+            #print("lr_decay_block:")
+            #block_to_code(lr_decay_block, 0)
+
+            #print("opt_op_on_pserver", opt_op_on_pserver)
+            #print("optimize_ops", self.optimize_ops)
+
+            # append op to the current block
         grad_to_block_id = []
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):
@@ -547,6 +557,8 @@ class DistributeTranspiler(object):
                 # find the origin @GRAD var before clipping
                 grad_varname_for_block = __op_have_grad_input__(op)
                 if ufind.is_connected(op, opt_op) and grad_varname_for_block:
+                    #print("op_type:", op.type)
+                    #print("opt_op:", opt_op.type)
                     merged_var = self._append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, endpoint,
                         grad_to_block_id, self.origin_program)

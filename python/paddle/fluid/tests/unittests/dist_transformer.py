@@ -28,6 +28,8 @@ import six
 import transformer_model
 import paddle.dataset.wmt16 as wmt16
 
+from paddle.fluid.transpiler.details import program_to_code, block_to_code
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
@@ -186,6 +188,8 @@ class DistTransformer2x2(object):
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
 
+        program_to_code(pserver_prog)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -214,6 +218,8 @@ class DistTransformer2x2(object):
             trainer_prog = t.get_trainer_program()
         else:
             trainer_prog = fluid.default_main_program()
+
+        program_to_code(trainer_prog)
 
         startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())
