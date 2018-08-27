@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
-#include <dlfcn.h>
-
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -23,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
