@@ -31,7 +31,6 @@ Steps to transpile pserver:
 """
 
 import math
-import random
 import numpy as np
 import collections
 import six
@@ -239,8 +238,8 @@ class DistributeTranspiler(object):
         grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
 
         if not self.config.slice_var_up:
-            random.seed(self.origin_program.random_seed)
-            random.shuffle(grad_var_mapping_items)
+            np.random.seed(self.origin_program.random_seed)
+            np.random.shuffle(grad_var_mapping_items)
 
         grad_name_to_send_dummy_out = dict()
         for grad_varname, splited_vars in grad_var_mapping_items:
