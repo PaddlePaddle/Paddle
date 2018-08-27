@@ -47,7 +47,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
-#if !defined(__APPLE__) and !defined(_WIN32)
+#if !defined(__APPLE__) && !defined(_WIN32)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -260,12 +260,6 @@ inline void throw_on_error(T e) {
     }                                                                   \
   } while (false)
 
-#define PADDLE_THROW_EOF()                                                     \
-  do {                                                                         \
-    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
-                                           __LINE__);                          \
-  } while (false)
-
 #else
 #define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif  // REPLACE_ENFORCE_GLOG
@@ -280,6 +274,12 @@ inline void throw_on_error(T e) {
 
 #define PADDLE_ENFORCE(x, ...) x
 #endif  // !_WIN32
+
+#define PADDLE_THROW_EOF()                                                     \
+  do {                                                                         \
+    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
+                                           __LINE__);                          \
+  } while (false)
 
 /*
  * Some enforce helpers here, usage:
