@@ -38,6 +38,8 @@ from transformer_train import train_loop
 from transformer_model import transformer
 from optim import LearningRateScheduler
 
+from test_dist_base import TestDistRunnerBase, runtime_main
+
 
 def get_model(is_dist, is_async):
     sum_cost, avg_cost, predict, token_num = transformer(
@@ -101,10 +103,10 @@ def update_args():
     merge_cfg_from_list(dict_args, [TrainTaskConfig, ModelHyperParams])
 
 
-class DistTransformer2x2(object):
+class DistTransformer2x2(TestDistRunnerBase):
     def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
-                    trainer_id, is_async):
-        get_model(True, is_async)
+                    trainer_id, sync_mode):
+        get_model(True, not sync_mode)
         t = get_transpiler(trainer_id,
                            fluid.default_main_program(), pserver_endpoints,
                            trainers)
@@ -132,15 +134,14 @@ class DistTransformer2x2(object):
 
     def run_trainer(self,
                     place,
-                    dev_count,
                     endpoints,
                     trainer_id,
                     trainers,
                     is_dist=True,
-                    is_async=False):
+                    sync_mode=True):
 
         sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
-            is_dist, is_async)
+            is_dist, not sync_mode)
 
         if is_dist:
             t = get_transpiler(trainer_id,
@@ -157,7 +158,7 @@ class DistTransformer2x2(object):
 
         TrainTaskConfig.local = not is_dist
 
-        train_loop(startup_exe, trainer_prog, dev_count, sum_cost, avg_cost,
+        train_loop(startup_exe, trainer_prog, 1, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
 
 
@@ -188,54 +189,12 @@ def download_files():
     paddle.dataset.common.download(test_url, 'test_dist_transformer', test_md5)
 
 
-def main(role="pserver",
-         endpoints="127.0.0.1:9123",
-         trainer_id=0,
-         current_endpoint="127.0.0.1:9123",
-         trainers=1,
-         is_dist=True,
-         is_async=False):
-
-    model = DistTransformer2x2()
-
-    if role == "PSERVER" or (not TrainTaskConfig.use_gpu):
-        place = fluid.CPUPlace()
-        dev_count = int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
-    else:
-        place = fluid.CUDAPlace(0)
-        dev_count = 1
-
-    if role == "pserver":
-        model.run_pserver(endpoints, trainers, current_endpoint, trainer_id,
-                          is_async)
-    else:
-        model.run_trainer(place, dev_count, endpoints, trainer_id, trainers,
-                          is_dist, is_async)
-
-
 if __name__ == "__main__":
     if len(sys.argv) != 8:
         print(
             "Usage: python dist_transformer.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist] [sync_mode]"
         )
-    role = sys.argv[1]
-    endpoints = sys.argv[2]
-    trainer_id = int(sys.argv[3])
-    current_endpoint = sys.argv[4]
-    trainers = int(sys.argv[5])
-    is_dist = True if sys.argv[6] == "TRUE" else False
-    # FIXME(typhoonzero): refine this test.
-    is_async = True if sys.argv[7] == "TRUE" else False
 
     download_files()
-
     update_args()
-
-    main(
-        role=role,
-        endpoints=endpoints,
-        trainer_id=trainer_id,
-        current_endpoint=current_endpoint,
-        trainers=trainers,
-        is_dist=is_dist,
-        is_async=is_async)
+    runtime_main(DistTransformer2x2)
