@@ -103,6 +103,8 @@ __all__ = [
     'rank_loss',
     'prelu',
     'flatten',
+    'sequence_mask',
+    'stack',
 ]
 
 
@@ -5516,4 +5518,86 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out},
         attrs={"axis": axis})
+    return out
+
+
+def sequence_mask(x, maxlen=None, dtype='int64', name=None):
+    """
+    **SequenceMask Layer**
+
+    This layer outputs a mask according to the input :code:`x` and
+    :code:`maxlen` with data type of :code:`dtype`.
+
+    Supposing :code:`x` is a Tensor with shape [d_1, d_2, ..., d_n], the
+    :code:`y` is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
+    
+    .. math::
+     
+        y(i_1, i_2,..., i_n, j) = (j < x(i_1, i_2,..., i_n))
+
+    Args:
+        x (Variable): Input tensor of sequence_mask layer, 
+                      whose elements are integers less than :code:`maxlen`.
+        maxlen (int|None): Maximum length of the sequence. If :code:`maxlen`
+                           is None, it would be replace with :math:`max(x)`.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of the output.
+        name (str|None): A name for this layer(optional). If set None, the 
+                         layer will be named automatically.  
+    
+    Returns:
+        Variable: The output sequence mask.
+    
+    """
+
+    helper = LayerHelper('sequence_mask', **locals())
+    if name is None:
+        out = helper.create_tmp_variable(dtype=dtype)
+    else:
+        out = helper.create_tmp_variable(dtype=dtype, name=name)
+
+    helper.append_op(
+        type='sequence_mask',
+        inputs={'X': [x]},
+        outputs={'Y': out},
+        attrs={
+            'max_len': maxlen if maxlen is not None else -1,
+            'out_dtype': out.dtype
+        })
+    return out
+
+
+def stack(x, axis=0):
+    """
+    **Stack Layer**
+
+    This layer stacks all of the input :code:`x` along axis.
+   
+    Input :code:`x` can be a single variable, a :code:`list` of variables, 
+    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or 
+    :code:`tuple`, the shapes of all these variables must be the same.  
+    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`, 
+    the shape of the output variable would be 
+    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`. 
+    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
+    If :code:`axis` is None, it would be replaced with 0. 
+
+    Args:
+        x (Variable|list(Variable)|tuple(Variable)): Input variables. 
+        axis (int|None): The axis along which all inputs are stacked.
+    
+    Returns:
+        Variable: The stacked variable.
+    
+    """
+
+    helper = LayerHelper('stack', **locals())
+    axis = 0 if axis is None else axis
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        x = [x]
+
+    out = helper.create_tmp_variable(x[0].dtype)
+    helper.append_op(
+        type='stack', inputs={'X': x}, outputs={'Y': out},
+        attrs={'axis': axis})
     return out
