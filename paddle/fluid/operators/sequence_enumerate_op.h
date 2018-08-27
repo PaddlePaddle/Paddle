@@ -37,14 +37,16 @@ class SequenceEnumerateKernel : public framework::OpKernel<T> {
         "The actual input data's size mismatched with LoD information.");
 
     // Generate enumerate sequence set
-    auto seq_length = in_dims[0];
+    auto lod0 = in_lod[0];
     auto in_data = in->data<T>();
     auto out_data = out->mutable_data<T>(context.GetPlace());
-    for (int idx = 0; idx < seq_length; ++idx) {
-      for (int word_idx = 0; word_idx < win_size; ++word_idx) {
-        int word_pos = idx + word_idx;
-        out_data[win_size * idx + word_idx] =
-            word_pos < seq_length ? in_data[word_pos] : pad_value;
+    for (size_t i = 0; i < lod0.size() - 1; ++i) {
+      for (size_t idx = lod0[i]; idx < lod0[i + 1]; ++idx) {
+        for (int word_idx = 0; word_idx < win_size; ++word_idx) {
+          size_t word_pos = idx + word_idx;
+          out_data[win_size * idx + word_idx] =
+              word_pos < lod0[i + 1] ? in_data[word_pos] : pad_value;
+        }
       }
     }
   }

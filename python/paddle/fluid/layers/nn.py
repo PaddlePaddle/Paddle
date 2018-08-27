@@ -5534,14 +5534,14 @@ def sequence_enumerate(input, win_size, pad_value, name=None):
     Case 1:
       Input:
         X.lod = [[0, 3, 5]]
-        X.data = [1, 2, 3, 4, 5]
+        X.data = [[1], [2], [3], [4], [5]]
         X.dims = [5, 1]
       Attrs:
         win_size = 2
         pad_value = 0
       Output:
         Out.lod = [[0, 3, 5]]
-        Out.data = [[1, 2], [2, 3], [3, 4], [4, 5], [0, 0]]
+        Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
         Out.dims = [5, 2]
 
     Args:
@@ -5567,7 +5567,7 @@ def sequence_enumerate(input, win_size, pad_value, name=None):
         attrs={'win_size': win_size,
                'pad_value': pad_value})
 
-    
+
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     """
     **SequenceMask Layer**
