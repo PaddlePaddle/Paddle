@@ -1261,8 +1261,8 @@ def generate_proposals(scores,
                        im_info,
                        anchors,
                        variances,
-                       pre_nms_topN=6000,
-                       post_nms_topN=1000,
+                       pre_nms_top_n=6000,
+                       post_nms_top_n=1000,
                        nms_thresh=0.5,
                        min_size=0.1,
                        eta=1.0,
@@ -1270,7 +1270,7 @@ def generate_proposals(scores,
     """
     ** Generate proposal labels Faster-RCNN **
 	
-	This operation proposes rois according to each box with their probability to be a foreground object and 
+	This operation proposes RoIs according to each box with their probability to be a foreground object and 
 	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
 	could be used to train detection net.
 
@@ -1286,13 +1286,14 @@ def generate_proposals(scores,
 	Args:
 		scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
 			N is batch size, A is number of anchors, H and W are height and width of the feature map.
-		bboxDeltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
+		bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
 		im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
 			between origin image size and the size of feature map.
-		Anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, num_anchors, 4]. H and W are height and width of the feature map,
+		anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
               		num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
-		Variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
-		pre_nms_topN(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
+		variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
+		pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
+		post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
 		nms_thresh(float): Threshold in NMS, 0.5 by default.
 		min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
 		eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.

@@ -459,7 +459,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
 Generate Proposals OP
 
 This operator proposes rois according to each box with their probability to be a foreground object and 
-the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
+the box can be calculated by anchors. Bbox_deltais and scores are the output of RPN. Final proposals
 could be used to train detection net.
 
 Scores is the probability for each box to be an object. In format of (N, A, H, W) where N is batch size, A is number
