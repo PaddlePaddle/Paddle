@@ -343,8 +343,8 @@ function assert_api_not_changed() {
     API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/API.spec" || true`
     echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
-        # TODO: curl -H 'Authorization: token ${TOKEN}'
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
