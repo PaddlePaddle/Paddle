@@ -751,7 +751,7 @@ def load_inference_model(dirname,
 
     program = Program.parse_from_string(program_desc_str)
     # TODO(panyx0718): Link to our version and compatibility guide.
-    if program._version() != 0:
+    if not core._is_program_version_supported(program._version()):
         raise ValueError("Unsupported program version: %d\n" %
                          program._version())
     # Binary data also need versioning.
