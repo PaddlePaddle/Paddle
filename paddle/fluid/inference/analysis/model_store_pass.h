@@ -44,6 +44,8 @@ class ModelStorePass : public DataFlowGraphPass {
     model in the disk, and that model can be reloaded for prediction again.)DD";
   }
 
+  bool Finalize() override;
+
  private:
   Argument* argument_{nullptr};
 };

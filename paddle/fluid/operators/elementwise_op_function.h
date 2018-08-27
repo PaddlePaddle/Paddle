@@ -81,6 +81,9 @@ inline framework::DDim trim_trailing_singular_dims(
   for (int i = 0; i < actual_dims_size; ++i) {
     trim_dims[i] = dims[i];
   }
+  if (trim_dims.size() == 0) {
+    return framework::DDim(framework::make_dim());
+  }
   framework::DDim actual_dims = framework::make_ddim(trim_dims);
   return actual_dims;
 }
@@ -356,7 +359,7 @@ static __global__ void ElemwiseGradBroadcast1CUDAKernel(
   int j = blockIdx.x;
   int i = threadIdx.x;
   int tid = threadIdx.x;
-  T val(0);
+  T val = 0;
 
   do {
     int x_offset = i * w + j;
@@ -424,7 +427,7 @@ static __global__ void ElemwiseGradBroadcast2CUDAKernel(
   int tid = threadIdx.x;
   int j = blockIdx.x;
 
-  T val(0);
+  T val = 0;
   int ttid = tid;
 
   while (true) {
