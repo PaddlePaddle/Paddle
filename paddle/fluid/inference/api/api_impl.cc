@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <algorithm>
-#include <chrono>  // NOLINT
 #include <map>
 #include <set>
 #include <sstream>
@@ -22,29 +21,14 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
+using Timer = paddle::inference::Timer;
 
 namespace paddle {
 namespace {
-
-// Timer for timer
-class Timer {
- public:
-  std::chrono::high_resolution_clock::time_point start;
-  std::chrono::high_resolution_clock::time_point startu;
-
-  void tic() { start = std::chrono::high_resolution_clock::now(); }
-  double toc() {
-    startu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span =
-        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
-                                                                  start);
-    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
-    return used_time_ms;
-  }
-};
 
 template <class T>
 std::string num2str(T a) {
