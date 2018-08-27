@@ -17,12 +17,20 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-bool IsProgramVersionSupported(int version) {
+bool IsProgramVersionSupported(int64_t version) {
   static int num_supported =
       sizeof(kSupportedProgramVersion) / sizeof(kSupportedProgramVersion[0]);
   return std::find(kSupportedProgramVersion,
                    kSupportedProgramVersion + num_supported,
                    version) != kSupportedProgramVersion + num_supported;
+}
+
+bool IsTensorVersionSupported(uint32_t version) {
+  static int num_supported =
+      sizeof(kSupportedTensorVersion) / sizeof(kSupportedTensorVersion[0]);
+  return std::find(kSupportedTensorVersion,
+                   kSupportedTensorVersion + num_supported,
+                   version) != kSupportedTensorVersion + num_supported;
 }
 }  // namespace framework
 }  // namespace paddle
