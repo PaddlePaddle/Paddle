@@ -196,8 +196,6 @@ def main(role="pserver",
          is_dist=True,
          is_async=False):
 
-    download_files()
-
     model = DistTransformer2x2()
 
     if role == "PSERVER" or (not TrainTaskConfig.use_gpu):
@@ -228,6 +226,8 @@ if __name__ == "__main__":
     is_dist = True if sys.argv[6] == "TRUE" else False
     # FIXME(typhoonzero): refine this test.
     is_async = True if sys.argv[7] == "TRUE" else False
+
+    download_files()
 
     update_args()
 
