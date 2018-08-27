@@ -27,6 +27,7 @@ import unittest
 from multiprocessing import Process
 import os
 import signal
+import six
 import collections
 
 SEED = 1
@@ -55,7 +56,8 @@ def cnn_model(data):
     # TODO(dzhwinter) : refine the initializer and random seed settting
     SIZE = 10
     input_shape = conv_pool_2.shape
-    param_shape = [reduce(lambda a, b: a * b, input_shape[1:], 1)] + [SIZE]
+    param_shape = [six.moves.reduce(lambda a, b: a * b, input_shape[1:], 1)
+                   ] + [SIZE]
     scale = (2.0 / (param_shape[0]**2 * SIZE))**0.5
 
     predict = fluid.layers.fc(
@@ -108,7 +110,7 @@ def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
 
 
 def operator_equal(a, b):
-    for k, v in a.__dict__.iteritems():
+    for k, v in six.iteritems(a.__dict__):
         if isinstance(v, fluid.framework.Program) or \
                 isinstance(v, fluid.framework.Block):
             continue
@@ -118,8 +120,8 @@ def operator_equal(a, b):
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(v.iteritems(), key=lambda x: x[0])
-            v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
+            v0 = sorted(list(six.iteritems(v)), key=lambda x: x[0])
+            v1 = sorted(list(six.iteritems(b.__dict__[k])), key=lambda x: x[0])
 
             if v0 != v1:
                 raise ValueError("In operator_equal not equal:{0}\n".format(k))
@@ -131,23 +133,21 @@ def operator_equal(a, b):
 
 
 def block_equal(a, b):
-    for k, v in a.__dict__.iteritems():
+    for k, v in six.iteritems(a.__dict__):
         if isinstance(v, core.ProgramDesc) or isinstance(
                 v, fluid.framework.Program) or isinstance(v, core.BlockDesc):
             continue
 
         elif k == "ops":
+            assert (len(a.ops) == len(b.ops))
             for i in range(0, len(a.ops)):
                 if not operator_equal(a.ops[i], b.ops[i]):
                     raise ValueError("In block_equal not equal:{0}\n".format(k))
-            assert (len(a.ops) == len(b.ops))
 
         elif isinstance(v, collections.OrderedDict):
-            v0 = sorted(v.iteritems(), key=lambda x: x[0])
-            v1 = sorted(b.__dict__[k].iteritems(), key=lambda x: x[0])
-
-            if v0 != v1:
-                raise ValueError("In block_equal not equal:{0}\n".format(k))
+            for key, value in six.iteritems(v):
+                if str(value) != str(b.__dict__[k][key]):
+                    raise ValueError("In block_equal not equal:{0}\n".format(k))
 
         elif (v != b.__dict__[k]):
             raise ValueError("In block_equal not equal:{0}\n".format(k))
@@ -156,7 +156,7 @@ def block_equal(a, b):
 
 
 def program_equal(a, b):
-    for k, v in a.__dict__.iteritems():
+    for k, v in six.iteritems(a.__dict__):
         if isinstance(v, core.ProgramDesc):
             continue
 
