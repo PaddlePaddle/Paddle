@@ -51,7 +51,7 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
         pass
 
     def setUp(self):
-        self.op_type = 'fusion_seq_concat_fc'
+        self.op_type = 'fusion_seqexpand_concat_fc'
         self.lod = [[3, 5, 8, 2]]
         self.inputs_M = [15, 10, 10]
         self.D = 20
