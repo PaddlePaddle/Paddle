@@ -125,7 +125,8 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()));
+  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
+                 "model version %d is not supported.", main_program->Version());
 
   LoadPersistables(executor, scope, *main_program, dirname, "");
   return main_program;
@@ -140,7 +141,8 @@ std::unique_ptr<framework::ProgramDesc> Load(
 
   std::unique_ptr<framework::ProgramDesc> main_program(
       new framework::ProgramDesc(program_desc_str));
-  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()));
+  PADDLE_ENFORCE(framework::IsProgramVersionSupported(main_program->Version()),
+                 "model version %d is not supported.", main_program->Version());
 
   LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
