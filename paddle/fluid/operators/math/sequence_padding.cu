@@ -106,14 +106,6 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
         pad_data, seq_data, pad_value_data, pad_value.numel() == 1,
         seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
         step_width, norm_by_times, layout);
-
-    if (layout == kBatchLengthWidth) {
-      framework::LoD pad_lod(seq_lod.begin() + lod_level, seq_lod.end());
-      for (size_t i = 0; i < pad_lod[0].size(); ++i) {
-        pad_lod[0][i] = i * pad_seq_len;
-      }
-      pad_tensor->set_lod(pad_lod);
-    }
   }
 };
 
