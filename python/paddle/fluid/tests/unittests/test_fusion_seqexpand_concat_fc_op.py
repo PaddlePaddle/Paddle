@@ -80,16 +80,16 @@ class TestFusionSeqExpandConcatFCOp(OpTest):
         out = fusion_seqexpand_concat_fc(xs, self.lod, w, b,
                                          ACTIVATION[self.fc_act])
 
-        self.inputs = {'X': [(x0, self.lod)], 'FCWeight': w}
-        normal_lod = [i for i in range(bs + 1)]
+        self.inputs = {'X': [('x0', (x0, self.lod))], 'FCWeight': w}
+        normal_lod = [[1] * bs]
         for i in range(num_inputs - 1):
-            self.inputs['X'].append((xs[i + 1], normal_lod))
+            self.inputs['X'].append(('x%d' % (i + 1), (xs[i + 1], normal_lod)))
 
         if self.with_bias:
             self.inputs['FCBias'] = b
 
         self.outputs = {'Out': (out, self.lod)}
-        self.attrs = {'fc_activation': self.fc_act, }
+        self.attrs = {'fc_activation': self.fc_act}
 
     def test_check_output(self):
         self.check_output()
