@@ -4708,6 +4708,86 @@ def pad(x, paddings, pad_value=0., name=None):
     return out
 
 
+def pad_constant_like(x, y, pad_value=0., name=None):
+    """
+    Pad input(Y) with :attr:`pad_value`, the number of values padded to
+    the edges of each axis is specified by the difference of the shape
+    of X and Y. ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
+    unique pad widths for each axis. The input should be a k-D
+    tensor(k > 0 and k < 7).
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            X = [[[[ 0,  1,  2],
+                   [ 3,  4,  5]],
+                  [[ 6,  7,  8],
+                   [ 9, 10, 11]],
+                  [[12, 13, 14],
+                   [15, 16, 17]]],
+                 [[[18, 19, 20],
+                   [21, 22, 23]],
+                  [[24, 25, 26],
+                   [27, 28, 29]],
+                  [[30, 31, 32],
+                   [33, 34, 35]]]]
+            X.shape = (2, 3, 2, 3)
+
+            Y = [[[[35, 36, 37]],
+                  [[38, 39, 40]],
+                  [[41, 42, 43]]]]
+            Y.shape = (1, 3, 1, 3)
+
+    And
+        pad_value = -1,
+
+    Return:
+        Out = [[[[35, 36, 37],
+                  [-1, -1, -1]],
+                [[38, 39, 40],
+                  [-1, -1, -1]],
+                 [[41, 42, 43],
+                  [-1, -1, -1]]],
+                [[[-1, -1, -1],
+                  [-1, -1, -1]],
+                 [[-1, -1, -1],
+                  [-1, -1, -1]],
+                 [[-1, -1, -1],
+                  [-1, -1, -1]]]]
+        Out.shape = (2, 3, 2, 3)
+
+    Args:
+        x (Variable): The input tensor variable.
+        y (Variable): The input tensor variable.
+        pad_value (float): The constant value used to pad.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The padded tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
+            # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
+            out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
+            # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
+    """
+    helper = LayerHelper('pad_constant_like', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad_constant_like',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'pad_value': float(pad_value)})
+    return out
+
+
 def label_smooth(label,
                  prior_dist=None,
                  epsilon=0.1,
@@ -5304,7 +5384,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-        isinstance(shape, Variable)):
+                    isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
