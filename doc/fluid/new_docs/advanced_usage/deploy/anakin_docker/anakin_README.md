@@ -113,7 +113,7 @@ $docker run -it anakin:arm_centos7-armv7 /bin/bash
 
 When running docker successfully, you can find Anakin source code at /Anakin directory.
 
-###NOTE
+### NOTE
 
 If you want to use opencv(only used in Anakin samples), please refer [run on arm](../docs/Manual/run_on_arm_en.md) to install opencv and recompile Anakin
 (you just need to run 'Anakin/tools/andrid_build.sh').  You can install it before the arm docker image's building has done successfully. At last, don't forget to commit your changes to the docker image you built.
