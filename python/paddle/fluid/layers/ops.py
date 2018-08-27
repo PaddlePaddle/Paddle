@@ -69,6 +69,7 @@ __all__ = [
     'slice',
     'shape',
     'maxout',
+    'sequence_concat',
 ] + __activations__
 
 for _OP in set(__all__):
