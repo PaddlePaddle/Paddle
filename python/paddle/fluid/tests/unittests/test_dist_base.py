@@ -67,12 +67,13 @@ class TestDistRunnerBase(object):
                     endpoints,
                     trainer_id,
                     trainers,
+                    use_cuda=True,
                     is_dist=True,
                     sync_mode=True):
         import paddle
         import paddle.fluid as fluid
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
-        self.get_model(batch_size=2)
+            self.get_model(batch_size=2)
         if is_dist:
             t = self.get_transpiler(trainer_id,
                                     fluid.default_main_program(), endpoints,
@@ -88,7 +89,7 @@ class TestDistRunnerBase(object):
         strategy.num_threads = 1
         strategy.allow_op_delay = False
         exe = fluid.ParallelExecutor(
-            True, loss_name=avg_cost.name, exec_strategy=strategy)
+            use_cuda, loss_name=avg_cost.name, exec_strategy=strategy)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -128,6 +129,7 @@ def runtime_main(test_class):
     trainers = int(sys.argv[5])
     is_dist = True if sys.argv[6] == "TRUE" else False
     sync_mode = True if sys.argv[7] == "TRUE" else False
+    use_cuda = True if os.getenv("USE_CUDA", "TRUE") == "TRUE" else False
 
     model = test_class()
     if role == "pserver":
@@ -137,7 +139,7 @@ def runtime_main(test_class):
         p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else fluid.CPUPlace()
         model.run_trainer(p, endpoints, trainer_id, trainers, is_dist,
-                          sync_mode)
+                          sync_mode, use_cuda)
 
 
 import paddle.compat as cpt
@@ -159,11 +161,11 @@ class TestDistBase(unittest.TestCase):
         sync_mode_str = "TRUE" if self._sync_mode else "FALSE"
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps0_cmd = "%s %s pserver %s 0 %s %d TRUE %s" % \
-            (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
-             self._trainers, sync_mode_str)
+                  (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
+                   self._trainers, sync_mode_str)
         ps1_cmd = "%s %s pserver %s 0 %s %d TRUE %s" % \
-            (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
-             self._trainers, sync_mode_str)
+                  (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
+                   self._trainers, sync_mode_str)
 
         ps0_pipe = subprocess.PIPE
         ps1_pipe = subprocess.PIPE
@@ -225,8 +227,8 @@ class TestDistBase(unittest.TestCase):
         env_local.update(required_envs)
         sync_mode_str = "TRUE" if self._sync_mode else "FALSE"
         local_cmd = "%s %s trainer %s 0 %s %d FLASE %s" % \
-            (self._python_interp, model_file,
-             "127.0.0.1:1234", "127.0.0.1:1234", 1, sync_mode_str)
+                    (self._python_interp, model_file,
+                     "127.0.0.1:1234", "127.0.0.1:1234", 1, sync_mode_str)
         if not check_error_log:
             local_proc = subprocess.Popen(
                 local_cmd.split(" "),
@@ -249,18 +251,18 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stderr: %s\n' % err)
 
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model_file,
-                                                          check_error_log)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
+            model_file, check_error_log, required_envs)
         self._wait_ps_ready(ps0.pid)
         self._wait_ps_ready(ps1.pid)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         tr0_cmd = "%s %s trainer %s 0 %s %d TRUE %s" % \
-            (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
-             self._trainers, sync_mode_str)
+                  (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
+                   self._trainers, sync_mode_str)
         tr1_cmd = "%s %s trainer %s 1 %s %d TRUE %s" % \
-            (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
-             self._trainers, sync_mode_str)
+                  (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
+                   self._trainers, sync_mode_str)
 
         env0 = {"CUDA_VISIBLE_DEVICES": "0"}
         env1 = {"CUDA_VISIBLE_DEVICES": "1"}

@@ -238,6 +238,7 @@ if __name__ == "__main__":
 
     import os
     os.environ['CPU_NUM'] = '1'
+    os.environ['USE_CUDA'] = 'FALSE'
 
     os.environ["IS_DISTRIBUTED"] = '0'
     os.environ["IS_SPARSE"] = '0'

@@ -40,10 +40,6 @@ VOCAB_MD5 = '23c86a0533c0151b6f12fa52b106dcc2'
 DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/text_classification.tar.gz'
 DATA_MD5 = '29ebfc94f11aea9362bbb7f5e9d86b8a'
 
-# Fix seed for test
-# fluid.default_startup_program().random_seed = 1
-# fluid.default_main_program().random_seed = 1
-
 
 # Load the dictionary.
 def load_vocab(filename):
@@ -227,4 +223,9 @@ def test(word_idx):
 if __name__ == "__main__":
     paddle.dataset.common.download(VOCAB_URL, 'text_classification', VOCAB_MD5)
     paddle.dataset.common.download(DATA_URL, 'text_classification', DATA_MD5)
+
+    import os
+    os.environ['CPU_NUM'] = '1'
+    os.environ['USE_CUDA'] = 'FALSE'
+
     runtime_main(TestDistTextClassification2x2)
