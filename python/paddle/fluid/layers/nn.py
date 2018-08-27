@@ -105,6 +105,7 @@ __all__ = [
     'flatten',
     'sequence_mask',
     'stack',
+    'pad2d',
 ]
 
 
