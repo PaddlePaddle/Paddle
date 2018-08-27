@@ -167,7 +167,9 @@ def generate_layer_fn(op_type):
                     raise ValueError(
                         "operator {0} must input same dtype. {1} vs {2}".format(
                             op_type, dtype, each.dtype))
-
+        if dtype is None:
+            # FIXME: hotfix here.
+            dtype = 'float32'
         return dtype
 
     def func(*args, **kwargs):
