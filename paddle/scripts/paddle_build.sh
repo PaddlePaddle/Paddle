@@ -335,7 +335,9 @@ function assert_api_not_changed() {
     fi
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
+}
 
+function assert_api_spec_approvals() {
     if [ -z ${BRANCH} ]; then
         BRANCH="develop"
     fi
@@ -626,11 +628,12 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
-        assert_api_not_changed ${PYTHON_ABI:-""}
+        assert_api_spec_approvals
         ;;
       *)
         print_usage
