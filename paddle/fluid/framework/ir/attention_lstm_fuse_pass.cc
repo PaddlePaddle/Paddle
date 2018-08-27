@@ -212,7 +212,7 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
   int D = W_forget_w0.dims()[0];
   int M = W_forget_w1.dims()[0];
   out->Resize(make_ddim({D + M, 4 * D}));
-  LOG(INFO) << "LSTMWeight resized to " << out->dims();
+  VLOG(3) << "LSTMWeight resized to " << out->dims();
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
   std::array<const float*, 4> tensors(

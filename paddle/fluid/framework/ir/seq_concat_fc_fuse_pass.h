@@ -14,12 +14,13 @@
 
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class SeqConcatFcFusePass : public Pass {
+class SeqConcatFcFusePass : public FusePassBase {
  public:
   virtual ~SeqConcatFcFusePass() {}
 

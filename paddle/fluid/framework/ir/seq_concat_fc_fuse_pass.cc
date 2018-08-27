@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -187,16 +189,11 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
 std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
+  FusePassBase::Init(graph.get());
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
-
-  if (!graph->Has(kGraphvizMarkedNodeAttr)) {
-    graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
-  }
-  auto& marked_nodes =
-      graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
 
 #define GET_NODE(id, pattern)                              \
   PADDLE_ENFORCE(subgraph.count(pattern.RetriveNode(#id)), \
@@ -206,7 +203,7 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
 
   detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
                             Graph* graph) {
-    LOG(INFO) << "get one concat pattern";
+    VLOG(4) << "get one concat pattern";
     // fc
     GET_NODE(fc_w, detector.pattern());
     GET_NODE(fc_bias, detector.pattern());
@@ -224,7 +221,9 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
                            sequence_expand1_in->Name()});
     op_desc.SetInput("FCWeight", {fc_w->Name()});
     op_desc.SetInput("FCBias", {fc_bias->Name()});
-    op_desc.SetOutput("FCOut", {fc_out->Name()});
+    const std::string fc_out_tmp = fc_out->Name() + ".tmp";
+    param_scope()->Var(fc_out_tmp)->GetMutable<framework::LoDTensor>();
+    op_desc.SetOutput("FCOut", {fc_out_tmp});
     op_desc.SetOutput("Out", {fc_out->Name()});
     op_desc.SetAttr("fc_activation", act->Op()->Type());
 
@@ -240,11 +239,17 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     NODE_LINKS(sequence_expand1_in, op_node);
     NODE_LINKS(op_node, fc_out);
 
+    // Clean nodes.
+    std::unordered_set<const Node*> marked_nodes;
+    for (auto& item : subgraph) {
+      marked_nodes.insert(item.second);
+    }
     marked_nodes.erase(fc_w);
     marked_nodes.erase(fc_bias);
     marked_nodes.erase(concat_in0);
     marked_nodes.erase(sequence_expand0_in);
     marked_nodes.erase(sequence_expand1_in);
+    marked_nodes.erase(fc_out);
 
     GraphSafeRemoveNodes(graph, marked_nodes);
   });

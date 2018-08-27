@@ -321,11 +321,15 @@ void TestDituRNNPrediction(const std::string &model_path,
   LOG(INFO) << "=====================================";
 
   PADDLE_ENFORCE_GT(outputs.size(), 0);
+  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
   for (size_t i = 0; i < outputs.size(); i++) {
     auto &out = outputs[i];
     auto &base_out = base_outputs[i];
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
+    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(), 1,
+                                  [](int a, int b) { return a * b; });
+    PADDLE_ENFORCE_EQ(size, size1);
     PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
     float *base_data = static_cast<float *>(base_out.data.data());

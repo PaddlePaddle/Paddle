@@ -67,7 +67,7 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
   }
 
   if (argument_->Has("param_scope")) {
-    LOG(INFO) << "get param_scope";
+    LOG(WARNING) << "parameter changes in the scope takes effect";
   }
 
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());

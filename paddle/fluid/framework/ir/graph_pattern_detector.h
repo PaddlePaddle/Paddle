@@ -213,7 +213,7 @@ static bool VarLinksFromOp(Node* node, const std::string& op_type) {
 
 // Check whether a var node is a op node's nth input.
 static bool IsNthInput(Node* var, Node* op, const std::string& argument,
-                       int nth) {
+                       size_t nth) {
   PADDLE_ENFORCE(var->IsVar());
   PADDLE_ENFORCE(op->IsOp());
   if (op->inputs.size() <= nth) return false;

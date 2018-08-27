@@ -42,7 +42,7 @@ bool FluidToIrPass::LoadParams(framework::Scope *scope, const std::string &dir,
   PADDLE_ENFORCE(argument_->origin_program_desc.get());
   framework::ProgramDesc program(*argument_->origin_program_desc);
   if ((!prog_file.empty()) && (!param_file.empty())) {
-    LOG(INFO) << "load single file from " << prog_file;
+    LOG(INFO) << "load single model file from " << prog_file;
     Load(&executor, scope, prog_file, param_file);
   } else if (!dir.empty()) {
     LOG(INFO) << "load from dir " << dir;
