@@ -14,13 +14,14 @@
 
 from __future__ import print_function
 
-import unittest
-import numpy as np
-import math
 import copy
-from op_test import OpTest
+import unittest
+
+import numpy as np
 from paddle.fluid import core
 from paddle.fluid.op import Operator
+
+from op_test import OpTest
 
 
 class TestAdamOp1(OpTest):
@@ -229,9 +230,8 @@ def adam_step_sparse(init_inputs, attributes, height, rows, row_numel, np_grad,
                 grad2 = (1 - beta2) * np.square(np_grad[idx])
             moment1[row_id] = beta1 * moment1[row_id] + grad1
             moment2[row_id] = beta2 * moment2[row_id] + grad2
-        lr = lr * np.sqrt(1 - math.pow(beta2_pow, step + 1)) / (
-            1 - math.pow(beta1_pow, step + 1))
-        param = param - lr * (moment1 / (np.sqrt(moment2) + epsilon))
+        lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
+        param = param - lr_t * (moment1 / (np.sqrt(moment2) + epsilon))
     return param, moment1, moment2
 
 
@@ -241,65 +241,75 @@ class TestSparseAdamOp(unittest.TestCase):
         beta2 = 0.836
         epsilon = 1e-4
 
-        height = 10
-        rows = [0, 4, 7]
-        self.rows = rows
-        row_numel = 12
-        self.row_numel = row_numel
+        self.height = 10
+        self.rows = [0, 4, 7]
+        self.row_numel = 12
+
         self.dense_inputs = {
-            "Param": np.full((height, row_numel), 5.0).astype("float32"),
-            "Moment1": np.full((height, row_numel), 5.0).astype("float32"),
-            "Moment2": np.full((height, row_numel), 5.0).astype("float32"),
-            'Beta1Pow': np.array([beta1**10]).astype("float32"),
-            'Beta2Pow': np.array([beta2**10]).astype("float32"),
-            "LearningRate": np.full((1), 2.0).astype("float32")
+            "Param": np.full((self.height, self.row_numel),
+                             5.0).astype("float32"),
+            "Moment1": np.full((self.height, self.row_numel),
+                               5.0).astype("float32"),
+            "Moment2": np.full((self.height, self.row_numel),
+                               5.0).astype("float32"),
+            'Beta1Pow': np.array([beta1]).astype("float32"),
+            'Beta2Pow': np.array([beta2]).astype("float32"),
+            "LearningRate": np.array([2.0]).astype("float32")
         }
+
+        for key, np_array in self.dense_inputs.items():
+            var = scope.var(key).get_tensor()
+            var.set(np_array, place)
+
         self.attrs = {'epsilon': epsilon, 'beta1': beta1, 'beta2': beta2}
 
+        # get grad selected rows
         grad_selected_rows = scope.var('Grad').get_selected_rows()
-        grad_selected_rows.set_height(height)
-        grad_selected_rows.set_rows(rows)
-        np_array = np.ones((len(rows), row_numel)).astype("float32")
-        np_array[0, 0] = 2.0
-        np_array[2, 8] = 4.0
+        grad_selected_rows.set_height(self.height)
+        grad_selected_rows.set_rows(self.rows)
+
+        self.grad_array = np.ones(
+            (len(self.rows), self.row_numel)).astype("float32")
+        self.grad_array[0, 0] = 2.0
+        self.grad_array[2, 8] = 4.0
 
         grad_tensor = grad_selected_rows.get_tensor()
-        grad_tensor.set(np_array, place)
+        grad_tensor.set(self.grad_array, place)
 
-        self.sparse_inputs = ["Grad"]
+    def run_python_adam(self, run_steps):
+        param_out, mom1, mom2 = adam_step_sparse(
+            self.dense_inputs, self.attrs, self.height, self.rows,
+            self.row_numel, self.grad_array, run_steps)
+        self.outputs = {"Param": param_out, "Moment1": mom1, "Moment2": mom2}
 
-        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
-                                                 height, rows, row_numel,
-                                                 np_array, run_steps)
-        self.outputs = {
-            "ParamOut": param_out,
-            "Moment1Out": mom1,
-            "Moment2Out": mom2
-        }
+    def run_adam_op(self, scope, place, run_steps):
+        adam_op = Operator(
+            "adam",
+            Param='Param',
+            ParamOut='Param',
+            Grad='Grad',
+            Moment1='Moment1',
+            Moment2='Moment2',
+            Moment1Out='Moment1',
+            Moment2Out='Moment2',
+            Beta1Pow='Beta1Pow',
+            Beta2Pow='Beta2Pow',
+            LearningRate='LearningRate',
+            beta1=self.attrs['beta1'],
+            beta2=self.attrs['beta2'],
+            epsilon=self.attrs['epsilon'])
+
+        for _ in range(run_steps):
+            adam_op.run(scope, place)
 
     def check_with_place(self, place, steps):
         scope = core.Scope()
 
         self.setup(scope, place, steps)
 
-        op_args = dict()
-        for key, np_array in self.dense_inputs.items():
-            var = scope.var(key).get_tensor()
-            var.set(np_array, place)
-            op_args[key] = key
-        for s in self.sparse_inputs:
-            op_args[s] = s
-        for s in self.outputs:
-            var = scope.var(s).get_tensor()
-            var.set(self.outputs[s], place)
-            op_args[s] = s
-        for k in self.attrs:
-            op_args[k] = self.attrs[k]
+        self.run_python_adam(steps)
 
-        # create and run adam operator
-        adam_op = Operator("adam", **op_args)
-        for _ in range(steps):
-            adam_op.run(scope, place)
+        self.run_adam_op(scope, place, steps)
 
         for key, np_array in self.outputs.items():
             out_var = scope.var(key).get_tensor()
@@ -314,12 +324,12 @@ class TestSparseAdamOp(unittest.TestCase):
                                     0.00001)
                     j += 1
 
-    def test_sparse_adam(self):
+    def test_sparse_adam_(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_with_place(place, 10)
+            self.check_with_place(place, 20)
 
 
 if __name__ == "__main__":
