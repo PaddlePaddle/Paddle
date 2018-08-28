@@ -276,10 +276,13 @@ class DistributeTranspiler(object):
                 send_vars.append(var)
 
         if self.sync_mode:
+            send_barrier_out = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
+            input_deps = grad_name_to_send_dummy_out.values()
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={},
-                outputs={},
+                inputs={"X": input_deps},
+                outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -297,16 +300,22 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
         # step4: Concat the parameters splits together after recv.
+        all_recv_outputs = []
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
-            grad_send_dummy_out = grad_name_to_send_dummy_out[
-                self.param_name_to_grad_name[param_varname]]
+            if self.sync_mode:
+                recv_dep_in = send_barrier_out
+            else:
+                # connect deps to send op in async mode
+                recv_dep_in = grad_name_to_send_dummy_out[
+                    self.param_name_to_grad_name[param_varname]]
+            all_recv_outputs.extend(splited_var)
             program.global_block().append_op(
                 type="recv",
-                inputs={"X": [grad_send_dummy_out]},
+                inputs={"X": [recv_dep_in]},
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
@@ -319,10 +328,11 @@ class DistributeTranspiler(object):
                 })
 
         if self.sync_mode:
+            # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
-                outputs={},
+                outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -406,10 +416,12 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
+        fetch_barrier_out = startup_program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
         startup_program.global_block().append_op(
             type="fetch_barrier",
             inputs={},
-            outputs={},
+            outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
