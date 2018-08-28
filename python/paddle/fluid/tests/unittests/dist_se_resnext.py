@@ -134,7 +134,7 @@ class SE_ResNeXt():
             size=class_dim,
             act='softmax',
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.2)))
+                initializer=fluid.initializer.Constant(value=0.05)))
         return out
 
     def shortcut(self, input, ch_out, stride):
@@ -184,7 +184,7 @@ class SE_ResNeXt():
             act=None,
             # avoid pserver CPU init differs from GPU
             param_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=0.2)),
+                initializer=fluid.initializer.Constant(value=0.05)),
             bias_attr=False)
         return fluid.layers.batch_norm(input=conv, act=act)
 
@@ -192,13 +192,19 @@ class SE_ResNeXt():
         pool = fluid.layers.pool2d(
             input=input, pool_size=0, pool_type='avg', global_pooling=True)
         stdv = 1.0 / math.sqrt(pool.shape[1] * 1.0)
-        squeeze = fluid.layers.fc(input=pool,
-                                  size=num_channels // reduction_ratio,
-                                  act='relu')
+        squeeze = fluid.layers.fc(
+            input=pool,
+            size=num_channels // reduction_ratio,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.05)),
+            act='relu')
         stdv = 1.0 / math.sqrt(squeeze.shape[1] * 1.0)
-        excitation = fluid.layers.fc(input=squeeze,
-                                     size=num_channels,
-                                     act='sigmoid')
+        excitation = fluid.layers.fc(
+            input=squeeze,
+            size=num_channels,
+            param_attr=fluid.ParamAttr(
+                initializer=fluid.initializer.Constant(value=0.05)),
+            act='sigmoid')
         scale = fluid.layers.elementwise_mul(x=input, y=excitation, axis=0)
         return scale
 
