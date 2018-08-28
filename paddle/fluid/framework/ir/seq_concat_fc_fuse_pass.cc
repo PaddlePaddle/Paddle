@@ -102,14 +102,12 @@ PDNode* BuildSeqExpandConcatPattern(PDPattern* pattern) {
       "concat_out");
 
   // Links
-  PDLINK(sequence_expand0_in, sequence_expand0);
-  PDLINK(sequence_expand1_in, sequence_expand1);
-  PDLINK(sequence_expand0, sequence_expand0_out);
-  PDLINK(sequence_expand1, sequence_expand1_out);
-  PDLINK(sequence_expand0_out, concat);
-  PDLINK(sequence_expand1_out, concat);
-  PDLINK(concat_in0, concat);
-  PDLINK(concat, concat_out);
+  sequence_expand0->LinksFrom({sequence_expand0_in})
+      .LinksTo({sequence_expand0_out});
+  sequence_expand1->LinksFrom({sequence_expand1_in})
+      .LinksTo({sequence_expand1_out});
+  concat->LinksFrom({sequence_expand0_out, sequence_expand1_out, concat_in0})
+      .LinksTo({concat_out});
   return concat_out;
 }
 

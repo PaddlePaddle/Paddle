@@ -250,8 +250,6 @@ static void GraphSafeRemoveNodes(Graph* graph,
   }
 }
 
-#define PDLINK(a, b) pattern->AddEdge(a, b);
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
