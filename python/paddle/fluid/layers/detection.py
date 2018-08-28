@@ -56,6 +56,7 @@ for _OP in set(__auto__):
 def rpn_target_assign(loc,
                       scores,
                       anchor_box,
+                      anchor_var,
                       gt_box,
                       rpn_batch_size_per_im=256,
                       fg_fraction=0.25,
@@ -94,6 +95,8 @@ def rpn_target_assign(loc,
             if the input is image feature map, they are close to the origin
             of the coordinate system. [xmax, ymax] is the right bottom
             coordinate of the anchor box.
+        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
+            variances of anchors.
         gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
@@ -143,30 +146,29 @@ def rpn_target_assign(loc,
     # 1. Compute the regression target bboxes
     target_bbox = box_coder(
         prior_box=anchor_box,
+        prior_box_var=anchor_var,
         target_box=gt_box,
         code_type='encode_center_size',
         box_normalized=False)
-
     # 2. Compute overlaps between the prior boxes and the gt boxes overlaps
     iou = iou_similarity(x=gt_box, y=anchor_box)
-
     # 3. Assign target label to anchors
     loc_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
     score_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
     target_label = helper.create_tmp_variable(dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
-        inputs={'Overlap': iou, },
+        inputs={'DistMat': iou},
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
-            'TargetLabel': target_label,
+            'TargetLabel': target_label
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
             'rpn_positive_overlap': rpn_positive_overlap,
             'rpn_negative_overlap': rpn_negative_overlap,
-            'fg_fraction': fg_fraction,
+            'fg_fraction': fg_fraction
         })
 
     # 4. Reshape and gather the target entry
@@ -179,7 +181,7 @@ def rpn_target_assign(loc,
     predicted_location = nn.gather(loc, loc_index)
     target_label = nn.gather(target_label, score_index)
     target_bbox = nn.gather(target_bbox, loc_index)
-    return predicted_scores, predicted_loc, target_label, target_bbox
+    return predicted_scores, predicted_location, target_label, target_bbox
 
 
 def detection_output(loc,
