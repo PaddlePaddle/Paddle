@@ -159,7 +159,7 @@ def program_to_code(prog):
             get_indent_space(indent), '{', block_idx))
         indent += 1
         # sort all vars
-        all_vars = sorted(block.vars.iteritems(), key=lambda x: x[0])
+        all_vars = sorted(six.iteritems(block.vars), key=lambda x: x[0])
         for var in all_vars:
             print("{}{}".format(
                 get_indent_space(indent), variable_to_code(var[1])))
