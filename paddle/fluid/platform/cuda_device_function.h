@@ -36,7 +36,7 @@ __forceinline__ __device__ T CudaShuffleDownSync(unsigned mask, T val,
 #if CUDA_VERSION < 9000
   return __shfl_down(val, delta, width);
 #else
-  return __shfl_down_sync(mask, val, delta, width);
+  return __shfl_down_sync(mask, val, static_cast<unsigned>(delta), width);
 #endif
 }
 
@@ -46,9 +46,16 @@ template <>
 __forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
                                                        float16 val, int delta,
                                                        int width) {
-  half tmp = static_cast<half>(val);
-  __shfl_down(tmp, static_cast<unsigned>(delta), width);
-  return float16(tmp);
+  return float16(
+      __shfl_down(static_cast<half>(val), static_cast<unsigned>(delta), width));
+}
+#else
+template <>
+__forceinline__ __device__ float16 CudaShuffleDownSync(unsigned mask,
+                                                       float16 val, int delta,
+                                                       int width) {
+  return float16(__shfl_down_sync(mask, static_cast<half>(val),
+                                  static_cast<unsigned>(delta), width));
 }
 #endif
 

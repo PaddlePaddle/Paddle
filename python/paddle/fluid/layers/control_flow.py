@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 
 from .layer_function_generator import autodoc, templatedoc
@@ -22,6 +24,7 @@ from ..initializer import force_init_on_cpu
 from .ops import logical_and, logical_not, logical_or
 import numpy
 import warnings
+import six
 from functools import reduce
 
 __all__ = [
@@ -602,7 +605,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in list(self.memories.items()):
+        for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
@@ -658,6 +661,7 @@ class While(object):
 
     Args:
         cond (Variable): condition used to compare.
+        is_test(bool): A flag indicating whether execution is in test phase.
         name (str): The name of this layer.
 
     Examples:
@@ -680,7 +684,7 @@ class While(object):
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
 
-    def __init__(self, cond, name=None):
+    def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
@@ -691,6 +695,7 @@ class While(object):
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")
         self.cond_var = cond
+        self.is_test = is_test
 
     def block(self):
         return WhileGuard(self)
@@ -732,7 +737,8 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'sub_block': while_block})
+            attrs={'sub_block': while_block,
+                   "is_test": self.is_test})
 
 
 def lod_rank_table(x, level=0):
@@ -1269,8 +1275,8 @@ class ConditionalBlock(object):
         parent_block.append_op(
             type='conditional_block',
             inputs={
-                'X': self.inputs,
-                'Params': param_list,
+                'Cond': self.inputs,
+                'Input': param_list,
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},

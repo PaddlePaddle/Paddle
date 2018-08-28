@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from . import framework
 import numpy as np
 import contextlib
-from .framework import convert_np_dtype_to_dtype_
 from .core import VarDesc
 
 __all__ = [
