@@ -59,7 +59,7 @@ class Node {
     return var_desc_.get();
   }
 
-  OpDesc* Op() {
+  OpDesc* Op() const {
     PADDLE_ENFORCE(IsOp());
     return op_desc_.get();
   }
