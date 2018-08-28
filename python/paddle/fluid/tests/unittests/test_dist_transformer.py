@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 from test_dist_base import TestDistBase
 
 
@@ -50,8 +51,8 @@ class TestDistTransformer2x2Sync(TestDistBase):
         self._sync_mode = True
 
     def test_transformer(self):
-        self.check_with_place(
-            "dist_transformer.py", delta=0.00001, check_error_log=False)
+        download_files()
+        self.check_with_place("dist_transformer.py", delta=0.00001)
 
 
 class TestDistTransformer2x2Async(TestDistBase):
@@ -59,9 +60,9 @@ class TestDistTransformer2x2Async(TestDistBase):
         self._sync_mode = False
 
     def test_transformer(self):
+        download_files()
         self.check_with_place("dist_transformer.py", delta=0.1)
 
 
 if __name__ == "__main__":
-    download_files()
     unittest.main()
