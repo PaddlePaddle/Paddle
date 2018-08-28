@@ -49,6 +49,12 @@ EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+
+def generate_control_dev_var_name():
+    import random
+    return CONTROL_DEP_VAR_PREFIX + "@" + str(random.random())
 
 
 def grad_var_name(var_name):
@@ -89,6 +95,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -1362,6 +1370,13 @@ class Program(object):
         self._seed = 0
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
+
+        # for distribute
+        self._is_distributed = False
+        self._is_chief = False
+        self._slice_vars_and_attrs = []
+        self._endpoints = []
+        self._distributed_lookup_table = None
 
     @property
     def op_role(self):

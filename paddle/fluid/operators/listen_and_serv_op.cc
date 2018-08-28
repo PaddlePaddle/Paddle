@@ -165,12 +165,13 @@ void ListenAndServOp::RunSyncLoop(
                           recv_scope);
     VLOG(2) << "run all blocks spent " << GetTimestamp() - ts << "(ms)";
 
-    rpc_service_->SetCond(distributed::kRequestGet);
-    rpc_service_->WaitBarrier(distributed::kRequestGet);
-    rpc_service_->ResetBarrierCounter();
     // reset received sparse vars to avoid reuse it in the next mini-batch
     dynamic_cast<distributed::RequestSendHandler *>(request_send_handler_.get())
         ->ResetSparseVarRecorder();
+
+    rpc_service_->SetCond(distributed::kRequestGet);
+    rpc_service_->WaitBarrier(distributed::kRequestGet);
+    rpc_service_->ResetBarrierCounter();
   }  // while(true)
 }
 
