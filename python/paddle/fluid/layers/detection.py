@@ -1312,8 +1312,8 @@ def generate_proposals(scores,
             'Variances': variances
         },
         attrs={
-            'pre_nms_topN': pre_nms_topN,
-            'post_nms_topN': post_nms_topN,
+            'pre_nms_topN': pre_nms_top_n,
+            'post_nms_topN': post_nms_top_n,
             'nms_thresh': nms_thresh,
             'min_size': min_size,
             'eta': eta

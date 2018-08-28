@@ -230,8 +230,8 @@ class TestGenerateProposals(unittest.TestCase):
             im_info=im_info,
             anchors=anchors,
             variances=variances,
-            pre_nms_topN=6000,
-            post_nms_topN=1000,
+            pre_nms_top_n=6000,
+            post_nms_top_n=1000,
             nms_thresh=0.5,
             min_size=0.1,
             eta=1.0)
