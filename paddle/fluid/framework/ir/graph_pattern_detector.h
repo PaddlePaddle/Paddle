@@ -84,6 +84,20 @@ struct PDNode {
   bool IsInput() const { return role_ == Role::kInput; }
   bool IsOutput() const { return role_ == Role::kOutput; }
 
+  // Assertions, helper functions to simplify the pattern definition.
+  PDNode& assert_is_op();
+  PDNode& assert_is_op(const std::string& op_type);
+  PDNode& assert_is_var();
+  PDNode& assert_var_not_persistable();
+  PDNode& assert_is_persistable_var();
+  PDNode& assert_is_op_nth_input(const std::string& op_type, int nth);
+  PDNode& assert_is_op_nth_output(const std::string& op_type, int nth);
+  PDNode& assert_is_only_input_of_op(const std::string& op_type);
+  PDNode& assert_is_only_output_of_op(const std::string& op_type);
+  PDNode& assert_is_output_of_op(const std::string& op_type);
+  PDNode& assert_is_input_of_op(const std::string& op_type);
+  PDNode& assert_more(teller_t&& teller);
+
  private:
   PDNode(teller_t&& teller, PDPattern* pattern, const std::string& name = "",
          Type type = Type::kVar)
