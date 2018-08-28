@@ -14,16 +14,15 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/ir/param_opt_pass_base.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-class AttentionLSTMFusePass : public ParamOptPassBase {
+class AttentionLSTMFusePass : public FusePassBase {
  protected:
-  void RegisterParamOperations() const override;
-  void Operate(Graph *graph, Scope *scope) const override;
+  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 };
 
 }  // namespace ir

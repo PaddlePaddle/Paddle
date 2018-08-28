@@ -138,8 +138,8 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 void PrepareParameters(Graph* graph, const Param& param) {
   // Check parameters
-  PADDLE_ENFORCE(graph->Has("param_scope"));
-  auto* scope = graph->Get<Scope*>("param_scope");
+  PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
+  auto* scope = graph->Get<Scope*>(kParamScopeAttr);
 
   // Create new parameters.
   scope->Var(param.LSTMWeight)->GetMutable<LoDTensor>();
@@ -257,14 +257,12 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
 
 // Parameters
 
-void AttentionLSTMFusePass::Operate(Graph* graph, Scope* scope) const {
+std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
+    std::unique_ptr<ir::Graph> graph) const {
   PDPattern external_pattern, subblock_pattern;
 
-  FindWhileOp(graph);
-}
-
-void AttentionLSTMFusePass::RegisterParamOperations() const {
-  ToCreate("hello");
+  FindWhileOp(graph.get());
+  return graph;
 }
 
 }  // namespace ir
