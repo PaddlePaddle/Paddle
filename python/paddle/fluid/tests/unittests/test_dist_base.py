@@ -173,8 +173,6 @@ class TestDistBase(unittest.TestCase):
         ps0_pipe = subprocess.PIPE
         ps1_pipe = subprocess.PIPE
         if check_error_log:
-            required_envs["GLOG_v"] = "7"
-            required_envs["GLOG_logtostderr"] = "1"
             print("ps0_cmd:", ps0_cmd)
             print("ps1_cmd:", ps1_cmd)
             ps0_pipe = open("/tmp/ps0_err.log", "wb")
