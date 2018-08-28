@@ -1177,7 +1177,7 @@
 
 <a name="third_party"></a>
 </br></br>
-## 附录：
+## 附录
 
 #### **编译依赖表**
 
@@ -1467,7 +1467,7 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 
 </br></br>
 
-## 在Docker中执行PaddlePaddle训练程序     
+#### 在Docker中执行PaddlePaddle训练程序     
 
 ***
 
@@ -1492,7 +1492,7 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 
 </br></br>
 
-## 使用Docker启动PaddlePaddle Book教程
+#### 使用Docker启动PaddlePaddle Book教程
 
 ***
 
@@ -1516,7 +1516,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 就这么简单，享受您的旅程！如有其他问题请参见[FAQ](#FAQ)
 
 </br></br>
-## 使用Docker执行GPU训练
+#### 使用Docker执行GPU训练
 
 ***
 
