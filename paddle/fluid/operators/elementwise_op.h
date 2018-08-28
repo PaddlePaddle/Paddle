@@ -205,6 +205,20 @@ class ElementwiseOpExplicitGrad : public ElementwiseOpGrad {
   }
 };
 
+template <typename T>
+class ElemwiseGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* dx =
+        context.Output<framework::LoDTensor>(framework::GradVarName("X"));
+    if (dx != nullptr) {
+      auto& dout =
+          *context.Input<framework::LoDTensor>(framework::GradVarName("Out"));
+      dx->set_lod(dout.lod());
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
