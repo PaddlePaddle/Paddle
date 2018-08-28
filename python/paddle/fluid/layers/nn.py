@@ -5305,7 +5305,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-        isinstance(shape, Variable)):
+            isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
@@ -5604,6 +5604,7 @@ def stack(x, axis=0):
     return out
 
 
+@autodoc()
 def gaussian_random(shape,
                     dtype=None,
                     mean=None,
