@@ -1668,9 +1668,7 @@ def get_model(is_dist, is_async):
 
 
 def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
-    config = fluid.DistributeTranspilerConfig()
-    #config.slice_var_up = False
-    t = fluid.DistributeTranspiler(config=config)
+    t = fluid.DistributeTranspiler()
     t.transpile(
         trainer_id=trainer_id,
         program=main_program,
