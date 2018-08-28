@@ -16,6 +16,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import math
+import copy
 from op_test import OpTest
 from paddle.fluid import core
 from paddle.fluid.op import Operator
@@ -194,7 +196,8 @@ def adam_step(inputs, attributes):
     return param_out, moment1_out, moment2_out
 
 
-def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
+def adam_step_sparse(init_inputs, attributes, height, rows, row_numel, np_grad,
+                     steps):
     '''
     Simulate one step of the adam optimizer
     :param inputs: dict of inputs
@@ -202,6 +205,8 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     :return tuple: tuple of output param, moment1, moment2,
     beta1 power accumulator and beta2 power accumulator
     '''
+    inputs = copy.deepcopy(init_inputs)
+
     param = inputs['Param']
     # grad = inputs['Grad']
     moment1 = inputs['Moment1']
@@ -214,23 +219,24 @@ def adam_step_sparse(inputs, attributes, height, rows, row_numel, np_grad):
     beta2 = attributes['beta2']
     epsilon = attributes['epsilon']
 
-    moment1_out = np.zeros(shape=[height, row_numel])
-    moment2_out = np.zeros(shape=[height, row_numel])
-    param_out = np.zeros(shape=[height, row_numel])
-
-    for idx, row_id in enumerate(rows):
-        moment1_out[row_id] = beta1 * moment1[row_id] + (1 - beta1
-                                                         ) * np_grad[idx]
-        moment2_out[row_id] = beta2 * moment2[row_id] + (
-            1 - beta2) * np.square(np_grad[idx])
-        lr_t = lr * np.sqrt(1 - beta2_pow) / (1 - beta1_pow)
-        param_out[row_id] = param[row_id] - lr_t * (moment1_out[row_id] / (
-            np.sqrt(moment2_out[row_id]) + epsilon))
-    return param_out, moment1_out, moment2_out
+    for step in range(steps):
+        for row_id in range(height):
+            grad1 = 0
+            grad2 = 0
+            if row_id in rows:
+                idx = rows.index(row_id)
+                grad1 = (1 - beta1) * np_grad[idx]
+                grad2 = (1 - beta2) * np.square(np_grad[idx])
+            moment1[row_id] = beta1 * moment1[row_id] + grad1
+            moment2[row_id] = beta2 * moment2[row_id] + grad2
+        lr = lr * np.sqrt(1 - math.pow(beta2_pow, step + 1)) / (
+            1 - math.pow(beta1_pow, step + 1))
+        param = param - lr * (moment1 / (np.sqrt(moment2) + epsilon))
+    return param, moment1, moment2
 
 
 class TestSparseAdamOp(unittest.TestCase):
-    def setup(self, scope, place):
+    def setup(self, scope, place, run_steps):
         beta1 = 0.78
         beta2 = 0.836
         epsilon = 1e-4
@@ -262,17 +268,19 @@ class TestSparseAdamOp(unittest.TestCase):
 
         self.sparse_inputs = ["Grad"]
 
-        param_out, mom1, mom2 = adam_step_sparse(
-            self.dense_inputs, self.attrs, height, rows, row_numel, np_array)
+        param_out, mom1, mom2 = adam_step_sparse(self.dense_inputs, self.attrs,
+                                                 height, rows, row_numel,
+                                                 np_array, run_steps)
         self.outputs = {
             "ParamOut": param_out,
             "Moment1Out": mom1,
             "Moment2Out": mom2
         }
 
-    def check_with_place(self, place):
+    def check_with_place(self, place, steps):
         scope = core.Scope()
-        self.setup(scope, place)
+
+        self.setup(scope, place, steps)
 
         op_args = dict()
         for key, np_array in self.dense_inputs.items():
@@ -288,9 +296,10 @@ class TestSparseAdamOp(unittest.TestCase):
         for k in self.attrs:
             op_args[k] = self.attrs[k]
 
-        # create and run sgd operator
+        # create and run adam operator
         adam_op = Operator("adam", **op_args)
-        adam_op.run(scope, place)
+        for _ in range(steps):
+            adam_op.run(scope, place)
 
         for key, np_array in self.outputs.items():
             out_var = scope.var(key).get_tensor()
@@ -305,12 +314,12 @@ class TestSparseAdamOp(unittest.TestCase):
                                     0.00001)
                     j += 1
 
-    def test_sparse_sgd(self):
+    def test_sparse_adam(self):
         places = [core.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
         for place in places:
-            self.check_with_place(place)
+            self.check_with_place(place, 10)
 
 
 if __name__ == "__main__":

@@ -174,12 +174,14 @@ struct SparseAdamFunctor {
 
   const int64_t* rows_;
   int64_t row_numel_;
+  size_t row_size_;
+  size_t invalid_id_offset_;
 
   SparseAdamFunctor(T beta1, T beta2, T epsilon, const T* beta1_pow,
                     const T* beta2_pow, const T* mom1, T* mom1_out,
                     const T* mom2, T* mom2_out, const T* lr, const T* grad,
                     const T* param, T* param_out, const int64_t* rows,
-                    int64_t row_numel)
+                    int64_t row_numel, size_t row_size)
       : beta1_(beta1),
         beta2_(beta2),
         epsilon_(epsilon),
@@ -194,17 +196,36 @@ struct SparseAdamFunctor {
         param_(param),
         param_out_(param_out),
         rows_(rows),
-        row_numel_(row_numel) {}
+        row_numel_(row_numel),
+        row_size_(row_size) {
+    invalid_id_offset_ = row_size + 1;
+  }
 
-  inline HOSTDEVICE void operator()(size_t i) const {
+  inline HOSTDEVICE size_t id_offset_in_rows(size_t id) const {
+    for (size_t i = 0; i < row_size_; ++i) {
+      if (rows_[i] == id) {
+        return i;
+      }
+    }
+    return invalid_id_offset_;
+  }
+
+  inline HOSTDEVICE void operator()(size_t id) const {
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
     for (int64_t j = 0; j < row_numel_; ++j) {
-      T g = grad_[i * row_numel_ + j];
-      T mom1 = moment1_[rows_[i] * row_numel_ + j];
-      T mom2 = moment2_[rows_[i] * row_numel_ + j];
+      T g;
+      size_t row_offset = id_offset_in_rows(id);
+      if (row_offset == invalid_id_offset_) {
+        g = 0;
+      } else {
+        g = grad_[row_offset * row_numel_ + j];
+      }
+      size_t data_offset = id * row_numel_ + j;
+      T mom1 = moment1_[data_offset];
+      T mom2 = moment2_[data_offset];
       T lr = *lr_;
-      T p = param_[rows_[i] * row_numel_ + j];
+      T p = param_[data_offset];
 
       lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
@@ -212,9 +233,9 @@ struct SparseAdamFunctor {
       mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
       p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
 
-      moment1_out_[rows_[i] * row_numel_ + j] = mom1;
-      moment2_out_[rows_[i] * row_numel_ + j] = mom2;
-      param_out_[rows_[i] * row_numel_ + j] = p;
+      moment1_out_[data_offset] = mom1;
+      moment2_out_[data_offset] = mom2;
+      param_out_[data_offset] = p;
     }  // for col id
   }
 };
@@ -314,10 +335,11 @@ class AdamOpKernel : public framework::OpKernel<T> {
           mom2.template data<T>(),
           mom2_out.template mutable_data<T>(ctx.GetPlace()),
           lr.template data<T>(), grad_data, param.template data<T>(),
-          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel);
+          param_out.template mutable_data<T>(ctx.GetPlace()), rows, row_numel,
+          grad_merge.rows().size());
       platform::ForRange<DeviceContext> for_range(
           static_cast<const DeviceContext&>(ctx.device_context()),
-          grad_merge.rows().size());
+          static_cast<size_t>(param.dims()[0]));
       for_range(functor);
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");
