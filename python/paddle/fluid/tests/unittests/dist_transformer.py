@@ -578,61 +578,10 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
 
             if TrainTaskConfig.local:
                 lr_rate = lr_scheduler.update_learning_rate()
-                print("pass_id:", pass_id, "batch_id:", batch_id, "step:",
-                      lr_scheduler.current_steps, ", learning_rate:", lr_rate)
-            else:
-                print("pass_id:", pass_id, "batch_id:", batch_id)
 
             for place_id, data_buffer in enumerate(
                     split_data(
                         data, num_part=dev_count)):
-                if TrainTaskConfig.local:
-                    a0 = []
-                    a1 = []
-                    for i, x in enumerate(data_buffer):
-                        if i % 2 == 0:
-                            a0.append(x)
-                            continue
-                        a1.append(x)
-
-                    value = ''
-                    for t in a0:
-                        for n in t:
-                            tmp = [str(i) for i in n]
-                            #print tmp
-                            value += ''.join(tmp)
-                    m = hashlib.md5()
-                    m.update(value)
-                    a0_m = m.hexdigest()
-
-                    value = ''
-                    for t in a1:
-                        for n in t:
-                            tmp = [str(i) for i in n]
-                            value += ''.join(tmp)
-                    m = hashlib.md5()
-                    m.update(value)
-                    a1_m = m.hexdigest()
-
-                    #print "a0:", a0
-                    #print "a1:", a1
-                    print("batch_id:", batch_id, ", a0:", a0_m, ", a1:", a1_m)
-                else:
-                    a = []
-                    for i, x in enumerate(data_buffer):
-                        a.append(x)
-
-                    value = ''
-                    for t in a:
-                        for n in t:
-                            tmp = [str(i) for i in n]
-                            value += ''.join(tmp)
-                    m = hashlib.md5()
-                    m.update(value)
-                    a_m = m.hexdigest()
-
-                    #print "a:", a
-                    print("batch_id:", batch_id, ", a:", a_m)
                 data_input_dict, num_token = prepare_batch_input(
                     data_buffer, data_input_names, ModelHyperParams.eos_idx,
                     ModelHyperParams.eos_idx, ModelHyperParams.n_head,
@@ -668,12 +617,6 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             total_sum_cost = sum_cost_val.sum()
             total_token_num = token_num_val.sum()
             total_avg_cost = total_sum_cost / total_token_num
-
-            print("epoch: %d, batch: %d, avg loss: %f, normalized loss: %f,"
-                  " ppl: %f, total_avg_cost:%f" %
-                  (pass_id, batch_id, total_avg_cost,
-                   total_avg_cost - loss_normalizer,
-                   np.exp([min(total_avg_cost, 100)]), total_sum_cost))
 
             init = True
 
@@ -1758,8 +1701,6 @@ class DistTransformer2x2(TestDistRunnerBase):
                            trainers)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
-        print("pserver startup", )
-        program_to_code(startup_prog)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -1771,7 +1712,6 @@ class DistTransformer2x2(TestDistRunnerBase):
         while True:
             assert retry_times >= 0, "wait ps ready failed"
             time.sleep(3)
-            print("waiting ps ready: ", pid)
             try:
                 # the listen_and_serv_op would touch a file which contains the listen port
                 # on the /tmp directory until it was ready to process all the RPC call.
@@ -1801,8 +1741,6 @@ class DistTransformer2x2(TestDistRunnerBase):
                 trainer_id)
         else:
             TrainTaskConfig.batch_size = 20
-            print("trainer startup", )
-            program_to_code(fluid.default_startup_program())
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)
