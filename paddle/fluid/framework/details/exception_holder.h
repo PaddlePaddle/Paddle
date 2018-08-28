@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "glog/logging.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -22,6 +23,51 @@ namespace details {
 
 class ExceptionHolder {
  public:
+  void Catch(std::exception_ptr eptr) {
+    try {
+      std::rethrow_exception(eptr);
+    } catch (platform::EOFException exp) {
+      Catch(exp);
+    } catch (platform::EnforceNotMet exp) {
+      Catch(exp);
+    } catch (...) {
+      LOG(FATAL) << "Unknown exception caught";
+    }
+  }
+
+  bool IsCaught() const {
+    std::lock_guard<std::mutex> lock(mu_);
+    return exception_.get() != nullptr;
+  }
+
+  void ReThrow() {
+    std::lock_guard<std::mutex> lock(mu_);
+    switch (type_) {
+      case kNone:
+        break;
+      case kEnforceNotMet: {
+        auto e = *static_cast<platform::EnforceNotMet*>(exception_.get());
+        throw e;
+      }
+      case kEOF: {
+        auto e = *static_cast<platform::EOFException*>(exception_.get());
+        throw e;
+      }
+    }
+    ClearImpl();
+  }
+
+  void Clear() {
+    std::lock_guard<std::mutex> lock(mu_);
+    ClearImpl();
+  }
+
+ private:
+  void ClearImpl() {
+    exception_.reset();
+    type_ = kNone;
+  }
+
   void Catch(const platform::EnforceNotMet& exp) {
     std::lock_guard<std::mutex> lock(mu_);
     exception_.reset(new platform::EnforceNotMet(exp));
@@ -37,40 +83,6 @@ class ExceptionHolder {
     }
   }
 
-  bool ExceptionCatched() const {
-    std::lock_guard<std::mutex> lock(mu_);
-    return exception_.get() != nullptr;
-  }
-
-  void Throw() {
-    std::lock_guard<std::mutex> lock(mu_);
-    switch (type_) {
-      case kNone:
-        break;
-      case kEnforceNotMet: {
-        auto e = *static_cast<platform::EnforceNotMet*>(exception_.get());
-        throw e;
-        break;
-      }
-      case kEOF: {
-        auto e = *static_cast<platform::EOFException*>(exception_.get());
-        throw e;
-        break;
-      }
-      default:
-        LOG(FATAL) << "Unknown exception.";
-    }
-    exception_.reset();
-    type_ = kNone;
-  }
-
-  void Clear() {
-    std::lock_guard<std::mutex> lock(mu_);
-    exception_.reset();
-    type_ = kNone;
-  }
-
- private:
   enum ExceptionType { kNone, kEnforceNotMet, kEOF };
   ExceptionType type_{kNone};
 
