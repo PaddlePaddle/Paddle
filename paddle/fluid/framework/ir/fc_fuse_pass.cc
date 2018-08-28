@@ -100,12 +100,10 @@ void BuildFCPattern(PDPattern* pattern) {
       },
       "elementwise_add_out");
 
-  pattern->AddEdge(mul_parameter_var, mul_op);
-  pattern->AddEdge(mul_tmp_input_var, mul_op);
-  pattern->AddEdge(mul_op, mul_out_var);
-  pattern->AddEdge(mul_out_var, elementwise_add_op);
-  pattern->AddEdge(elementwise_add_tmp_var, elementwise_add_op);
-  pattern->AddEdge(elementwise_add_op, elementwise_add_out_var);
+  mul_op->LinksFrom({mul_parameter_var, mul_tmp_input_var})
+      .LinksTo({mul_out_var});
+  elementwise_add_op->LinksFrom({mul_out_var, elementwise_add_tmp_var})
+      .LinksTo({elementwise_add_out_var});
 }
 
 // Replace the node `from` in the links to `to`

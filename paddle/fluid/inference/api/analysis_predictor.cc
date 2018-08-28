@@ -27,6 +27,10 @@ using inference::Singleton;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
 
+/* This predictor is based on the original native predictor with IR and Analysis
+ * support. It will optimize IR and Parameters in the runtime.
+ * TODO(Superjomn) Replace the Navive predictor?
+ */
 class AnalysisPredictor : public NativePaddlePredictor {
  public:
   explicit AnalysisPredictor(const NativeConfig& config)
@@ -78,7 +82,6 @@ class AnalysisPredictor : public NativePaddlePredictor {
     // Get the feed_target_names and fetch_target_names
     feed_target_names_ = inference_program_->GetFeedTargetNames();
     fetch_target_names_ = inference_program_->GetFetchTargetNames();
-    LOG(INFO) << "Init ends";
     return true;
   }
 
@@ -119,7 +122,7 @@ class AnalysisPredictor : public NativePaddlePredictor {
     PADDLE_ENFORCE(argument.Has("param_scope"));
     // Update scope.
     scope_.reset(argument.Release<framework::Scope>("param_scope"));
-    LOG(INFO) << "optimize end";
+    LOG(INFO) << "optimize end ==";
   }
 
  private:

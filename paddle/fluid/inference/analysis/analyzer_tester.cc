@@ -273,9 +273,9 @@ void TestDituRNNPrediction(const std::string &model_path,
   config.specify_input_name = true;
 
   auto base_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
-  auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
@@ -284,7 +284,6 @@ void TestDituRNNPrediction(const std::string &model_path,
 
   base_predictor->Run(input_slots, &base_outputs);
 
-  platform::EnableProfiler(platform::ProfilerState::kCPU);
   Timer timer;
   timer.tic();
   for (int i = 0; i < num_times; i++) {

@@ -34,7 +34,7 @@ PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
                       name);
   }
 
-  nodes_.emplace_back(new PDNode(std::move(teller), name));
+  nodes_.emplace_back(new PDNode(std::move(teller), this, name));
   auto* cur = nodes_.back().get();
   node_map_[name] = cur;
   return cur;
@@ -217,7 +217,7 @@ void GraphPatternDetector::RemoveOverlappedMatch(
   *subgraphs = result;
 }
 
-std::string PDPattern::DotString() {
+std::string PDPattern::DotString() const {
   using inference::analysis::Dot;
   Dot dot;
   int id = 0;
@@ -239,6 +239,22 @@ std::string PDPattern::DotString() {
     dot.AddEdge(src, trg, {});
   }
   return dot.Build();
+}
+
+PDNode& PDNode::LinksTo(const std::vector<PDNode*>& others) {
+  // extend outlinks.
+  for (PDNode* x : others) {
+    pattern_->AddEdge(this, x);
+  }
+  return *this;
+}
+
+PDNode& PDNode::LinksFrom(const std::vector<PDNode*>& others) {
+  // extend outlinks.
+  for (PDNode* x : others) {
+    pattern_->AddEdge(x, this);
+  }
+  return *this;
 }
 
 }  // namespace ir

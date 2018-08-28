@@ -26,6 +26,7 @@
 namespace paddle {
 namespace framework {
 namespace ir {
+class PDPattern;
 
 // Some basic terminologies:
 //   - PDPattern: a pattern defined as a data flow graph.
@@ -39,16 +40,9 @@ struct PDNode {
   using teller_t = std::function<bool(Node*)>;
   enum class Type { kOp, kVar };
 
-  PDNode(teller_t&& teller, const std::string& name = "",
-         Type type = Type::kVar)
-      : teller_(std::move(teller)), name_(name), type_(type) {
-    PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
-  }
-
-  PDNode(PDNode&& other) = default;
-
-  std::vector<PDNode*> inlinks;
-  std::vector<PDNode*> outlinks;
+  // this link to others
+  PDNode& LinksTo(const std::vector<PDNode*>& others);
+  PDNode& LinksFrom(const std::vector<PDNode*>& others);
 
   bool Tell(Node* node) const {
     PADDLE_ENFORCE(teller_ != nullptr, "teller should be set for a PDNode");
@@ -64,7 +58,21 @@ struct PDNode {
   PDNode& operator=(const PDNode&) = delete;
 
  private:
+  PDNode(teller_t&& teller, PDPattern* pattern, const std::string& name = "",
+         Type type = Type::kVar)
+      : teller_(std::move(teller)),
+        pattern_(pattern),
+        name_(name),
+        type_(type) {
+    PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
+  }
+
+  PDNode(PDNode&& other) = default;
+
+  friend class PDPattern;
+
   teller_t teller_;
+  PDPattern* pattern_;
   std::string name_;
   Type type_;
 };
@@ -109,7 +117,7 @@ class PDPattern {
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
 
-  std::string DotString();
+  std::string DotString() const;
 
  private:
 #ifdef PADDLE_WITH_TESTING

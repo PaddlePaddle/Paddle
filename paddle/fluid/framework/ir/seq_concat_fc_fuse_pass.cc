@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/seq_concat_fc_fuse_pass.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -174,16 +174,9 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
       },
       "fc_out");
 
-  PDLINK(fc_w, fc_mul);
-  PDLINK(fc_x, fc_mul);
-  PDLINK(fc_mul, mul_out);
-
-  PDLINK(mul_out, elementwise_add);
-  PDLINK(fc_bias, elementwise_add);
-  PDLINK(elementwise_add, add_out);
-  PDLINK(add_out, act);
-  PDLINK(act, fc_out);
-
+  fc_mul->LinksFrom({fc_w, fc_x}).LinksTo({mul_out});
+  elementwise_add->LinksFrom({mul_out, fc_bias}).LinksTo({add_out});
+  act->LinksFrom({add_out}).LinksTo({fc_out});
   return fc_out;
 }
 
