@@ -39,6 +39,12 @@ struct PDNode {
   // tell whether an ir::Node* is a candidation for a PDNode.
   using teller_t = std::function<bool(Node*)>;
   enum class Type { kOp, kVar };
+  enum class Role {
+    kUnknown,      // No role,
+    kInput,        // an input and will be retained,
+    kOutput,       // an output and will be retained,
+    kIntermediate  // will be removed after handler.
+  };
 
   // this link to others
   PDNode& LinksTo(const std::vector<PDNode*>& others);
@@ -56,6 +62,27 @@ struct PDNode {
 
   PDNode(const PDNode&) = delete;
   PDNode& operator=(const PDNode&) = delete;
+
+  // Mark this node is an Input of a subgraph and will be retained.
+  PDNode& AsInput() {
+    role_ = Role::kInput;
+    return *this;
+  }
+  // Mark this node is an Output of a subgraph and will be retained.
+  PDNode& AsOutput() {
+    role_ = Role::kOutput;
+    return *this;
+  }
+  // Mark this node will be removed, so all the links should be inside a matched
+  // sub-graph.
+  PDNode& AsIntermediate() {
+    role_ = Role::kIntermediate;
+    return *this;
+  }
+
+  bool IsIntermediate() const { return role_ == Role::kIntermediate; }
+  bool IsInput() const { return role_ == Role::kInput; }
+  bool IsOutput() const { return role_ == Role::kOutput; }
 
  private:
   PDNode(teller_t&& teller, PDPattern* pattern, const std::string& name = "",
@@ -75,6 +102,7 @@ struct PDNode {
   PDPattern* pattern_;
   std::string name_;
   Type type_;
+  Role role_{Role::kUnknown};
 };
 
 /*
@@ -112,7 +140,7 @@ class PDPattern {
   void AddEdge(PDNode* a, PDNode* b);
 
   PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
-  PDNode* RetriveNode(const std::string& id) const;
+  PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
@@ -184,6 +212,9 @@ class GraphPatternDetector {
 
   // Remove overlapped match subgraphs, when overlapped, keep the previous one.
   void RemoveOverlappedMatch(std::vector<subgraph_t>* subgraphs);
+
+  // Validate whether the intermediate nodes are linked by external nodes.
+  void ValidateByNodeRole(std::vector<subgraph_t>* subgraphs);
 
 #ifdef PADDLE_WITH_TESTING
   FRIEND_TEST(GraphPatternDetecter, MarkPDNodesInGraph);

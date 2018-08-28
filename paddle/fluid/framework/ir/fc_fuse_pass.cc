@@ -126,10 +126,10 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
   GraphPatternDetector gpd;
   BuildFCPattern(gpd.mutable_pattern());
 
-#define GET_NODE(id)                                             \
-  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetriveNode(#id)), \
-                 "pattern has no Node called %s", #id);          \
-  auto* id = subgraph.at(gpd.pattern().RetriveNode(#id));        \
+#define GET_NODE(id)                                              \
+  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetrieveNode(#id)), \
+                 "pattern has no Node called %s", #id);           \
+  auto* id = subgraph.at(gpd.pattern().RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,

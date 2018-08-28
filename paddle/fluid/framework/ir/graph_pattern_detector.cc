@@ -40,7 +40,7 @@ PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
   return cur;
 }
 
-PDNode* PDPattern::RetriveNode(const std::string& id) const {
+PDNode* PDPattern::RetrieveNode(const std::string& id) const {
   auto it = node_map_.find(id);
   if (it == node_map_.end()) {
     return nullptr;
@@ -62,7 +62,9 @@ void GraphPatternDetector::operator()(Graph* graph,
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
+  ValidateByNodeRole(&subgraphs);
 
+  if (subgraphs.empty()) return;
   LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
   int id = 0;
   for (auto& g : subgraphs) {
@@ -85,6 +87,53 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
   }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
   return !pdnodes2nodes_.empty();
+}
+
+// The intermediate Nodes can only link to the nodes inside the pattern, or this
+// subgraph will be droped.
+void GraphPatternDetector::ValidateByNodeRole(
+    std::vector<GraphPatternDetector::subgraph_t>* subgraphs) {
+  std::vector<GraphPatternDetector::subgraph_t> result;
+
+  LOG(INFO) << "before subgraphs.size: " << subgraphs->size();
+  subgraphs->erase(
+      std::remove_if(
+          subgraphs->begin(), subgraphs->end(),
+          [](const GraphPatternDetector::subgraph_t& subgraph) -> bool {
+            // Collect the inputs and outputs.
+            std::unordered_set<Node*> ios;
+            for (auto& item : subgraph) {
+              if (!item.first->IsIntermediate()) {
+                ios.insert(item.second);
+              }
+            }
+            for (auto& item : subgraph) {
+              if (item.first->IsIntermediate()) {
+                LOG(INFO) << "get intermediate";
+                for (auto* x : item.second->inputs) {
+                  LOG(INFO) << "check " << x->Name() << "->"
+                            << item.second->Name();
+                  LOG(INFO) << "status " << ios.count(x);
+                  if (!ios.count(x)) {
+                    LOG(INFO) << "remove one graph";
+                    return true;
+                  }
+                }
+                for (auto* x : item.second->outputs) {
+                  LOG(INFO) << "check " << item.second->Name() << "->"
+                            << x->Name();
+                  LOG(INFO) << "status " << ios.count(x);
+                  if (!ios.count(x)) {
+                    LOG(INFO) << "remove one graph";
+                    return true;
+                  }
+                }
+              }
+            }
+            return false;
+          }),
+      subgraphs->end());
+  LOG(INFO) << "subgraphs.size: " << subgraphs->size();
 }
 
 struct HitGroup {

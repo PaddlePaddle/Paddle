@@ -1,11 +1,6 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
 set(analysis_deps
     framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
-
-if(WITH_DISTRIBUTE)
-    set(analysis_deps ${analysis_deps} grpc)
-endif()
-
 cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
   helper.cc

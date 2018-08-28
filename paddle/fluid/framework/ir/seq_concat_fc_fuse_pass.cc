@@ -186,10 +186,10 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
 
-#define GET_NODE(id, pattern)                              \
-  PADDLE_ENFORCE(subgraph.count(pattern.RetriveNode(#id)), \
-                 "pattern has no Node called %s", #id);    \
-  auto* id = subgraph.at(pattern.RetriveNode(#id));        \
+#define GET_NODE(id, pattern)                               \
+  PADDLE_ENFORCE(subgraph.count(pattern.RetrieveNode(#id)), \
+                 "pattern has no Node called %s", #id);     \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
   detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
