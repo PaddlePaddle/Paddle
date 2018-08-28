@@ -43,7 +43,6 @@ function(copy TARGET)
         if (NOT "${src_files}" STREQUAL "")
         list(REMOVE_DUPLICATES src_files)
         endif()
-        #string(REPLACE ";" " " src_files ${src_files})
         add_custom_command(TARGET ${TARGET} PRE_BUILD 
           COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
           )
