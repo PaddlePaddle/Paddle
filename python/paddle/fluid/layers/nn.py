@@ -87,6 +87,7 @@ __all__ = [
     'lod_reset',
     'lrn',
     'pad',
+    'pad_constant_like',
     'label_smooth',
     'roi_pool',
     'dice_loss',
