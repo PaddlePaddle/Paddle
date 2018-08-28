@@ -17,6 +17,7 @@ All layers just related to the neural network.
 
 from __future__ import print_function
 
+import numpy as np
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
@@ -24,7 +25,6 @@ from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import concat
 from . import utils
-import random
 from .. import unique_name
 from functools import reduce
 
@@ -5182,7 +5182,7 @@ def random_crop(x, shape, seed=None):
     dtype = x.dtype
     out = helper.create_tmp_variable(dtype)
     if seed is None:
-        seed = random.randint(-65536, 65535)
+        seed = np.random.randint(-65536, 65536)
     op_attrs = {"shape": shape}
     if isinstance(seed, int):
         op_attrs["startup_seed"] = seed
@@ -5496,7 +5496,7 @@ def prelu(x, mode, param_attr=None, name=None):
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
 	  name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically. 
+                        will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -5610,23 +5610,23 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
 
     Supposing :code:`x` is a Tensor with shape [d_1, d_2, ..., d_n], the
     :code:`y` is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
-    
+
     .. math::
-     
+
         y(i_1, i_2,..., i_n, j) = (j < x(i_1, i_2,..., i_n))
 
     Args:
-        x (Variable): Input tensor of sequence_mask layer, 
+        x (Variable): Input tensor of sequence_mask layer,
                       whose elements are integers less than :code:`maxlen`.
         maxlen (int|None): Maximum length of the sequence. If :code:`maxlen`
                            is None, it would be replace with :math:`max(x)`.
         dtype (np.dtype|core.VarDesc.VarType|str): Data type of the output.
-        name (str|None): A name for this layer(optional). If set None, the 
-                         layer will be named automatically.  
-    
+        name (str|None): A name for this layer(optional). If set None, the
+                         layer will be named automatically.
+
     Returns:
         Variable: The output sequence mask.
-    
+
     """
 
     helper = LayerHelper('sequence_mask', **locals())
@@ -5651,23 +5651,23 @@ def stack(x, axis=0):
     **Stack Layer**
 
     This layer stacks all of the input :code:`x` along axis.
-   
-    Input :code:`x` can be a single variable, a :code:`list` of variables, 
-    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or 
-    :code:`tuple`, the shapes of all these variables must be the same.  
-    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`, 
-    the shape of the output variable would be 
-    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`. 
+
+    Input :code:`x` can be a single variable, a :code:`list` of variables,
+    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or
+    :code:`tuple`, the shapes of all these variables must be the same.
+    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`,
+    the shape of the output variable would be
+    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`.
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
-    If :code:`axis` is None, it would be replaced with 0. 
+    If :code:`axis` is None, it would be replaced with 0.
 
     Args:
-        x (Variable|list(Variable)|tuple(Variable)): Input variables. 
+        x (Variable|list(Variable)|tuple(Variable)): Input variables.
         axis (int|None): The axis along which all inputs are stacked.
-    
+
     Returns:
         Variable: The stacked variable.
-    
+
     """
 
     helper = LayerHelper('stack', **locals())
