@@ -142,8 +142,6 @@ class Graph {
     nodes_.erase(node);
   }
 
-  const ProgramDesc &program() const { return program_; }
-
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -154,7 +152,7 @@ class Graph {
   }
 
   // NOTE: program_ shouldn't be exposed to user.
-  const ProgramDesc &program_;
+  const ProgramDesc program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
