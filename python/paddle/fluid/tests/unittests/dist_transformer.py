@@ -40,6 +40,11 @@ from paddle.compat import long_type
 
 import hashlib
 
+from paddle.fluid.transpiler.details import program_to_code
+
+const_para_attr = fluid.ParamAttr(initializer=fluid.initializer.Constant(0.001))
+const_bias_attr = const_para_attr
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
@@ -464,7 +469,8 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
         use_cuda=TrainTaskConfig.use_gpu,
         main_program=test_program,
         share_vars_from=train_exe,
-        build_strategy=build_strategy)
+        build_strategy=build_strategy,
+        exec_strategy=strategy)
 
     def test(exe=test_exe):
         test_total_cost = 0
@@ -1036,16 +1042,19 @@ def multi_head_attention(queries,
         """
         q = layers.fc(input=queries,
                       size=d_key * n_head,
-                      bias_attr=False,
-                      num_flatten_dims=2)
+                      num_flatten_dims=2,
+                      param_attr=const_para_attr,
+                      bias_attr=const_bias_attr)
         k = layers.fc(input=keys,
                       size=d_key * n_head,
-                      bias_attr=False,
-                      num_flatten_dims=2)
+                      num_flatten_dims=2,
+                      param_attr=const_para_attr,
+                      bias_attr=const_bias_attr)
         v = layers.fc(input=values,
                       size=d_value * n_head,
-                      bias_attr=False,
-                      num_flatten_dims=2)
+                      num_flatten_dims=2,
+                      param_attr=const_para_attr,
+                      bias_attr=const_bias_attr)
         return q, k, v
 
     def __split_heads(x, n_head):
@@ -1120,8 +1129,9 @@ def multi_head_attention(queries,
     # Project back to the model size.
     proj_out = layers.fc(input=out,
                          size=d_model,
-                         bias_attr=False,
-                         num_flatten_dims=2)
+                         num_flatten_dims=2,
+                         param_attr=const_para_attr,
+                         bias_attr=const_bias_attr)
     return proj_out
 
 
@@ -1134,8 +1144,14 @@ def positionwise_feed_forward(x, d_inner_hid, d_hid):
     hidden = layers.fc(input=x,
                        size=d_inner_hid,
                        num_flatten_dims=2,
-                       act="relu")
-    out = layers.fc(input=hidden, size=d_hid, num_flatten_dims=2)
+                       act="relu",
+                       param_attr=const_para_attr,
+                       bias_attr=const_bias_attr)
+    out = layers.fc(input=hidden,
+                    size=d_hid,
+                    num_flatten_dims=2,
+                    param_attr=const_para_attr,
+                    bias_attr=const_bias_attr)
     return out
 
 
@@ -1188,7 +1204,7 @@ def prepare_encoder(src_word,
             size=[src_vocab_size, src_emb_dim],
             param_attr=fluid.ParamAttr(
                 name=word_emb_param_name,
-                initializer=fluid.initializer.ConstantInitializer(0.1)))
+                initializer=fluid.initializer.ConstantInitializer(0.001)))
     else:
         src_word_emb = layers.embedding(
             src_word,
@@ -1202,7 +1218,9 @@ def prepare_encoder(src_word,
         src_pos,
         size=[src_max_len, src_emb_dim],
         param_attr=fluid.ParamAttr(
-            name=pos_enc_param_name, trainable=False))
+            name=pos_enc_param_name,
+            trainable=False,
+            initializer=fluid.initializer.ConstantInitializer(0.001)))
     enc_input = src_word_emb + src_pos_enc
     return layers.dropout(
         enc_input,
@@ -1530,8 +1548,9 @@ def wrap_decoder(trg_vocab_size,
     else:
         predict = layers.fc(input=dec_output,
                             size=trg_vocab_size,
-                            bias_attr=False,
-                            num_flatten_dims=2)
+                            num_flatten_dims=2,
+                            param_attr=const_para_attr,
+                            bias_attr=const_bias_attr)
     if dec_inputs is None:
         predict = layers.softmax(predict)
     return predict
@@ -1706,7 +1725,9 @@ def get_model(is_dist, is_async):
 
 
 def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
-    t = fluid.DistributeTranspiler()
+    config = fluid.DistributeTranspilerConfig()
+    #config.slice_var_up = False
+    t = fluid.DistributeTranspiler(config=config)
     t.transpile(
         trainer_id=trainer_id,
         program=main_program,
@@ -1737,6 +1758,8 @@ class DistTransformer2x2(TestDistRunnerBase):
                            trainers)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+        print("pserver startup", )
+        program_to_code(startup_prog)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
@@ -1778,6 +1801,8 @@ class DistTransformer2x2(TestDistRunnerBase):
                 trainer_id)
         else:
             TrainTaskConfig.batch_size = 20
+            print("trainer startup", )
+            program_to_code(fluid.default_startup_program())
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)
