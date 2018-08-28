@@ -88,10 +88,10 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto* x = context.Input<LoDTensor>("X");
     auto* y = context.Input<LoDTensor>("Y");
     auto* out = context.Output<LoDTensor>("Out");
-
     int ref_level = context.Attr<int>("ref_level");
     auto& x_lod = x->lod();
     auto& y_lod = y->lod();
+    PADDLE_ENFORCE(!y_lod.empty(), "LoD of Y should not be empty.");
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
 
@@ -104,12 +104,11 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
 
     {
       auto& ref_lod = y_lod[ref_level];
-
-      std::cout << " ";
-      for (auto& detail : ref_lod) {
-        std::cout << detail << " ";
-      }
-      std::cout << "\n";
+      PADDLE_ENFORCE_EQ(
+          ref_lod.size() - 1,
+          x_lod.empty() ? x->dims()[0] : x_lod[0].size() - 1,
+          "The reference lod size must be same as x->dims[0] + 1 or "
+          "x_lod[0].size()");
     }
 
     // x lod level is at most 1.
