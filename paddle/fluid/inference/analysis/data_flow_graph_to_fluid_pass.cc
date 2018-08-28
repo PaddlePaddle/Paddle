@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
+#include "paddle/fluid/inference/io.h"
 
 namespace paddle {
 namespace inference {
@@ -63,6 +64,10 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
       default:
         continue;
     }
+  }
+
+  if (argument_->Has("param_scope")) {
+    LOG(INFO) << "get param_scope";
   }
 
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());

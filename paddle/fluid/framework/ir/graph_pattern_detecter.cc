@@ -119,8 +119,10 @@ GraphPatternDetecter::DetectPatterns() {
   // Init empty subgraphs.
   std::vector<GraphPatternDetecter::subgraph_t> result;
   std::vector<HitGroup> init_groups;
-  PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
-  auto* first_pnode = pattern_.edges().front().first;
+  std::array<std::vector<HitGroup>, 2> bi_records;
+  // PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
+  auto* first_pnode = pattern_.edges().empty() ? pattern().nodes().front().get()
+                                               : pattern_.edges().front().first;
   if (!pdnodes2nodes_.count(first_pnode)) return result;
   for (auto* node : pdnodes2nodes_[first_pnode]) {
     HitGroup group;
@@ -129,7 +131,6 @@ GraphPatternDetecter::DetectPatterns() {
   }
 
   int step = 0;
-  std::array<std::vector<HitGroup>, 2> bi_records;
   bi_records[0] = std::move(init_groups);
 
   // Extend a PDNode to subgraphs by deducing the connection relations defined

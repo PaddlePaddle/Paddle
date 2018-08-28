@@ -65,6 +65,10 @@ class Dot {
       std::stringstream ss;
       CHECK(!name.empty());
       ss << id_;
+      if (attrs.empty()) {
+        ss << "[label=" << '"' << name << '"' << "]";
+        return ss.str();
+      }
       for (size_t i = 0; i < attrs.size(); i++) {
         if (i == 0) {
           ss << "[label=" << '"' << name << '"' << " ";
@@ -108,9 +112,11 @@ class Dot {
 
   explicit Dot(const std::vector<Attr>& attrs) : attrs_(attrs) {}
 
-  void AddNode(const std::string& name, const std::vector<Attr>& attrs) {
-    CHECK(!nodes_.count(name)) << "duplicate Node '" << name << "'";
-    nodes_.emplace(name, Node{name, attrs});
+  void AddNode(const std::string& id, const std::vector<Attr>& attrs,
+               std::string label = "") {
+    CHECK(!nodes_.count(id)) << "duplicate Node '" << id << "'";
+    if (label.empty()) label = id;
+    nodes_.emplace(id, Node{label, attrs});
   }
 
   void AddEdge(const std::string& source, const std::string& target,
