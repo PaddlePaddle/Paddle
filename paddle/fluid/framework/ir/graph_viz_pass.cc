@@ -17,12 +17,26 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-static const char kGraphVizPath[] = "graph_viz_path";
 using inference::analysis::Dot;
+namespace {
+const char kGraphVizPath[] = "graph_viz_path";
+
+std::string FormatName(const Node* op) {
+  if (!op->Op() ||
+      !op->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
+    return op->Name();
+  }
+  const std::string full_scope = boost::get<std::string>(
+      op->Op()->GetAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
+  return string::Sprintf("%s%s", full_scope.c_str(), op->Name().c_str());
+}
+}  // namespace
 
 std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
@@ -54,7 +68,7 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
   auto marked_nodes = ConsumeMarkedNodes(graph.get());
   // Create nodes
   for (const Node* n : graph->Nodes()) {
-    std::string node_id = n->Name() + "(" + std::to_string(n->id()) + ")";
+    std::string node_id = FormatName(n) + "(" + std::to_string(n->id()) + ")";
     if (n->IsOp()) {
       decltype(op_attrs) attr =
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
