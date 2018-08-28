@@ -85,7 +85,9 @@ function(op_library TARGET)
 
     #remove windows unsupported op
     if (WIN32)
-    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op" "crf_decoding_op")
+    # no nccl, no avx instructions ops.
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
+     "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "lstm_op" "fusion_lstm_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -285,10 +287,10 @@ op_library(hierarchical_sigmoid_op DEPS matrix_bit_code)
 op_library(lstmp_op DEPS sequence2batch lstm_compute)
 op_library(gru_op DEPS sequence2batch gru_compute)
 endif(NOT WIN32)
-op_library(recurrent_op DEPS executor)
+op_library(recurrent_op DEPS executor glog)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 op_library(cos_sim_op DEPS cos_sim_functor)
-op_library(parallel_do_op DEPS executor)
+op_library(parallel_do_op DEPS executor glog)
 op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
 op_library(extract_rows_op DEPS memory)

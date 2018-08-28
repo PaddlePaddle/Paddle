@@ -22,6 +22,7 @@ if(NOT APPLE)
 endif()
 
 # Create static library
+message("messages " ${fluid_modules})
 cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
