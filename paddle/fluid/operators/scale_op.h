@@ -22,17 +22,29 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:
-  virtual void Compute(const framework::ExecutionContext& context) const {
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    auto* in = context.Input<framework::Tensor>("X");
-    tensor->mutable_data<T>(in->place());
+  virtual void Compute(const framework::ExecutionContext& ctx) const {
+    auto* in_var = ctx.InputVar("X");
+    auto* in = ctx.Input<framework::Tensor>("X");
 
-    auto scale = static_cast<T>(context.Attr<float>("scale"));
+    auto* out_var = ctx.OutputVar("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(in->place());
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*tensor);
+    PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
+                      "in and out should have the same dim");
+
+    auto scale = static_cast<T>(ctx.Attr<float>("scale"));
+
+    if (in_var->IsType<framework::SelectedRows>() && in_var != out_var) {
+      auto& in_slr = in_var->Get<framework::SelectedRows>();
+      auto* out_slr = out_var->GetMutable<framework::SelectedRows>();
+      out_slr->set_rows(in_slr.rows());
+      out_slr->set_height(in_slr.height());
+    }
+
+    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
     auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& dev =
-        *context.template device_context<DeviceContext>().eigen_device();
+    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
     eigen_out.device(dev) = scale * eigen_in;
   }
 };
