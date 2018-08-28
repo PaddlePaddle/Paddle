@@ -32,10 +32,6 @@ void ProgramDesc::Flush() {
   for (auto &block : blocks_) {
     block->Flush();
   }
-  // If not loaded, use current code version.
-  if (desc_.version().version() < 0) {
-    desc_.mutable_version()->set_version(kCurProgramVersion);
-  }
 }
 
 proto::ProgramDesc *ProgramDesc::Proto() {
