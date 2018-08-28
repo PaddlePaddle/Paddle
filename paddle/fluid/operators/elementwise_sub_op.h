@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include "paddle/fluid/operators/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise_op_function.h"
 
 namespace paddle {
@@ -50,9 +51,10 @@ struct SubGradDY {
 };
 
 template <typename DeviceContext, typename T>
-class ElementwiseSubGradKernel : public framework::OpKernel<T> {
+class ElementwiseSubGradKernel : public ElemwiseGradKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    ElemwiseGradKernel<T>::Compute(ctx);
     using Tensor = framework::Tensor;
 
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
