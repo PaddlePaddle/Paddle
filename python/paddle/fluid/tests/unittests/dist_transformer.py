@@ -38,6 +38,8 @@ from paddle.fluid import core
 from test_dist_base import TestDistRunnerBase, runtime_main
 from paddle.compat import long_type
 
+import hashlib
+
 # Fix seed for test
 fluid.default_startup_program().random_seed = 1
 fluid.default_main_program().random_seed = 1
@@ -561,11 +563,70 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
 
             feed_list = []
             total_num_token = 0
+
+            #if TrainTaskConfig.local:
+            #    lr_rate = lr_scheduler.update_learning_rate()
+            #for place_id, data_buffer in enumerate(
+            #        split_data(
+            #            data, num_part=dev_count)):
+
             if TrainTaskConfig.local:
                 lr_rate = lr_scheduler.update_learning_rate()
+                print("pass_id:", pass_id, "batch_id:", batch_id, "step:",
+                      lr_scheduler.current_steps, ", learning_rate:", lr_rate)
+            else:
+                print("pass_id:", pass_id, "batch_id:", batch_id)
+
             for place_id, data_buffer in enumerate(
                     split_data(
                         data, num_part=dev_count)):
+                if TrainTaskConfig.local:
+                    a0 = []
+                    a1 = []
+                    for i, x in enumerate(data_buffer):
+                        if i % 2 == 0:
+                            a0.append(x)
+                            continue
+                        a1.append(x)
+
+                    value = ''
+                    for t in a0:
+                        for n in t:
+                            tmp = [str(i) for i in n]
+                            #print tmp
+                            value += ''.join(tmp)
+                    m = hashlib.md5()
+                    m.update(value)
+                    a0_m = m.hexdigest()
+
+                    value = ''
+                    for t in a1:
+                        for n in t:
+                            tmp = [str(i) for i in n]
+                            value += ''.join(tmp)
+                    m = hashlib.md5()
+                    m.update(value)
+                    a1_m = m.hexdigest()
+
+                    #print "a0:", a0
+                    #print "a1:", a1
+                    print("batch_id:", batch_id, ", a0:", a0_m, ", a1:", a1_m)
+                else:
+                    a = []
+                    for i, x in enumerate(data_buffer):
+                        a.append(x)
+
+                    value = ''
+                    for t in a:
+                        for n in t:
+                            tmp = [str(i) for i in n]
+                            value += ''.join(tmp)
+                    m = hashlib.md5()
+                    m.update(value)
+                    a_m = m.hexdigest()
+
+                    #print "a:", a
+                    print("batch_id:", batch_id, ", a:", a_m)
                 data_input_dict, num_token = prepare_batch_input(
                     data_buffer, data_input_names, ModelHyperParams.eos_idx,
                     ModelHyperParams.eos_idx, ModelHyperParams.n_head,
@@ -584,8 +645,15 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                             ModelHyperParams.max_length + 1,
                             ModelHyperParams.d_model)
                         feed_list[place_id][pos_enc_param_name] = pos_enc
-            for feed_dict in feed_list:
-                feed_dict[sum_cost.name + "@GRAD"] = 1. / total_num_token
+
+            if not TrainTaskConfig.check_acc:
+                for feed_dict in feed_list:
+                    feed_dict[sum_cost.name + "@GRAD"] = 1. / total_num_token
+            else:
+                b = 100 * TrainTaskConfig.batch_size
+                a = np.asarray([b], dtype="float32")
+                for feed_dict in feed_list:
+                    feed_dict[sum_cost.name + "@GRAD"] = 1. / a
 
             outs = train_exe.run(fetch_list=[sum_cost.name, token_num.name],
                                  feed=feed_list)
@@ -594,6 +662,12 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             total_sum_cost = sum_cost_val.sum()
             total_token_num = token_num_val.sum()
             total_avg_cost = total_sum_cost / total_token_num
+
+            print("epoch: %d, batch: %d, avg loss: %f, normalized loss: %f,"
+                  " ppl: %f, total_avg_cost:%f" %
+                  (pass_id, batch_id, total_avg_cost,
+                   total_avg_cost - loss_normalizer,
+                   np.exp([min(total_avg_cost, 100)]), total_sum_cost))
 
             init = True
 
@@ -1703,6 +1777,7 @@ class DistTransformer2x2(TestDistRunnerBase):
             TrainTaskConfig.train_file_pattern = TrainTaskConfig.data_path + "train.tok.clean.bpe.32000.en-de.train_{}".format(
                 trainer_id)
         else:
+            TrainTaskConfig.batch_size = 20
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)

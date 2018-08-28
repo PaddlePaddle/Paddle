@@ -9,7 +9,6 @@ python/paddle/v2/fluid/tests/book/label_semantic_roles.inference.model/
 build/
 build_doc/
 *.user
-paddle/fluid/operators/distributed/send_recv.proto
 
 .vscode
 .idea

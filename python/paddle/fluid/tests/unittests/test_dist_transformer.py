@@ -52,7 +52,7 @@ class TestDistTransformer2x2Sync(TestDistBase):
 
     def test_transformer(self):
         download_files()
-        self.check_with_place("dist_transformer.py", delta=0.00001)
+        self.check_with_place("dist_transformer.py", delta=1e-7)
 
 
 class TestDistTransformer2x2Async(TestDistBase):
@@ -61,7 +61,7 @@ class TestDistTransformer2x2Async(TestDistBase):
 
     def test_transformer(self):
         download_files()
-        self.check_with_place("dist_transformer.py", delta=0.1)
+        self.check_with_place("dist_transformer.py", delta=1.0)
 
 
 if __name__ == "__main__":
