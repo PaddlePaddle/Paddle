@@ -6,7 +6,7 @@ if(WITH_DISTRIBUTE)
     set(analysis_deps ${analysis_deps} grpc)
 endif()
 
-cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
+cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
   helper.cc
   # passes

@@ -29,13 +29,13 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+static size_t dot_node_counter{0};
+
 /*
  * A Dot template that helps to build a DOT graph definition.
  */
 class Dot {
  public:
-  static size_t counter;
-
   struct Attr {
     std::string key;
     std::string value;
@@ -57,7 +57,7 @@ class Dot {
     Node(const std::string& name, const std::vector<Attr>& attrs)
         : name(name),
           attrs(attrs),
-          id_("node_" + std::to_string(Dot::counter++)) {}
+          id_("node_" + std::to_string(dot_node_counter++)) {}
 
     std::string id() const { return id_; }
 
