@@ -291,6 +291,7 @@ op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
 op_library(extract_rows_op DEPS memory)
 op_library(flatten_op DEPS reshape_op)
+op_library(sequence_pad_op DEPS sequence_padding)
 op_library(unstack_op DEPS stack_op)
 
 if (WITH_GPU)

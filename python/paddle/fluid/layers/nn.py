@@ -54,6 +54,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'sequence_expand',
+    'sequence_pad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
@@ -87,6 +88,7 @@ __all__ = [
     'lod_reset',
     'lrn',
     'pad',
+    'pad_constant_like',
     'label_smooth',
     'roi_pool',
     'dice_loss',
@@ -2656,6 +2658,51 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
+@templatedoc()
+def sequence_pad(x, pad_value, maxlen=None):
+    """
+    ${comment}
+
+    Args:
+        x(Variable): Input variable which should contain lod information.
+        pad_value(Variable): The Variable that holds values that will be fill 
+            into padded steps. It can be a scalar or a tensor whose shape 
+            equals to time steps in sequences. If it's a scalar, it will be 
+            automatically broadcasted to the shape of time step.
+        maxlen(int, default None): The length of padded sequences. It can be 
+            None or any positive int. When it is None, all sequences will be 
+            padded up to the length of the longest one among them; when it a 
+            certain positive value, it must be greater than the length of the 
+            longest original sequence."
+    
+    Returns:
+        Variable: The padded sequence batch. All sequences has the same length.
+    
+    Examples:
+        .. code-block:: python
+
+            import numpy
+
+            x = fluid.layers.data(name='y', shape=[10, 5],
+                             dtype='float32', lod_level=1)
+            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+    """
+
+    helper = LayerHelper('sequence_pad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    if maxlen is None:
+        maxlen = -1
+    helper.append_op(
+        type='sequence_pad',
+        inputs={'X': x,
+                'PadValue': pad_value},
+        outputs={'Out': out},
+        attrs={'padded_length': maxlen})
+    return out
+
+
 def beam_search(pre_ids,
                 pre_scores,
                 ids,
@@ -4709,6 +4756,86 @@ def pad(x, paddings, pad_value=0., name=None):
     return out
 
 
+def pad_constant_like(x, y, pad_value=0., name=None):
+    """
+    Pad input(Y) with :attr:`pad_value`, the number of values padded to
+    the edges of each axis is specified by the difference of the shape
+    of X and Y. ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
+    unique pad widths for each axis. The input should be a k-D
+    tensor(k > 0 and k < 7).
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            X = [[[[ 0,  1,  2],
+                   [ 3,  4,  5]],
+                  [[ 6,  7,  8],
+                   [ 9, 10, 11]],
+                  [[12, 13, 14],
+                   [15, 16, 17]]],
+                 [[[18, 19, 20],
+                   [21, 22, 23]],
+                  [[24, 25, 26],
+                   [27, 28, 29]],
+                  [[30, 31, 32],
+                   [33, 34, 35]]]]
+            X.shape = (2, 3, 2, 3)
+
+            Y = [[[[35, 36, 37]],
+                  [[38, 39, 40]],
+                  [[41, 42, 43]]]]
+            Y.shape = (1, 3, 1, 3)
+
+    And
+        pad_value = -1,
+
+    Return:
+        Out = [[[[35, 36, 37],
+                  [-1, -1, -1]],
+                [[38, 39, 40],
+                  [-1, -1, -1]],
+                 [[41, 42, 43],
+                  [-1, -1, -1]]],
+                [[[-1, -1, -1],
+                  [-1, -1, -1]],
+                 [[-1, -1, -1],
+                  [-1, -1, -1]],
+                 [[-1, -1, -1],
+                  [-1, -1, -1]]]]
+        Out.shape = (2, 3, 2, 3)
+
+    Args:
+        x (Variable): The input tensor variable.
+        y (Variable): The input tensor variable.
+        pad_value (float): The constant value used to pad.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The padded tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
+            # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
+            out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
+            # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
+    """
+    helper = LayerHelper('pad_constant_like', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad_constant_like',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'pad_value': float(pad_value)})
+    return out
+
+
 def label_smooth(label,
                  prior_dist=None,
                  epsilon=0.1,
@@ -5305,7 +5432,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-        isinstance(shape, Variable)):
+                    isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
