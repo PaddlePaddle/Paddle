@@ -37,7 +37,7 @@ template <typename DeviceContext, typename T>
 class ConcatFunctor {
  public:
   void operator()(const DeviceContext& context,
-                  const std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output);
 };
 
@@ -57,8 +57,8 @@ template <typename DeviceContext, typename T>
 class ConcatGradFunctor {
  public:
   void operator()(const DeviceContext& context, const framework::Tensor& input,
-                  const std::vector<const framework::LoDTensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs);
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  int axis, std::vector<framework::Tensor*>* outputs);
 };
 
 }  // namespace math

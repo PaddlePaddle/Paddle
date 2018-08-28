@@ -89,7 +89,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         dxs[i]->mutable_data<T>(context.GetPlace());
       }
     }
-    std::vector<framework::LoDTensor> sliced_x;
+    std::vector<framework::Tensor> sliced_x;
     std::vector<boost::variant<boost::blank, framework::Tensor>> sliced_dx;
 
     for (size_t i = 1; i < xs[0]->lod()[0].size(); ++i) {
@@ -97,9 +97,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
         const framework::LoDTensor *x = xs[j];
         framework::LoDTensor *dx = dxs[j];
         auto &x_lod = x->lod()[0];
-        framework::LoDTensor tmp;
-        tmp.ShareDataWith(x->Slice(x_lod[i - 1], x_lod[i]));
-        sliced_x.emplace_back(tmp);
+        sliced_x.emplace_back(x->Slice(x_lod[i - 1], x_lod[i]));
         if (dx != nullptr) {
           sliced_dx.emplace_back(dx->Slice(x_lod[i - 1], x_lod[i]));
         } else {
@@ -109,7 +107,7 @@ class SeqConcatGradKernel : public framework::OpKernel<T> {
     }
 
     math::ConcatGradFunctor<DeviceContext, T> functor;
-    std::vector<const framework::LoDTensor *> sliced_x_ptr;
+    std::vector<const framework::Tensor *> sliced_x_ptr;
     std::vector<framework::Tensor *> sliced_dx_ptr;
     for (auto &x : sliced_x) {
       sliced_x_ptr.emplace_back(&x);

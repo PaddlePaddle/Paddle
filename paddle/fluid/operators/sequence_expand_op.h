@@ -14,9 +14,10 @@ limitations under the License. */
 
 #pragma once
 #include <numeric>  // std::iota
-
+#include <sstream>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -99,6 +100,16 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     if (y_lod[ref_level].size() <= 1) {
       framework::TensorCopy(*x, context.GetPlace(), out);
       return;
+    }
+
+    {
+      auto& ref_lod = y_lod[ref_level];
+
+      std::cout << " ";
+      for (auto& detail : ref_lod) {
+        std::cout << detail << " ";
+      }
+      std::cout << "\n";
     }
 
     // x lod level is at most 1.

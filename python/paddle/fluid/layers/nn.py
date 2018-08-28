@@ -19,7 +19,7 @@ from __future__ import print_function
 
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, convert_np_dtype_to_dtype_
 from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import concat
@@ -104,6 +104,7 @@ __all__ = [
     'prelu',
     'flatten',
     'sequence_mask',
+    'gaussian_random',
     'stack',
 ]
 
@@ -5600,4 +5601,31 @@ def stack(x, axis=0):
     helper.append_op(
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
+    return out
+
+
+def gaussian_random(shape,
+                    dtype=None,
+                    mean=None,
+                    std=None,
+                    seed=None,
+                    use_mkldnn=None):
+    helper = LayerHelper('gaussian_random', **locals())
+
+    if dtype is None:
+        dtype = 'float32'
+    out = helper.create_tmp_variable(dtype)
+    attrs = dict()
+    attrs['shape'] = map(int, shape)
+    attrs['dtype'] = convert_np_dtype_to_dtype_(dtype)
+    if mean is not None:
+        attrs['mean'] = float(mean)
+    if std is not None:
+        attrs['std'] = float(std)
+    if seed is not None:
+        attrs['seed'] = int(seed)
+    if use_mkldnn is not None:
+        attrs['use_mkldnn'] = bool(use_mkldnn)
+
+    helper.append_op(type='gaussian_random', outputs={'Out': out}, attrs=attrs)
     return out
