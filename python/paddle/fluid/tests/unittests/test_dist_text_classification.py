@@ -25,5 +25,13 @@ class TestDistTextClassification2x2(TestDistBase):
         self.check_with_place("dist_text_classification.py", delta=1e-7)
 
 
+class TestDistTextClassification2x2Async(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_text_classification.py", delta=100)
+
+
 if __name__ == "__main__":
     unittest.main()

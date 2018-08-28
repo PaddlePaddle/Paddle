@@ -243,7 +243,3 @@ if __name__ == "__main__":
     os.environ["IS_DISTRIBUTED"] = '0'
     os.environ["IS_SPARSE"] = '0'
     runtime_main(TestDistSimnetBow2x2)
-
-#    os.environ["IS_DISTRIBUTED"] = '0'
-#    os.environ["IS_SPARSE"] = '1'
-#    runtime_main(TestDistSimnetBow2x2)
