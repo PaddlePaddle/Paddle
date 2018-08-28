@@ -315,6 +315,15 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
       fetch_data;
 }
 
+void ParallelExecutor::RunAsync(const std::vector<std::string> &fetch_tensors,
+                                const std::string &fetched_var_name) {
+  auto run =
+      std::bind(&ParallelExecutor::Run, this, fetch_tensors, fetched_var_name);
+  async_run_future_ = std::async(std::launch::async, run);
+}
+
+void ParallelExecutor::Wait() { async_run_future_.wait(); }
+
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
   PADDLE_ENFORCE_EQ(member_->local_scopes_.size(), tensors.size());

@@ -73,6 +73,7 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
+                 scope=None,
                  **kwargs):
         if len(kwargs) != 0:
             err_msg = ""
@@ -131,7 +132,8 @@ class ParallelExecutor(object):
 
         main = main_program
         main = main if main else framework.default_main_program()
-        scope = executor.global_scope()
+        if not scope:
+            scope = executor.global_scope()
         # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
         # train program, call self.bcast_param() at the end of each mini-batch.
         self.is_dist = True if "recv" in [
@@ -165,7 +167,12 @@ class ParallelExecutor(object):
             build_strategy, num_trainers, trainer_id)
         self.scope = scope
 
-    def run(self, fetch_list, feed=None, feed_dict=None, return_numpy=True):
+    def run(self,
+            fetch_list,
+            feed=None,
+            feed_dict=None,
+            return_numpy=True,
+            async=False):
         """
         Run a parallel executor with fetch_list.
 
@@ -273,7 +280,24 @@ class ParallelExecutor(object):
             self.executor.feed_tensors_into_local_scopes(res)
 
         fetch_var_name = '@FETCHED_VAR_NAME@'
-        self.executor.run(fetch_list, fetch_var_name)
+        if async:
+            self.executor.run_async(fetch_list, fetch_var_name)
+            return None
+        else:
+            self.executor.run(fetch_list, fetch_var_name)
+        arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
+
+        if self.is_dist:
+            self._bcast_params()
+
+        if return_numpy:
+            return executor.as_numpy(arr)
+
+        return [arr[i] for i in range(len(arr))]
+
+    def wait(self, fetch_list, return_numpy=True):
+        self.executor.wait()
+        fetch_var_name = '@FETCHED_VAR_NAME@'
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
         if self.is_dist:

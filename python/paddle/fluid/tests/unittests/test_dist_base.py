@@ -111,6 +111,66 @@ class TestDistRunnerBase(object):
         last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
         print(last_loss)
 
+    def run_trainer_n_model(self,
+                            place,
+                            endpoints,
+                            trainer_id,
+                            trainers,
+                            n_models=2,
+                            is_dist=True,
+                            sync_mode=True):
+        import paddle
+        import paddle.fluid as fluid
+        test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
+            self.get_model(batch_size=2)
+        if is_dist:
+            t = self.get_transpiler(trainer_id,
+                                    fluid.default_main_program(), endpoints,
+                                    trainers, sync_mode)
+            trainer_prog = t.get_trainer_program()
+        else:
+            trainer_prog = fluid.default_main_program()
+
+        models_scope = []
+        for i in range(n_models):
+            models_scope.append(fluid.Scope())
+
+        startup_exe = fluid.Executor(place)
+        for i in range(n_models):
+            startup_exe.run(fluid.default_startup_program(),
+                            scope=models_scope[i])
+
+        strategy = fluid.ExecutionStrategy()
+        strategy.num_threads = 1
+        strategy.allow_op_delay = False
+        para_exe_list = []
+        for i in range(n_models):
+            para_exe_list.append(
+                fluid.ParallelExecutor(
+                    True,
+                    loss_name=avg_cost.name,
+                    exec_strategy=strategy,
+                    scope=models_scope[i]))
+
+        feed_var_list = [
+            var for var in trainer_prog.global_block().vars.values()
+            if var.is_data
+        ]
+
+        feeder = fluid.DataFeeder(feed_var_list, place)
+        reader_generator = test_reader()
+
+        for batch_id in range(10):
+            # train n models independently
+            for i in range(n_models):
+                data = next(reader_generator)
+                para_exe_list[i].run(fetch_list=[avg_cost.name],
+                                     feed=feeder.feed(data),
+                                     async=True)
+            for i in range(n_models):
+                loss, = para_exe_list[i].wait(fetch_list=[avg_cost.name])
+                print(loss)
+
 
 def runtime_main(test_class):
     import paddle

@@ -18,6 +18,7 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "ThreadPool.h"  // ThreadPool in thrird party
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/executor.h"
@@ -66,10 +67,15 @@ class ParallelExecutor {
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
 
+  void RunAsync(const std::vector<std::string> &fetch_tensors,
+                const std::string &fetched_var_name);
+  void Wait();
+
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
  private:
   ParallelExecutorPrivate *member_;
+  std::future<void> async_run_future_;
 };
 
 }  // namespace framework
