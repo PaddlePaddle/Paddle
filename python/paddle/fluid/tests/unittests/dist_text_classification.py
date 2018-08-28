@@ -223,9 +223,4 @@ def test(word_idx):
 if __name__ == "__main__":
     paddle.dataset.common.download(VOCAB_URL, 'text_classification', VOCAB_MD5)
     paddle.dataset.common.download(DATA_URL, 'text_classification', DATA_MD5)
-
-    import os
-    os.environ['CPU_NUM'] = '1'
-    os.environ['USE_CUDA'] = 'FALSE'
-
     runtime_main(TestDistTextClassification2x2)

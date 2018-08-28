@@ -22,6 +22,9 @@ class TestDistTextClassification2x2(TestDistBase):
         self._sync_mode = True
 
     def test_text_classification(self):
+        import os
+        os.environ['CPU_NUM'] = '1'
+        os.environ['USE_CUDA'] = 'FALSE'
         self.check_with_place("dist_text_classification.py", delta=1e-7)
 
 
@@ -30,6 +33,9 @@ class TestDistTextClassification2x2Async(TestDistBase):
         self._sync_mode = False
 
     def test_se_resnext(self):
+        import os
+        os.environ['CPU_NUM'] = '1'
+        os.environ['USE_CUDA'] = 'FALSE'
         self.check_with_place("dist_text_classification.py", delta=100)
 
 

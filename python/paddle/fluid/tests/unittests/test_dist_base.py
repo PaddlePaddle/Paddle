@@ -219,6 +219,8 @@ class TestDistBase(unittest.TestCase):
             "FLAGS_cudnn_deterministic": "1"
         }
 
+        required_envs.update(os.environ.copy())
+
         if check_error_log:
             required_envs["GLOG_v"] = "7"
             required_envs["GLOG_logtostderr"] = "1"

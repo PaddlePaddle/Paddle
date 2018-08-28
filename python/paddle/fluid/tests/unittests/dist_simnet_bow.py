@@ -235,11 +235,4 @@ class TestDistSimnetBow2x2(TestDistRunnerBase):
 
 if __name__ == "__main__":
     paddle.dataset.common.download(DATA_URL, 'simnet', DATA_MD5, "train")
-
-    import os
-    os.environ['CPU_NUM'] = '1'
-    os.environ['USE_CUDA'] = 'FALSE'
-
-    os.environ["IS_DISTRIBUTED"] = '0'
-    os.environ["IS_SPARSE"] = '0'
     runtime_main(TestDistSimnetBow2x2)
