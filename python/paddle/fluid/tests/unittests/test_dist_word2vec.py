@@ -22,7 +22,7 @@ class TestDistSeResneXt2x2(TestDistBase):
         self._sync_mode = True
 
     def test_se_resnext(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-7)
+        self.check_with_place("dist_word2vec.py", delta=1e-4)
 
 
 class TestDistSeResneXt2x2Async(TestDistBase):
