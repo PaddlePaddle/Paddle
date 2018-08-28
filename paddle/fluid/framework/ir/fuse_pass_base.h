@@ -28,7 +28,7 @@ class FusePassBase : public Pass {
  public:
   void Init(Graph* graph) const { graph_ = graph; }
 
-  Scope* param_scope() {
+  Scope* param_scope() const {
     PADDLE_ENFORCE(graph_->Has(kParamScopeAttr));
     return graph_->Get<framework::Scope*>(kParamScopeAttr);
   }
