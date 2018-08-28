@@ -1444,7 +1444,8 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                           KeepIntermediateOut>(
         ctx, x_dim, x, y, compound_functor, out, intermediate_out);
   } else {
-    // TODO(zcd): whether Y should be broadcast?
+    // Whether the shape of Y is a continuous subsequence of X,
+    // For more information please refer to the op's introduction.
     bool bcast_y = x.dims().size() >= y.dims().size();
     if (x.dims().size() == y.dims().size()) {
       for (int i = 0; i < x.dims().size(); ++i) {

@@ -19,16 +19,28 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+/*
+ * Whether the compound function is Unary(Binary(X, Y)).
+ * For Unary(Binary(X, Y)), the intermediate_out's shape is the same the final
+ * out.
+ */
 static bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(functor_list.size(), 2);
-  return functor_list[1] == "elementwise_add" ||
-         functor_list[1] == "elementwise_mul";
+  static std::unordered_set<std::string> binary_fun = {
+      "elementwise_add", "elementwise_mul", "elementwise_add_grad",
+      "elementwise_mul_grad"};
+  return binary_fun.count(functor_list[1]) != 0;
 }
 
+/*
+ * Whether the compound function is supported.
+ * For Unary(Binary(X, Y)), the intermediate_out's shape is the same the final
+ * out.
+ */
 static bool IsSupportedCompound(const std::vector<std::string> &functors) {
-  std::unordered_set<std::string> unary_fun = {"scale", "relu"};
-  std::unordered_set<std::string> binary_fun = {"elementwise_add",
-                                                "elementwise_mul"};
+  static std::unordered_set<std::string> unary_fun = {"scale", "relu"};
+  static std::unordered_set<std::string> binary_fun = {"elementwise_add",
+                                                       "elementwise_mul"};
 
   std::string unary_fun_str;
   if (binary_fun.count(functors[0])) {
@@ -62,6 +74,8 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("Y");
 
+    // Whether the shape of Y is a continuous subsequence of X,
+    // For more information please refer to the op's introduction.
     bool bcast_y = x_dim.size() >= y_dim.size();
     if (x_dim.size() == y_dim.size()) {
       for (int i = 0; i < x_dim.size(); ++i) {
@@ -71,6 +85,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
         }
       }
     }
+
     auto &out_dim = bcast_y ? x_dim : y_dim;
     std::string out_lod = bcast_y ? "X" : "Y";
 
@@ -82,13 +97,13 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 
       if (IsUnaryCompound(
               ctx->Attrs().Get<std::vector<std::string>>("functor_list"))) {
-        // for UnaryFunctor(BinaryFunctor(X, Y)), the shape and lod of out and
+        // for Unary(Binary(X, Y)), the shape and lod of out and
         // intermediate_out are the same.
         ctx->SetOutputsDim("Out", {out_dim, out_dim});
         // set the lod of intermediate_out
         ctx->ShareLoD(out_lod, /*->*/ "Out", 0, 1);
       } else {
-        // for BinaryFunctor(X, UnaryFunctor(Y)), the shape and lod of Y and
+        // for Binary(X, Unary(Y)), the shape and lod of Y and
         // intermediate_out are the same.
         ctx->SetOutputsDim("Out", {out_dim, y_dim});
         // set the lod of intermediate_out
@@ -249,9 +264,26 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     if (ctx->HasOutput(x_grad_name)) {
-      PADDLE_ENFORCE(ctx->HasInputs("X"), "Input(X) should not be null");
-      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
-      ctx->ShareLoD("X", x_grad_name);
+      if (ctx->HasInputs("X")) {
+        ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
+        ctx->ShareLoD("X", x_grad_name);
+      } else {
+        PADDLE_ENFORCE(ctx->HasInputs(framework::GradVarName("Out")),
+                       "Input(Out@Grad) should not be null");
+        // For elementwise_add_grad_op, the input(X) is absence,
+        // in this situation, if the compound_functor is Unary(Binary(X, Y)),
+        // the intermediate_out must be not absence.
+        if (IsUnaryCompound(
+                ctx->Attrs().Get<std::vector<std::string>>("functor_list"))) {
+          PADDLE_ENFORCE_EQ(
+              ctx->Inputs(framework::GradVarName("Out")).size(), 2,
+              "If the compound_functor is Unary(Binary(X, Y)) and Binary "
+              "is elementwise_add, the intermediate_out must be not absence.");
+        }
+        ctx->SetOutputDim(x_grad_name,
+                          ctx->GetInputsDim(framework::GradVarName("Out"))[0]);
+        ctx->ShareLoD(framework::GradVarName("Out"), x_grad_name, 0);
+      }
     }
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
