@@ -265,31 +265,6 @@ void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
                            bool use_analysis, bool activate_ir,
                            int num_times = 1) {
-  /*
-  FLAGS_IA_enable_ir = activate_ir;
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "./analysis.out";
-
-  std::string model_out;
-  if (use_analysis) {
-    Argument argument(model_path);
-    argument.fluid_model_param_path.reset(
-        new std::string(model_path + "/param"));
-    argument.fluid_model_program_path.reset(
-        new std::string(model_path + "/__model__"));
-    argument.model_output_store_path.reset(new std::string("./analysis.out"));
-
-    Analyzer analyzer;
-    analyzer.Run(&argument);
-
-    // Should get the transformed model stored to ./analysis.out
-    model_out = "./analysis.out";
-    ASSERT_TRUE(PathExists(model_out));
-  } else {
-    model_out = FLAGS_infer_ditu_rnn_model;
-  }
-   */
-
   NativeConfig config;
   config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
   config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
@@ -300,7 +275,7 @@ void TestDituRNNPrediction(const std::string &model_path,
   auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
@@ -327,8 +302,8 @@ void TestDituRNNPrediction(const std::string &model_path,
     auto &base_out = base_outputs[i];
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
-    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(), 1,
-                                  [](int a, int b) { return a * b; });
+    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
+                                   1, [](int a, int b) { return a * b; });
     PADDLE_ENFORCE_EQ(size, size1);
     PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
