@@ -68,7 +68,7 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     seq_concat_fc_fuse_pass
 		graph_viz_pass
 		infer_clean_graph_pass
-		graph_pattern_detecter
+		graph_pattern_detector
     infer_clean_graph_pass
     attention_lstm_fuse_pass
     paddle_inference_api
