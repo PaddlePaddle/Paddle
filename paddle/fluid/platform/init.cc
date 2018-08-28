@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
@@ -120,6 +121,22 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
 #ifndef PADDLE_WITH_MKLDNN
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
+
+  if (platform::jit::MayIUse(platform::jit::avx512_common)) {
+#ifndef __AVX512F__
+    LOG(WARNING) << "AVX512F is available, Please re-compile on local machine";
+#endif
+  }
+  if (platform::jit::MayIUse(platform::jit::avx2)) {
+#ifndef __AVX2__
+    LOG(WARNING) << "AVX2 is available, Please re-compile on local machine";
+#endif
+  }
+  if (platform::jit::MayIUse(platform::jit::avx)) {
+#ifndef __AVX__
+    LOG(WARNING) << "AVX is available, Please re-compile on local machine";
+#endif
+  }
 }
 
 void InitGLOG(const std::string &prog_name) {
