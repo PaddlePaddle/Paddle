@@ -42,8 +42,8 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
   gpd(graph.get(), handler);
 
   // Create New OpDesc
-  auto lstm_creator = [&](int input, int weight_x, int weight_h, int bias,
-                          int hidden, int cell, int xx) {
+  auto lstm_creator = [&](int lstm, int input, int weight_x, int weight_h,
+                          int bias, int hidden, int cell, int xx) {
 #define GET_NODE(x) auto* x##_n = graph->RetriveNode(x);
     GET_NODE(input);
     GET_NODE(weight_x);
@@ -52,6 +52,7 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     GET_NODE(hidden);
     GET_NODE(cell);
     GET_NODE(xx);
+    GET_NODE(lstm);
 
     OpDesc op_desc;
     op_desc.SetType("fusion_lstm");
@@ -63,6 +64,10 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
 #undef GET_NODE
 #undef SET_IN
 
+    LOG(INFO) << "hidden_n: " << hidden_n->Name();
+    LOG(INFO) << "cell: " << cell_n->Name();
+    LOG(INFO) << "xx: " << xx_n->Name();
+
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden_n->Name()});
@@ -70,6 +75,7 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     op_desc.SetOutput("XX", {xx_n->Name()});
     op_desc.SetOutput("BatchedGate", {"blstm_0.tmp_2"});
     op_desc.SetOutput("BatchCellPreAct", {"blstm_1.tmp_2"});
+    op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", false);
     auto* op = graph->CreateOpNode(&op_desc);
 
@@ -86,8 +92,8 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
 
   };
 
-  lstm_creator(12, 14, 18, 17, 22, 21, 19);
-  lstm_creator(12, 24, 28, 27, 32, 31, 29);
+  lstm_creator(16, 12, 14, 18, 17, 22, 21, 19);
+  lstm_creator(26, 12, 24, 28, 27, 32, 31, 29);
 
   // remove all the nodes
 

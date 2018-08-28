@@ -63,7 +63,10 @@ void GraphPatternDetector::operator()(Graph* graph,
   UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
 
+  LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
+  int id = 0;
   for (auto& g : subgraphs) {
+    LOG(INFO) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
