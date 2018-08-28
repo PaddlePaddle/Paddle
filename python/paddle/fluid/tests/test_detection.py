@@ -231,7 +231,6 @@ class TestRpnTargetAssign(unittest.TestCase):
                 dtype='float32')
             gt_box = layers.data(
                 name='gt_box', shape=[4], lod_level=1, dtype='float32')
-            #gt_box = layers.data(name='gt_box',shape=[30,4],append_batch_size = False,lod_level=1,dtype='float32')
 
             predicted_scores, predicted_location, target_label, target_bbox = layers.rpn_target_assign(
                 loc=loc,
