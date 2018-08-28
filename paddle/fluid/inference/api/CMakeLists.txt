@@ -13,19 +13,19 @@
 # limitations under the License.
 #
 
-if(APPLE)
+if (APPLE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=pessimizing-move")
-endif(APPLE)
+endif (APPLE)
 
 
 set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager
-  graph_viz_pass fc_fuse_pass
-    infer_clean_graph_pass
-  )
+        graph_viz_pass fc_fuse_pass
+        infer_clean_graph_pass
+        )
 
-if(WITH_GPU AND TENSORRT_FOUND)
+if (WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
-endif()
+endif ()
 
 function(inference_api_test TARGET_NAME)
     if (WITH_TESTING)
@@ -39,11 +39,11 @@ function(inference_api_test TARGET_NAME)
                 SRCS ${inference_test_SRC}
                 DEPS "${inference_deps}"
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/)
-        if(inference_test_ARGS)
+        if (inference_test_ARGS)
             set_tests_properties(${TARGET_NAME}
                     PROPERTIES DEPENDS "${inference_test_ARGS}")
-        endif()
-    endif(WITH_TESTING)
+        endif ()
+    endif (WITH_TESTING)
 endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
@@ -53,32 +53,47 @@ cc_test(test_paddle_inference_api
         DEPS paddle_inference_api)
 
 inference_api_test(test_api_impl SRC api_impl_tester.cc
-                    ARGS test_word2vec test_image_classification)
+        ARGS test_word2vec test_image_classification)
 
-if(WITH_GPU AND TENSORRT_FOUND)
-cc_library(paddle_inference_tensorrt_subgraph_engine
-        SRCS api_tensorrt_subgraph_engine.cc
-        DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
 
-inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
-endif()
+if (WITH_DISTRIBUTED)
+    set(inference_deps
+            ${inference_deps}
+            ${DISTRIBUTE_DEPS}
+            paddle_inference_native_distributed_engine)
+
+    cc_library(paddle_inference_native_distributed_engine
+            SRCS api_native_distributed_engine.cc
+            DEPS paddle_inference_api paddle_fluid_api
+            )
+endif ()
+
+
+if (WITH_GPU AND TENSORRT_FOUND)
+    cc_library(paddle_inference_tensorrt_subgraph_engine
+            SRCS api_tensorrt_subgraph_engine.cc
+            DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
+
+    inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
+endif ()
+
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
     cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
     cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
     function(anakin_target target_name)
-      target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+        target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
     endfunction()
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
-        cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
+        cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc
                 ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
-                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
+        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc
+                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin
+                --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-    endif(WITH_TESTING)
-endif()
+    endif (WITH_TESTING)
+endif ()
