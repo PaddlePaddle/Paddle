@@ -80,9 +80,10 @@ void hl_naive_gru_forward_final_output(OpFinalOutput op_final_output,
 }
 
 template <class OpResetOutput, typename T>
-void hl_avx_unaligned_gru_forward_reset_output(
-    OpResetOutput op_reset_output, T *gate_value, T *reset_output_value,
-    T *prev_output_value, int frame_size, ActivationType active_gate) {
+void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
+                                     T *gate_value, T *reset_output_value,
+                                     T *prev_output_value, int frame_size,
+                                     ActivationType active_gate) {
 #ifdef __AVX__
   __m256 r_value_update_gate;
   __m256 r_value_reset_gate;
@@ -96,7 +97,7 @@ void hl_avx_unaligned_gru_forward_reset_output(
   int last_offset = static_cast<int>(remain) - static_cast<int>(step_size);
 
   size_t i_offset = 0;
-  for (int i = 0; i <= steps; i++) {
+  for (size_t i = 0; i <= steps; i++) {
     r_value_update_gate =
         _mm256_loadu_ps((const float *)(update_gate + i_offset));
     r_value_reset_gate =
@@ -120,7 +121,6 @@ void hl_avx_unaligned_gru_forward_reset_output(
     if (i == steps - 1) {
       if (remain > 0) {
         i_offset += last_offset;
-
       } else {
         break;
       }
@@ -130,11 +130,10 @@ void hl_avx_unaligned_gru_forward_reset_output(
 }
 
 template <class OpFinalOutput, typename T>
-void hl_avx_unaligned_gru_forward_final_output(OpFinalOutput op_final_output,
-                                               T *gate_value,
-                                               T *prev_output_value,
-                                               T *output_value, int frame_size,
-                                               ActivationType active_node) {
+void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
+                                     T *gate_value, T *prev_output_value,
+                                     T *output_value, int frame_size,
+                                     ActivationType active_node) {
 #ifdef __AVX__
   __m256 r_value_update_gate;
   __m256 r_value_frame_state;
@@ -148,7 +147,7 @@ void hl_avx_unaligned_gru_forward_final_output(OpFinalOutput op_final_output,
   int last_offset = static_cast<int>(remain) - static_cast<int>(step_size);
 
   size_t i_offset = 0;
-  for (int i = 0; i <= steps; i++) {
+  for (size_t i = 0; i <= steps; i++) {
     r_value_update_gate =
         _mm256_loadu_ps((const float *)(update_gate + i_offset));
     r_value_frame_state =
@@ -170,7 +169,6 @@ void hl_avx_unaligned_gru_forward_final_output(OpFinalOutput op_final_output,
     if (i == steps - 1) {
       if (remain > 0) {
         i_offset += last_offset;
-
       } else {
         break;
       }
@@ -180,76 +178,13 @@ void hl_avx_unaligned_gru_forward_final_output(OpFinalOutput op_final_output,
 }
 
 template <class OpResetOutput, typename T>
-void hl_avx_gru_forward_reset_output(OpResetOutput op_reset_output,
-                                     T *gate_value, T *reset_output_value,
-                                     T *prev_output_value, int frame_size,
-                                     ActivationType active_gate) {
-#ifdef __AVX__
-  __m256 r_value_update_gate;
-  __m256 r_value_reset_gate;
-  __m256 r_value_reset_output;
-  __m256 r_prev_out = _mm256_set1_ps(0.0f);
-  __m256 *update_gate = reinterpret_cast<__m256 *>(gate_value);
-  __m256 *reset_gate = reinterpret_cast<__m256 *>(gate_value + frame_size);
-
-  for (int i = 0; i < frame_size / 8; i++) {
-    r_value_update_gate = update_gate[i];
-    r_value_reset_gate = reset_gate[i];
-    if (prev_output_value) {
-      r_prev_out = (reinterpret_cast<__m256 *>(prev_output_value))[i];
-    }
-
-    op_reset_output(&r_value_update_gate, &r_value_reset_gate, &r_prev_out,
-                    &r_value_reset_output, active_gate);
-
-    update_gate[i] = r_value_update_gate;
-    reset_gate[i] = r_value_reset_gate;
-    (reinterpret_cast<__m256 *>(reset_output_value))[i] = r_value_reset_output;
-  }
-#endif
-}
-
-template <class OpFinalOutput, typename T>
-void hl_avx_gru_forward_final_output(OpFinalOutput op_final_output,
-                                     T *gate_value, T *prev_output_value,
-                                     T *output_value, int frame_size,
-                                     ActivationType active_node) {
-#ifdef __AVX__
-  __m256 r_value_update_gate;
-  __m256 r_value_frame_state;
-  __m256 r_prev_out = _mm256_set1_ps(0.0f);
-  __m256 r_output;
-  __m256 *update_gate = reinterpret_cast<__m256 *>(gate_value);
-  __m256 *frame_state = reinterpret_cast<__m256 *>(gate_value + frame_size * 2);
-
-  for (int i = 0; i < frame_size / 8; i++) {
-    r_value_update_gate = update_gate[i];
-    r_value_frame_state = frame_state[i];
-    if (prev_output_value) {
-      r_prev_out = (reinterpret_cast<__m256 *>(prev_output_value))[i];
-    }
-
-    op_final_output(&r_value_update_gate, &r_value_frame_state, &r_prev_out,
-                    &r_output, active_node);
-
-    frame_state[i] = r_value_frame_state;
-    (reinterpret_cast<__m256 *>(output_value))[i] = r_output;
-  }
-#endif
-}
-
-template <class OpResetOutput, typename T>
 inline void forward_reset_output(OpResetOutput op_reset_output,
                                  GRUMetaValue<T> value, int frame_size,
                                  int batch_size, ActivationType active_gate) {
   for (int b = 0; b < batch_size; b++) {
-    if (OpResetOutput::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
+    if (OpResetOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
+        (sizeof(T) == 4)) {
       hl_avx_gru_forward_reset_output(
-          op_reset_output, value.gate_value, value.reset_output_value,
-          value.prev_out_value, frame_size, active_gate);
-    } else if (OpResetOutput::avx && (frame_size > (8 - 1)) &&
-               (sizeof(T) == 4)) {
-      hl_avx_unaligned_gru_forward_reset_output(
           op_reset_output, value.gate_value, value.reset_output_value,
           value.prev_out_value, frame_size, active_gate);
     } else {
@@ -271,15 +206,11 @@ inline void forward_final_output(OpFinalOutput op_final_output,
                                  GRUMetaValue<T> value, int frame_size,
                                  int batch_size, ActivationType active_node) {
   for (int b = 0; b < batch_size; b++) {
-    if (OpFinalOutput::avx && !(frame_size & (8 - 1)) && (sizeof(T) == 4)) {
+    if (OpFinalOutput::avx && (frame_size > static_cast<int>(8 - 1)) &&
+        (sizeof(T) == 4)) {
       hl_avx_gru_forward_final_output(op_final_output, value.gate_value,
                                       value.prev_out_value, value.output_value,
                                       frame_size, active_node);
-    } else if (OpFinalOutput::avx && (frame_size > (8 - 1)) &&
-               (sizeof(T) == 4)) {
-      hl_avx_unaligned_gru_forward_final_output(
-          op_final_output, value.gate_value, value.prev_out_value,
-          value.output_value, frame_size, active_node);
     } else {
       hl_naive_gru_forward_final_output(
           op_final_output, value.gate_value, value.prev_out_value,
