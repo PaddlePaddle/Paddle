@@ -1667,16 +1667,6 @@ def get_model(is_dist, is_async):
     return sum_cost, avg_cost, predict, token_num, local_lr_scheduler
 
 
-def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
-    t = fluid.DistributeTranspiler()
-    t.transpile(
-        trainer_id=trainer_id,
-        program=main_program,
-        pservers=pserver_endpoints,
-        trainers=trainers)
-    return t
-
-
 def update_args():
     src_dict = DataReader.load_dict(TrainTaskConfig.src_vocab_fpath)
     trg_dict = DataReader.load_dict(TrainTaskConfig.trg_vocab_fpath)
@@ -1691,69 +1681,46 @@ def update_args():
 
 
 class DistTransformer2x2(TestDistRunnerBase):
-    def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
-                    trainer_id, sync_mode):
-        get_model(True, not sync_mode)
-        t = get_transpiler(trainer_id,
-                           fluid.default_main_program(), pserver_endpoints,
-                           trainers)
-        pserver_prog = t.get_pserver_program(current_endpoint)
-        startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+    def run_pserver(self, args):
+        get_model(True, not args.sync_mode)
+        t = self.get_transpiler(args.trainer_id,
+                                fluid.default_main_program(), args.endpoints,
+                                args.trainers, args.sync_mode)
+        pserver_prog = t.get_pserver_program(args.current_endpoint)
+        startup_prog = t.get_startup_program(args.current_endpoint,
+                                             pserver_prog)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def _wait_ps_ready(self, pid):
-        retry_times = 20
-        while True:
-            assert retry_times >= 0, "wait ps ready failed"
-            time.sleep(3)
-            try:
-                # the listen_and_serv_op would touch a file which contains the listen port
-                # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
-                return
-            except os.error:
-                retry_times -= 1
-
-    def run_trainer(self,
-                    place,
-                    endpoints,
-                    trainer_id,
-                    trainers,
-                    is_dist=True,
-                    sync_mode=True):
+    def run_trainer(self, place, args):
 
         sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
-            is_dist, not sync_mode)
+            args.is_dist, not args.sync_mode)
 
-        if is_dist:
-            t = get_transpiler(trainer_id,
-                               fluid.default_main_program(), endpoints,
-                               trainers)
+        if args.is_dist:
+            t = self.get_transpiler(args.trainer_id,
+                                    fluid.default_main_program(),
+                                    args.endpoints, args.trainers,
+                                    args.sync_mode)
             trainer_prog = t.get_trainer_program()
             TrainTaskConfig.batch_size = 10
             TrainTaskConfig.train_file_pattern = TrainTaskConfig.data_path + "train.tok.clean.bpe.32000.en-de.train_{}".format(
-                trainer_id)
+                args.trainer_id)
         else:
             TrainTaskConfig.batch_size = 20
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)
 
-        TrainTaskConfig.local = not is_dist
+        TrainTaskConfig.local = not args.is_dist
 
         train_loop(startup_exe, trainer_prog, 1, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 8:
-        print(
-            "Usage: python dist_transformer.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist] [sync_mode]"
-        )
-
     update_args()
     runtime_main(DistTransformer2x2)
