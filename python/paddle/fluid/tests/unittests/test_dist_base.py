@@ -23,6 +23,8 @@ import signal
 import subprocess
 import six
 
+RUN_STEP = 10
+
 
 class TestDistRunnerBase(object):
     def get_model(self, batch_size=2):
@@ -34,7 +36,8 @@ class TestDistRunnerBase(object):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
         import paddle
         import paddle.fluid as fluid
-        t = fluid.DistributeTranspiler()
+        config = fluid.DistributeTranspilerConfig()
+        t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             trainer_id=trainer_id,
             program=main_program,
@@ -57,6 +60,7 @@ class TestDistRunnerBase(object):
                                 trainers, sync_mode)
         pserver_prog = t.get_pserver_program(current_endpoint)
         startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -67,9 +71,9 @@ class TestDistRunnerBase(object):
                     endpoints,
                     trainer_id,
                     trainers,
-                    use_cuda=True,
                     is_dist=True,
-                    sync_mode=True):
+                    sync_mode=True,
+                    use_cuda=True):
         import paddle
         import paddle.fluid as fluid
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
@@ -88,6 +92,8 @@ class TestDistRunnerBase(object):
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
         strategy.allow_op_delay = False
+        if not fluid.core.is_compiled_with_cuda():
+            use_cuda = False
         exe = fluid.ParallelExecutor(
             use_cuda, loss_name=avg_cost.name, exec_strategy=strategy)
 
@@ -97,23 +103,27 @@ class TestDistRunnerBase(object):
         ]
 
         feeder = fluid.DataFeeder(feed_var_list, place)
-        reader_generator = test_reader()
+        reader_generator = train_reader()
 
-        data = next(reader_generator)
-        first_loss, = exe.run(fetch_list=[avg_cost.name],
-                              feed=feeder.feed(data))
-        print(first_loss)
+        def get_data():
+            origin_batch = next(reader_generator)
+            if is_dist:
+                new_batch = []
+                for offset, item in enumerate(origin_batch):
+                    if offset % 2 == trainer_id:
+                        new_batch.append(item)
+                return new_batch
+            else:
+                return origin_batch
 
-        for i in six.moves.xrange(5):
-            data = next(reader_generator)
-            loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
-
-        data = next(reader_generator)
-        last_loss, = exe.run(fetch_list=[avg_cost.name], feed=feeder.feed(data))
-        print(last_loss)
+        for _ in six.moves.xrange(RUN_STEP):
+            loss, = exe.run(fetch_list=[avg_cost.name],
+                            feed=feeder.feed(get_data()))
+            print(loss)
 
 
 def runtime_main(test_class):
+    import os
     import paddle
     import paddle.fluid as fluid
     import paddle.fluid.core as core
@@ -141,8 +151,8 @@ def runtime_main(test_class):
         else:
             p = fluid.CPUPlace()
 
-        model.run_trainer(p, endpoints, trainer_id, trainers, use_cuda, is_dist,
-                          sync_mode)
+        model.run_trainer(p, endpoints, trainer_id, trainers, is_dist,
+                          sync_mode, use_cuda)
 
 
 import paddle.compat as cpt
@@ -239,7 +249,6 @@ class TestDistBase(unittest.TestCase):
                 stderr=subprocess.PIPE,
                 env=env_local)
         else:
-            print("trainer cmd:", local_cmd)
             err_log = open("/tmp/trainer.err.log", "wb")
             local_proc = subprocess.Popen(
                 local_cmd.split(" "),
@@ -248,10 +257,10 @@ class TestDistBase(unittest.TestCase):
                 env=env_local)
 
         local_proc.wait()
-        out, err = local_proc.communicate()
-        local_ret = cpt.to_text(out)
-        sys.stderr.write('local_loss: %s\n' % local_ret)
-        sys.stderr.write('local_stderr: %s\n' % err)
+        local_out, local_err = local_proc.communicate()
+        local_ret = cpt.to_text(local_out)
+        sys.stderr.write('local_stdout: %s\n' % local_ret)
+        sys.stderr.write('local_stderr: %s\n' % local_err)
 
         # Run dist train to compare with local results
         ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
@@ -294,17 +303,21 @@ class TestDistBase(unittest.TestCase):
 
         tr0_proc.wait()
         tr1_proc.wait()
-        out, err = tr0_proc.communicate()
-        sys.stderr.write('dist_stderr: %s\n' % err)
-        loss_data0 = cpt.to_text(out)
-        sys.stderr.write('dist_loss: %s\n' % loss_data0)
-        lines = loss_data0.split("\n")
-        dist_first_loss = eval(lines[0].replace(" ", ","))[0]
-        dist_last_loss = eval(lines[1].replace(" ", ","))[0]
+        tr0_out, tr0_err = tr0_proc.communicate()
+        tr0_loss_text = cpt.to_text(tr0_out)
+        tr1_out, tr1_err = tr1_proc.communicate()
+        tr1_loss_text = cpt.to_text(tr1_out)
+
+        # print log
+        sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
+        sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
+        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_loss_text)
+        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+
+        tr0_losses = tr0_loss_text.split("\n")
+        tr1_losses = tr1_loss_text.split("\n")
 
         local_lines = local_ret.split("\n")
-        local_first_loss = eval(local_lines[0])[0]
-        local_last_loss = eval(local_lines[1])[0]
 
         # close trainer file
         if check_error_log:
@@ -318,5 +331,10 @@ class TestDistBase(unittest.TestCase):
         os.kill(ps1.pid, signal.SIGKILL)
         FNULL.close()
 
-        self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
-        self.assertAlmostEqual(local_last_loss, dist_last_loss, delta=delta)
+        for step_id in range(RUN_STEP):
+            local_loss = eval(local_lines[step_id])[0]
+            tr0_loss = eval(tr0_losses[step_id])[0]
+            tr1_loss = eval(tr1_losses[step_id])[0]
+            dist_loss = (tr0_loss + tr1_loss) / 2
+            print(str(local_loss) + ":" + str(dist_loss))
+            self.assertAlmostEqual(local_loss, dist_loss, delta=delta)

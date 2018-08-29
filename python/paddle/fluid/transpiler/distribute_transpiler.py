@@ -31,7 +31,6 @@ Steps to transpile pserver:
 """
 
 import math
-import random
 import numpy as np
 import collections
 import six
@@ -239,8 +238,8 @@ class DistributeTranspiler(object):
         grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
 
         if not self.config.slice_var_up:
-            random.seed(self.origin_program.random_seed)
-            random.shuffle(grad_var_mapping_items)
+            np.random.seed(self.origin_program.random_seed)
+            np.random.shuffle(grad_var_mapping_items)
 
         grad_name_to_send_dummy_out = dict()
         for grad_varname, splited_vars in grad_var_mapping_items:
@@ -278,16 +277,19 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                     OP_ROLE_VAR_ATTR_NAME:
                     [self.grad_name_to_param_name[grad_varname], grad_varname],
-                    "sync_mode": not self.sync_mode,
+                    "sync_mode": not self.sync_mode
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 
         if self.sync_mode:
+            send_barrier_out = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
+            input_deps = grad_name_to_send_dummy_out.values()
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={},
-                outputs={},
+                inputs={"X": input_deps},
+                outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -305,16 +307,22 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
         # step4: Concat the parameters splits together after recv.
+        all_recv_outputs = []
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
-            grad_send_dummy_out = grad_name_to_send_dummy_out[
-                self.param_name_to_grad_name[param_varname]]
+            if self.sync_mode:
+                recv_dep_in = send_barrier_out
+            else:
+                # connect deps to send op in async mode
+                recv_dep_in = grad_name_to_send_dummy_out[
+                    self.param_name_to_grad_name[param_varname]]
+            all_recv_outputs.extend(splited_var)
             program.global_block().append_op(
                 type="recv",
-                inputs={"X": [grad_send_dummy_out]},
+                inputs={"X": [recv_dep_in]},
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
@@ -327,10 +335,11 @@ class DistributeTranspiler(object):
                 })
 
         if self.sync_mode:
+            # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
-                outputs={},
+                outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -414,10 +423,12 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
+        fetch_barrier_out = startup_program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
         startup_program.global_block().append_op(
             type="fetch_barrier",
             inputs={},
-            outputs={},
+            outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -1318,19 +1329,16 @@ class DistributeTranspiler(object):
                 per_trainer_name = "%s.trainer_%d" % \
                 (merged_var_name, i)
                 vars2merge.append(pserver_block.vars[per_trainer_name])
-
             optimize_block.append_op(
                 type="sum",
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
                 attrs={"use_mkldnn": False})
-            # TODO(panyx0718): What if it's SELECTED_ROWS.
-            if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                optimize_block.append_op(
-                    type="scale",
-                    inputs={"X": merged_var},
-                    outputs={"Out": merged_var},
-                    attrs={"scale": 1.0 / float(self.trainer_num)})
+            optimize_block.append_op(
+                type="scale",
+                inputs={"X": merged_var},
+                outputs={"Out": merged_var},
+                attrs={"scale": 1.0 / float(self.trainer_num)})
         return merged_var
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,

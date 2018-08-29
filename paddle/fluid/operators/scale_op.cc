@@ -13,7 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/scale_op.h"
+
 #include <string>
+
+#include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
 namespace operators {
@@ -52,6 +55,23 @@ $$Out = scale*X$$
   }
 };
 
+class ScaleOpVarTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    auto &in_var_name = op_desc.Input("X").front();
+    auto &in_var = detail::Ref(block->FindVarRecursive(in_var_name));
+
+    auto out_var_name = op_desc.Output("Out").front();
+    auto *out_var = block->FindVarRecursive(out_var_name);
+
+    if (in_var_name != out_var_name) {
+      out_var->SetType(in_var.GetType());
+      out_var->SetDataType(in_var.GetDataType());
+    }
+  }
+};
+
 class ScaleGradMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
@@ -71,7 +91,8 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker);
+REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker, ops::ScaleGradMaker,
+                  ops::ScaleOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(
     scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
