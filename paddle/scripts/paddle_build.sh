@@ -33,6 +33,7 @@ function print_usage() {
     ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
     ${BLUE}doc${NONE}: generate paddle documents
+    ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}capi${NONE}: generate paddle CAPI package
@@ -449,6 +450,24 @@ EOF
     cd -
 }
 
+function gen_doc_lib() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ========================================
+    Building documentation library ...
+    In /paddle/build
+    ========================================
+EOF
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_DOC=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF
+
+    make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+}
+
 function gen_html() {
     cat <<EOF
     ========================================
@@ -605,6 +624,9 @@ function main() {
         ;;
       doc)
         gen_docs
+        ;;
+      gen_doc_lib)
+        gen_doc_lib
         ;;
       html)
         gen_html
