@@ -274,7 +274,7 @@ class NormalInitializer(Initializer):
         return op
 
 
-class NormalInitializer(Initializer):
+class TruncatedNormalInitializer(Initializer):
     """Implements the Random TruncatedNormal(Gaussian) distribution initializer
 
     Args:

@@ -25,7 +25,7 @@ from paddle.fluid.executor import Executor
 
 class TestTrunctedGaussianRandomOp(unittest.TestCase):
     def setUp(self):
-        self.op_type = "truncted_gaussian_random"
+        self.op_type = "truncated_gaussian_random"
         self.inputs = {}
         self.attrs = {
             "shape": [10000],
