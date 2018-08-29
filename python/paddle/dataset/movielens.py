@@ -24,6 +24,7 @@ set and test set into paddle reader creators.
 
 from __future__ import print_function
 
+import numpy as np
 import zipfile
 import paddle.dataset.common
 import re
@@ -150,12 +151,12 @@ def __initialize_meta_info__():
 
 def __reader__(rand_seed=0, test_ratio=0.1, is_test=False):
     fn = __initialize_meta_info__()
-    rand = random.Random(x=rand_seed)
+    np.random.seed(rand_seed)
     with zipfile.ZipFile(file=fn) as package:
         with package.open('ml-1m/ratings.dat') as rating:
             for line in rating:
                 line = cpt.to_text(line, encoding='latin')
-                if (rand.random() < test_ratio) == is_test:
+                if (np.random.random() < test_ratio) == is_test:
                     uid, mov_id, rating, _ = line.strip().split("::")
                     uid = int(uid)
                     mov_id = int(mov_id)
