@@ -32,7 +32,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
-    FLAGS_IA_enable_tensorrt_subgraph_engine = true;
+    FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = true;
     VLOG(3) << "Predictor::init()";
     FLAGS_tensorrt_max_batch_size = config_.max_batch_size;
     FLAGS_tensorrt_workspace_size = config_.workspace_size;

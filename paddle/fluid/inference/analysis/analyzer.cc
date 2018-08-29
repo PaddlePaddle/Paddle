@@ -24,7 +24,7 @@
 
 namespace paddle {
 
-DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, true,
+DEFINE_bool(inference_analysis_enable_tensorrt_subgraph_engine, false,
             "Enable subgraph to TensorRT engine for acceleration");
 
 DEFINE_string(inference_analysis_graphviz_log_root, "./",
