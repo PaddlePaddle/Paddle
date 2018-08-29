@@ -307,10 +307,20 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     auto &in_y = detail::Ref(ctx.Input<framework::Tensor>("Y"),
                              "Cannot get input tensor %s, variable name = %s",
                              "Y", ctx.op().Input("Y"));
-    auto outputs = ctx.MultiOutput<framework::Tensor>("Out");
+    PADDLE_ENFORCE(ctx.HasOutput("Out"), "The output(Out) should not be empty");
+    auto output = ctx.Output<framework::Tensor>("Out");
 
-    if (!ctx.Attr<bool>("keep_intermediate_value")) {
-      outputs.push_back(nullptr);
+    std::vector<framework::Tensor *> outputs;
+    outputs.emplace_back(output);
+
+    if (ctx.Attr<bool>("keep_intermediate_value")) {
+      PADDLE_ENFORCE(ctx.HasOutput("IntermediateOut"),
+                     "The keep_intermediate_value is enable, so the "
+                     "IntermediateOut should not be empty.");
+      auto intermediate_out = ctx.Output<framework::Tensor>("IntermediateOut");
+      outputs.emplace_back(intermediate_out);
+    } else {
+      outputs.emplace_back(nullptr);
     }
 
     RunFunctors<DeviceContext, T>(ctx, in_x, in_y, &outputs);
@@ -324,60 +334,61 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::Tensor>("X");
     auto y = ctx.Input<framework::Tensor>("Y");
 
-    auto &in_outs = ctx.MultiInput<framework::Tensor>("Out");
-    auto &in_outs_grad =
-        ctx.MultiInput<framework::Tensor>(framework::GradVarName("Out"));
+    auto in_out = ctx.Input<framework::Tensor>("Out");
+    auto in_out_grad =
+        ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
 
     framework::Tensor *x_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     framework::Tensor *y_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
+    PADDLE_ENFORCE(y != nullptr, "Input(Y) should not be nullptr.");
+
     if (ctx.Attr<bool>("recomputation")) {
       PADDLE_ENFORCE(
           x != nullptr,
           "The recomputation is opened, so Input(X) should not be absent.");
-      PADDLE_ENFORCE(
-          y != nullptr,
-          "The recomputation is opened, so Input(Y) should not be absent.");
     } else {
-      PADDLE_ENFORCE_GE(in_outs.size(), 1,
-                        "The recomputation is disabled,"
-                        "so the Input('Out') should not be empty.");
+      PADDLE_ENFORCE(in_out != nullptr,
+                     "The recomputation is disabled, so the Input('Out') "
+                     "should not be empty.");
     }
 
-    framework::Tensor *in_x, *in_y;
-    framework::Tensor *in_out, *in_intermediate_out;
+    framework::Tensor *in_x;
     auto functor_list = ctx.Attr<std::vector<std::string>>("functor_list");
+
     // If functor_list contains elementwise_add, the backward doesn't use
-    // in_x, in_y and in_outs.
-    if (functor_list[0] == "elementwise_add" ||
-        functor_list[1] == "elementwise_add") {
-      in_x = const_cast<framework::Tensor *>(in_outs_grad[0]);
-      in_y = const_cast<framework::Tensor *>(in_outs_grad[0]);
-      in_out = const_cast<framework::Tensor *>(in_outs_grad[0]);
+    // in_x, and in_outs.
+    if (x == nullptr) {
+      PADDLE_ENFORCE(functor_list[0] == "elementwise_add_grad" ||
+                         functor_list[1] == "elementwise_add_grad",
+                     "Only when the compoundfunctor contains "
+                     "elementwise_add_grad, the 'X' could be absent.");
+      in_x = const_cast<framework::Tensor *>(in_out_grad);
+      in_out = const_cast<framework::Tensor *>(in_out_grad);
     } else {
       in_x = const_cast<framework::Tensor *>(x);
-      in_y = const_cast<framework::Tensor *>(y);
-      in_out = const_cast<framework::Tensor *>(in_outs[0]);
     }
 
+    framework::Tensor *in_intermediate_out;
     if (ctx.Attr<bool>("keep_intermediate_value")) {
-      PADDLE_ENFORCE_EQ(in_outs.size(), 2,
-                        "The option of 'keep_intermediate_value' is opened, "
-                        "so the number of 'Out' should be two.");
-      in_intermediate_out = const_cast<framework::Tensor *>(in_outs[1]);
+      in_intermediate_out = const_cast<framework::Tensor *>(
+          ctx.Input<framework::Tensor>("IntermediateOut"));
+      PADDLE_ENFORCE(in_intermediate_out != nullptr,
+                     "The option of 'keep_intermediate_value' is opened, "
+                     "so the number of 'Out' should be two.");
     } else {
       in_intermediate_out = nullptr;
     }
 
     if (ctx.Attr<bool>("recomputation")) {
       RunGradFunctors<DeviceContext, T, true /*Recomputation*/>(
-          ctx, in_x, in_y, in_out, in_intermediate_out, in_outs_grad[0], x_grad,
+          ctx, in_x, y, in_out, in_intermediate_out, in_out_grad, x_grad,
           y_grad);
     } else {
       RunGradFunctors<DeviceContext, T, false /*Recomputation*/>(
-          ctx, in_x, in_y, in_out, in_intermediate_out, in_outs_grad[0], x_grad,
+          ctx, in_x, y, in_out, in_intermediate_out, in_out_grad, x_grad,
           y_grad);
     }
   }

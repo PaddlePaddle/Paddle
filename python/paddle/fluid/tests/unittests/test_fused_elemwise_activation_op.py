@@ -50,11 +50,11 @@ def create_test_class(test_case, callback, attrs):
             }
             if self.attrs["keep_intermediate_value"]:
                 self.outputs = {
-                    'Out': [('out', self.out),
-                            ('intermediate_out', self.intermediate_out)]
+                    'Out': self.out,
+                    "IntermediateOut": self.intermediate_out
                 }
             else:
-                self.outputs = {'Out': [('out', self.out)]}
+                self.outputs = {'Out': self.out}
 
         def init_input(self):
             self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -76,35 +76,35 @@ def create_test_class(test_case, callback, attrs):
         def test_check_grad_normal(self):
             if self.attrs["keep_intermediate_value"]:
                 self.check_grad(
-                    ['X', 'Y'], ['out', 'intermediate_out'],
+                    ['X', 'Y'], ['Out', 'IntermediateOut'],
                     max_relative_error=0.005,
-                    sum_outputs=['out'])
+                    sum_outputs=['Out'])
             else:
-                self.check_grad(['X', 'Y'], ['out'], max_relative_error=0.005)
+                self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
 
         def test_check_grad_ingore_x(self):
             if self.attrs["keep_intermediate_value"]:
                 self.check_grad(
-                    ['Y'], ['out', 'intermediate_out'],
+                    ['Y'], ['Out', 'IntermediateOut'],
                     max_relative_error=0.005,
                     no_grad_set=set("X"),
-                    sum_outputs=['out'])
+                    sum_outputs=['Out'])
             else:
                 self.check_grad(
-                    ['Y'], ['out'],
+                    ['Y'], ['Out'],
                     max_relative_error=0.005,
                     no_grad_set=set("X"))
 
         def test_check_grad_ingore_y(self):
             if self.attrs["keep_intermediate_value"]:
                 self.check_grad(
-                    ['X'], ['out', 'intermediate_out'],
+                    ['X'], ['Out', 'IntermediateOut'],
                     max_relative_error=0.005,
                     no_grad_set=set("Y"),
-                    sum_outputs=['out'])
+                    sum_outputs=['Out'])
             else:
                 self.check_grad(
-                    ['X'], ['out'],
+                    ['X'], ['Out'],
                     max_relative_error=0.005,
                     no_grad_set=set("Y"))
 
