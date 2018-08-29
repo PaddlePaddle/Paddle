@@ -29,20 +29,26 @@ class Node {
   enum class Type { kOperation, kVariable };
   static constexpr char kControlDepVarName[] = "__control_var";
 
-  explicit Node(const std::string& name, Type type)
-      : name_(name), var_desc_(nullptr), op_desc_(nullptr), type_(type) {}
+  explicit Node(const std::string& name, Type type, int id = -1)
+      : name_(name),
+        var_desc_(nullptr),
+        op_desc_(nullptr),
+        type_(type),
+        id_(id) {}
 
-  explicit Node(VarDesc* var_desc)
+  explicit Node(VarDesc* var_desc, int id = -1)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
-        type_(Type::kVariable) {}
+        type_(Type::kVariable),
+        id_(id) {}
 
-  explicit Node(OpDesc* op_desc)
+  explicit Node(OpDesc* op_desc, int id = -1)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
-        type_(Type::kOperation) {}
+        type_(Type::kOperation),
+        id_(id) {}
 
   Type NodeType() const { return type_; }
 
@@ -58,6 +64,8 @@ class Node {
     return op_desc_.get();
   }
 
+  int id() const { return id_; }
+
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
 
@@ -69,6 +77,7 @@ class Node {
   std::unique_ptr<VarDesc> var_desc_;
   std::unique_ptr<OpDesc> op_desc_;
   Type type_;
+  int id_;
 
  private:
   DISABLE_COPY_AND_ASSIGN(Node);
