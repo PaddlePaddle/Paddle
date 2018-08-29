@@ -12,25 +12,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/inference/api/helper.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace inference {
 
-/*
- * Fuse the MUL and ELEMENTWISE_ADD to a FCOp.
- */
-class FCFusePass : public Pass {
- public:
-  virtual ~FCFusePass() {}
+template <>
+std::string to_string<std::vector<float>>(
+    const std::vector<std::vector<float>> &vec) {
+  std::stringstream ss;
+  for (const auto &piece : vec) {
+    ss << to_string(piece) << "\n";
+  }
+  return ss.str();
+}
 
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
-};
+template <>
+std::string to_string<std::vector<std::vector<float>>>(
+    const std::vector<std::vector<std::vector<float>>> &vec) {
+  std::stringstream ss;
+  for (const auto &line : vec) {
+    for (const auto &rcd : line) {
+      ss << to_string(rcd) << ";\t";
+    }
+    ss << '\n';
+  }
+  return ss.str();
+}
 
-}  // namespace ir
-}  // namespace framework
+}  // namespace inference
 }  // namespace paddle
