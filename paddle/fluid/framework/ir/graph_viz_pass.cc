@@ -16,8 +16,8 @@ limitations under the License. */
 #include <unordered_set>
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
-#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
