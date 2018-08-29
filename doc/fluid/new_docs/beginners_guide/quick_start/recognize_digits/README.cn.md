@@ -42,7 +42,7 @@ $$  \text{crossentropy}(label, y) = -\sum_i label_ilog(y_i) $$
 
 图2为softmax回归的网络图，图中权重用蓝线表示、偏置用红线表示、+1代表偏置参数的系数为1。
 
-![softmaxRegression](./image/softmax_regression.png)
+<p align="center"><img src="./image/softmax_regression.png" width="40%"></p>
 <p align="center">图2. softmax回归网络结构图</p>
 
 ### 多层感知器(Multilayer Perceptron, MLP)
@@ -56,7 +56,7 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 
 图3为多层感知器的网络结构图，图中权重用蓝线表示、偏置用红线表示、+1代表偏置参数的系数为1。
 
-![multilayerPerceptron](./image/mlp.png)
+<p align="center"><img src="./image/mlp.png" width="60%"></p>
 <p align="center">图3. 多层感知器网络结构图</p>
 
 ### 卷积神经网络(Convolutional Neural Network, CNN)
@@ -85,7 +85,7 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 
 #### 池化层
 
-![pooling](./image/max_pooling.png)
+<p align="center"><img src="./image/max_pooling.png" width="40%"></p>
 <p align="center">图6. 池化层图片</p>
 
 池化是非线性下采样的一种形式，主要作用是通过减少网络的参数来减小计算量，并且能够在一定程度上控制过拟合。通常在卷积层的后面会加上一个池化层。池化包括最大池化、平均池化等。其中最大池化是用不重叠的矩形框将输入层分成不同的区域，对于每个矩形框的数取最大值作为输出层，如图6所示。
@@ -177,51 +177,51 @@ import paddle.fluid as fluid
 
 ```python
 def softmax_regression():
-img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-predict = fluid.layers.fc(
-input=img, size=10, act='softmax')
-return predict
+    img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+    predict = fluid.layers.fc(
+        input=img, size=10, act='softmax')
+    return predict
 ```
 
 - 多层感知器：下面代码实现了一个含有两个隐藏层（即全连接层）的多层感知器。其中两个隐藏层的激活函数均采用ReLU，输出层的激活函数用Softmax。
 
 ```python
 def multilayer_perceptron():
-img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-# 第一个全连接层，激活函数为ReLU
-hidden = fluid.layers.fc(input=img, size=200, act='relu')
-# 第二个全连接层，激活函数为ReLU
-hidden = fluid.layers.fc(input=hidden, size=200, act='relu')
-# 以softmax为激活函数的全连接输出层，输出层的大小必须为数字的个数10
-prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
-return prediction
+    img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+    # 第一个全连接层，激活函数为ReLU
+    hidden = fluid.layers.fc(input=img, size=200, act='relu')
+    # 第二个全连接层，激活函数为ReLU
+    hidden = fluid.layers.fc(input=hidden, size=200, act='relu')
+    # 以softmax为激活函数的全连接输出层，输出层的大小必须为数字的个数10
+    prediction = fluid.layers.fc(input=hidden, size=10, act='softmax')
+    return prediction
 ```
 
 - 卷积神经网络LeNet-5: 输入的二维图像，首先经过两次卷积层到池化层，再经过全连接层，最后使用以softmax为激活函数的全连接层作为输出层。
 
 ```python
 def convolutional_neural_network():
-img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
-# 第一个卷积-池化层
-conv_pool_1 = fluid.nets.simple_img_conv_pool(
-input=img,
-filter_size=5,
-num_filters=20,
-pool_size=2,
-pool_stride=2,
-act="relu")
-conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
-# 第二个卷积-池化层
-conv_pool_2 = fluid.nets.simple_img_conv_pool(
-input=conv_pool_1,
-filter_size=5,
-num_filters=50,
-pool_size=2,
-pool_stride=2,
-act="relu")
-# 以softmax为激活函数的全连接输出层，输出层的大小必须为数字的个数10
-prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
-return prediction
+    img = fluid.layers.data(name='img', shape=[1, 28, 28], dtype='float32')
+    # 第一个卷积-池化层
+    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+        input=img,
+        filter_size=5,
+        num_filters=20,
+        pool_size=2,
+        pool_stride=2,
+        act="relu")
+    conv_pool_1 = fluid.layers.batch_norm(conv_pool_1)
+    # 第二个卷积-池化层
+    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+        input=conv_pool_1,
+        filter_size=5,
+        num_filters=50,
+        pool_size=2,
+        pool_stride=2,
+        act="relu")
+    # 以softmax为激活函数的全连接输出层，输出层的大小必须为数字的个数10
+    prediction = fluid.layers.fc(input=conv_pool_2, size=10, act='softmax')
+    return prediction
 ```
 
 #### Train Program 配置
@@ -234,15 +234,15 @@ return prediction
 
 ```python
 def train_program():
-label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
 
-# predict = softmax_regression() # uncomment for Softmax回归
-# predict = multilayer_perceptron() # uncomment for 多层感知器
-predict = convolutional_neural_network() # uncomment for LeNet5卷积神经网络
-cost = fluid.layers.cross_entropy(input=predict, label=label)
-avg_cost = fluid.layers.mean(cost)
-acc = fluid.layers.accuracy(input=predict, label=label)
-return [avg_cost, acc]
+    # predict = softmax_regression() # uncomment for Softmax回归
+    # predict = multilayer_perceptron() # uncomment for 多层感知器
+    predict = convolutional_neural_network() # uncomment for LeNet5卷积神经网络
+    cost = fluid.layers.cross_entropy(input=predict, label=label)
+    avg_cost = fluid.layers.mean(cost)
+    acc = fluid.layers.accuracy(input=predict, label=label)
+    return [avg_cost, acc]
 
 
 # 该模型运行在单个CPU上
@@ -254,7 +254,7 @@ return [avg_cost, acc]
 
 ```python
 def optimizer_program():
-return fluid.optimizer.Adam(learning_rate=0.001)
+    return fluid.optimizer.Adam(learning_rate=0.001)
 ```
 
 ### 数据集 Feeders 配置
@@ -267,12 +267,12 @@ return fluid.optimizer.Adam(learning_rate=0.001)
 
 ```python
 train_reader = paddle.batch(
-paddle.reader.shuffle(
-paddle.dataset.mnist.train(), buf_size=500),
-batch_size=64)
+        paddle.reader.shuffle(
+            paddle.dataset.mnist.train(), buf_size=500),
+        batch_size=64)
 
 test_reader = paddle.batch(
-paddle.dataset.mnist.test(), batch_size=64)
+            paddle.dataset.mnist.test(), batch_size=64)
 ```
 
 ### Trainer 配置
@@ -285,9 +285,9 @@ use_cuda = False # set to True if training with GPU
 place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
 trainer = fluid.Trainer(
-train_func=train_program, place=place, optimizer_func=optimizer_program)
-```
-
+    train_func=train_program, place=place, optimizer_func=optimizer_program)
+ ```
+ 
 #### Event Handler 配置
 
 Fluid API 在训练期间为回调函数提供了一个钩子。用户能够通过机制监控培训进度。
@@ -300,27 +300,27 @@ Fluid API 在训练期间为回调函数提供了一个钩子。用户能够通�
 params_dirname = "recognize_digits_network.inference.model"
 lists = []
 def event_handler(event):
-if isinstance(event, fluid.EndStepEvent):
-if event.step % 100 == 0:
-# event.metrics maps with train program return arguments.
-# event.metrics[0] will yeild avg_cost and event.metrics[1] will yeild acc in this example.
-print "Pass %d, Batch %d, Cost %f" % (
-event.step, event.epoch, event.metrics[0])
+    if isinstance(event, fluid.EndStepEvent):
+        if event.step % 100 == 0:
+            # event.metrics maps with train program return arguments.
+            # event.metrics[0] will yeild avg_cost and event.metrics[1] will yeild acc in this example.
+            print("Pass %d, Batch %d, Cost %f" % (
+                event.step, event.epoch, event.metrics[0]))
 
-if isinstance(event, fluid.EndEpochEvent):
-avg_cost, acc = trainer.test(
-reader=test_reader, feed_order=['img', 'label'])
+    if isinstance(event, fluid.EndEpochEvent):
+        avg_cost, acc = trainer.test(
+            reader=test_reader, feed_order=['img', 'label'])
 
-print("Test with Epoch %d, avg_cost: %s, acc: %s" % (event.epoch, avg_cost, acc))
+        print("Test with Epoch %d, avg_cost: %s, acc: %s" % (event.epoch, avg_cost, acc))
 
-# save parameters
-trainer.save_params(params_dirname)
-lists.append((event.epoch, avg_cost, acc))
+        # save parameters
+        trainer.save_params(params_dirname)
+        lists.append((event.epoch, avg_cost, acc))
 ```
 
 `event_handler_plot` 可以用来在训练过程中画图如下：
 
-![png](./image/train_and_test.png)
+<p align="center"><img src="./image/train_and_test.png"></p>
 
 ```python
 from paddle.v2.plot import Ploter
@@ -333,22 +333,22 @@ lists = []
 
 # event_handler to plot a figure
 def event_handler_plot(event):
-global step
-if isinstance(event, fluid.EndStepEvent):
-if step % 100 == 0:
-# event.metrics maps with train program return arguments.
-# event.metrics[0] will yeild avg_cost and event.metrics[1] will yeild acc in this example.
-cost_ploter.append(train_title, step, event.metrics[0])
-cost_ploter.plot()
-step += 1
-if isinstance(event, fluid.EndEpochEvent):
-# save parameters
-trainer.save_params(params_dirname)
+    global step
+    if isinstance(event, fluid.EndStepEvent):
+        if step % 100 == 0:
+            # event.metrics maps with train program return arguments.
+            # event.metrics[0] will yeild avg_cost and event.metrics[1] will yeild acc in this example.
+            cost_ploter.append(train_title, step, event.metrics[0])
+            cost_ploter.plot()
+        step += 1
+    if isinstance(event, fluid.EndEpochEvent):
+        # save parameters
+        trainer.save_params(params_dirname)
 
-avg_cost, acc = trainer.test(
-reader=test_reader, feed_order=['img', 'label'])
-cost_ploter.append(test_title, step, avg_cost)
-lists.append((event.epoch, avg_cost, acc))
+        avg_cost, acc = trainer.test(
+            reader=test_reader, feed_order=['img', 'label'])
+        cost_ploter.append(test_title, step, avg_cost)
+        lists.append((event.epoch, avg_cost, acc))
 ```
 
 #### 开始训练
@@ -359,10 +359,10 @@ lists.append((event.epoch, avg_cost, acc))
 
 ```python
 trainer.train(
-num_epochs=5,
-event_handler=event_handler,
-reader=train_reader,
-feed_order=['img', 'label'])
+    num_epochs=5,
+    event_handler=event_handler,
+    reader=train_reader,
+    feed_order=['img', 'label'])
 ```
 
 训练过程是完全自动的，event_handler里打印的日志类似如下所示：
@@ -395,11 +395,11 @@ Test with Epoch 0, avg_cost: 0.053097883707459624, acc: 0.9822850318471338
 
 ```python
 inferencer = fluid.Inferencer(
-# infer_func=softmax_regression, # uncomment for softmax regression
-# infer_func=multilayer_perceptron, # uncomment for MLP
-infer_func=convolutional_neural_network,  # uncomment for LeNet5
-param_path=params_dirname,
-place=place)
+    # infer_func=softmax_regression, # uncomment for softmax regression
+    # infer_func=multilayer_perceptron, # uncomment for MLP
+    infer_func=convolutional_neural_network,  # uncomment for LeNet5
+    param_path=params_dirname,
+    place=place)
 ```
 
 ### 生成预测输入数据
@@ -412,11 +412,11 @@ import os
 import numpy as np
 from PIL import Image
 def load_image(file):
-im = Image.open(file).convert('L')
-im = im.resize((28, 28), Image.ANTIALIAS)
-im = np.array(im).reshape(1, 1, 28, 28).astype(np.float32)
-im = im / 255.0 * 2.0 - 1.0
-return im
+    im = Image.open(file).convert('L')
+    im = im.resize((28, 28), Image.ANTIALIAS)
+    im = np.array(im).reshape(1, 1, 28, 28).astype(np.float32)
+    im = im / 255.0 * 2.0 - 1.0
+    return im
 
 cur_dir = cur_dir = os.getcwd()
 img = load_image(cur_dir + '/image/infer_3.png')
