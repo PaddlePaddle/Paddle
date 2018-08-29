@@ -27,14 +27,14 @@ using inference::analysis::Dot;
 namespace {
 const char kGraphVizPath[] = "graph_viz_path";
 
-std::string FormatName(const Node* op) {
-  if (!op->Op() ||
-      !op->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
-    return op->Name();
+std::string FormatName(const Node* node) {
+  if (!node->IsOp() || !node->Op() ||
+      !node->Op()->HasAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName())) {
+    return node->Name();
   }
   const std::string full_scope = boost::get<std::string>(
-      op->Op()->GetAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
-  return string::Sprintf("%s%s", full_scope.c_str(), op->Name().c_str());
+      node->Op()->GetAttr(OpProtoAndCheckerMaker::OpNamescopeAttrName()));
+  return string::Sprintf("%s%s", full_scope.c_str(), node->Name().c_str());
 }
 }  // namespace
 
