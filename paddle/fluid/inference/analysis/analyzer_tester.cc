@@ -313,25 +313,6 @@ void TestDituRNNPrediction(const std::string &model_path,
   }
 }
 
-// Turn on the IR pass supportion, run a real inference and check the result.
-TEST(Analyzer, SupportIRPass) {
-  FLAGS_IA_enable_ir = true;
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "./analysis.out";
-
-  Argument argument(FLAGS_inference_model_dir);
-  argument.model_output_store_path.reset(new std::string("./analysis.out"));
-
-  Analyzer analyzer;
-  analyzer.Run(&argument);
-
-  // Should get the transformed model stored to ./analysis.out
-  ASSERT_TRUE(PathExists("./analysis.out"));
-
-  // Inference from this path.
-  TestWord2vecPrediction("./analysis.out");
-}
-
 // Directly infer with the original model.
 TEST(Analyzer, DituRNN_without_analysis) {
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
