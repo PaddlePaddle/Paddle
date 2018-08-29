@@ -55,7 +55,7 @@ class Node {
   std::string Name() const { return name_; }
 
   VarDesc* Var() {
-    PADDLE_ENFORCE(type_ == Type::kVariable);
+    PADDLE_ENFORCE(IsVar());
     return var_desc_.get();
   }
 
