@@ -62,12 +62,12 @@ def variable_to_code(var):
     Returns:
         string: The formatted string.
     """
-    if var.type == core.VarDesc.VarType.READER:
-        var_str = "{name} : fluid.{type}.reader)".\
-            format(i="{", e="}", name=var.name, type=var.type)
-    else:
+    if var.type == core.VarDesc.VarType.SELECTED_ROWS or var.type == core.VarDesc.VarType.LOD_TENSOR:
         var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
             format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+    else:
+        var_str = "{name} : fluid.{type})".\
+            format(i="{", e="}", name=var.name, type=var.type)
 
     if type(var) == paddle.fluid.framework.Parameter:
         if var.trainable:
