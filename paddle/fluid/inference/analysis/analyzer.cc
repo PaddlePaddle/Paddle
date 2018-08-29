@@ -102,6 +102,19 @@ class DfgPassManagerImpl final : public DfgPassManager {
 Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
 
 void Analyzer::Run(Argument* argument) {
+  // Ungly support fluid-to-ir-pass
+  argument->Set(kFluidToIrPassesAttr,
+                new std::vector<std::string>({
+                    // Manual update the passes here.
+                    "graph_viz_pass",                              //
+                    "infer_clean_graph_pass", "graph_viz_pass",    //
+                    "attention_lstm_fuse_pass", "graph_viz_pass",  //
+                    "fc_lstm_fuse_pass", "graph_viz_pass",         //
+                    "seq_concat_fc_fuse_pass", "graph_viz_pass",   //
+                    "fc_fuse_pass", "graph_viz_pass"               //
+
+                }));
+
   for (auto& x : data_) {
     PADDLE_ENFORCE(x->Initialize(argument));
     x->RunAll();

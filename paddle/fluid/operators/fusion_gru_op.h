@@ -13,35 +13,29 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
-#include <fstream>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
-namespace framework {
-namespace ir {
+namespace operators {
 
-const char kGraphvizMarkedNodeAttr[] = "__graphviz__marked_node__";
+using LoDTensor = framework::LoDTensor;
+using Tensor = framework::Tensor;
 
-class GraphVizPass : public Pass {
+class FusionGRUOp : public framework::OperatorWithKernel {
  public:
-  using marked_nodes_t = std::unordered_set<const Node*>;
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override;
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
-
-  // Tell whether there are any marked nodes in the graph. Consume the
-  // corresponding attribute.
-  marked_nodes_t ConsumeMarkedNodes(Graph* graph) const;
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override;
 };
 
-}  // namespace ir
-}  // namespace framework
+class FusionGRUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override;
+};
+
+}  // namespace operators
 }  // namespace paddle
