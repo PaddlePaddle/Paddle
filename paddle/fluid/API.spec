@@ -262,7 +262,6 @@ paddle.fluid.layers.sum ArgSpec(args=[], varargs='args', keywords='kwargs', defa
 paddle.fluid.layers.slice ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.shape ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.maxout ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
-paddle.fluid.layers.sampling_id ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.sigmoid ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.logsigmoid ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.exp ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
