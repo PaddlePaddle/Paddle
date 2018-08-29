@@ -1313,8 +1313,8 @@ def generate_proposal_labels(rpn_rois,
     bbox_outside_weights.stop_gradient = True
 
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
-  
-  
+
+
 def generate_proposals(scores,
                        bbox_deltas,
                        im_info,
