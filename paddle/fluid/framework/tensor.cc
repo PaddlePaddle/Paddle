@@ -40,7 +40,11 @@ void* Tensor::mutable_data(platform::Place place, std::type_index type,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
                     "Please check Tensor::Resize has been called first.");
-  size_t size = requested_size ? requested_size : numel() * SizeOfType(type);
+  size_t size = numel() * SizeOfType(type);
+  if (requested_size) {
+    PADDLE_ENFORCE_GE(requested_size, size);
+    size = requested_size;
+  }
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
