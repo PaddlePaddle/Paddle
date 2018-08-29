@@ -1,5 +1,8 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
-cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
+set(analysis_deps
+    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
+
+cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
   helper.cc
   # passes
@@ -10,11 +13,11 @@ cc_library(analysis SRCS pass_manager.cc dot.cc node.cc data_flow_graph.cc graph
   tensorrt_subgraph_node_mark_pass.cc
   fluid_to_ir_pass.cc
   model_store_pass.cc
-  DEPS framework_proto proto_desc ir_pass_manager graph pass)
+  DEPS ${analysis_deps})
 
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
-cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis)
+cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
 
 set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 
@@ -31,7 +34,7 @@ function (inference_analysis_test TARGET)
         endif()
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
-                DEPS analysis graph fc_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detecter pass ${analysis_test_EXTRA_DEPS}
+                DEPS analysis graph fc_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detector pass ${analysis_test_EXTRA_DEPS}
                 ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
@@ -58,20 +61,25 @@ endif()
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
+    analysis_predictor
 		# ir
 		fc_fuse_pass
+		fc_lstm_fuse_pass
+    seq_concat_fc_fuse_pass
 		graph_viz_pass
 		infer_clean_graph_pass
-		graph_pattern_detecter
-        infer_clean_graph_pass
+		graph_pattern_detector
+    infer_clean_graph_pass
+    attention_lstm_fuse_pass
+    paddle_inference_api
 		pass
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
-inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
-inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc)
+inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc EXTRA_DEPS paddle_inference_api)
+inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc EXTRA_DEPS paddle_fluid)
 inference_analysis_test(test_fluid_to_data_flow_graph_pass SRCS fluid_to_data_flow_graph_pass_tester.cc)
 inference_analysis_test(test_subgraph_splitter SRCS subgraph_splitter_tester.cc)
 inference_analysis_test(test_dfg_graphviz_draw_pass SRCS dfg_graphviz_draw_pass_tester.cc)

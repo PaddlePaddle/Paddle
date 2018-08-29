@@ -14,32 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-#include <fstream>
-#include <map>
-#include <memory>
-#include <string>
-#include <vector>
-
-#include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-const char kGraphvizMarkedNodeAttr[] = "__graphviz__marked_node__";
-
-class GraphVizPass : public Pass {
- public:
-  using marked_nodes_t = std::unordered_set<const Node*>;
-
+class GraphToProgramPass : public Pass {
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(
-      std::unique_ptr<ir::Graph> graph) const override;
-
-  // Tell whether there are any marked nodes in the graph. Consume the
-  // corresponding attribute.
-  marked_nodes_t ConsumeMarkedNodes(Graph* graph) const;
+  std::unique_ptr<Graph> ApplyImpl(std::unique_ptr<Graph> graph) const override;
 };
 
 }  // namespace ir
