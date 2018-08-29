@@ -49,7 +49,14 @@ void FusionSeqExpandConcatFCOp::InferShape(
                     "FC height should be sum of all inputs width.");
   if (ctx->HasInput("FCBias")) {
     auto b_dims = ctx->GetInputDim("FCBias");
-    PADDLE_ENFORCE_EQ(b_dims[0], D, "FCBias shapes must be %d.", D);
+    PADDLE_ENFORCE(b_dims.size() == 1 || b_dims.size() == 2,
+                   "b_dims should be 1 or 2, get %d", b_dims.size());
+    if (b_dims.size() == 1) {
+      PADDLE_ENFORCE_EQ(b_dims[0], D, "FCBias shapes must be %d.", D);
+    } else {
+      PADDLE_ENFORCE_EQ(b_dims[0], 1, "FCBias shapes must be 1x%d.", D);
+      PADDLE_ENFORCE_EQ(b_dims[1], D, "FCBias shapes must be 1x%d.", D);
+    }
   }
 
   ctx->SetOutputDim("Out", {ins_dims[0][0], D});
