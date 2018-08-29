@@ -50,7 +50,6 @@
 我们更加推荐**使用Docker进行安装**，因为我们在把工具和配置都安装在一个 Docker image 里，这样如果遇到问题，其他人可以复现问题以便帮助。另外，对于习惯使用Windows和MacOS的开发者来说，使用Docker就不用配置交叉编译环境了。需要强调的是：Docker 不会虚拟任何硬件，Docker container 里运行的编译工具实际上都是在本机的 CPU 和操作系统上直接运行的，性能和把编译工具安装在本机运行一样。        
 
 
-
 **使用pip安装**，我们为您提供pip安装方法，但它更依赖您的本机环境，可能会出现和您本机环境相关的一些问题。         
 
 
@@ -76,12 +75,12 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`
+		`docker pull docker.paddlepaddlehub.com/paddle:0.15.0`
 		
 
 	* 对于需要**GPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For GPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0-gpu-cuda9.0-cudnn7`
+		`docker pull docker.paddlepaddlehub.com/paddle:0.15.0-gpu-cuda9.0-cudnn7`
 		
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
@@ -102,10 +101,6 @@
 
 	`docker attach [Name of container]`
 	> 进入启动的容器。
-
-4. （可选：当您镜像中的numpy版本不匹配）在Docker中 使用如下命令安装numpy 1.14.0：
-	
-	`pip install numpy==1.14.0`
 	
 至此您已经成功使用Docker安装PaddlePaddle，您只需要进入Docker容器后运行PaddlePaddle即可，更多Docker使用请参见[Docker官方文档](https://docs.docker.com)。
 
@@ -117,7 +112,7 @@
 
 您可以直接粘贴以下命令到命令行来安装PaddlePaddle(适用于ubuntu16.04及以上安装CPU-ONLY的版本)，如果出现问题，您可以参照后面的解释对命令作出适应您系统的更改：
 		
-	apt update && apt install python-dev python-pip && pip install numpy==1.14.0 paddlepaddle && export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+	apt update && apt install -y python-dev python-pip && pip install paddlepaddle && export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 首先，我们使用以下指令来**检测本机的环境**是否适合安装PaddlePaddle：
 
@@ -160,11 +155,6 @@
 	`export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH`
 	> 如果您的`libmkldnn`没有装在`/usr/local/lib`下，请使用`find / -name libmkldnn.so.0`从根目录开始找到`libmkldnn.so.0`之后将路径填到以下命令[dir]的的位置：`export LD_LIBRARY_PATH=[dir]:$LD_LIBRARY_PATH`。
 
-3. 使用以下指令将numpy的版本降至1.12.0 - 1.14.0之间：
-	> 由于numpy支持造成numpy 1.15.0 及以上版本引发`shape warning`。
-
-	`pip install -U numpy==1.14.0`
-	> 如果遇到`Python.h: No such file or directory`请设置`python.h`路径到`C_INCLUDE_PATH/CPLUS_INCLUDE_PATH`
 	
 
 现在您已经完成使用`pip install` 来安装的PaddlePaddle的过程。
@@ -215,7 +205,6 @@
 
 
 
-
 **使用pip安装**，我们为您提供pip安装方法，但它更依赖您的本机环境，可能会出现和您本机环境相关的一些问题。
 
 从[**源码编译安装**](#ct_source)以及[**使用Docker进行源码编译安装**](#ct_docker)，这是一种通过将PaddlePaddle源代码编译成为二进制文件，然后在安装这个二进制文件的过程，相比使用我们为您编译过的已经通过测试的二进制文件形式的PaddlePaddle，手动编译更为复杂，我们将在说明的最后详细为您解答。
@@ -238,7 +227,7 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`       
+		`docker pull docker.paddlepaddlehub.com/paddle:0.15.0`       
 		
 		
 
@@ -260,10 +249,6 @@
 
 	`docker attach [Name of container]`
 	> 进入启动的容器。
-
-4. （可选：当您镜像中的numpy版本不匹配）在Docker中 使用如下命令安装numpy 1.14.0：
-	
-	`pip install numpy==1.14.0`
 	
 至此您已经成功使用Docker安装PaddlePaddle，您只需要进入Docker容器后运行PaddlePaddle即可，更多Docker使用请参见[Docker官方文档](https://docs.docker.com)。
 > 注：PaddlePaddle Docker镜像为了减小体积，默认没有安装`vim`，您可以在容器中执行 `apt-get install -y vim` 安装后，在容器中编辑代码。
@@ -274,7 +259,7 @@
 
 您可以直接粘贴以下命令到命令行来安装PaddlePaddle(适用于CentOS7安装CPU-ONLY的版本)，如果出现问题，您可以参照后面的解释对命令作出适应您系统的更改：
 		
-	yum update && yum install -y epel-release gcc && yum install -y python-devel python-pip && pip install numpy==1.14.0 paddlepaddle && export LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH
+	yum update && yum install -y epel-release gcc && yum install -y python-devel python-pip && pip install paddlepaddle && export LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH
 
 首先，我们使用以下指令来**检测本机的环境**是否适合安装PaddlePaddle：
 
@@ -316,13 +301,8 @@
 2. 使用以下指令将默认装在`/usr/lib`下的`libmkldnn`放在`LD_LIBRARY_PATH中`:
 
 	`export LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH`
-	> 如果您的`libmkldnn`没有装在`/usr/lib`下，请使用`find / -name libmkldnn.so.0`从根目录开始找到`libmkldnn.so.0`之后将路径填到以下命令[dir]的的位置：`export LD_LIBRARY_PATH=[dir]:$LD_LIBRARY_PATH`。
-
-3. 使用以下指令将numpy的版本降至1.12.0-1.14.0之间：
-	> 由于numpy支持造成numpy 1.15.0 及以上版本引发`shape warning`。
-
-	`pip install -U numpy==1.14.0`
-	> 如果遇到`Python.h: No such file or directory`请设置`python.h`路径到`C_INCLUDE_PATH/CPLUS_INCLUDE_PATH`
+	> 如果您的`libmkldnn`没有装在`/usr/lib`下，请使用`find / -name libmkldnn.so.0`从根目录开始找到`libmkldnn.so.0`之后将路径填到以下命令[dir]的的位置：`export LD_LIBRARY_PATH=[dir]:$LD_LIBRARY_PATH`。     
+	
 	    
 	    
 
@@ -390,7 +370,7 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`
+		`docker pull docker.paddlepaddlehub.com/paddle:0.15.0`
 		
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
@@ -410,11 +390,8 @@
 	> 启动之前创建的容器。
 
 	`docker attach [Name of container]`
-	> 进入启动的容器。
-
-4. （可选：当您镜像中的numpy版本不匹配）在Docker中 使用如下命令安装numpy 1.14.0：
+	> 进入启动的容器。     
 	
-	`pip install numpy==1.14.0`
 	
 至此您已经成功使用Docker安装PaddlePaddle，您只需要进入Docker容器后运行PaddlePaddle即可，更多Docker使用请参见[Docker官方文档](https://docs.docker.com)。
 
@@ -540,16 +517,13 @@
 
 5. 切换到较稳定release分支下进行编译：
 
-	`git checkout release/0.14.0`
+	`git checkout release/0.15.0`
 
 6. 创建并进入/paddle/build路径下：
 
 	`mkdir -p /paddle/build && cd /paddle/build`
 
 7. 使用以下命令安装相关依赖：
-
-	`pip install numpy==1.14.0`
-	> 安装numpy 1.14.0，由于目前numpy1.15.0会引起大量warning，因此在numpy修复该问题前我们先使用numpy 1.14.0。
 
 	`pip install protobuf==3.1.0`
 	> 安装protobuf 3.1.0。
@@ -631,7 +605,7 @@
 
 6. 切换到较稳定release分支下进行编译：
 
-	`git checkout release/0.14.0`
+	`git checkout release/0.15.0`
 
 7. 并且请创建并进入一个叫build的目录下：
 
@@ -736,16 +710,13 @@
 
 5. 切换到较稳定release分支下进行编译：
 
-	`git checkout release/0.14.0`
+	`git checkout release/0.15.0`
 
 6. 创建并进入/paddle/build路径下：
 
 	`mkdir -p /paddle/build && cd /paddle/build`
 
 7. 使用以下命令安装相关依赖：
-
-	`pip install numpy==1.14.0`
-	> 安装numpy 1.14.0，由于目前numpy1.15.0会引起大量warning，因此在numpy修复该问题前我们先使用numpy 1.14.0。
 
 	`pip install protobuf==3.1.0`
 	> 安装protobuf 3.1.0。
@@ -754,7 +725,7 @@
 	> 安装patchelf，PatchELF is a small utility to modify the dynamic linker and RPATH of ELF executables。
 
 8. 执行cmake：
-	>具体编译选项含义请参见[编译选项表](#Compile)<!--TODO： Link 编译选项表到这里-->
+	>具体编译选项含义请参见[编译选项表](#Compile)
 	*  对于需要编译**CPU版本PaddlePaddle**的用户：
 
 		`cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_TESTING=OFF`
@@ -827,7 +798,7 @@
 
 6. 切换到较稳定release分支下进行编译：
 
-	`git checkout release/0.14.0`
+	`git checkout release/0.15.0`
 
 7. 并且请创建并进入一个叫build的目录下：
 
@@ -931,16 +902,13 @@
 
 5. 切换到较稳定release分支下进行编译：
 
-	`git checkout release/0.14.0`
+	`git checkout release/0.15.0`
 
 6. 创建并进入/paddle/build路径下：
 
 	`mkdir -p /paddle/build && cd /paddle/build`
 
 7. 使用以下命令安装相关依赖：
-
-	`pip install numpy==1.14.0`
-	> 安装numpy 1.14.0，由于目前numpy1.15.0会引起大量warning，因此在numpy修复该问题前我们先使用numpy 1.14.0。
 
 	`pip install protobuf==3.1.0`
 	> 安装protobuf 3.1.0。
@@ -957,7 +925,9 @@
 		`cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_TESTING=OFF`
 		> 我们目前不支持CentOS下GPU版本PaddlePaddle的编译
 
+<!--	* 对于需要编译***GPU版本PaddlePaddle***的用户：
 
+		`cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=ON -DWITH_TESTING=OFF`-->
 
 9. 执行编译：
 
@@ -979,8 +949,8 @@
 <br/><br/>
 ##### ***使用一键编译包进行编译***
 
-1. 请在下载[一键编译包](http://paddle-macos.bj.bcebos.com/PaddlePaddle-MacOS.zip)后将其中的安装脚本置于您希望储存PaddlePaddle源代码的路径下，并保证所有脚本文件在同一个目录下。
-2. 请在**保证您具有管理员权限**的前提下启动命令行(这是由于我们需要修改一些文件的读写权限)，进入您储存脚本的目录下使用以下指令启动一件编译脚本： `01_start_check_OS.sh`      
+1. 请在下载[一键编译包](http://paddle-macos.bj.bcebos.com/PaddlePaddle-MacOS.zip)后将其中的安装脚本置于您希望的路径下(我们将默认将PaddlePaddle源码下载到您的`/home`目录下)，并保证所有脚本文件在同一个目录下。
+2. 请在**保证您再拥有管理员权限**的情况下使用命令行(因为我们需要修改一些文件的读写权限)，进入您储存脚本的目录下使用以下指令启动一件编译脚本： `01_start_check_OS.sh`      
 	
 	> 一键编译包包含两个脚本，第一个脚本用来检查您的本机环境然后会自动启动第二个脚本进行编译安装
 
@@ -1156,11 +1126,6 @@
    
    出现这个问题原因主要是由于您的显卡驱动低于对应CUDA版本的要求，请保证您的显卡驱动支持所使用的CUDA版本
 
-
-
-
-
-
 <a name="third_party"></a>
 </br></br>
 ## 附录
@@ -1222,7 +1187,7 @@
 	</tr>
 	<tr>
 		<td> numpy </td>
-		<td> 最低1.12.0，最高1.14.0 </td>
+		<td> >=1.12.0 </td>
 		<td>  </td>
 		<td> <code> pip install numpy==1.14.0 </code> </td>
 	</tr>
@@ -1373,16 +1338,16 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 	</thead>
 	<tbody>
 	<tr>
-		<td> paddlepaddle-gpu==0.14.0 </td>
-		<td> 使用CUDA 9.0和cuDNN 7编译的0.14.0版本 </td>
+		<td> paddlepaddle-gpu==0.15.0 </td>
+		<td> 使用CUDA 9.0和cuDNN 7编译的0.15.0版本 </td>
 	</tr>
 	<tr>
-		<td> paddlepaddle-gpu==0.14.0.post87 </td>
-		<td> 使用CUDA 8.0和cuDNN 7编译的0.14.0版本 </td>
+		<td> paddlepaddle-gpu==0.15.0.post87 </td>
+		<td> 使用CUDA 8.0和cuDNN 7编译的0.15.0版本 </td>
 	</tr>
 		<tr>
-		<td> paddlepaddle-gpu==0.14.0.post85 </td>
-		<td> 使用CUDA 8.0和cuDNN 5编译的0.14.0版本 </td>
+		<td> paddlepaddle-gpu==0.15.0.post85 </td>
+		<td> 使用CUDA 8.0和cuDNN 5编译的0.15.0版本 </td>
 	</tr>
 	<tr>
 		<td> paddlepaddle-gpu==0.13.0 </td>
