@@ -1,0 +1,6 @@
+data/raw_data
+data/train.list
+data/test.list
+*.log
+*.pyc
+plot.png
