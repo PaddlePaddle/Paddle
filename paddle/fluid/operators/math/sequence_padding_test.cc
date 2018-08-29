@@ -23,7 +23,9 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   paddle::framework::LoDTensor cpu_seq_back;
   paddle::framework::LoDTensor seq;
   paddle::framework::LoDTensor seq_back;
-  paddle::framework::Tensor padding;
+  paddle::framework::LoDTensor padding;
+  paddle::framework::LoDTensor cpu_pad_value;
+  paddle::framework::LoDTensor pad_value;
 
   const size_t level = lod.size() - 1;
   auto seq_dims =
@@ -46,20 +48,33 @@ void TestSequencePadding(const paddle::framework::LoD& lod,
   }
 
   const size_t max_sequence_length =
-      paddle::operators::math::MaximumSequenceLength(lod, level);
+      paddle::operators::math::MaximumSequenceLength(lod[level]);
   const size_t num_sequences = lod[level].size() - 1;
   auto padding_dims =
       paddle::framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                                     static_cast<int64_t>(num_sequences),
                                     static_cast<int64_t>(sequence_width)});
+
   padding.mutable_data<T>(padding_dims, *place);
+
+  T* pad_value_data =
+      cpu_pad_value.mutable_data<T>({1}, paddle::platform::CPUPlace());
+  *pad_value_data = static_cast<T>(0);
+  if (paddle::platform::is_cpu_place(*place)) {
+    pad_value = cpu_pad_value;
+  } else {
+    TensorCopySync(cpu_pad_value, *place, &pad_value);
+  }
+
   paddle::operators::math::PaddingLoDTensorFunctor<DeviceContext, T>()(
-      *context, seq, &padding, false);
+      *context, seq, &padding, pad_value, -1, 0, false,
+      paddle::operators::math::kLengthBatchWidth);
 
   seq_back.set_lod(lod);
   seq_back.mutable_data<T>(seq_dims, *place);
   paddle::operators::math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-      *context, &seq_back, padding, false);
+      *context, padding, &seq_back, -1, 0, false,
+      paddle::operators::math::kLengthBatchWidth);
 
   if (paddle::platform::is_cpu_place(*place)) {
     cpu_seq_back = seq_back;

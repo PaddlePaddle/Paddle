@@ -53,6 +53,8 @@ class ProgramDesc {
 
   void Flush();
 
+  void CopyFrom(const proto::ProgramDesc &desc);
+
   proto::ProgramDesc *Proto();
 
   // The output variable of feed_op is referenced as feed_target.

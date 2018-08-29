@@ -43,6 +43,14 @@ class PadConstantLikeOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", x_dim);
     ctx->ShareLoD("X", /*->*/ "Out");
   }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Y")->type()),
+        ctx.device_context());
+  }
 };
 
 class PadConstantLikeOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -158,6 +166,14 @@ class PadConstantLikeOpGrad : public framework::OperatorWithKernel {
         PADDLE_ENFORCE_GE(dout_dim[i], y_dim[i]);
       }
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext &ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(ctx.Input<Tensor>("Y")->type()),
+        ctx.device_context());
   }
 };
 
