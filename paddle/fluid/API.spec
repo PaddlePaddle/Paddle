@@ -255,6 +255,7 @@ paddle.fluid.layers.logical_xor ArgSpec(args=[], varargs='args', keywords='kwarg
 paddle.fluid.layers.logical_not ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.uniform_random_batch_size_like ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.gaussian_random ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
+paddle.fluid.layers.sampling_id ArgSpec(args=['x', 'min', 'max', 'seed'], varargs=None, keywords=None, defaults=(None, 0.0, 1.0, 0))
 paddle.fluid.layers.gaussian_random_batch_size_like ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.sum ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
 paddle.fluid.layers.slice ArgSpec(args=[], varargs='args', keywords='kwargs', defaults=None)
