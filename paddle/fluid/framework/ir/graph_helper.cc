@@ -100,13 +100,12 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     if (adj_list.find(n) == adj_list.end()) {
       adj_list[n] = std::unordered_set<ir::Node *>();
     }
-    LOG(INFO) << "check " << n->Name();
     for (auto &var : n->inputs) {
       for (auto &adj_n : var->inputs) {
-        LOG(INFO) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
+        PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
+        VLOG(4) << "adj " << adj_n->Name() << reinterpret_cast<void *>(adj_n)
                   << " -> " << n->Name() << reinterpret_cast<void *>(n)
                   << "  via " << var->Name() << reinterpret_cast<void *>(var);
-        // PADDLE_ENFORCE(adj_n->NodeType() == ir::Node::Type::kOperation);
         adj_list[n].insert(adj_n);
       }
     }

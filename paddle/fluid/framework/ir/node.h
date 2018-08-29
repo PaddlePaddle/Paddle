@@ -35,7 +35,6 @@ class Node {
         op_desc_(nullptr),
         type_(type),
         id_(id) {
-    PADDLE_ENFORCE(id_ != -1);
   }
 
   explicit Node(VarDesc* var_desc, int id = -1)
@@ -44,7 +43,6 @@ class Node {
         op_desc_(nullptr),
         type_(Type::kVariable),
         id_(id) {
-    PADDLE_ENFORCE(id_ != -1);
   }
 
   explicit Node(OpDesc* op_desc, int id = -1)
@@ -53,7 +51,6 @@ class Node {
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation),
         id_(id) {
-    PADDLE_ENFORCE(id_ != -1);
   }
 
   Type NodeType() const { return type_; }
