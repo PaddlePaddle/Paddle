@@ -61,12 +61,10 @@ class SequenceSliceGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(
-        ctx->HasInput(framework::GradVarName("Out")),
-        "The gradient of Output(out) in SequenceSliceOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutputs(framework::GradVarName("X")),
-        "The gradient of Input(X) in SequenceSliceOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
+                   "Input(Grad@Out) in SequenceSliceOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutputs(framework::GradVarName("X")),
+                   "Output(Grad@X) in SequenceSliceOp should not be null.");
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
   }
 
