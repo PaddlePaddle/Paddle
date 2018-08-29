@@ -21,12 +21,16 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+static const char kFluidToIrPassesAttr[] = "__fluid_to_ir_passes__";
+
 class FluidToIrPass final : public DataFlowGraphPass {
  public:
   FluidToIrPass() = default;
 
   bool Initialize(Argument *argument) override {
     ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
+    PADDLE_ENFORCE(argument->Has(kFluidToIrPassesAttr),
+                   "argument need the attr %s", kFluidToIrPassesAttr);
     argument_ = argument;
     if (argument->origin_program_desc) {
       LOG(WARNING) << "argument's origin_program_desc is already set, might "
@@ -80,15 +84,9 @@ class FluidToIrPass final : public DataFlowGraphPass {
                              &argument_->Get<framework::Scope>("param_scope")));
     }
 
-    ir_passes.Apply(std::vector<std::string>({
-        // Manual update the passes here.
-        "graph_viz_pass",                              //
-        "infer_clean_graph_pass", "graph_viz_pass",    //
-        "attention_lstm_fuse_pass", "graph_viz_pass",  //
-        "fc_lstm_fuse_pass", "graph_viz_pass",         //
-        "seq_concat_fc_fuse_pass", "graph_viz_pass",   //
-        "fc_fuse_pass", "graph_viz_pass"               //
-    }));
+    const auto &ir_passes_to_apply =
+        argument_->Get<std::vector<std::string>>(kFluidToIrPassesAttr);
+    ir_passes.Apply(ir_passes_to_apply);
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());

@@ -1,6 +1,7 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
 set(analysis_deps
     framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
+
 cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
   helper.cc
@@ -16,7 +17,7 @@ cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits
 
 cc_test(test_node SRCS node_tester.cc DEPS analysis)
 cc_test(test_dot SRCS dot_tester.cc DEPS analysis)
-cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis)
+cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
 
 set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 
@@ -33,7 +34,7 @@ function (inference_analysis_test TARGET)
         endif()
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
-                DEPS analysis graph fc_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detecter pass ${analysis_test_EXTRA_DEPS}
+                DEPS analysis graph fc_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detector pass ${analysis_test_EXTRA_DEPS}
                 ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
@@ -67,7 +68,7 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     seq_concat_fc_fuse_pass
 		graph_viz_pass
 		infer_clean_graph_pass
-		graph_pattern_detecter
+		graph_pattern_detector
     infer_clean_graph_pass
     attention_lstm_fuse_pass
     paddle_inference_api

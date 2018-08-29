@@ -132,7 +132,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     std::string attr_name = attr.name();
     // The sub_block referred to by the BLOCK attr hasn't been added
     // to ProgramDesc class yet, we skip setting BLOCK attr here.
-    if (attr.type() != proto::AttrType::BLOCK) {
+    // TODO(paddle-dev): Need copy fix this to copy Block as well.
+    if (attr.type() != proto::AttrType::BLOCK &&
+        attr.type() != proto::AttrType::BLOCKS) {
       attrs_[attr_name] = GetAttrValue(attr);
     }
   }
