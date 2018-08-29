@@ -37,6 +37,6 @@ inline void RandomFill(const DeviceContext& ctx, uint64_t seed,
 }  // namespace paddle
 
 #include "paddle/fluid/platform/random/random_sequence_impl.h"
-#ifdef __CUDACC__
+#ifdef __NVCC__
 #include "paddle/fluid/platform/random/random_sequence_impl.cuh"
 #endif
