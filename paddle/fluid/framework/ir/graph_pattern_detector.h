@@ -21,12 +21,14 @@
 #include <numeric>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/inference/analysis/dot.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+class PDPattern;
 
-// Some basic torminolygies:
+// Some basic terminologies:
 //   - PDPattern: a pattern defined as a data flow graph.
 //   - PDNode: the node in the pattern, each PDNode represents an `ir::Node`
 //     that meets some conditions defined in `PDNode.teller`.
@@ -36,21 +38,19 @@ namespace ir {
 struct PDNode {
   // tell whether an ir::Node* is a candidation for a PDNode.
   using teller_t = std::function<bool(Node*)>;
+  enum class Type { kOp, kVar };
 
-  PDNode(teller_t&& teller, const std::string& name = "")
-      : teller_(teller), name_(name) {
-    PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
-  }
-
-  PDNode(PDNode&& other) = default;
-
-  std::vector<PDNode*> inlinks;
-  std::vector<PDNode*> outlinks;
+  // this link to others
+  PDNode& LinksTo(const std::vector<PDNode*>& others);
+  PDNode& LinksFrom(const std::vector<PDNode*>& others);
 
   bool Tell(Node* node) const {
     PADDLE_ENFORCE(teller_ != nullptr, "teller should be set for a PDNode");
     return teller_(node);
   }
+
+  bool IsOp() const { return type_ == Type::kOp; }
+  bool IsVar() const { return type_ == Type::kVar; }
 
   const std::string& name() const { return name_; }
 
@@ -58,8 +58,23 @@ struct PDNode {
   PDNode& operator=(const PDNode&) = delete;
 
  private:
+  PDNode(teller_t&& teller, PDPattern* pattern, const std::string& name = "",
+         Type type = Type::kVar)
+      : teller_(std::move(teller)),
+        pattern_(pattern),
+        name_(name),
+        type_(type) {
+    PADDLE_ENFORCE(teller_ != nullptr, "invalid teller functer is set.");
+  }
+
+  PDNode(PDNode&& other) = default;
+
+  friend class PDPattern;
+
   teller_t teller_;
+  PDPattern* pattern_;
   std::string name_;
+  Type type_;
 };
 
 /*
@@ -102,6 +117,8 @@ class PDPattern {
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
 
+  std::string DotString() const;
+
  private:
 #ifdef PADDLE_WITH_TESTING
   FRIEND_TEST(PDPattern, AddEdge);
@@ -117,7 +134,7 @@ class PDPattern {
 };
 
 /*
- * GraphPatternDetecter helps to detect the specific patterns in the graph.
+ * GraphPatternDetector helps to detect the specific patterns in the graph.
  * Input a pattern, output a list of the matched subgraphs/nodes.
  * This helper can be used to support fuse(conv+batchnorm => batchnorm e.g.).
  *
@@ -129,7 +146,7 @@ class PDPattern {
  *
  * Usage:
  *    // Create a detector
- *    GraphPatternDetecter detector;
+ *    GraphPatternDetector detector;
  *    // Define the detector's pattern, by adding PDNode and define the edges.
  *    auto* node0 = detector.mutable_pattern().AddNode(...)
  *    auto* node1 = detector.mutable_pattern().AddNode(...)
@@ -138,11 +155,11 @@ class PDPattern {
  *    detector.mutable_pattern().AddEdge(node0, node1);
  *    // Create an handler, to define the behavior of treating the filtered
  *    // subgraphs that comply with the patterns.
- *    GraphPatternDetecter::handle_t handler = some labmda
+ *    GraphPatternDetector::handle_t handler = some labmda
  *    // Execute the detector.
  *    detector(&graph, handler);
  */
-class GraphPatternDetecter {
+class GraphPatternDetector {
  public:
   using subgraph_t = std::unordered_map<PDNode*, Node*>;
 
@@ -177,9 +194,61 @@ class GraphPatternDetecter {
   using hit_rcd_t =
       std::pair<Node* /*node in graph*/, PDNode* /*node in pattern*/>;
   PDPattern pattern_;
-  std::vector<hit_rcd_t> marked_records_;
   std::unordered_map<const PDNode*, std::unordered_set<Node*>> pdnodes2nodes_;
 };
+
+// some helper methods.
+
+// Op's input.
+static bool VarLinksToOp(Node* node, const std::string& op_type) {
+  for (auto* out : node->outputs) {
+    if (out->IsOp() && out->Op()->Type() == op_type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Op's output.
+static bool VarLinksFromOp(Node* node, const std::string& op_type) {
+  for (auto* out : node->inputs) {
+    if (out->IsOp() && out->Op()->Type() == op_type) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Check whether a var node is a op node's nth input.
+static bool IsNthInput(Node* var, Node* op, const std::string& argument,
+                       size_t nth) {
+  PADDLE_ENFORCE(var->IsVar());
+  PADDLE_ENFORCE(op->IsOp());
+  if (op->inputs.size() <= nth) return false;
+  return var->Name() == op->Op()->Input(argument)[nth];
+}
+
+static void GraphSafeRemoveNodes(Graph* graph,
+                                 const std::unordered_set<const Node*>& nodes) {
+  for (auto* node : nodes) {
+    graph->RemoveNode(const_cast<Node*>(node));
+  }
+
+  for (auto* node : graph->Nodes()) {
+    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
+      if (nodes.count(*it)) {
+        it = const_cast<Node*>(node)->inputs.erase(it);
+      } else
+        it++;
+    }
+    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
+      if (nodes.count(*it)) {
+        it = const_cast<Node*>(node)->outputs.erase(it);
+      } else
+        it++;
+    }
+  }
+}
 
 }  // namespace ir
 }  // namespace framework
