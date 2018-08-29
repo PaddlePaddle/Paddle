@@ -110,6 +110,20 @@ function(find_fluid_modules TARGET_NAME)
   endif()
 endfunction(find_fluid_modules)
 
+# find all third_party modules is used for paddle static library
+# for reduce the dependency when building the inference libs.
+set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY)
+function(find_fluid_third_partys TARGET_NAME)
+  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
+  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
+  string(FIND "${__target_path}" "third_party" pos)
+  if(pos GREATER 1)
+    get_property(fluid_ GLOBAL PROPERTY FLUID_THIRD_PARTY)
+    set(fluid_third_partys ${fluid_third_partys} ${TARGET_NAME})
+    set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
+  endif()
+endfunction(find_fluid_third_partys)
+
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
   list(REMOVE_DUPLICATES libs)
@@ -250,6 +264,7 @@ function(cc_library TARGET_NAME)
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
+      find_fluid_third_partys(${cc_library_DEPS})
     endif()
     
     # cpplint code style

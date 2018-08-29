@@ -216,7 +216,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 #endif
 }
 
-#if !defined(__APPLE__) and !defined(_WIN32)
+#if !defined(__APPLE__) && !defined(_WIN32)
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     ncclResult_t stat, const Args&... args) {
