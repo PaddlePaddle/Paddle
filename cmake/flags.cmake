@@ -136,7 +136,7 @@ else(NOT WIN32)
 set(COMMON_FLAGS
     "/w") #disable all warnings
 set(GPU_COMMON_FLAGS
-    "/w") #disable all warnings
+    /w) #disable all warnings
 
 endif(NOT WIN32)
 
