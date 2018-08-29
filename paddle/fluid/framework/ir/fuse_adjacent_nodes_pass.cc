@@ -96,7 +96,7 @@ bool FuseAdjacentNodesPass::FindToBeFusedNodes(
   for (auto &in_var : no_control_vars) {
     if (in_var->inputs.empty()) continue;
 
-    PADDLE_ENFORCE(in_var->IsVa(), "in_var should be a variable.");
+    PADDLE_ENFORCE(in_var->IsVar(), "in_var should be a variable.");
     PADDLE_ENFORCE_EQ(in_var->inputs.size(), 1,
                       "in_var's generation op should be only one.");
 
@@ -139,6 +139,7 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
 
   // Adjust the link relationship between nodes
 
+  // Replace cur_node with new_node.
   auto replace_node = [](NodePtr cur_node, NodePtr new_node,
                          std::vector<NodePtr> *nodes) {
     bool has_replaced = false;
@@ -148,9 +149,11 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
         has_replaced = true;
       }
     }
-    PADDLE_ENFORCE(has_replaced, "Not find cur_node in nodes.");
+    PADDLE_ENFORCE(has_replaced, "Not find %s in the node list.",
+                   cur_node->Name());
   };
 
+  // Remove cur_node from nodes.
   auto remove_node = [](NodePtr cur_node,
                         std::vector<NodePtr> *nodes) -> std::vector<NodePtr> {
     std::vector<NodePtr> new_list;
@@ -162,53 +165,71 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
     return new_list;
   };
 
-  // Get the input arguments of the fused_node.
+  // Get the input and output arguments of the fused_node.
   // Node: the in_args may have duplicated name.
   auto in_args = fused_node->Op()->InputArgumentNames();
   std::unordered_set<std::string> in_args_set;
   for (auto &in : in_args) {
     in_args_set.emplace(in);
   }
+  auto out_args = fused_node->Op()->InputArgumentNames();
+  std::unordered_set<std::string> out_args_set;
+  for (auto &out : out_args) {
+    out_args_set.emplace(out);
+  }
 
   // link fused_node's input.
   std::unordered_set<NodePtr> has_resolved_nodes;
   std::vector<NodePtr> cur_op_node_ins = cur_op_node->inputs;
   for (auto &var : cur_op_node_ins) {
+    PADDLE_ENFORCE(var->IsVar(), "%s should be variable.", var->Name());
+
     if (has_resolved_nodes.count(var)) continue;
     has_resolved_nodes.emplace(var);
 
-    PADDLE_ENFORCE(var->IsVar());
-
-    bool no_need_merge =
+    // If the var's input is empty, or the var's input is not in
+    // tobe_fused_nodes,
+    // the var should be the input of the fused_op.
+    bool is_fused_op_input =
         var->inputs.empty() || !tobe_fused_nodes.count(var->inputs[0]);
 
-    if (no_need_merge) {
+    if (is_fused_op_input) {
+      // the var only should be in the in_args_set or be a ControlDepVar.
       if (in_args_set.count(var->Name()) || ir::IsControlDepVar(*var)) {
         fused_node->inputs.emplace_back(var);
         replace_node(cur_op_node, fused_node, &(var->outputs));
       } else {
-        PADDLE_THROW("%s is not the input of %s, and not a cntrl var.",
+        PADDLE_THROW("%s is not the input of %s, and not a ControlDepVar.",
                      var->Name(), fused_node->Name());
       }
     } else {
+      // Otherwise, the var may be removed.
       need_removed_nodes->emplace(var);
 
       auto &in_var_gen_node = var->inputs[0];
+      var->inputs.clear();
+      PADDLE_ENFORCE(tobe_fused_nodes.count(in_var_gen_node) == 1, "");
 
       for (auto &in_var : in_var_gen_node->inputs) {
-        PADDLE_ENFORCE(in_var->IsVar());
+        PADDLE_ENFORCE(in_var->IsVar(), "%s should be the input of Op(%s)",
+                       in_var->Name(), in_var_gen_node->Name());
         fused_node->inputs.emplace_back(in_var);
         replace_node(in_var_gen_node, fused_node, &(in_var->outputs));
       }
 
       for (auto &out_var : in_var_gen_node->outputs) {
-        PADDLE_ENFORCE(out_var->IsVar());
+        PADDLE_ENFORCE(out_var->IsVar(), "%s should be the output of Op(%s)",
+                       out_var->Name(), in_var_gen_node->Name());
+        // the out_var maybe the input of cur_op_node
         has_resolved_nodes.emplace(out_var);
+
         if (ir::IsControlDepVar(*out_var)) {
           if (out_var->outputs.size() > 0) {
             out_var->outputs = remove_node(cur_op_node, &out_var->outputs);
-            out_var->inputs.clear();
-            out_var->inputs.emplace_back(fused_node);
+            out_var->inputs[0] = fused_node;
+            if (need_removed_nodes->count(out_var)) {
+              need_removed_nodes->erase(out_var);
+            }
           } else {
             PADDLE_ENFORCE(out_var->outputs.size() == 1 &&
                            out_var->outputs[0] == cur_op_node);
@@ -219,7 +240,14 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
             need_removed_nodes->emplace(out_var);
           }
         } else {
-          need_removed_nodes->emplace(out_var);
+          // If the out_var is in out_args_set, it should be the output of
+          // fused_node
+          if (out_args_set.count(out_var->Name()) == 1) {
+            fused_node->outputs.emplace_back(out_var);
+            out_var->inputs[0] = fused_node;
+          } else {
+            need_removed_nodes->emplace(out_var);
+          }
         }
       }
     }
@@ -227,13 +255,11 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
 
   // link fused_node's output.
   for (auto &cur_output : cur_op_node->outputs) {
-    PADDLE_ENFORCE(cur_output->IsVar());
+    PADDLE_ENFORCE(cur_output->IsVar(), "%s should be the output of Op(%s)",
+                   cur_output->Name(), cur_op_node->Name());
     fused_node->outputs.emplace_back(cur_output);
-    cur_output->inputs.clear();
-    cur_output->inputs.emplace_back(fused_node);
+    cur_output->inputs[0] = fused_node;
   }
-
-  AddAbsentNodes(cur_op_node, tobe_fused_nodes, fused_node);
   return fused_node;
 }
 
@@ -263,41 +289,15 @@ bool FuseAdjacentNodesPass::IsFusible(const NodePtr cur_op_node,
   bool case2 = (cur_op_node->Op()->Type() == "elementwise_add") &&
                (upstream_op_node->Op()->Type() == "scale" ||
                 upstream_op_node->Op()->Type() == "relu");
-  bool case3 = (cur_op_node->Op()->Type() == "elementwise_add_grad") &&
-               (upstream_op_node->Op()->Type() == "scale_grad" ||
-                upstream_op_node->Op()->Type() == "relu_grad");
+  //  bool case3 = (cur_op_node->Op()->Type() == "elementwise_add_grad") &&
+  //               (upstream_op_node->Op()->Type() == "scale_grad" ||
+  //                upstream_op_node->Op()->Type() == "relu_grad");
   //  bool case4 =
   //    (cur_op_node->Op()->Type() == "scale_grad" || cur_op_node->Op()->Type()
   //    == "relu_grad") &&
   //    (n2->Op()->Type() == "elementwise_add_grad");
 
-  auto upstream_op_no_cntrl_nodes =
-      ir::NoControlDepVar(upstream_op_node->outputs);
-  if (upstream_op_no_cntrl_nodes.empty()) {
-    return false;
-  }
-
-  bool fusable =
-      (case1 || case2 || case3) && (upstream_op_no_cntrl_nodes.size() == 1);
-
-  auto &o_var = upstream_op_no_cntrl_nodes[0];
-  if (o_var->outputs.size() == 1) {
-    return fusable;
-  } else if (o_var->outputs.size() <= 3) {
-    // upstream_op_node's output is only used by cur_op_node or
-    // cur_op_grad_node or upstream_op_grad_node.
-    // TODO(zcd): hard code
-    for (auto &o_node : o_var->outputs) {
-      if (!(o_node->Op()->Type() == cur_op_node->Op()->Type() ||
-            o_node->Op()->Type() == cur_op_node->Op()->Type() + "_grad" ||
-            o_node->Op()->Type() == upstream_op_node->Op()->Type() + "_grad")) {
-        return false;
-      }
-    }
-  } else {
-    return false;
-  }
-  return fusable;
+  return case1 || case2;
 }
 
 // temporally
@@ -326,139 +326,190 @@ bool FuseAdjacentNodesPass::IsElemwiseAndActivation(
 }
 
 void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
-    const NodePtr outside_node,
+    const NodePtr cur_op_node,
     const std::unordered_set<NodePtr> &tobe_fused_nodes,
     OpDesc *op_desc) const {
-  auto intra_node = *tobe_fused_nodes.begin();
-  auto intra_op_type = intra_node->Op()->Type();
-  auto outside_op_type = outside_node->Op()->Type();
+  auto upstream_op_node = *tobe_fused_nodes.begin();
+  auto upstream_op_type = upstream_op_node->Op()->Type();
+  auto cur_op_type = cur_op_node->Op()->Type();
 
-  auto intra_node_in_args = intra_node->Op()->InputArgumentNames();
-  auto intra_node_out_args = intra_node->Op()->OutputArgumentNames();
-  auto outside_node_in_args = outside_node->Op()->InputArgumentNames();
+  auto upstream_op_node_in_args = upstream_op_node->Op()->InputArgumentNames();
+  auto upstream_op_node_out_args =
+      upstream_op_node->Op()->OutputArgumentNames();
+  auto cur_op_node_in_args = cur_op_node->Op()->InputArgumentNames();
+  auto cur_op_node_out_args = cur_op_node->Op()->OutputArgumentNames();
 
   // Set Input
-  if (IsBackward(outside_node, tobe_fused_nodes)) {
+  if (IsBackward(cur_op_node, tobe_fused_nodes)) {
     const std::string op_type = "fused_elemwise_activation_grad";
     op_desc->SetType(op_type);
-    op_desc->SetAttr("functor_list", std::vector<std::string>(
-                                         {intra_op_type, outside_op_type}));
-    if (IsElemwise(outside_op_type)) {
-      PADDLE_ENFORCE(
-          intra_node_in_args.size() == 2 || intra_node_in_args.size() == 3,
-          "The number of inputs of %s should be 2 or 3, because the computation"
-          " of activation operator maybe inplace.",
-          intra_node->Op()->Type());
-      PADDLE_ENFORCE(
-          outside_node_in_args.size() == 3 || outside_node_in_args.size() == 4,
-          "The number of inputs of %s should be 2 or 4, "
-          "if the number is 3, the input variable is `Y`, `Out` and "
-          "`Out@Grad`, if the number is 4, the input variable is `X`, `Y`, "
-          "`Out`, `Out@Grad`",
-          outside_node->Op()->Type());
 
-      if (outside_node_in_args.size() == 4) {
-        op_desc->SetInput("X", outside_node->Op()->Input("X"));
-        op_desc->SetInput("Y", outside_node->Op()->Input("Y"));
+    // Set attrs
+    op_desc->SetAttr("functor_list",
+                     std::vector<std::string>({upstream_op_type, cur_op_type}));
+    op_desc->SetAttr("recomputation", false);
+
+    auto out_grad = ::paddle::framework::GradVarName("Out");
+    auto x_grad = ::paddle::framework::GradVarName("X");
+    auto y_grad = ::paddle::framework::GradVarName("Y");
+
+    if (IsElemwise(cur_op_type)) {
+      // the backward of  Unary(Binary(X, Y))
+      PADDLE_ENFORCE(upstream_op_node_out_args.size() == 1,
+                     "The number of output of %s should be 1.",
+                     upstream_op_type);
+      PADDLE_ENFORCE(cur_op_node_out_args.size() == 2,
+                     "The number of output of %s should be 2.", cur_op_type);
+      PADDLE_ENFORCE(
+          upstream_op_node_in_args.size() == 2 ||
+              upstream_op_node_in_args.size() == 3,
+          "The number of inputs of %s should be 2 or 3, "
+          "if the number is 2, the input is 'Out', 'Out@Grad', "
+          "if the number is 3, the input is 'X', 'Out' and 'Out@Grad'.",
+          upstream_op_node->Op()->Type());
+      PADDLE_ENFORCE(
+          cur_op_node_in_args.size() == 2 || cur_op_node_in_args.size() == 4,
+          "The number of inputs of %s should be 2 or 4, if the number is 2, "
+          "the input variable is `Y`, and `Out@Grad`, if the number is "
+          "4, the input variable is `X`, `Y`, `Out`, `Out@Grad`",
+          cur_op_type);
+
+      if (cur_op_node_in_args.size() == 4) {
+        op_desc->SetInput("X", cur_op_node->Op()->Input("X"));
       } else {
-        bool insert_input = false;
-        auto out_name = outside_node->Op()->Input("Out")[0];
-        for (auto in : outside_node->inputs) {
-          if (in->Var()->Name() == out_name) {
-            auto forward_node = in->inputs[0];
-            PADDLE_ENFORCE(
-                forward_node->Name() + "_grad" == op_type,
-                "%s and %s should be a pair of forward and backward.", op_type,
-                forward_node->Name());
-            op_desc->SetInput("X", forward_node->Op()->Input("X"));
-            op_desc->SetInput("Y", forward_node->Op()->Input("Y"));
-            insert_input = true;
-            break;
-          }
+        // for the BinaryFunctor is elementwise_add, the computation
+        // of its backward doesn't use 'x' and 'y', but the shape of
+        // dy only can be inferred from 'y', so 'y' should be input.
+        if (upstream_op_node_in_args.size() == 3) {
+          op_desc->SetInput("IntermediateOut",
+                            upstream_op_node->Op()->Input("Y"));
         }
-        PADDLE_ENFORCE(insert_input, "Doesn't find `X` and `Y` of %s.",
-                       outside_node->Name());
       }
-
-      auto intra_node_in1 = intra_node->Op()->Input("Out");
-      auto intra_node_in2 =
-          intra_node->Op()->Input(::paddle::framework::GradVarName("Out"));
-      auto out1 =
-          outside_node->Op()->Output(::paddle::framework::GradVarName("X"));
-      auto out2 =
-          outside_node->Op()->Output(::paddle::framework::GradVarName("Y"));
-
-      op_desc->SetInput("Out", intra_node_in1);
-      op_desc->SetInput(::paddle::framework::GradVarName("Out"),
-                        intra_node_in2);
-      op_desc->SetOutput(::paddle::framework::GradVarName("X"), out1);
-      op_desc->SetOutput(::paddle::framework::GradVarName("Y"), out2);
+      op_desc->SetInput("Y", cur_op_node->Op()->Input("Y"));
+      op_desc->SetInput("Out", upstream_op_node->Op()->Input("Out"));
+      op_desc->SetInput(out_grad, upstream_op_node->Op()->Input(out_grad));
+      op_desc->SetOutput(x_grad, cur_op_node->Op()->Output(x_grad));
+      op_desc->SetOutput(y_grad, upstream_op_node->Op()->Output(x_grad));
     } else {
-      PADDLE_THROW("Not implement.");
-    }
-  } else {
-    op_desc->SetType("fused_elemwise_activation");
-    op_desc->SetAttr("functor_list", std::vector<std::string>(
-                                         {outside_op_type, intra_op_type}));
+      // the backward of Binary(X, Unary(Y))
+      PADDLE_ENFORCE(upstream_op_node_out_args.size() == 2,
+                     "The number of output of %s should be 2.",
+                     upstream_op_type);
+      PADDLE_ENFORCE(cur_op_node_out_args.size() == 1,
+                     "The number of output of %s should be 1.", cur_op_type);
+      PADDLE_ENFORCE(
+          cur_op_node_in_args.size() == 2 || cur_op_node_in_args.size() == 3,
+          "The number of inputs of %s should be 2 or 3, "
+          "if the number is 2, the input is 'Out', 'Out@Grad', "
+          "if the number is 3, the input is 'X', 'Out' and 'Out@Grad'.",
+          cur_op_type);
+      PADDLE_ENFORCE(
+          upstream_op_node_in_args.size() == 2 ||
+              upstream_op_node_in_args.size() == 4,
+          "The number of inputs of %s should be 2 or 4, if the number is 2, "
+          "the input variable is `Y`, and `Out@Grad`, if the number is "
+          "4, the input variable is `X`, `Y`, `Out`, `Out@Grad`",
+          upstream_op_type);
 
-    if (IsElemwise(outside_op_type)) {
-      PADDLE_ENFORCE_EQ(intra_node_in_args.size(), 1);
-      PADDLE_ENFORCE_EQ(intra_node_out_args.size(), 1);
-      PADDLE_ENFORCE_EQ(outside_node_in_args.size(), 2);
-
-      op_desc->SetInput("Y", intra_node_in_args);
-
-      if (outside_node_in_args[0] == intra_node_out_args[0]) {
-        op_desc->SetInput("X", {outside_node_in_args[1]});
-      } else if (outside_node_in_args[1] == intra_node_out_args[0]) {
-        op_desc->SetInput("X", {outside_node_in_args[0]});
+      if (upstream_op_node_in_args.size() == 4) {
+        op_desc->SetInput("X", upstream_op_node->Op()->Input("X"));
       } else {
-        PADDLE_THROW("exception");
+        // for the BinaryFunctor is elementwise_add, the computation
+        // of its backward doesn't use 'x' and 'y', but the shape of
+        // dy only can be inferred from 'y', so 'y' should be input.
+        if (cur_op_node_in_args.size() == 3) {
+          op_desc->SetInput("Y", upstream_op_node->Op()->Input("Y"));
+        } else {
+        }
+      }
+      op_desc->SetInput("IntermediateOut", cur_op_node->Op()->Input("Out"));
+      op_desc->SetInput("Y", upstream_op_node->Op()->Input("Y"));
+      op_desc->SetInput("Out", upstream_op_node->Op()->Input("Out"));
+      op_desc->SetInput(out_grad, upstream_op_node->Op()->Input(out_grad));
+      op_desc->SetOutput(x_grad, upstream_op_node->Op()->Output(x_grad));
+      op_desc->SetOutput(y_grad, cur_op_node->Op()->Output(x_grad));
+
+      // Set the "X"
+      auto result_iter = std::find(upstream_op_node_out_args.begin(),
+                                   upstream_op_node_out_args.end(),
+                                   cur_op_node->Op()->Input(out_grad)[0]);
+      if (result_iter == upstream_op_node_out_args.end()) {
+        PADDLE_THROW("%s's output is not the input of %s", upstream_op_type,
+                     cur_op_type);
+      }
+    }
+  } else {  // The forward of Binary(X, Unary(Y)) or Unary(Binary(X, Y))
+    PADDLE_ENFORCE_EQ(upstream_op_node_out_args.size(), 1,
+                      "The number of output of UnaryFunctor(BinaryFunctor)[%s] "
+                      "should be one.",
+                      upstream_op_type);
+    PADDLE_ENFORCE_EQ(cur_op_node_out_args.size(), 1,
+                      "The number of output of BinaryFunctor(UnaryFunctor)[%s] "
+                      "should be one.",
+                      cur_op_type);
+
+    op_desc->SetType("fused_elemwise_activation");
+    op_desc->SetAttr("functor_list",
+                     std::vector<std::string>({cur_op_type, upstream_op_type}));
+    op_desc->SetAttr("recomputation", false);
+
+    // The output of compound functor.
+    std::vector<std::string> out_args;
+    out_args.emplace_back(cur_op_node_out_args[0]);
+    bool keep_intermediate_out = false;
+
+    if (IsElemwise(cur_op_type)) {
+      // Z = Binary(X, Unary(Y))
+      PADDLE_ENFORCE_EQ(upstream_op_node_in_args.size(), 1,
+                        "The number of input of UnaryFunctor should be one.");
+      PADDLE_ENFORCE_EQ(cur_op_node_in_args.size(), 2,
+                        "The number of input of BinaryFunctor should be two.");
+      // Set the "Y"
+      op_desc->SetInput("Y", upstream_op_node_in_args);
+
+      // Set the "X"
+      auto result_iter =
+          std::find(cur_op_node_in_args.begin(), cur_op_node_in_args.end(),
+                    upstream_op_node_out_args[0]);
+      if (result_iter == cur_op_node_in_args.end()) {
+        PADDLE_THROW("%s's output is not the input of %s", upstream_op_type,
+                     cur_op_type);
+      }
+      // x_idx is 0 or 1 here.
+      int x_idx =
+          1 - static_cast<int>(result_iter - cur_op_node_in_args.begin());
+      op_desc->SetInput("X", {cur_op_node_in_args[x_idx]});
+
+      if (cur_op_type == "elementwise_add") {
+        keep_intermediate_out = true;
       }
     } else {
-      op_desc->SetInput("Y", intra_node->Op()->Input("Y"));
-      op_desc->SetInput("X", intra_node->Op()->Input("X"));
+      // Z = Unary(Binary(X, Y))
+      PADDLE_ENFORCE_EQ(cur_op_node_in_args.size(), 1,
+                        "The number of input of UnaryFunctor should be one.");
+      PADDLE_ENFORCE_EQ(upstream_op_node_in_args.size(), 2,
+                        "The number of input of BinaryFunctor should be two.");
+      // Set the "Y" and "X"
+      op_desc->SetInput("Y", upstream_op_node->Op()->Input("Y"));
+      op_desc->SetInput("X", upstream_op_node->Op()->Input("X"));
+      // the input of the backward of elementwise_add doesn't include "X",
+      // so we must save the intermediate_out here.
+      if (cur_op_type == "elementwise_add") {
+        keep_intermediate_out = true;
+      }
     }
-    // Set output
-    op_desc->SetOutput("Out", outside_node->Op()->OutputArgumentNames());
+
+    if (keep_intermediate_out) {
+      op_desc->SetAttr("keep_intermediate_value", true);
+    }
+    op_desc->SetOutput("IntermediateOut", upstream_op_node_out_args);
+    op_desc->SetOutput("Out", cur_op_node_out_args);
   }
 
   // Set attrs
-  for (auto &n : {intra_node, outside_node}) {
+  for (auto &n : {upstream_op_node, cur_op_node}) {
     for (auto &m_ele : n->Op()->GetAttrMap()) {
       op_desc->SetAttr(m_ele.first, m_ele.second);
-    }
-  }
-  op_desc->SetAttr("recomputation", true);
-}
-
-void FuseAdjacentNodesPass::AddAbsentNodes(
-    const NodePtr outside_node,
-    const std::unordered_set<NodePtr> &tobe_fused_nodes,
-    Node *fused_node) const {
-  std::unordered_set<NodePtr> fused_node_ins;
-  for (auto in : fused_node->inputs) {
-    fused_node_ins.emplace(in);
-  }
-
-  auto outside_op_type = outside_node->Op()->Type();
-
-  if (this->IsBackward(outside_node, tobe_fused_nodes)) {
-    if (IsElemwise(outside_op_type)) {
-      auto out_name = outside_node->Op()->Input("Out")[0];
-      for (auto in_var : outside_node->inputs) {
-        if (in_var->Var()->Name() == out_name) {
-          auto forward_node = in_var->inputs[0];
-          for (auto in : forward_node->inputs) {
-            if (!fused_node_ins.count(in)) {
-              fused_node->inputs.emplace_back(in);
-            }
-          }
-          break;
-        }
-      }
-    } else {
-      PADDLE_THROW("Not implement.");
     }
   }
 }

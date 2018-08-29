@@ -117,7 +117,7 @@ std::vector<ir::Node *> GetOperations(const Graph &graph) {
   std::vector<ir::Node *> ret;
 
   for (auto node : graph.Nodes()) {
-    if (node->IsVariable()) {
+    if (node->IsVar()) {
       continue;
     }
     ret.emplace_back(node);

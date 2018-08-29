@@ -236,7 +236,6 @@ class ElemwiseGradKernel : public framework::OpKernel<T> {
       auto* op = new paddle::framework::OpDesc();                            \
       op->SetType(#kernel_type "_grad");                                     \
       op->SetInput("Y", Input("Y"));                                         \
-      op->SetInput("Out", Output("Out"));                                    \
       op->SetInput(::paddle::framework::GradVarName("Out"),                  \
                    OutputGrad("Out"));                                       \
       op->SetAttrMap(Attrs());                                               \
