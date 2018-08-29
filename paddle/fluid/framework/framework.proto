@@ -107,6 +107,7 @@ message VarType {
     // Tensor<size_t> is used in C++.
     SIZE_T = 19;
     UINT8 = 20;
+    INT8 = 21;
 
     // Other types that may need additional descriptions
     LOD_TENSOR = 7;

@@ -39,6 +39,7 @@ __all__ = [
     'detection_map',
     'rpn_target_assign',
     'anchor_generator',
+    'generate_proposals',
 ]
 
 __auto__ = [
@@ -1255,3 +1256,73 @@ def anchor_generator(input,
     anchor.stop_gradient = True
     var.stop_gradient = True
     return anchor, var
+
+
+def generate_proposals(scores,
+                       bbox_deltas,
+                       im_info,
+                       anchors,
+                       variances,
+                       pre_nms_top_n=6000,
+                       post_nms_top_n=1000,
+                       nms_thresh=0.5,
+                       min_size=0.1,
+                       eta=1.0,
+                       name=None):
+    """
+    ** Generate proposal labels Faster-RCNN **
+	
+	This operation proposes RoIs according to each box with their probability to be a foreground object and 
+	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
+	could be used to train detection net.
+
+	For generating proposals, this operation performs following steps:
+
+	1. Transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4)
+ 	2. Calculate box locations as proposals candidates. 
+	3. Clip boxes to image
+	4. Remove predicted boxes with small area. 
+	5. Apply NMS to get final proposals as output.
+	
+      
+	Args:
+		scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
+			N is batch size, A is number of anchors, H and W are height and width of the feature map.
+		bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
+		im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
+			between origin image size and the size of feature map.
+		anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
+              		num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+		variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
+		pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
+		post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
+		nms_thresh(float): Threshold in NMS, 0.5 by default.
+		min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
+		eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.
+    """
+    helper = LayerHelper('generate_proposals', **locals())
+
+    rpn_rois = helper.create_tmp_variable(dtype=bbox_deltas.dtype)
+    rpn_roi_probs = helper.create_tmp_variable(dtype=scores.dtype)
+    helper.append_op(
+        type="generate_proposals",
+        inputs={
+            'Scores': scores,
+            'BboxDeltas': bbox_deltas,
+            'ImInfo': im_info,
+            'Anchors': anchors,
+            'Variances': variances
+        },
+        attrs={
+            'pre_nms_topN': pre_nms_top_n,
+            'post_nms_topN': post_nms_top_n,
+            'nms_thresh': nms_thresh,
+            'min_size': min_size,
+            'eta': eta
+        },
+        outputs={'RpnRois': rpn_rois,
+                 'RpnRoiProbs': rpn_roi_probs})
+    rpn_rois.stop_gradient = True
+    rpn_roi_probs.stop_gradient = True
+
+    return rpn_rois, rpn_roi_probs
