@@ -465,7 +465,7 @@ EOF
         -DWITH_GPU=OFF \
         -DWITH_MKL=OFF
 
-    make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+    make -j `nproc` copy_paddle_pybind 
 }
 
 function gen_html() {
