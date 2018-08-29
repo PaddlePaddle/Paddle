@@ -16,9 +16,39 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/for_range.h"
+
+#ifdef __NVCC__
+#include <thrust/device_vector.h>
+#endif
 
 namespace paddle {
 namespace operators {
+
+#ifdef __NVCC__
+template <typename T, bool InPlace>
+struct SumOpFunctor {
+  SumOpFunctor(T *y, const T **x, int num) : y_(y), x_(x), num_(num) {
+    PADDLE_ENFORCE_GT(num_, 0, "num must be larger than 0");
+  }
+
+  __device__ void operator()(size_t idx) const {
+    T ret = x_[0][idx];
+    for (int i = 1; i < num_; ++i) ret += x_[i][idx];
+    if (InPlace) {
+      y_[idx] += ret;
+    } else {
+      y_[idx] = ret;
+    }
+  }
+
+ private:
+  T *y_;
+  const T **x_;
+  int num_;
+};
+
+#endif
 
 using Tensor = framework::Tensor;
 using SelectedRows = framework::SelectedRows;
@@ -38,6 +68,78 @@ class SumKernel : public framework::OpKernel<T> {
     bool in_place = out_var == in_vars[0];
 
     if (out_var->IsType<framework::LoDTensor>()) {
+#ifdef __NVCC__
+      do {
+        bool is_all_lod_tensors = true;
+        auto *out = out_var->GetMutable<framework::LoDTensor>();
+        auto *out_data = out->mutable_data<T>(context.GetPlace());
+        auto size = out->numel();
+        std::vector<const T *> x_datas;
+        x_datas.reserve(N);
+        for (int i = in_place ? 1 : 0; i < N; i++) {
+          if (!in_vars[i]->IsType<framework::LoDTensor>()) {
+            is_all_lod_tensors = false;
+            break;
+          }
+          auto &in_t = in_vars[i]->Get<framework::LoDTensor>();
+          if (in_t.numel() > 0) x_datas.push_back(in_t.data<T>());
+        }
+
+        if (!is_all_lod_tensors) break;
+        if (x_datas.empty()) return;
+
+        constexpr auto kMaxThreshold = 2;
+        bool use_multiple_kernel =
+            (in_place ? x_datas.size() <= kMaxThreshold - 1
+                      : x_datas.size() <= kMaxThreshold);
+        if (!use_multiple_kernel) {
+          auto &dev_ctx = context.template device_context<DeviceContext>();
+          platform::ForRange<DeviceContext> for_range(dev_ctx, size);
+          thrust::device_vector<const T *> dev_vec(x_datas);
+          if (in_place) {
+            SumOpFunctor<T, true> sum_op_functor(out_data, dev_vec.data().get(),
+                                                 x_datas.size());
+            for_range(sum_op_functor);
+          } else {
+            SumOpFunctor<T, false> sum_op_functor(
+                out_data, dev_vec.data().get(), x_datas.size());
+            for_range(sum_op_functor);
+          }
+          dev_ctx.Wait();
+        } else {
+          auto &place =
+              *context.template device_context<DeviceContext>().eigen_device();
+          typename framework::EigenDim<1>::Type eigen_size(size);
+          using EigenVectorType = typename framework::EigenVector<T>::Type;
+          using ConstEigenVectorType =
+              typename framework::EigenVector<T>::ConstType;
+          EigenVectorType eigen_out(out_data, eigen_size);
+
+          if (in_place) {
+            for (size_t i = 0; i < x_datas.size(); ++i) {
+              eigen_out.device(place) =
+                  eigen_out + ConstEigenVectorType(x_datas[i], eigen_size);
+            }
+          } else {
+            if (x_datas.size() == 1) {
+              eigen_out.device(place) =
+                  ConstEigenVectorType(x_datas[0], eigen_size);
+            } else {
+              eigen_out.device(place) =
+                  ConstEigenVectorType(x_datas[0], eigen_size) +
+                  ConstEigenVectorType(x_datas[1], eigen_size);
+              for (size_t i = 2; i < x_datas.size(); ++i) {
+                eigen_out.device(place) =
+                    eigen_out + ConstEigenVectorType(x_datas[i], eigen_size);
+              }
+            }
+          }
+        }
+
+        return;
+      } while (0);
+#endif
+
       auto *out = context.Output<LoDTensor>("Out");
       if (!in_place) {
         out->mutable_data<T>(context.GetPlace());
