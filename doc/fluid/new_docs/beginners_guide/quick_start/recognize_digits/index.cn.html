@@ -1,3 +1,45 @@
+
+<html>
+<head>
+  <script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    extensions: ["tex2jax.js", "TeX/AMSsymbols.js", "TeX/AMSmath.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'] ],
+      displayMath: [ ['$$','$$'] ],
+      processEscapes: true
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js" async></script>
+  <script type="text/javascript" src="../.tools/theme/marked.js">
+  </script>
+  <link href="http://cdn.bootcss.com/highlight.js/9.9.0/styles/darcula.min.css" rel="stylesheet">
+  <script src="http://cdn.bootcss.com/highlight.js/9.9.0/highlight.min.js"></script>
+  <link href="http://cdn.bootcss.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/perfect-scrollbar/0.6.14/css/perfect-scrollbar.min.css" rel="stylesheet">
+  <link href="../.tools/theme/github-markdown.css" rel='stylesheet'>
+</head>
+<style type="text/css" >
+.markdown-body {
+    box-sizing: border-box;
+    min-width: 200px;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 45px;
+}
+</style>
+
+
+<body>
+
+<div id="context" class="container-fluid markdown-body">
+</div>
+
+<!-- This block will be replaced by each markdown file content. Please do not change lines below.-->
+<div id="markdown" style='display:none'>
 # 识别数字
 
 本教程源代码目录在[book/recognize_digits](https://github.com/PaddlePaddle/book/tree/develop/02.recognize_digits)， 初次使用请参考PaddlePaddle[安装教程](https://github.com/PaddlePaddle/book/blob/develop/README.cn.md#运行这本书)，更多内容请参考本教程的[视频课堂](http://bit.baidu.com/course/detail/id/167.html)。
@@ -442,3 +484,25 @@ print ("Inference result of image/infer_3.png is: %d" % lab[0][0][-1])
 
 <br/>
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">本教程</span> 由 <a xmlns:cc="http://creativecommons.org/ns#" href="http://book.paddlepaddle.org" property="cc:attributionName" rel="cc:attributionURL">PaddlePaddle</a> 创作，采用 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">知识共享 署名-相同方式共享 4.0 国际 许可协议</a>进行许可。
+
+</div>
+<!-- You can change the lines below now. -->
+
+<script type="text/javascript">
+marked.setOptions({
+  renderer: new marked.Renderer(),
+  gfm: true,
+  breaks: false,
+  smartypants: true,
+  highlight: function(code, lang) {
+    code = code.replace(/&amp;/g, "&")
+    code = code.replace(/&gt;/g, ">")
+    code = code.replace(/&lt;/g, "<")
+    code = code.replace(/&nbsp;/g, " ")
+    return hljs.highlightAuto(code, [lang]).value;
+  }
+});
+document.getElementById("context").innerHTML = marked(
+        document.getElementById("markdown").innerHTML)
+</script>
+</body>
