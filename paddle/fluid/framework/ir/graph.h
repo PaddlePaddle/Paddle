@@ -122,7 +122,7 @@ class Graph {
   // A more free style way of creating a graph node. Mostly use for test
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
-    return AddNode(new ir::Node(name, type));
+    return AddNode(new ir::Node(name, type, node_count_++));
   }
 
   // Clear all node information of the graph and return the ownership of the
