@@ -77,12 +77,12 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:latest`
+		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`
 		
 
 	* 对于需要**GPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For GPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:latest-gpu`
+		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0-gpu-cuda9.0-cudnn7`
 		
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
@@ -241,12 +241,9 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:latest`
-
-
-	<!--* 对于需要**GPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For GPU*的镜像：
-
-		`docker pull docker.paddlepaddlehub.com/paddle:latest-gpu`TODO: 测试后加入-->
+		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`       
+		
+		
 
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
@@ -292,7 +289,9 @@
 
 *	Python2.7.x (devel)   
 	
-	> CentOS6需要编译Python2.7成[共享库](#FAQ)。
+	> CentOS6需要编译Python2.7成[共享库](#FAQ)。         
+
+
 *	Pip >= 9.0.1
 	> 您的CentOS上可能已经安装pip请使用pip -V来确认我们建议使用pip 9.0.1或更高版本来安装。
 
@@ -396,7 +395,7 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:latest`
+		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`
 		
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
