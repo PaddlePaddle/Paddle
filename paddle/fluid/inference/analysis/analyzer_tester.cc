@@ -20,9 +20,12 @@
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
 DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
+DEFINE_int32(batch_size, 10, "batch size.");
+DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 
 namespace paddle {
 namespace inference {
@@ -92,7 +95,7 @@ struct DataRecord {
   size_t batch_iter{0};
   size_t batch_size{1};
   DataRecord() = default;
-  DataRecord(const std::string &path, int batch_size = 1)
+  explicit DataRecord(const std::string &path, int batch_size = 1)
       : batch_size(batch_size) {
     Load(path);
   }
@@ -165,7 +168,6 @@ struct DataRecord {
 };
 void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
                    int batch_size) {
-  // DataRecord data(FLAGS_datapath, batch_size);
   PaddleTensor lod_attention_tensor, init_zero_tensor, lod_tensor_tensor,
       week_tensor, minute_tensor;
   lod_attention_tensor.name = "data_lod_attention";
@@ -174,28 +176,33 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   week_tensor.name = "week";
   minute_tensor.name = "minute";
   auto one_batch = data->NextBatch();
-  // clang-format off
-  std::vector<int> rnn_link_data_shape
-      ({static_cast<int>(one_batch.rnn_link_data.size()), static_cast<int>(one_batch.rnn_link_data.front().size())});
+  std::vector<int> rnn_link_data_shape(
+      {static_cast<int>(one_batch.rnn_link_data.size()),
+       static_cast<int>(one_batch.rnn_link_data.front().size())});
   lod_attention_tensor.shape.assign({1, 2});
   lod_attention_tensor.lod.assign({one_batch.lod1, one_batch.lod2});
   init_zero_tensor.shape.assign({batch_size, 15});
   init_zero_tensor.lod.assign({one_batch.lod3});
   lod_tensor_tensor.shape = rnn_link_data_shape;
   lod_tensor_tensor.lod.assign({one_batch.lod1});
-  week_tensor.shape.assign({(int) one_batch.rnn_week_datas.size(), (int) one_batch.rnn_week_datas.front().size()});
+  // clang-format off
+  week_tensor.shape.assign(
+      {static_cast<int>(one_batch.rnn_week_datas.size()),
+       static_cast<int>(one_batch.rnn_week_datas.front().size())});
   week_tensor.lod.assign({one_batch.lod3});
-  minute_tensor.shape.assign({(int) one_batch.rnn_minute_datas.size(),
-                              (int) one_batch.rnn_minute_datas.front().size()});
+  minute_tensor.shape.assign(
+      {static_cast<int>(one_batch.rnn_minute_datas.size()),
+       static_cast<int>(one_batch.rnn_minute_datas.front().size())});
   minute_tensor.lod.assign({one_batch.lod3});
+  // clang-format on
   // assign data
-  TensorAssignData(&lod_attention_tensor, std::vector<std::vector<float>>({{0, 0}}));
+  TensorAssignData(&lod_attention_tensor,
+                   std::vector<std::vector<float>>({{0, 0}}));
   std::vector<float> tmp_zeros(batch_size * 15, 0.);
   TensorAssignData(&init_zero_tensor, {tmp_zeros});
   TensorAssignData(&lod_tensor_tensor, one_batch.rnn_link_data);
   TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
   TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
-  // clang-format on
   // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
@@ -231,12 +238,9 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   os << "\n";
   os << " - data: ";
 
-  // clang-format off
-  int dim = std::accumulate(tensor.shape.begin(),
-                            tensor.shape.end(),
-                            1,
-                            [](int a, int b) { return a * b; });  // clang-format on
-  for (size_t i = 0; i < dim; i++) {
+  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+  for (int i = 0; i < dim; i++) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
   os << '\n';
@@ -261,82 +265,58 @@ void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
                            bool use_analysis, bool activate_ir,
                            int num_times = 1) {
-  FLAGS_IA_enable_ir = activate_ir;
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "./analysis.out";
-
-  std::string model_out;
-  if (use_analysis) {
-    Argument argument(model_path);
-    argument.model_output_store_path.reset(new std::string("./analysis.out"));
-
-    Analyzer analyzer;
-    analyzer.Run(&argument);
-
-    // Should get the transformed model stored to ./analysis.out
-    model_out = "./analysis.out";
-    ASSERT_TRUE(PathExists(model_out));
-  } else {
-    model_out = FLAGS_infer_ditu_rnn_model;
-  }
-
   NativeConfig config;
-  config.prog_file = model_out + "/__model__";
-  config.param_file = model_out + "/param";
+  config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
+  config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
 
-  auto predictor =
+  auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
   PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs;
+  std::vector<PaddleTensor> outputs, base_outputs;
+
+  base_predictor->Run(input_slots, &base_outputs);
 
   Timer timer;
   timer.tic();
   for (int i = 0; i < num_times; i++) {
     predictor->Run(input_slots, &outputs);
   }
-  LOG(INFO) << "time/batch: " << timer.toc() / num_times;
+  LOG(INFO) << "===========profile result===========";
+  LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << num_times
+            << ", latency: " << timer.toc() / num_times << "ms";
+  LOG(INFO) << "=====================================";
 
-  for (auto &out : outputs) {
+  PADDLE_ENFORCE_GT(outputs.size(), 0);
+  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
+  for (size_t i = 0; i < outputs.size(); i++) {
+    auto &out = outputs[i];
+    auto &base_out = base_outputs[i];
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
+    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
+                                   1, [](int a, int b) { return a * b; });
+    PADDLE_ENFORCE_EQ(size, size1);
+    PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
-    for (int i = 0;
-         i < std::min(sizeof(ditu_rnn_target_data) / sizeof(float), size);
-         i++) {
-      EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);
+    float *base_data = static_cast<float *>(base_out.data.data());
+    for (size_t i = 0; i < size; i++) {
+      EXPECT_NEAR(data[i], base_data[i], 1e-3);
     }
   }
-}
-
-// Turn on the IR pass supportion, run a real inference and check the result.
-TEST(Analyzer, SupportIRPass) {
-  FLAGS_IA_enable_ir = true;
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "./analysis.out";
-
-  Argument argument(FLAGS_inference_model_dir);
-  argument.model_output_store_path.reset(new std::string("./analysis.out"));
-
-  Analyzer analyzer;
-  analyzer.Run(&argument);
-
-  // Should get the transformed model stored to ./analysis.out
-  ASSERT_TRUE(PathExists("./analysis.out"));
-
-  // Inference from this path.
-  TestWord2vecPrediction("./analysis.out");
 }
 
 // Directly infer with the original model.
 TEST(Analyzer, DituRNN_without_analysis) {
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        10, false, false);
+                        FLAGS_batch_size, false, false, FLAGS_repeat);
 }
 
 // Inference with the original model with the analysis turned on, the analysis
@@ -344,14 +324,14 @@ TEST(Analyzer, DituRNN_without_analysis) {
 TEST(Analyzer, DituRNN_with_analysis) {
   LOG(INFO) << "ditu rnn with analysis";
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        10, true, false, 1);
+                        FLAGS_batch_size, true, false, FLAGS_repeat);
 }
 
 // Inference with analysis and IR. The IR module will fuse some large kernels.
 TEST(Analyzer, DituRNN_with_analysis_with_IR) {
   LOG(INFO) << "ditu rnn with analysis and IR fuse";
   TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        10, true, true, 1);
+                        FLAGS_batch_size, true, true, FLAGS_repeat);
 }
 
 }  // namespace analysis
@@ -359,5 +339,8 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace paddle
 
 USE_PASS(fc_fuse_pass);
+USE_PASS(seq_concat_fc_fuse_pass);
+USE_PASS(fc_lstm_fuse_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(infer_clean_graph_pass);
+USE_PASS(attention_lstm_fuse_pass);

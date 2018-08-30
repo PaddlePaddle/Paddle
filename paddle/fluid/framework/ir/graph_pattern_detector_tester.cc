@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 #include <gtest/gtest.h>
 
@@ -82,7 +82,7 @@ TEST(PDPattern, AddEdge) {
 }
 
 TEST(GraphPatternDetecter, MarkPDNodesInGraph) {
-  GraphPatternDetecter x;
+  GraphPatternDetector x;
   // mark o2, o3, v2
 
   // The pattern is a graph:
@@ -131,7 +131,7 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
   Graph graph(program);
   BuildGraph(&graph);
 
-  GraphPatternDetecter x;
+  GraphPatternDetector x;
 
   // The pattern is a graph:
   //   op -> var
@@ -149,8 +149,8 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
   x.mutable_pattern()->AddEdge(any_var, any_op1);
 
   int count = 0;
-  GraphPatternDetecter::handle_t handle = [&](
-      const GraphPatternDetecter::subgraph_t& s, Graph* g) {
+  GraphPatternDetector::handle_t handle = [&](
+      const GraphPatternDetector::subgraph_t& s, Graph* g) {
     LOG(INFO) << "Detect " << s.at(any_op)->Name() << " -> "
               << s.at(any_var)->Name() << " -> " << s.at(any_op1)->Name();
     count++;
@@ -163,8 +163,8 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
   // 3. Detect op2 -> var2 -> op4
   // 4. Detect op2 -> var3 -> op5
   // But 2 and 3 and 4 overlapped, so keep 2, so the final choices are 1 and 2
-  ASSERT_GE(count, 1UL);
-  ASSERT_LE(count, 2UL);
+  ASSERT_GE(count, 1);
+  ASSERT_LE(count, 2);
 }
 
 }  // namespace ir
