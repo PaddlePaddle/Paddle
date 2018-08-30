@@ -9,7 +9,7 @@ function(windows_symbolic TARGET)
   if (NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc OR NOT EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${src}.cu)
       message(FATAL " ${src}.cc and ${src}.cu must exsits, and ${src}.cu must be symbolic file.")
   endif()
-  add_custom_command(OUTPUT .${src}.cu PRE_BUILD 
+  add_custom_command(OUTPUT .${src}.cu 
           COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu
           COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc" "${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu"
           COMMENT "create hidden file of ${src}.cu")

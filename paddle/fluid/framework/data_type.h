@@ -64,33 +64,39 @@ template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   switch (type) {
     case proto::VarType::FP16:
-      typename visitor.operator()<platform::float16>();
+      visitor.template apply<platform::float16>();
       break;
     case proto::VarType::FP32:
-      visitor.operator()<float>();
+      visitor.template apply<float>();
       break;
     case proto::VarType::FP64:
-      visitor.operator()<double>();
+      visitor.template apply<double>();
       break;
     case proto::VarType::INT32:
-      visitor.operator()<int>();
+      visitor.template apply<int>();
       break;
     case proto::VarType::INT64:
-      visitor.operator()<int64_t>();
+      visitor.template apply<int64_t>();
       break;
     case proto::VarType::BOOL:
-      visitor.operator()<bool>();
+      visitor.template apply<bool>();
       break;
     case proto::VarType::UINT8:
-      visitor.operator()<uint8_t>();
+      visitor.template apply<uint8_t>();
       break;
     case proto::VarType::INT16:
-      visitor.operator()<int16_t>();
+      visitor.template apply<int16_t>();
       break;
     default:
       PADDLE_THROW("Not supported %d", type);
   }
 }
+
+template <typename InT>
+void* AnyCast(const InT* t) {
+  return static_cast<void*>(const_cast<InT*>(t));
+}
+
 #endif  // _WIN32
 
 extern std::string DataTypeToString(const proto::VarType::Type type);
