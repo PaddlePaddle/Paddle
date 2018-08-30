@@ -11,17 +11,15 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-#include "paddle/fluid/framework/operator.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
+
 #include <algorithm>
-#include <sstream>
-#include <string>
-#include <vector>
-#include "gflags/gflags.h"
-#include "glog/logging.h"
+
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -76,6 +74,12 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
+static bool VarInited(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) return false;
+  return var->IsInitialized();
+}
+
 static std::string GetDtype(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -89,8 +93,12 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     }
     return DataTypeToString(ToDataType(tensor.type()));
   } else if (var->IsType<SelectedRows>()) {
-    return DataTypeToString(
-        ToDataType(var->Get<SelectedRows>().value().type()));
+    auto tensor = var->Get<SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return DataTypeToString(ToDataType(tensor.type()));
+    }
   } else {
     return "";
   }
@@ -129,48 +137,19 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  try {
-    if (VLOG_IS_ON(4)) {
-      VLOG(4) << place << " " << DebugStringEx(&scope);
-    }
-    if (platform::is_gpu_place(place)) {
+  VLOG(4) << place << " " << DebugStringEx(&scope);
+  if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW("Cannot run operator on place %s", place);
+    PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-      platform::SetDeviceId(dev_id);
+    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+    platform::SetDeviceId(dev_id);
 #endif
-    }
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    platform::RecordEvent record_event(Type(), pool.Get(place));
-    RunImpl(scope, place);
-    if (VLOG_IS_ON(3)) {
-      VLOG(3) << place << " " << DebugStringEx(&scope);
-    }
-  } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw exception;
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-
-    if (callstack.empty()) {
-      throw exception;
-    }
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
-    throw exception;
-  } catch (...) {
-    std::rethrow_exception(std::current_exception());
   }
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::RecordEvent record_event(Type(), pool.Get(place));
+  RunImpl(scope, place);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -198,7 +177,7 @@ const std::vector<std::string>& OperatorBase::Inputs(
 }
 
 bool OperatorBase::HasOutputs(const std::string& name) const {
-  if (outputs_.end() != outputs_.find(name)) {
+  if (outputs_.find(name) != outputs_.end()) {
     return true;
   } else {
     return false;
@@ -228,16 +207,21 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     auto& input = *it;
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
-      ss << input.second[i];
+      auto var_name = input.second[i];
+      ss << var_name;
       if (scope) {
-        int row_size = GetRowSize(*scope, input.second[i]);
-        if (row_size >= 0) {
-          ss << "[row_size=" << row_size << "]";
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          int row_size = GetRowSize(*scope, var_name);
+          if (row_size >= 0) {
+            ss << "[row_size=" << row_size << "]";
+          }
+          std::string dtype = GetDtype(*scope, var_name);
+          ss << ":" << dtype;
+          ss << "[" << GetDims(*scope, var_name, true) << "]";
+          ss << "(" << GetLoD(*scope, var_name) << ")";
         }
-        std::string dtype = GetDtype(*scope, input.second[i]);
-        ss << ":" << dtype;
-        ss << "[" << GetDims(*scope, input.second[i], true) << "]";
-        ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
         ss << ", ";
@@ -254,14 +238,19 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     auto& output = *it;
     ss << output.first << "[";
     for (size_t i = 0; i < output.second.size(); ++i) {
-      ss << output.second[i];
+      auto var_name = output.second[i];
+      ss << var_name;
       if (scope) {
-        int row_size = GetRowSize(*scope, output.second[i]);
-        if (row_size >= 0) {
-          ss << "[row_size=" << row_size << "]";
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          int row_size = GetRowSize(*scope, output.second[i]);
+          if (row_size >= 0) {
+            ss << "[row_size=" << row_size << "]";
+          }
+          ss << "[" << GetDims(*scope, var_name, true) << "]";
+          ss << "(" << GetLoD(*scope, var_name) << ")";
         }
-        ss << "[" << GetDims(*scope, output.second[i], true) << "]";
-        ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {
         ss << ", ";

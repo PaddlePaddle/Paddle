@@ -18,7 +18,6 @@ import collections
 import contextlib
 import re
 import six
-import traceback
 
 import numpy as np
 
@@ -50,6 +49,12 @@ EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+
+def generate_control_dev_var_name():
+    import random
+    return CONTROL_DEP_VAR_PREFIX + "@" + str(random.random())
 
 
 def grad_var_name(var_name):
@@ -90,6 +95,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -499,10 +506,6 @@ class Operator(object):
 
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
-
-        callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-        op_attrs[callstack_var_name] = list(
-            reversed(traceback.format_stack()))[1:]
 
         if len(self.desc.type()) != 0:
             return

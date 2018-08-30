@@ -37,6 +37,7 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   config1.use_gpu = true;
   config1.fraction_of_gpu_memory = 0.3;
   config1.device = 0;
+  config1.max_batch_size = 10;
 
   auto predictor0 =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
