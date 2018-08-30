@@ -22,106 +22,39 @@ from op_test import OpTest
 
 class TestReshapeOp(OpTest):
     def setUp(self):
-        ori_shape = (2, 25)
-        new_shape = (5, 10)
-
+        self.init_data()
         self.op_type = "reshape"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
+        self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
+        self.attrs = {"shape": self.new_shape}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.infered_shape),
+            'XShape': np.random.random(self.ori_shape).astype("float32")
+        }
+
+    def init_data(self):
+        self.ori_shape = (2, 25)
+        self.new_shape = (5, 10)
+        self.infered_shape = (5, 10)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check=['XShape'])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
 
 
-class TestReshapeOpDimInfer1(OpTest):
-    def setUp(self):
-        ori_shape = (5, 10)
-        new_shape = (5, -1, 5)
-
-        self.op_type = "reshape"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(self.attrs["shape"])}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestReshapeOpDimInfer1(TestReshapeOp):
+    def init_data(self):
+        self.ori_shape = (5, 10)
+        self.new_shape = (5, -1, 5)
+        self.infered_shape = (5, -1, 5)
 
 
-class TestReshapeOpDimInfer2(OpTest):
-    def setUp(self):
-        ori_shape = (2, 2, 6)
-        new_shape = (2, 0, 3, -1)
-        infered_shape = (2, 2, 3, -1)
-
-        self.op_type = "reshape"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(infered_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-
-class TestReshapeOpInplace(OpTest):
-    def setUp(self):
-        ori_shape = (2, 25)
-        new_shape = (5, 10)
-
-        self.op_type = "reshape"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-
-class TestReshapeOpDimInferInplace1(OpTest):
-    def setUp(self):
-        ori_shape = (5, 10)
-        new_shape = (5, -1, 5)
-
-        self.op_type = "reshape"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(new_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
-
-
-class TestReshapeOpDimInferInplace2(OpTest):
-    def setUp(self):
-        ori_shape = (2, 2, 6)
-        new_shape = (2, 0, 3, -1)
-        infered_shape = (2, 2, 3, -1)
-
-        self.op_type = "reshape"
-        self.inputs = {"X": np.random.random(ori_shape).astype("float32")}
-        self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(infered_shape)}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+class TestReshapeOpDimInfer2(TestReshapeOp):
+    def init_data(self):
+        self.ori_shape = (2, 2, 6)
+        self.new_shape = (2, 0, 3, -1)
+        self.infered_shape = (2, 2, 3, -1)
 
 
 class TestReshapeOpWithInputShape(OpTest):
@@ -137,13 +70,16 @@ class TestReshapeOpWithInputShape(OpTest):
                 actual_shape, dtype="int32")
         }
         self.attrs = {"shape": new_shape}
-        self.outputs = {"Out": self.inputs["X"].reshape(actual_shape)}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(actual_shape),
+            'XShape': np.random.random(ori_shape).astype("float32")
+        }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", sum_outputs=["Out"])
 
 
 if __name__ == "__main__":

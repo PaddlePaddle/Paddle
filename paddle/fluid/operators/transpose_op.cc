@@ -27,6 +27,8 @@ class TransposeOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
     PADDLE_ENFORCE(ctx->HasOutput("Out"), "Output(Out) should not be null");
+    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
+                   "Output(XShape) should not be null");
     auto x_dims = ctx->GetInputDim("X");
     std::vector<int> axis = ctx->Attrs().Get<std::vector<int>>("axis");
     size_t x_rank = x_dims.size();
@@ -51,6 +53,9 @@ class TransposeOp : public framework::OperatorWithKernel {
       out_dims[i] = x_dims[axis[i]];
     }
     ctx->SetOutputDim("Out", out_dims);
+    ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->SetOutputDim("XShape", x_dims);
+    ctx->ShareLoD("X", /*->*/ "XShape");
   }
 };
 
@@ -61,6 +66,7 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "X",
         "(Tensor) The input tensor, tensors with rank up to 6 are supported.");
     AddOutput("Out", "(Tensor)The output tensor.");
+    AddOutput("XShape", "(Tensor)The output tensor.").AsIntermediate();
     AddAttr<std::vector<int>>(
         "axis",
         "(vector<int>) A list of values, and the size of the list should be "
@@ -97,19 +103,42 @@ $[0, 2, 3, 1]$, then shape of the output tensor will be: $(N, H, W, C)$.
   }
 };
 
+class TransposeGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto* grad_op = new framework::OpDesc();
+    grad_op->SetType("transpose_grad");
+    grad_op->SetInput("XShape", Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 class TransposeOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+    PADDLE_ENFORCE(ctx->HasInput("XShape"), "Input(XShape) should not be null");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     if (ctx->HasOutput(framework::GradVarName("X"))) {
+      auto x_dims = ctx->GetInputDim("XShape");
       ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+      ctx->ShareLoD("XShape", framework::GradVarName("X"));
     }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = framework::GetDataTypeOfVar(
+        ctx.InputVar(framework::GradVarName("Out")));
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -118,7 +147,7 @@ class TransposeOpGrad : public framework::OperatorWithKernel {
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(transpose, ops::TransposeOp, ops::TransposeOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::TransposeGradMaker);
 REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 REGISTER_OP_CPU_KERNEL(
     transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>);

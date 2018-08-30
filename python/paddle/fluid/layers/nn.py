@@ -4028,10 +4028,12 @@ def transpose(x, perm, name=None):
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
         type='transpose',
         inputs={'X': [x]},
-        outputs={'Out': [out]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
 
@@ -4525,11 +4527,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
     helper = LayerHelper("reshape", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
+    x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return helper.append_activation(out)
 

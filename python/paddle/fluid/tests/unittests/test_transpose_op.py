@@ -25,13 +25,16 @@ class TestTransposeOp(OpTest):
         self.op_type = "transpose"
         self.inputs = {'X': np.random.random(self.shape).astype("float32")}
         self.attrs = {'axis': list(self.axis)}
-        self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("float32"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', sum_outputs=['Out'])
 
     def initTestCase(self):
         self.shape = (3, 4)
