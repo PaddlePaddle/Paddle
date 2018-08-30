@@ -12,23 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-/*
- * Fuse the MUL and ELEMENTWISE_ADD to a FCOp.
- */
-class FCFusePass : public Pass {
+static const char kParamScopeAttr[] = "param_scope";
+
+class FusePassBase : public Pass {
  public:
-  virtual ~FCFusePass() {}
+  void Init(Graph* graph) const { graph_ = graph; }
+
+  Scope* param_scope() const {
+    PADDLE_ENFORCE(graph_->Has(kParamScopeAttr));
+    return graph_->Get<framework::Scope*>(kParamScopeAttr);
+  }
+
+  virtual ~FusePassBase() {}
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  mutable Graph* graph_;
 };
 
 }  // namespace ir
