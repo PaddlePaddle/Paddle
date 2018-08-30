@@ -100,12 +100,10 @@ void BuildFCPattern(PDPattern* pattern) {
       },
       "elementwise_add_out");
 
-  pattern->AddEdge(mul_parameter_var, mul_op);
-  pattern->AddEdge(mul_tmp_input_var, mul_op);
-  pattern->AddEdge(mul_op, mul_out_var);
-  pattern->AddEdge(mul_out_var, elementwise_add_op);
-  pattern->AddEdge(elementwise_add_tmp_var, elementwise_add_op);
-  pattern->AddEdge(elementwise_add_op, elementwise_add_out_var);
+  mul_op->LinksFrom({mul_parameter_var, mul_tmp_input_var})
+      .LinksTo({mul_out_var});
+  elementwise_add_op->LinksFrom({mul_out_var, elementwise_add_tmp_var})
+      .LinksTo({elementwise_add_out_var});
 }
 
 // Replace the node `from` in the links to `to`
@@ -125,7 +123,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
 
   std::unordered_set<Node*> nodes2delete;
 
-  GraphPatternDetecter gpd;
+  GraphPatternDetector gpd;
   BuildFCPattern(gpd.mutable_pattern());
 
 #define GET_NODE(id)                                             \
@@ -134,7 +132,7 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
   auto* id = subgraph.at(gpd.pattern().RetriveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
-  auto handler = [&](const GraphPatternDetecter::subgraph_t& subgraph,
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle FC fuse";
     // Currently, there is no FC op available, so I will just simulate the

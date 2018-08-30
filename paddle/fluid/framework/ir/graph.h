@@ -142,6 +142,16 @@ class Graph {
     nodes_.erase(node);
   }
 
+  // NOTE low performance, but simple and secure.
+  Node *RetriveNode(int id) {
+    for (auto &node : nodes_) {
+      if (node.second->id() == id) {
+        return node.second.get();
+      }
+    }
+    return nullptr;
+  }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -157,6 +167,7 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
+  int node_count_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

@@ -13,3 +13,47 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/inference/io.h"
+#include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/place.h"
+
+namespace paddle {
+namespace inference {
+namespace analysis {
+
+void FluidToIrPass::EnableParamModify(const std::string &model_dir,
+                                      const std::string &prog_file,
+                                      const std::string &param_file) {
+  PADDLE_ENFORCE(argument_);
+  argument_->Set("param_scope", new framework::Scope);
+  // Load parameters.
+  VLOG(3) << "Loading parameters from " << model_dir;
+  LoadParams(&argument_->Get<framework::Scope>("param_scope"), model_dir,
+             prog_file, param_file);
+}
+
+bool FluidToIrPass::LoadParams(framework::Scope *scope, const std::string &dir,
+                               const std::string &prog_file,
+                               const std::string &param_file) {
+  platform::CPUPlace place;
+  platform::CPUDeviceContext ctx(place);
+  framework::Executor executor(place);
+  PADDLE_ENFORCE(argument_->origin_program_desc.get());
+  framework::ProgramDesc program(*argument_->origin_program_desc);
+  if ((!prog_file.empty()) && (!param_file.empty())) {
+    LOG(INFO) << "load single model file from " << prog_file;
+    Load(&executor, scope, prog_file, param_file);
+  } else if (!dir.empty()) {
+    LOG(INFO) << "load from dir " << dir;
+    Load(&executor, scope, dir);
+  } else {
+    LOG(ERROR) << "failed to load parameters";
+    return false;
+  }
+  return true;
+}
+
+}  // namespace analysis
+}  // namespace inference
+}  // namespace paddle
