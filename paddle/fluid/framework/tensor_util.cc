@@ -173,7 +173,7 @@ struct AnyVisitor : public boost::static_visitor<bool> {
       : tensor_(tensor), predicate_(std::move(predicate)) {}
 
   template <typename Place>
-  bool apply(const Place& place) const {
+  bool operator()(const Place& place) const {
     framework::Tensor out;
     out.Resize({1});
     out.mutable_data<bool>(place);
@@ -302,7 +302,7 @@ struct DeserializedDataFunctor {
       : buf_(buf), tensor_(tensor), place_(place) {}
 
   template <typename T>
-  void operator()() {
+  void apply() {
     *buf_ = tensor_->mutable_data<T>(place_);
   }
 
