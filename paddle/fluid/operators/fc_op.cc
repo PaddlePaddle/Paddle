@@ -91,10 +91,6 @@ framework::OpKernelType FCOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  if (ctx.Attr<bool>("use_mkldnn")) {
-    library = framework::LibraryType::kMKLDNN;
-    layout = framework::DataLayout::kMKLDNN;
-  }
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<Tensor>("Input")->type()), ctx.GetPlace(),
       layout, library);
