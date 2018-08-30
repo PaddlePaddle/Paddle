@@ -3,6 +3,7 @@ if(NOT WITH_GPU)
 endif()
 
 set(TENSORRT_ROOT "/usr" CACHE PATH "TENSORRT ROOT")
+
 find_path(TENSORRT_INCLUDE_DIR NvInfer.h
     PATHS ${TENSORRT_ROOT} ${TENSORRT_ROOT}/include
     $ENV{TENSORRT_ROOT} $ENV{TENSORRT_ROOT}/include
@@ -22,6 +23,12 @@ else()
 endif()
 
 if(TENSORRT_FOUND)
+    set(TRT_INFERENCE_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/)
+    set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
+    set(TRT_MODLE_URL "${INFERENCE_URL}/new_giscnn_fluid_model.tar.gz")
+    execute_process(COMMAND bash -c "mkdir -p ${TRT_INFERENCE_MODEL_DIR}")
+    execute_process(COMMAND bash -c "cd ${TRT_INFERENCE_MODEL_DIR}; wget -q --no-check-certificate ${TRT_MODLE_URL} -N;  \
+                          tar --warning=no-unknown-keyword -xvf new_giscnn_fluid_model.tar.gz")
     file(READ ${TENSORRT_INCLUDE_DIR}/NvInfer.h TENSORRT_VERSION_FILE_CONTENTS)
     string(REGEX MATCH "define NV_TENSORRT_MAJOR +([0-9]+)" TENSORRT_MAJOR_VERSION
         "${TENSORRT_VERSION_FILE_CONTENTS}")

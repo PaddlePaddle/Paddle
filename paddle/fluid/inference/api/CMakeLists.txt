@@ -60,6 +60,10 @@ cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
         DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
 
+cc_test(api_tensorrt_engine_cnn_tester SRCS api_tensorrt_engine_cnn_tester.cc 
+	ARGS --dirname=${TRT_INFERENCE_MODEL_DIR}/new_giscnn_fluid_model/
+	DEPS paddle_inference_tensorrt_subgraph_engine)
+
 inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()
 
@@ -73,12 +77,15 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
+        cc_test(api_anakin_engine_cnn_tester SRCS api_anakin_engine_cnn_tester.cc
+                ARGS --model=${ANAKIN_INFERENCE_MODEL_DIR}/new_giscnn.anakin2.bin
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
         cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
+                ARGS --model=${ANAKIN_INFERENCE_MODEL_DIR}/mobilenet_v2.anakin.bin
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
         cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
-                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
+                ARGS --model=${ANAKIN_INFERENCE_MODEL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
+                     --datapath=${ANAKIN_INFERENCE_MODEL_DIR}/anakin_test%2Fditu_rnn_data.txt
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
     endif(WITH_TESTING)
 endif()
