@@ -39,23 +39,24 @@ struct PDNode {
   // tell whether an ir::Node* is a candidation for a PDNode.
   using teller_t = std::function<bool(Node*)>;
   enum class Type { kOp, kVar };
-<<<<<<< HEAD:paddle/fluid/framework/ir/graph_pattern_detector.h
   enum class Role {
     kUnknown,      // No role,
     kInput,        // an input and will be retained,
     kOutput,       // an output and will be retained,
     kIntermediate  // will be removed after handler.
   };
-=======
->>>>>>> 902f19b46a8bb0ae7712f4caea2421af17857251:paddle/fluid/framework/ir/graph_pattern_detector.h
 
   // this link to others
   PDNode& LinksTo(const std::vector<PDNode*>& others);
   PDNode& LinksFrom(const std::vector<PDNode*>& others);
 
   bool Tell(Node* node) const {
-    PADDLE_ENFORCE(teller_ != nullptr, "teller should be set for a PDNode");
-    return teller_(node);
+    if (teller_) return teller_(node);
+
+    for (auto& asrt : asserts_) {
+      if (!asrt(node)) return false;
+    }
+    return true;
   }
 
   bool IsOp() const { return type_ == Type::kOp; }
