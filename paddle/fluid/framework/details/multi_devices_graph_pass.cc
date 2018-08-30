@@ -744,7 +744,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_THROW(
         "the distribute training related op should be in [split_byref, "
         "concat].");
   }
@@ -813,12 +813,6 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
       VLOG(10) << "recv param " << recv_param_grad[0]
                << " get grad place: " << recv_param_grad[1]
                << " place: " << op_dev_id;
-      if (op_dev_id == -1) {
-        op_dev_id = GetAppropriateDeviceID({recv_param_grad[1]});
-        VLOG(10) << "recv param " << recv_param_grad[0]
-                 << " generate grad place: " << recv_param_grad[1]
-                 << " place: " << op_dev_id;
-      }
     } else {
       op_dev_id = GetAppropriateDeviceID(output_var_names);
     }
