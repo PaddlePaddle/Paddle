@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
-bool IsType(const std::type_index& type_index) {
+inline bool IsType(const std::type_index& type_index) {
   return type_index == std::type_index(typeid(T));
 }
 

@@ -24,6 +24,8 @@ namespace analysis {
 TEST(FluidToIrPass, Test) {
   FluidToIrPass pass;
   Argument argument(FLAGS_inference_model_dir);
+  argument.Set(kFluidToIrPassesAttr,
+               new std::vector<std::string>({"infer_clean_graph_pass"}));
   pass.Initialize(&argument);
   pass.Run(argument.main_dfg.get());
 }
@@ -32,6 +34,9 @@ TEST(FluidToIrPass, Test) {
 }  // namespace inference
 }  // namespace paddle
 
-USE_PASS(fc_fuse_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(infer_clean_graph_pass);
+USE_PASS(attention_lstm_fuse_pass);
+USE_PASS(fc_lstm_fuse_pass);
+USE_PASS(seq_concat_fc_fuse_pass);
+USE_PASS(fc_fuse_pass);
