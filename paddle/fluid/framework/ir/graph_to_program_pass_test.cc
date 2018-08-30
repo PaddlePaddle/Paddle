@@ -62,10 +62,10 @@ void BuildNoCircleGraph(Graph* g) {
   v2->outputs.push_back(o3);
   v2->outputs.push_back(o4);
   v2->inputs.push_back(o2);
-  // o2->v3->o5
-  o2->outputs.push_back(v3);
+  // o4->v3->o5
+  o4->outputs.push_back(v3);
   o5->inputs.push_back(v3);
-  v3->inputs.push_back(o2);
+  v3->inputs.push_back(o4);
   v3->outputs.push_back(o5);
   // o3-v4->o5
   o3->outputs.push_back(v4);

@@ -25,6 +25,15 @@ class TestDistMnist2x2(TestDistBase):
         self.check_with_place("dist_mnist.py", delta=1e-7)
 
 
+class TestDistMnist2x2WithMemopt(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._mem_opt = True
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_mnist.py", delta=1e-7)
+
+
 class TestDistMnistAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
