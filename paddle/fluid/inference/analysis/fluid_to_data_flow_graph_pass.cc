@@ -92,6 +92,7 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
         auto *in = graph->nodes.GetMutable(var2id.at(in_var.arguments(k)));
         in->outlinks.push_back(o);
         o->inlinks.push_back(in);
+        unique_written_vars.insert(in);
       }
     }
     for (int j = 0; j < op.outputs_size(); j++) {
@@ -112,7 +113,6 @@ void FluidToDataFlowGraphPass::Run(DataFlowGraph *graph) {
         }
         out->inlinks.push_back(o);
         o->outlinks.push_back(out);
-        unique_written_vars.insert(out);
       }
     }
   }

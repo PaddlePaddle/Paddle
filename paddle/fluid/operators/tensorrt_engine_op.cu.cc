@@ -12,12 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/operators/tensorrt_engine_op.h"
+
+namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, double>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>);
+    tensorrt_engine,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::TensorRTEngineKernel<paddle::platform::CUDADeviceContext, int64_t>);

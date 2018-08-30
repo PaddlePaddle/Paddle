@@ -35,6 +35,7 @@ import itertools
 import functools
 from .common import download
 import tarfile
+import six
 import scipy.io as scio
 from paddle.dataset.image import *
 from paddle.reader import *
@@ -45,10 +46,10 @@ from six.moves import cPickle as pickle
 from six.moves import zip
 __all__ = ['train', 'test', 'valid']
 
-DATA_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
-LABEL_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
-SETID_URL = 'http://www.robots.ox.ac.uk/~vgg/data/flowers/102/setid.mat'
-DATA_MD5 = '33bfc11892f1e405ca193ae9a9f2a118'
+DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
+LABEL_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/imagelabels.mat'
+SETID_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/setid.mat'
+DATA_MD5 = '52808999861908f626f3c1f4e79d11fa'
 LABEL_MD5 = 'e0620be6f572b9609742df49c70aed4d'
 SETID_MD5 = 'a5357ecc9cb78c4bef273ce3793fc85c'
 # In official 'readme', tstid is the flag of test data
@@ -120,7 +121,10 @@ def reader_creator(data_file,
                 file = file.strip()
                 batch = None
                 with open(file, 'rb') as f:
-                    batch = pickle.load(f)
+                    if six.PY2:
+                        batch = pickle.load(f)
+                    else:
+                        batch = pickle.load(f, encoding='bytes')
                 data = batch['data']
                 labels = batch['label']
                 for sample, label in zip(data, batch['label']):
