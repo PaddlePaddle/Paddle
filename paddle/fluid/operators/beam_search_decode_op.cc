@@ -74,7 +74,7 @@ struct BeamSearchDecodeFunctor {
   }
 
   template <typename T>
-  void operator()() const;
+  void apply() const;
 
   bool tensor_on_gpu_;
   size_t beam_size_;
@@ -88,7 +88,7 @@ struct BeamSearchDecodeFunctor {
 };
 
 template <typename T>
-void BeamSearchDecodeFunctor::operator()() const {
+void BeamSearchDecodeFunctor::apply() const {
   BeamSearchDecoder<T> beam_search_decoder(beam_size_, end_id_);
   // Check if the tensor is on GPU. If so, use the CPU copy instead
   if (tensor_on_gpu_) {

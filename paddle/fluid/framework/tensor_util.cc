@@ -149,7 +149,7 @@ struct AnyDTypeVisitor {
       : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto t = EigenVector<T>::Flatten(tensor_);
     auto o = EigenScalar<bool>::From(*out_);
     // return any of predicate_(t) is true.
@@ -173,7 +173,7 @@ struct AnyVisitor : public boost::static_visitor<bool> {
       : tensor_(tensor), predicate_(std::move(predicate)) {}
 
   template <typename Place>
-  bool operator()(const Place& place) const {
+  bool apply(const Place& place) const {
     framework::Tensor out;
     out.Resize({1});
     out.mutable_data<bool>(place);
