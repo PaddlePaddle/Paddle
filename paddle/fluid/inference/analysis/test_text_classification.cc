@@ -6,8 +6,8 @@
 
 DEFINE_string(infer_model, "", "Directory of the inference model.");
 DEFINE_string(infer_data, "", "Path of the dataset.");
-DEFINE_string(batch_size, "", "batch size.");
-DEFINE_string(repeat, "", "How many times to repeat run.");
+DEFINE_int32(batch_size, 1, "batch size.");
+DEFINE_int32(repeat, 1, "How many times to repeat run.");
 
 namespace paddle {
 
@@ -39,7 +39,7 @@ void Main(int batch_size) {
   // shape --
   // Create Predictor --
   NativeConfig config;
-  config.model_dir = FLAGS_modeldir;
+  config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
