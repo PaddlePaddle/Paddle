@@ -64,24 +64,24 @@ struct PDNode {
 
   const std::string& name() const { return name_; }
 
-  PDNode(const PDNode&) = delete;
   PDNode& operator=(const PDNode&) = delete;
+  PDNode(const PDNode&) = delete;
 
   // Mark this node is an Input of a subgraph and will be retained.
-  PDNode& AsInput() {
+  PDNode* AsInput() {
     role_ = Role::kInput;
-    return *this;
+    return this;
   }
   // Mark this node is an Output of a subgraph and will be retained.
-  PDNode& AsOutput() {
+  PDNode* AsOutput() {
     role_ = Role::kOutput;
-    return *this;
+    return this;
   }
   // Mark this node will be removed, so all the links should be inside a matched
   // sub-graph.
-  PDNode& AsIntermediate() {
+  PDNode* AsIntermediate() {
     role_ = Role::kIntermediate;
-    return *this;
+    return this;
   }
 
   bool IsIntermediate() const { return role_ == Role::kIntermediate; }
@@ -89,20 +89,27 @@ struct PDNode {
   bool IsOutput() const { return role_ == Role::kOutput; }
 
   // Assertions, helper functions to simplify the pattern definition.
-  PDNode& assert_is_op();
-  PDNode& assert_is_op(const std::string& op_type);
-  PDNode& assert_is_var();
-  PDNode& assert_var_not_persistable();
-  PDNode& assert_is_persistable_var();
-  PDNode& assert_is_op_nth_input(const std::string& op_type, int nth);
-  PDNode& assert_is_op_nth_output(const std::string& op_type, int nth);
-  PDNode& assert_is_only_input_of_op(const std::string& op_type);
-  PDNode& assert_is_only_output_of_op(const std::string& op_type);
-  PDNode& assert_is_output_of_op(const std::string& op_type);
-  PDNode& assert_is_input_of_op(const std::string& op_type);
-  PDNode& assert_more(teller_t&& teller);
+  PDNode* assert_is_op();
+  PDNode* assert_is_op(const std::string& op_type);
+  PDNode* assert_is_var();
+  PDNode* assert_var_not_persistable();
+  PDNode* assert_is_persistable_var();
+  PDNode* assert_is_op_output(const std::string& op_type);
+  PDNode* assert_is_op_input(const std::string& op_type);
+  PDNode* assert_is_op_nth_input(const std::string& op_type,
+                                 const std::string& argument, int nth);
+  PDNode* assert_is_op_nth_output(const std::string& op_type,
+                                  const std::string& argument, int nth);
+  PDNode* assert_is_only_input_of_op(const std::string& op_type);
+  PDNode* assert_is_only_output_of_op(const std::string& op_type);
+  PDNode* assert_op_has_n_inputs(const std::string& op_type, size_t n);
+  PDNode* assert_op_has_n_outputs(const std::string& op_type, size_t n);
+  PDNode* assert_more(teller_t&& teller);
 
  private:
+  PDNode(PDPattern* pattern, const std::string& name = "",
+         Type type = Type::kVar)
+      : pattern_(pattern), name_(name), type_(type) {}
   PDNode(teller_t&& teller, PDPattern* pattern, const std::string& name = "",
          Type type = Type::kVar)
       : teller_(std::move(teller)),
@@ -116,7 +123,9 @@ struct PDNode {
 
   friend class PDPattern;
 
+  // Will removed latter.
   teller_t teller_;
+  std::vector<teller_t> asserts_;
   PDPattern* pattern_;
   std::string name_;
   Type type_;
@@ -133,19 +142,18 @@ struct PDNode {
  * This pattern can be defined as with the following pseudo codes
  *
  *     // Create two operator PDNodes.
- *     MUL = PDPattern.NewNode()
- *     ELE = PDPattern.NewNode()
+ *     MUL = PDPattern.NewNode().assert_is_op("mul");
+ *     ELE = PDPattern.NewNode().assert_is_op("elementwise_add");
  *     // Create the variable PDNodes.
- *     MUL_out = PDPattern.NewNode()
- *     // Add teller to define some rules that help to filter the target Nodes.
- *     MUL.teller = lambda(node): node->IsOp() && node->Op()->Type == "mul";
- *     ELE.teller = lambda(node): \
- *                        node->IsOp() && node->Op()->Type == "elementwise_add";
- *     MUL_out.teller = lambda(node): node->IsVar() && (MUL in node->inputs)
- *                                                  && (ELE in node->outputs)
+ *     MUL_out = PDPattern.NewNode().assert_is_op_output("mul") \
+ *                                  .assert_is_op_input("elementwise_add") \
+ *                                  .AsIntermediate();
+ *     // Add relations.
+ *     MUL->LinksTo({MUL_out});
+ *     MUL_out->LinksTo({ELE});
  *
- * One can add more specific tellers for PDNodes or edges, both the Operator
- * and Variable Nodes can be ruled in PDNode.teller.
+ * One can add more specific asserts for PDNodes or edges, both the Operator
+ * and Variable Nodes can be ruled in PDNode.assert_more(...).
  *
  * PDPattern can record the general patterns, such as the pattern represents
  *   - Op in CPU -> Op in GPU -> Op in CPU, to findout the IO abnormal place.
@@ -158,6 +166,7 @@ class PDPattern {
   void AddEdge(PDNode* a, PDNode* b);
 
   PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
+  PDNode* NewNode(const std::string& name = NewID());
   PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
@@ -275,6 +284,14 @@ static bool IsNthInput(Node* var, Node* op, const std::string& argument,
   PADDLE_ENFORCE(op->IsOp());
   if (op->inputs.size() <= nth) return false;
   return var->Name() == op->Op()->Input(argument)[nth];
+}
+
+static bool IsNthOutput(Node* var, Node* op, const std::string& argument,
+                        size_t nth) {
+  PADDLE_ENFORCE(var->IsVar());
+  PADDLE_ENFORCE(op->IsOp());
+  if (op->inputs.size() <= nth) return false;
+  return var->Name() == op->Op()->Output(argument)[nth];
 }
 
 static void GraphSafeRemoveNodes(Graph* graph,

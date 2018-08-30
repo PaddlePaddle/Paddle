@@ -27,6 +27,19 @@ namespace ir {
 
 size_t PDPattern::id_ = 0UL;
 
+PDNode* PDPattern::NewNode(const std::string& name) {
+  if (!name.empty()) {
+    PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
+                      "PDNode's name should be unique, get duplicate [%s]",
+                      name);
+  }
+
+  nodes_.emplace_back(new PDNode(this, name));
+  auto* cur = nodes_.back().get();
+  node_map_[name] = cur;
+  return cur;
+}
+
 PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
   if (!name.empty()) {
     PADDLE_ENFORCE_EQ(node_map_.count(name), 0,
@@ -307,6 +320,117 @@ PDNode& PDNode::LinksFrom(const std::vector<PDNode*>& others) {
     pattern_->AddEdge(x, this);
   }
   return *this;
+}
+
+PDNode* PDNode::assert_is_op() {
+  asserts_.emplace_back([this](Node* x) { return x && x->IsOp(); });
+  return this;
+}
+PDNode* PDNode::assert_is_op(const std::string& op_type) {
+  asserts_.emplace_back([this, op_type](Node* x) {
+    return x && x->IsOp() && x->Op()->Type() == op_type;
+  });
+  return this;
+}
+PDNode* PDNode::assert_is_var() {
+  asserts_.emplace_back([this](Node* x) { return x && x->IsVar(); });
+  return this;
+}
+PDNode* PDNode::assert_var_not_persistable() {
+  assert_is_var();
+  asserts_.emplace_back([this](Node* x) { return !x->Var()->Persistable(); });
+  return this;
+}
+PDNode* PDNode::assert_is_persistable_var() {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) { return x->Var()->Persistable(); });
+  return this;
+}
+PDNode* PDNode::assert_is_op_nth_input(const std::string& op_type,
+                                       const std::string& argument, int nth) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) {
+    for (auto* op : x->outputs) {
+      if (IsNthInput(x, op, argument, nth)) return true;
+    }
+    return false;
+  });
+  return this;
+}
+PDNode* PDNode::assert_is_op_nth_output(const std::string& op_type,
+                                        const std::string& argument, int nth) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) {
+    for (auto* op : x->inputs) {
+      if (IsNthOutput(x, op, argument, nth)) return true;
+    }
+    return false;
+  });
+  return this;
+}
+PDNode* PDNode::assert_is_only_input_of_op(const std::string& op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) {
+    for (auto* op : x->outputs) {
+      if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type &&
+          op->inputs.size() == 1) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+PDNode* PDNode::assert_is_only_output_of_op(const std::string& op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) {
+    for (auto* op : x->inputs) {
+      if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type &&
+          op->outputs.size() == 1) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+PDNode* PDNode::assert_is_op_output(const std::string& op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) {
+    for (auto* op : x->inputs) {
+      if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+PDNode* PDNode::assert_is_op_input(const std::string& op_type) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node* x) {
+    for (auto* op : x->outputs) {
+      if (op && op->IsOp() && op->Op() && op->Op()->Type() == op_type) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+PDNode* PDNode::assert_op_has_n_inputs(const std::string& op_type, size_t n) {
+  assert_is_op(op_type);
+  asserts_.emplace_back([=](Node* x) { return x->inputs.size() == n; });
+  return this;
+}
+PDNode* PDNode::assert_op_has_n_outputs(const std::string& op_type, size_t n) {
+  assert_is_op(op_type);
+  asserts_.emplace_back([=](Node* x) { return x->outputs.size() == n; });
+  return this;
+}
+PDNode* PDNode::assert_more(PDNode::teller_t&& teller) {
+  asserts_.emplace_back(std::move(teller));
+  return this;
 }
 
 }  // namespace ir

@@ -12,122 +12,98 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <memory>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
 
-using inference::analysis::Argument;
-using inference::Singleton;
-using inference::analysis::Analyzer;
-using framework::proto::ProgramDesc;
-
-/* This predictor is based on the original native predictor with IR and Analysis
- * support. It will optimize IR and Parameters in the runtime.
- * TODO(Superjomn) Replace the Navive predictor?
- */
-class AnalysisPredictor : public NativePaddlePredictor {
- public:
-  explicit AnalysisPredictor(const NativeConfig& config)
-      : NativePaddlePredictor(config), config_(config) {}
-
-  bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
-    VLOG(3) << "Predictor::init()";
-    if (config_.use_gpu) {
-      place_ = paddle::platform::CUDAPlace(config_.device);
-    } else {
-      place_ = paddle::platform::CPUPlace();
-    }
-    PADDLE_ENFORCE(!parent_scope);
-    if (parent_scope) {
-      scope_ = parent_scope;
-      sub_scope_ = &(parent_scope->NewScope());
-    } else {
-      paddle::framework::InitDevices(false);
-      scope_.reset(new paddle::framework::Scope());
-    }
-
-    executor_.reset(new paddle::framework::Executor(place_));
-
-    // Initialize the inference program
-    if (!config_.model_dir.empty()) {
-      // Parameters are saved in separate files sited in
-      // the specified `dirname`.
-      inference_program_ = paddle::inference::Load(
-          executor_.get(), scope_.get(), config_.model_dir);
-    } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
-      // All parameters are saved in a single file.
-      // The file names should be consistent with that used
-      // in Python API `fluid.io.save_inference_model`.
-      inference_program_ = paddle::inference::Load(
-          executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
-    } else {
-      LOG(ERROR) << "fail to load inference model.";
-      return false;
-    }
-
-    OptimizeInferenceProgram();
-    ctx_ = executor_->Prepare(*inference_program_, 0);
-
-    VLOG(5) << "to create variables";
-    PADDLE_ENFORCE(scope_.get());
-    executor_->CreateVariables(*inference_program_,
-                               sub_scope_ ? sub_scope_ : scope_.get(), 0);
-
-    // Get the feed_target_names and fetch_target_names
-    feed_target_names_ = inference_program_->GetFeedTargetNames();
-    fetch_target_names_ = inference_program_->GetFetchTargetNames();
-    return true;
+bool AnalysisPredictor::Init(
+    const std::shared_ptr<framework::Scope>& parent_scope) {
+  VLOG(3) << "Predictor::init()";
+  if (config_.use_gpu) {
+    place_ = paddle::platform::CUDAPlace(config_.device);
+  } else {
+    place_ = paddle::platform::CPUPlace();
+  }
+  PADDLE_ENFORCE(!parent_scope);
+  if (parent_scope) {
+    scope_ = parent_scope;
+    sub_scope_ = &(parent_scope->NewScope());
+  } else {
+    paddle::framework::InitDevices(false);
+    scope_.reset(new paddle::framework::Scope());
   }
 
-  bool Run(const std::vector<PaddleTensor>& inputs,
-           std::vector<PaddleTensor>* output_data,
-           int batch_size = -1) override {
-    return NativePaddlePredictor::Run(inputs, output_data, batch_size);
+  executor_.reset(new paddle::framework::Executor(place_));
+
+  // Initialize the inference program
+  if (!config_.model_dir.empty()) {
+    // Parameters are saved in separate files sited in
+    // the specified `dirname`.
+    inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
+                                                 config_.model_dir);
+  } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
+    // All parameters are saved in a single file.
+    // The file names should be consistent with that used
+    // in Python API `fluid.io.save_inference_model`.
+    inference_program_ = paddle::inference::Load(
+        executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
+  } else {
+    LOG(ERROR) << "fail to load inference model.";
+    return false;
   }
 
-  void OptimizeInferenceProgram() {
-    LOG(INFO) << "optimize begin";
-    FLAGS_IA_enable_ir = true;
-    FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-    FLAGS_IA_output_storage_path = "";  // Don't output the model.
-    // Analyze inference_program
-    Argument argument;
-    if (!config_.model_dir.empty()) {
-      argument.fluid_model_dir.reset(new std::string(config_.model_dir));
-    } else {
-      PADDLE_ENFORCE(
-          !config_.param_file.empty(),
-          "Either model_dir or (param_file, prog_file) should be set.");
-      PADDLE_ENFORCE(!config_.prog_file.empty());
-      argument.fluid_model_program_path.reset(
-          new std::string(config_.prog_file));
-      argument.fluid_model_param_path.reset(
-          new std::string(config_.param_file));
-    }
-    argument.origin_program_desc.reset(
-        new ProgramDesc(*inference_program_->Proto()));
-    Singleton<Analyzer>::Global().Run(&argument);
-    CHECK(argument.transformed_program_desc);
-    VLOG(5) << "to prepare executor";
-    // LOG(INFO) << "transformed_parogram_desc " <<
-    // argument.transformed_program_desc->DebugString();
-    inference_program_.reset(
-        new framework::ProgramDesc(*argument.transformed_program_desc));
-    PADDLE_ENFORCE(argument.Has("param_scope"));
-    // Update scope.
-    scope_.reset(argument.Release<framework::Scope>("param_scope"));
-    LOG(INFO) << "optimize end ==";
-  }
+  OptimizeInferenceProgram();
+  ctx_ = executor_->Prepare(*inference_program_, 0);
 
- private:
-  NativeConfig config_;
-};
+  VLOG(5) << "to create variables";
+  PADDLE_ENFORCE(scope_.get());
+  executor_->CreateVariables(*inference_program_,
+                             sub_scope_ ? sub_scope_ : scope_.get(), 0);
+
+  // Get the feed_target_names and fetch_target_names
+  feed_target_names_ = inference_program_->GetFeedTargetNames();
+  fetch_target_names_ = inference_program_->GetFetchTargetNames();
+  return true;
+}
+
+void AnalysisPredictor::OptimizeInferenceProgram() {
+  LOG(INFO) << "optimize begin";
+  FLAGS_IA_enable_ir = true;
+  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
+  FLAGS_IA_output_storage_path = "";  // Don't output the model.
+  // Analyze inference_program
+  if (!config_.model_dir.empty()) {
+    argument_.fluid_model_dir.reset(new std::string(config_.model_dir));
+  } else {
+    PADDLE_ENFORCE(
+        !config_.param_file.empty(),
+        "Either model_dir or (param_file, prog_file) should be set.");
+    PADDLE_ENFORCE(!config_.prog_file.empty());
+    argument_.fluid_model_program_path.reset(
+        new std::string(config_.prog_file));
+    argument_.fluid_model_param_path.reset(new std::string(config_.param_file));
+  }
+  argument_.origin_program_desc.reset(
+      new ProgramDesc(*inference_program_->Proto()));
+  Analyzer().Run(&argument_);
+  CHECK(argument_.transformed_program_desc);
+  VLOG(5) << "to prepare executor";
+  // LOG(INFO) << "transformed_parogram_desc " <<
+  // argument.transformed_program_desc->DebugString();
+  inference_program_.reset(
+      new framework::ProgramDesc(*argument_.transformed_program_desc));
+  PADDLE_ENFORCE(argument_.Has(framework::ir::kParamScopeAttr));
+  // Update scope.
+  scope_.reset(
+      argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
+  LOG(INFO) << "optimize end ==";
+}
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<

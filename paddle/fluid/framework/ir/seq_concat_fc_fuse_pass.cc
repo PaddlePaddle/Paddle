@@ -180,7 +180,7 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
 std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(graph.get());
+  FusePassBase::Init("seq_concat_fc_fuse", graph.get());
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
