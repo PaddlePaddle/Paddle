@@ -98,6 +98,14 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
       }
     }
   }
+  // Check to early stop if some PDNode can't find matched Node.
+  for (auto& pdnode : pattern_.nodes()) {
+    if (!pdnodes2nodes_.count(pdnode.get())) {
+      VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
+
+      return false;
+    }
+  }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
   return !pdnodes2nodes_.empty();
 }
@@ -108,7 +116,6 @@ void GraphPatternDetector::ValidateByNodeRole(
     std::vector<GraphPatternDetector::subgraph_t>* subgraphs) {
   std::vector<GraphPatternDetector::subgraph_t> result;
 
-  LOG(INFO) << "before subgraphs.size: " << subgraphs->size();
   subgraphs->erase(
       std::remove_if(
           subgraphs->begin(), subgraphs->end(),
@@ -122,22 +129,13 @@ void GraphPatternDetector::ValidateByNodeRole(
             }
             for (auto& item : subgraph) {
               if (item.first->IsIntermediate()) {
-                LOG(INFO) << "get intermediate";
                 for (auto* x : item.second->inputs) {
-                  LOG(INFO) << "check " << x->Name() << "->"
-                            << item.second->Name();
-                  LOG(INFO) << "status " << ios.count(x);
                   if (!ios.count(x)) {
-                    LOG(INFO) << "remove one graph";
                     return true;
                   }
                 }
                 for (auto* x : item.second->outputs) {
-                  LOG(INFO) << "check " << item.second->Name() << "->"
-                            << x->Name();
-                  LOG(INFO) << "status " << ios.count(x);
                   if (!ios.count(x)) {
-                    LOG(INFO) << "remove one graph";
                     return true;
                   }
                 }
@@ -146,7 +144,6 @@ void GraphPatternDetector::ValidateByNodeRole(
             return false;
           }),
       subgraphs->end());
-  LOG(INFO) << "subgraphs.size: " << subgraphs->size();
 }
 
 struct HitGroup {
@@ -202,6 +199,7 @@ GraphPatternDetector::DetectPatterns() {
   // in edges of PDNodes.
   for (const auto& edge : pattern_.edges()) {
     VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();
+    // TODO(Superjomn) Fix bug here, the groups might be duplicate here.
     // Each role has two PDNodes, which indicates two roles.
     // Detect two Nodes that can match these two roles and they are connected.
     auto& pre_groups = bi_records[step % 2];
@@ -211,6 +209,7 @@ GraphPatternDetector::DetectPatterns() {
     // source -> target
     for (Node* source : pdnodes2nodes_[edge.first]) {
       for (Node* target : pdnodes2nodes_[edge.second]) {
+        VLOG(8) << "check " << source->id() << " -- " << target->id();
         // TODO(Superjomn) add some prune strategies.
         for (const auto& group : pre_groups) {
           HitGroup new_group = group;
@@ -227,6 +226,12 @@ GraphPatternDetector::DetectPatterns() {
       }
     }
     VLOG(3) << "step " << step << " get records: " << cur_groups.size();
+    for (auto& group : cur_groups) {
+      for (auto& item : group.roles) {
+        VLOG(4) << "node " << item.second->id() << " as " << item.first->name();
+      }
+      VLOG(4) << "=========================================================";
+    }
   }
 
   for (auto& group : bi_records[step % 2]) {
@@ -349,6 +354,7 @@ PDNode* PDNode::assert_is_persistable_var() {
 PDNode* PDNode::assert_is_op_nth_input(const std::string& op_type,
                                        const std::string& argument, int nth) {
   assert_is_var();
+  assert_is_op_input(op_type);
   asserts_.emplace_back([=](Node* x) {
     for (auto* op : x->outputs) {
       if (IsNthInput(x, op, argument, nth)) return true;

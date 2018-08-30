@@ -33,25 +33,26 @@ bool VarOutLinksToOp(Node* node, const std::string& op_type) {
 void BuildFCPattern(PDPattern* pattern) {
   // Create Operators
   auto* mul_op = pattern->NewNode("mul")->assert_is_op("mul");
-  auto* elementwise_add_op = pattern->NewNode("elementwise_add")
-                                 ->assert_op_has_n_inputs("elementwise_add", 2);
+  auto* elementwise_add_op =
+      pattern->NewNode("elementwise_add")->assert_is_op("elementwise_add");
   // Create variables
   // w
-  auto* mul_weight_var =
-      pattern->NewNode("mul_weight")->AsInput()->assert_is_op_input("mul");
+  auto* mul_weight_var = pattern->NewNode("mul_weight")
+                             ->AsInput()
+                             ->assert_is_op_nth_input("mul", "Y", 0);
   // x
-  auto* mul_tmp_var =
-      pattern->NewNode("mul_tmp_var")->AsInput()->assert_is_op_input("mul");
+  auto* mul_tmp_var = pattern->NewNode("mul_tmp_var")
+                          ->AsInput()
+                          ->assert_is_op_nth_input("mul", "X", 0);
   // intermediate variable, will be removed in the IR after fuse.
   auto* mul_out_var = pattern->NewNode("mul_out")
                           ->AsIntermediate()
                           ->assert_is_only_output_of_op("mul")
                           ->assert_is_op_input("elementwise_add");
   // bias
-  auto* elementwise_add_tmp_var =
-      pattern->NewNode("elementwise_add_tmpvar")
-          ->AsInput()
-          ->assert_is_op_nth_input("elementwise_add", "X", 1);
+  auto* elementwise_add_tmp_var = pattern->NewNode("elementwise_add_tmpvar")
+                                      ->assert_is_op_input("elementwise_add")
+                                      ->AsInput();
   // output
   auto* elementwise_add_out_var = pattern->NewNode("elementwise_add_out")
                                       ->AsOutput()
