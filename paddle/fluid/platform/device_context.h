@@ -69,7 +69,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
-class CUDNNHolder;
+class CudnnHolder;
 
 class CUDADeviceContext : public DeviceContext {
  public:
