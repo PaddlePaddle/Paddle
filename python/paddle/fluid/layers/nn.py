@@ -5607,11 +5607,11 @@ def pad2d(input,
     helper.append_op(
         type='pad2d',
         inputs={'X': input},
-        outputs={"Output": out},
+        outputs={"Out": out},
         attrs={
             'paddings': paddings,
             'mode': mode,
-            'pad_value': groups,
+            'pad_value': pad_value,
             'data_frmat': data_format
         })
 
