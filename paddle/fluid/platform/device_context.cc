@@ -162,6 +162,7 @@ class CudnnHolder {
         paddle::memory::Free(place_, workspace_);
       }
       workspace_ = new_workspace;
+      workspace_len_ = required_len;
     }
     return workspace_
   }
