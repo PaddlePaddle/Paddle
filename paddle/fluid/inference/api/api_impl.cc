@@ -175,8 +175,13 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
+#ifdef __clang__
+  // fix clang compile error
+  return cls;
+#else
   // fix manylinux compile error.
   return std::move(cls);
+#endif
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
@@ -310,7 +315,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
+#ifdef __clang__
+  //fix clang compile error
+  return predictor;
+#else
   return std::move(predictor);
+#endif
 }
 
 }  // namespace paddle
