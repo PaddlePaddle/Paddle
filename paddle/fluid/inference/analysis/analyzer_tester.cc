@@ -27,7 +27,7 @@ DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
 DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
 DEFINE_int32(batch_size, 10, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_int32(num_threads, 2, "Running the inference program in multi-threads.");
+DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 
 namespace paddle {
 namespace inference {
@@ -307,14 +307,16 @@ void TestDituRNNPrediction() {
     print_time(0, timer.toc() / num_times);
   } else {
     std::vector<std::thread> threads;
+    std::vector<PaddleTensor> input_slots;
+    // Prepare inputs.
+    PrepareInputs(&input_slots, &data, batch_size);
+    std::vector<PaddleTensor> outputs;
     for (int tid = 0; tid < FLAGS_num_threads; ++tid) {
       threads.emplace_back([&, tid]() {
-        auto predictor_tid = predictor->Clone();
+        auto predictor_tid =
+            CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
+                config);
         DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
-        std::vector<PaddleTensor> input_slots;
-        // Prepare inputs.
-        PrepareInputs(&input_slots, &data, batch_size);
-        std::vector<PaddleTensor> outputs;
 
         Timer timer;
         timer.tic();
@@ -353,6 +355,11 @@ void TestDituRNNPrediction() {
 }
 
 TEST(Analyzer, DituRNN) { TestDituRNNPrediction(); }
+
+TEST(Analyzer, DituRNNMutiThread) {
+  FLAGS_num_threads = 4;
+  TestDituRNNPrediction();
+}
 
 }  // namespace analysis
 }  // namespace inference
