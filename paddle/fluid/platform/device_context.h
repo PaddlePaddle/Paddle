@@ -69,6 +69,7 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 #ifdef PADDLE_WITH_CUDA
 
 class EigenCudaStreamDevice;
+class CUDNNHolder;
 
 class CUDADeviceContext : public DeviceContext {
  public:
@@ -96,6 +97,10 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
+  /*! \brief  Return a cudnn workspace whose length is greater than the
+   * 'required_len'. */
+  void* cudnn_workspace(size_t required_len) const;
+
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
 
@@ -111,8 +116,8 @@ class CUDADeviceContext : public DeviceContext {
 
   std::unique_ptr<Eigen::GpuDevice> eigen_device_;
   std::unique_ptr<EigenCudaStreamDevice> eigen_stream_;
+  std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
-  cudnnHandle_t cudnn_handle_;
   cublasHandle_t cublas_handle_;
 
   int compute_capability;
