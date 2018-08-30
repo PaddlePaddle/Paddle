@@ -180,13 +180,13 @@ TEST(GraphPatternDetector, IntermediateCheck) {
       [](Node* x) { return x && x->IsOp() && x->Name() == "op2"; }, "op2");
   auto* op3 = detector.mutable_pattern()->NewNode(
       [](Node* x) { return x && x->IsOp() && x->Name() == "op3"; }, "op3");
-  auto& v2 =
+  auto* v2 =
       detector.mutable_pattern()
           ->NewNode(
               [](Node* x) { return x && x->IsVar() && x->Name() == "var2"; },
               "var2")
           ->AsIntermediate();
-  v2.LinksFrom({op2}).LinksTo({op3});
+  v2->LinksFrom({op2}).LinksTo({op3});
 
   int count = 0;
   detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
@@ -194,7 +194,7 @@ TEST(GraphPatternDetector, IntermediateCheck) {
   EXPECT_EQ(count, 0);
 
   count = 0;
-  v2.AsInput();
+  v2->AsInput();
   detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
                        Graph* graph) { ++count; });
   ASSERT_EQ(count, 1);
