@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/dot.h"
+#include "paddle/fluid/operators/unstack_op.h"
 
-namespace paddle {
-namespace inference {
-namespace analysis {
-size_t Dot::counter = 0;
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+namespace plat = paddle::platform;
+namespace ops = paddle::operators;
+
+USE_OP(stack);
+
+REGISTER_OPERATOR(unstack, ops::UnStackOp, ops::UnStackOpMaker,
+                  ops::UnStackOpInferShape, ops::UnStackGradOpDescMaker);
+
+REGISTER_OPERATOR(unstack_grad, ops::UnStackGradOp,
+                  ops::UnStackOpGradInferShape);
