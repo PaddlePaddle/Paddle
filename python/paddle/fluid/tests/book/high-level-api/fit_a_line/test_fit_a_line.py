@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -63,7 +65,7 @@ def train(use_cuda, train_program, params_dirname):
             if event.step == 10:
                 test_metrics = trainer.test(
                     reader=test_reader, feed_order=['x', 'y'])
-                print test_metrics
+                print(test_metrics)
                 '''
                 ...
                 ['25.768919467926025']

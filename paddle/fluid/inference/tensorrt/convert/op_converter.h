@@ -55,7 +55,6 @@ class OpConverter {
         it = Registry<OpConverter>::Lookup("fc");
       }
     }
-
     if (op_desc.Type().find("elementwise") != std::string::npos) {
       static std::unordered_set<std::string> add_tensor_op_set{
           "add", "mul", "sub", "div", "max", "min", "pow"};
@@ -72,12 +71,22 @@ class OpConverter {
                        "Unsupported elementwise type" + op_type);
         it =
             Registry<OpConverter>::Lookup("elementwise_" + op_type + "_weight");
+        PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
+                                op_desc.Type());
       } else {
         PADDLE_ENFORCE(add_tensor_op_set.count(op_type) > 0,
                        "Unsupported elementwise type" + op_type);
         it =
             Registry<OpConverter>::Lookup("elementwise_" + op_type + "_tensor");
       }
+      PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
+                              op_desc.Type());
+    }
+
+    if (op_desc.Type() == "depthwise_conv2d") {
+      it = Registry<OpConverter>::Lookup("conv2d");
+      PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
+                              op_desc.Type());
     }
 
     if (!it) {

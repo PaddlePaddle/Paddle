@@ -33,6 +33,7 @@ class Pool2dOpConverter : public OpConverter {
     PADDLE_ENFORCE_EQ(op_desc.Output("Out").size(), 1);
     auto* input1 = engine_->GetITensor(op_desc.Input("X")[0]);
 
+    bool global_pooling = boost::get<bool>(op_desc.GetAttr("global_pooling"));
     std::string pool_type =
         boost::get<std::string>(op_desc.GetAttr("pooling_type"));
     std::vector<int> ksize =
@@ -42,7 +43,13 @@ class Pool2dOpConverter : public OpConverter {
     std::vector<int> paddings =
         boost::get<std::vector<int>>(op_desc.GetAttr("paddings"));
 
-    const nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);
+    nvinfer1::DimsHW nv_ksize(ksize[0], ksize[1]);
+    if (global_pooling == true) {
+      nvinfer1::Dims input_shape = input1->getDimensions();
+      int nbDims = input_shape.nbDims;
+      nv_ksize.d[0] = input_shape.d[nbDims - 2];
+      nv_ksize.d[1] = input_shape.d[nbDims - 1];
+    }
     const nvinfer1::DimsHW nv_strides(strides[0], strides[1]);
     const nvinfer1::DimsHW nv_paddings(paddings[0], paddings[1]);
 

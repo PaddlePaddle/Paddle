@@ -54,7 +54,7 @@ class GPUUniformRandomKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_THROW(
           "uniform_random_op's output only"
-          "supports SelectedRows and Tensor");
+          "supports SelectedRows and LoDTensor");
     }
     T* data = tensor->mutable_data<T>(context.GetPlace());
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));

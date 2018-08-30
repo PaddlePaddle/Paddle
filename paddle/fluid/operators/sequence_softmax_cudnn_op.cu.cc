@@ -68,7 +68,9 @@ class SequenceSoftmaxGradCUDNNKernel : public framework::OpKernel<T> {
     auto* out_grad = ctx.Input<LoDTensor>(framework::GradVarName("Out"));
     auto* x = ctx.Input<LoDTensor>("X");
     auto* x_grad = ctx.Output<LoDTensor>(framework::GradVarName("X"));
-
+    if (x_grad) {
+      x_grad->set_lod(x->lod());
+    }
     auto lod = x->lod();
     const size_t level = lod.size() - 1;
 

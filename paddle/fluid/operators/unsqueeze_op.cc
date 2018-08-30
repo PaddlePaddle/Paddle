@@ -23,9 +23,9 @@ class UnsqueezeOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("X"),
-                   "Input(X) of UnsqueezeOp should not be null.");
+                   "Input(X) of Unsqueeze operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
-                   "Output(Out) of UnsqueezeOp should not be null.");
+                   "Output(Out) of Unsqueeze operator should not be null.");
 
     const auto &axes = ctx->Attrs().Get<std::vector<int>>("axes");
     const auto &x_dims = ctx->GetInputDim("X");
@@ -95,7 +95,6 @@ class UnsqueezeOp : public framework::OperatorBase {
 
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(out_dims);
-    attrs["inplace"] = Attr<bool>("inplace");
     // Invoke Reshape op.
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
@@ -126,13 +125,6 @@ class UnsqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
                            " within [1, 6] dimensions (Eigen limit).");
           }
         });
-    AddAttr<bool>(
-        "inplace",
-        "(default: false) Unsqueeze the source tensor's shape without "
-        "memory copy. When Attr(inplace) is set true, the output "
-        "tensor shares memory with Input(X), otherwise, a new output "
-        "tensor is created, and its data are copied from Input(x).")
-        .SetDefault(false);
     AddComment(R"DOC(
     Unsqueeze Operator.
     
@@ -168,7 +160,6 @@ class UnsqueezeGradOp : public framework::OperatorBase {
 
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(x_dims);
-    attrs["inplace"] = Attr<bool>("inplace");
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},

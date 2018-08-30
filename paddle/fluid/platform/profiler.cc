@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #include <sys/time.h>
-#include <time.h>
 #include <algorithm>
 #include <iomanip>
 #include <limits>
@@ -95,12 +94,6 @@ inline uint64_t GetTimeInNsec() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(
              clock::now().time_since_epoch())
       .count();
-}
-
-inline uint64_t PosixInNsec() {
-  struct timeval tv;
-  gettimeofday(&tv, nullptr);
-  return 1000 * (static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec);
 }
 
 Event::Event(EventType type, std::string name, uint32_t thread_id,
@@ -277,12 +270,13 @@ struct EventItem {
   double min_time;
   double max_time;
   double ave_time;
+  float ratio;
 };
 
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                    const std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width) {
+                   const size_t data_width, double total) {
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
@@ -307,7 +301,8 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
             << "Calls" << std::setw(data_width) << "Total"
             << std::setw(data_width) << "Min." << std::setw(data_width)
-            << "Max." << std::setw(data_width) << "Ave." << std::endl;
+            << "Max." << std::setw(data_width) << "Ave."
+            << std::setw(data_width) << "Ratio." << std::endl;
   for (size_t i = 0; i < events_table.size(); ++i) {
     for (size_t j = 0; j < events_table[i].size(); ++j) {
       const EventItem& event_item = events_table[i][j];
@@ -316,7 +311,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.total_time
                 << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
-                << std::setw(data_width) << event_item.ave_time << std::endl;
+                << std::setw(data_width) << event_item.ave_time
+                << std::setw(data_width) << event_item.total_time / total
+                << std::endl;
     }
   }
   std::cout << std::endl;
@@ -366,6 +363,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
+  double total = 0.;  // the total time
   for (size_t i = 0; i < events.size(); i++) {
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
@@ -386,6 +384,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
                                g_state == ProfilerState::kAll)
                                   ? rit->CudaElapsedMs(events[i][j])
                                   : rit->CpuElapsedMs(events[i][j]);
+          total += event_time;
 
           std::string event_name =
               "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
@@ -394,7 +393,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
           if (event_idx.find(event_name) == event_idx.end()) {
             event_idx[event_name] = event_items.size();
             EventItem event_item = {event_name, 1,          event_time,
-                                    event_time, event_time, event_time};
+                                    event_time, event_time, event_time,
+                                    0.};
             event_items.push_back(event_item);
           } else {
             int index = event_idx[event_name];
@@ -438,7 +438,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12);
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12, total);
 }
 
 void DisableProfiler(EventSortingKey sorted_key,

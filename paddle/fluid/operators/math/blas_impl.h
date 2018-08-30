@@ -31,6 +31,26 @@ struct CBlas<float> {
     platform::dynload::cblas_sgemm(args...);
   }
 
+  template <typename... ARGS>
+  static float *GEMM_ALLOC(ARGS... args) {
+    return platform::dynload::cblas_sgemm_alloc(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_PACK(ARGS... args) {
+    platform::dynload::cblas_sgemm_pack(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_COMPUTE(ARGS... args) {
+    platform::dynload::cblas_sgemm_compute(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_FREE(ARGS... args) {
+    platform::dynload::cblas_sgemm_free(args...);
+  }
+
 #ifdef PADDLE_WITH_LIBXSMM
   template <typename... ARGS>
   static void SMM_GEMM(ARGS... args) {
@@ -54,6 +74,16 @@ struct CBlas<float> {
   }
 
   template <typename... ARGS>
+  static float DOT(ARGS... args) {
+    return platform::dynload::cblas_sdot(args...);
+  }
+
+  template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    platform::dynload::cblas_sscal(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_sgemm_batch(args...);
   }
@@ -62,6 +92,16 @@ struct CBlas<float> {
   static void VADD(ARGS... args) {
     platform::dynload::vsAdd(args...);
   }
+
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vsMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VEXP(ARGS... args) {
+    platform::dynload::vsExp(args...);
+  }
 };
 
 template <>
@@ -69,6 +109,26 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void GEMM(ARGS... args) {
     platform::dynload::cblas_dgemm(args...);
+  }
+
+  template <typename... ARGS>
+  static double *GEMM_ALLOC(ARGS... args) {
+    return platform::dynload::cblas_dgemm_alloc(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_PACK(ARGS... args) {
+    platform::dynload::cblas_dgemm_pack(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_COMPUTE(ARGS... args) {
+    platform::dynload::cblas_dgemm_compute(args...);
+  }
+
+  template <typename... ARGS>
+  static void GEMM_FREE(ARGS... args) {
+    platform::dynload::cblas_dgemm_free(args...);
   }
 
 #ifdef PADDLE_WITH_LIBXSMM
@@ -94,6 +154,16 @@ struct CBlas<double> {
   }
 
   template <typename... ARGS>
+  static double DOT(ARGS... args) {
+    return platform::dynload::cblas_ddot(args...);
+  }
+
+  template <typename... ARGS>
+  static void SCAL(ARGS... args) {
+    platform::dynload::cblas_dscal(args...);
+  }
+
+  template <typename... ARGS>
   static void GEMM_BATCH(ARGS... args) {
     platform::dynload::cblas_dgemm_batch(args...);
   }
@@ -101,6 +171,16 @@ struct CBlas<double> {
   template <typename... ARGS>
   static void VADD(ARGS... args) {
     platform::dynload::vdAdd(args...);
+  }
+
+  template <typename... ARGS>
+  static void VMUL(ARGS... args) {
+    platform::dynload::vdMul(args...);
+  }
+
+  template <typename... ARGS>
+  static void VEXP(ARGS... args) {
+    platform::dynload::vdExp(args...);
   }
 };
 
@@ -159,6 +239,10 @@ struct CBlas<platform::float16> {
   static void SMM_GEMM(...) {
     PADDLE_THROW("float16 SMM_GEMM not supported on CPU");
   }
+  static void VMUL(...) { PADDLE_THROW("float16 VMUL not supported on CPU"); }
+  static void VEXP(...) { PADDLE_THROW("float16 VEXP not supported on CPU"); }
+  static void DOT(...) { PADDLE_THROW("float16 DOT not supported on CPU"); };
+  static void SCAL(...) { PADDLE_THROW("float16 SCAL not supported on CPU"); };
 #ifdef PADDLE_WITH_MKLML
   static void GEMM_BATCH(...) {
     PADDLE_THROW("float16 GEMM_BATCH not supported on CPU");
@@ -166,63 +250,40 @@ struct CBlas<platform::float16> {
 #endif
 };
 
+#ifdef PADDLE_WITH_MKLML
+template <>
 template <typename T>
-inline bool UseXSMM(const int &m, const int &n, const int &k, bool transa,
-                    bool transb, const T &alpha, const T &beta) {
-#ifdef PADDLE_WITH_LIBXSMM
-  // Refer to https://github.com/hfp/libxsmm/blob/master/README.md
-  // But the threshold is custom
-  constexpr int LIBXSMM_THRESHOLD = 20 * 20 * 20;
-  if (m * n * k > LIBXSMM_THRESHOLD || transa || transb ||
-      std::abs<T>(alpha - static_cast<T>(1) >
-                  std::numeric_limits<T>::epsilon()) ||
-      std::abs<T>(beta) > std::numeric_limits<T>::epsilon()) {
-    return false;
-  } else {
-    return true;
-  }
-#endif
-  return false;
+T *Blas<platform::CPUDeviceContext>::GEMM_ALLOC(const CBLAS_IDENTIFIER id,
+                                                const int M, const int N,
+                                                const int K) const {
+  return CBlas<T>::GEMM_ALLOC(id, M, N, K);
 }
 
 template <>
-inline bool UseXSMM<platform::float16>(const int &m, const int &n, const int &k,
-                                       bool transa, bool transb,
-                                       const platform::float16 &alpha,
-                                       const platform::float16 &beta) {
-  return false;
-}
-
 template <typename T>
-inline void GEMM_WARP(CBLAS_ORDER order, CBLAS_TRANSPOSE transA,
-                      CBLAS_TRANSPOSE transB, int M, int N, int K, T alpha,
-                      const T *A, int lda, const T *B, int ldb, T beta, T *C,
-                      int ldc) {
-#ifdef PADDLE_WITH_LIBXSMM
-  if (UseXSMM<T>(M, N, K, transA != CblasNoTrans, transB != CblasNoTrans, alpha,
-                 beta)) {
-    // Note: SMM use ColMajor
-    const char transa = 'N';
-    const char transb = 'N';
-    CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &ldb, A, &lda,
-                       &beta, C, &ldc);
-    return;
-  }
-#endif
-
-#ifdef PADDLE_MKL_SPLIT_GEMM
-  constexpr int bs = 2;
-  if (M % bs == 0 && transA == CblasNoTrans && transB == CblasNoTrans) {
-    for (int off = 0; off < M; off += bs) {
-      CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, bs, N, K, alpha,
-                     A + off * lda, lda, B, ldb, beta, C + off * ldb, ldc);
-    }
-    return;
-  }
-#endif
-  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
-                 beta, C, ldc);
+void Blas<platform::CPUDeviceContext>::GEMM_PACK(const CBLAS_IDENTIFIER id,
+                                                 const CBLAS_TRANSPOSE trans,
+                                                 int M, int N, int K,
+                                                 const T alpha, const T *src,
+                                                 const int ld, T *dst) const {
+  CBlas<T>::GEMM_PACK(CblasRowMajor, id, trans, M, N, K, alpha, src, ld, dst);
 }
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM_COMPUTE(
+    int transA, int transB, int M, int N, int K, const T *A, const int lda,
+    const T *B, const int ldb, T beta, T *C, const int ldc) const {
+  CBlas<T>::GEMM_COMPUTE(CblasRowMajor, transA, transB, M, N, K, A, lda, B, ldb,
+                         beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM_FREE(T *data) const {
+  CBlas<T>::GEMM_FREE(data);
+}
+#endif
 
 template <>
 template <typename T>
@@ -233,8 +294,8 @@ void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;
   int ldc = N;
-  GEMM_WARP<T>(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
-               beta, C, ldc);
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
 }
 
 template <>
@@ -243,9 +304,20 @@ void Blas<platform::CPUDeviceContext>::GEMM(bool transA, bool transB, int M,
                                             int N, int K, T alpha, const T *A,
                                             int lda, const T *B, int ldb,
                                             T beta, T *C, int ldc) const {
-  GEMM_WARP<T>(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
-               transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
-               lda, B, ldb, beta, C, ldc);
+  CBlas<T>::GEMM(CblasRowMajor, transA == false ? CblasNoTrans : CblasTrans,
+                 transB == false ? CblasNoTrans : CblasTrans, M, N, K, alpha, A,
+                 lda, B, ldb, beta, C, ldc);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::GEMM(CBLAS_TRANSPOSE transA,
+                                            CBLAS_TRANSPOSE transB, int M,
+                                            int N, int K, T alpha, const T *A,
+                                            int lda, const T *B, int ldb,
+                                            T beta, T *C, int ldc) const {
+  CBlas<T>::GEMM(CblasRowMajor, transA, transB, M, N, K, alpha, A, lda, B, ldb,
+                 beta, C, ldc);
 }
 
 template <typename DeviceContext>
@@ -301,6 +373,61 @@ void Blas<platform::CPUDeviceContext>::VADD(int n, const T *x, const T *y,
 
 template <>
 template <typename T>
+void Blas<platform::CPUDeviceContext>::VMUL(int n, const T *x, const T *y,
+                                            T *z) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VMUL(n, x, y, z);
+#else
+  // try to find if openblas support vmul
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::VEXP(int n, const T *x, T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::VEXP(n, x, y);
+#else
+  // try to find if openblas support vexp
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
+  }
+#endif
+}
+
+template <>
+template <typename T>
+T Blas<platform::CPUDeviceContext>::DOT(int n, const T *x, const T *y) const {
+#ifdef PADDLE_WITH_MKLML
+  return CBlas<T>::DOT(n, x, 1, y, 1);
+#else
+  // try to find if openblas support cblas_dot
+  T sum = 0;
+  for (int i = 0; i < n; ++i) {
+    sum += x[i] * y[i];
+  }
+  return sum;
+#endif
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::SCAL(int n, const T a, T *x) const {
+#ifdef PADDLE_WITH_MKLML
+  CBlas<T>::SCAL(n, a, x, 1);
+#else
+  // try to find if openblas support cblas_scal
+  for (int i = 0; i < n; ++i) {
+    x[i] = a * x[i];
+  }
+#endif
+}
+
+template <>
+template <typename T>
 void Blas<platform::CPUDeviceContext>::GEMV(bool trans_a, int M, int N, T alpha,
                                             const T *A, const T *B, T beta,
                                             T *C) const {
@@ -338,6 +465,42 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     this->template GEMM<T>(transA, transB, M, N, K, alpha, Ak, Bk, beta, Ck);
   }
 #endif
+}
+
+template <typename DeviceContext>
+template <typename T>
+void Blas<DeviceContext>::MatMul(const int M, const int N, const int K,
+                                 const T *A, const T *B, T *C) const {
+  this->template GEMM<T>(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
+                         static_cast<T>(1), A, K, B, N, static_cast<T>(0), C,
+                         N);
+}
+
+template <>
+template <typename T>
+void Blas<platform::CPUDeviceContext>::MatMul(const int M, const int N,
+                                              const int K, const T *A,
+                                              const T *B, T *C) const {
+#ifdef PADDLE_WITH_LIBXSMM
+  // Refer to https://github.com/hfp/libxsmm/blob/master/README.md
+  // But the threshold is custom constexpr int LIBXSMM_THRESHOLD = 20 * 20 * 20;
+
+  // Since the matrix is very small,
+  // so the unit of calculation is already very fast,
+  // and the if( M*N*K < LIBXSMM_THRESHOLD) would be overhead,
+  // use xsmm directly.
+  // Note: SMM use ColMajor
+  const char transa = 'N';
+  const char transb = 'N';
+  const T alpha = static_cast<T>(1);
+  const T beta = static_cast<T>(0);
+  CBlas<T>::SMM_GEMM(&transa, &transb, &N, &M, &K, &alpha, B, &N, A, &K, &beta,
+                     C, &N);
+  return;
+#endif
+
+  CBlas<T>::GEMM(CblasRowMajor, CblasNoTrans, CblasNoTrans, M, N, K,
+                 static_cast<T>(1), A, K, B, N, static_cast<T>(0), C, N);
 }
 
 template <typename DeviceContext>

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import errno
 import math
 import os
@@ -137,7 +139,7 @@ def main():
             generated_img = exe.run(g_program,
                                     feed={'noise': n},
                                     fetch_list={g_img})[0]
-            real_data = numpy.array(map(lambda x: x[0], data)).astype('float32')
+            real_data = numpy.array([x[0] for x in data]).astype('float32')
             real_data = real_data.reshape(num_true, 784)
             total_data = numpy.concatenate([real_data, generated_img])
             total_label = numpy.concatenate([
@@ -150,7 +152,7 @@ def main():
                                 feed={'img': total_data,
                                       'label': total_label},
                                 fetch_list={d_loss})[0]
-            for _ in xrange(NUM_TRAIN_TIMES_OF_DG):
+            for _ in range(NUM_TRAIN_TIMES_OF_DG):
                 n = numpy.random.uniform(
                     low=-1.0, high=1.0,
                     size=[2 * num_true * NOISE_SIZE]).astype('float32').reshape(
