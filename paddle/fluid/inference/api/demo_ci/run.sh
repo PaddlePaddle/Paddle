@@ -13,16 +13,22 @@ else
   use_gpu_list='false'
 fi
 
+PREFIX=inference-vis-demos%2F
+URL_ROOT=http://paddlemodels.bj.bcebos.com/${PREFIX}
+
 # download vis_demo data
 function download() {
   dir_name=$1
   mkdir -p $dir_name
   cd $dir_name
-  wget -q ${URL_ROOT}$dir_name.tar.gz
-  tar xzf *.tar.gz
+  if [[ -e "${PREFIX}${dir_name}.tar.gz" ]]; then
+    echo "${PREFIX}{dir_name}.tar.gz has been downloaded."
+  else
+      wget -q ${URL_ROOT}$dir_name.tar.gz
+      tar xzf *.tar.gz
+  fi
   cd ..
 }
-URL_ROOT=http://paddlemodels.bj.bcebos.com/inference-vis-demos%2F
 mkdir -p data
 cd data
 vis_demo_list='se_resnext50 ocr mobilenet'

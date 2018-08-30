@@ -28,6 +28,38 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * The graph is a Directed Acyclic Single Static Assignment Graph.
+ *
+ * In more detail, the following properties must hold:
+ *
+ *   The graph shouldn't contain cycle. Each node is a black-box to the graph
+ *   so the node itself could be a loop operator.
+ *
+ *   Each Variable-type node has only one input (thus single static assignment).
+ *
+ *   The output/input of operator is variable and the output/input of variable
+ *   is operator.
+ *
+ * The following data harzards in Program are addressed in the Graph:
+ *
+ *   Write-After-Read
+ *     a = op1(x)
+ *     x = op2(b)
+ *     A control-dependency connection is created bettwen op1 and op2 such that
+ *     op1->op2, so as to ensure correct order.
+ *
+ *   Write-After-Write
+ *     x = op1(a)
+ *     x = op2(b)
+ *     A control-dependency connection is created between op1 and op2 such that
+ *     op1->op2, so as to ensure correct order.
+ *
+ * Other properties currently hold, but is not enforced yet:
+ *
+ *   Variable-type node (not control dep) with the same variable name share
+ *   the same underlying VarDesc.
+ */
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
@@ -66,12 +98,14 @@ class Graph {
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
-    return AddNode(new ir::Node(var_desc));
+    PADDLE_ENFORCE(var_desc);
+    return AddNode(new ir::Node(var_desc, node_count_++));
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
-    return AddNode(new ir::Node(op_desc));
+    PADDLE_ENFORCE(op_desc);
+    return AddNode(new ir::Node(op_desc, node_count_++));
   }
 
   // Create a control dependency var that connects 2 operations. The
@@ -81,13 +115,14 @@ class Graph {
     // TODO(panyx0718): control var name should be really unique.
     const std::string name = string::Sprintf(
         "%s@%llu", ir::Node::kControlDepVarName, node_set_.size());
-    return AddNode(new ir::Node(name, ir::Node::Type::kVariable));
+    return AddNode(
+        new ir::Node(name, ir::Node::Type::kVariable, node_count_++));
   }
 
   // A more free style way of creating a graph node. Mostly use for test
   // or "copy" from another node. Avoid using it if possible.
   ir::Node *CreateEmptyNode(const std::string &name, ir::Node::Type type) {
-    return AddNode(new ir::Node(name, type));
+    return AddNode(new ir::Node(name, type, node_count_++));
   }
 
   // Clear all node information of the graph and return the ownership of the
@@ -102,27 +137,37 @@ class Graph {
     return ret;
   }
 
- private:
-  // This method takes ownership of `node`.
-  ir::Node *AddNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
-    nodes_[node].reset(node);
-    node_set_.insert(node);
-    return node;
-  }
-
   void RemoveNode(ir::Node *node) {
     PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
     node_set_.erase(node);
     nodes_.erase(node);
   }
 
+  Node *RetriveNode(int id) {
+    auto it = id2node_.find(id);
+    if (it != id2node_.end()) return it->second;
+    return nullptr;
+  }
+
+ private:
+  // This method takes ownership of `node`.
+  ir::Node *AddNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) == node_set_.end());
+    nodes_[node].reset(node);
+    node_set_.insert(node);
+    PADDLE_ENFORCE(!id2node_.count(node->id()), "duplicate id %d", node->id());
+    id2node_[node->id()] = node;
+    return node;
+  }
+
   // NOTE: program_ shouldn't be exposed to user.
-  const ProgramDesc &program_;
+  const ProgramDesc program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
+  std::map<int, Node *> id2node_;
+  int node_count_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);

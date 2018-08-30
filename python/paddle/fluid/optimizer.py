@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import re
 from collections import defaultdict
 from paddle.fluid.framework import Program, Variable
@@ -44,10 +46,12 @@ class Optimizer(object):
     def __init__(self,
                  learning_rate,
                  regularization=None,
-                 LARS_weight_decay=0.0):
+                 LARS_weight_decay=0.0,
+                 name=None):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
+        self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
@@ -151,6 +155,8 @@ class Optimizer(object):
             dtype: data type of the accumulator variable
             fill_value: value to initialize the accumulator variable
         """
+        if self._name is not None:
+            name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
             raise Exception("Accumulator {} already exists for parameter {}".
@@ -179,6 +185,8 @@ class Optimizer(object):
         Returns:
             accumulator variable for the parameter
         """
+        if self._name is not None:
+            name = self._name + "_" + name
         if (name not in self._accumulators or
                 param.name not in self._accumulators[name]):
             raise Exception("Accumulator {} does not exist for parameter {}".
