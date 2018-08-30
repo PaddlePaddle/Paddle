@@ -67,9 +67,12 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
         --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
 
-cc_binary(test_text_classification SRCS test_text_classification.cc
-    DEPS paddle_inference_api paddle_fluid_api
-    analysis_predictor)
+inference_analysis_test(test_text_classification SRCS test_text_classification.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api
+    analysis_predictor
+    ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
+        --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
+        --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
 
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
