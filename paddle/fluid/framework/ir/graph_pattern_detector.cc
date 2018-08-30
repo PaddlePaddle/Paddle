@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detecter.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -34,7 +34,7 @@ PDNode* PDPattern::NewNode(PDNode::teller_t&& teller, const std::string& name) {
                       name);
   }
 
-  nodes_.emplace_back(new PDNode(std::move(teller), name));
+  nodes_.emplace_back(new PDNode(std::move(teller), this, name));
   auto* cur = nodes_.back().get();
   node_map_[name] = cur;
   return cur;
@@ -56,19 +56,22 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
   edges_.emplace_back(a, b);
 }
 
-void GraphPatternDetecter::operator()(Graph* graph,
-                                      GraphPatternDetecter::handle_t handler) {
+void GraphPatternDetector::operator()(Graph* graph,
+                                      GraphPatternDetector::handle_t handler) {
   if (!MarkPDNodesInGraph(*graph)) return;
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
 
+  LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
+  int id = 0;
   for (auto& g : subgraphs) {
+    LOG(INFO) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
 
-bool GraphPatternDetecter::MarkPDNodesInGraph(const ir::Graph& graph) {
+bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
   VLOG(4) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
@@ -114,13 +117,15 @@ bool IsNodesLink(Node* a, Node* b) {
   return false;
 }
 
-std::vector<GraphPatternDetecter::subgraph_t>
-GraphPatternDetecter::DetectPatterns() {
+std::vector<GraphPatternDetector::subgraph_t>
+GraphPatternDetector::DetectPatterns() {
   // Init empty subgraphs.
-  std::vector<GraphPatternDetecter::subgraph_t> result;
+  std::vector<GraphPatternDetector::subgraph_t> result;
   std::vector<HitGroup> init_groups;
-  PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
-  auto* first_pnode = pattern_.edges().front().first;
+  std::array<std::vector<HitGroup>, 2> bi_records;
+  // PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
+  auto* first_pnode = pattern_.edges().empty() ? pattern().nodes().front().get()
+                                               : pattern_.edges().front().first;
   if (!pdnodes2nodes_.count(first_pnode)) return result;
   for (auto* node : pdnodes2nodes_[first_pnode]) {
     HitGroup group;
@@ -129,7 +134,6 @@ GraphPatternDetecter::DetectPatterns() {
   }
 
   int step = 0;
-  std::array<std::vector<HitGroup>, 2> bi_records;
   bi_records[0] = std::move(init_groups);
 
   // Extend a PDNode to subgraphs by deducing the connection relations defined
@@ -141,6 +145,7 @@ GraphPatternDetecter::DetectPatterns() {
     auto& pre_groups = bi_records[step % 2];
     auto& cur_groups = bi_records[1 - (step++ % 2)];
     cur_groups.clear();
+    if (pre_groups.empty()) break;
     // source -> target
     for (Node* source : pdnodes2nodes_[edge.first]) {
       for (Node* target : pdnodes2nodes_[edge.second]) {
@@ -163,7 +168,7 @@ GraphPatternDetecter::DetectPatterns() {
   }
 
   for (auto& group : bi_records[step % 2]) {
-    GraphPatternDetecter::subgraph_t subgraph;
+    GraphPatternDetector::subgraph_t subgraph;
     for (auto& role : group.roles) {
       subgraph.emplace(role.first, role.second);
     }
@@ -172,10 +177,10 @@ GraphPatternDetecter::DetectPatterns() {
   return result;
 }
 
-void GraphPatternDetecter::UniquePatterns(
-    std::vector<GraphPatternDetecter::subgraph_t>* subgraphs) {
+void GraphPatternDetector::UniquePatterns(
+    std::vector<GraphPatternDetector::subgraph_t>* subgraphs) {
   if (subgraphs->empty()) return;
-  std::vector<GraphPatternDetecter::subgraph_t> result;
+  std::vector<GraphPatternDetector::subgraph_t> result;
 
   std::unordered_set<size_t> set;
   for (auto& g : *subgraphs) {
@@ -192,7 +197,7 @@ void GraphPatternDetecter::UniquePatterns(
   *subgraphs = result;
 }
 
-void GraphPatternDetecter::RemoveOverlappedMatch(
+void GraphPatternDetector::RemoveOverlappedMatch(
     std::vector<subgraph_t>* subgraphs) {
   std::vector<subgraph_t> result;
   std::unordered_set<Node*> node_set;
@@ -213,6 +218,46 @@ void GraphPatternDetecter::RemoveOverlappedMatch(
     }
   }
   *subgraphs = result;
+}
+
+std::string PDPattern::DotString() const {
+  using inference::analysis::Dot;
+  Dot dot;
+  int id = 0;
+  // Create Nodes
+  std::unordered_map<PDNode*, std::string> node2dot;
+  for (const auto& node : nodes()) {
+    std::string node_id = "Node" + std::to_string(id++);
+    dot.AddNode(node_id, {}, node->name());
+    node2dot[node.get()] = node_id;
+  }
+  // Create Edges
+  for (const auto& edge : edges()) {
+    if (!node2dot.count(edge.first) || !node2dot.count(edge.second)) {
+      LOG(ERROR) << "no node " << edge.first << " " << edge.second;
+      continue;
+    }
+    auto& src = node2dot.at(edge.first);
+    auto& trg = node2dot.at(edge.second);
+    dot.AddEdge(src, trg, {});
+  }
+  return dot.Build();
+}
+
+PDNode& PDNode::LinksTo(const std::vector<PDNode*>& others) {
+  // extend outlinks.
+  for (PDNode* x : others) {
+    pattern_->AddEdge(this, x);
+  }
+  return *this;
+}
+
+PDNode& PDNode::LinksFrom(const std::vector<PDNode*>& others) {
+  // extend outlinks.
+  for (PDNode* x : others) {
+    pattern_->AddEdge(x, this);
+  }
+  return *this;
 }
 
 }  // namespace ir
