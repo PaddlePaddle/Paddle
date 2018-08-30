@@ -463,7 +463,8 @@ EOF
         -DCMAKE_BUILD_TYPE=Release \
         -DWITH_DOC=ON \
         -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF
+        -DWITH_MKL=OFF \
+        -DWITH_FLUID_ONLY=ON
 
     make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
 }
