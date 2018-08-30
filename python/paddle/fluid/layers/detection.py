@@ -39,6 +39,7 @@ __all__ = [
     'detection_map',
     'rpn_target_assign',
     'anchor_generator',
+    'generate_proposal_labels',
     'generate_proposals',
 ]
 
@@ -171,7 +172,7 @@ def rpn_target_assign(loc,
         })
 
     # 4. Reshape and gather the target entry
-    scores = nn.reshape(x=scores, shape=(-1, 2))
+    scores = nn.reshape(x=scores, shape=(-1, 1))
     loc = nn.reshape(x=loc, shape=(-1, 4))
     target_label = nn.reshape(x=target_label, shape=(-1, 1))
     target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
@@ -1254,6 +1255,64 @@ def anchor_generator(input,
     anchor.stop_gradient = True
     var.stop_gradient = True
     return anchor, var
+
+
+def generate_proposal_labels(rpn_rois,
+                             gt_classes,
+                             gt_boxes,
+                             im_scales,
+                             batch_size_per_im=256,
+                             fg_fraction=0.25,
+                             fg_thresh=0.25,
+                             bg_thresh_hi=0.5,
+                             bg_thresh_lo=0.0,
+                             bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+                             class_nums=None):
+    """
+    ** Generate proposal labels Faster-RCNN **
+    TODO(buxingyuan): Add Document
+    """
+
+    helper = LayerHelper('generate_proposal_labels', **locals())
+
+    rois = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    labels_int32 = helper.create_tmp_variable(dtype=gt_classes.dtype)
+    bbox_targets = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    bbox_inside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    bbox_outside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+
+    helper.append_op(
+        type="generate_proposal_labels",
+        inputs={
+            'RpnRois': rpn_rois,
+            'GtClasses': gt_classes,
+            'GtBoxes': gt_boxes,
+            'ImScales': im_scales
+        },
+        outputs={
+            'Rois': rois,
+            'LabelsInt32': labels_int32,
+            'BboxTargets': bbox_targets,
+            'BboxInsideWeights': bbox_inside_weights,
+            'BboxOutsideWeights': bbox_outside_weights
+        },
+        attrs={
+            'batch_size_per_im': batch_size_per_im,
+            'fg_fraction': fg_fraction,
+            'fg_thresh': fg_thresh,
+            'bg_thresh_hi': bg_thresh_hi,
+            'bg_thresh_lo': bg_thresh_lo,
+            'bbox_reg_weights': bbox_reg_weights,
+            'class_nums': class_nums
+        })
+
+    rois.stop_gradient = True
+    labels_int32.stop_gradient = True
+    bbox_targets.stop_gradient = True
+    bbox_inside_weights.stop_gradient = True
+    bbox_outside_weights.stop_gradient = True
+
+    return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
 
 
 def generate_proposals(scores,
