@@ -26,7 +26,7 @@ namespace framework {
 extern proto::VarType::Type ToDataType(std::type_index type);
 extern std::type_index ToTypeIndex(proto::VarType::Type type);
 
-#if !defined(_WIN32)
+#if !defined(_MSC_VER)
 template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   switch (type) {
@@ -64,7 +64,7 @@ template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   switch (type) {
     case proto::VarType::FP16:
-      visitor.operator()<platform::float16>();
+      typename visitor.operator()<platform::float16>();
       break;
     case proto::VarType::FP32:
       visitor.operator()<float>();
