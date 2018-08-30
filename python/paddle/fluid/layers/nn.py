@@ -5473,11 +5473,11 @@ def pad2d(input,
           result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
     """
 
-    helper = LayerHelper('prelu', **locals())
+    helper = LayerHelper('pad2d', **locals())
     dtype = helper.input_dtype(input_param_name='input')
     out = helper.create_tmp_variable(dtype)
     helper.append_op(
-        type=l_type,
+        type='pad2d',
         inputs={'X': input},
         outputs={"Output": out},
         attrs={
