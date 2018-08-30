@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
-#include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
@@ -103,9 +102,6 @@ class DfgPassManagerImpl final : public DfgPassManager {
 Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
 
 void Analyzer::Run(Argument* argument) {
-  // Reset the Node's id counter to 0, or the created Nodes in the other tests
-  // will effect ids in the following passes.
-  framework::ir::Node::ResetId();
   // Ugly support fluid-to-ir-pass
   argument->Set(kFluidToIrPassesAttr,
                 new std::vector<std::string>({

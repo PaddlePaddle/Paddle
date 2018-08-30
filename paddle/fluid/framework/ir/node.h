@@ -65,7 +65,6 @@ class Node {
   }
 
   int id() const { return id_; }
-  static void ResetId() { count_ = 0; }
 
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
@@ -81,7 +80,9 @@ class Node {
   int id_;
 
  private:
+  friend class Graph;
   static int count_;
+  static void ResetId() { count_ = 0; }
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 
