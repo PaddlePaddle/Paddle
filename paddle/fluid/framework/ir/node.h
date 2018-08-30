@@ -29,26 +29,26 @@ class Node {
   enum class Type { kOperation, kVariable };
   static constexpr char kControlDepVarName[] = "__control_var";
 
-  explicit Node(const std::string& name, Type type, int id = -1)
+  explicit Node(const std::string& name, Type type)
       : name_(name),
         var_desc_(nullptr),
         op_desc_(nullptr),
         type_(type),
-        id_(id) {}
+        id_(count_++) {}
 
-  explicit Node(VarDesc* var_desc, int id = -1)
+  explicit Node(VarDesc* var_desc)
       : name_(var_desc->Name()),
         var_desc_(new VarDesc(*var_desc)),
         op_desc_(nullptr),
         type_(Type::kVariable),
-        id_(id) {}
+        id_(count_++) {}
 
-  explicit Node(OpDesc* op_desc, int id = -1)
+  explicit Node(OpDesc* op_desc)
       : name_(op_desc->Type()),
         var_desc_(nullptr),
         op_desc_(new OpDesc(*op_desc, op_desc->Block())),
         type_(Type::kOperation),
-        id_(id) {}
+        id_(count_++) {}
 
   Type NodeType() const { return type_; }
 
@@ -80,6 +80,9 @@ class Node {
   int id_;
 
  private:
+  friend class Graph;
+  static int count_;
+  static void ResetId() { count_ = 0; }
   DISABLE_COPY_AND_ASSIGN(Node);
 };
 
