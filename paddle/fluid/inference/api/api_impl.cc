@@ -316,7 +316,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     return nullptr;
   }
 #ifdef __clang__
-  //fix clang compile error
+  // fix clang compile error
   return predictor;
 #else
   return std::move(predictor);
