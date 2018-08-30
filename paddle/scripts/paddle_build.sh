@@ -469,6 +469,25 @@ EOF
     make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
 }
 
+function gen_doc_lib_lite() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ========================================
+    Building documentation library ...
+    In /paddle/build
+    ========================================
+EOF
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_DOC=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_FLUID_ONLY=ON
+
+    make -j `nproc` copy_paddle_pybind 
+}
+
 function gen_html() {
     cat <<EOF
     ========================================
@@ -628,6 +647,9 @@ function main() {
         ;;
       gen_doc_lib)
         gen_doc_lib
+        ;;
+      gen_doc_lib_lite)
+        gen_doc_lib_lite
         ;;
       html)
         gen_html
