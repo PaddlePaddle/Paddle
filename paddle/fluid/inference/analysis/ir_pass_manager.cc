@@ -14,20 +14,24 @@
 
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include <string>
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
 
-IRPassManager::IRPassManager(const ProgramDesc& program) {
+IRPassManager::IRPassManager(const ProgramDesc &program,
+                             framework::Scope *scope)
+    : program_(program) {
   graph_.reset(new framework::ir::Graph(program));
+  if (scope) graph_->Set("param_scope", new framework::Scope *(scope));
 }
 
-void IRPassManager::Apply(const std::vector<std::string>& passes) {
-  graph_->Set("graph_viz_path", new std::string("./1.dot"));
+void IRPassManager::Apply(const std::vector<std::string> &passes) {
   // Apply all the passes
   std::string pre_pass;
-  for (const std::string& pass_name : passes) {
+  for (const std::string &pass_name : passes) {
     LOG(WARNING) << "Running IR pass [" << pass_name << "]";
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     if (pass_name == "graph_viz_pass") {

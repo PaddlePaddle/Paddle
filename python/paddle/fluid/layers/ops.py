@@ -63,6 +63,7 @@ __all__ = [
     'logical_xor',
     'logical_not',
     'uniform_random_batch_size_like',
+    'sampling_id',
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
