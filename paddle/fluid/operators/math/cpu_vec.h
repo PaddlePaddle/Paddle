@@ -133,6 +133,62 @@ inline void vec_scal<float, platform::jit::avx512_common>(const int n,
 }
 
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+inline void vec_bias_sub(const int n, const T a, const T* x, T* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = a - x[i];
+  }
+}
+
+template <>
+inline void vec_bias_sub<float, platform::jit::avx>(const int n, const float a,
+                                                    const float* x, float* y) {
+#ifdef __AVX__
+  constexpr int block = AVX_FLOAT_BLOCK;
+  if (n < block) {
+    vec_bias_sub<float, platform::jit::isa_any>(n, a, x, y);
+    return;
+  }
+  const int rest = n % block;
+  const int end = n - rest;
+  int i = 0;
+  __m256 bias = _mm256_set1_ps(a);
+  __m256 tmp;
+#define MOVE_ONE_STEP             \
+  tmp = _mm256_loadu_ps(x + i);   \
+  tmp = _mm256_sub_ps(bias, tmp); \
+  _mm256_storeu_ps(y + i, tmp)
+  for (i = 0; i < end; i += block) {
+    MOVE_ONE_STEP;
+  }
+#undef MOVE_ONE_STEP
+  if (rest == 0) {
+    return;
+  }
+  // can not continue move step if src and dst are inplace
+  for (i = n - rest; i < n; ++i) {
+    y[i] = a - x[i];
+  }
+#else
+  vec_bias_sub<float, platform::jit::isa_any>(n, a, x, y);
+#endif
+}
+
+template <>
+inline void vec_bias_sub<float, platform::jit::avx2>(const int n, const float a,
+                                                     const float* x, float* y) {
+  vec_bias_sub<float, platform::jit::avx>(n, a, x, y);
+}
+
+template <>
+inline void vec_bias_sub<float, platform::jit::avx512_common>(const int n,
+                                                              const float a,
+                                                              const float* x,
+                                                              float* y) {
+  // TODO(TJ): enable me
+  vec_bias_sub<float, platform::jit::avx2>(n, a, x, y);
+}
+
+template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = x[i] + a;
