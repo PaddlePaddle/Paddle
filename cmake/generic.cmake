@@ -264,7 +264,6 @@ function(cc_library TARGET_NAME)
       endif()
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
-      find_fluid_third_partys(${cc_library_DEPS})
     endif()
     
     # cpplint code style
