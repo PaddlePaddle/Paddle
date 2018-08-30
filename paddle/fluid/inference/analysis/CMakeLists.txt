@@ -59,23 +59,18 @@ if (NOT EXISTS ${DITU_INSTALL_DIR})
     inference_download_and_uncompress(ditu_rnn_data ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
 endif()
 
+
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
-    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api
     analysis_predictor
-		# ir
-		fc_fuse_pass
-		fc_lstm_fuse_pass
-    seq_concat_fc_fuse_pass
-		graph_viz_pass
-		infer_clean_graph_pass
-		graph_pattern_detector
-    infer_clean_graph_pass
-    attention_lstm_fuse_pass
-    paddle_inference_api
-		pass
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
+
+cc_binary(test_text_classification SRCS test_text_classification.cc
+    DEPS paddle_inference_api paddle_fluid_api
+    analysis_predictor)
+
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
 inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc EXTRA_DEPS paddle_inference_api)
