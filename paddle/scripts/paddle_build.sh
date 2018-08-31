@@ -466,45 +466,24 @@ EOF
         -DWITH_MKL=OFF \
         -DWITH_FLUID_ONLY=ON
 
-    make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
-}
-
-function gen_doc_lib_lite() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ========================================
-    Building documentation library ...
-    In /paddle/build
-    ========================================
-EOF
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_FLUID_ONLY=ON
-
-    make -j `nproc` copy_paddle_pybind 
-}
-
-function gen_doc_lib_lite2() {
-    mkdir -p ${PADDLE_ROOT}/build
-    cd ${PADDLE_ROOT}/build
-    cat <<EOF
-    ========================================
-    Building documentation library ...
-    In /paddle/build
-    ========================================
-EOF
-    cmake .. \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DWITH_DOC=ON \
-        -DWITH_GPU=OFF \
-        -DWITH_MKL=OFF \
-        -DWITH_FLUID_ONLY=ON
-
-    make -j `nproc` framework_py_proto
+    local LIB_TYPE=$1
+    case $LIB_TYPE in
+      full)
+        # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
+        make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+        ;;
+      pybind)
+        # Build paddle pybind library. Takes 49 minutes to build. Might timeout
+        make -j `nproc` copy_paddle_pybind
+        ;;
+      proto)
+        # Even smaller library.
+        make -j `nproc` framework_py_proto
+        ;;
+      *)
+        exit 0
+        ;;
+      esac
 }
 
 function gen_html() {
@@ -665,13 +644,7 @@ function main() {
         gen_docs
         ;;
       gen_doc_lib)
-        gen_doc_lib
-        ;;
-      gen_doc_lib_lite)
-        gen_doc_lib_lite
-        ;;
-      gen_doc_lib_lite2)
-        gen_doc_lib_lite2
+        gen_doc_lib $2
         ;;
       html)
         gen_html
