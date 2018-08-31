@@ -15,6 +15,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
+#ifdef PADDLE_WITH_CUDA
+#include <boost\thread\thread.hpp>
+#endif
+
 #include "paddle/fluid/memory/memory.h"
 
 namespace paddle {
@@ -150,32 +154,45 @@ class CudnnHolder {
     PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
   }
 
-  cudnnHandle_t get_cudnn_handle() const { return cudnn_handle_; }
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
 
-  void* get_workspace(size_t required_len) {
-    if (required_len > workspace_len_) {
-      void* new_workspace = paddle::memory::Alloc(place_, required_len);
-      if (workspace_ != nullptr) {
-        // Maybe someone is using the current workspace
-        PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-        PADDLE_ENFORCE(cudaGetLastError());
-        paddle::memory::Free(place_, workspace_);
-      }
-      workspace_ = new_workspace;
-      workspace_len_ = required_len;
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_len) {
+    boost::upgrade_lock<boost::shared_mutex> shared_lock(mtx_);
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len, &shared_lock);
     }
-    return workspace_;
+    cudnn_func(workspace_);
   }
 
   ~CudnnHolder() { PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_)); }
 
  private:
+  void ReallocateWorkspace(size_t required_workspace_len,
+                           boost::upgrade_lock<boost::shared_mutex>* lock) {
+    boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(*lock);
+    if (required_workspace_len <= workspace_len_) {
+      return;
+    }
+    void* new_workspace = paddle::memory::Alloc(place_, required_len);
+    if (workspace_ != nullptr) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      PADDLE_ENFORCE(cudaGetLastError());
+      paddle::memory::Free(place_, workspace_);
+    }
+    workspace_ = new_workspace;
+    workspace_len_ = required_len;
+  }
+
   cudnnHandle_t cudnn_handle_;
   void* workspace_;
   size_t workspace_len_;
 
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;
+
+  boost::shared_mutex mtx_;
 };
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
@@ -228,11 +245,12 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
 }
 
 cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return cudnn_holder_->get_cudnn_handle();
+  return cudnn_holder_->cudnn_handle();
 }
 
-void* CUDADeviceContext::cudnn_workspace(size_t required_len) const {
-  return cudnn_holder_->get_workspace(required_len);
+void CUDADeviceContext::RunCudnnFuncWithWorkspace(
+    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
+  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
 }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }

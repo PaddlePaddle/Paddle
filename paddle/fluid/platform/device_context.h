@@ -97,9 +97,10 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return cudnn  handle in the device context. */
   cudnnHandle_t cudnn_handle() const;
 
-  /*! \brief  Return a cudnn workspace whose length is greater than the
-   * 'required_len'. */
-  void* cudnn_workspace(size_t required_len) const;
+  /*! \brief  Run a cudnn function with the workspace provided by
+   * CUDADeviceContext */
+  void RunCudnnFuncWithWorkspace(const std::function<void(void*)>& cudnn_func,
+                                 size_t workspace_len) const;
 
   /*! \brief  Return cuda stream in the device context. */
   cudaStream_t stream() const;
