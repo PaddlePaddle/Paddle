@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 import unittest
 from test_dist_base import TestDistBase
 
@@ -23,9 +24,8 @@ class TestDistTextClassification2x2(TestDistBase):
         self._use_cuda = False
 
     def test_text_classification(self):
-        import os
-        os.environ['USE_CUDA'] = 'FALSE'
-        self.check_with_place("dist_text_classification.py", delta=1e-7)
+        os.environ['CPU_NUM'] = '1'
+        self.check_with_place("dist_text_classification.py", delta=1e-6)
 
 
 class TestDistTextClassification2x2Async(TestDistBase):
@@ -34,8 +34,7 @@ class TestDistTextClassification2x2Async(TestDistBase):
         self._use_cuda = False
 
     def test_se_resnext(self):
-        import os
-        os.environ['USE_CUDA'] = 'FALSE'
+        os.environ['CPU_NUM'] = '1'
         self.check_with_place("dist_text_classification.py", delta=100)
 
 

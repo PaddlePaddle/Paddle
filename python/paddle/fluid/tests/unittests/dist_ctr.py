@@ -105,7 +105,4 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
-    import os
-    os.environ['CPU_NUM'] = '1'
-    os.environ['USE_CUDA'] = "FALSE"
     runtime_main(TestDistCTR2x2)
