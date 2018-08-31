@@ -64,7 +64,8 @@ struct Argument {
   template <typename T>
   void Set(const std::string& key, T* data) {
     PADDLE_ENFORCE_NOT_NULL(data);
-    PADDLE_ENFORCE(!attrs_.count(key), "duplicate attr called %s", key);
+    PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
+                   key);
     attrs_[key] = data;
     attr_deleters_[key] = [data, key, this]() {
       VLOG(3) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";

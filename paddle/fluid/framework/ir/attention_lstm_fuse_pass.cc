@@ -59,7 +59,7 @@ void FindWhileOp(Graph* graph) {
 
   auto handle = [&](const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* g) {
-    auto* while_pat_node = gpd.pattern().RetriveNode("while");
+    auto* while_pat_node = gpd.pattern().RetrieveNode("while");
     auto* while_node = subgraph.at(while_pat_node);
     marked_nodes.insert(while_node);
   };
