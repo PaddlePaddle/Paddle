@@ -15,11 +15,10 @@ limitations under the License. */
 #include <unordered_set>
 #include <vector>
 
-#ifdef PADDLE_WITH_CUDA
-#include <boost\thread\thread.hpp>
-#endif
-
 #include "paddle/fluid/memory/memory.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/rw_lock.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -158,9 +157,14 @@ class CudnnHolder {
 
   void RunFunc(const std::function<void(void*)>& cudnn_func,
                size_t required_workspace_len) {
-    boost::upgrade_lock<boost::shared_mutex> shared_lock(mtx_);
+    framework::RWLockGuard lock_guard(&rw_lock_,
+                                      framework::RWLockGuard::Status::kRDLock);
     if (required_workspace_len > workspace_len_) {
-      ReallocateWorkspace(required_workspace_len, &shared_lock);
+      lock_guard.UnLock();
+      lock_guard.WRLock();
+      ReallocateWorkspace(required_workspace_len);
+      lock_guard.UnLock();
+      lock_guard.RDLock();
     }
     cudnn_func(workspace_);
   }
@@ -168,9 +172,7 @@ class CudnnHolder {
   ~CudnnHolder() { PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_)); }
 
  private:
-  void ReallocateWorkspace(size_t required_workspace_len,
-                           boost::upgrade_lock<boost::shared_mutex>* lock) {
-    boost::upgrade_to_unique_lock<boost::shared_mutex> unique_lock(*lock);
+  void ReallocateWorkspace(size_t required_workspace_len) {
     if (required_workspace_len <= workspace_len_) {
       return;
     }
@@ -192,7 +194,7 @@ class CudnnHolder {
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;
 
-  boost::shared_mutex mtx_;
+  framework::RWLock rw_lock_;
 };
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
