@@ -19,15 +19,18 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/profiler.h"
+
 DEFINE_string(infer_model, "", "model path for LAC");
 DEFINE_string(infer_data, "", "data file for LAC");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(burning, 0, "Burning before repeat.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
+
 namespace paddle {
 namespace inference {
 namespace analysis {
+
 struct DataRecord {
   std::vector<int64_t> data;
   std::vector<size_t> lod;
