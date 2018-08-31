@@ -355,6 +355,7 @@ class ParallelDoGradOpDescMaker : public framework::SingleGradOpDescMaker {
         grad->SetInput(framework::GradVarName(output_param), og_names);
       }
     }
+    grad->SetInput("Communicator", {"nccl_com__do_not_change_"});
     grad->SetAttrMap(this->Attrs());
     grad->SetBlockAttr(kParallelBlock, grad_block_[0]);
 

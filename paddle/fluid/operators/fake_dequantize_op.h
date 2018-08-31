@@ -19,22 +19,29 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+template <typename DeviceContext, typename T>
+struct DequantizeFunctor {
+  void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
+                  const framework::Tensor* scale, T max_range,
+                  framework::Tensor* out);
+};
+
 template <typename DeviceContext, typename T>
 class FakeDequantizeMaxAbsKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
     auto* in = ctx.Input<framework::Tensor>("X");
+    auto* scale = ctx.Input<framework::Tensor>("Scale");
     auto* out = ctx.Output<framework::Tensor>("Out");
-    out->mutable_data<T>(in->place());
 
-    int num_bits = ctx.Attr<int>("num_bits");
-    T scale = static_cast<T>(ctx.Attr<float>("scale"));
-    int range = std::pow(2, num_bits) - 1;
+    float max_range = ctx.Attr<float>("max_range");
 
-    auto eigen_out = framework::EigenVector<T>::Flatten(*out);
-    auto eigen_in = framework::EigenVector<T>::Flatten(*in);
-    auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-    eigen_out.device(dev) = (scale / range) * eigen_in;
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    out->mutable_data<T>(dev_ctx.GetPlace());
+
+    DequantizeFunctor<DeviceContext, T>()(dev_ctx, in, scale,
+                                          static_cast<T>(max_range), out);
   }
 };
 

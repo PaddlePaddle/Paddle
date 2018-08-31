@@ -44,7 +44,8 @@ class Timer {
   }
 };
 
-void split(const std::string &str, char sep, std::vector<std::string> *pieces) {
+static void split(const std::string &str, char sep,
+                  std::vector<std::string> *pieces) {
   pieces->clear();
   if (str.empty()) {
     return;
@@ -60,7 +61,8 @@ void split(const std::string &str, char sep, std::vector<std::string> *pieces) {
     pieces->push_back(str.substr(pos));
   }
 }
-void split_to_float(const std::string &str, char sep, std::vector<float> *fs) {
+static void split_to_float(const std::string &str, char sep,
+                           std::vector<float> *fs) {
   std::vector<std::string> pieces;
   split(str, sep, &pieces);
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*fs),
@@ -76,27 +78,14 @@ std::string to_string(const std::vector<T> &vec) {
 }
 template <>
 std::string to_string<std::vector<float>>(
-    const std::vector<std::vector<float>> &vec) {
-  std::stringstream ss;
-  for (const auto &piece : vec) {
-    ss << to_string(piece) << "\n";
-  }
-  return ss.str();
-}
+    const std::vector<std::vector<float>> &vec);
+
 template <>
 std::string to_string<std::vector<std::vector<float>>>(
-    const std::vector<std::vector<std::vector<float>>> &vec) {
-  std::stringstream ss;
-  for (const auto &line : vec) {
-    for (const auto &rcd : line) {
-      ss << to_string(rcd) << ";\t";
-    }
-    ss << '\n';
-  }
-  return ss.str();
-}
+    const std::vector<std::vector<std::vector<float>>> &vec);
+
 // clang-format off
-void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>> &data) {
+static void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>> &data) {
   // Assign buffer
   int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1, [](int a, int b) { return a * b; });
   tensor->data.Resize(sizeof(float) * dim);

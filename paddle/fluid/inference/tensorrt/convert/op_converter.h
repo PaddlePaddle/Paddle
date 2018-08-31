@@ -79,6 +79,14 @@ class OpConverter {
         it =
             Registry<OpConverter>::Lookup("elementwise_" + op_type + "_tensor");
       }
+      PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
+                              op_desc.Type());
+    }
+
+    if (op_desc.Type() == "depthwise_conv2d") {
+      it = Registry<OpConverter>::Lookup("conv2d");
+      PADDLE_ENFORCE_NOT_NULL(it, "no OpConverter for optype [%s]",
+                              op_desc.Type());
     }
 
     if (!it) {

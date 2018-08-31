@@ -189,7 +189,6 @@ def Print(input,
                message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='print',
         inputs={'In': input},
@@ -202,9 +201,7 @@ def Print(input,
             'print_tensor_shape': print_tensor_shape,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
-        },
-        outputs={'Out': out})
-    return out
+        })
 
 
 class BlockGuard(object):
