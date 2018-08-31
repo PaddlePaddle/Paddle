@@ -18,3 +18,4 @@ cc_test(graph_helper_test SRCS graph_helper_test.cc DEPS graph graph_helper op_r
 cc_test(graph_to_program_pass_test SRCS graph_to_program_pass_test.cc DEPS graph_to_program_pass)
 cc_test(test_graph_pattern_detector SRCS graph_pattern_detector_tester.cc DEPS graph_pattern_detector)
 cc_test(test_fc_fuse_pass SRCS fc_fuse_pass_tester.cc DEPS fc_fuse_pass graph_pattern_detector graph pass graph_traits framework_proto)
+set(GLOB_PASS_LIB fc_fuse_pass attention_lstm_fuse_pass infer_clean_graph_pass fc_lstm_fuse_pass seq_concat_fc_fuse_pass)
