@@ -24,7 +24,7 @@ limitations under the License. */
 #endif
 
 #ifdef PADDLE_WITH_MKLDNN
-#include <mkldnn.hpp>
+#include "mkldnn.hpp"
 #endif
 
 #include <map>
