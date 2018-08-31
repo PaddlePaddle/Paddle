@@ -69,7 +69,7 @@ void NativePaddlePredictor::PrepareFeedFetch() {
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (fetchs_.size() <= idx) {
+      if (fetchs_.size() <= static_cast<size_t>(idx)) {
         fetchs_.resize(idx + 1);
       }
       fetchs_[idx] = op;

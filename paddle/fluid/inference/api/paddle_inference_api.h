@@ -150,6 +150,10 @@ struct TensorRTConfig : public NativeConfig {
   int workspace_size{1 << 30};
 };
 
+struct AnalysisConfig : public NativeConfig {
+  bool enable_ir_optim = true;
+};
+
 // A factory to help create different predictors.
 //
 // FOR EXTENSION DEVELOPER:

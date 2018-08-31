@@ -33,7 +33,7 @@ using framework::proto::ProgramDesc;
  */
 class AnalysisPredictor : public NativePaddlePredictor {
  public:
-  explicit AnalysisPredictor(const NativeConfig& config)
+  explicit AnalysisPredictor(const AnalysisConfig& config)
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
@@ -92,9 +92,11 @@ class AnalysisPredictor : public NativePaddlePredictor {
 
   void OptimizeInferenceProgram() {
     LOG(INFO) << "optimize begin";
-    FLAGS_IA_enable_ir = true;
     FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-    FLAGS_IA_output_storage_path = "";  // Don't output the model.
+    if (config_.enable_ir_optim) {
+      FLAGS_IA_enable_ir = true;
+      FLAGS_IA_output_storage_path = "";  // Don't output the model.
+    }
     // Analyze inference_program
     Argument argument;
     if (!config_.model_dir.empty()) {
@@ -125,13 +127,13 @@ class AnalysisPredictor : public NativePaddlePredictor {
   }
 
  private:
-  NativeConfig config_;
+  AnalysisConfig config_;
 };
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kAnalysis>(const NativeConfig& config) {
-  VLOG(3) << "create NativePredictor";
+    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config) {
+  VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(

@@ -52,14 +52,18 @@ void Main(int batch_size) {
 
   // shape --
   // Create Predictor --
-  NativeConfig config;
+  AnalysisConfig config;
   config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
+  config.enable_ir_optim = false;
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+          config);
 
   std::vector<PaddleTensor> output_slots;
-  CHECK(predictor->Run(input_slots, &output_slots));
+  for (int i = 0; i < FLAGS_repeat; i++) {
+    CHECK(predictor->Run(input_slots, &output_slots));
+  }
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();
   for (auto& output : output_slots) {
