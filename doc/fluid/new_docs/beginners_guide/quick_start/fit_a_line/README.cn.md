@@ -231,10 +231,12 @@ trainer.train(
     event_handler=event_handler_plot,
     feed_order=feed_order)
 ```
+
 <p align="center">
-    <img src = "image/train_and_test.png" width=400><br/>
+    <img src = "image/train_and_test1.png" width=400><br/>
     图3. 训练结果
 </p>
+
 
 ## 预测
 提供一个`inference_program`和一个`params_dirname`来初始化预测器。`params_dirname`用来存储我们的参数。
