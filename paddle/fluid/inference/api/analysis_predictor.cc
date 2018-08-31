@@ -65,11 +65,12 @@ bool AnalysisPredictor::Init(
   PADDLE_ENFORCE(scope_.get());
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
-
   // Get the feed_target_names and fetch_target_names
-  feed_target_names_ = inference_program_->GetFeedTargetNames();
-  fetch_target_names_ = inference_program_->GetFetchTargetNames();
+  PrepareFeedFetch();
   return true;
+}
+
+return true;
 }
 
 void AnalysisPredictor::OptimizeInferenceProgram() {
