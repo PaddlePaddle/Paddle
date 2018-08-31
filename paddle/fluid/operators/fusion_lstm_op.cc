@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
-DEFINE_bool(seq_mode, false, "Use sequence mode");
+DEFINE_bool(seq_mode, true, "Use sequence mode");
 
 namespace paddle {
 namespace operators {
