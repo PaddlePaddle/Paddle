@@ -744,7 +744,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_THROW(
         "the distribute training related op should be in [split_byref, "
         "concat].");
   }

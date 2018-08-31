@@ -76,8 +76,18 @@ class TestDistRunnerBase(object):
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
         strategy.allow_op_delay = False
+        build_stra = fluid.BuildStrategy()
+
+        if args.use_reduce:
+            build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce
+        else:
+            build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
+
         exe = fluid.ParallelExecutor(
-            True, loss_name=avg_cost.name, exec_strategy=strategy)
+            True,
+            loss_name=avg_cost.name,
+            exec_strategy=strategy,
+            build_strategy=build_stra)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -106,16 +116,20 @@ def runtime_main(test_class):
     import paddle.fluid as fluid
     import paddle.fluid.core as core
 
-    if len(sys.argv) != 7:
-        print(
-            "Usage: python dist_se_resnext.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist]"
-        )
-    role = sys.argv[1]
-    endpoints = sys.argv[2]
-    trainer_id = int(sys.argv[3])
-    current_endpoint = sys.argv[4]
-    trainers = int(sys.argv[5])
-    is_dist = True if sys.argv[6] == "TRUE" else False
+    parser = argparse.ArgumentParser(description='Run dist test.')
+    parser.add_argument(
+        '--role', type=str, required=True, choices=['pserver', 'trainer'])
+    parser.add_argument('--endpoints', type=str, required=False, default="")
+    parser.add_argument('--is_dist', action='store_true')
+    parser.add_argument('--trainer_id', type=int, required=False, default=0)
+    parser.add_argument('--trainers', type=int, required=False, default=1)
+    parser.add_argument(
+        '--current_endpoint', type=str, required=False, default="")
+    parser.add_argument('--sync_mode', action='store_true')
+    parser.add_argument('--mem_opt', action='store_true')
+    parser.add_argument('--use_reduce', action='store_true')
+
+    args = parser.parse_args()
 
     model = test_class()
     if role == "pserver":
@@ -135,15 +149,27 @@ class TestDistBase(unittest.TestCase):
         self._pservers = 2
         self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
         self._python_interp = "python"
+        self._sync_mode = True
+        self._mem_opt = False
+        self._use_reduce = False
+        self._setup_config()
 
     def start_pserver(self, model_file, check_error_log):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        ps0_cmd = "%s %s pserver %s 0 %s %d TRUE" % \
+        ps_cmd = "%s %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --is_dist"
+        ps0_cmd = ps_cmd % \
             (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
              self._trainers)
-        ps1_cmd = "%s %s pserver %s 0 %s %d TRUE" % \
+        ps1_cmd = ps_cmd % \
             (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
              self._trainers)
+
+        if self._sync_mode:
+            ps0_cmd += " --sync_mode"
+            ps1_cmd += " --sync_mode"
+        if self._mem_opt:
+            ps0_cmd += " --mem_opt"
+            ps1_cmd += " --mem_opt"
 
         ps0_pipe = subprocess.PIPE
         ps1_pipe = subprocess.PIPE
@@ -226,12 +252,23 @@ class TestDistBase(unittest.TestCase):
         self._wait_ps_ready(ps1.pid)
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
-        tr0_cmd = "%s %s trainer %s 0 %s %d TRUE" % \
-            (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
-             self._trainers)
-        tr1_cmd = "%s %s trainer %s 1 %s %d TRUE" % \
-            (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
-             self._trainers)
+        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist"
+        tr0_cmd = tr_cmd % \
+            (self._python_interp, model_file, self._ps_endpoints,
+             0, ps0_ep, self._trainers)
+        tr1_cmd = tr_cmd % \
+            (self._python_interp, model_file, self._ps_endpoints,
+             1, ps1_ep, self._trainers)
+
+        if self._sync_mode:
+            tr0_cmd += " --sync_mode"
+            tr1_cmd += " --sync_mode"
+        if self._mem_opt:
+            tr0_cmd += " --mem_opt"
+            tr1_cmd += " --mem_opt"
+        if self._use_reduce:
+            tr0_cmd += " --use_reduce"
+            tr1_cmd += " --use_reduce"
 
         env0 = {"CUDA_VISIBLE_DEVICES": "0"}
         env1 = {"CUDA_VISIBLE_DEVICES": "1"}
@@ -282,6 +319,10 @@ class TestDistBase(unittest.TestCase):
         # FIXME: use terminate() instead of sigkill.
         os.kill(ps0.pid, signal.SIGKILL)
         os.kill(ps1.pid, signal.SIGKILL)
+        ps0.terminate()
+        ps1.terminate()
+        ps0.wait()
+        ps1.wait()
         FNULL.close()
 
         self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
