@@ -42,7 +42,7 @@ void Main(int batch_size) {
   config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
   std::vector<PaddleTensor> output_slots;
   CHECK(predictor->Run(input_slots, &output_slots));
