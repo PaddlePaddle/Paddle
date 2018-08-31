@@ -108,6 +108,25 @@ struct BinaryCompoundGradDyFunctor {
   DUnaryFun d_unary_fun_;
 };
 
+// Z = BinaryFunctor(X, UnaryFunctor(Y))
+template <typename T, typename DUnaryFun>
+struct BinaryCompoundGradDIntermedaiteOutFunctor {
+  explicit BinaryCompoundGradDIntermedaiteOutFunctor(
+      const DUnaryFun &d_unary_fun)
+      : d_unary_fun_(d_unary_fun) {}
+
+  inline HOSTDEVICE T operator()(T x, T y, T dout) {
+    return dout * d_unary_fun_(y);
+  }
+
+  inline HOSTDEVICE T GetDout(T y, T intermediate_out, T dout) {
+    return dout * d_unary_fun_(y, intermediate_out);
+  }
+
+ private:
+  DUnaryFun d_unary_fun_;
+};
+
 template <typename T, typename DUnaryFun, typename BinaryFun,
           typename DBinaryFun, bool Recomputation = true>
 struct UnaryCompoundGradDxFunctor {
@@ -178,6 +197,26 @@ struct UnaryCompoundGradDyFunctor {
   DUnaryFun d_unary_fun_;
   BinaryFun binary_fun_;
   DBinaryFun d_binary_fun_;
+};
+
+// Z = UnaryFunctor(BinaryFunctor(X, Y))
+template <typename T, typename DUnaryFun, typename BinaryFun>
+struct UnaryCompoundGradDIntermediateFunctor {
+  UnaryCompoundGradDIntermediateFunctor(const DUnaryFun &d_unary_fun,
+                                        const BinaryFun &binary_fun)
+      : d_unary_fun_(d_unary_fun), binary_fun_(binary_fun) {}
+
+  inline HOSTDEVICE T operator()(T x, T y, T dout) {
+    return dout * d_unary_fun_(binary_fun_(x, y));
+  }
+
+  inline HOSTDEVICE T GetDout(T y, T intermediate_out, T dout) {
+    return dout * d_unary_fun_(intermediate_out);
+  }
+
+ private:
+  DUnaryFun d_unary_fun_;
+  BinaryFun binary_fun_;
 };
 
 }  // namespace math

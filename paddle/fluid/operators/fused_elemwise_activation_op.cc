@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused_elemwise_activation_op.h"
-#include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -227,30 +225,36 @@ class FusedElemwiseActivationGradMaker
 
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op_desc_ptr = new framework::OpDesc();
-    op_desc_ptr->SetType(this->ForwardOpType() + "_grad");
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType(this->ForwardOpType() + "_grad");
 
+    // X, Y, X@Grad, Y@Grad
     for (auto &input_param : this->InputNames()) {
-      op_desc_ptr->SetInput(input_param, this->Input(input_param));
-      op_desc_ptr->SetOutput(framework::GradVarName(input_param),
-                             this->InputGrad(input_param, true));
+      grad_op->SetInput(input_param, this->Input(input_param));
+      grad_op->SetOutput(framework::GradVarName(input_param),
+                         this->InputGrad(input_param, true));
     }
 
-    for (auto &output_param : this->OutputNames()) {
-      op_desc_ptr->SetInput(output_param, this->Output(output_param));
-      op_desc_ptr->SetInput(framework::GradVarName(output_param),
-                            this->OutputGrad(output_param));
-    }
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op_desc_ptr->SetAttrMap(this->Attrs());
+    grad_op->SetAttrMap(this->Attrs());
 
     std::vector<std::string> functor_names =
-        boost::get<std::vector<std::string>>(
-            op_desc_ptr->GetAttr("functor_list"));
+        boost::get<std::vector<std::string>>(grad_op->GetAttr("functor_list"));
+
     functor_names[0] += "_grad";
     functor_names[1] += "_grad";
-    op_desc_ptr->SetAttr("functor_list", functor_names);
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    grad_op->SetAttr("functor_list", functor_names);
+
+    if (boost::get<bool>(grad_op->GetAttr("keep_intermediate_value"))) {
+      PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
+      grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
+      grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
+                         this->OutputGrad("IntermediateOut"));
+    }
+
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -264,14 +268,16 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
       PADDLE_ENFORCE(ctx->HasInput("IntermediateOut"),
                      "Input(IntermediateOut) should not be null");
-    } else {
-      PADDLE_ENFORCE_EQ(ctx->Inputs(framework::GradVarName("Out")).size(), 1);
+      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("IntermediateOut")),
+                     "Output(%s) should not be null",
+                     framework::GradVarName("IntermediateOut"));
     }
 
     auto funtor_list =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
+    auto inter_grad_name = framework::GradVarName("IntermediateOut");
 
     if (ctx->HasOutput(x_grad_name)) {
       if (ctx->HasInputs("X")) {
@@ -281,12 +287,6 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
         // Node: If "X" is absence, the shape of Y should be a continuous
         // subsequence of X, if not, we could not infer the shape of dx.
 
-        // Currently, only when Binary is elementwise_add or elementwise_sub,
-        // the "X" could be absent.
-        PADDLE_ENFORCE(InputXCanBeAbsent(funtor_list),
-                       "Only when BinaryFunctor is elementwise_add, the 'X' "
-                       "could be absent.");
-
         // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
         if (IsUnaryCompound(funtor_list)) {
           PADDLE_ENFORCE(
@@ -295,11 +295,35 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
               "is elementwise_add, the intermediate_out must be not absent.");
         }
 
+        // Currently, only when Binary is elementwise_add or elementwise_sub,
+        // the "X" could be absent.
+        PADDLE_ENFORCE(InputXCanBeAbsent(funtor_list),
+                       "Only when BinaryFunctor is elementwise_add, the 'X' "
+                       "could be absent.");
+
         ctx->SetOutputDim(x_grad_name,
                           ctx->GetInputDim(framework::GradVarName("Out")));
         ctx->ShareLoD(framework::GradVarName("Out"), x_grad_name);
       }
     }
+
+    if (ctx->Attrs().Get<bool>("keep_intermediate_value") &&
+        ctx->HasOutput(inter_grad_name)) {
+      // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
+      if (IsUnaryCompound(funtor_list)) {
+        PADDLE_ENFORCE(
+            ctx->HasInputs("IntermediateOut"),
+            "If the compound_functor is Unary(Binary(X, Y)) and Binary "
+            "is elementwise_add, the intermediate_out must be not absent.");
+        ctx->SetOutputDim(inter_grad_name,
+                          ctx->GetInputDim(framework::GradVarName("Out")));
+        ctx->ShareLoD(framework::GradVarName("Out"), inter_grad_name);
+      } else {
+        ctx->SetOutputDim(inter_grad_name, ctx->GetInputDim("Y"));
+        ctx->ShareLoD("Y", inter_grad_name);
+      }
+    }
+
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
@@ -310,7 +334,6 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    //    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     auto input_data_type_index = ctx.Input<framework::Tensor>("Y")->type();
     auto input_data_type = framework::ToDataType(input_data_type_index);
     return framework::OpKernelType(input_data_type, ctx.GetPlace());

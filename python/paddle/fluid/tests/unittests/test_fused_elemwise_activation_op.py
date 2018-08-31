@@ -73,22 +73,19 @@ def create_test_class(test_case, callback, attrs):
         def test_check_output(self):
             self.check_output()
 
+        # FIXME(zcd): the intermediate_out_grad is not checked.
         def test_check_grad_normal(self):
             if self.attrs["keep_intermediate_value"]:
-                self.check_grad(
-                    ['X', 'Y'], ['Out', 'IntermediateOut'],
-                    max_relative_error=0.005,
-                    sum_outputs=['Out'])
+                self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
             else:
                 self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
 
         def test_check_grad_ingore_x(self):
             if self.attrs["keep_intermediate_value"]:
                 self.check_grad(
-                    ['Y'], ['Out', 'IntermediateOut'],
+                    ['Y'], ['Out'],
                     max_relative_error=0.005,
-                    no_grad_set=set("X"),
-                    sum_outputs=['Out'])
+                    no_grad_set=set("X"))
             else:
                 self.check_grad(
                     ['Y'], ['Out'],
@@ -98,10 +95,9 @@ def create_test_class(test_case, callback, attrs):
         def test_check_grad_ingore_y(self):
             if self.attrs["keep_intermediate_value"]:
                 self.check_grad(
-                    ['X'], ['Out', 'IntermediateOut'],
+                    ['X'], ['Out'],
                     max_relative_error=0.005,
-                    no_grad_set=set("Y"),
-                    sum_outputs=['Out'])
+                    no_grad_set=set("Y"))
             else:
                 self.check_grad(
                     ['X'], ['Out'],
@@ -304,7 +300,7 @@ for mode in {0, 1}:
     add_relu_func = partial(add_relu_func, mode=mode)
 
     for recomputation in {True, False}:
-        for keep_intermediate_value in {True, False}:
+        for keep_intermediate_value in {False, True}:
             suffix = ("_keep_intermediate_value" if keep_intermediate_value else "") \
                      + ("_recomputation" if recomputation else "") \
                      + ("_mode_"+ str(mode))
