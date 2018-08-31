@@ -11,6 +11,8 @@ cc_library(attention_lstm_fuse_pass SRCS attention_lstm_fuse_pass.cc DEPS graph 
 cc_library(infer_clean_graph_pass SRCS infer_clean_graph_pass.cc DEPS graph pass)
 cc_library(fc_lstm_fuse_pass SRCS fc_lstm_fuse_pass.cc DEPS graph graph_pattern_detector)
 cc_library(seq_concat_fc_fuse_pass SRCS seq_concat_fc_fuse_pass.cc DEPS graph graph_pattern_detector)
+cc_library(ir DEPS node graph graph_helper pass
+  graph_viz_pass graph_to_program_pass graph_traits graph_pattern_detector fc_fuse_pass attention_lstm_fuse_pass infer_clean_graph_pass fc_lstm_fuse_pass seq_concat_fc_fuse_pass)
 
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)
