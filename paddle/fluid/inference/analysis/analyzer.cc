@@ -93,7 +93,6 @@ class DfgPassManagerImpl final : public DfgPassManager {
   void AddGraphvizDebugerPass(Pass* pass) {
     auto* debuger_pass = pass->CreateGraphvizDebugerPass();
     if (debuger_pass) {
-      LOG(INFO) << " - register debug pass [" << debuger_pass->repr() << "]";
       Register(debuger_pass->repr(), debuger_pass);
     }
   }
