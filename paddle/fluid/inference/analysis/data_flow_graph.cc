@@ -480,10 +480,47 @@ void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph) {
     for (auto *out : op_nodes[i]->outlinks) {
       if (follow_up_input_names.count(out->name())) {
         filtered_subgraph_outlinks.push_back(out);
+      } else {
+        out->SetDeleted();
       }
     }
     PADDLE_ENFORCE_GE(filtered_subgraph_outlinks.size(), 1UL);
     op_nodes[i]->outlinks = filtered_subgraph_outlinks;
+  }
+}
+
+void FlexibleDFS(const std::vector<Node *> &source, bool reverse,
+                 const std::function<bool(const Node *)> &enter,
+                 const std::function<bool(const Node *)> &leave) {
+  typedef struct {
+    const Node *node;
+    bool leave;
+  } FNode;
+  std::vector<FNode> stack;
+  for (auto &node : source) {
+    stack.push_back(FNode{node, false});
+  }
+  std::unordered_set<const Node *> visited;
+  while (!stack.empty()) {
+    auto fnode = stack.back();
+    stack.pop_back();
+
+    if (fnode.leave) {
+      if (leave && !leave(fnode.node)) return;
+    }
+    if (visited.count(fnode.node)) continue;
+    visited.insert(fnode.node);
+
+    if (enter && !enter(fnode.node)) return;
+
+    if (leave) stack.push_back(FNode{fnode.node, true});
+    const std::vector<Node *> iter_nodes =
+        reverse == true ? fnode.node->inlinks : fnode.node->outlinks;
+    for (const Node *node : iter_nodes) {
+      if (!visited.count(node)) {
+        stack.push_back(FNode{node, false});
+      }
+    }
   }
 }
 
