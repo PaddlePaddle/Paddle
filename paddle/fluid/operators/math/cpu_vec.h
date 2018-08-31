@@ -188,6 +188,65 @@ inline void vec_bias_sub<float, platform::jit::avx512_common>(const int n,
   vec_bias_sub<float, platform::jit::avx2>(n, a, x, y);
 }
 
+// out = x*y + (1-x)*z
+template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
+inline void vec_cross(const int n, const T* x, const T* y, const T* z, T* out) {
+  for (int i = 0; i < n; ++i) {
+    out[i] = x[i] * y[i] + (static_cast<T>(1) - x[i]) * z[i];
+  }
+}
+
+template <>
+inline void vec_cross<float, platform::jit::avx>(const int n, const float* x,
+                                                 const float* y, const float* z,
+                                                 float* out) {
+#ifdef __AVX__
+  constexpr int block = AVX_FLOAT_BLOCK;
+  if (n < block) {
+    vec_cross<float, platform::jit::isa_any>(n, x, y, z, out);
+    return;
+  }
+  const int rest = n % block;
+  const int end = n - rest;
+  int i = 0;
+  __m256 bias = _mm256_set1_ps(1.f);
+  __m256 tmpx, tmpy, tmpz;
+  for (i = 0; i < end; i += block) {
+    tmpx = _mm256_loadu_ps(x + i);
+    tmpy = _mm256_loadu_ps(y + i);
+    tmpz = _mm256_loadu_ps(z + i);
+    tmpy = _mm256_mul_ps(tmpx, tmpy);
+    tmpx = _mm256_sub_ps(bias, tmpx);
+    tmpz = _mm256_mul_ps(tmpx, tmpz);
+    tmpz = _mm256_add_ps(tmpy, tmpz);
+    _mm256_storeu_ps(out + i, tmpz);
+  }
+  if (rest == 0) {
+    return;
+  }
+  // can not continue move step if src and dst are inplace
+  for (i = n - rest; i < n; ++i) {
+    out[i] = x[i] * y[i] + (1.f - x[i]) * z[i];
+  }
+#else
+  vec_cross<float, platform::jit::isa_any>(n, x, y, z, out);
+#endif
+}
+
+template <>
+inline void vec_cross<float, platform::jit::avx2>(const int n, const float* x,
+                                                  const float* y,
+                                                  const float* z, float* out) {
+  vec_cross<float, platform::jit::avx>(n, x, y, z, out);
+}
+
+template <>
+inline void vec_cross<float, platform::jit::avx512_common>(
+    const int n, const float* x, const float* y, const float* z, float* out) {
+  // TODO(TJ): enable me
+  vec_cross<float, platform::jit::avx>(n, x, y, z, out);
+}
+
 template <typename T, platform::jit::cpu_isa_t isa = platform::jit::isa_any>
 inline void vec_add_bias(const int n, const T a, const T* x, T* y) {
   for (int i = 0; i < n; ++i) {
