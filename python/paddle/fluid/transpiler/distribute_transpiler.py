@@ -273,6 +273,10 @@ class DistributeTranspiler(object):
                 name=framework.generate_control_dev_var_name())
             grad_name_to_send_dummy_out[grad_varname] = dummy_output
 
+            # get send op_role_var, if not splited, the grad should have .trainer suffix
+            # if splited, grad should be the original grad var name (split_by_ref and send
+            # will be on the same place). ParallelExecutor
+            # will use op_role_var to get expected device place to run this op.
             program.global_block()._insert_op(
                 index=index + 1,
                 type="send",
@@ -281,8 +285,10 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    OP_ROLE_VAR_ATTR_NAME:
-                    [self.grad_name_to_param_name[grad_varname], grad_varname],
+                    OP_ROLE_VAR_ATTR_NAME: [
+                        self.grad_name_to_param_name[grad_varname],
+                        splited_grad_varname
+                    ],
                     "sync_mode": not self.sync_mode,
                 })
             for _, var in enumerate(splited_vars):
@@ -326,6 +332,15 @@ class DistributeTranspiler(object):
                 recv_dep_in = grad_name_to_send_dummy_out[
                     self.param_name_to_grad_name[param_varname]]
             all_recv_outputs.extend(splited_var)
+            # get recv op_role_var, if not splited, the grad should have .trainer suffix
+            # if splited, grad should be the original grad var name. ParallelExecutor
+            # will use op_role_var to get expected device place to run this op.
+            orig_grad_name = self.param_name_to_grad_name[param_varname]
+            recv_op_role_var_name = orig_grad_name
+            splited_trainer_grad = self.grad_var_mapping[orig_grad_name]
+            if len(splited_trainer_grad) == 1:
+                recv_op_role_var_name = splited_trainer_grad[0].name
+
             program.global_block().append_op(
                 type="recv",
                 inputs={"X": [recv_dep_in]},
@@ -333,10 +348,8 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    OP_ROLE_VAR_ATTR_NAME: [
-                        param_varname,
-                        self.param_name_to_grad_name[param_varname]
-                    ],
+                    OP_ROLE_VAR_ATTR_NAME:
+                    [param_varname, recv_op_role_var_name],
                     "sync_mode": not self.sync_mode
                 })
 
