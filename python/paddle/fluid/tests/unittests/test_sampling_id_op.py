@@ -27,7 +27,7 @@ class TestSamplingIdOp(OpTest):
         self.init_kernel_type()
         self.X = np.random.random((100, 10)).astype('float32')
         self.inputs = {"X": self.X}
-        self.Y = np.random.random(100).astype('float32')
+        self.Y = np.random.random(100).astype('int64')
         self.outputs = {'Out': self.Y}
         self.attrs = {'max': 1.0, 'min': 0.0, 'seed': 1}
 
