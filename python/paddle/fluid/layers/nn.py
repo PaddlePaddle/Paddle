@@ -85,6 +85,8 @@ __all__ = [
     'one_hot',
     'autoincreased_step_counter',
     'reshape',
+    'squeeze',
+    'unsqueeze',
     'lod_reset',
     'lrn',
     'pad',
@@ -4530,6 +4532,89 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
         outputs={"Out": out})
 
     return helper.append_activation(out)
+
+
+def squeeze(input, axes, name=None):
+    """
+    Remove single-dimensional entries from the shape of a tensor. Takes a 
+    parameter axes with a list of axes to squeeze. If axes is not provided, all 
+    the single dimensions will be removed from the shape. If an axis is 
+    selected with shape entry not equal to one, an error is raised.
+        
+    Examples:
+    Case 1:
+      Given 
+        X.shape = (1, 3, 1, 5)
+      and
+        axes = [0]
+      we get:
+        Out.shape = (3, 1, 5)
+      Case 2:
+        Given
+          X.shape = (1, 3, 1, 5)
+        and 
+          axes = []
+        we get:
+          Out.shape = (3, 5)
+    
+    Args:
+        input (Variable): The input variable to be squeezed.
+        axes (list): List of integers, indicating the dimensions to be squeezed.
+        name (str|None): Name for this layer.
+
+    Returns:
+        Variable: Output squeezed variable.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[5, 1, 10])
+            y = layers.sequeeze(input=x, axes=[1])
+    """
+    helper = LayerHelper("squeeze", **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type="squeeze",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out})
+
+    return out
+
+
+def unsqueeze(input, axes, name=None):
+    """
+    Insert single-dimensional entries to the shape of a tensor. Takes one 
+    required argument axes, a list of dimensions that will be inserted. 
+    Dimension indices in axes are as seen in the output tensor. 
+
+    For example: 
+      Given a tensor such that tensor with shape [3, 4, 5], 
+      then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+    
+    Args:
+        input (Variable): The input variable to be unsqueezed.
+        axes (list): List of integers, indicating the dimensions to be inserted.
+        name (str|None): Name for this layer.
+
+    Returns:
+        Variable: Output unsqueezed variable.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[5, 10])
+            y = layers.unsequeeze(input=x, axes=[1])
+    """
+    helper = LayerHelper("unsqueeze", **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type="unsqueeze",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out})
+
+    return out
 
 
 def lod_reset(x, y=None, target_lod=None):
