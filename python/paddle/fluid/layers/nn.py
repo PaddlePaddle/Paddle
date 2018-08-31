@@ -103,6 +103,7 @@ __all__ = [
     'rank_loss',
     'prelu',
     'flatten',
+    'stack',
 ]
 
 
@@ -5479,4 +5480,18 @@ def flatten(x, axis=1, name=None):
         inputs={"X": x},
         outputs={'Out': out},
         attrs={"axis": axis})
+    return out
+
+
+def stack(x, axis=0):
+    helper = LayerHelper('stack', **locals())
+    axis = 0 if axis is None else axis
+
+    if not isinstance(x, list) and not isinstance(x, tuple):
+        x = [x]
+
+    out = helper.create_tmp_variable(x[0].dtype)
+    helper.append_op(
+        type='stack', inputs={'X': x}, outputs={'Y': out},
+        attrs={'axis': axis})
     return out
