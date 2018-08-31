@@ -201,13 +201,13 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   minute_tensor.lod.assign({one_batch.lod3});
   // clang-format on
   // assign data
-  TensorAssignData(&lod_attention_tensor,
-                   std::vector<std::vector<float>>({{0, 0}}));
+  TensorAssignData<float>(&lod_attention_tensor,
+                          std::vector<std::vector<float>>({{0, 0}}));
   std::vector<float> tmp_zeros(batch_size * 15, 0.);
-  TensorAssignData(&init_zero_tensor, {tmp_zeros});
-  TensorAssignData(&lod_tensor_tensor, one_batch.rnn_link_data);
-  TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
-  TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
+  TensorAssignData<float>(&init_zero_tensor, {tmp_zeros});
+  TensorAssignData<float>(&lod_tensor_tensor, one_batch.rnn_link_data);
+  TensorAssignData<float>(&week_tensor, one_batch.rnn_week_datas);
+  TensorAssignData<float>(&minute_tensor, one_batch.rnn_minute_datas);
   // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
