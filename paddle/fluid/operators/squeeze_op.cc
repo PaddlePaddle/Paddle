@@ -26,6 +26,8 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
                    "Input(X) of Squeeze operator should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of Squeeze operator should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
+                   "Output(XShape) of Squeeze operator should not be null.");
 
     const auto &x_dims = ctx->GetInputDim("X");
     // Check input tensor dims (<6) Eigen limit.
@@ -41,6 +43,8 @@ class SqueezeOpInferShape : public framework::InferShapeBase {
     }
 
     auto out_dims = GetOutputShape(axes, x_dims);
+    ctx->SetOutputDim("XShape", x_dims);
+    ctx->ShareLoD("X", "XShape");
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
@@ -110,7 +114,7 @@ class SqueezeOp : public framework::OperatorBase {
     // Invoke Reshape Op
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
-        {{"Out", {Output("Out")}}}, attrs);
+        {{"Out", {Output("Out")}}, {"XShape", {Output("XShape")}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
@@ -120,6 +124,10 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor). The input tensor of squeeze operator.");
     AddOutput("Out", "(Tensor). The output tensor of squeeze operator.");
+    AddOutput("XShape",
+              "XShape is just used to store the shape and lod of X, which will "
+              "be used in SqueezeGradOp.")
+        .AsIntermediate();
     AddAttr<std::vector<int>>("axes",
                               "(std::vector<int>). List of integers,"
                               " indicating the dimensions to squeeze.")
@@ -152,12 +160,27 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
   }
 };
 
+class SqueezeGradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("squeeze_grad");
+    grad_op->SetInput("XShape", Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 class SqueezeGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
+                          context->GetInputDim("XShape"));
+    context->ShareLoD("XShape", framework::GradVarName("X"));
   }
 };
 
@@ -170,13 +193,14 @@ class SqueezeGradOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto dx_name = Output(framework::GradVarName("X"));
     auto dout_name = Input(framework::GradVarName("Out"));
-    auto x_dims = scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
+    auto x_shape = Input("XShape");
+    auto x_dims = scope.FindVar(x_shape)->Get<framework::LoDTensor>().dims();
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
-        attrs);
+        "reshape", {{"X", {dout_name}}, {"Shape", {}}},
+        {{"Out", {dx_name}}, {"XShape", {x_shape}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
@@ -189,6 +213,5 @@ USE_OP(reshape);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(squeeze, ops::SqueezeOp, ops::SqueezeOpMaker,
-                  ops::SqueezeOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::SqueezeOpInferShape, ops::SqueezeGradOpMaker);
 REGISTER_OPERATOR(squeeze_grad, ops::SqueezeGradOp, ops::SqueezeGradInferShape);

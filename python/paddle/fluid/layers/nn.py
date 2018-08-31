@@ -4577,11 +4577,13 @@ def squeeze(input, axes, name=None):
     """
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type="squeeze",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -4612,11 +4614,13 @@ def unsqueeze(input, axes, name=None):
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
         type="unsqueeze",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -5730,10 +5734,12 @@ def flatten(x, axis=1, name=None):
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
         type='flatten',
         inputs={"X": x},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'XShape': x_shape},
         attrs={"axis": axis})
     return out
 

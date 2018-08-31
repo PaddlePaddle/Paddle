@@ -27,6 +27,8 @@ class FlattenOpInferShape : public framework::InferShapeBase {
                    "Input (X) of Flatten op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output (Output) of Flatten op should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
+                   "Output (XShape) of Flatten op should not be null.");
     const auto &axis = ctx->Attrs().Get<int>("axis");
     const auto &in_dims = ctx->GetInputDim("X");
     PADDLE_ENFORCE(axis >= 0, "The axis should be greater than or equal to 0.");
@@ -35,6 +37,8 @@ class FlattenOpInferShape : public framework::InferShapeBase {
         "The axis should be less than or equal to input tensor's rank.");
 
     const auto &out_dims = GetOutputShape(axis, in_dims);
+    ctx->SetOutputDim("XShape", in_dims);
+    ctx->ShareLoD("X", "XShape");
     ctx->SetOutputDim("Out", framework::make_ddim(out_dims));
     if (in_dims[0] == out_dims[0]) {
       // Only pass LoD when the first dimension of output and Input(X)
@@ -78,7 +82,7 @@ class FlattenOp : public framework::OperatorBase {
     // Invoke Reshape Op
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape", {{"X", {Input("X")}}, {"Shape", {}}},
-        {{"Out", {Output("Out")}}}, attrs);
+        {{"Out", {Output("Out")}}, {"XShape", {Output("XShape")}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
@@ -92,6 +96,10 @@ class FlattenOpMaker : public framework::OpProtoAndCheckerMaker {
               "up to axis are flattened to the outer dimension of the output"
               "and the remaining input dimensions are flattened into the inner"
               "dimension of the output.");
+    AddOutput("XShape",
+              "XShape is just used to store the shape and lod of X, which will "
+              "be used in FlattenGradOp.")
+        .AsIntermediate();
     AddAttr<int>("axis",
                  "(int)"
                  "Indicate up to which input dimensions (exclusive) should be"
@@ -126,12 +134,27 @@ Case 2:
   }
 };
 
+class FlattenGradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("flatten_grad");
+    grad_op->SetInput("XShape", Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
 class FlattenGradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
+                          context->GetInputDim("XShape"));
+    context->ShareLoD("XShape", framework::GradVarName("X"));
   }
 };
 
@@ -144,15 +167,16 @@ class FlattenGradOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto dx_name = Output(framework::GradVarName("X"));
     auto dout_name = Input(framework::GradVarName("Out"));
-    auto in_dims =
-        scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
+    auto x_shape = Input("XShape");
+    auto x_dims = scope.FindVar(x_shape)->Get<framework::LoDTensor>().dims();
+
     framework::AttributeMap attrs;
-    attrs["shape"] = framework::vectorize2int(in_dims);
+    attrs["shape"] = framework::vectorize2int(x_dims);
     attrs["inplace"] = false;
 
     auto reshape_op = framework::OpRegistry::CreateOp(
-        "reshape", {{"X", {dout_name}}, {"Shape", {}}}, {{"Out", {dx_name}}},
-        attrs);
+        "reshape", {{"X", {dout_name}}, {"Shape", {}}},
+        {{"Out", {dx_name}}, {"XShape", {x_shape}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };
@@ -164,6 +188,5 @@ USE_OP(reshape);
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
-                  ops::FlattenOpInferShape,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+                  ops::FlattenOpInferShape, ops::FlattenGradOpMaker);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp, ops::FlattenGradInferShape);
