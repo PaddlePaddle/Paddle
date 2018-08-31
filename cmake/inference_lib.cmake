@@ -170,6 +170,12 @@ copy(platform_lib DEPS profiler_py_proto
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/dynload ${dst_dir}/${module}/details
 )
 
+set(module "framework/ir")
+copy(ir_lib
+  SRCS ${src_dir}/${module}/*.h
+  DSTS ${dst_dir}/${module}
+)
+
 set(module "string")
 copy(string_lib
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/tinyformat/*.h
