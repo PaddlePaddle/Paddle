@@ -17,20 +17,6 @@ set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
 set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
 set(ANAKIN_INFERENCE_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/anakin)
 
-# TODO(luotao): ANAKIN_MODLE_URL etc will move to demo ci later.
-set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
-set(ANAKIN_MODLE_URL "${INFERENCE_URL}/mobilenet_v2.anakin.bin")
-set(ANAKIN_RNN_MODLE_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn.anakin2.model.bin")
-set(ANAKIN_RNN_DATA_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn_data.txt")
-set(ANAKIN_CNN_MODLE_URL "${INFERENCE_URL}/new_giscnn.anakin2.bin.tar.gz")
-execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_SOURCE_DIR}")
-execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_INFERENCE_MODEL_DIR}")
-execute_process(COMMAND bash -c "cd ${ANAKIN_INFERENCE_MODEL_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL} -N")
-execute_process(COMMAND bash -c "cd ${ANAKIN_INFERENCE_MODEL_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_MODLE_URL} -N")
-execute_process(COMMAND bash -c "cd ${ANAKIN_INFERENCE_MODEL_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_DATA_URL} -N")
-execute_process(COMMAND bash -c "cd ${ANAKIN_INFERENCE_MODEL_DIR}; wget -q --no-check-certificate ${ANAKIN_CNN_MODLE_URL} -N; \
-                                   tar --warning=no-unknown-keyword -xvf new_giscnn.anakin2.bin.tar.gz")
-
 include_directories(${ANAKIN_INCLUDE})
 include_directories(${ANAKIN_INCLUDE}/saber/)
 include_directories(${ANAKIN_INCLUDE}/saber/core/)

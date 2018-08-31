@@ -57,18 +57,39 @@ inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
 
 if(WITH_GPU AND TENSORRT_FOUND)
-cc_library(paddle_inference_tensorrt_subgraph_engine
+    set(TRT_INFERENCE_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/)
+    set(TRT_MODEL_FILE "new_giscnn_fluid_model.tar.gz")
+    download_inference_file(FILE_NAME ${TRT_MODEL_FILE} COMPRESSED TRUE FILE_SAVE_DIR ${TRT_INFERENCE_MODEL_DIR})
+
+    cc_library(paddle_inference_tensorrt_subgraph_engine
         SRCS api_tensorrt_subgraph_engine.cc
         DEPS paddle_inference_api analysis tensorrt_engine paddle_inference_api paddle_fluid_api tensorrt_converter)
 
-cc_test(api_tensorrt_engine_cnn_tester SRCS api_tensorrt_engine_cnn_tester.cc 
+    cc_test(api_tensorrt_engine_cnn_tester SRCS api_tensorrt_engine_cnn_tester.cc 
 	ARGS --dirname=${TRT_INFERENCE_MODEL_DIR}/new_giscnn_fluid_model/
 	DEPS paddle_inference_tensorrt_subgraph_engine)
 
-inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
+    inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()
 
 if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
+    # TODO(luotao): ANAKIN_MODLE_*** etc will move to demo ci later.
+    # ============ Download model file =============
+    set(ANAKIN_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/anakin/)
+    set(ANAKIN_MODEL_FILE "mobilenet_v2.anakin.bin")
+    download_inference_file(FILE_NAME ${ANAKIN_MODEL_FILE} COMPRESSED FALSE FILE_SAVE_DIR ${ANAKIN_MODEL_DIR})
+
+    set(ANAKIN_RNN_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/anakin/rnn/)
+    set(ANAKIN_RNN_MODEL_FILE "anakin_test%2Fditu_rnn.anakin2.model.bin")
+    set(ANAKIN_RNN_DATA_FILE "anakin_test%2Fditu_rnn_data.txt")
+    download_inference_file(FILE_NAME ${ANAKIN_RNN_MODEL_FILE} COMPRESSED FALSE FILE_SAVE_DIR ${ANAKIN_RNN_MODEL_DIR})
+    download_inference_file(FILE_NAME ${ANAKIN_RNN_DATA_FILE} COMPRESSED FALSE FILE_SAVE_DIR ${ANAKIN_RNN_MODEL_DIR})
+
+    set(ANAKIN_CNN_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/anakin/cnn/)
+    set(ANAKIN_CNN_MODEL_FILE "new_giscnn.anakin2.bin.tar.gz")
+    download_inference_file(FILE_NAME ${ANAKIN_CNN_MODEL_FILE} COMPRESSED TRUE FILE_SAVE_DIR ${ANAKIN_CNN_MODEL_DIR})
+    # ============ Download model file =============
+
     # compile the libinference_anakin_api.a and anakin.so.
     cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
     cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
@@ -79,14 +100,14 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
         cc_test(api_anakin_engine_cnn_tester SRCS api_anakin_engine_cnn_tester.cc
-                ARGS --model=${ANAKIN_INFERENCE_MODEL_DIR}/new_giscnn.anakin2.bin
+                ARGS --model=${ANAKIN_CNN_MODEL_DIR}/new_giscnn.anakin2.bin
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
         cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
-                ARGS --model=${ANAKIN_INFERENCE_MODEL_DIR}/mobilenet_v2.anakin.bin
+                ARGS --model=${ANAKIN_MODEL_DIR}/${ANAKIN_MODEL_FILE}
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
         cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_INFERENCE_MODEL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
-                     --datapath=${ANAKIN_INFERENCE_MODEL_DIR}/anakin_test%2Fditu_rnn_data.txt
+                ARGS --model=${ANAKIN_RNN_MODEL_DIR}/${ANAKIN_RNN_MODEL_FILE}
+                     --datapath=${ANAKIN_RNN_MODEL_DIR}/${ANAKIN_RNN_DATA_FILE}
                 DEPS inference_anakin_api_shared dynload_cuda SERIAL)
     endif(WITH_TESTING)
 endif()
