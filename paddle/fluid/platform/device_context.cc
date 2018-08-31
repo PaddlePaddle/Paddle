@@ -176,7 +176,7 @@ class CudnnHolder {
     if (required_workspace_len <= workspace_len_) {
       return;
     }
-    void* new_workspace = paddle::memory::Alloc(place_, required_len);
+    void* new_workspace = paddle::memory::Alloc(place_, required_workspace_len);
     if (workspace_ != nullptr) {
       // Maybe someone is using the current workspace
       PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
@@ -184,7 +184,7 @@ class CudnnHolder {
       paddle::memory::Free(place_, workspace_);
     }
     workspace_ = new_workspace;
-    workspace_len_ = required_len;
+    workspace_len_ = required_workspace_len;
   }
 
   cudnnHandle_t cudnn_handle_;

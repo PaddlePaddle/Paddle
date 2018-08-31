@@ -71,6 +71,9 @@ class RWLockGuard {
         WRLock();
         break;
       }
+      case Status::kUnLock: {
+        break;
+      }
     }
   }
 
@@ -78,6 +81,7 @@ class RWLockGuard {
     switch (status_) {
       case Status::kUnLock: {
         lock_->WRLock();
+        status_ = Status::kWRLock;
         break;
       }
       case Status::kWRLock: {
@@ -95,6 +99,7 @@ class RWLockGuard {
     switch (status_) {
       case Status::kUnLock: {
         lock_->RDLock();
+        status_ = Status::kRDLock;
         break;
       }
       case Status::kRDLock: {
@@ -111,6 +116,7 @@ class RWLockGuard {
   void UnLock() {
     if (status_ != Status::kUnLock) {
       lock_->UNLock();
+      status_ = Status::kUnLock;
     }
   }
 

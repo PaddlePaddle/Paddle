@@ -230,7 +230,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       // Because beta is zero, it is unnecessary to reset filter_grad.
       // Gradient with respect to the filter
       for (int g = 0; g < groups; g++) {
-        auto cudnn_func = [&](void* cudnn_func) {
+        auto cudnn_func = [&](void* cudnn_workspace) {
           CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
               handle, &alpha, cudnn_output_desc,
               output_grad_data + output_grad_offset * g, cudnn_input_desc,
