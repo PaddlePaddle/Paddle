@@ -15,7 +15,6 @@ set(ANAKIN_INCLUDE     ${ANAKIN_INSTALL_DIR})
 set(ANAKIN_LIBRARY     ${ANAKIN_INSTALL_DIR})
 set(ANAKIN_SHARED_LIB  ${ANAKIN_LIBRARY}/libanakin.so)
 set(ANAKIN_SABER_LIB   ${ANAKIN_LIBRARY}/libanakin_saber_common.so)
-set(ANAKIN_INFERENCE_MODEL_DIR ${THIRD_PARTY_PATH}/inference_model/anakin)
 
 include_directories(${ANAKIN_INCLUDE})
 include_directories(${ANAKIN_INCLUDE}/saber/)
