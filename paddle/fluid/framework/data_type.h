@@ -26,7 +26,6 @@ namespace framework {
 extern proto::VarType::Type ToDataType(std::type_index type);
 extern std::type_index ToTypeIndex(proto::VarType::Type type);
 
-#if !defined(_WIN32)
 template <typename Visitor>
 inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
   switch (type) {
@@ -61,40 +60,6 @@ inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
       PADDLE_THROW("Not supported %d", type);
   }
 }
-#else
-// the msvc compiler do not implement two-stage name lookup correctly.
-template <typename Visitor>
-inline void VisitDataType(proto::VarType::Type type, Visitor visitor) {
-  switch (type) {
-    case proto::VarType::FP16:
-      visitor.apply<platform::float16>();
-      break;
-    case proto::VarType::FP32:
-      visitor.apply<float>();
-      break;
-    case proto::VarType::FP64:
-      visitor.apply<double>();
-      break;
-    case proto::VarType::INT32:
-      visitor.apply<int>();
-      break;
-    case proto::VarType::INT64:
-      visitor.apply<int64_t>();
-      break;
-    case proto::VarType::BOOL:
-      visitor.apply<bool>();
-      break;
-    case proto::VarType::UINT8:
-      visitor.apply<uint8_t>();
-      break;
-    case proto::VarType::INT16:
-      visitor.apply<int16_t>();
-      break;
-    default:
-      PADDLE_THROW("Not supported %d", type);
-  }
-}
-#endif  // _WIN32
 
 extern std::string DataTypeToString(const proto::VarType::Type type);
 extern size_t SizeOfType(std::type_index type);
