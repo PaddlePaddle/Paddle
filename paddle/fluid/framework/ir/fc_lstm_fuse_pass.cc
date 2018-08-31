@@ -36,7 +36,7 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
 
-    auto* id = subgraph.at(gpd.pattern().RetriveNode("any_node"));
+    auto* id = subgraph.at(gpd.pattern().RetrieveNode("any_node"));
     marked_nodes.insert(id);
   };
   gpd(graph.get(), handler);
@@ -64,9 +64,9 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
 #undef GET_NODE
 #undef SET_IN
 
-    LOG(INFO) << "hidden_n: " << hidden_n->Name();
-    LOG(INFO) << "cell: " << cell_n->Name();
-    LOG(INFO) << "xx: " << xx_n->Name();
+    VLOG(4) << "hidden_n: " << hidden_n->Name();
+    VLOG(4) << "cell: " << cell_n->Name();
+    VLOG(4) << "xx: " << xx_n->Name();
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
