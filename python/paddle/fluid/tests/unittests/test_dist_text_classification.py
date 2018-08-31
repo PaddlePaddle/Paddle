@@ -20,10 +20,10 @@ from test_dist_base import TestDistBase
 class TestDistTextClassification2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
+        self._use_cuda = False
 
     def test_text_classification(self):
         import os
-        os.environ['CPU_NUM'] = '1'
         os.environ['USE_CUDA'] = 'FALSE'
         self.check_with_place("dist_text_classification.py", delta=1e-7)
 
@@ -31,10 +31,10 @@ class TestDistTextClassification2x2(TestDistBase):
 class TestDistTextClassification2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._use_cuda = False
 
     def test_se_resnext(self):
         import os
-        os.environ['CPU_NUM'] = '1'
         os.environ['USE_CUDA'] = 'FALSE'
         self.check_with_place("dist_text_classification.py", delta=100)
 

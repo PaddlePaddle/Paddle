@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
@@ -20,8 +21,10 @@ from test_dist_base import TestDistBase
 class TestDistCTR2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
+        self._use_cuda = False
 
     def test_dist_ctr(self):
+        os.environ['CPU_NUM'] = '1'
         self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
 
 

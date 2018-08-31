@@ -37,10 +37,10 @@ class TestDistRunnerBase(object):
         raise NotImplementedError(
             "get_model should be implemented by child classes.")
 
-    def get_transpiler(self, trainer_id, main_program, pserver_endpoints,
-                       trainers, sync_mode):
+    @staticmethod
+    def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers,
+                       sync_mode):
         # NOTE: import fluid until runtime, or else forking processes will cause error.
-
         config = fluid.DistributeTranspilerConfig()
         t = fluid.DistributeTranspiler(config=config)
         t.transpile(
@@ -69,7 +69,7 @@ class TestDistRunnerBase(object):
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, place, args):
+    def run_trainer(self, args):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=2)
 
@@ -85,16 +85,20 @@ class TestDistRunnerBase(object):
         else:
             trainer_prog = fluid.default_main_program()
 
+        if args.use_cuda:
+            place = fluid.CUDAPlace(0)
+        else:
+            place = fluid.CPUPlace()
+
         startup_exe = fluid.Executor(place)
         startup_exe.run(fluid.default_startup_program())
 
         strategy = fluid.ExecutionStrategy()
         strategy.num_threads = 1
         strategy.allow_op_delay = False
-        if not fluid.core.is_compiled_with_cuda():
-            use_cuda = False
+
         exe = fluid.ParallelExecutor(
-            use_cuda, loss_name=avg_cost.name, exec_strategy=strategy)
+            args.use_cuda, loss_name=avg_cost.name, exec_strategy=strategy)
 
         feed_var_list = [
             var for var in trainer_prog.global_block().vars.values()
@@ -106,10 +110,10 @@ class TestDistRunnerBase(object):
 
         def get_data():
             origin_batch = next(reader_generator)
-            if is_dist:
+            if args.is_dist:
                 new_batch = []
                 for offset, item in enumerate(origin_batch):
-                    if offset % 2 == trainer_id:
+                    if offset % 2 == args.trainer_id:
                         new_batch.append(item)
                 return new_batch
             else:
@@ -133,6 +137,7 @@ def runtime_main(test_class):
         '--current_endpoint', type=str, required=False, default="")
     parser.add_argument('--sync_mode', action='store_true')
     parser.add_argument('--mem_opt', action='store_true')
+    parser.add_argument('--use_cuda', action='store_true')
 
     args = parser.parse_args()
 
@@ -140,9 +145,7 @@ def runtime_main(test_class):
     if args.role == "pserver" and args.is_dist:
         model.run_pserver(args)
     else:
-        p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        model.run_trainer(p, args)
+        model.run_trainer(args)
 
 
 class TestDistBase(unittest.TestCase):
@@ -155,6 +158,7 @@ class TestDistBase(unittest.TestCase):
         self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
         self._python_interp = "python"
         self._sync_mode = True
+        self._use_cuda = True
         self._mem_opt = False
         self._setup_config()
 
@@ -258,22 +262,31 @@ class TestDistBase(unittest.TestCase):
 
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
-        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist %s %s"
+        tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist %s %s %s"
+
         sync_mode_str = "--sync_mode" if self._sync_mode else ""
         mem_opt_str = "--mem_opt" if self._mem_opt else ""
+        cuda_str = "--use_cuda" if self._use_cuda else ""
+
         tr0_cmd = tr_cmd % \
             (self._python_interp, model_file, self._ps_endpoints,
              0, ps0_ep,
-             self._trainers, sync_mode_str, mem_opt_str)
+             self._trainers, sync_mode_str, mem_opt_str, cuda_str)
         tr1_cmd = tr_cmd % \
             (self._python_interp, model_file, self._ps_endpoints,
              1, ps1_ep,
-             self._trainers, sync_mode_str, mem_opt_str)
+             self._trainers, sync_mode_str, mem_opt_str, cuda_str)
 
-        env0 = {"CUDA_VISIBLE_DEVICES": "0"}
-        env1 = {"CUDA_VISIBLE_DEVICES": "1"}
+        if self._use_cuda:
+            env0 = {"CUDA_VISIBLE_DEVICES": "0"}
+            env1 = {"CUDA_VISIBLE_DEVICES": "1"}
+        else:
+            env0 = {}
+            env1 = {}
+
         env0.update(required_envs)
         env1.update(required_envs)
+
         FNULL = open(os.devnull, 'w')
 
         tr0_pipe = subprocess.PIPE

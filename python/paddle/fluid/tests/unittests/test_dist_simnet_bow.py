@@ -12,20 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 from __future__ import print_function
 import unittest
+
 from test_dist_base import TestDistBase
 
 
 class TestDistSimnetBowDense2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
+        self._use_cuda = False
 
     def test_simnet_bow(self):
-
-        import os
         os.environ['CPU_NUM'] = '1'
-        os.environ['USE_CUDA'] = 'FALSE'
         os.environ["IS_DISTRIBUTED"] = '0'
         os.environ["IS_SPARSE"] = '0'
         self.check_with_place(
@@ -35,12 +35,10 @@ class TestDistSimnetBowDense2x2(TestDistBase):
 class TestDistSimnetBow2x2DenseAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._use_cuda = False
 
     def test_simnet_bow(self):
-
-        import os
         os.environ['CPU_NUM'] = '1'
-        os.environ['USE_CUDA'] = 'FALSE'
         os.environ["IS_DISTRIBUTED"] = '0'
         os.environ["IS_SPARSE"] = '0'
         self.check_with_place(
@@ -50,12 +48,10 @@ class TestDistSimnetBow2x2DenseAsync(TestDistBase):
 class TestDistSimnetBowSparse2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
+        self._use_cuda = False
 
     def test_simnet_bow(self):
-
-        import os
         os.environ['CPU_NUM'] = '1'
-        os.environ['USE_CUDA'] = 'FALSE'
         os.environ["IS_DISTRIBUTED"] = '0'
         os.environ["IS_SPARSE"] = '1'
         self.check_with_place(
@@ -65,12 +61,10 @@ class TestDistSimnetBowSparse2x2(TestDistBase):
 class TestDistSimnetBow2x2SparseAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._use_cuda = False
 
     def test_simnet_bow(self):
-
-        import os
         os.environ['CPU_NUM'] = '1'
-        os.environ['USE_CUDA'] = 'FALSE'
         os.environ["IS_DISTRIBUTED"] = '0'
         os.environ["IS_SPARSE"] = '1'
         self.check_with_place(
