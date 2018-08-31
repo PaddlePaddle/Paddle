@@ -4,19 +4,20 @@ Anakin 支持不同框架的模型预测。但由于格式的差别，Anakin 需
 
 ## 简介
 
-Anakin 模型转换器输入支持 Caffe 和 Fluid 两种格式的预测模型，模型包含网络结构（model 或 prototxt）和权重参数（param 或 caffemodel）。   
+Anakin 模型转换器输入支持 Caffe 和 Fluid 两种格式的预测模型，模型包含网络结构（model 或 prototxt）和权重参数（param 或 caffemodel）。
 
-模型转换的输出是一个 bin 文件，它作为 Anakin 框架的 graph 参数导入。   
+模型转换的输出是一个 bin 文件，它作为 Anakin 框架的 graph 参数导入。
 
-您还可以使用模型转换器的 launch board 功能生成网络结构的 HTML 预览。   
+您还可以使用模型转换器的 launch board 功能生成网络结构的 HTML 预览。
 
 
 ## 系统要求
 
-- python 2.7+
-- pyyaml
-- flask
-- protobuf 3.5+
+- Python 2.7+
+- Protobuf 3.1+（务必注意 Python 与系统环境 Protobuf 版本一致)
+- PaddlePaddle 0.12.0+ (Fluid 模式下)
+- flask, bson, matplotlib, scikit-image
+- tkinter
 
 
 ## 用法
