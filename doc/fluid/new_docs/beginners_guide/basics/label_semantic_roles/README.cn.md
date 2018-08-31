@@ -1,6 +1,6 @@
 # 语义角色标注
 
-本教程源代码目录在[book/label_semantic_roles](https://github.com/PaddlePaddle/book/tree/develop/07.label_semantic_roles)， 初次使用请参考PaddlePaddle[安装教程](https://github.com/PaddlePaddle/book/blob/develop/README.cn.md#运行这本书)。
+本教程源代码目录在[book/label_semantic_roles](https://github.com/PaddlePaddle/book/tree/develop/07.label_semantic_roles)， 初次使用请参考PaddlePaddle[安装教程](https://github.com/PaddlePaddle/book/blob/develop/README.cn.md#运行这本书)，更多内容请参考本教程的[视频课堂](http://bit.baidu.com/course/detail/id/178.html)。
 
 ## 背景介绍
 
@@ -8,7 +8,7 @@
 
 请看下面的例子，“遇到” 是谓词（Predicate，通常简写为“Pred”），“小明”是施事者（Agent），“小红”是受事者（Patient），“昨天” 是事件发生的时间（Time），“公园”是事情发生的地点（Location）。
 
-$$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_{\mbox{Time}}\mbox{在[公园]}_{\mbox{Location}}\mbox{[遇到]}_{\mbox{Predicate}}\mbox{了[小红]}_{\mbox{Patient}}\mbox{。}$$
+$$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_\mbox{Time}\mbox{在[公园]}_{\mbox{Location}}\mbox{[遇到]}_{\mbox{Predicate}}\mbox{了[小红]}_{\mbox{Patient}}\mbox{。}$$
 
 语义角色标注（Semantic Role Labeling，SRL）以句子的谓词为中心，不对句子所包含的语义信息进行深入分析，只分析句子中各成分与谓词之间的关系，即句子的谓词（Predicate）- 论元（Argument）结构，并用语义角色来描述这些结构关系，是许多自然语言理解任务（如信息抽取，篇章分析，深度问答等）的一个重要中间步骤。在研究中一般都假定谓词是给定的，所要做的就是找出给定谓词的各个论元和它们的语义角色。
 
@@ -20,17 +20,17 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_{\m
 4. 论元识别：这个过程是从上一步剪除之后的候选中判断哪些是真正的论元，通常当做一个二分类问题来解决。
 5. 对第4步的结果，通过多分类得到论元的语义角色标签。可以看到，句法分析是基础，并且后续步骤常常会构造的一些人工特征，这些特征往往也来自句法分析。
 
-![dependencyParsing](./image/dependency_parsing.png)
 <div  align="center">
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/dependency_parsing.png?raw=true" width = "80%" align=center /><br>
 图1. 依存句法分析句法树示例
 </div>
 
-然而，完全句法分析需要确定句子所包含的全部句法信息，并确定句子各成分之间的关系，是一个非常困难的任务，目前技术下的句法分析准确率并不高，句法分析的细微错误都会导致SRL的错误。为了降低问题的复杂度，同时获得一定的句法结构信息，“浅层句法分析”的思想应运而生。浅层句法分析也称为部分句法分析（partial parsing）或语块划分（chunking）。和完全句法分析得到一颗完整的句法树不同，浅层句法分析只需要识别句子中某些结构相对简单的独立成分，例如：动词短语，这些被识别出来的结构称为语块。为了回避 “无法获得准确率较高的句法树” 所带来的困难，一些研究\[[1](#参考文献)\]也提出了基于语块（chunk）的SRL方法。基于语块的SRL方法将SRL作为一个序列标注问题来解决。序列标注任务一般都会采用BIO表示方式来定义序列标注的标签集，我们先来介绍这种表示方法。在BIO表示法中，B代表语块的开始，I代表语块的中间，O代表语块结束。通过B、I、O 三种标记将不同的语块赋予不同的标签，例如：对于一个角色为A的论元，将它所包含的第一个语块赋予标签B-A，将它所包含的其它语块赋予标签I-A，不属于任何论元的语块赋予标签O。
+然而，完全句法分析需要确定句子所包含的全部句法信息，并确定句子各成分之间的关系，是一个非常困难的任务，目前技术下的句法分析准确率并不高，句法分析的细微错误都会导致SRL的错误。为了降低问题的复杂度，同时获得一定的句法结构信息，“浅层句法分析”的思想应运而生。浅层句法分析也称为部分句法分析（partial parsing）或语块划分（chunking）。和完全句法分析得到一颗完整的句法树不同，浅层句法分析只需要识别句子中某些结构相对简单的独立成分，例如：动词短语，这些被识别出来的结构称为语块。为了回避 “无法获得准确率较高的句法树” 所带来的困难，一些研究\[[1](#参考文献)\]也提出了基于语块（chunk）的SRL方法。基于语块的SRL方法将SRL作为一个序列标注问题来解决。序列标注任务一般都会采用BIO表示方式来定义序列标注的标签集，我们先来介绍这种表示方法。在BIO表示法中，B代表语块的开始，I代表语块的中间，O代表语块结束。通过B、I、O 三种标记将不同的语块赋予不同的标签，例如：对于一个由角色A拓展得到的语块组，将它所包含的第一个语块赋予标签B-A，将它所包含的其它语块赋予标签I-A，不属于任何论元的语块赋予标签O。
 
 我们继续以上面的这句话为例，图1展示了BIO表示方法。
 
-![bioExample](./image/bio_example.png)
 <div  align="center">
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/bio_example.png?raw=true" width = "90%"  align=center /><br>
 图2. BIO标注方法示例
 </div>
 
@@ -52,8 +52,8 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_{\m
 
 图3是最终得到的栈式循环神经网络结构示意图。
 
-![lstmStructure](./image/stacked_lstm.png)
-<p align="center">
+<p align="center">  
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/stacked_lstm.png?raw=true" width = "40%"  align=center><br>
 图3. 基于LSTM的栈式循环神经网络结构示意图
 </p>
 
@@ -63,8 +63,8 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_{\m
 
 为了克服这一缺陷，我们可以设计一种双向循环网络单元，它的思想简单且直接：对上一节的栈式循环神经网络进行一个小小的修改，堆叠多个LSTM单元，让每一层LSTM单元分别以：正向、反向、正向 …… 的顺序学习上一层的输出序列。于是，从第2层开始，$t$时刻我们的LSTM单元便总是可以看到历史和未来的信息。图4是基于LSTM的双向循环神经网络结构示意图。
 
-![lstmStructure](./image/bidirectional_stacked_lstm.png)
-<p align="center">
+<p align="center">  
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/bidirectional_stacked_lstm.png?raw=true" width = "60%" align=center><br>
 图4. 基于LSTM的双向循环神经网络结构示意图
 </p>
 
@@ -78,8 +78,8 @@ CRF是一种概率化结构模型，可以看作是一个概率无向图模型�
 
 序列标注任务只需要考虑输入和输出都是一个线性序列，并且由于我们只是将输入序列作为条件，不做任何条件独立假设，因此输入序列的元素之间并不存在图结构。综上，在序列标注任务中使用的是如图5所示的定义在链式图上的CRF，称之为线性链条件随机场（Linear Chain Conditional Random Field）。
 
-![linear_chain_crf](./image/linear_chain_crf.png)
-<p align="center">
+<p align="center">  
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/linear_chain_crf.png?raw=true" width = "35%" align=center><br>
 图5. 序列标注任务中使用的线性链条件随机场
 </p>
 
@@ -102,8 +102,8 @@ $$\DeclareMathOperator*{\argmax}{arg\,max} L(\lambda, D) = - \text{log}\left(\pr
 在SRL任务中，输入是 “谓词” 和 “一句话”，目标是从这句话中找到谓词的论元，并标注论元的语义角色。如果一个句子含有$n$个谓词，这个句子会被处理$n$次。一个最为直接的模型是下面这样：
 
 1. 构造输入；
-- 输入1是谓词，输入2是句子
-- 将输入1扩展成和输入2一样长的序列，用one-hot方式表示；
+ - 输入1是谓词，输入2是句子
+ - 将输入1扩展成和输入2一样长的序列，用one-hot方式表示；
 2. one-hot方式的谓词序列和句子序列通过词表，转换为实向量表示的词向量序列；
 3. 将步骤2中的2个词向量序列作为双向LSTM的输入，学习输入序列的特征表示；
 4. CRF以步骤3中模型学习到的特征为输入，以标记序列为监督信号，实现序列标注；
@@ -116,14 +116,14 @@ $$\DeclareMathOperator*{\argmax}{arg\,max} L(\lambda, D) = - \text{log}\left(\pr
 修改后的模型如下（图6是一个深度为4的模型结构示意图）：
 
 1. 构造输入
-- 输入1是句子序列，输入2是谓词序列，输入3是谓词上下文，从句子中抽取这个谓词前后各$n$个词，构成谓词上下文，用one-hot方式表示，输入4是谓词上下文区域标记，标记了句子中每一个词是否在谓词上下文中；
-- 将输入2~3均扩展为和输入1一样长的序列；
+ - 输入1是句子序列，输入2是谓词序列，输入3是谓词上下文，从句子中抽取这个谓词前后各$n$个词，构成谓词上下文，用one-hot方式表示，输入4是谓词上下文区域标记，标记了句子中每一个词是否在谓词上下文中；
+ - 将输入2~3均扩展为和输入1一样长的序列；
 2. 输入1~4均通过词表取词向量转换为实向量表示的词向量序列；其中输入1、3共享同一个词表，输入2和4各自独有词表；
 3. 第2步的4个词向量序列作为双向LSTM模型的输入；LSTM模型学习输入序列的特征表示，得到新的特性表示序列；
 4. CRF以第3步中LSTM学习到的特征为输入，以标记序列为监督信号，完成序列标注；
 
-![db_lstm_network](./image/db_lstm_network.png)
-<div  align="center">
+<div  align="center">  
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/db_lstm_network.png?raw=true" width = "60%"  align=center /><br>
 图6. SRL任务上的深层双向LSTM模型
 </div>
 
@@ -137,8 +137,8 @@ $$\DeclareMathOperator*{\argmax}{arg\,max} L(\lambda, D) = - \text{log}\left(\pr
 ```text
 conll05st-release/
 └── test.wsj
-├── props  # 标注结果
-└── words  # 输入文本序列
+    ├── props  # 标注结果
+    └── words  # 输入文本序列
 ```
 
 标注信息源自Penn TreeBank\[[7](#参考文献)\]和PropBank\[[8](#参考文献)\]的标注结果。PropBank标注结果的标签和我们在文章一开始示例中使用的标注结果标签不同，但原理是相同的，关于标注结果标签含义的说明，请参考论文\[[9](#参考文献)\]。
@@ -150,14 +150,6 @@ conll05st-release/
 3. 抽取谓词上下文和构造谓词上下文区域标记；
 4. 构造以BIO法表示的标记；
 5. 依据词典获取词对应的整数索引。
-
-
-```python
-# import paddle.v2.dataset.conll05 as conll05
-# conll05.corpus_reader函数完成上面第1步和第2步.
-# conll05.reader_creator函数完成上面第3步到第5步.
-# conll05.test函数可以获取处理之后的每条样本来供PaddlePaddle训练.
-```
 
 预处理完成之后一条训练样本包含9个特征，分别是：句子序列、谓词、谓词上下文（占 5 列）、谓词上下区域标志、标注序列。下表是一条训练样本的示例。
 
@@ -187,6 +179,8 @@ conll05st-release/
 获取词典，打印词典大小：
 
 ```python
+from __future__ import print_function
+
 import math, os
 import numpy as np
 import paddle
@@ -201,9 +195,9 @@ word_dict_len = len(word_dict)
 label_dict_len = len(label_dict)
 pred_dict_len = len(verb_dict)
 
-print word_dict_len
-print label_dict_len
-print pred_dict_len
+print('word_dict_len: ', word_dict_len)
+print('label_dict_len: ', label_dict_len)
+print('pred_dict_len: ', pred_dict_len)
 ```
 
 ## 模型配置说明
@@ -232,96 +226,96 @@ embedding_name = 'emb'
 ```python
 # 这里加载PaddlePaddle上版保存的二进制模型
 def load_parameter(file_name, h, w):
-with open(file_name, 'rb') as f:
-f.read(16)  # skip header.
-return np.fromfile(f, dtype=np.float32).reshape(h, w)
+    with open(file_name, 'rb') as f:
+        f.read(16)  # skip header.
+        return np.fromfile(f, dtype=np.float32).reshape(h, w)
 ```
 
 - 8个LSTM单元以“正向/反向”的顺序对所有输入序列进行学习。
 
-```python
+```python  
 def db_lstm(word, predicate, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, mark,
-**ignored):
-# 8 features
-predicate_embedding = fluid.layers.embedding(
-input=predicate,
-size=[pred_dict_len, word_dim],
-dtype='float32',
-is_sparse=IS_SPARSE,
-param_attr='vemb')
+            **ignored):
+    # 8 features
+    predicate_embedding = fluid.layers.embedding(
+        input=predicate,
+        size=[pred_dict_len, word_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE,
+        param_attr='vemb')
 
-mark_embedding = fluid.layers.embedding(
-input=mark,
-size=[mark_dict_len, mark_dim],
-dtype='float32',
-is_sparse=IS_SPARSE)
+    mark_embedding = fluid.layers.embedding(
+        input=mark,
+        size=[mark_dict_len, mark_dim],
+        dtype='float32',
+        is_sparse=IS_SPARSE)
 
-word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
-# Since word vector lookup table is pre-trained, we won't update it this time.
-# trainable being False prevents updating the lookup table during training.
-emb_layers = [
-fluid.layers.embedding(
-size=[word_dict_len, word_dim],
-input=x,
-param_attr=fluid.ParamAttr(
-name=embedding_name, trainable=False)) for x in word_input
-]
-emb_layers.append(predicate_embedding)
-emb_layers.append(mark_embedding)
+    word_input = [word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2]
+    # Since word vector lookup table is pre-trained, we won't update it this time.
+    # trainable being False prevents updating the lookup table during training.
+    emb_layers = [
+        fluid.layers.embedding(
+            size=[word_dict_len, word_dim],
+            input=x,
+            param_attr=fluid.ParamAttr(
+                name=embedding_name, trainable=False)) for x in word_input
+    ]
+    emb_layers.append(predicate_embedding)
+    emb_layers.append(mark_embedding)
 
-# 8 LSTM units are trained through alternating left-to-right / right-to-left order
-# denoted by the variable `reverse`.
-hidden_0_layers = [
-fluid.layers.fc(input=emb, size=hidden_dim, act='tanh')
-for emb in emb_layers
-]
+    # 8 LSTM units are trained through alternating left-to-right / right-to-left order
+    # denoted by the variable `reverse`.
+    hidden_0_layers = [
+        fluid.layers.fc(input=emb, size=hidden_dim, act='tanh')
+        for emb in emb_layers
+    ]
 
-hidden_0 = fluid.layers.sums(input=hidden_0_layers)
+    hidden_0 = fluid.layers.sums(input=hidden_0_layers)
 
-lstm_0 = fluid.layers.dynamic_lstm(
-input=hidden_0,
-size=hidden_dim,
-candidate_activation='relu',
-gate_activation='sigmoid',
-cell_activation='sigmoid')
+    lstm_0 = fluid.layers.dynamic_lstm(
+        input=hidden_0,
+        size=hidden_dim,
+        candidate_activation='relu',
+        gate_activation='sigmoid',
+        cell_activation='sigmoid')
 
-# stack L-LSTM and R-LSTM with direct edges
-input_tmp = [hidden_0, lstm_0]
+    # stack L-LSTM and R-LSTM with direct edges
+    input_tmp = [hidden_0, lstm_0]
 
-# In PaddlePaddle, state features and transition features of a CRF are implemented
-# by a fully connected layer and a CRF layer seperately. The fully connected layer
-# with linear activation learns the state features, here we use fluid.layers.sums
-# (fluid.layers.fc can be uesed as well), and the CRF layer in PaddlePaddle:
-# fluid.layers.linear_chain_crf only
-# learns the transition features, which is a cost layer and is the last layer of the network.
-# fluid.layers.linear_chain_crf outputs the log probability of true tag sequence
-# as the cost by given the input sequence and it requires the true tag sequence
-# as target in the learning process.
+    # In PaddlePaddle, state features and transition features of a CRF are implemented
+    # by a fully connected layer and a CRF layer seperately. The fully connected layer
+    # with linear activation learns the state features, here we use fluid.layers.sums
+    # (fluid.layers.fc can be uesed as well), and the CRF layer in PaddlePaddle:
+    # fluid.layers.linear_chain_crf only
+    # learns the transition features, which is a cost layer and is the last layer of the network.
+    # fluid.layers.linear_chain_crf outputs the log probability of true tag sequence
+    # as the cost by given the input sequence and it requires the true tag sequence
+    # as target in the learning process.
 
-for i in range(1, depth):
-mix_hidden = fluid.layers.sums(input=[
-fluid.layers.fc(input=input_tmp[0], size=hidden_dim, act='tanh'),
-fluid.layers.fc(input=input_tmp[1], size=hidden_dim, act='tanh')
-])
+    for i in range(1, depth):
+        mix_hidden = fluid.layers.sums(input=[
+            fluid.layers.fc(input=input_tmp[0], size=hidden_dim, act='tanh'),
+            fluid.layers.fc(input=input_tmp[1], size=hidden_dim, act='tanh')
+        ])
 
-lstm = fluid.layers.dynamic_lstm(
-input=mix_hidden,
-size=hidden_dim,
-candidate_activation='relu',
-gate_activation='sigmoid',
-cell_activation='sigmoid',
-is_reverse=((i % 2) == 1))
+        lstm = fluid.layers.dynamic_lstm(
+            input=mix_hidden,
+            size=hidden_dim,
+            candidate_activation='relu',
+            gate_activation='sigmoid',
+            cell_activation='sigmoid',
+            is_reverse=((i % 2) == 1))
 
-input_tmp = [mix_hidden, lstm]
+        input_tmp = [mix_hidden, lstm]
 
-# 取最后一个栈式LSTM的输出和这个LSTM单元的输入到隐层映射，
-# 经过一个全连接层映射到标记字典的维度，来学习 CRF 的状态特征
-feature_out = fluid.layers.sums(input=[
-fluid.layers.fc(input=input_tmp[0], size=label_dict_len, act='tanh'),
-fluid.layers.fc(input=input_tmp[1], size=label_dict_len, act='tanh')
-])
+    # 取最后一个栈式LSTM的输出和这个LSTM单元的输入到隐层映射，
+    # 经过一个全连接层映射到标记字典的维度，来学习 CRF 的状态特征
+    feature_out = fluid.layers.sums(input=[
+        fluid.layers.fc(input=input_tmp[0], size=label_dict_len, act='tanh'),
+        fluid.layers.fc(input=input_tmp[1], size=label_dict_len, act='tanh')
+    ])
 
-return feature_out
+    return feature_out
 ```
 
 ## 训练模型
@@ -338,116 +332,116 @@ return feature_out
 
 ```python
 def train(use_cuda, save_dirname=None, is_local=True):
-# define network topology
+    # define network topology
 
-# 句子序列
-word = fluid.layers.data(
-name='word_data', shape=[1], dtype='int64', lod_level=1)
+    # 句子序列
+    word = fluid.layers.data(
+        name='word_data', shape=[1], dtype='int64', lod_level=1)
 
-# 谓词
-predicate = fluid.layers.data(
-name='verb_data', shape=[1], dtype='int64', lod_level=1)
+    # 谓词
+    predicate = fluid.layers.data(
+        name='verb_data', shape=[1], dtype='int64', lod_level=1)
 
-# 谓词上下文5个特征
-ctx_n2 = fluid.layers.data(
-name='ctx_n2_data', shape=[1], dtype='int64', lod_level=1)
-ctx_n1 = fluid.layers.data(
-name='ctx_n1_data', shape=[1], dtype='int64', lod_level=1)
-ctx_0 = fluid.layers.data(
-name='ctx_0_data', shape=[1], dtype='int64', lod_level=1)
-ctx_p1 = fluid.layers.data(
-name='ctx_p1_data', shape=[1], dtype='int64', lod_level=1)
-ctx_p2 = fluid.layers.data(
-name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
+    # 谓词上下文5个特征
+    ctx_n2 = fluid.layers.data(
+        name='ctx_n2_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_n1 = fluid.layers.data(
+        name='ctx_n1_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_0 = fluid.layers.data(
+        name='ctx_0_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_p1 = fluid.layers.data(
+        name='ctx_p1_data', shape=[1], dtype='int64', lod_level=1)
+    ctx_p2 = fluid.layers.data(
+        name='ctx_p2_data', shape=[1], dtype='int64', lod_level=1)
 
-# 谓词上下区域标志
-mark = fluid.layers.data(
-name='mark_data', shape=[1], dtype='int64', lod_level=1)
+    # 谓词上下区域标志
+    mark = fluid.layers.data(
+        name='mark_data', shape=[1], dtype='int64', lod_level=1)
 
-# define network topology
-feature_out = db_lstm(**locals())
+    # define network topology
+    feature_out = db_lstm(**locals())
 
-# 标注序列
-target = fluid.layers.data(
-name='target', shape=[1], dtype='int64', lod_level=1)
+    # 标注序列
+    target = fluid.layers.data(
+        name='target', shape=[1], dtype='int64', lod_level=1)
 
-# 学习 CRF 的转移特征
-crf_cost = fluid.layers.linear_chain_crf(
-input=feature_out,
-label=target,
-param_attr=fluid.ParamAttr(
-name='crfw', learning_rate=mix_hidden_lr))
+    # 学习 CRF 的转移特征
+    crf_cost = fluid.layers.linear_chain_crf(
+        input=feature_out,
+        label=target,
+        param_attr=fluid.ParamAttr(
+            name='crfw', learning_rate=mix_hidden_lr))
 
-avg_cost = fluid.layers.mean(crf_cost)
+    avg_cost = fluid.layers.mean(crf_cost)
 
-sgd_optimizer = fluid.optimizer.SGD(
-learning_rate=fluid.layers.exponential_decay(
-learning_rate=0.01,
-decay_steps=100000,
-decay_rate=0.5,
-staircase=True))
+    sgd_optimizer = fluid.optimizer.SGD(
+        learning_rate=fluid.layers.exponential_decay(
+            learning_rate=0.01,
+            decay_steps=100000,
+            decay_rate=0.5,
+            staircase=True))
 
-sgd_optimizer.minimize(avg_cost)
+    sgd_optimizer.minimize(avg_cost)
 
-# The CRF decoding layer is used for evaluation and inference.
-# It shares weights with CRF layer.  The sharing of parameters among multiple layers
-# is specified by using the same parameter name in these layers. If true tag sequence
-# is provided in training process, `fluid.layers.crf_decoding` calculates labelling error
-# for each input token and sums the error over the entire sequence.
-# Otherwise, `fluid.layers.crf_decoding`  generates the labelling tags.
-crf_decode = fluid.layers.crf_decoding(
-input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
+    # The CRF decoding layer is used for evaluation and inference.
+    # It shares weights with CRF layer.  The sharing of parameters among multiple layers
+    # is specified by using the same parameter name in these layers. If true tag sequence
+    # is provided in training process, `fluid.layers.crf_decoding` calculates labelling error
+    # for each input token and sums the error over the entire sequence.
+    # Otherwise, `fluid.layers.crf_decoding`  generates the labelling tags.
+    crf_decode = fluid.layers.crf_decoding(
+        input=feature_out, param_attr=fluid.ParamAttr(name='crfw'))
 
-train_data = paddle.batch(
-paddle.reader.shuffle(
-paddle.dataset.conll05.test(), buf_size=8192),
-batch_size=BATCH_SIZE)
+    train_data = paddle.batch(
+        paddle.reader.shuffle(
+            paddle.dataset.conll05.test(), buf_size=8192),
+        batch_size=BATCH_SIZE)
 
-place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
 
-feeder = fluid.DataFeeder(
-feed_list=[
-word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
-],
-place=place)
-exe = fluid.Executor(place)
+    feeder = fluid.DataFeeder(
+        feed_list=[
+            word, ctx_n2, ctx_n1, ctx_0, ctx_p1, ctx_p2, predicate, mark, target
+        ],
+        place=place)
+    exe = fluid.Executor(place)
 
-def train_loop(main_program):
-exe.run(fluid.default_startup_program())
-embedding_param = fluid.global_scope().find_var(
-embedding_name).get_tensor()
-embedding_param.set(
-load_parameter(conll05.get_embedding(), word_dict_len, word_dim),
-place)
+    def train_loop(main_program):
+        exe.run(fluid.default_startup_program())
+        embedding_param = fluid.global_scope().find_var(
+            embedding_name).get_tensor()
+        embedding_param.set(
+            load_parameter(conll05.get_embedding(), word_dict_len, word_dim),
+            place)
 
-start_time = time.time()
-batch_id = 0
-for pass_id in xrange(PASS_NUM):
-for data in train_data():
-cost = exe.run(main_program,
-feed=feeder.feed(data),
-fetch_list=[avg_cost])
-cost = cost[0]
+        start_time = time.time()
+        batch_id = 0
+        for pass_id in xrange(PASS_NUM):
+            for data in train_data():
+                cost = exe.run(main_program,
+                               feed=feeder.feed(data),
+                               fetch_list=[avg_cost])
+                cost = cost[0]
 
-if batch_id % 10 == 0:
-print("avg_cost:" + str(cost))
-if batch_id != 0:
-print("second per batch: " + str((time.time(
-) - start_time) / batch_id))
-# Set the threshold low to speed up the CI test
-if float(cost) < 60.0:
-if save_dirname is not None:
-fluid.io.save_inference_model(save_dirname, [
-'word_data', 'verb_data', 'ctx_n2_data',
-'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
-'ctx_p2_data', 'mark_data'
-], [feature_out], exe)
-return
+                if batch_id % 10 == 0:
+                    print("avg_cost: " + str(cost))
+                    if batch_id != 0:
+                        print("second per batch: " + str((time.time(
+                        ) - start_time) / batch_id))
+                    # Set the threshold low to speed up the CI test
+                    if float(cost) < 60.0:
+                        if save_dirname is not None:
+                            fluid.io.save_inference_model(save_dirname, [
+                                'word_data', 'verb_data', 'ctx_n2_data',
+                                'ctx_n1_data', 'ctx_0_data', 'ctx_p1_data',
+                                'ctx_p2_data', 'mark_data'
+                            ], [feature_out], exe)
+                        return
 
-batch_id = batch_id + 1
+                batch_id = batch_id + 1
 
-train_loop(fluid.default_main_program())
+    train_loop(fluid.default_main_program())
 ```
 
 
@@ -457,92 +451,92 @@ train_loop(fluid.default_main_program())
 
 ```python
 def infer(use_cuda, save_dirname=None):
-if save_dirname is None:
-return
+    if save_dirname is None:
+        return
 
-place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-exe = fluid.Executor(place)
+    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+    exe = fluid.Executor(place)
 
-inference_scope = fluid.core.Scope()
-with fluid.scope_guard(inference_scope):
-# Use fluid.io.load_inference_model to obtain the inference program desc,
-# the feed_target_names (the names of variables that will be fed
-# data using feed operators), and the fetch_targets (variables that
-# we want to obtain data from using fetch operators).
-[inference_program, feed_target_names,
-fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        # Use fluid.io.load_inference_model to obtain the inference program desc,
+        # the feed_target_names (the names of variables that will be fed
+        # data using feed operators), and the fetch_targets (variables that
+        # we want to obtain data from using fetch operators).
+        [inference_program, feed_target_names,
+         fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
 
-# Setup inputs by creating LoDTensors to represent sequences of words.
-# Here each word is the basic element of these LoDTensors and the shape of
-# each word (base_shape) should be [1] since it is simply an index to
-# look up for the corresponding word vector.
-# Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
-# which has only one lod level. Then the created LoDTensors will have only
-# one higher level structure (sequence of words, or sentence) than the basic
-# element (word). Hence the LoDTensor will hold data for three sentences of
-# length 3, 4 and 2, respectively.
-# Note that lod info should be a list of lists.
-lod = [[3, 4, 2]]
-base_shape = [1]
-# The range of random integers is [low, high]
-word = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=word_dict_len - 1)
-pred = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=pred_dict_len - 1)
-ctx_n2 = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=word_dict_len - 1)
-ctx_n1 = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=word_dict_len - 1)
-ctx_0 = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=word_dict_len - 1)
-ctx_p1 = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=word_dict_len - 1)
-ctx_p2 = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=word_dict_len - 1)
-mark = fluid.create_random_int_lodtensor(
-lod, base_shape, place, low=0, high=mark_dict_len - 1)
+        # Setup inputs by creating LoDTensors to represent sequences of words.
+        # Here each word is the basic element of these LoDTensors and the shape of
+        # each word (base_shape) should be [1] since it is simply an index to
+        # look up for the corresponding word vector.
+        # Suppose the length_based level of detail (lod) info is set to [[3, 4, 2]],
+        # which has only one lod level. Then the created LoDTensors will have only
+        # one higher level structure (sequence of words, or sentence) than the basic
+        # element (word). Hence the LoDTensor will hold data for three sentences of
+        # length 3, 4 and 2, respectively.
+        # Note that lod info should be a list of lists.
+        lod = [[3, 4, 2]]
+        base_shape = [1]
+        # The range of random integers is [low, high]
+        word = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        pred = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=pred_dict_len - 1)
+        ctx_n2 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_n1 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_0 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_p1 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        ctx_p2 = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=word_dict_len - 1)
+        mark = fluid.create_random_int_lodtensor(
+            lod, base_shape, place, low=0, high=mark_dict_len - 1)
 
-# Construct feed as a dictionary of {feed_target_name: feed_target_data}
-# and results will contain a list of data corresponding to fetch_targets.
-assert feed_target_names[0] == 'word_data'
-assert feed_target_names[1] == 'verb_data'
-assert feed_target_names[2] == 'ctx_n2_data'
-assert feed_target_names[3] == 'ctx_n1_data'
-assert feed_target_names[4] == 'ctx_0_data'
-assert feed_target_names[5] == 'ctx_p1_data'
-assert feed_target_names[6] == 'ctx_p2_data'
-assert feed_target_names[7] == 'mark_data'
+        # Construct feed as a dictionary of {feed_target_name: feed_target_data}
+        # and results will contain a list of data corresponding to fetch_targets.
+        assert feed_target_names[0] == 'word_data'
+        assert feed_target_names[1] == 'verb_data'
+        assert feed_target_names[2] == 'ctx_n2_data'
+        assert feed_target_names[3] == 'ctx_n1_data'
+        assert feed_target_names[4] == 'ctx_0_data'
+        assert feed_target_names[5] == 'ctx_p1_data'
+        assert feed_target_names[6] == 'ctx_p2_data'
+        assert feed_target_names[7] == 'mark_data'
 
-results = exe.run(inference_program,
-feed={
-feed_target_names[0]: word,
-feed_target_names[1]: pred,
-feed_target_names[2]: ctx_n2,
-feed_target_names[3]: ctx_n1,
-feed_target_names[4]: ctx_0,
-feed_target_names[5]: ctx_p1,
-feed_target_names[6]: ctx_p2,
-feed_target_names[7]: mark
-},
-fetch_list=fetch_targets,
-return_numpy=False)
-print(results[0].lod())
-np_data = np.array(results[0])
-print("Inference Shape: ", np_data.shape)
+        results = exe.run(inference_program,
+                          feed={
+                              feed_target_names[0]: word,
+                              feed_target_names[1]: pred,
+                              feed_target_names[2]: ctx_n2,
+                              feed_target_names[3]: ctx_n1,
+                              feed_target_names[4]: ctx_0,
+                              feed_target_names[5]: ctx_p1,
+                              feed_target_names[6]: ctx_p2,
+                              feed_target_names[7]: mark
+                          },
+                          fetch_list=fetch_targets,
+                          return_numpy=False)
+        print(results[0].lod())
+        np_data = np.array(results[0])
+        print("Inference Shape: ", np_data.shape)
 ```
 
 整个程序的入口如下：
 
 ```python
 def main(use_cuda, is_local=True):
-if use_cuda and not fluid.core.is_compiled_with_cuda():
-return
+    if use_cuda and not fluid.core.is_compiled_with_cuda():
+        return
 
-# Directory for saving the trained model
-save_dirname = "label_semantic_roles.inference.model"
+    # Directory for saving the trained model
+    save_dirname = "label_semantic_roles.inference.model"
 
-train(use_cuda, save_dirname, is_local)
-infer(use_cuda, save_dirname)
+    train(use_cuda, save_dirname, is_local)
+    infer(use_cuda, save_dirname)
 
 
 main(use_cuda=False)
