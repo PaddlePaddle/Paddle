@@ -4030,7 +4030,7 @@ def transpose(x, perm, name=None):
     out = helper.create_tmp_variable(x.dtype)
     x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='transpose',
+        type='transpose2',
         inputs={'X': [x]},
         outputs={'Out': [out],
                  'XShape': [x_shape]},
@@ -4525,11 +4525,11 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "Each dimension size given in shape must not be negtive "
                 "except one unknown dimension.")
 
-    helper = LayerHelper("reshape", **locals())
+    helper = LayerHelper("reshape2", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="reshape",
+        type="reshape2",
         inputs=inputs,
         attrs={"shape": shape},
         outputs={"Out": out,
@@ -4579,7 +4579,7 @@ def squeeze(input, axes, name=None):
     out = helper.create_tmp_variable(dtype=input.dtype)
     x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="squeeze",
+        type="squeeze2",
         inputs={"X": input},
         attrs={"axes": axes},
         outputs={"Out": out,
@@ -4616,7 +4616,7 @@ def unsqueeze(input, axes, name=None):
     out = helper.create_tmp_variable(dtype=input.dtype)
     x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="unsqueeze",
+        type="unsqueeze2",
         inputs={"X": input},
         attrs={"axes": axes},
         outputs={"Out": out,
@@ -5736,7 +5736,7 @@ def flatten(x, axis=1, name=None):
     out = helper.create_tmp_variable(x.dtype)
     x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='flatten',
+        type='flatten2',
         inputs={"X": x},
         outputs={'Out': out,
                  'XShape': x_shape},

@@ -249,7 +249,7 @@ class OpTest(unittest.TestCase):
         outs, _ = self._calc_output(place)
         return outs
 
-    def _calc_output(self, place, parallel=False, no_check=None):
+    def _calc_output(self, place, parallel=False, no_check_set=None):
 
         program = Program()
         block = program.global_block()
@@ -273,7 +273,7 @@ class OpTest(unittest.TestCase):
         # if not, fill the fetch_list by the user configured outputs in test.
         if len(fetch_list) == 0:
             for var_name, var in six.iteritems(outputs):
-                if no_check is not None and var_name in no_check:
+                if no_check_set is not None and var_name in no_check_set:
                     continue
                 if isinstance(var, list):
                     for v in var:
@@ -293,12 +293,12 @@ class OpTest(unittest.TestCase):
                             return_numpy=False)
         return outs, fetch_list
 
-    def check_output_with_place(self, place, atol, no_check=None):
-        outs, fetch_list = self._calc_output(place, no_check=no_check)
+    def check_output_with_place(self, place, atol, no_check_set=None):
+        outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
                 continue
-            if no_check is not None and out_name in no_check:
+            if no_check_set is not None and out_name in no_check_set:
                 continue
 
             def find_actual(target_name, fetch_list):
@@ -364,10 +364,10 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_output(self, atol=1e-5, no_check=None):
+    def check_output(self, atol=1e-5, no_check_set=None):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol, no_check)
+            self.check_output_with_place(place, atol, no_check_set)
 
     def check_output_customized(self, checker):
         places = self._get_places()

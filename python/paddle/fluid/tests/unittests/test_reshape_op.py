@@ -23,7 +23,7 @@ from op_test import OpTest
 class TestReshapeOp(OpTest):
     def setUp(self):
         self.init_data()
-        self.op_type = "reshape"
+        self.op_type = "reshape2"
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.attrs = {"shape": self.new_shape}
         self.outputs = {
@@ -37,7 +37,7 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (5, 10)
 
     def test_check_output(self):
-        self.check_output(no_check=['XShape'])
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
@@ -63,7 +63,7 @@ class TestReshapeOpWithInputShape(OpTest):
         new_shape = (0, -1, 5)
         actual_shape = (2, 3, 5)
 
-        self.op_type = "reshape"
+        self.op_type = "reshape2"
         self.inputs = {
             "X": np.random.random(ori_shape).astype("float32"),
             "Shape": np.array(
@@ -76,7 +76,7 @@ class TestReshapeOpWithInputShape(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check=['XShape'])
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out", sum_outputs=["Out"])
