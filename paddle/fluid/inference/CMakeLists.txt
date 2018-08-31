@@ -10,7 +10,7 @@ set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} graph_to_program_pass)
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} ${GLOB_PASS_LIB}) 
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 
@@ -32,6 +32,7 @@ endif()
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/api/analysis_predictor.cc
     DEPS ${fluid_modules} paddle_fluid_api)
 
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
