@@ -16,6 +16,7 @@
 
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+#include <thread>  // NOLINT
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
@@ -23,18 +24,16 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
 DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
 DEFINE_int32(batch_size, 10, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
+DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 
 namespace paddle {
 namespace inference {
 namespace analysis {
-
-using namespace framework;
 
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
@@ -219,39 +218,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-std::string DescribeTensor(const PaddleTensor &tensor) {
-  std::stringstream os;
-  os << "Tensor [" << tensor.name << "]\n";
-  os << " - type: ";
-  switch (tensor.dtype) {
-    case PaddleDType::FLOAT32:
-      os << "float32";
-      break;
-    case PaddleDType::INT64:
-      os << "int64";
-      break;
-    default:
-      os << "unset";
-  }
-  os << '\n';
-
-  os << " - shape: " << to_string(tensor.shape) << '\n';
-  os << " - lod: ";
-  for (auto &l : tensor.lod) {
-    os << to_string(l) << "; ";
-  }
-  os << "\n";
-  os << " - data: ";
-
-  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
-                            [](int a, int b) { return a * b; });
-  for (int i = 0; i < dim; i++) {
-    os << static_cast<float *>(tensor.data.data())[i] << " ";
-  }
-  os << '\n';
-  return os.str();
-}
-
 }  // namespace
 
 const float ditu_rnn_target_data[] = {
@@ -266,58 +232,92 @@ const float ditu_rnn_target_data[] = {
     93.5771, 3.84641, 0,       0,       0,       0,       0,       0,
     169.426, 0,       0,       0,       0,       0,       0,       0};
 // Test with a really complicate model.
-void TestDituRNNPrediction(const std::string &model_path,
-                           const std::string &data_path, int batch_size,
-                           bool use_analysis, bool activate_ir,
-                           int num_times = 1) {
+void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
+                           int num_threads = FLAGS_num_threads) {
   NativeConfig config;
   config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
   config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
+  int batch_size = FLAGS_batch_size;
+  int num_times = FLAGS_repeat;
 
   auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   std::vector<PaddleTensor> input_slots;
-  DataRecord data(data_path, batch_size);
+  DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
   // Prepare inputs.
   PrepareInputs(&input_slots, &data, batch_size);
   std::vector<PaddleTensor> outputs, base_outputs;
 
   base_predictor->Run(input_slots, &base_outputs);
 
-  Timer timer;
-  timer.tic();
-  for (int i = 0; i < num_times; i++) {
-    predictor->Run(input_slots, &outputs);
-  }
   LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << num_times
-            << ", latency: " << timer.toc() / num_times << "ms";
+  if (num_threads == 1) {
+    std::vector<PaddleTensor> input_slots;
+    // Prepare inputs.
+    DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
+    PrepareInputs(&input_slots, &data, batch_size);
+
+    Timer timer;
+    timer.tic();
+    for (int i = 0; i < num_times; i++) {
+      predictor->Run(input_slots, &outputs);
+    }
+    print_time(batch_size, num_times, 1, 0, timer.toc() / num_times);
+  } else {
+    std::vector<std::thread> threads;
+    std::vector<PaddleTensor> input_slots;
+    // Prepare inputs.
+    PrepareInputs(&input_slots, &data, batch_size);
+    std::vector<PaddleTensor> outputs;
+    for (int tid = 0; tid < num_threads; ++tid) {
+      threads.emplace_back([&, tid]() {
+        auto predictor_tid =
+            CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
+                config);
+        DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
+
+        Timer timer;
+        timer.tic();
+        for (int i = 0; i < num_times; i++) {
+          predictor_tid->Run(input_slots, &outputs);
+        }
+        print_time(batch_size, num_times, num_threads, tid,
+                   timer.toc() / num_times);
+      });
+    }
+    for (int i = 0; i < num_threads; ++i) {
+      threads[i].join();
+    }
+  }
   LOG(INFO) << "=====================================";
 
-  PADDLE_ENFORCE_GT(outputs.size(), 0);
-  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
-  for (size_t i = 0; i < outputs.size(); i++) {
-    auto &out = outputs[i];
-    auto &base_out = base_outputs[i];
-    size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                  [](int a, int b) { return a * b; });
-    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
-                                   1, [](int a, int b) { return a * b; });
-    PADDLE_ENFORCE_EQ(size, size1);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *data = static_cast<float *>(out.data.data());
-    float *base_data = static_cast<float *>(base_out.data.data());
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_data[i], 1e-3);
+  if (num_threads == 1) {
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
+    for (size_t i = 0; i < outputs.size(); i++) {
+      auto &out = outputs[i];
+      auto &base_out = base_outputs[i];
+      size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
+                                    [](int a, int b) { return a * b; });
+      size_t size1 =
+          std::accumulate(base_out.shape.begin(), base_out.shape.end(), 1,
+                          [](int a, int b) { return a * b; });
+      PADDLE_ENFORCE_EQ(size, size1);
+      PADDLE_ENFORCE_GT(size, 0);
+      float *data = static_cast<float *>(out.data.data());
+      float *base_data = static_cast<float *>(base_out.data.data());
+      for (size_t i = 0; i < size; i++) {
+        EXPECT_NEAR(data[i], base_data[i], 1e-3);
+      }
     }
   }
 
-  if (use_analysis && activate_ir) {
+  if (use_analysis_and_activate_ir) {
     AnalysisPredictor *analysis_predictor =
         dynamic_cast<AnalysisPredictor *>(predictor.get());
     auto &fuse_statis = analysis_predictor->analysis_argument()
@@ -334,23 +334,16 @@ void TestDituRNNPrediction(const std::string &model_path,
 
 // Directly infer with the original model.
 TEST(Analyzer, DituRNN_without_analysis) {
-  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        FLAGS_batch_size, false, false, FLAGS_repeat);
-}
-
-// Inference with the original model with the analysis turned on, the analysis
-// module will transform the program to a data flow graph.
-TEST(Analyzer, DituRNN_with_analysis) {
-  LOG(INFO) << "ditu rnn with analysis";
-  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        FLAGS_batch_size, true, false, FLAGS_repeat);
+  LOG(INFO) << "ditu rnn without analysis";
+  TestDituRNNPrediction(false, 1);
+  TestDituRNNPrediction(false, 4);  // multi-threads
 }
 
 // Inference with analysis and IR. The IR module will fuse some large kernels.
 TEST(Analyzer, DituRNN_with_analysis_with_IR) {
   LOG(INFO) << "ditu rnn with analysis and IR fuse";
-  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        FLAGS_batch_size, true, true, FLAGS_repeat);
+  TestDituRNNPrediction(true, 1);
+  TestDituRNNPrediction(true, 4);  // multi-threads
 }
 
 }  // namespace analysis
