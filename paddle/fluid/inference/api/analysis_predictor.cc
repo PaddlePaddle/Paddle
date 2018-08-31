@@ -70,9 +70,6 @@ bool AnalysisPredictor::Init(
   return true;
 }
 
-return true;
-}
-
 void AnalysisPredictor::OptimizeInferenceProgram() {
   LOG(INFO) << "optimize begin";
   FLAGS_IA_enable_ir = true;
