@@ -25,8 +25,13 @@ void SetOp(ProgramDesc* prog, const std::string& type,
            const std::vector<std::string>& outputs) {
   auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
-  op->SetInput("Xs", inputs);
-  op->SetOutput("Ys", outputs);
+  if (type == "mul") {
+    op->SetInput("X", {inputs[0]});
+    op->SetInput("Y", {inputs[1]});
+  } else if (type == "elementwise_add") {
+    op->SetInput("X", inputs);
+  }
+  op->SetOutput("Out", outputs);
 }
 
 // a->OP0->b

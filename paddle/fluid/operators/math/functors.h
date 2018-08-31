@@ -18,6 +18,19 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+// MulFunctor
+template <typename T>
+struct MulFunctor {
+  // out = x * y;
+  inline HOSTDEVICE T operator()(T x, T y) { return x * y; }
+};
+
+template <typename T>
+struct MulGradFunctor {
+  inline HOSTDEVICE T Dx(T x, T y) { return y; }
+  inline HOSTDEVICE T Dy(T x, T y) { return x; }
+};
+
 // AddFunctor
 template <typename T>
 struct AddFunctor {
@@ -27,9 +40,8 @@ struct AddFunctor {
 
 template <typename T>
 struct AddGradFunctor {
-  inline HOSTDEVICE T operator()(T x, T y) { return 1; }
-
-  inline HOSTDEVICE T operator()(T x, T y, T out) const { return 1; }
+  inline HOSTDEVICE T Dx(T x, T y) { return 1; }
+  inline HOSTDEVICE T Dy(T x, T y) { return 1; }
 };
 
 template <typename T>

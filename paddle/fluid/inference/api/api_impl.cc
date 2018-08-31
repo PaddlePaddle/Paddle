@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -56,6 +57,25 @@ std::string num2str(T a) {
   return istr.str();
 }
 }  // namespace
+
+void NativePaddlePredictor::PrepareFeedFetch() {
+  for (auto *op : inference_program_->Block(0).AllOps()) {
+    if (op->Type() == "feed") {
+      int idx = boost::get<int>(op->GetAttr("col"));
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
+        feeds_.resize(idx + 1);
+      }
+      feeds_[idx] = op;
+      feed_names_[op->Output("Out")[0]] = idx;
+    } else if (op->Type() == "fetch") {
+      int idx = boost::get<int>(op->GetAttr("col"));
+      if (fetchs_.size() <= idx) {
+        fetchs_.resize(idx + 1);
+      }
+      fetchs_[idx] = op;
+    }
+  }
+}
 
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
@@ -108,8 +128,7 @@ bool NativePaddlePredictor::Init(
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
   // Get the feed_target_names and fetch_target_names
-  feed_target_names_ = inference_program_->GetFeedTargetNames();
-  fetch_target_names_ = inference_program_->GetFetchTargetNames();
+  PrepareFeedFetch();
   return true;
 }
 
@@ -130,36 +149,21 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   Timer timer;
   timer.tic();
   // set feed variable
-  std::map<std::string, const framework::LoDTensor *> feed_targets;
   std::vector<framework::LoDTensor> feeds;
-  if (!SetFeed(inputs, &feeds)) {
+  framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
+  if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
-  }
-  for (size_t i = 0; i < feed_target_names_.size(); ++i) {
-    if (config_.specify_input_name) {
-      feed_targets[inputs[i].name] = &feeds[i];
-    } else {
-      feed_targets[feed_target_names_[i]] = &feeds[i];
-    }
-  }
-  // get fetch variable
-  std::map<std::string, framework::LoDTensor *> fetch_targets;
-  std::vector<framework::LoDTensor> fetchs;
-  fetchs.resize(fetch_target_names_.size());
-  for (size_t i = 0; i < fetch_target_names_.size(); ++i) {
-    fetch_targets[fetch_target_names_[i]] = &fetchs[i];
   }
   // Run the inference program
   // if share variables, we need not create variables
   VLOG(4) << "Run prepared context";
-  executor_->RunPreparedContext(
-      ctx_.get(), sub_scope_ != nullptr ? sub_scope_ : scope_.get(),
-      &feed_targets, &fetch_targets,
-      false, /* don't create local scope each time*/
-      false /* don't create variable eatch time */);
+  executor_->RunPreparedContext(ctx_.get(), scope,
+                                false, /* don't create local scope each time*/
+                                false /* don't create variable eatch time */);
   VLOG(4) << "Finish prepared context";
-  if (!GetFetch(fetchs, output_data)) {
+  // get fetch variable
+  if (!GetFetch(output_data, scope)) {
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
@@ -180,13 +184,13 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
-                                    std::vector<framework::LoDTensor> *feeds) {
+                                    framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
-  if (inputs.size() != feed_target_names_.size()) {
+  if (inputs.size() != feeds_.size()) {
     LOG(ERROR) << "wrong feed input size.";
     return false;
   }
-  for (size_t i = 0; i < feed_target_names_.size(); ++i) {
+  for (size_t i = 0; i < inputs.size(); ++i) {
     framework::LoDTensor input;
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
@@ -208,29 +212,38 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
       lod.emplace_back(level);
     }
     input.set_lod(lod);
-
-    feeds->push_back(input);
+    int idx = -1;
+    if (config_.specify_input_name) {
+      idx = feed_names_[inputs[i].name];
+    } else {
+      idx = boost::get<int>(feeds_[i]->GetAttr("col"));
+    }
+    framework::SetFeedVariable(scope, input, "feed", idx);
   }
   return true;
 }
 
-bool NativePaddlePredictor::GetFetch(
-    const std::vector<framework::LoDTensor> &fetchs,
-    std::vector<PaddleTensor> *outputs) {
+bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
+                                     framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
-  outputs->resize(fetchs.size());
-  for (size_t i = 0; i < fetchs.size(); ++i) {
+  outputs->resize(fetchs_.size());
+  for (size_t i = 0; i < fetchs_.size(); ++i) {
+    int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
+    PADDLE_ENFORCE(idx == i);
+    framework::LoDTensor &output =
+        framework::GetFetchVariable(*scope, "fetch", idx);
     // TODO(panyx0718): Support fetch of other types.
-    if (fetchs[i].type() != typeid(float)) {
+    if (output.type() != typeid(float)) {
       LOG(ERROR) << "only support fetching float now.";
       return false;
     }
+
     std::vector<int> shape;
-    auto dims_i = fetchs[i].dims();
-    auto lod = fetchs[i].lod();
-    const float *output_ptr = fetchs[i].data<float>();
+    auto dims_i = output.dims();
+    auto lod = output.lod();
+    const float *output_ptr = output.data<float>();
     // const int64_t* output_ptr = fetchs[i].data<int64_t>();
-    auto num = fetchs[i].numel();
+    auto num = output.numel();
     std::vector<float> data;
     if (0 == lod.size()) {
       std::copy(output_ptr, output_ptr + num, std::back_inserter(data));
@@ -275,7 +288,7 @@ bool NativePaddlePredictor::GetFetch(
     }
     std::memcpy(buffer.data(), data.data(), buffer.length());
     // copy LoD
-    for (const auto &level : fetchs[i].lod()) {
+    for (const auto &level : output.lod()) {
       outputs->at(i).lod.emplace_back(level);
     }
     outputs->at(i).dtype = PaddleDType::FLOAT32;
