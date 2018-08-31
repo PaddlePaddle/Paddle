@@ -68,12 +68,34 @@ class TesSequenceEnumerateOpInt64(TestSequenceEnumerateOp):
         self.out_seq = np.array(out_seq).astype("int64")
 
 
+class TestSequenceEnumerateOpLargeWinSize(TestSequenceEnumerateOp):
+    def init_test_case(self):
+        self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
+        self.lod = [[9, 4, 11, 6]]
+        self.win_size = 5
+        self.pad_value = 0
+        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
+                                     self.pad_value)
+        self.out_seq = np.array(out_seq).astype("int32")
+
+
 class TestSequenceEnumerateOpMaxWinSize(TestSequenceEnumerateOp):
     def init_test_case(self):
         self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
         self.lod = [[9, 4, 11, 6]]
         self.win_size = 30
         self.pad_value = 0
+        out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
+                                     self.pad_value)
+        self.out_seq = np.array(out_seq).astype("int32")
+
+
+class TestSequenceEnumerateOpLargePadValue(TestSequenceEnumerateOp):
+    def init_test_case(self):
+        self.in_seq = np.random.randint(0, 10, (30, 1)).astype("int32")
+        self.lod = [[9, 4, 11, 6]]
+        self.win_size = 5
+        self.pad_value = 5
         out_seq = sequence_enumerate(self.in_seq, self.lod, self.win_size,
                                      self.pad_value)
         self.out_seq = np.array(out_seq).astype("int32")

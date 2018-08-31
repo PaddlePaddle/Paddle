@@ -5522,13 +5522,12 @@ def flatten(x, axis=1, name=None):
     return out
 
 
-def sequence_enumerate(input, win_size, pad_value, name=None):
+def sequence_enumerate(input, win_size, pad_value=0, name=None):
     """
-    Generate a new LoDTensor 
-    with the same 1st dimension length as the original LoDTensor, 
-    and with the 2nd dimension equal to the input window length, 
-    the new sub-sequence on 2nd dimension is enumerated one by one on the original sequence.
-    The values of the last insufficient part areall filled with the input pad_value.
+    Generate a new sequence for the input index sequence, which enumerates all the
+    sub-sequences with length win_size of the input. 
+    The enumerated sequence has the same 1st dimension with variable input, and
+    the 2nd dimension is win_size, padded by pad_value if necessary in generation.
     
     Examples:
     Case 1:
@@ -5545,9 +5544,9 @@ def sequence_enumerate(input, win_size, pad_value, name=None):
         Out.dims = [5, 2]
 
     Args:
-        input (Variable): The input variable which is a LoDTensor
-        win_size (int): The enumerate sequence window size.
-        pad_value (int): The enumerate sequence padding value.
+        input (Variable): The input variable which is a index sequence.
+        win_size (int): The window size for enumerating all sub-sequences.
+        pad_value (int): The padding value, default 0.
 
     Returns:
         Variable: The enumerate sequence variable which is a LoDTensor.

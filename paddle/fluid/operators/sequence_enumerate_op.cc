@@ -50,24 +50,23 @@ class SequenceEnumerateOpMaker : public framework::OpProtoAndCheckerMaker {
              "(2-D LoDTensor with the 2nd dimension equal to 1) "
              "Input LoDTensor of SequenceEnumerate operator.");
     AddOutput("Out",
-              "(2-D LoDTensor with the 2nd dimension equal to 1) "
+              "(2-D LoDTensor with the 2nd dimension equal to win_size) "
               "Output LoDTensor of SequenceEnumerate operator.");
     AddAttr<int>("win_size", "(int) The enumerate sequence window size.")
         .AddCustomChecker([](const int& win_size) {
           PADDLE_ENFORCE(win_size >= 2,
-                         "The window size should be greater than 2.");
+                         "The window size should be not less than 2.");
         });
     AddAttr<int>("pad_value", "(int) The enumerate sequence padding value.")
         .SetDefault(0);
     AddComment(R"DOC(
 Sequence Enumerate Operator.
 
-Sequence enumerate operator generate a new LoDTensor 
-with the same 1st dimension length as the original LoDTensor, 
-and with the 2nd dimension equal to the input window length, 
-the new sub-sequence on 2nd dimension is enumerated one by one on the original sequence.
-The values of the last insufficient part areall filled with the input pad_value.
-
+Generate a new sequence for the input index sequence, which enumerates all the
+sub-sequences with length win_size of the input. 
+The enumerated sequence has the same 1st dimension with variable input, and
+the 2nd dimension is win_size, padded by pad_value if necessary in generation.
+    
 Examples:
 Case 1:
   Input:
