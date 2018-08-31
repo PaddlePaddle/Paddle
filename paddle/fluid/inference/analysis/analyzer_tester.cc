@@ -16,10 +16,13 @@
 
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
@@ -30,6 +33,8 @@ DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+using namespace framework;
 
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
@@ -311,6 +316,20 @@ void TestDituRNNPrediction(const std::string &model_path,
     for (size_t i = 0; i < size; i++) {
       EXPECT_NEAR(data[i], base_data[i], 1e-3);
     }
+  }
+
+  if (use_analysis && activate_ir) {
+    AnalysisPredictor *analysis_predictor =
+        dynamic_cast<AnalysisPredictor *>(predictor.get());
+    auto &fuse_statis = analysis_predictor->analysis_argument()
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
+    for (auto &item : fuse_statis) {
+      LOG(INFO) << "fused " << item.first << " " << item.second;
+    }
+
+    ASSERT_TRUE(fuse_statis.count("fc"));
+    EXPECT_EQ(fuse_statis.at("fc"), 1);
   }
 }
 

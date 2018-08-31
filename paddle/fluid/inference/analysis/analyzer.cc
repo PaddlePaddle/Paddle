@@ -43,9 +43,8 @@ class DfgPassManagerImpl final : public DfgPassManager {
     // TODO(Superjomn) set the key with pass reprs.
     LOG(INFO)
         << "-----------------------------------------------------------------";
-    if (FLAGS_IA_enable_ir) {
-      AddPass("fluid-to-ir-pass", new FluidToIrPass);
-    } else {
+    AddPass("fluid-to-ir-pass", new FluidToIrPass);
+    if (!FLAGS_IA_enable_ir) {
       AddPass("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
     }
     TryAddTensorRtPass();
@@ -93,7 +92,6 @@ class DfgPassManagerImpl final : public DfgPassManager {
   void AddGraphvizDebugerPass(Pass* pass) {
     auto* debuger_pass = pass->CreateGraphvizDebugerPass();
     if (debuger_pass) {
-      LOG(INFO) << " - register debug pass [" << debuger_pass->repr() << "]";
       Register(debuger_pass->repr(), debuger_pass);
     }
   }

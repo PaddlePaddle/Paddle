@@ -31,77 +31,34 @@ bool VarOutLinksToOp(Node* node, const std::string& op_type) {
 }
 
 void BuildFCPattern(PDPattern* pattern) {
-  // make sure the selected MUL op has one input argument is a parameter.
-  auto* mul_parameter_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() && node->outputs.size() == 1UL &&
-               node->outputs.front()->Op()->Type() == "mul" && node->Var() &&
-               node->Var()->Persistable();  // check is a parameter
-      },
-      "mul_weight" /*name*/);
+  // Create Operators
+  auto* mul_op = pattern->NewNode("mul")->assert_is_op("mul");
+  auto* elementwise_add_op =
+      pattern->NewNode("elementwise_add")->assert_is_op("elementwise_add");
+  // Create variables
+  // w
+  auto* mul_weight_var = pattern->NewNode("mul_weight")
+                             ->AsInput()
+                             ->assert_is_op_nth_input("mul", "Y", 0);
+  // x
+  auto* mul_tmp_var = pattern->NewNode("mul_tmp_var")
+                          ->AsInput()
+                          ->assert_is_op_nth_input("mul", "X", 0);
+  // intermediate variable, will be removed in the IR after fuse.
+  auto* mul_out_var = pattern->NewNode("mul_out")
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("mul")
+                          ->assert_is_op_input("elementwise_add");
+  // bias
+  auto* elementwise_add_tmp_var = pattern->NewNode("elementwise_add_tmpvar")
+                                      ->assert_is_op_input("elementwise_add")
+                                      ->AsInput();
+  // output
+  auto* elementwise_add_out_var = pattern->NewNode("elementwise_add_out")
+                                      ->AsOutput()
+                                      ->assert_is_op_output("elementwise_add");
 
-  auto* mul_tmp_input_var = pattern->NewNode(
-      [](Node* node) {
-        bool result =
-            node->IsVar() && node->outputs.size() >= 1UL && node->Var() &&
-            !node->Var()->Persistable();  // this input is not an parameter.
-        if (!result) return false;
-        // check whether one output is MUL op.
-        for (auto* op : node->outputs) {
-          if (op->IsOp() && op->Op()->Type() == "mul") return true;
-        }
-        return false;
-      },
-      "mul_tmp_var" /*name*/);
-
-  // select a MUL op
-  auto* mul_op = pattern->NewNode(
-      [](Node* node) {
-        return node->IsOp() &&               // start from an Op
-               node->Op()->Type() == "mul";  // type is mul
-        // the output should be consumed only by one element_add, that check
-        // leaves in a Var PDNode.
-      },
-      "mul" /*name*/);
-
-  // make sure the MUL op's output has only one consumer and links to an
-  // ELEMENTWISE_ADD op.
-  auto* mul_out_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() &&                  // starts from a Var
-               node->outputs.size() == 1UL &&    // only has one consumer
-               node->outputs.front()->IsOp() &&  // check basic logic
-               node->Var() &&                    // not a ControlDepVar
-               node->outputs.front()->Op()->Type() ==
-                   "elementwise_add";  // a very strong validation
-      },
-      "mul_out");
-  // this check is not essential, just to make the corresponding variable Node
-  // retrival easier.
-  auto* elementwise_add_tmp_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() && node->outputs.size() >= 1UL && node->Var() &&
-               VarOutLinksToOp(node, "elementwise_add");
-      },
-      "elementwise_add_tmpvar");
-
-  // select an ELEMENTWISE_ADD op
-  auto* elementwise_add_op = pattern->NewNode(
-      [](Node* node) {
-        return node->IsOp() && node->Op()->Type() == "elementwise_add";
-      },
-      "elementwise_add" /*name*/);
-
-  // get the ELEMENTWISE_ADD op's output
-  auto* elementwise_add_out_var = pattern->NewNode(
-      [](Node* node) {
-        return node->IsVar() && node->inputs.size() == 1UL && node->Var() &&
-               node->inputs.front()->Op()->Type() == "elementwise_add";
-      },
-      "elementwise_add_out");
-
-  mul_op->LinksFrom({mul_parameter_var, mul_tmp_input_var})
-      .LinksTo({mul_out_var});
+  mul_op->LinksFrom({mul_weight_var, mul_tmp_var}).LinksTo({mul_out_var});
   elementwise_add_op->LinksFrom({mul_out_var, elementwise_add_tmp_var})
       .LinksTo({elementwise_add_out_var});
 }
@@ -120,18 +77,20 @@ bool LinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
 std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
+  FusePassBase::Init("fc", graph.get());
 
   std::unordered_set<Node*> nodes2delete;
 
   GraphPatternDetector gpd;
   BuildFCPattern(gpd.mutable_pattern());
 
-#define GET_NODE(id)                                             \
-  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetriveNode(#id)), \
-                 "pattern has no Node called %s", #id);          \
-  auto* id = subgraph.at(gpd.pattern().RetriveNode(#id));        \
+#define GET_NODE(id)                                              \
+  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetrieveNode(#id)), \
+                 "pattern has no Node called %s", #id);           \
+  auto* id = subgraph.at(gpd.pattern().RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
+  int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle FC fuse";
@@ -176,10 +135,13 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     graph->RemoveNode(mul);
     graph->RemoveNode(elementwise_add);
     graph->RemoveNode(mul_out);  // tmp variable
+
+    found_fc_count++;
   };
 
   gpd(graph.get(), handler);
 
+  AddStatis(found_fc_count);
   return graph;
 }
 

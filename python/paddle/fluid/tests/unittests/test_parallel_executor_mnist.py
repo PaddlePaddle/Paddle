@@ -67,18 +67,20 @@ def fc_with_batchnorm(use_feed):
 
     hidden = img
     for _ in range(1):
-        hidden = fluid.layers.fc(
-            hidden,
-            size=200,
-            act='tanh',
-            bias_attr=fluid.ParamAttr(
-                initializer=fluid.initializer.Constant(value=1.0)))
+        with fluid.name_scope("hidden"):
+            hidden = fluid.layers.fc(
+                hidden,
+                size=200,
+                act='tanh',
+                bias_attr=fluid.ParamAttr(
+                    initializer=fluid.initializer.Constant(value=1.0)))
 
-        hidden = fluid.layers.batch_norm(input=hidden)
-
-    prediction = fluid.layers.fc(hidden, size=10, act='softmax')
-    loss = fluid.layers.cross_entropy(input=prediction, label=label)
-    loss = fluid.layers.mean(loss)
+            hidden = fluid.layers.batch_norm(input=hidden)
+    with fluid.name_scope("fc_layer"):
+        prediction = fluid.layers.fc(hidden, size=10, act='softmax')
+    with fluid.name_scope("loss"):
+        loss = fluid.layers.cross_entropy(input=prediction, label=label)
+        loss = fluid.layers.mean(loss)
     return loss
 
 

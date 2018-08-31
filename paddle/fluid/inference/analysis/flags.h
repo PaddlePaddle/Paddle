@@ -12,26 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include <gflags/gflags.h>
 
-namespace paddle {
-namespace framework {
-namespace ir {
-
-/*
- * Fuse the MUL and ELEMENTWISE_ADD to a FCOp.
- */
-class FCFusePass : public FusePassBase {
- public:
-  virtual ~FCFusePass() {}
-
- protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
-};
-
-}  // namespace ir
-}  // namespace framework
-}  // namespace paddle
+// TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
+// flag if not available.
+DECLARE_bool(IA_enable_tensorrt_subgraph_engine);
+DECLARE_string(IA_graphviz_log_root);
+DECLARE_string(IA_output_storage_path);
+DECLARE_bool(IA_enable_ir);

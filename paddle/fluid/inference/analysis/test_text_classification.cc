@@ -41,8 +41,7 @@ void Main(int batch_size) {
   // data --
   int64_t data0[] = {0, 1, 2};
   for (auto& input : input_slots) {
-    input.data.Resize(sizeof(data0) / sizeof(int64_t));
-    memcpy(input.data.data(), data0, sizeof(data0));
+    input.data.Reset(data0, sizeof(data0));
     input.shape = std::vector<int>({3, 1});
     // dtype --
     input.dtype = PaddleDType::INT64;
