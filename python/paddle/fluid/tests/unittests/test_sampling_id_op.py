@@ -36,7 +36,7 @@ class TestSamplingIdOp(OpTest):
         y1 = self.out
         self.check_output_customized(self.verify_output)
         y2 = self.out
-        
+
         # check dtype
         assert y1.dtype == np.int64
         assert y2.dtype == np.int64
