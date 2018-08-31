@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <cmath>
+#include <functional>
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
 #ifdef __AVX__
