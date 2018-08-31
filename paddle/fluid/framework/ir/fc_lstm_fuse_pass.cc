@@ -35,7 +35,6 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-
     auto* id = subgraph.at(gpd.pattern().RetrieveNode("any_node"));
     marked_nodes.insert(id);
   };
@@ -89,7 +88,6 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     LINK_TO(op, hidden_n);
 #undef LINK_TO
     return op;
-
   };
 
   lstm_creator(16, 12, 14, 18, 17, 22, 21, 19);
@@ -105,14 +103,16 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     for (auto it = node->inputs.begin(); it != node->inputs.end();) {
       if (marked_nodes.count(*it)) {
         it = const_cast<Node*>(node)->inputs.erase(it);
-      } else
+      } else {
         it++;
+      }
     }
     for (auto it = node->outputs.begin(); it != node->outputs.end();) {
       if (marked_nodes.count(*it)) {
         it = const_cast<Node*>(node)->outputs.erase(it);
-      } else
+      } else {
         it++;
+      }
     }
   }
 
