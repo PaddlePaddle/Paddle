@@ -36,6 +36,7 @@ paddle.fluid.default_startup_program ArgSpec(args=[], varargs=None, keywords=Non
 paddle.fluid.default_main_program ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.program_guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.get_var ArgSpec(args=['name', 'program'], varargs=None, keywords=None, defaults=(None,))
+paddle.fluid.name_scope ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.Executor.__init__ ArgSpec(args=['self', 'place'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Executor.close ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Executor.run ArgSpec(args=['self', 'program', 'feed', 'fetch_list', 'feed_var_name', 'fetch_var_name', 'scope', 'return_numpy', 'use_program_cache'], varargs=None, keywords=None, defaults=(None, None, None, 'feed', 'fetch', None, True, False))
