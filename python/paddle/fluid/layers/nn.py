@@ -109,6 +109,7 @@ __all__ = [
     'flatten',
     'sequence_mask',
     'stack',
+    'pad2d',
     'unstack',
 ]
 
@@ -5614,6 +5615,94 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def pad2d(input,
+          paddings=[0, 0, 0, 0],
+          mode='constant',
+          pad_value=0.0,
+          data_format="NCHW",
+          name=None):
+    """
+    Pad 2-d images accordding to 'paddings' and 'mode'.
+    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    than height-1. And the width dimension has the same condition.
+
+    Example:
+
+      Given that X is a channel of image from input:
+      
+      X = [[1, 2, 3],
+           [4, 5, 6]]
+      
+      Case 0:
+      
+        paddings = [0, 1, 2, 3],
+        mode = 'constant'
+        pad_value = 0
+        
+        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+               [0, 0, 4, 5, 6, 0, 0, 0]
+               [0, 0, 0, 0, 0, 0, 0, 0]]
+      
+      Case 1:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'reflect'
+        
+        Out = [[3, 2, 1, 2, 3, 2]
+               [6, 5, 4, 5, 6, 5]
+               [3, 2, 1, 2, 3, 2]]
+        
+      Case 2:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'edge'
+        
+        Out = [[1, 1, 1, 2, 3, 3]
+               [4, 4, 4, 5, 6, 6]
+               [4, 4, 4, 5, 6, 6]]
+    
+  
+    Args:
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
+        paddings (tuple|list): The padding size. If padding is a tuple, it must
+            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
+            Default: padding = [0, 0, 0, 0].
+        mode (str): Three modes: constant(default), reflect, edge. Default: constant
+        pad_value (float32): The value to fill the padded areas in constant mode. Default: 0
+        data_format (str): An optional string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default: "NCHW"
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable padded accordding to paddings and mode.
+
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
+    """
+
+    helper = LayerHelper('pad2d', **locals())
+    dtype = helper.input_dtype(input_param_name='input')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad2d',
+        inputs={'X': input},
+        outputs={"Out": out},
+        attrs={
+            'paddings': paddings,
+            'mode': mode,
+            'pad_value': pad_value,
+            'data_frmat': data_format
+        })
+
+    return out
+
+
 def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
@@ -5628,8 +5717,8 @@ def prelu(x, mode, param_attr=None, name=None):
 		       all: all elements share same weight
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
-	  name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+	name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
 
     Returns:
         Variable: The output tensor with the same shape as input.
