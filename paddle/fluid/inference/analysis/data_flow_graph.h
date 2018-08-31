@@ -204,6 +204,9 @@ std::pair<std::vector<Node *>, std::vector<Node *>>
 ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph);  // NOLINT
 
 void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph);
+void FlexibleDFS(const std::vector<Node *> &source, bool reverse,
+                 const std::function<bool(const Node *)> &enter,
+                 const std::function<bool(const Node *)> &leave);
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
