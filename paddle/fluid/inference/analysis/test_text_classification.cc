@@ -22,7 +22,7 @@ std::string to_string(const std::vector<T>& vec) {
 
 void Main(int batch_size) {
   // Three sequence inputs.
-  std::vector<PaddleTensor> input_slots(4);
+  std::vector<PaddleTensor> input_slots(1);
   // one batch starts
   // data --
   int64_t data0[] = {0, 1, 2};

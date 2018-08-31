@@ -59,10 +59,10 @@ if (NOT EXISTS ${DITU_INSTALL_DIR})
     inference_download_and_uncompress(ditu_rnn_data ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
 endif()
 
-set(TEXT_CLASSIFICATION_MODEL_URL http://paddle-inference-dist.bj.bcebos.com/text-classification.tar.gz)
-set(TEXT_CLASSIFICATION_MODEL ${DITU_INSTALL_DIR}/text-classification)
+set(TEXT_CLASSIFICATION_MODEL_URL http://paddle-inference-dist.bj.bcebos.com/text-classification-Senta.tar.gz)
+set(TEXT_CLASSIFICATION_MODEL ${DITU_INSTALL_DIR}/text-classification-Senta)
 if (NOT EXISTS ${TEXT_CLASSIFICATION_MODEL})
-  inference_download_and_uncompress(text_classification_model ${TEXT_CLASSIFICATION_MODEL_URL} "text-classification.tar.gz")
+  inference_download_and_uncompress(text_classification_model ${TEXT_CLASSIFICATION_MODEL_URL} "text-classification-Senta.tar.gz")
 endif()
 
 
@@ -76,8 +76,7 @@ inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
 inference_analysis_test(test_text_classification SRCS test_text_classification.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api
     analysis_predictor
-    ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
-         --infer_model=${TEXT_CLASSIFICATION_MODEL})
+    ARGS --infer_model=${TEXT_CLASSIFICATION_MODEL})
 
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
