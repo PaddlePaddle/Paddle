@@ -98,15 +98,6 @@ class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
 
     CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
                      step_width, norm_by_times, kSeqToPad, layout);
-
-    // Set pad_tensor's lod info if possible
-    if (layout == kBatchLengthWidth) {
-      framework::LoD pad_lod(seq_lod.begin() + lod_level, seq_lod.end());
-      for (size_t i = 0; i < pad_lod[0].size(); ++i) {
-        pad_lod[0][i] = i * pad_seq_len;
-      }
-      pad_tensor->set_lod(pad_lod);
-    }
   }
 };
 
