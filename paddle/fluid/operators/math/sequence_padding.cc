@@ -19,64 +19,85 @@ namespace operators {
 namespace math {
 
 template <typename T>
+void CopyValidData(framework::Tensor* dst_tensor,
+                   const framework::Tensor* src_tensor,
+                   const framework::Vector<size_t>& seq_offsets,
+                   int pad_seq_len, int step_width, bool norm_by_len,
+                   CopyType type, PadLayout layout) {
+  int seq_num = seq_offsets.size() - 1;
+  const T* src_data = src_tensor->data<T>();
+  T* dst_data = dst_tensor->data<T>();
+
+  int seq_cpy_gap = step_width;
+  int pad_cpy_gap =
+      layout == kBatchLengthWidth ? step_width : seq_num * step_width;
+  for (int seq_idx = 0; seq_idx < seq_num; ++seq_idx) {
+    int valid_seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
+    PADDLE_ENFORCE_GE(
+        pad_seq_len, valid_seq_len,
+        "The padded sequence length can not be less than its original length.");
+    int seq_data_offset = seq_offsets[seq_idx] * step_width;
+    int pad_data_offset = layout == kBatchLengthWidth
+                              ? seq_idx * pad_seq_len * step_width
+                              : seq_idx * step_width;
+    float scale = 1.0f / static_cast<float>(valid_seq_len);
+
+    for (int step_idx = 0; step_idx < valid_seq_len; ++step_idx) {
+      const T* src =
+          src_data + (type == kSeqToPad ? seq_data_offset : pad_data_offset);
+      T* dst =
+          dst_data + (type == kSeqToPad ? pad_data_offset : seq_data_offset);
+      memcpy(dst, src, step_width * sizeof(T));
+      if (norm_by_len) {
+        for (int i = 0; i < step_width; ++i) {
+          *(dst + i) *= scale;
+        }
+      }
+      seq_data_offset += seq_cpy_gap;
+      pad_data_offset += pad_cpy_gap;
+    }
+  }
+}
+
+template <typename T>
 class PaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& seq, framework::Tensor* padding,
-                  bool norm_by_times) {
-    auto lod = seq.lod();
-    PADDLE_ENFORCE_GT(lod.size(), 0UL,
-                      "The LoD of LoDTensor seq should not be null.");
+                  const framework::LoDTensor& seq_tensor,
+                  framework::LoDTensor* pad_tensor,
+                  const framework::LoDTensor& pad_value, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth) {
+    auto seq_lod = seq_tensor.lod();
+    const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
+    const auto& seq_tensor_dims = seq_tensor.dims();
+    const auto& pad_tensor_dims = pad_tensor->dims();
+    if (pad_seq_len == -1) {
+      pad_seq_len = MaximumSequenceLength(seq_offsets);
+    }
+    int step_width = seq_tensor.numel() / seq_tensor_dims[0];
 
-    const size_t level = 0;
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
+    CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
+              step_width, layout);
+    PADDLE_ENFORCE(pad_value.numel() == 1 || pad_value.numel() == step_width,
+                   "The numel of 'pad_value' can only be 1 or be equal to the "
+                   "'step_width'.");
 
-    auto seq_dims = seq.dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0],
-                      static_cast<int64_t>(abs_offset_lod[level].back()),
-                      "The first dimension of LoDTensor seq should be "
-                      "equal to the sum of all sequences's length.");
-
-    auto padding_dims = padding->dims();
-    PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
-                      "The input padding should be a 3-D Tensor of shape "
-                      "[max_sequence_length, num_sequences, sequence_width].");
-
-    const int64_t max_sequence_length = MaximumSequenceLength(lod, level);
-    PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
-                      "The first dimension of Tensor padding should be the "
-                      "maximum length of all sequences in LoDTensor seq.");
-
-    const int64_t num_sequences = abs_offset_lod[level].size() - 1;
-    PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
-                      "The second dimension of Tensor padding should be the "
-                      "number of sequences in LoDTensor seq.");
-
-    const int64_t sequence_width = seq.numel() / seq_dims[0];
-    PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
-                      "The third dimension of Tensor padding should be the "
-                      "width of sequence in LoDTensor seq.");
-
-    const T* seq_data = seq.data<T>();
-    T* padding_data = padding->data<T>();
-    for (int64_t i = 0; i < max_sequence_length; ++i) {
-      for (int64_t j = 0; j < num_sequences; ++j) {
-        int64_t start_pos = abs_offset_lod[level][j];
-        int64_t sequence_length = abs_offset_lod[level][j + 1] - start_pos;
-        if (i < sequence_length) {
-          // i > 0 => sequence_length > 0
-          T scale =
-              norm_by_times ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
-          for (int64_t k = 0; k < sequence_width; ++k) {
-            padding_data[(i * num_sequences + j) * sequence_width + k] =
-                seq_data[(start_pos + i) * sequence_width + k] * scale;
-          }
-        } else {
-          memset(padding_data + (i * num_sequences + j) * sequence_width, 0,
-                 sequence_width * sizeof(T));
-        }
+    // fill padding value
+    T* pad_data = pad_tensor->data<T>();
+    const T* pad_value_data = pad_value.data<T>();
+    if (pad_value.numel() == 1) {
+      for (int i = 0; i < pad_tensor->numel(); ++i) {
+        pad_data[i] = *pad_value_data;
+      }
+    } else {
+      for (int i = 0; i < pad_tensor->numel(); i += step_width) {
+        memcpy(pad_data + i, pad_value_data, step_width * sizeof(T));
       }
     }
+
+    CopyValidData<T>(pad_tensor, &seq_tensor, seq_offsets, pad_seq_len,
+                     step_width, norm_by_times, kSeqToPad, layout);
   }
 };
 
@@ -84,62 +105,35 @@ template <typename T>
 class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  framework::LoDTensor* seq, const framework::Tensor& padding,
-                  bool norm_by_times) {
-    auto lod = seq->lod();
-    PADDLE_ENFORCE_GT(lod.size(), 0UL,
-                      "The LoD of LoDTensor seq should not be null.");
-
-    const size_t level = 0;
-    framework::LoD abs_offset_lod = framework::ToAbsOffset(lod);
-
-    auto seq_dims = seq->dims();
-    PADDLE_ENFORCE_EQ(seq_dims[0],
-                      static_cast<int64_t>(abs_offset_lod[level].back()),
-                      "The first dimension of LoDTensor seq should be "
-                      "equal to the sum of all sequences's length.");
-
-    auto padding_dims = padding.dims();
-    PADDLE_ENFORCE_EQ(padding_dims.size(), 3UL,
-                      "The input padding should be a 3-D Tensor of shape "
-                      "[max_sequnece_length, num_sequences, sequence_width].");
-
-    const int64_t max_sequence_length = MaximumSequenceLength(lod, level);
-    PADDLE_ENFORCE_EQ(padding_dims[0], max_sequence_length,
-                      "The first dimension of Tensor padding should be "
-                      "the maximum length of all sequences in LoDTensor seq.");
-
-    const int64_t num_sequences = abs_offset_lod[level].size() - 1;
-    PADDLE_ENFORCE_EQ(padding_dims[1], num_sequences,
-                      "The second dimension of Tensor padding should be "
-                      "the number of sequences in LoDTensor seq.");
-
-    const int64_t sequence_width = seq->numel() / seq_dims[0];
-    PADDLE_ENFORCE_EQ(padding_dims[2], sequence_width,
-                      "The third dimension of Tensor padding should be the "
-                      "width of sequence in LoDTensor seq.");
-
-    const T* padding_data = padding.data<T>();
-    T* seq_data = seq->data<T>();
-    for (int64_t i = 0; i < num_sequences; ++i) {
-      int64_t start_pos = abs_offset_lod[level][i];
-      int64_t sequence_length = abs_offset_lod[level][i + 1] - start_pos;
-      for (int64_t j = 0; j < sequence_length; ++j) {
-        // sequence_width > j > 0
-        T scale =
-            norm_by_times ? (1.0f / static_cast<T>(sequence_length)) : 1.0f;
-        for (int64_t k = 0; k < sequence_width; ++k) {
-          seq_data[(start_pos + j) * sequence_width + k] =
-              padding_data[(j * num_sequences + i) * sequence_width + k] *
-              scale;
-        }
-      }
+                  const framework::LoDTensor& pad_tensor,
+                  framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
+                  int lod_level = 0, bool norm_by_times = false,
+                  const PadLayout layout = kBatchLengthWidth) {
+    auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
+    const auto& seq_tensor_dims = seq_tensor->dims();
+    const auto& pad_tensor_dims = pad_tensor.dims();
+    if (pad_seq_len == -1) {
+      pad_seq_len = MaximumSequenceLength(seq_offsets);
     }
+    int step_width = seq_tensor->numel() / seq_tensor_dims[0];
+
+    CheckDims(seq_tensor_dims, pad_tensor_dims, seq_offsets, pad_seq_len,
+              step_width, layout);
+
+    CopyValidData<T>(seq_tensor, &pad_tensor, seq_offsets, pad_seq_len,
+                     step_width, norm_by_times, kPadToSeq, layout);
   }
 };
 
+template class PaddingLoDTensorFunctor<platform::CPUDeviceContext, int>;
+template class PaddingLoDTensorFunctor<platform::CPUDeviceContext, int64_t>;
 template class PaddingLoDTensorFunctor<platform::CPUDeviceContext, float>;
+template class PaddingLoDTensorFunctor<platform::CPUDeviceContext, double>;
+
+template class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, int>;
+template class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, int64_t>;
 template class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, float>;
+template class UnpaddingLoDTensorFunctor<platform::CPUDeviceContext, double>;
 
 }  // namespace math
 }  // namespace operators
