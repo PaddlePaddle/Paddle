@@ -37,7 +37,7 @@ def simple_fc_net(use_feed):
         reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
     hidden = img
-    for _ in xrange(4):
+    for _ in xrange(1):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
