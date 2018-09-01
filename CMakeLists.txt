@@ -204,6 +204,10 @@ include(external/snappy)    # download snappy
 include(external/snappystream)
 include(external/threadpool)
 
+include(cudnn)              # set cudnn libraries, must before configure
+include(cupti)
+include(configure)          # add paddle env configuration
+
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
@@ -212,9 +216,6 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
 endif()
 
-include(cudnn)              # set cudnn libraries, must before configure
-include(cupti)
-include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
