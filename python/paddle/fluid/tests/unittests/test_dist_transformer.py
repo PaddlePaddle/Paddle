@@ -15,6 +15,7 @@
 from __future__ import print_function
 
 import unittest
+import paddle
 from test_dist_base import TestDistBase
 
 
