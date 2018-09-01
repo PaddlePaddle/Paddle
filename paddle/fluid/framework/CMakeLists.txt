@@ -117,7 +117,7 @@ endif()
 if (NOT WIN32)
   cc_library(parallel_executor SRCS parallel_executor.cc DEPS
           threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
-          graph graph_viz_pass multi_devices_graph_pass op_fusion_pass
+          graph graph_viz_pass multi_devices_graph_pass fuse_adjacent_nodes_pass
           multi_devices_graph_print_pass multi_devices_graph_check_pass
           fast_threaded_ssa_graph_executor)
 endif() # NOT WIN32

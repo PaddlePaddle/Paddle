@@ -345,60 +345,64 @@ template <typename DeviceContext, typename T>
 class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    auto x = ctx.Input<framework::Tensor>("X");
     auto y = ctx.Input<framework::Tensor>("Y");
+    PADDLE_ENFORCE(y != nullptr, "Input(Y) should not be nullptr.");
 
     auto in_out = ctx.Input<framework::Tensor>("Out");
+    PADDLE_ENFORCE(in_out != nullptr, "Input(Out) should not be nullptr.");
+
     auto in_out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    PADDLE_ENFORCE(in_out_grad != nullptr,
+                   "Input(Out@Grad) should not be nullptr.");
 
     framework::Tensor *x_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     framework::Tensor *y_grad =
         ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
 
-    PADDLE_ENFORCE(y != nullptr, "Input(Y) should not be nullptr.");
-
-    if (ctx.Attr<bool>("recomputation")) {
-      PADDLE_ENFORCE(
-          x != nullptr,
-          "The recomputation is opened, so Input(X) should not be absent.");
-    } else {
-      PADDLE_ENFORCE(in_out != nullptr,
-                     "The recomputation is disabled, so the Input('Out') "
-                     "should not be empty.");
-    }
-
     framework::Tensor *in_x;
     auto functor_list = ctx.Attr<std::vector<std::string>>("functor_list");
 
-    // If functor_list contains elementwise_add, the backward doesn't use
-    // in_x, and in_outs.
-    if (x == nullptr) {
+    if (ctx.HasInput("X")) {
+      in_x = const_cast<framework::Tensor *>(ctx.Input<framework::Tensor>("X"));
+    } else {
+      // If functor_list contains elementwise_add, the backward doesn't use
+      // in_x, and in_outs.
       PADDLE_ENFORCE(functor_list[0] == "elementwise_add_grad" ||
                          functor_list[1] == "elementwise_add_grad",
                      "Only when the compoundfunctor contains "
                      "elementwise_add_grad, the 'X' could be absent.");
       in_x = const_cast<framework::Tensor *>(in_out_grad);
-      in_out = const_cast<framework::Tensor *>(in_out_grad);
-    } else {
-      in_x = const_cast<framework::Tensor *>(x);
     }
 
-    framework::Tensor *in_intermediate_out, *d_intermediate_out;
+    framework::Tensor *in_intermediate_out = nullptr;
+    framework::Tensor *d_intermediate_out = nullptr;
     if (ctx.Attr<bool>("keep_intermediate_value")) {
+      PADDLE_ENFORCE(ctx.HasInput("IntermediateOut"),
+                     "The keep_intermediate_value is true, "
+                     "so Input(IntermediateOut) should not be absent.");
       in_intermediate_out = const_cast<framework::Tensor *>(
           ctx.Input<framework::Tensor>("IntermediateOut"));
       PADDLE_ENFORCE(in_intermediate_out != nullptr,
                      "The option of 'keep_intermediate_value' is opened, "
                      "so the number of 'Out' should be two.");
-      PADDLE_ENFORCE(ctx.HasOutput(framework::GradVarName("IntermediateOut")),
-                     "The output(IntermediateOut) should not be null");
+    }
+
+    if (ctx.HasOutput(framework::GradVarName("IntermediateOut"))) {
       d_intermediate_out = ctx.Output<framework::Tensor>(
           framework::GradVarName("IntermediateOut"));
+      PADDLE_ENFORCE(d_intermediate_out != nullptr);
+    }
+
+    if (ctx.Attr<bool>("recomputation")) {
+      PADDLE_ENFORCE(
+          ctx.HasInput("X"),
+          "The recomputation is opened, so Input(X) should not be absent.");
     } else {
-      in_intermediate_out = nullptr;
-      d_intermediate_out = nullptr;
+      PADDLE_ENFORCE(in_out != nullptr,
+                     "The recomputation is disabled, so the Input('Out') "
+                     "should not be empty.");
     }
 
     if (ctx.Attr<bool>("recomputation")) {

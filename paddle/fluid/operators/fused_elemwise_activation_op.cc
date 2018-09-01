@@ -228,7 +228,6 @@ class FusedElemwiseActivationGradMaker
     auto *grad_op = new framework::OpDesc();
     grad_op->SetType(this->ForwardOpType() + "_grad");
 
-    // X, Y, X@Grad, Y@Grad
     for (auto &input_param : this->InputNames()) {
       grad_op->SetInput(input_param, this->Input(input_param));
       grad_op->SetOutput(framework::GradVarName(input_param),
@@ -252,6 +251,9 @@ class FusedElemwiseActivationGradMaker
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
                          this->OutputGrad("IntermediateOut"));
+    } else {
+      grad_op->SetInput("IntermediateOut", {});
+      grad_op->SetOutput(framework::GradVarName("IntermediateOut"), {});
     }
 
     return std::unique_ptr<framework::OpDesc>(grad_op);
@@ -275,6 +277,7 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
 
     auto funtor_list =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
+
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
     auto inter_grad_name = framework::GradVarName("IntermediateOut");
@@ -307,12 +310,17 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
       }
     }
 
-    if (ctx->Attrs().Get<bool>("keep_intermediate_value") &&
-        ctx->HasOutput(inter_grad_name)) {
+    if (ctx->HasOutput(y_grad_name)) {
+      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
+      ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
+      ctx->ShareLoD("Y", y_grad_name);
+    }
+
+    if (ctx->HasOutput(inter_grad_name)) {
       // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
       if (IsUnaryCompound(funtor_list)) {
         PADDLE_ENFORCE(
-            ctx->HasInputs("IntermediateOut"),
+            ctx->HasInput("IntermediateOut"),
             "If the compound_functor is Unary(Binary(X, Y)) and Binary "
             "is elementwise_add, the intermediate_out must be not absent.");
         ctx->SetOutputDim(inter_grad_name,
@@ -322,12 +330,6 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
         ctx->SetOutputDim(inter_grad_name, ctx->GetInputDim("Y"));
         ctx->ShareLoD("Y", inter_grad_name);
       }
-    }
-
-    if (ctx->HasOutput(y_grad_name)) {
-      PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
-      ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
-      ctx->ShareLoD("Y", y_grad_name);
     }
   }
 

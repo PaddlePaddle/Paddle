@@ -60,7 +60,8 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
 
   // Apply op fusion.
   if (strategy.op_fuse_) {
-    auto op_fuse_pass = ir::PassRegistry::Instance().Get("op_fusion_pass");
+    auto op_fuse_pass =
+        ir::PassRegistry::Instance().Get("fuse_adjacent_nodes_pass");
     graph = op_fuse_pass->Apply(std::move(graph));
     // Apply a graph viz pass to record a graph.
     if (!strategy.debug_graphviz_path_.empty()) {
@@ -375,7 +376,7 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(op_fusion_pass);
+USE_PASS(fuse_adjacent_nodes_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);

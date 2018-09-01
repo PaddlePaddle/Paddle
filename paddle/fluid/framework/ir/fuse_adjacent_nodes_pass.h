@@ -38,28 +38,18 @@ class FuseAdjacentNodesPass : public Pass {
 
  private:
   /**
-   * Whether cur_op_node and upstream_op_node can be fused.
-   * cur_op_node and upstream_op_node should be Operation and upstream_op_node's
-   * output is the input of cur_op_node here.
-   *
-   * The condition of fusing cur_op_node and upstream_op_node is:
-   *   - the number of upstream_op_node's outputs(not include ControlDepVar)
-   *     should be one.
-   *   - upstream_op_node's output is only used by cur_op_node or
-   *     cur_op_grad_node or upstream_op_grad_node.
-   *   - there is a template function to represent the fused of cur_op_node and
-   * upstream_op_node.
+   * Whether the two nodes can be fused.
+   * upstream_op_node's output is the input of cur_op_node here.
    */
   bool IsFusible(const NodePtr cur_op_node,
                  const NodePtr upstream_op_node) const;
 
   /**
    * Whether cur_op_node and some of it's adjacent nodes can be fused.
-   * If the return value is true, the cur_op_node and tobe_fused_nodes can be
-   * fused.
+   * If the return value is true, the cur_op_node can be fused with
+   * its adjacent nodes and the adjacent nodes is stored in tobe_fused_nodes.
    * If cur_op_node has been fused, cur_op_node will be reset to the fused node
-   * which is stored
-   * in m_internal.
+   * which is stored in m_internal.
    */
   bool FindToBeFusedNodes(
       const NodePtr cur_op_node,
@@ -67,28 +57,32 @@ class FuseAdjacentNodesPass : public Pass {
       std::unordered_set<NodePtr> *tobe_fused_nodes) const;
 
   /**
-   * Fuse cur_op_node and the nodes of tobe_fused_nodes.
-   * Insert the fused node graph.
-   * Collection of nodes that are no longer useful.
+   * Fuse cur_op_node and tobe_fused_nodes, and insert the fused node graph.
+   * In this process, some nodes will become useless, and they are stored in
+   * need_removed_nodes.
    */
   NodePtr FuseNodes(const NodePtr cur_op_node,
                     const std::unordered_set<NodePtr> &tobe_fused_nodes,
                     std::unordered_set<NodePtr> *need_removed_nodes,
                     ir::Graph *graph) const;
 
+  /**
+   *  Generate the op_desc of the fused op.
+   */
   void FuseElemwiseAndActivation(const NodePtr node,
                                  const std::unordered_set<NodePtr> &tobe_fused,
                                  OpDesc *op_desc) const;
 
+  /**
+   *  The node and tobe_fused_nodes should be in the same stage,
+   *  and the stage can be forward, backward and parameter optimization.
+   */
   bool IsBackward(const NodePtr node,
-                  const std::unordered_set<NodePtr> &tobe_fused) const;
+                  const std::unordered_set<NodePtr> &tobe_fused_nodes) const;
 
   bool IsElemwiseAndActivation(
-      const NodePtr node, const std::unordered_set<NodePtr> &tobe_fused) const;
-
-  void AddAbsentNodes(const NodePtr cur_op_node,
-                      const std::unordered_set<NodePtr> &tobe_fused_nodes,
-                      Node *fused_node) const;
+      const NodePtr node,
+      const std::unordered_set<NodePtr> &tobe_fused_node) const;
 };
 
 }  // namespace ir
