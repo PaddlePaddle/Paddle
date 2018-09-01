@@ -40,23 +40,20 @@ function (inference_analysis_test TARGET)
     endif(WITH_TESTING)
 endfunction(inference_analysis_test)
 
-set(DITU_RNN_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fmodel.tar.gz")
-set(DITU_RNN_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fdata.txt.tar.gz")
-set(DITU_INSTALL_DIR "${THIRD_PARTY_PATH}/install/ditu_rnn" CACHE PATH "Ditu RNN model and data root." FORCE)
-set(DITU_RNN_MODEL ${DITU_INSTALL_DIR}/model)
-set(DITU_RNN_DATA ${DITU_INSTALL_DIR}/data.txt)
-
-function (inference_download_and_uncompress target url gz_filename)
+function (inference_download_and_uncompress install_dir url gz_filename)
     message(STATUS "Download inference test stuff ${gz_filename} from ${url}")
-    execute_process(COMMAND bash -c "mkdir -p ${DITU_INSTALL_DIR}")
-    execute_process(COMMAND bash -c "cd ${DITU_INSTALL_DIR} && wget -q ${url}")
-    execute_process(COMMAND bash -c "cd ${DITU_INSTALL_DIR} && tar xzf ${gz_filename}")
+    execute_process(COMMAND bash -c "mkdir -p ${install_dir}")
+    execute_process(COMMAND bash -c "cd ${install_dir} && wget -q ${url}")
+    execute_process(COMMAND bash -c "cd ${install_dir} && tar xzf ${gz_filename}")
     message(STATUS "finish downloading ${gz_filename}")
 endfunction(inference_download_and_uncompress)
 
+set(DITU_RNN_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fmodel.tar.gz")
+set(DITU_RNN_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fdata.txt.tar.gz")
+set(DITU_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/ditu_rnn" CACHE PATH "Ditu RNN model and data root." FORCE)
 if (NOT EXISTS ${DITU_INSTALL_DIR})
-    inference_download_and_uncompress(ditu_rnn_model ${DITU_RNN_MODEL_URL} "ditu_rnn_fluid%2Fmodel.tar.gz")
-    inference_download_and_uncompress(ditu_rnn_data ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
+  inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_MODEL_URL} "ditu_rnn_fluid%2Fmodel.tar.gz")
+  inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
 endif()
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
@@ -87,3 +84,17 @@ inference_analysis_test(test_tensorrt_subgraph_pass SRCS tensorrt_subgraph_pass_
 inference_analysis_test(test_pass_manager SRCS pass_manager_tester.cc)
 inference_analysis_test(test_tensorrt_subgraph_node_mark_pass SRCS tensorrt_subgraph_node_mark_pass_tester.cc)
 inference_analysis_test(test_model_store_pass SRCS model_store_pass_tester.cc)
+
+set(CHINESE_NER_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/chinese_ner_model.tar.gz")
+set(CHINESE_NER_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/chinese_ner-data.txt.tar.gz")
+set(CHINESE_NER_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/chinese_ner" CACHE PATH "Chinese ner model and data root." FORCE)
+if (NOT EXISTS ${CHINESE_NER_INSTALL_DIR})
+  inference_download_and_uncompress(${CHINESE_NER_INSTALL_DIR} ${CHINESE_NER_MODEL_URL} "chinese_ner_model.tar.gz")
+  inference_download_and_uncompress(${CHINESE_NER_INSTALL_DIR} ${CHINESE_NER_DATA_URL} "chinese_ner-data.txt.tar.gz")
+endif()
+
+inference_analysis_test(test_chinese_ner SRCS chinese_ner_tester.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api
+    ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
+        --infer_model=${CHINESE_NER_INSTALL_DIR}/model
+        --infer_data=${CHINESE_NER_INSTALL_DIR}/data.txt)

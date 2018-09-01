@@ -22,21 +22,37 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static const char kParamScopeAttr[] = "param_scope";
+static const char kParamScopeAttr[] = "__param_scope__";
+static const char kFuseStatisAttr[] = "__fuse_statis__";
 
 class FusePassBase : public Pass {
  public:
-  void Init(Graph* graph) const { graph_ = graph; }
+  void Init(const std::string& repr, Graph* graph) const {
+    repr_ = repr;
+    graph_ = graph;
+  }
 
   Scope* param_scope() const {
     PADDLE_ENFORCE(graph_->Has(kParamScopeAttr));
     return graph_->Get<framework::Scope*>(kParamScopeAttr);
   }
 
+  void AddStatis(int count_of_fused) const {
+    PADDLE_ENFORCE(graph_);
+    PADDLE_ENFORCE(!repr_.empty());
+    if (!graph_->Has(kFuseStatisAttr)) {
+      graph_->Set(kFuseStatisAttr, new std::unordered_map<std::string, int>);
+    }
+    auto& info =
+        graph_->Get<std::unordered_map<std::string, int>>(kFuseStatisAttr);
+    info[repr_] = count_of_fused;
+  }
+
   virtual ~FusePassBase() {}
 
  protected:
   mutable Graph* graph_;
+  mutable std::string repr_;
 };
 
 }  // namespace ir

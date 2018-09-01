@@ -85,6 +85,8 @@ __all__ = [
     'one_hot',
     'autoincreased_step_counter',
     'reshape',
+    'squeeze',
+    'unsqueeze',
     'lod_reset',
     'lrn',
     'pad',
@@ -107,6 +109,7 @@ __all__ = [
     'flatten',
     'sequence_mask',
     'stack',
+    'pad2d',
     'unstack',
 ]
 
@@ -4532,6 +4535,89 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     return helper.append_activation(out)
 
 
+def squeeze(input, axes, name=None):
+    """
+    Remove single-dimensional entries from the shape of a tensor. Takes a 
+    parameter axes with a list of axes to squeeze. If axes is not provided, all 
+    the single dimensions will be removed from the shape. If an axis is 
+    selected with shape entry not equal to one, an error is raised.
+        
+    Examples:
+    Case 1:
+      Given 
+        X.shape = (1, 3, 1, 5)
+      and
+        axes = [0]
+      we get:
+        Out.shape = (3, 1, 5)
+      Case 2:
+        Given
+          X.shape = (1, 3, 1, 5)
+        and 
+          axes = []
+        we get:
+          Out.shape = (3, 5)
+    
+    Args:
+        input (Variable): The input variable to be squeezed.
+        axes (list): List of integers, indicating the dimensions to be squeezed.
+        name (str|None): Name for this layer.
+
+    Returns:
+        Variable: Output squeezed variable.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[5, 1, 10])
+            y = layers.sequeeze(input=x, axes=[1])
+    """
+    helper = LayerHelper("squeeze", **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type="squeeze",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out})
+
+    return out
+
+
+def unsqueeze(input, axes, name=None):
+    """
+    Insert single-dimensional entries to the shape of a tensor. Takes one 
+    required argument axes, a list of dimensions that will be inserted. 
+    Dimension indices in axes are as seen in the output tensor. 
+
+    For example: 
+      Given a tensor such that tensor with shape [3, 4, 5], 
+      then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+    
+    Args:
+        input (Variable): The input variable to be unsqueezed.
+        axes (list): List of integers, indicating the dimensions to be inserted.
+        name (str|None): Name for this layer.
+
+    Returns:
+        Variable: Output unsqueezed variable.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[5, 10])
+            y = layers.unsequeeze(input=x, axes=[1])
+    """
+    helper = LayerHelper("unsqueeze", **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type="unsqueeze",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out})
+
+    return out
+
+
 def lod_reset(x, y=None, target_lod=None):
     """
     Set LoD of :attr:`x` to a new one specified by :attr:`y` or
@@ -5529,6 +5615,94 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def pad2d(input,
+          paddings=[0, 0, 0, 0],
+          mode='constant',
+          pad_value=0.0,
+          data_format="NCHW",
+          name=None):
+    """
+    Pad 2-d images accordding to 'paddings' and 'mode'.
+    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    than height-1. And the width dimension has the same condition.
+
+    Example:
+
+      Given that X is a channel of image from input:
+      
+      X = [[1, 2, 3],
+           [4, 5, 6]]
+      
+      Case 0:
+      
+        paddings = [0, 1, 2, 3],
+        mode = 'constant'
+        pad_value = 0
+        
+        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+               [0, 0, 4, 5, 6, 0, 0, 0]
+               [0, 0, 0, 0, 0, 0, 0, 0]]
+      
+      Case 1:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'reflect'
+        
+        Out = [[3, 2, 1, 2, 3, 2]
+               [6, 5, 4, 5, 6, 5]
+               [3, 2, 1, 2, 3, 2]]
+        
+      Case 2:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'edge'
+        
+        Out = [[1, 1, 1, 2, 3, 3]
+               [4, 4, 4, 5, 6, 6]
+               [4, 4, 4, 5, 6, 6]]
+    
+  
+    Args:
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
+        paddings (tuple|list): The padding size. If padding is a tuple, it must
+            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
+            Default: padding = [0, 0, 0, 0].
+        mode (str): Three modes: constant(default), reflect, edge. Default: constant
+        pad_value (float32): The value to fill the padded areas in constant mode. Default: 0
+        data_format (str): An optional string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default: "NCHW"
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable padded accordding to paddings and mode.
+
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
+    """
+
+    helper = LayerHelper('pad2d', **locals())
+    dtype = helper.input_dtype(input_param_name='input')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad2d',
+        inputs={'X': input},
+        outputs={"Out": out},
+        attrs={
+            'paddings': paddings,
+            'mode': mode,
+            'pad_value': pad_value,
+            'data_frmat': data_format
+        })
+
+    return out
+
+
 def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
@@ -5543,8 +5717,8 @@ def prelu(x, mode, param_attr=None, name=None):
 		       all: all elements share same weight
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
-	  name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+	name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
 
     Returns:
         Variable: The output tensor with the same shape as input.
