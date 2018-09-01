@@ -52,7 +52,7 @@ struct TensorSetConstantGPU {
       : context_(context), tensor_(tensor), value_(value) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     SetConstant<platform::CUDADeviceContext, T> functor;
     functor(reinterpret_cast<const platform::CUDADeviceContext&>(context_),
             tensor_, static_cast<T>(value_));

@@ -62,14 +62,14 @@ void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (feeds_.size() <= static_cast<size_t>(idx)) {
+      if (feeds_.size() <= (size_t)idx) {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
       feed_names_[op->Output("Out")[0]] = idx;
     } else if (op->Type() == "fetch") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (fetchs_.size() <= idx) {
+      if (fetchs_.size() <= (size_t)idx) {
         fetchs_.resize(idx + 1);
       }
       fetchs_[idx] = op;
@@ -179,8 +179,13 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
+#ifdef __clang__
+  // fix clang compile error
+  return cls;
+#else
   // fix manylinux compile error.
   return std::move(cls);
+#endif
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
@@ -222,6 +227,62 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   }
   return true;
 }
+template <typename T>
+void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
+                                        PaddleTensor *output) {
+  std::vector<int> shape;
+  auto dims_i = fetch.dims();
+  auto lod = fetch.lod();
+  const T *output_ptr = fetch.data<T>();
+  auto num = fetch.numel();
+  std::vector<T> data;
+  if (0 == lod.size()) {
+    std::copy(output_ptr, output_ptr + num, std::back_inserter(data));
+    for (int j = 0; j < dims_i.size(); ++j) {
+      shape.push_back(dims_i[j]);
+    }
+  } else {
+    // for batch detection
+    // image[0] -> output[0] shape {145, 6}
+    // image[1] -> output[1] shape {176, 6}
+    // then,
+    // the batch output shape {321, 6}
+    // the lod {{0, 145, 321}}
+    // so we should append output[0] to {176, 6}
+    size_t max_dim = 0;
+    for (size_t j = 1; j < lod[0].size(); j++) {
+      max_dim = std::max(max_dim, lod[0][j] - lod[0][j - 1]);
+    }
+    size_t common_dim = lod[0].back() == 0 ? 0 : num / lod[0].back();
+    if (max_dim > 0) {
+      data.resize((lod[0].size() - 1) * max_dim * common_dim, 0);
+    }
+    for (size_t j = 1; j < lod[0].size(); j++) {
+      size_t start = lod[0][j - 1] * common_dim;
+      size_t end = lod[0][j] * common_dim;
+      if (end > start) {
+        std::copy(output_ptr + start, output_ptr + end,
+                  data.begin() + (j - 1) * max_dim * common_dim);
+      }
+    }
+    shape.push_back(lod[0].size() - 1);
+    shape.push_back(max_dim);
+    for (int j = 1; j < dims_i.size(); ++j) {
+      shape.push_back(dims_i[j]);
+    }
+  }
+
+  output->shape = shape;
+  auto &buffer = output->data;
+  if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
+    buffer.Resize(sizeof(T) * data.size());
+  }
+  std::memcpy(buffer.data(), data.data(), buffer.length());
+  // copy LoD
+  for (const auto &level : fetch.lod()) {
+    output->lod.emplace_back(level);
+  }
+}
 
 bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
                                      framework::Scope *scope) {
@@ -229,70 +290,20 @@ bool NativePaddlePredictor::GetFetch(std::vector<PaddleTensor> *outputs,
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
     int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
-    PADDLE_ENFORCE(idx == i);
-    framework::LoDTensor &output =
+    PADDLE_ENFORCE((size_t)idx == i);
+    framework::LoDTensor &fetch =
         framework::GetFetchVariable(*scope, "fetch", idx);
-    // TODO(panyx0718): Support fetch of other types.
-    if (output.type() != typeid(float)) {
-      LOG(ERROR) << "only support fetching float now.";
-      return false;
-    }
-
-    std::vector<int> shape;
-    auto dims_i = output.dims();
-    auto lod = output.lod();
-    const float *output_ptr = output.data<float>();
-    // const int64_t* output_ptr = fetchs[i].data<int64_t>();
-    auto num = output.numel();
-    std::vector<float> data;
-    if (0 == lod.size()) {
-      std::copy(output_ptr, output_ptr + num, std::back_inserter(data));
-      for (int j = 0; j < dims_i.size(); ++j) {
-        shape.push_back(dims_i[j]);
-      }
+    auto type = fetch.type();
+    auto output = &(outputs->at(i));
+    if (type == typeid(float)) {
+      GetFetchOne<float>(fetch, output);
+      output->dtype = PaddleDType::FLOAT32;
+    } else if (type == typeid(int64_t)) {
+      GetFetchOne<int64_t>(fetch, output);
+      output->dtype = PaddleDType::INT64;
     } else {
-      // for batch detection
-      // image[0] -> output[0] shape {145, 6}
-      // image[1] -> output[1] shape {176, 6}
-      // then,
-      // the batch output shape {321, 6}
-      // the lod {{0, 145, 321}}
-      // so we should append output[0] to {176, 6}
-      size_t max_dim = 0;
-      for (size_t j = 1; j < lod[0].size(); j++) {
-        max_dim = std::max(max_dim, lod[0][j] - lod[0][j - 1]);
-      }
-      size_t common_dim = lod[0].back() == 0 ? 0 : num / lod[0].back();
-      if (max_dim > 0) {
-        data.resize((lod[0].size() - 1) * max_dim * common_dim, 0);
-      }
-      for (size_t j = 1; j < lod[0].size(); j++) {
-        size_t start = lod[0][j - 1] * common_dim;
-        size_t end = lod[0][j] * common_dim;
-        if (end > start) {
-          std::copy(output_ptr + start, output_ptr + end,
-                    data.begin() + (j - 1) * max_dim * common_dim);
-        }
-      }
-      shape.push_back(lod[0].size() - 1);
-      shape.push_back(max_dim);
-      for (int j = 1; j < dims_i.size(); ++j) {
-        shape.push_back(dims_i[j]);
-      }
+      LOG(ERROR) << "unknown type, only support float32 and int64 now.";
     }
-
-    outputs->at(i).shape = shape;
-    auto &buffer = outputs->at(i).data;
-    if (buffer.empty() || buffer.length() < sizeof(float) * data.size()) {
-      buffer.Resize(sizeof(float) * data.size());
-    }
-    std::memcpy(buffer.data(), data.data(), buffer.length());
-    // copy LoD
-    for (const auto &level : output.lod()) {
-      outputs->at(i).lod.emplace_back(level);
-    }
-    outputs->at(i).dtype = PaddleDType::FLOAT32;
-    // TODO(panyx0718): support other types? fill tensor name? avoid a copy.
   }
   return true;
 }
@@ -323,7 +334,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
+#ifdef __clang__
+  // fix clang compile error
+  return predictor;
+#else
   return std::move(predictor);
+#endif
 }
 
 }  // namespace paddle
