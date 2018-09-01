@@ -5653,9 +5653,9 @@ def flatten(x, axis=1, name=None):
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
     """
     Generate a new sequence for the input index sequence, which enumerates all the
-    sub-sequences with length win_size of the input. 
-    The enumerated sequence has the same 1st dimension with variable input, and
-    the 2nd dimension is win_size, padded by pad_value if necessary in generation.
+    sub-sequences with length `win_size` of the input. 
+    The enumerated sequence has the same 1st dimension with variable `input`, and
+    the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
     
     Examples:
     Case 1:
