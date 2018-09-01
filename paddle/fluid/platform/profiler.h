@@ -96,8 +96,7 @@ struct RecordBlock {
   uint64_t start_ns_;
 };
 #else
-// Our profiler deeply coupled in many operators.
-// use fake object to avoid large modifies these files.
+// windows do not support profiler temporarily.
 struct RecordEvent {
   RecordEvent(const std::string& name, const DeviceContext* dev_ctx) {}
 };

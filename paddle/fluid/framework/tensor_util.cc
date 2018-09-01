@@ -150,7 +150,11 @@ struct AnyDTypeVisitor {
       : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
 
   template <typename T>
+<<<<<<< HEAD
   void apply()() const {
+=======
+  void apply() const {
+>>>>>>> origin/develop
     auto t = EigenVector<T>::Flatten(tensor_);
     auto o = EigenScalar<bool>::From(*out_);
     // return any of predicate_(t) is true.

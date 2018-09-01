@@ -85,9 +85,13 @@ function(op_library TARGET)
 
     #remove windows unsupported op
     if (WIN32)
+<<<<<<< HEAD
     # no nccl, no avx instructions ops.
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
      "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "lstm_op" "fusion_lstm_op")
+=======
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op")
+>>>>>>> origin/develop
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -295,6 +299,8 @@ op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
 op_library(extract_rows_op DEPS memory)
 op_library(flatten_op DEPS reshape_op)
+op_library(sequence_pad_op DEPS sequence_padding)
+op_library(unstack_op DEPS stack_op)
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)

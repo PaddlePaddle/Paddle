@@ -218,14 +218,18 @@ function(merge_static_libs TARGET_NAME)
 
     foreach(lib ${libs})
       # Get the file names of the libraries to be merged
+      #if(NOT $<TARGET_FILE:${lib}> MATCHES "lib.*\\.lib")
+      #  message("library" ${lib})
+      #  set(libfiles ${libfiles} lib$<TARGET_FILE:${lib}>)
+      #else()
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
+      #endif()
     endforeach()
-    
-    # msvc will put libarary in directory of "/Release/xxxlib" by default 
-    #       COMMAND cmake -E remove "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
+   
+    # windows cmd return error in clean env.
+    # COMMAND del "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
-      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}"
-      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/lib${TARGET_NAME}.lib ${libfiles}
+      COMMAND lib /OUT:${CMAKE_CURRENT_BINARY_DIR}/lib${TARGET_NAME}.lib ${libfiles}
       )
   endif(WIN32)
 endfunction(merge_static_libs)

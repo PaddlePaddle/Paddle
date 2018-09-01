@@ -23,6 +23,7 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace inference {
@@ -31,14 +32,15 @@ using framework::ProgramDesc;
 
 class IRPassManager final {
  public:
-  IRPassManager(const ProgramDesc& program);
+  IRPassManager(const ProgramDesc &program, framework::Scope *scope);
 
-  void Apply(const std::vector<std::string>& passes);
+  void Apply(const std::vector<std::string> &passes);
 
-  framework::ir::Graph& graph() const { return *graph_; }
+  framework::ir::Graph &graph() const { return *graph_; }
 
  private:
   std::unique_ptr<framework::ir::Graph> graph_;
+  ProgramDesc program_;
 };
 
 }  // namespace analysis

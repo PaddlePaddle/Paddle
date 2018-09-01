@@ -10,7 +10,7 @@ set(FLUID_CORE_MODULES proto_desc memory lod_tensor executor)
 # TODO(panyx0718): Should this be called paddle_fluid_inference_api_internal?
 cc_library(paddle_fluid_api
     SRCS io.cc
-    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB})
+    DEPS ${FLUID_CORE_MODULES} ${GLOB_OP_LIB} graph_to_program_pass)
 
 get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 get_property(fluid_third_partys GLOBAL PROPERTY FLUID_THRID_PARTYS)
@@ -21,9 +21,9 @@ endif(WIN32)
 # paddle_fluid_origin exclude inference api interface
 cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 
-if(NOT APPLE)
+#if(APPLE)
   add_subdirectory(api)
-endif()
+#endif()
 
 # Create static library
 

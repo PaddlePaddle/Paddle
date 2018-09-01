@@ -17,6 +17,7 @@ All layers just related to the neural network.
 
 from __future__ import print_function
 
+import numpy as np
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
 from ..framework import Variable
@@ -24,7 +25,6 @@ from ..param_attr import ParamAttr
 from .layer_function_generator import autodoc, templatedoc
 from .tensor import concat
 from . import utils
-import random
 from .. import unique_name
 from functools import reduce
 
@@ -54,6 +54,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'sequence_expand',
+    'sequence_pad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
@@ -84,9 +85,12 @@ __all__ = [
     'one_hot',
     'autoincreased_step_counter',
     'reshape',
+    'squeeze',
+    'unsqueeze',
     'lod_reset',
     'lrn',
     'pad',
+    'pad_constant_like',
     'label_smooth',
     'roi_pool',
     'dice_loss',
@@ -103,7 +107,10 @@ __all__ = [
     'rank_loss',
     'prelu',
     'flatten',
+    'sequence_mask',
     'stack',
+    'pad2d',
+    'unstack',
 ]
 
 
@@ -2654,6 +2661,51 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
+@templatedoc()
+def sequence_pad(x, pad_value, maxlen=None):
+    """
+    ${comment}
+
+    Args:
+        x(Variable): Input variable which should contain lod information.
+        pad_value(Variable): The Variable that holds values that will be fill 
+            into padded steps. It can be a scalar or a tensor whose shape 
+            equals to time steps in sequences. If it's a scalar, it will be 
+            automatically broadcasted to the shape of time step.
+        maxlen(int, default None): The length of padded sequences. It can be 
+            None or any positive int. When it is None, all sequences will be 
+            padded up to the length of the longest one among them; when it a 
+            certain positive value, it must be greater than the length of the 
+            longest original sequence."
+    
+    Returns:
+        Variable: The padded sequence batch. All sequences has the same length.
+    
+    Examples:
+        .. code-block:: python
+
+            import numpy
+
+            x = fluid.layers.data(name='y', shape=[10, 5],
+                             dtype='float32', lod_level=1)
+            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+    """
+
+    helper = LayerHelper('sequence_pad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    if maxlen is None:
+        maxlen = -1
+    helper.append_op(
+        type='sequence_pad',
+        inputs={'X': x,
+                'PadValue': pad_value},
+        outputs={'Out': out},
+        attrs={'padded_length': maxlen})
+    return out
+
+
 def beam_search(pre_ids,
                 pre_scores,
                 ids,
@@ -4483,6 +4535,89 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     return helper.append_activation(out)
 
 
+def squeeze(input, axes, name=None):
+    """
+    Remove single-dimensional entries from the shape of a tensor. Takes a 
+    parameter axes with a list of axes to squeeze. If axes is not provided, all 
+    the single dimensions will be removed from the shape. If an axis is 
+    selected with shape entry not equal to one, an error is raised.
+        
+    Examples:
+    Case 1:
+      Given 
+        X.shape = (1, 3, 1, 5)
+      and
+        axes = [0]
+      we get:
+        Out.shape = (3, 1, 5)
+      Case 2:
+        Given
+          X.shape = (1, 3, 1, 5)
+        and 
+          axes = []
+        we get:
+          Out.shape = (3, 5)
+    
+    Args:
+        input (Variable): The input variable to be squeezed.
+        axes (list): List of integers, indicating the dimensions to be squeezed.
+        name (str|None): Name for this layer.
+
+    Returns:
+        Variable: Output squeezed variable.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[5, 1, 10])
+            y = layers.sequeeze(input=x, axes=[1])
+    """
+    helper = LayerHelper("squeeze", **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type="squeeze",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out})
+
+    return out
+
+
+def unsqueeze(input, axes, name=None):
+    """
+    Insert single-dimensional entries to the shape of a tensor. Takes one 
+    required argument axes, a list of dimensions that will be inserted. 
+    Dimension indices in axes are as seen in the output tensor. 
+
+    For example: 
+      Given a tensor such that tensor with shape [3, 4, 5], 
+      then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
+    
+    Args:
+        input (Variable): The input variable to be unsqueezed.
+        axes (list): List of integers, indicating the dimensions to be inserted.
+        name (str|None): Name for this layer.
+
+    Returns:
+        Variable: Output unsqueezed variable.
+
+    Examples:
+        .. code-block:: python
+
+            x = layers.data(name='x', shape=[5, 10])
+            y = layers.unsequeeze(input=x, axes=[1])
+    """
+    helper = LayerHelper("unsqueeze", **locals())
+    out = helper.create_tmp_variable(dtype=input.dtype)
+    helper.append_op(
+        type="unsqueeze",
+        inputs={"X": input},
+        attrs={"axes": axes},
+        outputs={"Out": out})
+
+    return out
+
+
 def lod_reset(x, y=None, target_lod=None):
     """
     Set LoD of :attr:`x` to a new one specified by :attr:`y` or
@@ -4704,6 +4839,86 @@ def pad(x, paddings, pad_value=0., name=None):
         outputs={'Out': out},
         attrs={'paddings': paddings,
                'pad_value': float(pad_value)})
+    return out
+
+
+def pad_constant_like(x, y, pad_value=0., name=None):
+    """
+    Pad input(Y) with :attr:`pad_value`, the number of values padded to
+    the edges of each axis is specified by the difference of the shape
+    of X and Y. ((0, shape_x_0 - shape_y_0), ... (0, shape_x_n - shape_y_n))
+    unique pad widths for each axis. The input should be a k-D
+    tensor(k > 0 and k < 7).
+
+    See below for an example.
+
+    .. code-block:: text
+
+        Given:
+            X = [[[[ 0,  1,  2],
+                   [ 3,  4,  5]],
+                  [[ 6,  7,  8],
+                   [ 9, 10, 11]],
+                  [[12, 13, 14],
+                   [15, 16, 17]]],
+                 [[[18, 19, 20],
+                   [21, 22, 23]],
+                  [[24, 25, 26],
+                   [27, 28, 29]],
+                  [[30, 31, 32],
+                   [33, 34, 35]]]]
+            X.shape = (2, 3, 2, 3)
+
+            Y = [[[[35, 36, 37]],
+                  [[38, 39, 40]],
+                  [[41, 42, 43]]]]
+            Y.shape = (1, 3, 1, 3)
+
+    And
+        pad_value = -1,
+
+    Return:
+        Out = [[[[35, 36, 37],
+                  [-1, -1, -1]],
+                [[38, 39, 40],
+                  [-1, -1, -1]],
+                 [[41, 42, 43],
+                  [-1, -1, -1]]],
+                [[[-1, -1, -1],
+                  [-1, -1, -1]],
+                 [[-1, -1, -1],
+                  [-1, -1, -1]],
+                 [[-1, -1, -1],
+                  [-1, -1, -1]]]]
+        Out.shape = (2, 3, 2, 3)
+
+    Args:
+        x (Variable): The input tensor variable.
+        y (Variable): The input tensor variable.
+        pad_value (float): The constant value used to pad.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The padded tensor variable.
+
+    Examples:
+        .. code-block:: python
+
+            # x is a rank 4 tensor variable, x.shape = (2, 3, 2, 3)
+            # y is a rank 4 tensor variable, y.shape = (1, 3, 1, 3)
+            out = fluid.layers.pad_constant_like(x=x, y=y, pad_value=0.)
+            # out is a rank 4 tensor variable, and out.shape = [2, 3 ,2 , 3]
+    """
+    helper = LayerHelper('pad_constant_like', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad_constant_like',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'pad_value': float(pad_value)})
     return out
 
 
@@ -5101,7 +5316,7 @@ def random_crop(x, shape, seed=None):
     dtype = x.dtype
     out = helper.create_tmp_variable(dtype)
     if seed is None:
-        seed = random.randint(-65536, 65535)
+        seed = np.random.randint(-65536, 65536)
     op_attrs = {"shape": shape}
     if isinstance(seed, int):
         op_attrs["startup_seed"] = seed
@@ -5303,7 +5518,7 @@ def crop(x, shape=None, offsets=None, name=None):
     helper = LayerHelper('crop', **locals())
 
     if not (isinstance(shape, list) or isinstance(shape, tuple) or \
-        isinstance(shape, Variable)):
+                    isinstance(shape, Variable)):
         raise ValueError("The shape should be a list, tuple or Variable.")
 
     if offsets is None:
@@ -5400,6 +5615,94 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def pad2d(input,
+          paddings=[0, 0, 0, 0],
+          mode='constant',
+          pad_value=0.0,
+          data_format="NCHW",
+          name=None):
+    """
+    Pad 2-d images accordding to 'paddings' and 'mode'.
+    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    than height-1. And the width dimension has the same condition.
+
+    Example:
+
+      Given that X is a channel of image from input:
+      
+      X = [[1, 2, 3],
+           [4, 5, 6]]
+      
+      Case 0:
+      
+        paddings = [0, 1, 2, 3],
+        mode = 'constant'
+        pad_value = 0
+        
+        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+               [0, 0, 4, 5, 6, 0, 0, 0]
+               [0, 0, 0, 0, 0, 0, 0, 0]]
+      
+      Case 1:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'reflect'
+        
+        Out = [[3, 2, 1, 2, 3, 2]
+               [6, 5, 4, 5, 6, 5]
+               [3, 2, 1, 2, 3, 2]]
+        
+      Case 2:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'edge'
+        
+        Out = [[1, 1, 1, 2, 3, 3]
+               [4, 4, 4, 5, 6, 6]
+               [4, 4, 4, 5, 6, 6]]
+    
+  
+    Args:
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
+        paddings (tuple|list): The padding size. If padding is a tuple, it must
+            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
+            Default: padding = [0, 0, 0, 0].
+        mode (str): Three modes: constant(default), reflect, edge. Default: constant
+        pad_value (float32): The value to fill the padded areas in constant mode. Default: 0
+        data_format (str): An optional string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default: "NCHW"
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable padded accordding to paddings and mode.
+
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
+    """
+
+    helper = LayerHelper('pad2d', **locals())
+    dtype = helper.input_dtype(input_param_name='input')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad2d',
+        inputs={'X': input},
+        outputs={"Out": out},
+        attrs={
+            'paddings': paddings,
+            'mode': mode,
+            'pad_value': pad_value,
+            'data_frmat': data_format
+        })
+
+    return out
+
+
 def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
@@ -5414,7 +5717,7 @@ def prelu(x, mode, param_attr=None, name=None):
 		       all: all elements share same weight
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
-	  name(str|None): A name for this layer(optional). If set None, the layer
+	name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically. 
 
     Returns:
@@ -5520,7 +5823,75 @@ def flatten(x, axis=1, name=None):
     return out
 
 
+def sequence_mask(x, maxlen=None, dtype='int64', name=None):
+    """
+    **SequenceMask Layer**
+
+    This layer outputs a mask according to the input :code:`x` and
+    :code:`maxlen` with data type of :code:`dtype`.
+
+    Supposing :code:`x` is a Tensor with shape [d_1, d_2, ..., d_n], the
+    :code:`y` is a mask with shape [d_1, d_2, ..., d_n, maxlen], where:
+
+    .. math::
+
+        y(i_1, i_2,..., i_n, j) = (j < x(i_1, i_2,..., i_n))
+
+    Args:
+        x (Variable): Input tensor of sequence_mask layer,
+                      whose elements are integers less than :code:`maxlen`.
+        maxlen (int|None): Maximum length of the sequence. If :code:`maxlen`
+                           is None, it would be replace with :math:`max(x)`.
+        dtype (np.dtype|core.VarDesc.VarType|str): Data type of the output.
+        name (str|None): A name for this layer(optional). If set None, the
+                         layer will be named automatically.
+
+    Returns:
+        Variable: The output sequence mask.
+
+    """
+
+    helper = LayerHelper('sequence_mask', **locals())
+    if name is None:
+        out = helper.create_tmp_variable(dtype=dtype)
+    else:
+        out = helper.create_tmp_variable(dtype=dtype, name=name)
+
+    helper.append_op(
+        type='sequence_mask',
+        inputs={'X': [x]},
+        outputs={'Y': out},
+        attrs={
+            'max_len': maxlen if maxlen is not None else -1,
+            'out_dtype': out.dtype
+        })
+    return out
+
+
 def stack(x, axis=0):
+    """
+    **Stack Layer**
+
+    This layer stacks all of the input :code:`x` along axis.
+
+    Input :code:`x` can be a single variable, a :code:`list` of variables,
+    or a :code:`tuple` of variables. If :code:`x` is a :code:`list` or
+    :code:`tuple`, the shapes of all these variables must be the same.
+    Supposing the shape of each input is :math:`[d_0, d_1, ..., d_{n-1}]`,
+    the shape of the output variable would be
+    :math:`[d_0, d_1, ..., d_{axis}=len(x), ..., d_{n-1}]`.
+    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x[0])+1`.
+    If :code:`axis` is None, it would be replaced with 0.
+
+    Args:
+        x (Variable|list(Variable)|tuple(Variable)): Input variables.
+        axis (int|None): The axis along which all inputs are stacked.
+
+    Returns:
+        Variable: The stacked variable.
+
+    """
+
     helper = LayerHelper('stack', **locals())
     axis = 0 if axis is None else axis
 
@@ -5532,3 +5903,44 @@ def stack(x, axis=0):
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
     return out
+
+
+def unstack(x, axis=0, num=None):
+    """
+    **UnStack Layer**
+
+    This layer unstacks input :code:`x` into several tensors along axis.
+   
+    If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
+    If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
+    and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
+    raised. 
+
+    Args:
+        x (Variable): Input variable. 
+        axis (int): The axis along which the input is unstacked.
+        num (int|None): The number of output variables.
+    
+    Returns:
+        list(Variable): The unstacked variables.
+    
+    """
+
+    helper = LayerHelper('unstack', **locals())
+    if num is None:
+        if axis is None or x.shape[axis] <= 0:
+            raise ValueError('unknown unstack number')
+        else:
+            num = x.shape[axis]
+
+    outs = []
+    for _ in num:
+        outs.append(helper.create_tmp_variable(x.dtype))
+
+    helper.append_op(
+        type='unstack',
+        inputs={'X': [x]},
+        outputs={'Y': outs},
+        attrs={'axis': axis,
+               'num': num})
+    return outs
