@@ -207,6 +207,10 @@ endif()
 
 include(external/threadpool)
 
+include(flags)              # set paddle compile flags
+include(cudnn)              # set cudnn libraries, must before configure
+include(configure)          # add paddle env configuration
+
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)

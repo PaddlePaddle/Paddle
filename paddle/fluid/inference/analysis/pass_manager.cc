@@ -33,9 +33,9 @@ bool PassManager::Initialize(Argument* argument) {
 
 void DfgPassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
-  LOG(INFO) << "Total " << data_.size() << " passes";
+  LOG(INFO) << "Total " << data_.size() << " Analysys passes";
   for (auto& pass : data_) {
-    LOG(WARNING) << "Running pass [" << pass->repr() << "]";
+    LOG(WARNING) << "Running Analysis pass [" << pass->repr() << "]";
     pass->Run(argument_->main_dfg.get());
   }
 }

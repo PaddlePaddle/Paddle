@@ -15,7 +15,7 @@
 from __future__ import print_function
 import re
 from collections import defaultdict
-from paddle.fluid.framework import Program, Variable
+from paddle.fluid.framework import Program, Variable, name_scope
 from . import framework
 from . import layers
 from .backward import append_backward
@@ -46,10 +46,12 @@ class Optimizer(object):
     def __init__(self,
                  learning_rate,
                  regularization=None,
-                 LARS_weight_decay=0.0):
+                 LARS_weight_decay=0.0,
+                 name=None):
         if not isinstance(learning_rate, float) and \
                 not isinstance(learning_rate, framework.Variable):
             raise TypeError("learning rate should be float or Variable")
+        self._name = name
         self.regularization = regularization
         self._learning_rate = learning_rate
         # the learning rate type should be inferenced from loss
@@ -153,6 +155,8 @@ class Optimizer(object):
             dtype: data type of the accumulator variable
             fill_value: value to initialize the accumulator variable
         """
+        if self._name is not None:
+            name = self._name + "_" + name
         if (name in self._accumulators and
                 param.name in self._accumulators[name]):
             raise Exception("Accumulator {} already exists for parameter {}".
@@ -181,6 +185,8 @@ class Optimizer(object):
         Returns:
             accumulator variable for the parameter
         """
+        if self._name is not None:
+            name = self._name + "_" + name
         if (name not in self._accumulators or
                 param.name not in self._accumulators[name]):
             raise Exception("Accumulator {} does not exist for parameter {}".
@@ -231,7 +237,7 @@ class Optimizer(object):
                 if param_and_grad[1] is None:
                     continue
                 with param_and_grad[0].block.program.optimized_guard(
-                        param_and_grad):
+                        param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
                                                                param_and_grad)

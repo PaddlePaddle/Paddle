@@ -625,19 +625,11 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name) const {
   for (size_t i = 0; i < places_.size(); ++i) {
-// Insert ScaleCost OpHandle
-#ifdef PADDLE_WITH_CUDA
-    auto *communication_dev_ctx =
-        nccl_ctxs_ ? nccl_ctxs_->DevCtx(places_[i])
-                   : platform::DeviceContextPool::Instance().Get(places_[i]);
-#else
-    auto *communication_dev_ctx =
-        platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-#endif
+    // Insert ScaleCost OpHandle
+    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        local_scopes_.size(), local_scopes_[i], places_[i],
-        communication_dev_ctx);
+        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx);
     result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
@@ -744,7 +736,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_THROW(
         "the distribute training related op should be in [split_byref, "
         "concat].");
   }
@@ -754,17 +746,26 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
                  node->Op()->Type());
 
   CreateComputationalOp(result, node, op_dev_id);
-  if (node->Op()->Type() == "concat") {
-    ConnectOp(result, result->Get<GraphOps>(kGraphOps).back().get(),
-              "fetch_barrier");
+}
+
+void SetOpInputsAllPlaces(ir::Graph *result, ir::Node *node, int num_places) {
+  auto *op_handle = result->Get<GraphOps>(kGraphOps).back().get();
+  for (ir::Node *input : node->inputs) {
+    VarHandle *var = nullptr;
+    for (int place_offset = 0; place_offset < num_places; ++place_offset) {
+      auto &var_holders = result->Get<GraphVars>(kGraphVars)[place_offset];
+      auto &var_holder = var_holders[input->Name()];
+      if (!var_holder.empty()) {
+        var = var_holder.rbegin()->get();
+        op_handle->AddInput(var);
+      }
+    }
   }
 }
 
 // Create RPC related op handles that connects its in ops and out ops.
 void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
                                           ir::Node *node) const {
-  // FIXME(typhoonzero): Cleanup this deps for both sync mode and async mode
-  //                     put them into transpiler.
   int op_dev_id = -1;
   if (node->Op()->Type() == "send") {
     // TODO(paddle-dev): getting the first var is not safe.
@@ -799,8 +800,6 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
     }
     auto recv_param_grad = boost::get<std::vector<std::string>>(
         node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName()));
-    // FIXME(typhoonzero): assume each recv op output one param
-    // Use the same place as send.
     if (recv_param_grad.size() == 2U) {
       op_dev_id = GetVarDeviceID(*result, recv_param_grad[1]);
       VLOG(10) << "recv param " << recv_param_grad[0]
@@ -814,34 +813,44 @@ void MultiDevSSAGraphBuilder::CreateRPCOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
-    // send_barrier and fetch_barrier op can be scheduled on device 0
+    // send_barrier, fetch_barrier will run on place 0;
     op_dev_id = 0;
   }
 
   PADDLE_ENFORCE(op_dev_id != -1, "can not find the right place for rpc op: %s",
                  node->Op()->Type());
-
   result->Get<GraphOps>(kGraphOps).emplace_back(new RPCOpHandle(
       result->CreateOpNode(node->Op()), *node->Op(), local_scopes_[op_dev_id],
       node->Op()->Type(), places_[op_dev_id]));
 
-  // TODO(panyx0718): This might not be needed anymore.
-  if (node->Op()->Type() == "send_barrier") {
-    ConnectOp(result, result->Get<GraphOps>(kGraphOps).back().get(), "send");
-  } else if (node->Op()->Type() == "recv") {
-    ConnectOp(result, result->Get<GraphOps>(kGraphOps).back().get(),
-              "send_barrier");
-  } else if (node->Op()->Type() == "fetch_barrier") {
-    ConnectOp(result, result->Get<GraphOps>(kGraphOps).back().get(), "recv");
-  } else if (node->Op()->Type() == "send") {
-    // do nothing
+  if (node->Op()->Type() == "send") {
+    CreateOpHandleIOs(result, node, op_dev_id);
   } else {
-    PADDLE_THROW(
-        "rpc op should be in ["
-        "send, send_barrier. recv, fetch_barrier]");
-  }
+    // send_barrier, recv, fetch_barrier's inputs are deps var, get them from
+    // all places
+    auto p = places_[op_dev_id];
+    auto *op_handle = result->Get<GraphOps>(kGraphOps).back().get();
+    op_handle->SetDeviceContext(p,
+                                platform::DeviceContextPool::Instance().Get(p));
 
-  CreateOpHandleIOs(result, node, op_dev_id);
+    SetOpInputsAllPlaces(result, node, places_.size());
+    for (ir::Node *output : node->outputs) {
+      int outvar_dev_id = op_dev_id;
+      if (node->Op()->Type() == "fetch_barrier") {
+        outvar_dev_id = GetVarDeviceID(*result, output->Name());
+        PADDLE_ENFORCE_NE(outvar_dev_id, -1);
+      }
+      p = places_[outvar_dev_id];
+      ir::Node *new_node = nullptr;
+      if (output->Var()) {
+        new_node = result->CreateVarNode(output->Var());
+      } else {
+        new_node =
+            result->CreateEmptyNode(output->Name(), ir::Node::Type::kVariable);
+      }
+      CreateOpOutput(result, op_handle, new_node, p, outvar_dev_id);
+    }
+  }
 }
 
 bool MultiDevSSAGraphBuilder::IsScaleLossOp(ir::Node *node) const {
