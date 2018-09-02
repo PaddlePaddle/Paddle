@@ -95,7 +95,9 @@ struct PDNode {
   PDNode* assert_var_not_persistable();
   PDNode* assert_is_persistable_var();
   PDNode* assert_is_op_output(const std::string& op_type);
+  PDNode* assert_is_op_output(const std::string& op_type, const std::string& argument);
   PDNode* assert_is_op_input(const std::string& op_type);
+  PDNode* assert_is_op_input(const std::string& op_type, const std::string& argument);
   PDNode* assert_is_op_nth_input(const std::string& op_type,
                                  const std::string& argument, int nth);
   PDNode* assert_is_op_nth_output(const std::string& op_type,
@@ -167,6 +169,9 @@ class PDPattern {
 
   PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
   PDNode* NewNode(const std::string& name = NewID());
+  PDNode* NewNode(const std::string& prefix, const std::string& name) {
+    NewNode(prefix + "/" + name);
+  }
   PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
