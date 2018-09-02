@@ -297,43 +297,38 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
       const T* prev_c_data = NULL;
       const T* prev_h_data = NULL;
-      int tstart = 0;
+
       if (h0_data) {
         prev_h_data = h0_data + bid * D;
         prev_c_data = c0_data + bid * D;
-      } else {
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
-        act_cand(D, xx_data, xx_data);
-        // cell out= input*tilde
-        blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cell_out_data, xx_data + D2);
-        blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
-
-        // prev
-        prev_h_data = hidden_out_data;
-        prev_c_data = cell_out_data;
-        tstart = 1;
-
-        move_step();
       }
-      for (int step = tstart; step < seq_len; ++step) {
-        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
-                  prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
+
+      for (int step = 0; step < seq_len; ++step) {
+	if (step > 0 || prev_h_data) {
+	  // If step == 0 and there is no initialized hidden state, that is to say
+	  // the H0 is zeros. Then W_h * H_t-1 can be skipped
+          blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
+                    prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
+        }
 
         // W_ch, W_ih, W_fh, W_oh
         act_gate(D3, xx_data + D, xx_data + D);
         act_cand(D, xx_data, xx_data);
 
-        // a = forget * prev_cell
-        blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
+	if (step > 0 || prev_c_data) {
+          // a = forget * prev_cell
+          blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
 
-        // b = input * tilde
-        blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
+          // b = input * tilde
+          blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
 
-        // cell out= a+b
-        blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
+          // cell out= a+b
+          blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
+        } else {
+	  // If step == 0 and there is no initialized cell state, that is to say
+	  // the C0 is zeros. Then F_t * C_t-1 can be skipped
+	  blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
+	}
 
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cell_out_data, xx_data + D2);
@@ -352,7 +347,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     using DeviceContext = platform::CPUDeviceContext;
     INIT_BASE_INPUT_OUTPUT
     if (x->lod()[0].size() == 2) {  // batch size == 1
-      SeqCompute(ctx);
+      return SeqCompute(ctx);
     }
     INIT_BASE_SIZES
     INIT_VEC_FUNC
@@ -395,17 +390,26 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
-    int tstart = 0;
-    T* prev_h_data = NULL;
-    T* prev_c_data = NULL;
+    T* prev_batch_h_data = NULL;
+    T* prev_batch_c_data = NULL;
+    T* cur_batch_in_data = batched_input_data;
+    T* cur_batch_h_out_data = batched_h_out_data;
+    T* cur_batch_c_out_data = batched_c_out_data;
+
+    auto move_step = [&](int bs) {
+      cur_batch_in_data += bs * D4;
+      cur_batch_c_out_data += bs * D;
+      cur_batch_h_out_data += bs * D;
+    };
+
     if (h0) {
       // reorder h0, c0
       T* reordered_h0_data = reordered_h0->mutable_data<T>(place);
       T* reordered_c0_data = reordered_c0->mutable_data<T>(place);
       const T* h0_data = h0->data<T>();
       const T* c0_data = c0->data<T>();
-      prev_h_data = reordered_h0_data;
-      prev_c_data = reordered_c0_data;
+      prev_batch_h_data = reordered_h0_data;
+      prev_batch_c_data = reordered_c0_data;
       size_t sz = sizeof(T) * D;
       for (int i = 0; i < max_bs; ++i) {
         std::memcpy(reordered_h0_data, h0_data + seq_order[i] * D, sz);
@@ -413,72 +417,62 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         reordered_h0_data += D;
         reordered_c0_data += D;
       }
-    } else {
-      // compute without h0, c0
-      T* cur_in_data = batched_input_data;
-      T* cur_h_out_data = batched_h_out_data;
-      T* cur_c_out_data = batched_c_out_data;
-      // W_ch, W_ih, W_fh, W_oh
-      for (int i = 0; i < max_bs; ++i) {
-        act_gate(D3, cur_in_data + D, cur_in_data + D);
-        act_cand(D, cur_in_data, cur_in_data);
-        // cell out= input*tilde
-        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cur_c_out_data, cur_in_data + D2);
-        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
+    }
 
-        // add offset
+    const auto& batch_starts = batched_lod[0];
+    const int max_seq_len = batch_starts.size() - 1;
+    for (int step = 0; step < max_seq_len; ++step) {
+      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      if (step > 0 || prev_batch_h_data) {
+	// If step == 0 and there is no initialized hidden state, that is to say
+	// the H0 is zeros. Then W_h * H_t-1 can be skiped
+        blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
+                  prev_batch_h_data, D, wh_data, D4, static_cast<T>(1),
+                  cur_batch_in_data, D4);
+      }
+
+      T* cur_in_data = cur_batch_in_data;
+      T* cur_c_out_data = cur_batch_c_out_data;
+      T* cur_h_out_data = cur_batch_h_out_data;
+      T* prev_c_data = prev_batch_c_data; // NULL if no C0 in step0
+      T* prev_h_data = prev_batch_h_data; // NULL if no H0 in step0
+      auto next_data_in_batch = [&]() {
         cur_in_data += D4;
         cur_c_out_data += D;
         cur_h_out_data += D;
-      }
-      tstart = 1;
-      prev_h_data = batched_h_out_data;
-      prev_c_data = batched_c_out_data;
-    }
-    // Then start from next
-    const auto& batch_starts = batched_lod[0];
-    const int max_seq_len = batch_starts.size() - 1;
-    const int offset = tstart * max_bs * D;
-    batched_input_data = batched_input_data + offset * 4;
-    batched_h_out_data = batched_h_out_data + offset;
-    batched_c_out_data = batched_c_out_data + offset;
-    for (int step = tstart; step < max_seq_len; ++step) {
-      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
-      blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
-                prev_h_data, D, wh_data, D4, static_cast<T>(1),
-                batched_input_data, D4);
+	prev_c_data = prev_c_data ? prev_c_data + D : NULL;
+	prev_h_data = prev_h_data ? prev_h_data + D : NULL;
+      };
 
-      T* cur_in_data = batched_input_data;
-      T* cur_prev_c_data = prev_c_data;
-      T* cur_c_out_data = batched_c_out_data;
-      T* cur_h_out_data = batched_h_out_data;
-      for (int i = 0; i < cur_bs; ++i) {
+      for (int i = 0; i < cur_bs; ++i) { // iterate each data in same batch
         // W_ch, W_ih, W_fh, W_oh
         act_gate(D3, cur_in_data + D, cur_in_data + D);
         act_cand(D, cur_in_data, cur_in_data);
-        // a = forget * prev_cell
-        blas.VMUL(D, cur_in_data + D2, cur_prev_c_data, cur_in_data + D2);
-        // b = input * tilde
-        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
-        // cell out= a+b
-        blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
+
+	if (step > 0 || prev_c_data) {
+          // a = forget * prev_cell
+          blas.VMUL(D, cur_in_data + D2, prev_c_data, cur_in_data + D2);
+          // b = input * tilde
+          blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
+          // cell out= a+b
+          blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
+	} else {
+	  // If step == 0 and there is no initialized cell state, that is to say
+	  // the C0 state is zeros. Then F_t * C_t-1 can be skiped
+	  blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
+	}
+
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cur_c_out_data, cur_in_data + D2);
         blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
 
-        cur_in_data += D4;
-        cur_prev_c_data += D;
-        cur_c_out_data += D;
-        cur_h_out_data += D;
+        // move to next data in same batch
+	next_data_in_batch();
       }
-
-      prev_c_data = batched_c_out_data;
-      prev_h_data = batched_h_out_data;
-      batched_c_out_data = cur_c_out_data;
-      batched_h_out_data = cur_h_out_data;
-      batched_input_data = cur_in_data;
+      // move to data for next timestep
+      prev_batch_h_data = cur_batch_h_out_data;
+      prev_batch_c_data = cur_batch_c_out_data;
+      move_step(cur_bs);
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
