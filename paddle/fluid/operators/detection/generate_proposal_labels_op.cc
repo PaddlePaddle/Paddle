@@ -243,12 +243,12 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
                        Tensor* sampled_labels, Tensor* sampled_gts) {
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
-  int gt_num = fg_num + bg_num;
+  // int gt_num = fg_num + bg_num;
   Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
   int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
   int* gt_box_inds_data =
-      gt_box_inds_t.mutable_data<int>({gt_num}, context.GetPlace());
+      gt_box_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* gt_label_inds_data =
       gt_label_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   std::copy(fg_inds.begin(), fg_inds.end(), fg_inds_data);
@@ -303,18 +303,20 @@ std::vector<Tensor> SampleRoisForOneImage(
 
   // Gather boxes and labels
   Tensor sampled_boxes, sampled_labels, sampled_gts;
-  int boxes_num = fg_inds.size() + bg_inds.size();
+  int fg_num = fg_inds.size();
+  int bg_num = bg_inds.size();
+  int boxes_num = fg_num + bg_num;
   framework::DDim bbox_dim({boxes_num, kBoxDim});
   sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
   sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
-  sampled_gts.mutable_data<T>(bbox_dim, context.GetPlace());
+  sampled_gts.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
   GatherBoxesLabels<T>(context, boxes, *gt_boxes, *gt_classes, fg_inds, bg_inds,
                        gt_inds, &sampled_boxes, &sampled_labels, &sampled_gts);
 
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(boxes_num, sampled_boxes, sampled_gts, bbox_reg_weights,
+  BoxToDelta<T>(fg_inds.size(), sampled_boxes, sampled_gts, bbox_reg_weights,
                 &bbox_targets_single);
 
   // Scale rois
