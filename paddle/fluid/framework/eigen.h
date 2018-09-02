@@ -17,6 +17,7 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
 #include "paddle/fluid/framework/tensor.h"
+#include <math_constants.h>
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace paddle {

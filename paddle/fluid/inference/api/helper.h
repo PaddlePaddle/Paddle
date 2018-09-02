@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <sys/time.h>
 #include <algorithm>
 #include <numeric>
 #include <sstream>

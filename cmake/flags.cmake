@@ -136,7 +136,7 @@ else(NOT WIN32)
 set(COMMON_FLAGS
     "/w") #disable all warnings
 set(GPU_COMMON_FLAGS
-    /w) #disable all warnings
+    -w) #disable all warnings
 
 endif(NOT WIN32)
 
@@ -160,7 +160,7 @@ if(UNIX AND NOT APPLE)
   set(LINUX TRUE)
 endif(UNIX AND NOT APPLE)
 
-
+set(GPU_COMMON_FLAGS -std=c++11 ${GPU_COMMON_FLAGS})
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})

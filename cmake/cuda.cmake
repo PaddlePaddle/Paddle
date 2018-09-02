@@ -169,9 +169,9 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
+#list(APPEND CUDA_NVCC_FLAGS "-std=c++14")
 if (NOT WIN32) # windows msvc2015 support c++11 natively. 
 # -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
-list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 

@@ -18,7 +18,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-constexpr char Node::kControlDepVarName[];
+char Node::kControlDepVarName[];
 int Node::count_ = 0;
 }  // namespace ir
 }  // namespace framework
