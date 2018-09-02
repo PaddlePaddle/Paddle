@@ -78,19 +78,6 @@ void GraphPatternDetector::operator()(Graph* graph,
   }
 
   auto subgraphs = DetectPatterns();
-
-  /*
-  auto mark_subgraph = [&] {
-    auto& marked_nodes = GetMarkedNodes(graph);
-    for (auto& subgraph : subgraphs) {
-      for (auto& item : subgraph) {
-        marked_nodes.insert(item.second);
-      }
-    }
-  };
-  mark_subgraph();
-   */
-
   UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
   ValidateByNodeRole(&subgraphs);
@@ -125,15 +112,6 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
     }
   }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
-
-  /*
-  auto& marked_nodes = GetMarkedNodes(const_cast<Graph*>(&graph));
-  for (auto& item : pdnodes2nodes_) {
-    for (auto& n : item.second) {
-      marked_nodes.insert(n);
-    }
-  }
-   */
 
   return !pdnodes2nodes_.empty();
 }
