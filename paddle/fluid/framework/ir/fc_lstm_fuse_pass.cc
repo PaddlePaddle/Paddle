@@ -18,6 +18,66 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+std::string GenNodeName(const std::string& prefix, const std::string& name) {
+  return prefix + "/" + name;
+}
+
+// FC with bias
+// op: mul + elementwise_add
+// named nodes:
+// mul, elementwise_add
+// w, mul_out, bias, fc_out
+PDNode* FC(PDPattern* pattern, const std::string& name_scope, PDNode* x) {
+  // Create Operators
+  auto* mul_op = pattern->NewNode(name_scope, "mul")->assert_is_op("mul");
+  auto* elementwise_add_op = pattern->NewNode(name_scope, "elementwise_add")
+                                 ->assert_is_op("elementwise_add");
+  // Create variables
+  // w
+  auto* mul_weight_var = pattern->NewNode(name_scope, "w")
+                             ->AsInput()
+                             ->assert_is_op_nth_input("mul", "Y", 0);
+  // intermediate variable, will be removed in the IR after fuse.
+  auto* mul_out_var = pattern->NewNode(name_scope, "mul_out")
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("mul")
+                          ->assert_is_op_input("elementwise_add");
+  // bias
+  auto* bias = pattern->NewNode(name_scope, "bias")
+                   ->assert_is_op_input("elementwise_add")
+                   ->AsInput();
+  // output
+  auto* fc_out = pattern->NewNode(name_scope, "fc_out")
+                     ->AsOutput()
+                     ->assert_is_op_output("elementwise_add");
+
+  mul_op->LinksFrom({mul_weight_var, x}).LinksTo({mul_out_var});
+  elementwise_add_op->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
+
+  return fc_out;
+}
+
+PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x) {
+  auto* lstm_op = pattern->NewNode(name_scope, "lstm")->assert_is_op("lstm");
+#define NEW_NODE(arg__, io__)                        \
+  auto* arg__ = pattern->NewNode(name_scope, #arg__) \
+                    ->assert_is_op_##io__("lstm", #arg__);
+
+  NEW_NODE(H0, input);
+  NEW_NODE(C0, input);
+  NEW_NODE(Weight, input);
+  NEW_NODE(Bias, input);
+
+  NEW_NODE(Hidden, output);
+  NEW_NODE(Cell, output);
+  NEW_NODE(BatchGate, output);
+  NEW_NODE(BatchCellPreAct, output);
+
+  lstm_op->LinksFrom({H0, C0, Weight, Bias});
+  lstm_op->LinksTo({Hidden, Cell, BatchedGate, BatchCellPreAct});
+  return Hidden;
+}
+
 std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   GraphPatternDetector gpd;

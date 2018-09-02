@@ -412,6 +412,12 @@ PDNode* PDNode::assert_is_op_output(const std::string& op_type) {
   });
   return this;
 }
+PDNode* PDNode::assert_is_op_output(const std::string& op_type,
+                                    const std::string& argument) {
+  assert_is_var();
+  assert_is_op_nth_output(op_type, argument, 0);
+  return this;
+}
 PDNode* PDNode::assert_is_op_input(const std::string& op_type) {
   assert_is_var();
   asserts_.emplace_back([=](Node* x) {
@@ -422,6 +428,12 @@ PDNode* PDNode::assert_is_op_input(const std::string& op_type) {
     }
     return false;
   });
+  return this;
+}
+PDNode* PDNode::assert_is_op_input(const std::string& op_type,
+                                   const std::string& argument) {
+  assert_is_var();
+  assert_is_op_nth_input(op_type, argument, 0);
   return this;
 }
 PDNode* PDNode::assert_op_has_n_inputs(const std::string& op_type, size_t n) {
