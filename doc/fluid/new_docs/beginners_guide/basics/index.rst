@@ -10,9 +10,9 @@
 ..  toctree::
     :maxdepth: 2
 
-    image_classification/index.md
-    word2vec/index.md
-    recommender_system/index.md
-    understand_sentiment/index.md
-    label_semantic_roles/index.md
-    machine_translation/index.md
+    image_classification/README.cn.md
+    word2vec/README.cn.md
+    recommender_system/README.cn.md
+    understand_sentiment/README.cn.md
+    label_semantic_roles/README.cn.md
+    machine_translation/README.cn.md
