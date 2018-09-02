@@ -112,11 +112,13 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
     const std::unordered_set<NodePtr> &tobe_fused_nodes,
     std::unordered_set<NodePtr> *need_removed_nodes, ir::Graph *graph) const {
   framework::OpDesc fused_op_desc;
-
+  // intermediate_outs
+  std::unordered_set<NodePtr> intermediate_outs;
   // Init OpDesc
   if (tobe_fused_nodes.size() == 1) {
     if (IsElemwiseAndActivation(cur_op_node, tobe_fused_nodes)) {
-      FuseElemwiseAndActivation(cur_op_node, tobe_fused_nodes, &fused_op_desc);
+      FuseElemwiseAndActivation(cur_op_node, tobe_fused_nodes, &fused_op_desc,
+                                &intermediate_outs);
     } else {
       PADDLE_THROW(
           "Currently, only support fusing elementwise and activation "
@@ -259,6 +261,17 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
     fused_node->outputs.emplace_back(cur_output);
     cur_output->inputs[0] = fused_node;
   }
+
+  if (intermediate_outs.size()) {
+    for (auto &intermediate_out : intermediate_outs) {
+      auto iter = std::find(fused_node->inputs.begin(),
+                            fused_node->inputs.end(), intermediate_out);
+      if (iter == fused_node->inputs.end()) {
+        fused_node->inputs.emplace_back(intermediate_out);
+        intermediate_out->outputs.emplace_back(fused_node);
+      }
+    }
+  }
   return fused_node;
 }
 
@@ -327,8 +340,8 @@ bool FuseAdjacentNodesPass::IsElemwiseAndActivation(
 
 void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
     const NodePtr cur_op_node,
-    const std::unordered_set<NodePtr> &tobe_fused_nodes,
-    OpDesc *op_desc) const {
+    const std::unordered_set<NodePtr> &tobe_fused_nodes, OpDesc *op_desc,
+    std::unordered_set<NodePtr> *intermediate_out) const {
   auto upstream_op_node = *tobe_fused_nodes.begin();
 
   auto upstream_op_type = upstream_op_node->Op()->Type();
@@ -383,6 +396,7 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
       if (upstream_op_node_in_args.size() == 3) {
         op_desc->SetInput("IntermediateOut",
                           upstream_op_node->Op()->Input("X"));
+
       } else {
         // If the mem_opt is opened and the number of upstream_op_node_in_args
         // is 2, the Unary is inplace, so the IntermediateOut has been rewrote
@@ -400,6 +414,20 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
       op_desc->SetOutput(x_grad, cur_op_node->Op()->Output(x_grad));
       op_desc->SetOutput(y_grad, cur_op_node->Op()->Output(y_grad));
       op_desc->SetOutput(inter_grad, upstream_op_node->Op()->Output(x_grad));
+      // Get the intermediate_out node.
+      // Node(zcd): the name of intermediate_out and out maybe the same.
+      for (auto &in : upstream_op_node->inputs) {
+        if (in->Name() == upstream_op_node->Op()->Input("Out")[0]) {
+          auto upstrem_forward_node = in->inputs[0];
+          auto intermediate_out_name =
+              upstrem_forward_node->Op()->Output("IntermediateOut")[0];
+          for (auto &out : upstrem_forward_node->outputs) {
+            if (out->Name() == intermediate_out_name) {
+              intermediate_out->insert(out);
+            }
+          }
+        }
+      }
     }
   } else {  // The forward of Binary(X, Unary(Y)) or Unary(Binary(X, Y))
     PADDLE_ENFORCE_EQ(upstream_op_node_out_args.size(), 1,
@@ -422,8 +450,8 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
                         "The number of input of UnaryFunctor should be one.");
       PADDLE_ENFORCE_EQ(cur_op_node_in_args.size(), 2,
                         "The number of input of BinaryFunctor should be two.");
-      // NOTE(zcd): If the mem_opt is opened and the Unary is inplace, the name
-      // of Y and intermediate_out maybe the same.
+      // NOTE(zcd): If the mem_opt is opened and the Unary is inplace, the
+      // name of Y and intermediate_out maybe the same.
       // In this situation, keep_intermediate_value should be true,
       // and the backward should not use intermediate_out directly but not Y.
 

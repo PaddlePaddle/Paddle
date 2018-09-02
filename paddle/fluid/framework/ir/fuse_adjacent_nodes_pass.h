@@ -69,9 +69,9 @@ class FuseAdjacentNodesPass : public Pass {
   /**
    *  Generate the op_desc of the fused op.
    */
-  void FuseElemwiseAndActivation(const NodePtr node,
-                                 const std::unordered_set<NodePtr> &tobe_fused,
-                                 OpDesc *op_desc) const;
+  void FuseElemwiseAndActivation(
+      const NodePtr node, const std::unordered_set<NodePtr> &tobe_fused,
+      OpDesc *op_desc, std::unordered_set<NodePtr> *intermediate_out) const;
 
   /**
    *  The node and tobe_fused_nodes should be in the same stage,
