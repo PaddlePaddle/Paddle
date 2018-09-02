@@ -15,6 +15,7 @@
 #pragma once
 
 #include <algorithm>
+#include <iterator>
 #include <numeric>
 #include <sstream>
 #include <string>
@@ -25,8 +26,8 @@
 namespace paddle {
 namespace inference {
 
-
-static void split(const std::string &str, char sep, std::vector<std::string> *pieces) {
+static void split(const std::string &str, char sep,
+                  std::vector<std::string> *pieces) {
   pieces->clear();
   if (str.empty()) {
     return;
