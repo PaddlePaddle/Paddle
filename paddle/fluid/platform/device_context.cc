@@ -157,19 +157,19 @@ class CudnnHolder {
 
   void RunFunc(const std::function<void(void*)>& cudnn_func,
                size_t required_workspace_len) {
-    framework::RWLockGuard lock_guard(&rw_lock_,
-                                      framework::RWLockGuard::Status::kRDLock);
+    std::lock_guard<std::mutex> lock(mtx_);
     if (required_workspace_len > workspace_len_) {
-      lock_guard.UnLock();
-      lock_guard.WRLock();
       ReallocateWorkspace(required_workspace_len);
-      lock_guard.UnLock();
-      lock_guard.RDLock();
     }
     cudnn_func(workspace_);
   }
 
-  ~CudnnHolder() { PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_)); }
+  ~CudnnHolder() {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+    if (workspace_ != nullptr) {
+      paddle::memory::Free(place_, workspace_);
+    }
+  }
 
  private:
   void ReallocateWorkspace(size_t required_workspace_len) {
@@ -194,7 +194,7 @@ class CudnnHolder {
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;
 
-  framework::RWLock rw_lock_;
+  std::mutex mtx_;
 };
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
