@@ -95,9 +95,11 @@ struct PDNode {
   PDNode* assert_var_not_persistable();
   PDNode* assert_is_persistable_var();
   PDNode* assert_is_op_output(const std::string& op_type);
-  PDNode* assert_is_op_output(const std::string& op_type, const std::string& argument);
+  PDNode* assert_is_op_output(const std::string& op_type,
+                              const std::string& argument);
   PDNode* assert_is_op_input(const std::string& op_type);
-  PDNode* assert_is_op_input(const std::string& op_type, const std::string& argument);
+  PDNode* assert_is_op_input(const std::string& op_type,
+                             const std::string& argument);
   PDNode* assert_is_op_nth_input(const std::string& op_type,
                                  const std::string& argument, int nth);
   PDNode* assert_is_op_nth_output(const std::string& op_type,
@@ -170,7 +172,7 @@ class PDPattern {
   PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
   PDNode* NewNode(const std::string& name = NewID());
   PDNode* NewNode(const std::string& prefix, const std::string& name) {
-    NewNode(prefix + "/" + name);
+    return NewNode(prefix + "/" + name);
   }
   PDNode* RetrieveNode(const std::string& id) const;
 
@@ -262,64 +264,36 @@ class GraphPatternDetector {
 
 // some helper methods.
 
-// Op's input.
-static bool VarLinksToOp(Node* node, const std::string& op_type) {
-  for (auto* out : node->outputs) {
-    if (out->IsOp() && out->Op()->Type() == op_type) {
-      return true;
-    }
-  }
-  return false;
-}
+// Tell if a var links to an Op
+bool VarLinksToOp(Node* node, const std::string& op_type);
 
-// Op's output.
-static bool VarLinksFromOp(Node* node, const std::string& op_type) {
-  for (auto* out : node->inputs) {
-    if (out->IsOp() && out->Op()->Type() == op_type) {
-      return true;
-    }
-  }
-  return false;
-}
+// Tell if an op links to a var
+bool VarLinksFromOp(Node* node, const std::string& op_type);
 
 // Check whether a var node is a op node's nth input.
-static bool IsNthInput(Node* var, Node* op, const std::string& argument,
-                       size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
-  if (op->inputs.size() <= nth) return false;
-  return var->Name() == op->Op()->Input(argument)[nth];
-}
+bool IsNthInput(Node* var, Node* op, const std::string& argument, size_t nth);
 
-static bool IsNthOutput(Node* var, Node* op, const std::string& argument,
-                        size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
-  if (op->inputs.size() <= nth) return false;
-  return var->Name() == op->Op()->Output(argument)[nth];
-}
+// Tell whether a var node is a op node's nth output.
+bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 
-static void GraphSafeRemoveNodes(Graph* graph,
-                                 const std::unordered_set<const Node*>& nodes) {
-  for (auto* node : nodes) {
-    graph->RemoveNode(const_cast<Node*>(node));
-  }
+// Graph safely remove some nodes, will automatically clean up the edges.
+void GraphSafeRemoveNodes(Graph* graph,
+                          const std::unordered_set<const Node*>& nodes);
 
-  for (auto* node : graph->Nodes()) {
-    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
-      if (nodes.count(*it)) {
-        it = const_cast<Node*>(node)->inputs.erase(it);
-      } else
-        it++;
-    }
-    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
-      if (nodes.count(*it)) {
-        it = const_cast<Node*>(node)->outputs.erase(it);
-      } else
-        it++;
-    }
-  }
-}
+// Some pre-defined patterns those can be reused in multiple passes.
+namespace patterns {
+
+// FC with bias
+// op: mul + elementwise_add
+// named nodes:
+// mul, elementwise_add
+// w, mul_out, bias, fc_out
+PDNode* FC(PDPattern* pattern, const std::string& name_scope, PDNode* x,
+           bool with_bias);
+
+PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
+
+}  // namespace patterns
 
 }  // namespace ir
 }  // namespace framework
