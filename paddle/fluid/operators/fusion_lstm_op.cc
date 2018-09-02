@@ -93,12 +93,12 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
                     "The first dimension of Input(Bias) should be 1.");
 
-  PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_peepholes"),
-                 "Do not support peephole yet.");
-  PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                    "The second dimension of Input(Bias) should be "
-                    "4 * %d if disable peepholes connection",
-                    frame_size);
+  auto use_peepholes = ctx->Attrs().Get<bool>("use_peepholes");
+  PADDLE_ENFORCE_EQ(b_dims[1], (use_peepholes ? 7 : 4) * frame_size,
+		    "The second dimension of Input(Bias) should be "
+                    "7 * %d if enable peepholes connection or"
+                    "4 * %d if disable peepholes",
+                    frame_size, frame_size);
 
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
@@ -258,6 +258,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     INIT_BASE_INPUT_OUTPUT
     INIT_BASE_SIZES
     INIT_VEC_FUNC
+    bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
     auto x_lod = x->lod();
     const int total_T = x_dims[0];
@@ -265,12 +266,21 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 
     const T* x_data = x->data<T>();
     const T* h0_data = h0 ? h0->data<T>() : NULL;
+    const T* bias_data = bias->data<T>();
+    const T* wc_data = bias_data + D4; // w_ic, w_fc, w_oc
     const T* c0_data = c0 ? c0->data<T>() : NULL;
     const T* wx_data = wx->data<T>();
     const T* wh_data = wh->data<T>();
+
     T* xx_data = xx->mutable_data<T>(ctx.GetPlace());
     T* hidden_out_data = hidden_out->mutable_data<T>(ctx.GetPlace());
     T* cell_out_data = cell_out->mutable_data<T>(ctx.GetPlace());
+
+    // use local variable
+    framework::DDim check_dims({3, D});
+    Tensor checked_cell; // w_ic * Ct-1, w_fc * Ct-1, w_oc * Ct
+    auto checked_cell_data =
+      checked_cell.mutable_data<T>(check_dims, ctx.GetPlace());
 
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
     math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
@@ -311,27 +321,62 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
                     prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
         }
 
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
+        // ~C_t
         act_cand(D, xx_data, xx_data);
 
 	if (step > 0 || prev_c_data) {
-          // a = forget * prev_cell
+          if (use_peepholes) {
+	    // + W_ic|W_fc * C_t-1 for peephole connection
+	    blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+	    blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+	    blas.VADD(D2, xx_data + D, checked_cell_data, xx_data + D);
+	    // I_t, F_t
+	    act_gate(D2, xx_data + D, xx_data + D);
+	  } else {
+	    // I_t, F_t, O_t
+	    act_gate(D3, xx_data + D, xx_data + D);
+	  }
+          // F_t * C_t-1
           blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
-
-          // b = input * tilde
+          // I_t * ~C_t
           blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
-
-          // cell out= a+b
+          // Ct = F_t * C_t-1 + I_t * ~C_t
           blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
+	  if (use_peepholes) {
+	    // + W_oc * C_t for peephole connection
+	    blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+	    blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+	    // O_t
+	    act_gate(D, xx_data + D3, xx_data + D3);
+	  } else {
+	    // to avoid mismatch with if/else
+	  }
         } else {
 	  // If step == 0 and there is no initialized cell state, that is to say
-	  // the C0 is zeros. Then F_t * C_t-1 can be skipped
+	  // the C0 is zeros. Then F_t * C_t-1 can be skipped. If peephole enabled,
+	  // W_ic|W_fc * C_t-1 can also be skipped.
+
+	  if (use_peepholes)
+	    // I_t, F_t
+	    act_gate(D2, xx_data + D, xx_data + D);
+	  else
+	    // I_t, F_t, O_t
+	    act_gate(D3, xx_data + D, xx_data + D);
+
+	  // C_t = I_t * ~C_t
 	  blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
+	  if (use_peepholes) {
+	    // + W_oc * C_t for peephole connection
+	    blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+	    blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+	    // O_t
+	    act_gate(D, xx_data + D3, xx_data + D3);
+	  }
 	}
 
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cell_out_data, xx_data + D2);
+	// H_t = O_t * act_state(C_t)
         blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
 
         // prev
@@ -339,8 +384,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         prev_c_data = cell_out_data;
 
         move_step();
-      }
-    }
+      } // for each step in batch
+    } // for each batch
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {

@@ -156,6 +156,19 @@ class TestFusionLSTMOpBS1(TestFusionLSTMOp):
         self.lod = [[3]]
         self.D = 16
 
+class TestFusionLSTMOpPeepholes(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+
+class TestFusionLSTMOpPeepholesInit(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.has_initial_state = True
+
+class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
+    def set_conf(self):
+        self.use_peepholes = True
+        self.is_reverse = True
 
 if __name__ == '__main__':
     unittest.main()
