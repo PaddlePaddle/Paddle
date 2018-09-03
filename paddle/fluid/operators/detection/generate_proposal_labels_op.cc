@@ -135,31 +135,6 @@ void BboxOverlaps(const Tensor& r_boxes, const Tensor& c_boxes,
 }
 
 template <typename T>
-void BoxToDelta(int box_num, const Tensor& ex_boxes, const Tensor& gt_boxes,
-                const std::vector<float>& weights, Tensor* box_delta) {
-  auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
-  auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
-  auto box_delta_et = framework::EigenTensor<T, 2>::From(*box_delta);
-  T ex_w, ex_h, ex_ctr_x, ex_ctr_y, gt_w, gt_h, gt_ctr_x, gt_ctr_y;
-  for (int64_t i = 0; i < box_num; ++i) {
-    ex_w = ex_boxes_et(i, 2) - ex_boxes_et(i, 0) + 1;
-    ex_h = ex_boxes_et(i, 3) - ex_boxes_et(i, 1) + 1;
-    ex_ctr_x = ex_boxes_et(i, 0) + 0.5 * ex_w;
-    ex_ctr_y = ex_boxes_et(i, 1) + 0.5 * ex_h;
-
-    gt_w = gt_boxes_et(i, 2) - gt_boxes_et(i, 0) + 1;
-    gt_h = gt_boxes_et(i, 3) - gt_boxes_et(i, 1) + 1;
-    gt_ctr_x = gt_boxes_et(i, 0) + 0.5 * gt_w;
-    gt_ctr_y = gt_boxes_et(i, 1) + 0.5 * gt_h;
-
-    box_delta_et(i, 0) = (gt_ctr_x - ex_ctr_x) / ex_w / weights[0];
-    box_delta_et(i, 1) = (gt_ctr_y - ex_ctr_y) / ex_h / weights[1];
-    box_delta_et(i, 2) = log(gt_w / ex_w) / weights[2];
-    box_delta_et(i, 3) = log(gt_h / ex_h) / weights[3];
-  }
-}
-
-template <typename T>
 std::vector<std::vector<int>> SampleFgBgGt(
     const platform::CPUDeviceContext& context, Tensor* iou,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
@@ -316,8 +291,8 @@ std::vector<Tensor> SampleRoisForOneImage(
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(static_cast<int>(fg_inds.size()), sampled_boxes, sampled_gts,
-                nullptr, false, &bbox_targets_single);
+  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, nullptr, false,
+                &bbox_targets_single);
 
   // Scale rois
   Tensor sampled_rois;
