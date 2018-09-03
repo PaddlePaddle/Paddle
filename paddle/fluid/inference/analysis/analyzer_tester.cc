@@ -329,6 +329,7 @@ void TestDituRNNPrediction(const std::string &model_path,
 
     ASSERT_TRUE(fuse_statis.count("fc"));
     EXPECT_EQ(fuse_statis.at("fc"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 1);
   }
 }
 
