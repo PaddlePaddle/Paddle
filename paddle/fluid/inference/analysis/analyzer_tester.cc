@@ -35,6 +35,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+using namespace framework;  // NOLINT
+
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   Argument argument;
@@ -329,6 +331,7 @@ void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
 
     ASSERT_TRUE(fuse_statis.count("fc"));
     EXPECT_EQ(fuse_statis.at("fc"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 1);
   }
 }
 

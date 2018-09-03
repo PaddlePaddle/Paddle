@@ -33,7 +33,7 @@ struct AppendProposalsFunctor {
       : out_(out), offset_(offset), to_add_(to_add) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto *out_data = out_->data<T>();
     auto *to_add_data = to_add_->data<T>();
     memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
