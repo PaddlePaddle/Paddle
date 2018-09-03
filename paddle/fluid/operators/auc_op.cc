@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/auc_op.h"
-#include <string>
 
 namespace paddle {
 namespace operators {
@@ -69,8 +68,8 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
-    AddOutput("StatPosOut", "True-Positive value.");
-    AddOutput("StatNegOut", "False-Positive value.");
+    AddOutput("StatPosOut", "Statistic value when label = 1");
+    AddOutput("StatNegOut", "Statistic value when label = 0");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
