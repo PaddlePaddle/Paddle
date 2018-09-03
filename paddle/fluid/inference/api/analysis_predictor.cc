@@ -18,6 +18,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -133,10 +134,3 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 }
 
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(seq_concat_fc_fuse_pass);
-USE_PASS(fc_lstm_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);
-USE_PASS(attention_lstm_fuse_pass);
