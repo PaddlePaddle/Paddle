@@ -61,7 +61,7 @@ class TestROIPoolOp(OpTest):
 
         for i in range(self.rois_num):
             roi = self.rois[i]
-            roi_batch_id = roi[0]
+            roi_batch_id = int(roi[0])
             roi_start_w = int(cpt.round(roi[1] * self.spatial_scale))
             roi_start_h = int(cpt.round(roi[2] * self.spatial_scale))
             roi_end_w = int(cpt.round(roi[3] * self.spatial_scale))

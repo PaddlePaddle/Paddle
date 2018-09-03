@@ -148,15 +148,15 @@ def rpn_target_assign(loc,
     # Compute overlaps between the prior boxes and the gt boxes overlaps
     iou = iou_similarity(x=gt_box, y=anchor_box)
     # Assign target label to anchors
-    loc_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
-    score_index = helper.create_tmp_variable(dtype=anchor_box.dtype)
-    target_label = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    loc_index = helper.create_tmp_variable(dtype='int32')
+    score_index = helper.create_tmp_variable(dtype='int32')
+    target_label = helper.create_tmp_variable(dtype='int64')
     target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
         inputs={'Anchor': anchor_box,
                 'GtBox': gt_box,
-                'DistMax': iou},
+                'DistMat': iou},
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,

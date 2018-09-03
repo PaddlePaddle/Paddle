@@ -298,7 +298,7 @@ class TestRpnTargetAssign(unittest.TestCase):
             self.assertIsNotNone(tgt_bbox)
             assert pred_scores.shape[1] == 1
             assert pred_loc.shape[1] == 4
-            assert pred_loc.shape[1] == target_bbox.shape[1]
+            assert pred_loc.shape[1] == tgt_bbox.shape[1]
 
 
 class TestGenerateProposals(unittest.TestCase):
