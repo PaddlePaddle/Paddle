@@ -1384,7 +1384,6 @@ class DistributeTranspiler(object):
                 per_trainer_name = "%s.trainer_%d" % \
                 (merged_var_name, i)
                 vars2merge.append(pserver_block.vars[per_trainer_name])
-
             optimize_block.append_op(
                 type="sum",
                 inputs={"X": vars2merge},

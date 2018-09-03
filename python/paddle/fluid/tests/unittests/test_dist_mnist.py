@@ -32,7 +32,7 @@ class TestDistMnist2x2WithMemopt(TestDistBase):
         self._mem_opt = True
 
     def test_se_resnext(self):
-        self.check_with_place("dist_mnist.py", delta=1e-7)
+        self.check_with_place("dist_mnist.py", delta=1e-6)
 
 
 class TestDistMnistAsync(TestDistBase):

@@ -65,8 +65,10 @@ class ScaleOpVarTypeInference : public framework::VarTypeInference {
     auto out_var_name = op_desc.Output("Out").front();
     auto *out_var = block->FindVarRecursive(out_var_name);
 
-    out_var->SetType(in_var.GetType());
-    out_var->SetDataType(in_var.GetDataType());
+    if (in_var_name != out_var_name) {
+      out_var->SetType(in_var.GetType());
+      out_var->SetDataType(in_var.GetDataType());
+    }
   }
 };
 

@@ -17,20 +17,12 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistWord2Vec2x2(TestDistBase):
+class TestDistCTR2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
-    def test_word2vec(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-7)
-
-
-class TestDistWord2Vec2x2Async(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = False
-
-    def test_word2vec(self):
-        self.check_with_place("dist_word2vec.py", delta=2)
+    def test_dist_ctr(self):
+        self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
 
 
 if __name__ == "__main__":
