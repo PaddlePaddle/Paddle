@@ -125,12 +125,12 @@ Compile Time -> IR -> Runtime
 
 ## Operator/OpWithKernel/OpKernel
 
-![class_diagram](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/53df507f6749762675dff3e7ce53372f/raw/49caf1fb70820fb4a6c217634317c9306f361f36/op_op_with_kern_class_diagram.dot)
+![class_diagram](https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/op_op_with_kern_class_diagram.dot)
 
 ---
 
 ## Operator
-![class_diagram](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/53df507f6749762675dff3e7ce53372f/raw/dd598e8f1976f5759f58af5e5ef94738a6b2e661/op.dot)
+![class_diagram](https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/op.dot)
 
 * `Operator` is the fundamental building block of the user interface.
     * Operator stores input/output variable names and attributes.
@@ -141,7 +141,7 @@ Compile Time -> IR -> Runtime
 
 ## OpWithKernel/Kernel
 
-![class_diagram](http://api.paddlepaddle.org/graphviz?dot=https://gist.githubusercontent.com/reyoung/53df507f6749762675dff3e7ce53372f/raw/9d7f4eba185cf41c8e2fbfb40ae21890dbddcd39/op_with_kernel.dot)
+![class_diagram](https://raw.githubusercontent.com/PaddlePaddle/Paddle/develop/doc/fluid/images/op_with_kernel.dot)
 
 * `OpWithKernel` inherits `Operator`.
 * `OpWithKernel` contains a Kernel map.

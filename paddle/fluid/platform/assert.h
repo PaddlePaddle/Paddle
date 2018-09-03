@@ -17,7 +17,7 @@ limitations under the License. */
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-#if defined(__APPLE__) && defined(__CUDA_ARCH__) && !defined(NDEBUG)
+#if defined(__CUDA_ARCH__)
 #include <stdio.h>
 #define PADDLE_ASSERT(e)                                           \
   do {                                                             \
@@ -38,6 +38,9 @@ limitations under the License. */
   } while (0)
 #else
 #include <assert.h>
-#define PADDLE_ASSERT(e) assert(e)
+// For cuda, the assertions can affect performance and it is therefore
+// recommended to disable them in production code
+// https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#assertion
+#define PADDLE_ASSERT(e) assert((e))
 #define PADDLE_ASSERT_MSG(e, m) assert((e) && (m))
 #endif

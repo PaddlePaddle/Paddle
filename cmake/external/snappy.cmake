@@ -47,8 +47,6 @@ ExternalProject_Add(
                      -DCMAKE_INSTALL_LIBDIR:PATH=${SNAPPY_INSTALL_DIR}/lib
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
-    BUILD_COMMAND   make -j8
-    INSTALL_COMMAND make install
 )
 
 add_library(snappy STATIC IMPORTED GLOBAL)

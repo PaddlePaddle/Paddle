@@ -18,6 +18,7 @@ limitations under the License. */
 #include <numeric>
 #include <sstream>
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -69,6 +70,7 @@ class SaveCombineOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto filename = Attr<std::string>("file_path");
     auto overwrite = Attr<bool>("overwrite");
+    auto save_as_fp16 = Attr<bool>("save_as_fp16");
 
     bool is_present = FileExists(filename);
     if (is_present && !overwrite) {
@@ -100,8 +102,24 @@ class SaveCombineOp : public framework::OperatorBase {
                      inp_var_names[i]);
 
       auto &tensor = var->Get<framework::LoDTensor>();
-      // Serialize tensor
-      framework::SerializeToStream(fout, tensor, dev_ctx);
+      // Serialize tensors one by one
+
+      // Check types to see if a fp16 transformation is required
+      auto in_dtype = framework::ToDataType(tensor.type());
+      auto out_dtype =
+          save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+
+      if (in_dtype != out_dtype) {
+        auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+        auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+        framework::LoDTensor out;
+        // copy LoD info to the new tensor
+        out.set_lod(tensor.lod());
+        framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
+        framework::SerializeToStream(fout, out, dev_ctx);
+      } else {
+        framework::SerializeToStream(fout, tensor, dev_ctx);
+      }
     }
     fout.close();
   }
@@ -109,8 +127,7 @@ class SaveCombineOp : public framework::OperatorBase {
 
 class SaveCombineOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SaveCombineOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(vector) Input LoDTensors that need to be saved together in a file.")
@@ -125,6 +142,12 @@ to a file on disk.
                   "(boolean, default true)"
                   "Overwrite the output file if it exists.")
         .SetDefault(true);
+    AddAttr<bool>("save_as_fp16",
+                  "(boolean, default false)"
+                  "If true, the tensor will be converted to float16 data "
+                  "type and then saved. Otherwise, the tensor will be "
+                  "directly saved without data type conversion.")
+        .SetDefault(false);
     AddAttr<std::string>(
         "file_path",
         "(string)"

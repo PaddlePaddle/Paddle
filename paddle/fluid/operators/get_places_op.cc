@@ -78,15 +78,14 @@ class GetPlacesOp : public framework::OperatorBase {
 
 class GetPlacesOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GetPlacesOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "vector of Place");
     AddAttr<int>("device_count", "device count").SetDefault(0);
     AddAttr<std::string>("device_type", "device type")
         .InEnum({"CUDA", "CPU", "AUTO"})
         .SetDefault("AUTO");
     AddComment(R"DOC(
-Returns a list of places based on flags. The list will be used for parallel
+Returns a list of places based on arguments. The list will be used for parallel
 execution.
 )DOC");
   }

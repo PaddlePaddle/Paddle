@@ -125,8 +125,7 @@ class SplitLoDTensorOp : public framework::OperatorBase {
 
 class SplitLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input LoDTensor");
     AddInput("Mask", "A bool column vector which mask the input");
     AddOutput("OutTrue", "True branch of input LoDTensor");

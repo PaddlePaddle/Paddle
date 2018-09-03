@@ -120,8 +120,7 @@ class LSTMPOp : public framework::OperatorWithKernel {
 
 class LSTMPOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LSTMPOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(LoDTensor) the input for sequence data, which supports "
              "variable-time length input sequence. The underlying tensor in "

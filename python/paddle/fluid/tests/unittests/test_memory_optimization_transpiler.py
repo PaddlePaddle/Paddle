@@ -18,7 +18,7 @@ import unittest
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
-from paddle.fluid.memory_optimization_transpiler import memory_optimize
+from paddle.fluid.transpiler import memory_optimize
 
 
 class TestControlFlowGraph(unittest.TestCase):
@@ -36,6 +36,30 @@ class TestControlFlowGraph(unittest.TestCase):
         self.program = program
 
     def test_control_flow_graph(self):
+        print("before optimization")
+        print(str(self.program))
+        result_program = memory_optimize(self.program)
+        print("after optimization")
+        print(str(result_program))
+
+
+class TestMemoryTranspiler2(unittest.TestCase):
+    def setUp(self):
+        program = Program()
+        with program_guard(program, startup_program=Program()):
+            x = layers.data(name='x', shape=[13], dtype='float32')
+            fc = layers.fc(input=x, size=10, act=None)
+            reshape = layers.reshape(x=fc, shape=[-1, 2, 5])
+            fc = layers.reshape(x=reshape, shape=[-1, 5, 2])
+            y_predict = layers.fc(input=fc, size=1, act=None)
+            y = layers.data(name='y', shape=[1], dtype='float32')
+            cost = layers.square_error_cost(input=y_predict, label=y)
+            avg_cost = layers.mean(cost)
+            opt = optimizer.SGD(learning_rate=0.001)
+            opt.minimize(avg_cost)
+        self.program = program
+
+    def test_inplace_ops(self):
         print("before optimization")
         print(str(self.program))
         result_program = memory_optimize(self.program)

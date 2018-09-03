@@ -23,9 +23,9 @@ void* GetCUDNNDsoHandle();
 void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetWarpCTCDsoHandle();
-void* GetLapackDsoHandle();
 void* GetNCCLDsoHandle();
 void* GetTensorRtDsoHandle();
+void* GetMKLMLDsoHandle();
 
 }  // namespace dynload
 }  // namespace platform

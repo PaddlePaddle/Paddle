@@ -44,8 +44,10 @@ class MergeLoDTensorOp : public framework::OperatorBase {
         scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
     auto level = static_cast<size_t>(Attr<int>("level"));
 
-    auto &mask_dim = mask.dims();
+    PADDLE_ENFORCE(in_true.numel() || in_false.numel(),
+                   "Input(InTrue) or Input(InFalse) should be initialized.");
 
+    auto &mask_dim = mask.dims();
     std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
     if (platform::is_cpu_place(mask.place())) {
       cpu_mask->ShareDataWith(mask);
@@ -59,19 +61,27 @@ class MergeLoDTensorOp : public framework::OperatorBase {
     }
     auto *mask_data = cpu_mask->data<bool>();
 
-    int rank = in_true.dims().size();
-    platform::Place place = in_true.place();
-    std::type_index data_type = in_true.type();
-    framework::DDim in_true_dims =
-        framework::slice_ddim(in_true.dims(), 1, rank);
-
+    platform::Place place = dev_place;
     int64_t batch_size = in_true.dims()[0] + in_false.dims()[0];
 
-    auto in_true_dim_vec = framework::vectorize(in_true_dims);
-    in_true_dim_vec.insert(in_true_dim_vec.begin(), batch_size);
+    std::type_index data_type =
+        in_true.IsInitialized() ? in_true.type() : in_false.type();
+    int rank;
+    framework::DDim in_dims;
+    if (in_true.IsInitialized()) {
+      rank = in_true.dims().size();
+      in_dims = framework::slice_ddim(in_true.dims(), 1, rank);
+    } else {
+      rank = in_false.dims().size();
+      in_dims = framework::slice_ddim(in_false.dims(), 1, rank);
+    }
 
-    framework::DDim out_dims = framework::make_ddim(in_true_dim_vec);
+    auto in_dim_vec = framework::vectorize(in_dims);
+    in_dim_vec.insert(in_dim_vec.begin(), batch_size);
+
+    framework::DDim out_dims = framework::make_ddim(in_dim_vec);
     out->Resize(out_dims);
+
     out->mutable_data(place, data_type);
 
     auto *out_lod = out->mutable_lod();
@@ -121,8 +131,7 @@ class MergeLoDTensorOp : public framework::OperatorBase {
 
 class MergeLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MergeLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "The input LoDTensor, contains complete lod information to "
              "construct the output");

@@ -17,10 +17,6 @@
 namespace paddle {
 namespace framework {
 namespace details {
-
-SSAGraphExecutor::SSAGraphExecutor(std::unique_ptr<SSAGraph> &&graph)
-    : graph_(std::move(graph)) {}
-
 SSAGraphExecutor::~SSAGraphExecutor() {}
 
 }  // namespace details

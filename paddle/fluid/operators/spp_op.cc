@@ -20,8 +20,7 @@ namespace operators {
 
 class SppOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SppOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of spp operator. "

@@ -14,11 +14,14 @@
 
 INCLUDE(ExternalProject)
 # Always invoke `FIND_PACKAGE(Protobuf)` for importing function protobuf_generate_cpp
+IF(NOT WIN32)
 FIND_PACKAGE(Protobuf QUIET)
+ENDIF(NOT WIN32)
 macro(UNSET_VAR VAR_NAME)
     UNSET(${VAR_NAME} CACHE)
     UNSET(${VAR_NAME})
 endmacro()
+
 UNSET_VAR(PROTOBUF_INCLUDE_DIR)
 UNSET_VAR(PROTOBUF_FOUND)
 UNSET_VAR(PROTOBUF_PROTOC_EXECUTABLE)
@@ -94,12 +97,14 @@ macro(PROMPT_PROTOBUF_LIB)
     SET(protobuf_DEPS ${ARGN})
 
     MESSAGE(STATUS "Protobuf protoc executable: ${PROTOBUF_PROTOC_EXECUTABLE}")
+    MESSAGE(STATUS "Protobuf-lite library: ${PROTOBUF_LITE_LIBRARY}")
     MESSAGE(STATUS "Protobuf library: ${PROTOBUF_LIBRARY}")
+    MESSAGE(STATUS "Protoc library: ${PROTOBUF_PROTOC_LIBRARY}")
     MESSAGE(STATUS "Protobuf version: ${PROTOBUF_VERSION}")
     INCLUDE_DIRECTORIES(${PROTOBUF_INCLUDE_DIR})
 
     # Assuming that all the protobuf libraries are of the same type.
-    IF(${PROTOBUF_LIBRARY} MATCHES "${CMAKE_STATIC_LIBRARY_SUFFIX}$")
+    IF(${PROTOBUF_LIBRARY} MATCHES ${CMAKE_STATIC_LIBRARY_SUFFIX})
         SET(protobuf_LIBTYPE STATIC)
     ELSEIF(${PROTOBUF_LIBRARY} MATCHES "${CMAKE_SHARED_LIBRARY_SUFFIX}$")
         SET(protobuf_LIBTYPE SHARED)
@@ -137,18 +142,25 @@ macro(SET_PROTOBUF_VERSION)
 endmacro()
 
 set(PROTOBUF_ROOT "" CACHE PATH "Folder contains protobuf")
+IF (WIN32)
+    SET(PROTOBUF_ROOT ${THIRD_PARTY_PATH}/install/protobuf)
+    MESSAGE(WARNING, "In windows, protobuf only support msvc build, please build it manually and put it at " ${PROTOBUF_ROOT})
+ENDIF(WIN32)
+
 if (NOT "${PROTOBUF_ROOT}" STREQUAL "")
+
     find_path(PROTOBUF_INCLUDE_DIR google/protobuf/message.h PATHS ${PROTOBUF_ROOT}/include NO_DEFAULT_PATH)
-    find_library(PROTOBUF_LIBRARY protobuf PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
-    find_library(PROTOBUF_LITE_LIBRARY protobuf-lite PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
-    find_library(PROTOBUF_PROTOC_LIBRARY protoc PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
+    find_library(PROTOBUF_LIBRARY protobuf libprotobuf.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
+    find_library(PROTOBUF_LITE_LIBRARY protobuf-lite libprotobuf-lite.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
+    find_library(PROTOBUF_PROTOC_LIBRARY protoc libprotoc.lib PATHS ${PROTOBUF_ROOT}/lib NO_DEFAULT_PATH)
     find_program(PROTOBUF_PROTOC_EXECUTABLE protoc PATHS ${PROTOBUF_ROOT}/bin NO_DEFAULT_PATH)
     if (PROTOBUF_INCLUDE_DIR AND PROTOBUF_LIBRARY AND PROTOBUF_LITE_LIBRARY AND PROTOBUF_PROTOC_LIBRARY AND PROTOBUF_PROTOC_EXECUTABLE)
         message(STATUS "Using custom protobuf library in ${PROTOBUF_ROOT}.")
+        SET(PROTOBUF_FOUND true)
         SET_PROTOBUF_VERSION()
         PROMPT_PROTOBUF_LIB()
     else()
-        message(WARNING "Cannot find protobuf library in ${PROTOBUF_ROOT}.")
+        message(WARNING "Cannot find protobuf library in ${PROTOBUF_ROOT}")
     endif()
 endif()
 
@@ -212,6 +224,7 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
         ${CMAKE_COMMAND} ${PROTOBUF_SOURCES_DIR}/src/${TARGET_NAME}/cmake
             ${OPTIONAL_ARGS}
             -Dprotobuf_BUILD_TESTS=OFF
+            -DCMAKE_SKIP_RPATH=ON
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
             -DCMAKE_BUILD_TYPE=${THIRD_PARTY_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${PROTOBUF_INSTALL_DIR}
@@ -237,6 +250,7 @@ IF(CMAKE_CROSSCOMPILING)
     SET(PROTOBUF_PROTOC_EXECUTABLE ${protobuf_host_PROTOC_EXECUTABLE}
         CACHE FILEPATH "protobuf executable." FORCE)
 ENDIF()
+
 
 IF(NOT PROTOBUF_FOUND)
     build_protobuf(extern_protobuf FALSE)

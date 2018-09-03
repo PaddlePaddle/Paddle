@@ -75,7 +75,7 @@ Different layout leads to different implementation of the operator kernel. There
 
 - The inference of Layout is at run-time, not at compile-time.
 
-- Every operator has to implement different kernels for different layouts. Let's take MKLDNN as an example. If we want to implement an MKLDNN convolution operator, we have to implement all the kernels for different layouts, which are listed [here](http://01org.github.io/mkl-dnn/structmkldnn_1_1memory.html). And we will have a special macro to  register kernels for MKLDNN operators.
+- Every operator has to implement different kernels for different layouts. Let's take MKLDNN as an example. If we want to implement an MKLDNN convolution operator, we have to implement all the kernels for different layouts, which are listed [here](http://intel.github.io/mkl-dnn/structmkldnn_1_1memory.html). And we will have a special macro to  register kernels for MKLDNN operators.
 
 `Layout` is also defined as a enum variable:
 

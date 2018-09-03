@@ -123,8 +123,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
 
 class ArrayToLoDTensorOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ArrayToLoDTensorOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(std::vector<LodTensor>) A vector of tensors that is going to "
              "be casted to a big LoDTensor.");

@@ -18,6 +18,34 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using framework::DataLayout;
+using mkldnn::memory;
+using mkldnn::pooling_backward;
+using mkldnn::pooling_forward;
+using mkldnn::primitive;
+using mkldnn::reorder;
+using mkldnn::stream;
+using platform::to_void_cast;
+
+// Generate keys for storing/retriving primitives for this operator
+// TODO(jczaja): Make hashing function more optimial
+static std::string gethash(const memory::dims& input_dims,
+                           const std::string& pooling_type,
+                           const std::vector<int>& ksize,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::string& suffix) {
+  auto dims2str = [](const memory::dims& operand_dims) {
+    std::string dstr = "";
+    for (size_t i = 0; i < operand_dims.size(); ++i) {
+      dstr += std::to_string(operand_dims[i]) + "-";
+    }
+    return dstr;
+  };
+  return dims2str(input_dims) + dims2str(ksize) + dims2str(strides) +
+         dims2str(paddings) + pooling_type + suffix;
+}
+
 template <typename T>
 class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
  public:
@@ -32,12 +60,9 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* input = ctx.Input<Tensor>("X");
     Tensor* output = ctx.Output<Tensor>("Out");
 
-    // Get an unique name from "argument" name of "Out" variable
-    // This name will be used as key when saving info into device context
-    const std::string key = ctx.op().Output("Out");
-    const std::string key_pool_pd = key + "@pool_pd";
-    const std::string key_pool_workspace_memory =
-        key + "@pool_workspace_memory";
+    PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
+                       input->format() != memory::format::format_undef,
+                   "Wrong layout/format set for Input tensor");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
@@ -63,38 +88,84 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
-    // TODO(pzelazko-intel): support more formats
-    auto src_md = platform::MKLDNNMemDesc(src_tz, mkldnn::memory::f32,
-                                          mkldnn::memory::format::nchw);
-    auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
-                                          mkldnn::memory::format::nchw);
+    auto input_format = input->format();
+    memory::format output_format{memory::format::format_undef};
 
-    std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
-        CreatePrimitiveDesc(src_md, dst_md, strides, paddings, ksize,
-                            pooling_type, mkldnn_engine);
+    const std::string key = gethash(src_tz, pooling_type, ksize, strides,
+                                    paddings, ctx.op().Output("Out"));
+    const std::string key_pool_p = key + "@pool_p";
+    const std::string key_pool_pd = key + "@pool_pd";
+    const std::string key_pool_src_mem_p = key + "@pool_src_mem_p";
+    const std::string key_pool_dst_mem_p = key + "@pool_dst_mem_p";
+    const std::string key_pool_workspace_memory =
+        key + "@pool_workspace_memory";
 
-    // save pool_pd into global device context to be referred in backward path
-    dev_ctx.SetBlob(key_pool_pd, pool_pd);
+    auto pool_p =
+        std::static_pointer_cast<pooling_forward>(dev_ctx.GetBlob(key_pool_p));
+    if (pool_p == nullptr) {
+      auto src_md = platform::MKLDNNMemDesc(
+          src_tz, platform::MKLDNNGetDataType<T>(), input_format);
 
-    std::shared_ptr<mkldnn::memory> workspace_memory =
-        CreateWorkspaceMemory(pool_pd, pooling_type, mkldnn_engine);
+      /* create memory descriptor for pooling without specified format
+       * ('any') which lets a primitive (pooling in this case) choose
+       * the memory format preferred for best performance
+       */
+      auto dst_md = platform::MKLDNNMemDesc(dst_tz, mkldnn::memory::f32,
+                                            mkldnn::memory::format::any);
 
-    // save pool_workspace_memory to be referred in backward path
-    dev_ctx.SetBlob(key_pool_workspace_memory, workspace_memory);
+      std::shared_ptr<mkldnn::pooling_forward::primitive_desc> pool_pd =
+          CreatePrimitiveDesc(src_md, dst_md, strides, paddings, ksize,
+                              pooling_type, mkldnn_engine);
 
-    auto src_memory =
-        mkldnn::memory({src_md, mkldnn_engine},
-                       static_cast<void*>(const_cast<T*>(input_data)));
-    auto dst_memory =
-        mkldnn::memory({dst_md, mkldnn_engine},
-                       static_cast<void*>(const_cast<T*>(output_data)));
+      // save pool_pd into global device context to be referred in backward path
+      dev_ctx.SetBlob(key_pool_pd, pool_pd);
 
-    auto pool_prim = mkldnn::pooling_forward(*pool_pd, src_memory, dst_memory,
-                                             *workspace_memory);
+      std::shared_ptr<mkldnn::memory> workspace_memory =
+          CreateWorkspaceMemory(pool_pd, pooling_type, mkldnn_engine);
+
+      // save pool_workspace_memory to be referred in backward path
+      dev_ctx.SetBlob(key_pool_workspace_memory, workspace_memory);
+
+      auto src_memory = std::make_shared<memory>(pool_pd->src_primitive_desc(),
+                                                 to_void_cast<T>(input_data));
+      auto dst_memory =
+          std::make_shared<memory>(pool_pd->dst_primitive_desc(), output_data);
+
+      dev_ctx.SetBlob(key_pool_src_mem_p, src_memory);
+      dev_ctx.SetBlob(key_pool_dst_mem_p, dst_memory);
+
+      pool_p = std::make_shared<pooling_forward>(*pool_pd, *(src_memory.get()),
+                                                 *(dst_memory.get()),
+                                                 *workspace_memory);
+
+      dev_ctx.SetBlob(key_pool_p, pool_p);
+
+      output_format =
+          (memory::format)dst_memory->get_primitive_desc().desc().data.format;
+    } else {
+      // Primitives already exist
+      auto pool_src_memory_p =
+          std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_src_mem_p));
+      PADDLE_ENFORCE(pool_src_memory_p != nullptr,
+                     "Fail to find pooling src mem_p in device context");
+      auto pool_dst_memory_p =
+          std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_dst_mem_p));
+      PADDLE_ENFORCE(pool_dst_memory_p != nullptr,
+                     "Fail to find pooling dst mem_p in device context");
+      pool_src_memory_p->set_data_handle(to_void_cast<T>(input_data));
+      pool_dst_memory_p->set_data_handle(output_data);
+
+      output_format = (memory::format)pool_dst_memory_p->get_primitive_desc()
+                          .desc()
+                          .data.format;
+    }
 
     // push primitive to stream and wait until it's executed
-    std::vector<mkldnn::primitive> pipeline{pool_prim};
-    mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+    std::vector<mkldnn::primitive> pipeline{*(pool_p.get())};
+    stream(stream::kind::eager).submit(pipeline).wait();
+
+    output->set_layout(DataLayout::kMKLDNN);
+    output->set_format(output_format);
   }
 
  private:
@@ -120,9 +191,10 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     mkldnn::memory::primitive_desc workspace_md =
         pooling_type == "max"
             ? pool_pd->workspace_primitive_desc()
-            : mkldnn::memory::primitive_desc(
-                  {{}, mkldnn::memory::f32, mkldnn::memory::format::nchw},
-                  engine);
+            : mkldnn::memory::primitive_desc({{},
+                                              platform::MKLDNNGetDataType<T>(),
+                                              mkldnn::memory::format::nchw},
+                                             engine);
 
     auto p_workspace_memory = new mkldnn::memory(workspace_md);
     return std::unique_ptr<mkldnn::memory>(p_workspace_memory);
@@ -140,12 +212,12 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     const Tensor* out_grad = ctx.Input<Tensor>(framework::GradVarName("Out"));
     Tensor* in_x_grad = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    // Get an unique name from "argument" name of "Out" variable
-    // This name will be used as key when referring info from device context
-    const std::string key = ctx.op().Input("Out");
-    const std::string key_pool_pd = key + "@pool_pd";
-    const std::string key_pool_workspace_memory =
-        key + "@pool_workspace_memory";
+    PADDLE_ENFORCE(in_x->layout() == DataLayout::kMKLDNN &&
+                       in_x->format() != memory::format::format_undef,
+                   "Wrong layout/format set for Input X tensor");
+    PADDLE_ENFORCE(out_grad->layout() == DataLayout::kMKLDNN &&
+                       out_grad->format() != memory::format::format_undef,
+                   "Wrong layout/format set for Input output_grad tensor");
 
     std::string pooling_type = ctx.Attr<std::string>("pooling_type");
     std::vector<int> ksize = ctx.Attr<std::vector<int>>("ksize");
@@ -165,57 +237,139 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
 
     const T* out_grad_data = out_grad->data<T>();
     T* in_x_grad_data = in_x_grad->mutable_data<T>(ctx.GetPlace());
+    memory::format in_x_grad_format{memory::format::format_undef};
 
     std::vector<int> diff_src_tz =
         paddle::framework::vectorize2int(in_x_grad->dims());
     std::vector<int> diff_dst_tz =
         paddle::framework::vectorize2int(out_grad->dims());
 
-    auto diff_src_md = platform::MKLDNNMemDesc(diff_src_tz, mkldnn::memory::f32,
-                                               mkldnn::memory::format::nchw);
-    auto diff_dst_md = platform::MKLDNNMemDesc(diff_dst_tz, mkldnn::memory::f32,
-                                               mkldnn::memory::format::nchw);
+    // Get an unique name from "argument" name of "Out" variable
+    // This name will be used as key when referring info from device context
+    const std::string key = gethash(diff_src_tz, pooling_type, ksize, strides,
+                                    paddings, ctx.op().Input("Out"));
+    const std::string key_pool_bwd_p = key + "@pool_bwd_p";
+    const std::string key_pool_diff_src_mem_p = key + "@pool_diff_src_mem_p";
+    const std::string key_pool_diff_dst_mem_p = key + "@pool_diff_dst_mem_p";
+    const std::string key_pool_src_mem_p = key + "@pool_src_mem_p";
+    const std::string key_pool_dst_mem_p = key + "@pool_dst_mem_p";
+    const std::string key_pool_pd = key + "@pool_pd";
+    const std::string key_pool_workspace_memory =
+        key + "@pool_workspace_memory";
 
-    // Retrieve pool_pd/pool_workspace_memory from device context
-    auto pool_pd =
-        std::static_pointer_cast<mkldnn::pooling_forward::primitive_desc>(
-            dev_ctx.GetBlob(key_pool_pd));
-    PADDLE_ENFORCE(pool_pd != nullptr,
-                   "Fail to find pool_pd in device context");
+    auto user_diff_dst_memory =
+        memory({{{diff_dst_tz}, memory::data_type::f32, out_grad->format()},
+                mkldnn_engine},
+               to_void_cast<T>(out_grad_data));
 
-    auto workspace_memory = std::static_pointer_cast<mkldnn::memory>(
-        dev_ctx.GetBlob(key_pool_workspace_memory));
-    PADDLE_ENFORCE(workspace_memory != nullptr,
-                   "Fail to find workspace_memory in device context");
+    std::shared_ptr<memory> diff_src_memory;
+    std::shared_ptr<memory> diff_dst_memory;
+    auto dst_memory =
+        std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_dst_mem_p));
+    PADDLE_ENFORCE(dst_memory != nullptr,
+                   "Fail to find dst_memory in device context");
 
-    auto pool_bwd_desc = mkldnn::pooling_backward::desc(
-        pooling_type == "max" ? mkldnn::algorithm::pooling_max
-                              : mkldnn::algorithm::pooling_avg,
-        diff_src_md, diff_dst_md, strides, ksize, paddings, paddings,
-        mkldnn::padding_kind::zero);
-    auto pool_bwd_pd = mkldnn::pooling_backward::primitive_desc(
-        pool_bwd_desc, mkldnn_engine, *pool_pd);
+    primitive reorder_diff_dst;
+    bool is_diff_dst_reordered = false;
+    auto pool_bwd_p = std::static_pointer_cast<pooling_backward>(
+        dev_ctx.GetBlob(key_pool_bwd_p));
+    if (pool_bwd_p == nullptr) {
+      // Retrieve src_memory/dst_memory saved in forward pass
+      auto src_memory =
+          std::static_pointer_cast<memory>(dev_ctx.GetBlob(key_pool_src_mem_p));
+      PADDLE_ENFORCE(src_memory != nullptr,
+                     "Fail to find src_memory in device context");
+      // Retrieve pool_pd/pool_workspace_memory from device context
+      auto pool_pd =
+          std::static_pointer_cast<mkldnn::pooling_forward::primitive_desc>(
+              dev_ctx.GetBlob(key_pool_pd));
+      PADDLE_ENFORCE(pool_pd != nullptr,
+                     "Fail to find pool_pd in device context");
+      auto workspace_memory = std::static_pointer_cast<memory>(
+          dev_ctx.GetBlob(key_pool_workspace_memory));
+      PADDLE_ENFORCE(workspace_memory != nullptr,
+                     "Fail to find workspace_memory in device context");
 
-    auto diff_src_memory =
-        mkldnn::memory({diff_src_md, mkldnn_engine},
-                       static_cast<void*>(const_cast<T*>(in_x_grad_data)));
-    auto diff_dst_memory =
-        mkldnn::memory({diff_dst_md, mkldnn_engine},
-                       static_cast<void*>(const_cast<T*>(out_grad_data)));
+      // create memory descriptors for pooling
+      auto diff_src_md = src_memory.get()->get_primitive_desc().desc();
+      auto diff_dst_md = dst_memory.get()->get_primitive_desc().desc();
 
-    auto bwd_prim = mkldnn::pooling_backward(
-        pool_bwd_pd, diff_dst_memory, *workspace_memory, diff_src_memory);
+      auto pool_bwd_desc = mkldnn::pooling_backward::desc(
+          pooling_type == "max" ? mkldnn::algorithm::pooling_max
+                                : mkldnn::algorithm::pooling_avg,
+          diff_src_md, diff_dst_md, strides, ksize, paddings, paddings,
+          mkldnn::padding_kind::zero);
+      auto pool_bwd_pd = mkldnn::pooling_backward::primitive_desc(
+          pool_bwd_desc, mkldnn_engine, *pool_pd);
+
+      // reorder between user_diff_dst and pool diff_dst if needed
+      diff_dst_memory = std::make_shared<memory>(user_diff_dst_memory);
+      if (memory::primitive_desc(dst_memory->get_primitive_desc()) !=
+          user_diff_dst_memory.get_primitive_desc()) {
+        diff_dst_memory =
+            std::make_shared<memory>(dst_memory.get()->get_primitive_desc());
+        reorder_diff_dst = reorder(user_diff_dst_memory, *diff_dst_memory);
+        is_diff_dst_reordered = true;
+      }
+
+      diff_src_memory = std::make_shared<memory>(
+          pool_bwd_pd.diff_src_primitive_desc(), in_x_grad_data);
+
+      dev_ctx.SetBlob(key_pool_diff_src_mem_p, diff_src_memory);
+      dev_ctx.SetBlob(key_pool_diff_dst_mem_p, diff_dst_memory);
+
+      pool_bwd_p = std::make_shared<pooling_backward>(
+          pool_bwd_pd, *(diff_dst_memory.get()), *workspace_memory,
+          *(diff_src_memory));
+      dev_ctx.SetBlob(key_pool_bwd_p, pool_bwd_p);
+
+    } else {
+      // Primitives already exist
+      diff_src_memory = std::static_pointer_cast<memory>(
+          dev_ctx.GetBlob(key_pool_diff_src_mem_p));
+      PADDLE_ENFORCE(diff_src_memory != nullptr,
+                     "Fail to find pooling src mem_p in device context");
+      diff_dst_memory = std::static_pointer_cast<memory>(
+          dev_ctx.GetBlob(key_pool_diff_dst_mem_p));
+      PADDLE_ENFORCE(diff_dst_memory != nullptr,
+                     "Fail to find pooling dst mem_p in device context");
+
+      diff_src_memory->set_data_handle(reinterpret_cast<void*>(in_x_grad_data));
+      diff_dst_memory->set_data_handle(const_cast<T*>(out_grad_data));
+
+      // reorder between user_diff_dst and pool diff_dst if needed
+      if (memory::primitive_desc(dst_memory->get_primitive_desc()) !=
+          user_diff_dst_memory.get_primitive_desc()) {
+        diff_dst_memory =
+            std::make_shared<memory>(dst_memory.get()->get_primitive_desc());
+        reorder_diff_dst = reorder(user_diff_dst_memory, *diff_dst_memory);
+        is_diff_dst_reordered = true;
+      }
+    }
+
+    in_x_grad_format = (memory::format)diff_src_memory->get_primitive_desc()
+                           .desc()
+                           .data.format;
 
     // push primitive to stream and wait until it's executed
-    std::vector<mkldnn::primitive> pipeline{bwd_prim};
+    std::vector<mkldnn::primitive> pipeline;
+    if (is_diff_dst_reordered) {
+      pipeline.push_back(reorder_diff_dst);
+    }
+    pipeline.push_back(*(pool_bwd_p.get()));
     mkldnn::stream(mkldnn::stream::kind::eager).submit(pipeline).wait();
+
+    in_x_grad->set_layout(DataLayout::kMKLDNN);
+    in_x_grad->set_format(in_x_grad_format);
   }  // Compute()
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OP_KERNEL(pool2d, MKLDNN, ::paddle::platform::CPUPlace,
-                   paddle::operators::PoolMKLDNNOpKernel<float>);
+                   ops::PoolMKLDNNOpKernel<float>);
 REGISTER_OP_KERNEL(pool2d_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   paddle::operators::PoolMKLDNNGradOpKernel<float>);
+                   ops::PoolMKLDNNGradOpKernel<float>);

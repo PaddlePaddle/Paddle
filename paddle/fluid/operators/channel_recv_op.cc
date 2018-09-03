@@ -72,8 +72,7 @@ class ChannelRecvOp : public framework::OperatorBase {
 
 class ChannelRecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ChannelRecvOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(Channel,
              "(Channel) A variable which \"receives\" the a value sent"
              "to it by a channel_send op.")

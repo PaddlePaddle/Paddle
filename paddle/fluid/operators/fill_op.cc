@@ -25,7 +25,7 @@ struct FillOpVisitor {
       : tensor_(tensor), value_(value) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     platform::CPUPlace cpu;
     auto *data = tensor_->mutable_data<T>(cpu);
     std::transform(value_.data(), value_.data() + tensor_->numel(), data,
@@ -82,8 +82,7 @@ class FillOp : public framework::OperatorBase {
 
 class FillOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FillOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddComment(R"DOC(Fill operator
 
 Fill an tensor with `value` and `shape`. The type of the tensor is specify by

@@ -13,17 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_pow_op.h"
+#include <string>
 #include "paddle/fluid/operators/elementwise_op.h"
 
 namespace paddle {
 namespace operators {
 class ElementwisePowOpMaker : public ElementwiseOpMaker {
- public:
-  ElementwisePowOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : ElementwiseOpMaker(proto, op_checker) {
-    SetComment("Pow", "Out = X ^ Y");
-    AddComment(comment_);
-  }
+ protected:
+  std::string GetName() const override { return "Pow"; }
+  std::string GetEquation() const override { return "Out = X ^ Y"; }
 };
 }  // namespace operators
 }  // namespace paddle

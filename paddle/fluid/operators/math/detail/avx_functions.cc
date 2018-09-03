@@ -17,7 +17,7 @@ limitations under the License. */
 #include <immintrin.h>
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
 // TODO(qingqing) refine this dependence
-#include "paddle/cuda/src/avx_mathfun.h"
+#include "paddle/legacy/cuda/src/avx_mathfun.h"
 
 namespace paddle {
 namespace operators {

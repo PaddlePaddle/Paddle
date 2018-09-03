@@ -17,10 +17,10 @@
 #include <cublasXt.h>
 #include <cublas_v2.h>
 #include <cuda.h>
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
 #include <type_traits>
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace platform {
@@ -45,7 +45,7 @@ extern void *cublas_dso_handle;
       std::call_once(cublas_dso_flag, []() {                                 \
         cublas_dso_handle = paddle::platform::dynload::GetCublasDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(cublas_dso_handle, #__name);                  \
+      static void *p_##__name = dlsym(cublas_dso_handle, #__name);           \
       return reinterpret_cast<FUNC_TYPE>(p_##__name)(args...);               \
     }                                                                        \
   };                                                                         \

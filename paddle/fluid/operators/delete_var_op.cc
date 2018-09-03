@@ -34,8 +34,7 @@ class DeleteVarOp : public framework::OperatorBase {
 
 class DeleteVarOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  DeleteVarOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of delete op").AsDuplicable();
     AddComment(R"DOC(
 Delete Operator.

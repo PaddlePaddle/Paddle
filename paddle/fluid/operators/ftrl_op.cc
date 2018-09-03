@@ -64,8 +64,7 @@ class FTRLOp : public framework::OperatorWithKernel {
 
 class FTRLOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FTRLOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter value that has to be updated.");

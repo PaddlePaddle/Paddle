@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid as fluid
 import numpy as np
@@ -44,8 +46,8 @@ create_random_data_generator_op = startup_block.append_op(
     attrs={
         "shape_concat": [1, 2, 1, 1],
         "ranks": [2, 2],
-        "min": 0.0,
-        "max": 1.0,
+        "low": 0.0,
+        "high": 1.0,
         'lod_levels': [0, 0]
     })
 

@@ -57,8 +57,7 @@ class SequenceSoftmaxOp : public framework::OperatorWithKernel {
 
 class SequenceSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceSoftmaxOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor) 1-D or 2-D input LoDTensor with the 2-nd dimension "
              "of length 1.");
