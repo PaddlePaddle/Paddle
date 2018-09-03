@@ -12,47 +12,58 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import math
 from op_test import OpTest
 
 
-def quantize_max_abs(x, num_bits):
-    range = math.pow(2, num_bits) - 1
+def quantize_max_abs(x, max_range):
     scale = np.max(np.abs(x).flatten())
-    y = np.round(x / scale * range)
+    y = np.round(x / scale * max_range)
     return y, scale
 
 
-def dequantize_max_abs(x, num_bits, scale):
-    range = math.pow(2, num_bits) - 1
-    y = (scale / range) * x
+def dequantize_max_abs(x, scale, max_range):
+    y = (scale / max_range) * x
     return y
 
 
 class TestFakeDequantizeMaxAbsOp(OpTest):
     def set_args(self):
         self.num_bits = 8
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "float32"
 
     def setUp(self):
         self.set_args()
         self.op_type = "fake_dequantize_max_abs"
-        x = np.random.randn(31, 65).astype("float32")
-        yq, scale = quantize_max_abs(x, self.num_bits)
-        ydq = dequantize_max_abs(yq, self.num_bits, scale)
+        x = np.random.randn(31, 65).astype(self.data_type)
+        yq, scale = quantize_max_abs(x, self.max_range)
+        ydq = dequantize_max_abs(yq, scale, self.max_range)
 
-        self.inputs = {'X': yq}
-        self.attrs = {'num_bits': self.num_bits, 'scale': float(scale)}
+        self.inputs = {'X': yq, 'Scale': np.array(scale).astype(self.data_type)}
+        self.attrs = {'max_range': self.max_range}
         self.outputs = {'Out': ydq}
 
     def test_check_output(self):
         self.check_output()
 
 
-class TestFakeDequantizeMaxAbsOp5Bits(OpTest):
+class TestFakeDequantizeMaxAbsOpDouble(TestFakeDequantizeMaxAbsOp):
+    def set_args(self):
+        self.num_bits = 8
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "float64"
+
+
+class TestFakeDequantizeMaxAbsOp5Bits(TestFakeDequantizeMaxAbsOp):
     def set_args(self):
         self.num_bits = 5
+        self.max_range = math.pow(2, self.num_bits - 1) - 1
+        self.data_type = "float32"
 
 
 if __name__ == "__main__":
