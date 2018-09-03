@@ -180,7 +180,6 @@ class CudnnHolder {
     if (workspace_ != nullptr) {
       // Maybe someone is using the current workspace
       PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-      PADDLE_ENFORCE(cudaGetLastError());
       paddle::memory::Free(place_, workspace_);
     }
     workspace_ = new_workspace;
