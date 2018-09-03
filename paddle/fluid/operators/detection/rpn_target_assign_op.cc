@@ -64,17 +64,6 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
   }
 };
 
-template <class T>
-void print(const Tensor& t) {
-  std::cerr << "dim: " << t.dims() << "\n";
-  for (int64_t i = 0; i < t.dims()[0]; ++i) {
-    for (int64_t j = 0; j < t.dims()[1]; ++j) {
-      std::cerr << t.data<T>()[i * t.dims()[1] + j] << " ";
-    }
-    std::cerr << "\n";
-  }
-}
-
 template <typename T>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:

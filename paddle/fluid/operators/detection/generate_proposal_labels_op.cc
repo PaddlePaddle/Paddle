@@ -244,7 +244,6 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
                        Tensor* sampled_labels, Tensor* sampled_gts) {
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
-  // int gt_num = fg_num + bg_num;
   Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
   int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
