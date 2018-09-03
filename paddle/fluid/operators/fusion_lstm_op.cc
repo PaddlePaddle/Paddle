@@ -16,13 +16,9 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
-
-DEFINE_bool(seq_mode, false, "Use sequence mode");
 
 namespace paddle {
 namespace operators {
@@ -110,7 +106,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->ShareLoD("X", "Cell");
 
   int xx_width;
-  if (FLAGS_seq_mode) {
+  if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
@@ -189,6 +185,10 @@ void FusionLSTMOpMaker::Make() {
                 "(bool, defalut: False) "
                 "whether to compute reversed LSTM.")
       .SetDefault(false);
+  AddAttr<bool>("use_seq",
+                "(bool, defalut: True) "
+                "whether to use seq mode to compute.")
+      .SetDefault(true);
   AddAttr<std::string>("gate_activation",
                        "(string, default: sigmoid)"
                        "The activation for input gate, forget gate and output "
@@ -265,10 +265,10 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     const int N = x_lod[0].size() - 1;  // batch size
 
     const T* x_data = x->data<T>();
-    const T* h0_data = h0 ? h0->data<T>() : NULL;
+    const T* h0_data = h0 ? h0->data<T>() : nullptr;
+    const T* c0_data = c0 ? c0->data<T>() : nullptr;
     const T* bias_data = bias->data<T>();
     const T* wc_data = bias_data + D4;  // w_ic, w_fc, w_oc
-    const T* c0_data = c0 ? c0->data<T>() : NULL;
     const T* wx_data = wx->data<T>();
     const T* wh_data = wh->data<T>();
 
@@ -305,8 +305,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     for (int i = 0; i < N; ++i) {
       int bid = is_reverse ? N - 1 - i : i;
       int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
-      const T* prev_c_data = NULL;
-      const T* prev_h_data = NULL;
+      const T* prev_c_data = nullptr;
+      const T* prev_h_data = nullptr;
 
       if (h0_data) {
         prev_h_data = h0_data + bid * D;
@@ -397,7 +397,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     using DeviceContext = platform::CPUDeviceContext;
     INIT_BASE_INPUT_OUTPUT
     if (x->lod()[0].size() == 2) {  // batch size == 1
-      return SeqCompute(ctx);
+      SeqCompute(ctx);
+      return;
     }
     INIT_BASE_SIZES
     INIT_VEC_FUNC
@@ -448,8 +449,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
-    T* prev_batch_h_data = NULL;
-    T* prev_batch_c_data = NULL;
+    T* prev_batch_h_data = nullptr;
+    T* prev_batch_c_data = nullptr;
     T* cur_batch_in_data = batched_input_data;
     T* cur_batch_h_out_data = batched_h_out_data;
     T* cur_batch_c_out_data = batched_c_out_data;
@@ -498,8 +499,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         cur_in_data += D4;
         cur_c_out_data += D;
         cur_h_out_data += D;
-        prev_c_data = prev_c_data ? prev_c_data + D : NULL;
-        prev_h_data = prev_h_data ? prev_h_data + D : NULL;
+        prev_c_data = prev_c_data ? prev_c_data + D : nullptr;
+        prev_h_data = prev_h_data ? prev_h_data + D : nullptr;
       };
 
       for (int i = 0; i < cur_bs; ++i) {  // iterate each data in same batch
@@ -582,7 +583,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& ctx) const override {
-    if (FLAGS_seq_mode) {
+    if (ctx.Attr<bool>("use_seq")) {
       SeqCompute(ctx);
     } else {
       BatchCompute(ctx);
