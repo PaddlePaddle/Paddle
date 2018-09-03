@@ -174,7 +174,7 @@ def rpn_target_assign(loc,
         })
 
     # 4. Reshape and gather the target entry
-    scores = nn.reshape(x=scores, shape=(-1, 2))
+    scores = nn.reshape(x=scores, shape=(-1, 1))
     loc = nn.reshape(x=loc, shape=(-1, 4))
     target_label = nn.reshape(x=target_label, shape=(-1, 1))
     target_bbox = nn.reshape(x=target_bbox, shape=(-1, 4))
