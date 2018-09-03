@@ -572,7 +572,7 @@ class Auc(MetricBase):
                 numpy_auc = metric.eval()
     """
 
-    def __init__(self, name, curve='ROC', num_thresholds=2**11 - 1):
+    def __init__(self, name, curve='ROC', num_thresholds=2**12 - 1):
         super(Auc, self).__init__(name=name)
         self._curve = curve
         self._num_thresholds = num_thresholds

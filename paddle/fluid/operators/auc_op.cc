@@ -78,7 +78,7 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("num_thresholds",
                  "The number of thresholds to use when discretizing the"
                  " roc curve.")
-        .SetDefault((1 << 24) - 1);
+        .SetDefault((2 << 12) - 1);
 
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.
