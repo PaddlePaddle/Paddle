@@ -62,7 +62,7 @@ void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
     if (op->Type() == "feed") {
       int idx = boost::get<int>(op->GetAttr("col"));
-      if (feeds_.size() <= (size_t)idx) {
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
         feeds_.resize(idx + 1);
       }
       feeds_[idx] = op;
@@ -179,8 +179,13 @@ std::unique_ptr<PaddlePredictor> NativePaddlePredictor::Clone() {
     LOG(ERROR) << "fail to call Init";
     return nullptr;
   }
+#ifdef __clang__
+  // fix clang compile error
+  return cls;
+#else
   // fix manylinux compile error.
   return std::move(cls);
+#endif
 }
 
 bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
@@ -330,7 +335,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
+#ifdef __clang__
+  // fix clang compile error
+  return predictor;
+#else
   return std::move(predictor);
+#endif
 }
 
 }  // namespace paddle

@@ -34,7 +34,7 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-using namespace framework;
+using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
@@ -313,8 +313,8 @@ void TestDituRNNPrediction(const std::string &model_path,
     PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
     float *base_data = static_cast<float *>(base_out.data.data());
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_data[i], 1e-3);
+    for (size_t j = 0; j < size; j++) {
+      EXPECT_NEAR(data[j], base_data[j], 1e-3);
     }
   }
 
@@ -330,6 +330,7 @@ void TestDituRNNPrediction(const std::string &model_path,
 
     ASSERT_TRUE(fuse_statis.count("fc"));
     EXPECT_EQ(fuse_statis.at("fc"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 1);
   }
 }
 
