@@ -170,6 +170,11 @@ def rpn_target_assign(loc,
             'fg_fraction': fg_fraction
         })
 
+    loc_index.stop_gradient = True
+    score_index.stop_gradient = True
+    target_label.stop_gradient = True
+    target_bbox.stop_gradient = True
+
     scores = nn.reshape(x=scores, shape=(-1, 1))
     loc = nn.reshape(x=loc, shape=(-1, 4))
     predicted_scores = nn.gather(scores, score_index)
