@@ -21,6 +21,7 @@ cc_binary(inference_analyzer SRCS analyzer_main.cc DEPS analysis paddle_fluid)
 
 set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
 
+if (NOT WIN32)
 function (inference_analysis_test TARGET)
     if(WITH_TESTING)
         set(options "")
@@ -98,3 +99,4 @@ inference_analysis_test(test_chinese_ner SRCS chinese_ner_tester.cc
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_model=${CHINESE_NER_INSTALL_DIR}/model
         --infer_data=${CHINESE_NER_INSTALL_DIR}/data.txt)
+endif(NOT WIN32)
