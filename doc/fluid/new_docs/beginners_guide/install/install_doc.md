@@ -179,9 +179,9 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`
 
-* ***GPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle-gpu`
+* ***GPU版本的PaddlePaddle***: `pip uninstall paddlepaddle-gpu`
 
 <br/><br/>
 ### **CentOS下安装PaddlePaddle**
@@ -341,9 +341,9 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`
 
-* ***GPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle-gpu`
+* ***GPU版本的PaddlePaddle***: `pip uninstall paddlepaddle-gpu`
 
 
 
@@ -435,7 +435,7 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`     
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`     
 
 
 
@@ -477,7 +477,7 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`   
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`   
 
 
 
@@ -682,9 +682,9 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`
 
-* ***GPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle-gpu`
+* ***GPU版本的PaddlePaddle***: `pip uninstall paddlepaddle-gpu`
 
 
 <br/><br/>
@@ -876,7 +876,7 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`
 
 
 
@@ -1007,7 +1007,7 @@
 ##### ***如何卸载PaddlePaddle***
 请使用以下命令卸载PaddlePaddle：
 
-* ***CPU版本的PaddlePaddle***: `pip uninstall PaddlePaddle`
+* ***CPU版本的PaddlePaddle***: `pip uninstall paddlepaddle`
 
 
 
