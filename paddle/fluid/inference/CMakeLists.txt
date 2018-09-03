@@ -32,9 +32,9 @@ endif()
 # Create shared library
 cc_library(paddle_fluid_shared SHARED
     SRCS io.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api.cc ${CMAKE_CURRENT_SOURCE_DIR}/api/api_impl.cc
-    DEPS ${fluid_modules} paddle_fluid_api)
-
+    DEPS ${fluid_modules} paddle_fluid_api ir)
 set_target_properties(paddle_fluid_shared PROPERTIES OUTPUT_NAME paddle_fluid)
+
 if(NOT APPLE)
   # TODO(liuyiqun): Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.map")
