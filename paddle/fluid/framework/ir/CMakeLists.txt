@@ -16,7 +16,7 @@ cc_library(graph SRCS graph.cc DEPS node)
 cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
-cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph graph_helper graph_traits gtest)
+cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph graph_helper graph_traits)
 
 pass_library(graph_to_program_pass)
 pass_library(graph_viz_pass)
