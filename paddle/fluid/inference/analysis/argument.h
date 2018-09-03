@@ -67,7 +67,7 @@ struct Argument {
     PADDLE_ENFORCE(!attrs_.count(key), "Duplicate set Argument's attr [%s]",
                    key);
     attrs_[key] = data;
-    attr_deleters_[key] = [data, key, this]() {
+    attr_deleters_[key] = [data, key]() {
       VLOG(3) << "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx";
       VLOG(3) << "argument delete attr: " << key;
       delete data;
