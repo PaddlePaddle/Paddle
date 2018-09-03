@@ -76,24 +76,24 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:0.14.0`
 		
 
 	* 对于需要**GPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For GPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0-gpu-cuda9.0-cudnn7`
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:0.14.0-gpu-cuda9.0-cudnn7`
 		
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:[tag]`
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:[tag]`
 		> （请把[tag]替换为[镜像表](#dockers)中的内容）
 		
 2. 使用以下指令用已经拉取的镜像构建并进入Docker容器：
 
 	`docker run --name [Name of container] -it -v $PWD:/paddle <imagename> /bin/bash`
 
-	> 上述命令中，--name [Name of container] 设定Docker的名称；-it 参数说明容器已和本机交互式运行； -v $PWD:/paddle 指定将当前路径（Linux中$PWD变量会展开为当前路径的绝对路径）挂载到容器内部的 /paddle 目录； `<imagename>` 指定需要使用的image名称，如果您需要使用我们的镜像请使用`docker.paddlepaddlehub.com/paddle:[tag]` 注：tag的意义同第二步；/bin/bash是在Docker中要执行的命令。
+	> 上述命令中，--name [Name of container] 设定Docker的名称；-it 参数说明容器已和本机交互式运行； -v $PWD:/paddle 指定将当前路径（Linux中$PWD变量会展开为当前路径的绝对路径）挂载到容器内部的 /paddle 目录； `<imagename>` 指定需要使用的image名称，如果您需要使用我们的镜像请使用`hub.baidubce.com/paddlepaddle/paddle:[tag]` 注：tag的意义同第二步；/bin/bash是在Docker中要执行的命令。
 
 3. （可选：当您需要第二次进入Docker容器中）使用如下命令使用PaddlePaddle：
 
@@ -240,20 +240,20 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`       
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:0.14.0`       
 		
 		
 
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:[tag]`
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:[tag]`
 		> （请把[tag]替换为[镜像表](#dockers)中的内容）
 2. 使用以下指令用已经拉取的镜像构建并进入Docker容器：
 
 	`docker run --name [Name of container] -it -v $PWD:/paddle <imagename> /bin/bash`
 	
-	> 上述命令中，--name [Name of container] 设定Docker的名称；-it 参数说明容器已和本机交互式运行； -v $PWD:/paddle 指定将当前路径（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)）挂载到容器内部的 /paddle 目录； `<imagename>` 指定需要使用的image名称，如果您需要使用我们的镜像请使用`docker.paddlepaddlehub.com/paddle:[tag]` 注：tag的意义同第二步，/bin/bash是在Docker中要执行的命令。  
+	> 上述命令中，--name [Name of container] 设定Docker的名称；-it 参数说明容器已和本机交互式运行； -v $PWD:/paddle 指定将当前路径（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)）挂载到容器内部的 /paddle 目录； `<imagename>` 指定需要使用的image名称，如果您需要使用我们的镜像请使用`hub.baidubce.com/paddlepaddle/paddle:[tag]` 注：tag的意义同第二步，/bin/bash是在Docker中要执行的命令。  
 
 3. （可选：当您需要第二次进入Docker容器中）使用如下命令使用PaddlePaddle：
 
@@ -394,19 +394,19 @@
 
 	* 对于需要**CPU版本的PaddlePaddle**的用户请使用以下指令拉取我们为您预安装好*PaddlePaddle For CPU*的镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:0.14.0`
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:0.14.0`
 		
 
 	* 您也可以通过以下指令拉取任意的我们提供的Docker镜像：
 
-		`docker pull docker.paddlepaddlehub.com/paddle:[tag]`
+		`docker pull hub.baidubce.com/paddlepaddle/paddle:[tag]`
 		> （请把[tag]替换为[镜像表](#dockers)中的内容）
 		
 2. 使用以下指令用已经拉取的镜像构建并进入Docker容器：
 
 	`docker run --name [Name of container] -it -v $PWD:/paddle <imagename> /bin/bash`
 
-	> 上述命令中，--name [Name of container] 设定Docker的名称；-it 参数说明容器已和本机交互式运行； -v $PWD:/paddle 指定将当前路径（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)）挂载到容器内部的 /paddle 目录； `<imagename>` 指定需要使用的image名称，如果您需要使用我们的镜像请使用`docker.paddlepaddlehub.com/paddle:[tag]` 注：tag的意义同第二步；/bin/bash是在Docker中要执行的命令。
+	> 上述命令中，--name [Name of container] 设定Docker的名称；-it 参数说明容器已和本机交互式运行； -v $PWD:/paddle 指定将当前路径（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)）挂载到容器内部的 /paddle 目录； `<imagename>` 指定需要使用的image名称，如果您需要使用我们的镜像请使用`hub.baidubce.com/paddlepaddle/paddle:[tag]` 注：tag的意义同第二步；/bin/bash是在Docker中要执行的命令。
 
 3. （可选：当您需要第二次进入Docker容器中）使用如下命令使用PaddlePaddle：
 
@@ -537,8 +537,8 @@
 
 3. 利用我们提供的镜像（使用该命令您可以不必提前下载镜像）：
 
-	`docker run --name paddle-test -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash`
-	> --name paddle-test为您创建的Docker容器命名为paddle-test，-v $PWD:/paddle 将当前目录挂载到Docker容器中的/paddle目录下（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)），-it 与宿主机保持交互状态，`docker.paddlepaddlehub.com/paddle:latest-dev` 使用名为`docker.paddlepaddlehub.com/paddle:latest-dev`的镜像创建Docker容器，/bin/bash 进入容器后启动/bin/bash命令。
+	`docker run --name paddle-test -v $PWD:/paddle --network=host -it hub.baidubce.com/paddlepaddle/paddle:latest-dev /bin/bash`
+	> --name paddle-test为您创建的Docker容器命名为paddle-test，-v $PWD:/paddle 将当前目录挂载到Docker容器中的/paddle目录下（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)），-it 与宿主机保持交互状态，`hub.baidubce.com/paddlepaddle/paddle:latest-dev` 使用名为`hub.baidubce.com/paddlepaddle/paddle:latest-dev`的镜像创建Docker容器，/bin/bash 进入容器后启动/bin/bash命令。
 
 4. 进入Docker后进入paddle目录下：`cd paddle`
 
@@ -735,8 +735,8 @@
 
 3. 利用我们提供的镜像（使用该命令您可以不必提前下载镜像）：
 
-	`docker run --name paddle-test -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash`
-	> --name paddle-test为您创建的Docker容器命名为paddle-test，-v $PWD:/paddle 将当前目录挂载到Docker容器中的/paddle目录下（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)），-it 与宿主机保持交互状态，`docker.paddlepaddlehub.com/paddle` 使用名为`docker.paddlepaddlehub.com/paddle:latest-dev`的镜像创建Docker容器，/bin/bash 进入容器后启动/bin/bash命令。
+	`docker run --name paddle-test -v $PWD:/paddle --network=host -it hub.baidubce.com/paddlepaddle/paddle:latest-dev /bin/bash`
+	> --name paddle-test为您创建的Docker容器命名为paddle-test，-v $PWD:/paddle 将当前目录挂载到Docker容器中的/paddle目录下（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)），-it 与宿主机保持交互状态，`hub.baidubce.com/paddlepaddle/paddle` 使用名为`hub.baidubce.com/paddlepaddle/paddle:latest-dev`的镜像创建Docker容器，/bin/bash 进入容器后启动/bin/bash命令。
 
 4. 进入Docker后进入paddle目录下：`cd paddle`
 
@@ -934,8 +934,8 @@
 
 3. 利用我们提供的镜像（使用该命令您可以不必提前下载镜像）：
 
-	`docker run --name paddle-test -v $PWD:/paddle --network=host -it docker.paddlepaddlehub.com/paddle:latest-dev /bin/bash`
-	> --name paddle-test为您创建的Docker容器命名为paddle-test，-v $PWD:/paddle 将当前目录挂载到Docker容器中的/paddle目录下（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)），-it 与宿主机保持交互状态，`docker.paddlepaddlehub.com/paddle:latest-dev` 使用名为`docker.paddlepaddlehub.com/paddle:latest-dev`的镜像创建Docker容器，/bin/bash 进入容器后启动/bin/bash命令。
+	`docker run --name paddle-test -v $PWD:/paddle --network=host -it hub.baidubce.com/paddlepaddle/paddle:latest-dev /bin/bash`
+	> --name paddle-test为您创建的Docker容器命名为paddle-test，-v $PWD:/paddle 将当前目录挂载到Docker容器中的/paddle目录下（Linux中$PWD变量会展开为当前路径的[绝对路径](https://baike.baidu.com/item/绝对路径/481185)），-it 与宿主机保持交互状态，`hub.baidubce.com/paddlepaddle/paddle:latest-dev` 使用名为`hub.baidubce.com/paddlepaddle/paddle:latest-dev`的镜像创建Docker容器，/bin/bash 进入容器后启动/bin/bash命令。
 
 4. 进入Docker后进入paddle目录下：`cd paddle`
 
@@ -1436,19 +1436,19 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 	</thead>
 	<tbody>
 	<tr>
-		<td> paddlepaddle/paddle:latest </td>
+		<td> hub.baidubce.com/paddlepaddle/paddle:latest </td>
 		<td> 最新的预先安装好PaddlePaddle CPU版本的镜像 </td>
 	</tr>
 	<tr>
-		<td> paddlepaddle/paddle:latest-dev </td>
+		<td> hub.baidubce.com/paddlepaddle/paddle:latest-dev </td>
 		<td> 最新的PaddlePaddle的开发环境 </td>
 	</tr>
 		<tr>
-		<td> paddlepaddle/paddle:[Version] </td>
+		<td> hub.baidubce.com/paddlepaddle/paddle:[Version] </td>
 		<td> 将version换成具体的版本，历史版本的预安装好PaddlePaddle的镜像 </td>
 	</tr>
 	<tr>
-		<td> paddlepaddle/paddle:latest-gpu </td>
+		<td> hub.baidubce.com/paddlepaddle/paddle:latest-gpu </td>
 		<td> 最新的预先安装好PaddlePaddle GPU版本的镜像 </td>
 	</tr>
    </tbody>
@@ -1473,15 +1473,15 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 编写），就可以使用下面的命令开始执行训练：
 
      cd /home/work
-     docker run -it -v $PWD:/work paddlepaddle/paddle /work/train.py
+     docker run -it -v $PWD:/work hub.baidubce.com/paddlepaddle/paddle:0.14.0 /work/train.py
 
 上述命令中，`-it` 参数说明容器已交互式运行；`-v $PWD:/work`
 指定将当前路径（Linux中$PWD变量会展开为当前路径的绝对路径）挂载到容器内部的:`/work`
-目录: `paddlepaddle/paddle` 指定需要使用的容器； 最后`/work/train.py`为容器内执行的命令，即运行训练程序。
+目录: `hub.baidubce.com/paddlepaddle/paddle:0.14.0` 指定需要使用的容器； 最后`/work/train.py`为容器内执行的命令，即运行训练程序。
 
 当然，您也可以进入到Docker容器中，以交互式的方式执行或调试您的代码：
 
-     docker run -it -v $PWD:/work paddlepaddle/paddle /bin/bash
+     docker run -it -v $PWD:/work hub.baidubce.com/paddlepaddle/paddle:0.14.0 /bin/bash
      cd /work
      python train.py
 
@@ -1500,11 +1500,11 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 
 我们提供可以直接运行PaddlePaddle Book的Docker镜像，直接运行：
 
-`docker run -p 8888:8888 paddlepaddle/book`
+`docker run -p 8888:8888 hub.baidubce.com/paddlepaddle/book`
 
 国内用户可以使用下面的镜像源来加速访问：
 
-`docker run -p 8888:8888 docker.paddlepaddlehub.com/book`
+`docker run -p 8888:8888 hub.baidubce.com/paddlepaddle/book`
 
 然后在浏览器中输入以下网址：
 
@@ -1521,7 +1521,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
 [nvidia-docker](https://github.com/NVIDIA/nvidia-docker)来运行镜像。
 请不要忘记提前在物理机上安装GPU最新驱动。
 
-`nvidia-docker run -it -v $PWD:/work paddlepaddle/paddle:latest-gpu /bin/bash`
+`nvidia-docker run -it -v $PWD:/work hub.baidubce.com/paddlepaddle/paddle:latest-gpu /bin/bash`
 
 **注: 如果没有安装nvidia-docker，可以尝试以下的方法，将CUDA库和Linux设备挂载到Docker容器内：**   
 
@@ -1529,7 +1529,7 @@ PaddlePaddle Book是为用户和开发者制作的一个交互式的Jupyter Note
      $(\ls /usr/lib64/libnvidia* | xargs -I{} echo '-v {}:{}')"
      export DEVICES=$(\ls /dev/nvidia* | xargs -I{} echo '--device {}:{}')
      docker run ${CUDA_SO} \
-      ${DEVICES} -it paddlepaddle/paddle:latest-gpu
+      ${DEVICES} -it hub.baidubce.com/paddlepaddle/paddle:latest-gpu
 
 
 **关于AVX：**
