@@ -165,8 +165,7 @@ class FlattenGradOp : public framework::OperatorBase {
 class Flatten2OpInferShape : public FlattenOpInferShape {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
-    FlattenOpInferShape flatten_op_infer_shape;
-    flatten_op_infer_shape(ctx);
+    FlattenOpInferShape::operator()(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output (XShape) of Flatten op should not be null.");
     const auto &in_dims = ctx->GetInputDim("X");

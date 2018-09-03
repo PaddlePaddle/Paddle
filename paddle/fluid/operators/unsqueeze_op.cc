@@ -176,6 +176,7 @@ class UnsqueezeGradOp : public framework::OperatorBase {
 class Unsqueeze2OpInferShape : public UnsqueezeOpInferShape {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
+    UnsqueezeOpInferShape::operator()(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) of Unsqueeze operator should not be null.");
     const auto &x_dims = ctx->GetInputDim("X");
