@@ -18,11 +18,11 @@
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
