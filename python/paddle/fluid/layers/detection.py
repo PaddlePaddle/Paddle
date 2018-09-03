@@ -156,7 +156,7 @@ def rpn_target_assign(loc,
         type="rpn_target_assign",
         inputs={'Anchor': anchor_box,
                 'GtBox': gt_box,
-                'DistMax': iou},
+                'DistMat': iou},
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
@@ -169,6 +169,11 @@ def rpn_target_assign(loc,
             'rpn_negative_overlap': rpn_negative_overlap,
             'fg_fraction': fg_fraction
         })
+
+    loc_index.stop_gradient = True
+    score_index.stop_gradient = True
+    target_label.stop_gradient = True
+    target_bbox.stop_gradient = True
 
     scores = nn.reshape(x=scores, shape=(-1, 1))
     loc = nn.reshape(x=loc, shape=(-1, 4))

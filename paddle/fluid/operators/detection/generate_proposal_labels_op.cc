@@ -316,7 +316,7 @@ std::vector<Tensor> SampleRoisForOneImage(
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxEncoder<T>(static_cast<int>(fg_inds.size()), sampled_boxes, sampled_gts,
+  BoxToDelta<T>(static_cast<int>(fg_inds.size()), sampled_boxes, sampled_gts,
                 nullptr, false, &bbox_targets_single);
 
   // Scale rois
@@ -429,7 +429,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();
     auto gt_boxes_lod = gt_boxes->lod().back();
-    for (size_t i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i) {
       Tensor rpn_rois_slice =
           rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       Tensor gt_classes_slice =

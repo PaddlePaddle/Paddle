@@ -137,7 +137,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                   tgt_data);
         Gather<T>(gt_bbox.data<T>(), 4, reinterpret_cast<int*>(&fg_bg_gt[2][0]),
                   cur_fg_num, gt_data);
-        BoxEncoder<T>(cur_fg_num, tgt_bbox, fg_gt, nullptr, false, &tgt_bbox);
+        BoxToDelta<T>(cur_fg_num, tgt_bbox, fg_gt, nullptr, false, &tgt_bbox);
       }
 
       loc_index += cur_fg_num;
