@@ -76,6 +76,10 @@ class AucKernel : public framework::OpKernel<T> {
       *auc_data += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
       --idx;
     }
+
+    if (totPos > 0.0 && totNeg > 0.0) {
+      *auc_data = *auc_data / totPos / totNeg;
+    }
   }
 
  private:

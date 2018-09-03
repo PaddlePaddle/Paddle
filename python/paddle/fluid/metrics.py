@@ -614,4 +614,4 @@ class Auc(MetricBase):
                                        tot_pos_prev)
             idx -= 1
 
-        return auc
+        return auc / tot_pos / tot_neg if tot_pos > 0.0 and tot_neg > 0.0 else 0.0

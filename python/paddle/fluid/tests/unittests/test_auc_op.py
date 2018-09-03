@@ -39,9 +39,9 @@ class TestAucOp(OpTest):
         python_auc.update(pred, labels)
 
         self.outputs = {
-            'AUC': python_auc.eval(),
-            'StatPosOut': python_auc._stat_pos,
-            'StatNegOut': python_auc._stat_neg
+            'AUC': np.array(python_auc.eval()),
+            'StatPosOut': np.array(python_auc._stat_pos),
+            'StatNegOut': np.array(python_auc._stat_neg)
         }
 
     def test_check_output(self):
