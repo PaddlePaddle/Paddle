@@ -78,7 +78,7 @@ def accuracy(input, label, k=1, correct=None, total=None):
     return acc_out
 
 
-def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
+def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -119,36 +119,25 @@ def auc(input, label, curve='ROC', num_thresholds=200, topk=1):
     helper = LayerHelper("auc", **locals())
     auc_out = helper.create_tmp_variable(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
-    tp = helper.create_global_variable(
+    stat_pos = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[num_thresholds])
-    tn = helper.create_global_variable(
+    stat_neg = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[num_thresholds])
-    fp = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
-    fn = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
-    for var in [tp, tn, fp, fn]:
+
+    for var in [stat_pos, stat_neg]:
         helper.set_variable_initializer(
             var, Constant(
                 value=0.0, force_cpu=True))
 
     helper.append_op(
         type="auc",
-        inputs={
-            "Predict": [input],
-            "Label": [label],
-            "TP": [tp],
-            "TN": [tn],
-            "FP": [fp],
-            "FN": [fn]
-        },
+        inputs={"Predict": [input],
+                "Label": [label]},
         attrs={"curve": curve,
                "num_thresholds": num_thresholds},
         outputs={
             "AUC": [auc_out],
-            "TPOut": [tp],
-            "TNOut": [tn],
-            "FPOut": [fp],
-            "FNOut": [fn]
+            "StatPosOut": [stat_pos],
+            "StatNegOut": [stat_neg]
         })
-    return auc_out, [tp, tn, fp, fn]
+    return auc_out, [stat_pos, stat_neg]
