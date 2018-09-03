@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
+#include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -97,6 +98,8 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     op_desc.SetOutput("BatchedInput", {"blstm_0.tmp_2"});
     op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm_n->Op()->GetAttr("use_peepholes"));
+    // TODO(TJ): get from attr
+    op_desc.SetAttr("use_seq", true);
 
 #define TMP_NAME(x) "at.new.tmp." #x
 #define OP_SET_OUT(x) op_desc.SetOutput(#x, {TMP_NAME(x)})
@@ -134,7 +137,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
   auto fc_no_bias_handler = [&](
       const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
-
 #define GET_NODE(name__)                                \
   std::string name__##key = name_scope + "/" + #name__; \
   auto* name__##n = pattern->RetrieveNode(name__##key); \
