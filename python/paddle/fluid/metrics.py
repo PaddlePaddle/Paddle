@@ -558,8 +558,6 @@ class Auc(MetricBase):
         name: metric name
         curve: Specifies the name of the curve to be computed, 'ROC' [default] or
           'PR' for the Precision-Recall-curve.
-        num_thresholds: The number of thresholds to use when discretizing the roc
-            curve.
 
     "NOTE: only implement the ROC curve type via Python now."
 
@@ -574,15 +572,12 @@ class Auc(MetricBase):
                 numpy_auc = metric.eval()
     """
 
-    def __init__(self, name, curve='ROC', num_thresholds=200):
+    def __init__(self, name, curve='ROC'):
         super(Auc, self).__init__(name=name)
         self._curve = curve
-        self._num_thresholds = num_thresholds
-        self._epsilon = 1e-6
-        self.tp_list = np.zeros((num_thresholds, ))
-        self.fn_list = np.zeros((num_thresholds, ))
-        self.tn_list = np.zeros((num_thresholds, ))
-        self.fp_list = np.zeros((num_thresholds, ))
+        self._bin_num = 2**23 - 1
+        self._stat_pos = [0] * (self._bin_num + 1)
+        self._stat_neg = [0] * (self._bin_num + 1)
 
     def update(self, preds, labels):
         if not _is_numpy_(labels):
@@ -590,41 +585,32 @@ class Auc(MetricBase):
         if not _is_numpy_(preds):
             raise ValueError("The 'predictions' must be a numpy ndarray.")
 
-        kepsilon = 1e-7  # to account for floating point imprecisions
-        thresholds = [(i + 1) * 1.0 / (self._num_thresholds - 1)
-                      for i in range(self._num_thresholds - 2)]
-        thresholds = [0.0 - kepsilon] + thresholds + [1.0 + kepsilon]
+        for i, lbl in enumerate(labels):
+            value = preds[i, 1]
+            bin_idx = int(value * self._bin_num)
+            assert bin_idx <= self._bin_num
+            if lbl:
+                self._stat_pos[bin_idx] += 1.0
+            else:
+                self._stat_neg[bin_idx] += 1.0
 
-        # calculate TP, FN, TN, FP count
-        for idx_thresh, thresh in enumerate(thresholds):
-            tp, fn, tn, fp = 0, 0, 0, 0
-            for i, lbl in enumerate(labels):
-                if lbl:
-                    if preds[i, 1] >= thresh:
-                        tp += 1
-                    else:
-                        fn += 1
-                else:
-                    if preds[i, 1] >= thresh:
-                        fp += 1
-                    else:
-                        tn += 1
-            self.tp_list[idx_thresh] += tp
-            self.fn_list[idx_thresh] += fn
-            self.tn_list[idx_thresh] += tn
-            self.fp_list[idx_thresh] += fp
+    @staticmethod
+    def trapezoid_area(x1, x2, y1, y2):
+        return abs(x1 - x2) * (y1 + y2) / 2.0
 
     def eval(self):
-        epsilon = self._epsilon
-        num_thresholds = self._num_thresholds
-        tpr = (self.tp_list.astype("float32") + epsilon) / (
-            self.tp_list + self.fn_list + epsilon)
-        fpr = self.fp_list.astype("float32") / (
-            self.fp_list + self.tn_list + epsilon)
-        rec = (self.tp_list.astype("float32") + epsilon) / (
-            self.tp_list + self.fp_list + epsilon)
+        tot_pos = 0.0
+        tot_neg = 0.0
+        auc = 0.0
 
-        x = fpr[:num_thresholds - 1] - fpr[1:]
-        y = (tpr[:num_thresholds - 1] + tpr[1:]) / 2.0
-        auc_value = np.sum(x * y)
-        return auc_value
+        idx = self._bin_num
+        while idx >= 0:
+            tot_pos_prev = tot_pos
+            tot_neg_prev = tot_neg
+            tot_pos += self._stat_pos[idx]
+            tot_neg += self._stat_neg[idx]
+            auc += self.trapezoid_area(tot_neg, tot_neg_prev, tot_pos,
+                                       tot_pos_prev)
+            idx -= 1
+
+        return auc
