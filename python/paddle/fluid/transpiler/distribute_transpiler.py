@@ -1390,13 +1390,11 @@ class DistributeTranspiler(object):
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
                 attrs={"use_mkldnn": False})
-            # TODO(panyx0718): What if it's SELECTED_ROWS.
-            if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                optimize_block.append_op(
-                    type="scale",
-                    inputs={"X": merged_var},
-                    outputs={"Out": merged_var},
-                    attrs={"scale": 1.0 / float(self.trainer_num)})
+            optimize_block.append_op(
+                type="scale",
+                inputs={"X": merged_var},
+                outputs={"Out": merged_var},
+                attrs={"scale": 1.0 / float(self.trainer_num)})
         return merged_var
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,

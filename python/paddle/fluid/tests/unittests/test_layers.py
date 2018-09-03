@@ -521,6 +521,20 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_pad2d(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.pad2d(
+                input,
+                paddings=[1, 2, 3, 4],
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_prelu(self):
         program = Program()
         with program_guard(program):

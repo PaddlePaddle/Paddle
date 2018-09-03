@@ -13,38 +13,37 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
-    std::unique_ptr<ir::Graph> graph) const {
+std::string GenNodeName(const std::string& prefix, const std::string& name) {
+  return prefix + "/" + name;
+}
+
+void BuildPattern(PDPattern* pattern, const std::string& name_scope,
+                  bool with_fc_bias) {
+  PDNode* x = pattern->NewNode(name_scope, "x")
+                  ->assert_is_op_input("mul")
+                  ->assert_var_not_persistable();
+  auto* fc_out = patterns::FC(pattern, name_scope, x, with_fc_bias);
+  fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
+  patterns::LSTM(pattern, name_scope, fc_out);
+  // LOG(INFO) << "\n" << pattern->DotString();
+}
+
+int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
+                bool with_fc_bias) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  std::unordered_set<int> fused_ops({// first lstm
-                                     13, 15, 16,
-                                     // second lstm
-                                     23, 25, 26});
-
-  pattern->NewNode([&](Node* x) { return fused_ops.count(x->id()); },
-                   "any_node");
-
-  std::unordered_set<Node*> marked_nodes;
-
-  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
-                     Graph* g) {
-    auto* id = subgraph.at(gpd.pattern().RetrieveNode("any_node"));
-    marked_nodes.insert(id);
-  };
-  gpd(graph.get(), handler);
+  BuildPattern(pattern, name_scope, with_fc_bias);
 
   // Create New OpDesc
   auto lstm_creator = [&](int lstm, int input, int weight_x, int weight_h,
-                          int bias, int hidden, int cell, int xx) {
+                          int bias, int hidden, int cell, int xx, int fc_bias) {
 #define GET_NODE(x) auto* x##_n = graph->RetriveNode(x);
     GET_NODE(input);
     GET_NODE(weight_x);
@@ -62,12 +61,33 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     SET_IN(WeightX, weight_x);
     SET_IN(WeightH, weight_h);
     SET_IN(Bias, bias);
-#undef GET_NODE
 #undef SET_IN
+    if (with_fc_bias) {
+      // Add FC-bias with LSTM-bias and create a new weight
+      PADDLE_ENFORCE(scope);
+      const std::string& new_bias_var = name_scope + "_bias.new";
+      auto* bias_var = scope->Var(new_bias_var);
+      PADDLE_ENFORCE(bias_var);
+      auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
+      auto* lstm_bias_var = scope->FindVar(bias_n->Name());
+      PADDLE_ENFORCE(lstm_bias_var);
+      const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
+      bias_tensor->Resize(lstm_bias_tensor.dims());
 
-    VLOG(4) << "hidden_n: " << hidden_n->Name();
-    VLOG(4) << "cell: " << cell_n->Name();
-    VLOG(4) << "xx: " << xx_n->Name();
+      GET_NODE(fc_bias);
+      auto* fc_bias_var = scope->FindVar(fc_bias_n->Name());
+      const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
+
+      auto* data = bias_tensor->mutable_data<float>(platform::CPUPlace());
+
+      for (int i = 0; i < bias_tensor->numel(); i++) {
+        data[i] =
+            fc_bias_tensor.data<float>()[i] + lstm_bias_tensor.data<float>()[i];
+      }
+      op_desc.SetInput("Bias", {new_bias_var});
+    }
+
+#undef GET_NODE
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
@@ -76,7 +96,7 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     op_desc.SetOutput("XX", {xx_n->Name()});
     op_desc.SetOutput("BatchedInput", {"blstm_0.tmp_2"});
     op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
-    op_desc.SetAttr("use_peepholes", false);
+    op_desc.SetAttr("use_peepholes", lstm_n->Op()->GetAttr("use_peepholes"));
 
 #define TMP_NAME(x) "at.new.tmp." #x
 #define OP_SET_OUT(x) op_desc.SetOutput(#x, {TMP_NAME(x)})
@@ -85,8 +105,8 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     OP_SET_OUT(ReorderedH0);
     OP_SET_OUT(ReorderedC0);
 #undef OP_SET_OUT
-    auto* op = graph->CreateOpNode(&op_desc);
 
+    auto* op = graph->CreateOpNode(&op_desc);
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
     auto* scope = graph->Get<Scope*>(kParamScopeAttr);
 
@@ -95,7 +115,6 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     TMP_NEW(BatchedHidden);
     TMP_NEW(ReorderedH0);
     TMP_NEW(ReorderedC0);
-
 #undef TMP_NEW
 #undef TMP_NAME
 
@@ -111,32 +130,69 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
     return op;
   };
 
-  lstm_creator(16, 12, 14, 18, 17, 22, 21, 19);
-  lstm_creator(26, 12, 24, 28, 27, 32, 31, 29);
+  int fusion_count{0};
 
-  // remove all the nodes
+  auto fc_no_bias_handler = [&](
+      const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
 
-  for (auto* node : marked_nodes) {
-    graph->RemoveNode(const_cast<Node*>(node));
-  }
+#define GET_NODE(name__)                                \
+  std::string name__##key = name_scope + "/" + #name__; \
+  auto* name__##n = pattern->RetrieveNode(name__##key); \
+  PADDLE_ENFORCE(name__##n);                            \
+  PADDLE_ENFORCE(subgraph.count(name__##n));            \
+  Node* name__##_n = subgraph.at(name__##n);            \
+  int name__ __attribute__((unused)) = name__##_n->id();
 
-  for (auto* node : graph->Nodes()) {
-    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
-      if (marked_nodes.count(*it)) {
-        it = const_cast<Node*>(node)->inputs.erase(it);
-      } else {
-        it++;
-      }
+    GET_NODE(x);
+    GET_NODE(w);
+    GET_NODE(mul);
+    GET_NODE(fc_out);
+    GET_NODE(Weight);
+    GET_NODE(lstm);
+    GET_NODE(Bias);
+    GET_NODE(Hidden);
+    GET_NODE(Cell);
+
+    if (with_fc_bias) {
+      GET_NODE(fc_bias);
+      lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, fc_bias);
+    } else {
+      lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, -1);
     }
-    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
-      if (marked_nodes.count(*it)) {
-        it = const_cast<Node*>(node)->outputs.erase(it);
-      } else {
-        it++;
-      }
-    }
-  }
+#undef GET_NODE
 
+    // Remove unneeded nodes.
+    std::unordered_set<const Node*> marked_nodes({mul_n, lstm_n});
+
+    GraphSafeRemoveNodes(graph, marked_nodes);
+
+    ++fusion_count;
+  };
+
+  gpd(graph, fc_no_bias_handler);
+
+  return fusion_count;
+}
+
+std::unique_ptr<ir::Graph> MulLstmFusePass::ApplyImpl(
+    std::unique_ptr<ir::Graph> graph) const {
+  FusePassBase::Init(name_scope_, graph.get());
+
+  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
+                                 false /*with_fc_bias*/);
+
+  AddStatis(fusion_count);
+  return graph;
+}
+
+std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
+    std::unique_ptr<ir::Graph> graph) const {
+  FusePassBase::Init(name_scope_, graph.get());
+
+  int fusion_count = BuildFusion(graph.get(), name_scope_, param_scope(),
+                                 true /*with_fc_bias*/);
+
+  AddStatis(fusion_count);
   return graph;
 }
 
@@ -144,4 +200,5 @@ std::unique_ptr<ir::Graph> FCLstmFusePass::ApplyImpl(
 }  // namespace framework
 }  // namespace paddle
 
+REGISTER_PASS(mul_lstm_fuse_pass, paddle::framework::ir::MulLstmFusePass);
 REGISTER_PASS(fc_lstm_fuse_pass, paddle::framework::ir::FCLstmFusePass);
