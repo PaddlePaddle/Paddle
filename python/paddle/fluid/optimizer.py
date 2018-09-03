@@ -928,12 +928,14 @@ class RMSPropOptimizer(Optimizer):
 
     _momentum_acc_str = "momentum"
     _mean_square_acc_str = "mean_square"
+    _mean_square1_acc_str = "mean_square1"
 
     def __init__(self,
                  learning_rate,
                  rho=0.95,
                  epsilon=1.0e-6,
                  momentum=0.0,
+                 v1_mode=False,
                  **kwargs):
         super(RMSPropOptimizer, self).__init__(
             learning_rate=learning_rate, **kwargs)
@@ -950,6 +952,7 @@ class RMSPropOptimizer(Optimizer):
         self._rho = rho
         self._epsilon = epsilon
         self._momentum = momentum
+        self._v1_mode = v1_mode
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
@@ -958,6 +961,7 @@ class RMSPropOptimizer(Optimizer):
         for p in parameters:
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
+            self._add_accumulator(self._mean_square1_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):
@@ -967,6 +971,8 @@ class RMSPropOptimizer(Optimizer):
                                              param_and_grad[0])
         mean_square_acc = self._get_accumulator(self._mean_square_acc_str,
                                                 param_and_grad[0])
+        mean_square1_acc = self._get_accumulator(self._mean_square1_acc_str,
+                                                 param_and_grad[0])
         rmsprop_op = block.append_op(
             type=self.type,
             inputs={
@@ -974,17 +980,20 @@ class RMSPropOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "Moment": momentum_acc,
                 "MeanSquare": mean_square_acc,
+                "MeanSquare1": mean_square1_acc,
                 "LearningRate": self._create_param_lr(param_and_grad),
             },
             outputs={
                 "ParamOut": param_and_grad[0],
                 "MomentOut": momentum_acc,
-                "MeanSquareOut": mean_square_acc
+                "MeanSquareOut": mean_square_acc,
+                "MeanSquare1Out": mean_square1_acc
             },
             attrs={
                 "epsilon": self._epsilon,
                 "decay": self._rho,
-                "momentum": self._momentum
+                "momentum": self._momentum,
+                "v1_mode": self._v1_mode
             })
 
         return rmsprop_op

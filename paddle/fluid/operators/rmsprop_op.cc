@@ -39,6 +39,8 @@ class RmspropOp : public framework::OperatorWithKernel {
                    "Output(Momentum_out) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MeanSquareOut"),
                    "Output(MeanSquareOut) of RmspropOp should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("MeanSquareOut1"),
+                   "Output(MeanSquareOut1) of RmspropOp should not be null.");
 
     auto param_dim = ctx->GetInputDim("Param");
     PADDLE_ENFORCE_EQ(
@@ -58,6 +60,7 @@ class RmspropOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("ParamOut", param_dim);
     ctx->SetOutputDim("MomentOut", param_dim);
     ctx->SetOutputDim("MeanSquareOut", param_dim);
+    ctx->SetOutputDim("MeanSquareOut1", param_dim);
   }
 };
 
@@ -70,6 +73,9 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("MeanSquare",
              "(Tensor, default Tensor<float>)"
              " The mean square value that gets updated.");
+    AddInput("MeanSquare1",
+             "(Tensor, default Tensor<float>)"
+             " The moving average of gradient");
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
              "The learning rate should be a tensor of size 1.");
@@ -82,6 +88,8 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("ParamOut", "(Tensor) Output updated parameter value.");
     AddOutput("MomentOut", "(Tensor) Output updated moment.");
     AddOutput("MeanSquareOut", "(Tensor) Output Mean squared updated value.");
+    AddOutput("MeanSquareOut1",
+              "(Tensor) Output moving average of gradient updated value.");
 
     AddAttr<float>("epsilon",
                    "(float, default 1e-10) Constant "
@@ -93,6 +101,8 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.9f);
     AddAttr<float>("momentum", "(float, default 0.0) Constant value.")
         .SetDefault(0.0f);
+    AddAttr<bool>("v1_mode", "(bool, default false) use paddle v1 mode.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Rmsprop Optimizer. 
 

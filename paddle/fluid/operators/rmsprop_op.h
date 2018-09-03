@@ -31,6 +31,7 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto* param_out = ctx.Output<Tensor>("ParamOut");
     auto* moment_out = ctx.Output<Tensor>("MomentOut");
     auto* mean_square_out = ctx.Output<Tensor>("MeanSquareOut");
+    auto* mean_square1_out = ctx.Output<Tensor>("MeanSquareOut1");
 
     auto grad = ctx.Input<Tensor>("Grad");
 
@@ -41,9 +42,11 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     float epsilon = ctx.Attr<float>("epsilon");
     float rho = ctx.Attr<float>("decay");
     float momentum = ctx.Attr<float>("momentum");
+    bool v1_mode = ctx.Attr<bool>("v1_mode");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto ms = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare"));
+    auto ms1 = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare1"));
     auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
     auto g = EigenVector<T>::Flatten(*grad);
     auto mom = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
@@ -51,14 +54,22 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto mom_out = EigenVector<T>::Flatten(*moment_out);
     auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
+    auto ms1_out = EigenVector<T>::Flatten(*mean_square1_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
     Eigen::DSizes<int, 1> grad_dsize(grad->numel());
 
     ms_out.device(place) = rho * ms + (1 - rho) * g * g;
-    mom_out.device(place) =
-        momentum * mom +
-        lr.broadcast(grad_dsize) * g / (ms_out + epsilon).sqrt();
+    if (v1_mode) {
+      ms1_out.device(place) = rho * ms1 + (1 - rho) * g;
+      mom_out.device(place) = momentum * mom +
+                              lr.broadcast(grad_dsize) * g /
+                                  (ms_out - mom_out.square() + epsilon).sqrt();
+    } else {
+      mom_out.device(place) =
+          momentum * mom +
+          lr.broadcast(grad_dsize) * g / (ms_out + epsilon).sqrt();
+    }
     p_out.device(place) = p - mom_out;
   }
 };
