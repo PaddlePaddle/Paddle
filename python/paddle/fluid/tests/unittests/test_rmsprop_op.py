@@ -101,5 +101,56 @@ class TestRmspropOp2(OpTest):
         self.check_output()
 
 
+class TestRmspropOpV1Mode(OpTest):
+    ''' Test RMSProp with explicit inputs
+    '''
+
+    def setUp(self):
+        self.op_type = "rmsprop"
+
+        param = np.random.random((123, 321)).astype("float32")
+        mean_square = np.random.random((123, 321)).astype("float32")
+        mean_square1 = np.random.random((123, 321)).astype("float32")
+        learning_rate = np.array([0.01]).astype("float32")
+        grad = np.random.random((123, 321)).astype("float32")
+        moment = np.zeros((123, 321)).astype("float32")
+
+        epsilon = 1e-6
+        decay = 0.9
+        momentum = 0.0
+
+        self.inputs = {
+            'Param': param,
+            'MeanSquare': mean_square,
+            'MeanSquare1': mean_square1,
+            'LearningRate': learning_rate,
+            'Grad': grad,
+            'Moment': moment,
+        }
+
+        self.attrs = {
+            'epsilon': epsilon,
+            'decay': decay,
+            'momentum': momentum,
+            'v1_mode': True
+        }
+
+        ms_out = decay * mean_square + (1 - decay) * grad * grad
+        ms1_out = decay * mean_square1 + (1 - decay) * grad
+        moment_out = momentum * moment + \
+                     learning_rate * grad / np.sqrt(ms_out - np.square(ms1_out) + epsilon)
+        param_out = param - moment_out
+
+        self.outputs = {
+            'ParamOut': param_out,
+            'MomentOut': moment_out,
+            'MeanSquareOut': ms_out,
+            'MeanSquareOut1': ms1_out
+        }
+
+    def test_check_output(self):
+        self.check_output(atol=1e-3, equal_nan=True)
+
+
 if __name__ == "__main__":
     unittest.main()

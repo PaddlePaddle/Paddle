@@ -291,7 +291,7 @@ class OpTest(unittest.TestCase):
                             return_numpy=False)
         return outs, fetch_list
 
-    def check_output_with_place(self, place, atol):
+    def check_output_with_place(self, place, atol, equal_nan):
         outs, fetch_list = self._calc_output(place)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -321,7 +321,7 @@ class OpTest(unittest.TestCase):
                         if isinstance(expect, tuple) else expect
                     self.assertTrue(
                         np.allclose(
-                            actual_t, expect_t, atol=atol),
+                            actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
                     if isinstance(expect, tuple):
@@ -337,7 +337,7 @@ class OpTest(unittest.TestCase):
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
                     np.allclose(
-                        actual_t, expect_t, atol=atol),
+                        actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t))
@@ -360,10 +360,10 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_output(self, atol=1e-5):
+    def check_output(self, atol=1e-5, equal_nan=False):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol)
+            self.check_output_with_place(place, atol, equal_nan)
 
     def check_output_customized(self, checker):
         places = self._get_places()

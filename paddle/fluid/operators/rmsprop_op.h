@@ -38,6 +38,7 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
     mean_square_out->mutable_data<T>(ctx.GetPlace());
+    mean_square1_out->mutable_data<T>(ctx.GetPlace());
 
     float epsilon = ctx.Attr<float>("epsilon");
     float rho = ctx.Attr<float>("decay");
@@ -61,10 +62,11 @@ class RmspropOpKernel : public framework::OpKernel<T> {
 
     ms_out.device(place) = rho * ms + (1 - rho) * g * g;
     if (v1_mode) {
+      std::cout << "v1 mode" << std::endl;
       ms1_out.device(place) = rho * ms1 + (1 - rho) * g;
       mom_out.device(place) = momentum * mom +
                               lr.broadcast(grad_dsize) * g /
-                                  (ms_out - mom_out.square() + epsilon).sqrt();
+                                  (ms_out - ms1_out.square() + epsilon).sqrt();
     } else {
       mom_out.device(place) =
           momentum * mom +
