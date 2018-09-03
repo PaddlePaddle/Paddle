@@ -308,75 +308,80 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       const T* prev_c_data = nullptr;
       const T* prev_h_data = nullptr;
 
+      int tstart = 0;
       if (h0_data) {
         prev_h_data = h0_data + bid * D;
         prev_c_data = c0_data + bid * D;
+      } else {
+        // If step == 0 and there is no initialized hidden state, that is to say
+        // the H0 is zeros. Then W_h * H_t-1 can be skipped
+
+        // ~C_t
+        act_cand(D, xx_data, xx_data);
+        if (use_peepholes) {
+          // I_t, F_t
+          act_gate(D2, xx_data + D, xx_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, xx_data + D, xx_data + D);
+        }
+        // C_t = I_t * ~C_t
+        blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+          blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+          // O_t
+          act_gate(D, xx_data + D3, xx_data + D3);
+        }
+
+        // hidden out= act_state(cellout) * outgate
+        act_cell(D, cell_out_data, xx_data + D2);
+        // H_t = O_t * act_state(C_t)
+        blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
+
+        // prev
+        prev_h_data = hidden_out_data;
+        prev_c_data = cell_out_data;
+
+        tstart = 1;
+        move_step();
       }
 
-      for (int step = 0; step < seq_len; ++step) {
-        if (step > 0 || prev_h_data) {
-          // If step == 0 and there is no initialized hidden state, that is to
-          // say
-          // the H0 is zeros. Then W_h * H_t-1 can be skipped
-          blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
-                    prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data,
-                    D4);
-        }
+      for (int step = tstart; step < seq_len; ++step) {
+        // + W_h * H_t-1
+        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
+                  prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
 
         // ~C_t
         act_cand(D, xx_data, xx_data);
 
-        if (step > 0 || prev_c_data) {
-          if (use_peepholes) {
-            // + W_ic|W_fc * C_t-1 for peephole connection
-            blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
-            blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
-            blas.VADD(D2, xx_data + D, checked_cell_data, xx_data + D);
-            // I_t, F_t
-            act_gate(D2, xx_data + D, xx_data + D);
-          } else {
-            // I_t, F_t, O_t
-            act_gate(D3, xx_data + D, xx_data + D);
-          }
-
-          // F_t * C_t-1
-          blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
-          // I_t * ~C_t
-          blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
-          // C_t = F_t * C_t-1 + I_t * ~C_t
-          blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
-
-          if (use_peepholes) {
-            // + W_oc * C_t for peephole connection
-            blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
-            blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
-            // O_t
-            act_gate(D, xx_data + D3, xx_data + D3);
-          } else {
-            // to avoid mismatch with if/else
-          }
+        if (use_peepholes) {
+          // + W_ic|W_fc * C_t-1 for peephole connection
+          blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+          blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+          blas.VADD(D2, xx_data + D, checked_cell_data, xx_data + D);
+          // I_t, F_t
+          act_gate(D2, xx_data + D, xx_data + D);
         } else {
-          // If step == 0 and there is no initialized cell state, that is to say
-          // the C0 is zeros. Then F_t * C_t-1 can be skipped. If peephole
-          // enabled,
-          // W_ic|W_fc * C_t-1 can also be skipped.
-          if (use_peepholes)
-            // I_t, F_t
-            act_gate(D2, xx_data + D, xx_data + D);
-          else
-            // I_t, F_t, O_t
-            act_gate(D3, xx_data + D, xx_data + D);
+          // I_t, F_t, O_t
+          act_gate(D3, xx_data + D, xx_data + D);
+        }
 
-          // C_t = ~C_t * I_t
-          blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
+        // F_t * C_t-1
+        blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
+        // I_t * ~C_t
+        blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
+        // C_t = F_t * C_t-1 + I_t * ~C_t
+        blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
 
-          if (use_peepholes) {
-            // + W_oc * C_t for peephole connection
-            blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
-            blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
-            // O_t
-            act_gate(D, xx_data + D3, xx_data + D3);
-          }
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+          blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+          // O_t
+          act_gate(D, xx_data + D3, xx_data + D3);
         }
 
         // hidden out= act_state(cellout) * outgate
@@ -461,6 +466,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       cur_batch_h_out_data += bs * D;
     };
 
+    int tstart = 0;
     if (h0) {
       // reorder h0, c0
       T* reordered_h0_data = reordered_h0->mutable_data<T>(place);
@@ -476,19 +482,65 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         reordered_h0_data += D;
         reordered_c0_data += D;
       }
+    } else {
+      // Compute with no H0/C0
+      T* cur_in_data = cur_batch_in_data;
+      T* cur_c_out_data = cur_batch_c_out_data;
+      T* cur_h_out_data = cur_batch_h_out_data;
+
+      // If step == 0 and there is no initialized hidden state, that is to say
+      // the H0 is zeros. Then W_h * H_t-1 can be skiped
+
+      for (int i = 0; i < max_bs; ++i) {  // iterate each data in 1st batch
+        // ~C_t
+        act_cand(D, cur_in_data, cur_in_data);
+
+        if (use_peepholes) {
+          // I_t, F_t
+          act_gate(D2, cur_in_data + D, cur_in_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, cur_in_data + D, cur_in_data + D);
+        }
+
+        // C_t = I_t * ~C_t
+        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
+          blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
+                    cur_in_data + D3);
+          // O_t
+          act_gate(D, cur_in_data + D3, cur_in_data + D3);
+        }
+
+        // hidden out= act_state(cellout) * outgate
+        act_cell(D, cur_c_out_data, cur_in_data + D2);
+        // H_t = O_t * act_state(C_t)
+        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
+
+        // move to next data in the same batch
+        cur_in_data += D4;
+        cur_c_out_data += D;
+        cur_h_out_data += D;
+      }
+
+      // move to data for next timestep
+      prev_batch_h_data = cur_batch_h_out_data;
+      prev_batch_c_data = cur_batch_c_out_data;
+      move_step(max_bs);
+      tstart = 1;
     }
 
     const auto& batch_starts = batched_lod[0];
     const int max_seq_len = batch_starts.size() - 1;
-    for (int step = 0; step < max_seq_len; ++step) {
+    for (int step = tstart; step < max_seq_len; ++step) {
       const int cur_bs = batch_starts[step + 1] - batch_starts[step];
-      if (step > 0 || prev_batch_h_data) {
-        // If step == 0 and there is no initialized hidden state, that is to say
-        // the H0 is zeros. Then W_h * H_t-1 can be skiped
-        blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
-                  prev_batch_h_data, D, wh_data, D4, static_cast<T>(1),
-                  cur_batch_in_data, D4);
-      }
+      // + W_h * H_t-1
+      blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
+                prev_batch_h_data, D, wh_data, D4, static_cast<T>(1),
+                cur_batch_in_data, D4);
 
       T* cur_in_data = cur_batch_in_data;
       T* cur_c_out_data = cur_batch_c_out_data;
@@ -507,58 +559,32 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         // ~C_t
         act_cand(D, cur_in_data, cur_in_data);
 
-        if (step > 0 || prev_c_data) {
-          if (use_peepholes) {
-            // + W_ic|W_fc * C_t-1 for peephole connection
-            blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
-            blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
-            blas.VADD(D2, cur_in_data + D, checked_cell_data, cur_in_data + D);
-            // I_t, F_t
-            act_gate(D2, cur_in_data + D, cur_in_data + D);
-          } else {
-            // I_t, F_t, O_t
-            act_gate(D3, cur_in_data + D, cur_in_data + D);
-          }
-
-          // F_t * C_t-1
-          blas.VMUL(D, cur_in_data + D2, prev_c_data, cur_in_data + D2);
-          // I_t * ~C_t
-          blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
-          // C_t = F_t * C_t-1 + I_t * ~C_t
-          blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
-
-          if (use_peepholes) {
-            // + W_oc * C_t for peephole connection
-            blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
-            blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
-                      cur_in_data + D3);
-            // O_t
-            act_gate(D, cur_in_data + D3, cur_in_data + D3);
-          } else {
-            // to avoid mismatch of if/else
-          }
+        if (use_peepholes) {
+          // + W_ic|W_fc * C_t-1 for peephole connection
+          blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+          blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+          blas.VADD(D2, cur_in_data + D, checked_cell_data, cur_in_data + D);
+          // I_t, F_t
+          act_gate(D2, cur_in_data + D, cur_in_data + D);
         } else {
-          // If step == 0 and there is no initialized cell state, that is to say
-          // the C0 state is zeros. Then F_t * C_t-1 can be skiped. If peephole
-          // enabled, W_ic|W_fc * C_t-1 can also be skipped.
-          if (use_peepholes)
-            // I_t, F_t
-            act_gate(D2, cur_in_data + D, cur_in_data + D);
-          else
-            // I_t, F_t, O_t
-            act_gate(D3, cur_in_data + D, cur_in_data + D);
+          // I_t, F_t, O_t
+          act_gate(D3, cur_in_data + D, cur_in_data + D);
+        }
 
-          // C_t = ~C_t * I_t
-          blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
+        // F_t * C_t-1
+        blas.VMUL(D, cur_in_data + D2, prev_c_data, cur_in_data + D2);
+        // I_t * ~C_t
+        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
+        // C_t = F_t * C_t-1 + I_t * ~C_t
+        blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
 
-          if (use_peepholes) {
-            // +W_oc * C_t for peephole connection
-            blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
-            blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
-                      cur_in_data + D3);
-            // O_t
-            act_gate(D, cur_in_data + D3, cur_in_data + D3);
-          }
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
+          blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
+                    cur_in_data + D3);
+          // O_t
+          act_gate(D, cur_in_data + D3, cur_in_data + D3);
         }
 
         // hidden out= act_state(cellout) * outgate

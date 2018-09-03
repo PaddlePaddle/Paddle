@@ -94,8 +94,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     op_desc.SetOutput("Hidden", {hidden_n->Name()});
     op_desc.SetOutput("Cell", {cell_n->Name()});
     op_desc.SetOutput("XX", {xx_n->Name()});
-    op_desc.SetOutput("BatchedGate", {"blstm_0.tmp_2"});
-    op_desc.SetOutput("BatchCellPreAct", {"blstm_1.tmp_2"});
+    op_desc.SetOutput("BatchedInput", {"blstm_0.tmp_2"});
     op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm_n->Op()->GetAttr("use_peepholes"));
     // TODO(TJ): get from attr
