@@ -100,7 +100,8 @@ function(op_library TARGET)
     endif()
 
     # Define operators that don't need pybind here.
-    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op" "tensor_array_read_write_op")
+    foreach(manual_pybind_op "compare_op" "logical_op" "nccl_op"
+"tensor_array_read_write_op" "tensorrt_engine_op")
         if ("${TARGET}" STREQUAL "${manual_pybind_op}")
             set(pybind_flag 1)
         endif()
@@ -248,6 +249,7 @@ op_library(softmax_op DEPS softmax)
 op_library(sequence_softmax_op DEPS softmax)
 if (WITH_GPU AND TENSORRT_FOUND)
     op_library(tensorrt_engine_op DEPS tensorrt_engine tensorrt_converter)
+    file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(tensorrt_engine);\n")
     nv_test(test_tensorrt_engine_op SRCS tensorrt_engine_op_test.cc
       DEPS tensorrt_engine_op
       analysis)
@@ -280,6 +282,7 @@ op_library(unsqueeze_op DEPS reshape_op)
 op_library(squeeze_op DEPS reshape_op)
 op_library(extract_rows_op DEPS memory)
 op_library(flatten_op DEPS reshape_op)
+op_library(sequence_pad_op DEPS sequence_padding)
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)

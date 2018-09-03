@@ -55,6 +55,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'sequence_expand',
+    'sequence_pad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
@@ -2655,6 +2656,51 @@ def sequence_expand(x, y, ref_level=-1, name=None):
         outputs={'Out': tmp},
         attrs={'ref_level': ref_level})
     return tmp
+
+
+@templatedoc()
+def sequence_pad(x, pad_value, maxlen=None):
+    """
+    ${comment}
+
+    Args:
+        x(Variable): Input variable which should contain lod information.
+        pad_value(Variable): The Variable that holds values that will be fill 
+            into padded steps. It can be a scalar or a tensor whose shape 
+            equals to time steps in sequences. If it's a scalar, it will be 
+            automatically broadcasted to the shape of time step.
+        maxlen(int, default None): The length of padded sequences. It can be 
+            None or any positive int. When it is None, all sequences will be 
+            padded up to the length of the longest one among them; when it a 
+            certain positive value, it must be greater than the length of the 
+            longest original sequence."
+    
+    Returns:
+        Variable: The padded sequence batch. All sequences has the same length.
+    
+    Examples:
+        .. code-block:: python
+
+            import numpy
+
+            x = fluid.layers.data(name='y', shape=[10, 5],
+                             dtype='float32', lod_level=1)
+            pad_value = fluid.layers.assign(input=numpy.array([0]))
+            out = fluid.layers.sequence_pad(x=x, pad_value=pad_value)
+    """
+
+    helper = LayerHelper('sequence_pad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    if maxlen is None:
+        maxlen = -1
+    helper.append_op(
+        type='sequence_pad',
+        inputs={'X': x,
+                'PadValue': pad_value},
+        outputs={'Out': out},
+        attrs={'padded_length': maxlen})
+    return out
 
 
 def beam_search(pre_ids,
