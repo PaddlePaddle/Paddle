@@ -572,12 +572,13 @@ class Auc(MetricBase):
                 numpy_auc = metric.eval()
     """
 
-    def __init__(self, name, curve='ROC'):
+    def __init__(self, name, curve='ROC', num_thresholds=2**11 - 1):
         super(Auc, self).__init__(name=name)
         self._curve = curve
-        self._bin_num = 2**23 - 1
-        self._stat_pos = [0] * (self._bin_num + 1)
-        self._stat_neg = [0] * (self._bin_num + 1)
+        self._num_thresholds = num_thresholds
+
+        self._stat_pos = [0] * (self._num_thresholds + 1)
+        self._stat_neg = [0] * (self._num_thresholds + 1)
 
     def update(self, preds, labels):
         if not _is_numpy_(labels):
@@ -587,8 +588,8 @@ class Auc(MetricBase):
 
         for i, lbl in enumerate(labels):
             value = preds[i, 1]
-            bin_idx = int(value * self._bin_num)
-            assert bin_idx <= self._bin_num
+            bin_idx = int(value * self._num_thresholds)
+            assert bin_idx <= self._num_thresholds
             if lbl:
                 self._stat_pos[bin_idx] += 1.0
             else:
@@ -603,7 +604,7 @@ class Auc(MetricBase):
         tot_neg = 0.0
         auc = 0.0
 
-        idx = self._bin_num
+        idx = self._num_thresholds
         while idx >= 0:
             tot_pos_prev = tot_pos
             tot_neg_prev = tot_neg
