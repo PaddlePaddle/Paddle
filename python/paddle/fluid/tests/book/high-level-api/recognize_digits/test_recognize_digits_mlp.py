@@ -109,16 +109,21 @@ def infer(use_cuda, inference_program, parallel, params_dirname=None):
 
 
 def main(use_cuda, parallel):
-    if use_cuda and not core.is_compiled_with_cuda():
-        return
     params_dirname = "recognize_digits_mlp.inference.model"
 
     # call train() with is_local argument to run distributed train
+    os.environ['CPU_NUM'] = str(4)
     train(
         use_cuda=use_cuda,
         train_program=train_program,
         params_dirname=params_dirname,
         parallel=parallel)
+
+    # FIXME(zcd): in the inference stage, the number of
+    # input data is one, it is not appropriate to use parallel.
+    if parallel and use_cuda:
+        return
+    os.environ['CPU_NUM'] = str(1)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
@@ -129,4 +134,6 @@ def main(use_cuda, parallel):
 if __name__ == '__main__':
     for use_cuda in (False, True):
         for parallel in (False, True):
+            if use_cuda and not core.is_compiled_with_cuda():
+                continue
             main(use_cuda=use_cuda, parallel=parallel)

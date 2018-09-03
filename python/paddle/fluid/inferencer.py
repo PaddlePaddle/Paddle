@@ -98,9 +98,9 @@ class Inferencer(object):
             raise ValueError(
                 "inputs should be a map of {'input_name': input_var}")
 
-        with _prog_and_scope_guard():
+        with self._prog_and_scope_guard():
             results = self.exe.run(feed=inputs,
-                                   fetch_list=[self.predict_var],
+                                   fetch_list=[self.predict_var.name],
                                    return_numpy=return_numpy)
 
         return results
