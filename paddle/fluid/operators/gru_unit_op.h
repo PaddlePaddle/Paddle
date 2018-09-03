@@ -92,12 +92,12 @@ class GRUUnitKernel : public framework::OpKernel<T> {
               gate_data, frame_size * 3);
 
     // calculate activited gate
-    Eigen::array<int, 2> extents({{batch_size, frame_size}});
-    Eigen::array<int, 2> u_offsets({{0, 0}});
+    Eigen::array<int, 2> extents = {batch_size, frame_size};
+    Eigen::array<int, 2> u_offsets = {0, 0};
     ActCompute(context.Attr<int>("gate_activation"), place,
                g.slice(u_offsets, extents), g.slice(u_offsets, extents));
     auto u = g.slice(u_offsets, extents);  // update gate
-    Eigen::array<int, 2> r_offsets({{0, frame_size}});
+    Eigen::array<int, 2> r_offsets = {0, frame_size};
     ActCompute(context.Attr<int>("gate_activation"), place,
                g.slice(r_offsets, extents), g.slice(r_offsets, extents));
     auto r = g.slice(r_offsets, extents);  // reset gate
@@ -107,7 +107,7 @@ class GRUUnitKernel : public framework::OpKernel<T> {
               weight_data + frame_size * frame_size * 2, frame_size, 1,
               gate_data + frame_size * 2, frame_size * 3);
 
-    Eigen::array<int, 2> c_offsets({{0, frame_size * 2}});
+    Eigen::array<int, 2> c_offsets = {0, frame_size * 2};
     ActCompute(context.Attr<int>("activation"), place,
                g.slice(c_offsets, extents), g.slice(c_offsets, extents));
     auto c = g.slice(c_offsets, extents);  // output candidate
@@ -171,12 +171,12 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     int batch_size = input->dims()[0];
     int frame_size = hidden_prev->dims()[1];
 
-    Eigen::array<int, 2> extents({{batch_size, frame_size}});
-    Eigen::array<int, 2> u_offsets({{0, 0}});
+    Eigen::array<int, 2> extents = {batch_size, frame_size};
+    Eigen::array<int, 2> u_offsets = {0, 0};
     auto u = g.slice(u_offsets, extents);  // update gate
-    Eigen::array<int, 2> r_offsets({{0, frame_size}});
+    Eigen::array<int, 2> r_offsets = {0, frame_size};
     auto r = g.slice(r_offsets, extents);  // reset gate
-    Eigen::array<int, 2> c_offsets({{0, frame_size * 2}});
+    Eigen::array<int, 2> c_offsets = {0, frame_size * 2};
     auto c = g.slice(c_offsets, extents);  // output candidate
 
     // backward for unactivated update gate
