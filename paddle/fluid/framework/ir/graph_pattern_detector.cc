@@ -491,14 +491,16 @@ void GraphSafeRemoveNodes(Graph* graph,
     for (auto it = node->inputs.begin(); it != node->inputs.end();) {
       if (nodes.count(*it)) {
         it = const_cast<Node*>(node)->inputs.erase(it);
-      } else
+      } else {
         it++;
+      }
     }
     for (auto it = node->outputs.begin(); it != node->outputs.end();) {
       if (nodes.count(*it)) {
         it = const_cast<Node*>(node)->outputs.erase(it);
-      } else
+      } else {
         it++;
+      }
     }
   }
 }

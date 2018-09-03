@@ -27,6 +27,8 @@ bool AnalysisPredictor::Init(
   VLOG(3) << "Predictor::init()";
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
+    LOG(WARNING) << "ir optimize only supports CPU currently";
+    config_.enable_ir_optim = false;
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -98,7 +100,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   // Update scope.
   scope_.reset(
       argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
-  LOG(INFO) << "optimize end ==";
+  LOG(INFO) << "== optimize end ==";
 }
 
 template <>

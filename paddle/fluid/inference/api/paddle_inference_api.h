@@ -150,8 +150,19 @@ struct TensorRTConfig : public NativeConfig {
   int workspace_size{1 << 30};
 };
 
+// NOTE WIP, not stable yet.
 struct AnalysisConfig : public NativeConfig {
+  //
+  enum class IrPassMode {
+    kSystem,   // Use system default passes, not customize.
+    kInclude,  // Specify the passes in `ir_passes`.
+    kExclude   // Specify the disabled passes in `ir_passes`.
+  };
+
   bool enable_ir_optim = true;
+  IrPassMode ir_mode{IrPassMode::kExclude};
+  // attention lstm fuse works only on some specific models, disable as default.
+  std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
 };
 
 // A factory to help create different predictors.
