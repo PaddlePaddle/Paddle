@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <algorithm>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/roi_perspective_transform_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
@@ -117,7 +116,7 @@ __device__ void bilinear_interpolate(const T* in_data, const int channels,
   // Deal with cases that source coords are out of feature map boundary
   if (GT<T>(-0.5, in_w) || GT<T>(in_w, width - 0.5) || GT<T>(-0.5, in_h) ||
       GT<T>(in_h, height - 0.5)) {
-    val = 0.0;
+    val[0] = 0.0;
     return;
   }
 
