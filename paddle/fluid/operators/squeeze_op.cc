@@ -200,6 +200,7 @@ class Squeeze2OpMaker : public SqueezeOpMaker {
 class Squeeze2OpInferShape : public SqueezeOpInferShape {
  public:
   void operator()(framework::InferShapeContext *ctx) const override {
+    SqueezeOpInferShape::operator()(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) of Squeeze operator should not be null.");
     const auto &x_dims = ctx->GetInputDim("X");

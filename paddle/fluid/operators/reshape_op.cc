@@ -294,13 +294,13 @@ class Reshape2GradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
-class Reshape2GradOp : public ReshapeGradOp {
+class Reshape2GradOp : public framework::OperatorWithKernel {
  public:
   Reshape2GradOp(const std::string &type,
                  const framework::VariableNameMap &inputs,
                  const framework::VariableNameMap &outputs,
                  const framework::AttributeMap &attrs)
-      : ReshapeGradOp(type, inputs, outputs, attrs) {}
+      : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("XShape"), "Input(XShape) shouldn't be null.");
