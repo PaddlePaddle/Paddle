@@ -38,7 +38,7 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
-                                  op_fuse=False,
+                                  fuse_adjacent_ops=False,
                                   optimizer=fluid.optimizer.Adam,
                                   use_fast_executor=False):
         def run_executor(exe, feed, fetch_list, program=None):
@@ -79,7 +79,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy = fluid.BuildStrategy()
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
-            build_strategy.op_fuse = op_fuse
+            build_strategy.fuse_adjacent_ops = fuse_adjacent_ops
             build_strategy.debug_graphviz_path = "./graph.dot"
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(

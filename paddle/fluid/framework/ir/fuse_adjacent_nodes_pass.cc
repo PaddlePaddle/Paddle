@@ -25,7 +25,7 @@ namespace ir {
 
 std::unique_ptr<ir::Graph> FuseAdjacentNodesPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  std::vector<NodePtr> topo_order = ir::TopologySortOperations(*graph.get());
+  std::vector<NodePtr> topo_order = ir::TopologySortOperations(*graph);
 
   // internal_nodes is used to record the origin node and the fused node
   // which has the origin node.
@@ -353,6 +353,36 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
   auto cur_op_node_out_args = cur_op_node->Op()->OutputArgumentNames();
 
   if (IsBackward(cur_op_node, tobe_fused_nodes)) {
+    auto check_unary_backward = [](const std::string &op_type,
+                                   const std::vector<std::string> &in_args,
+                                   const std::vector<std::string> &out_args) {
+      PADDLE_ENFORCE(
+          in_args.size() == 2 || in_args.size() == 3,
+          "The number of inputs of %s should be 2 or 3, "
+          "if the number is 2, the input is 'Out', 'Out@Grad', "
+          "if the number is 3, the input is 'X', 'Out' and 'Out@Grad'.",
+          op_type);
+      PADDLE_ENFORCE(out_args.size() == 1,
+                     "The number of output of %s should be 1.", op_type);
+    };
+    auto check_binary_backward = [](const std::string &op_type,
+                                    const std::vector<std::string> &in_args,
+                                    const std::vector<std::string> &out_args) {
+      PADDLE_ENFORCE(
+          in_args.size() == 2 || in_args.size() == 4,
+          "The number of inputs of %s should be 2 or 4, if the number is 2, "
+          "the input variable is `Y`, and `Out@Grad`, if the number is "
+          "4, the input variable is `X`, `Y`, `Out`, `Out@Grad`",
+          op_type);
+      PADDLE_ENFORCE(out_args.size() == 2,
+                     "The number of output of %s should be 2.", op_type);
+    };
+
+    auto out_grad = GradVarName("Out");
+    auto x_grad = GradVarName("X");
+    auto y_grad = GradVarName("Y");
+    auto inter_grad = GradVarName("IntermediateOut");
+
     const std::string op_type = "fused_elemwise_activation_grad";
     op_desc->SetType(op_type);
 
@@ -361,31 +391,12 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
                      std::vector<std::string>({upstream_op_type, cur_op_type}));
     op_desc->SetAttr("recomputation", false);
 
-    auto out_grad = ::paddle::framework::GradVarName("Out");
-    auto x_grad = ::paddle::framework::GradVarName("X");
-    auto y_grad = ::paddle::framework::GradVarName("Y");
-    auto inter_grad = ::paddle::framework::GradVarName("IntermediateOut");
-
     if (IsElemwise(cur_op_type)) {
       // the backward of  Unary(Binary(X, Y))
-      PADDLE_ENFORCE(upstream_op_node_out_args.size() == 1,
-                     "The number of output of %s should be 1.",
-                     upstream_op_type);
-      PADDLE_ENFORCE(cur_op_node_out_args.size() == 2,
-                     "The number of output of %s should be 2.", cur_op_type);
-      PADDLE_ENFORCE(
-          upstream_op_node_in_args.size() == 2 ||
-              upstream_op_node_in_args.size() == 3,
-          "The number of inputs of %s should be 2 or 3, "
-          "if the number is 2, the input is 'Out', 'Out@Grad', "
-          "if the number is 3, the input is 'X', 'Out' and 'Out@Grad'.",
-          upstream_op_node->Op()->Type());
-      PADDLE_ENFORCE(
-          cur_op_node_in_args.size() == 2 || cur_op_node_in_args.size() == 4,
-          "The number of inputs of %s should be 2 or 4, if the number is 2, "
-          "the input variable is `Y`, and `Out@Grad`, if the number is "
-          "4, the input variable is `X`, `Y`, `Out`, `Out@Grad`",
-          cur_op_type);
+      check_unary_backward(upstream_op_type, upstream_op_node_in_args,
+                           upstream_op_node_out_args);
+      check_binary_backward(cur_op_type, cur_op_node_in_args,
+                            cur_op_node_out_args);
 
       op_desc->SetInput("X", {});
       // bool keep_intermediate = true;
@@ -426,6 +437,7 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
               intermediate_out->insert(out);
             }
           }
+          break;
         }
       }
     }
@@ -438,6 +450,14 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
                       "The number of output of BinaryFunctor(UnaryFunctor)[%s] "
                       "should be one.",
                       cur_op_type);
+    auto check_unary_in_args = [](const std::vector<std::string> &in_args) {
+      PADDLE_ENFORCE_EQ(in_args.size(), 1,
+                        "The number of input of UnaryFunctor should be one.");
+    };
+    auto check_binary_in_args = [](const std::vector<std::string> &in_args) {
+      PADDLE_ENFORCE_EQ(in_args.size(), 2,
+                        "The number of input of BinaryFunctor should be two.");
+    };
 
     op_desc->SetType("fused_elemwise_activation");
     op_desc->SetAttr("functor_list",
@@ -446,14 +466,12 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
 
     if (IsElemwise(cur_op_type)) {
       // Z = Binary(X, Unary(Y))
-      PADDLE_ENFORCE_EQ(upstream_op_node_in_args.size(), 1,
-                        "The number of input of UnaryFunctor should be one.");
-      PADDLE_ENFORCE_EQ(cur_op_node_in_args.size(), 2,
-                        "The number of input of BinaryFunctor should be two.");
+      check_binary_in_args(cur_op_node_in_args);
+      check_unary_in_args(upstream_op_node_in_args);
       // NOTE(zcd): If the mem_opt is opened and the Unary is inplace, the
       // name of Y and intermediate_out maybe the same.
       // In this situation, keep_intermediate_value should be true,
-      // and the backward should not use intermediate_out directly but not Y.
+      // and the backward should use intermediate_out directly but not Y.
 
       // Set the "Y"
       op_desc->SetInput("Y", upstream_op_node_in_args);
@@ -473,10 +491,8 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
 
     } else {
       // Z = Unary(Binary(X, Y))
-      PADDLE_ENFORCE_EQ(cur_op_node_in_args.size(), 1,
-                        "The number of input of UnaryFunctor should be one.");
-      PADDLE_ENFORCE_EQ(upstream_op_node_in_args.size(), 2,
-                        "The number of input of BinaryFunctor should be two.");
+      check_binary_in_args(upstream_op_node_in_args);
+      check_unary_in_args(cur_op_node_in_args);
       // NOTE(zcd): If mem_opt is opened and the Unary is inplace, the name of
       // out and intermediate_out maybe the same.
       // In this situation, the intermediate_out should not be used.

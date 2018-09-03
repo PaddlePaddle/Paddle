@@ -54,14 +54,6 @@ class Node {
 
   std::string Name() const { return name_; }
 
-  size_t NoDupInputSize() const {
-    std::unordered_set<Node*> res;
-    for (auto* var : inputs) {
-      res.emplace(var);
-    }
-    return res.size();
-  }
-
   VarDesc* Var() {
     PADDLE_ENFORCE(type_ == Type::kVariable);
     return var_desc_.get();

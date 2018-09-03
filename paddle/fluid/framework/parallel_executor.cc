@@ -59,10 +59,10 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
   }
 
   // Apply op fusion.
-  if (strategy.op_fuse_) {
-    auto op_fuse_pass =
+  if (strategy.fuse_adjacent_ops_) {
+    auto fuse_adjacent_ops_pass =
         ir::PassRegistry::Instance().Get("fuse_adjacent_nodes_pass");
-    graph = op_fuse_pass->Apply(std::move(graph));
+    graph = fuse_adjacent_ops_pass->Apply(std::move(graph));
     // Apply a graph viz pass to record a graph.
     if (!strategy.debug_graphviz_path_.empty()) {
       auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");

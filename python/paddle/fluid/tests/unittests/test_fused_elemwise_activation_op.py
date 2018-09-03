@@ -300,7 +300,7 @@ for mode in {0, 1}:
     add_relu_func = partial(add_relu_func, mode=mode)
 
     for recomputation in {True, False}:
-        for keep_intermediate_value in {False, True}:
+        for keep_intermediate_value in {True, False}:
             suffix = ("_keep_intermediate_value" if keep_intermediate_value else "") \
                      + ("_recomputation" if recomputation else "") \
                      + ("_mode_"+ str(mode))
