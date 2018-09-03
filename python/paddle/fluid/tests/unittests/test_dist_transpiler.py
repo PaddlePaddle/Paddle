@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import traceback
 import collections
+import six
 
 
 class TranspilerTest(unittest.TestCase):
