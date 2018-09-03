@@ -335,18 +335,14 @@ void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
   }
 }
 
-// Directly infer with the original model.
-TEST(Analyzer, DituRNN_without_analysis) {
-  LOG(INFO) << "ditu rnn without analysis";
+TEST(Analyzer, DituRNN) {
   TestDituRNNPrediction(false, 1);
-  TestDituRNNPrediction(false, 4);  // multi-threads
+  TestDituRNNPrediction(true, 1);
 }
 
-// Inference with analysis and IR. The IR module will fuse some large kernels.
-TEST(Analyzer, DituRNN_with_analysis_with_IR) {
-  LOG(INFO) << "ditu rnn with analysis and IR fuse";
-  TestDituRNNPrediction(true, 1);
-  TestDituRNNPrediction(true, 4);  // multi-threads
+TEST(Analyzer, DituRNN_multi_thread) {
+  TestDituRNNPrediction(false, 4);
+  TestDituRNNPrediction(true, 4);
 }
 
 }  // namespace analysis
