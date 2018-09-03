@@ -541,30 +541,29 @@ class ROIPerspectiveTransformOpMaker
              "W is the width of the feature.");
     AddInput("ROIs",
              "(LoDTensor), "
-             "ROIs (Regions of Interest) to pool over. "
-             "should be a 2-D LoDTensor of shape (num_rois, 4)"
-             "given as [[x1, y1, x2, y2], "
-             "Where batch_id is the id of the data, "
+             "ROIs (Regions of Interest) to be transformed. "
+             "should be a 2-D LoDTensor of shape (num_rois, 8)"
+             "given as [[x1, y1, x2, y2, x3, y3, x4, y4], ...]."
              "(x1, y1) is the top left coordinates, and "
-             "(x2, y2) is the bottom right coordinates.");
+             "(x2, y2) is the top right coordinates, and"
+             "(x3, y3) is the bottom right coordinates, and"
+             "(x4, y4) is the bottom left coordinates.");
     AddOutput(
         "Out",
         "(Tensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
-        "(num_rois, channels, pooled_h, pooled_w).");
+        "(num_rois, channels, transformed_h, transformed_w).");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
-                   "Multiplicative spatial scale factor "
-                   "to translate ROI coords from their input scale "
-                   "to the scale used when pooling.")
+                   "Spatial scale factor to scale ROI coords.")
         .SetDefault(1.0);
     AddAttr<int>("transformed_height",
                  "(int, default 1), "
-                 "The transformed_height output height.")
+                 "The height of transformed output.")
         .SetDefault(1);
     AddAttr<int>("transformed_width",
                  "(int, default 1), "
-                 "The transformed output width.")
+                 "The width of transformed output.")
         .SetDefault(1);
     AddComment(R"DOC(
 **ROIPerspectiveTransform Operator**

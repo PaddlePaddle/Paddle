@@ -1634,6 +1634,15 @@ box_coder
 ..  autofunction:: paddle.fluid.layers.box_coder
     :noindex:
 
+.. _api_fluid_layers_roi_perspective_transform:
+
+roi_perspective_transform
+---------
+
+..  autofunction:: paddle.fluid.layers.roi_perspective_transform
+    :noindex:
+
+
 metric_op
 =========
 
