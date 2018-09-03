@@ -21,59 +21,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-bool VarOutLinksToOp(Node* node, const std::string& op_type) {
-  for (auto* out : node->outputs) {
-    if (out->IsOp() && out->Op()->Type() == op_type) {
-      return true;
-    }
-  }
-  return false;
-}
-
-void BuildFCPattern(PDPattern* pattern) {
-  // Create Operators
-  auto* mul_op = pattern->NewNode("mul")->assert_is_op("mul");
-  auto* elementwise_add_op =
-      pattern->NewNode("elementwise_add")->assert_is_op("elementwise_add");
-  // Create variables
-  // w
-  auto* mul_weight_var = pattern->NewNode("mul_weight")
-                             ->AsInput()
-                             ->assert_is_op_nth_input("mul", "Y", 0);
-  // x
-  auto* mul_tmp_var = pattern->NewNode("mul_tmp_var")
-                          ->AsInput()
-                          ->assert_is_op_nth_input("mul", "X", 0);
-  // intermediate variable, will be removed in the IR after fuse.
-  auto* mul_out_var = pattern->NewNode("mul_out")
-                          ->AsIntermediate()
-                          ->assert_is_only_output_of_op("mul")
-                          ->assert_is_op_input("elementwise_add");
-  // bias
-  auto* elementwise_add_tmp_var = pattern->NewNode("elementwise_add_tmpvar")
-                                      ->assert_is_op_input("elementwise_add")
-                                      ->AsInput();
-  // output
-  auto* elementwise_add_out_var = pattern->NewNode("elementwise_add_out")
-                                      ->AsOutput()
-                                      ->assert_is_op_output("elementwise_add");
-
-  mul_op->LinksFrom({mul_weight_var, mul_tmp_var}).LinksTo({mul_out_var});
-  elementwise_add_op->LinksFrom({mul_out_var, elementwise_add_tmp_var})
-      .LinksTo({elementwise_add_out_var});
-}
-
-// Replace the node `from` in the links to `to`
-bool LinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
-  for (auto*& n : *links) {
-    if (n == from) {
-      n = to;
-      return true;
-    }
-  }
-  return false;
-}
-
 std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
