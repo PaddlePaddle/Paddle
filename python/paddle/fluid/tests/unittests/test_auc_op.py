@@ -26,18 +26,10 @@ class TestAucOp(OpTest):
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1))
         num_thresholds = 200
-        tp = np.zeros((num_thresholds, )).astype("int64")
-        tn = np.zeros((num_thresholds, )).astype("int64")
-        fp = np.zeros((num_thresholds, )).astype("int64")
-        fn = np.zeros((num_thresholds, )).astype("int64")
 
         self.inputs = {
             'Predict': pred,
             'Label': labels,
-            'TP': tp,
-            'TN': tn,
-            'FP': fp,
-            'FN': fn
         }
         self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
 
@@ -48,10 +40,8 @@ class TestAucOp(OpTest):
 
         self.outputs = {
             'AUC': python_auc.eval(),
-            'TPOut': python_auc.tp_list,
-            'FNOut': python_auc.fn_list,
-            'TNOut': python_auc.tn_list,
-            'FPOut': python_auc.fp_list
+            'StatPosOut': python_auc._stat_pos,
+            'StatNegOut': python_auc._stat_neg
         }
 
     def test_check_output(self):
