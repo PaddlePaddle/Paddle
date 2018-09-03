@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
+#include <vector>
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
@@ -41,7 +42,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
  public:
   DfgPassManagerImpl() {
     // TODO(Superjomn) set the key with pass reprs.
-    LOG(INFO)
+    VLOG(3)
         << "-----------------------------------------------------------------";
     if (FLAGS_IA_enable_ir) {
       AddPass("fluid-to-ir-pass", new FluidToIrPass);
@@ -53,7 +54,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
     if (!FLAGS_IA_output_storage_path.empty()) {
       AddPass("model-store-pass", new ModelStorePass);
     }
-    LOG(INFO)
+    VLOG(3)
         << "-----------------------------------------------------------------";
   }
 
@@ -112,7 +113,6 @@ void Analyzer::Run(Argument* argument) {
                     "mul_lstm_fuse_pass", "graph_viz_pass",        //
                     "seq_concat_fc_fuse_pass", "graph_viz_pass",   //
                     "fc_fuse_pass", "graph_viz_pass"               //
-
                 }));
 
   for (auto& x : data_) {
