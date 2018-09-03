@@ -42,6 +42,13 @@ class GraphVizPass : public Pass {
   marked_nodes_t ConsumeMarkedNodes(Graph* graph) const;
 };
 
+static GraphVizPass::marked_nodes_t& GetMarkedNodes(Graph* graph) {
+  if (!graph->Has(kGraphvizMarkedNodeAttr)) {
+    graph->Set(kGraphvizMarkedNodeAttr, new GraphVizPass::marked_nodes_t);
+  }
+  return graph->Get<GraphVizPass::marked_nodes_t>(kGraphvizMarkedNodeAttr);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
