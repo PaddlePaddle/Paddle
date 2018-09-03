@@ -142,6 +142,16 @@ class Graph {
     nodes_.erase(node);
   }
 
+  // NOTE low performance, but simple and secure.
+  Node *RetriveNode(int id) {
+    for (auto &node : nodes_) {
+      if (node.second->id() == id) {
+        return node.second.get();
+      }
+    }
+    return nullptr;
+  }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {

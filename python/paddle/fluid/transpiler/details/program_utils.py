@@ -62,9 +62,12 @@ def variable_to_code(var):
     Returns:
         string: The formatted string.
     """
-
-    var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
-        format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+    if var.type == core.VarDesc.VarType.SELECTED_ROWS or var.type == core.VarDesc.VarType.LOD_TENSOR:
+        var_str = "{name} : fluid.{type}.shape{shape}.astype({dtype})".\
+            format(i="{", e="}", name=var.name, type=var.type, shape=var.shape, dtype=var.dtype)
+    else:
+        var_str = "{name} : fluid.{type})".\
+            format(i="{", e="}", name=var.name, type=var.type)
 
     if type(var) == paddle.fluid.framework.Parameter:
         if var.trainable:
@@ -142,6 +145,28 @@ def op_to_code(op):
     return op_str
 
 
+def block_to_code(block, block_idx):
+    indent = 0
+
+    print("{0}{1} // block {2}".format(
+        get_indent_space(indent), '{', block_idx))
+
+    indent += 1
+    # sort all vars
+    all_vars = sorted(block.vars.iteritems(), key=lambda x: x[0])
+    for var in all_vars:
+        print("{}{}".format(get_indent_space(indent), variable_to_code(var[1])))
+
+    if len(all_vars) > 0:
+        print("")
+
+    for op in block.ops:
+        print("{}{}".format(get_indent_space(indent), op_to_code(op)))
+    indent -= 1
+
+    print("{0}{1}".format(get_indent_space(indent), '}'))
+
+
 def program_to_code(prog):
     """
     Print readable codes of fluid program.
@@ -152,23 +177,7 @@ def program_to_code(prog):
     An example result like bellow:
     https://github.com/PaddlePaddle/Paddle/pull/12673
     """
-    indent = 0
     block_idx = 0
     for block in prog.blocks:
-        print("{0}{1} // block {2}".format(
-            get_indent_space(indent), '{', block_idx))
-        indent += 1
-        # sort all vars
-        all_vars = sorted(six.iteritems(block.vars), key=lambda x: x[0])
-        for var in all_vars:
-            print("{}{}".format(
-                get_indent_space(indent), variable_to_code(var[1])))
-
-        if len(all_vars) > 0:
-            print("")
-
-        for op in block.ops:
-            print("{}{}".format(get_indent_space(indent), op_to_code(op)))
-        indent -= 1
-        print("{0}{1}".format(get_indent_space(indent), '}'))
+        block_to_code(block, block_idx)
         block_idx += 1

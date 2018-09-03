@@ -31,7 +31,7 @@ Steps to transpile pserver:
 """
 
 import math
-import random
+import sys
 import numpy as np
 import collections
 import six
@@ -182,7 +182,8 @@ class DistributeTranspiler(object):
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
-                  sync_mode=True):
+                  sync_mode=True,
+                  startup_program=None):
         """
         Run the transpiler.
 
@@ -195,13 +196,17 @@ class DistributeTranspiler(object):
                 list.
             trainers (int): number of trainers in the distributed job.
             sync_mode (bool): Do sync training or not, default is True.
+            startup_program (Program|None): startup_program to transpile,
+                default is fluid.default_main_program().
         """
         if program is None:
             program = default_main_program()
+        if startup_program is None:
+            startup_program = default_startup_program()
         self.origin_program = program
-        self.origin_startup_program = default_startup_program().clone()
+        self.startup_program = startup_program
+        self.origin_startup_program = self.startup_program.clone()
 
-        self.startup_program = default_startup_program()
         self.trainer_num = trainers
         self.sync_mode = sync_mode
         self.trainer_id = trainer_id
@@ -239,8 +244,8 @@ class DistributeTranspiler(object):
         grad_var_mapping_items = list(six.iteritems(self.grad_var_mapping))
 
         if not self.config.slice_var_up:
-            random.seed(self.origin_program.random_seed)
-            random.shuffle(grad_var_mapping_items)
+            np.random.seed(self.origin_program.random_seed)
+            np.random.shuffle(grad_var_mapping_items)
 
         grad_name_to_send_dummy_out = dict()
         for grad_varname, splited_vars in grad_var_mapping_items:
@@ -268,6 +273,10 @@ class DistributeTranspiler(object):
                 name=framework.generate_control_dev_var_name())
             grad_name_to_send_dummy_out[grad_varname] = dummy_output
 
+            # get send op_role_var, if not splited, the grad should have .trainer suffix
+            # if splited, grad should be the original grad var name (split_by_ref and send
+            # will be on the same place). ParallelExecutor
+            # will use op_role_var to get expected device place to run this op.
             program.global_block()._insert_op(
                 index=index + 1,
                 type="send",
@@ -276,18 +285,23 @@ class DistributeTranspiler(object):
                 attrs={
                     "epmap": eplist,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    OP_ROLE_VAR_ATTR_NAME:
-                    [self.grad_name_to_param_name[grad_varname], grad_varname],
+                    OP_ROLE_VAR_ATTR_NAME: [
+                        self.grad_name_to_param_name[grad_varname],
+                        splited_grad_varname
+                    ],
                     "sync_mode": not self.sync_mode,
                 })
             for _, var in enumerate(splited_vars):
                 send_vars.append(var)
 
         if self.sync_mode:
+            send_barrier_out = program.global_block().create_var(
+                name=framework.generate_control_dev_var_name())
+            input_deps = grad_name_to_send_dummy_out.values()
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={},
-                outputs={},
+                inputs={"X": input_deps},
+                outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -305,32 +319,46 @@ class DistributeTranspiler(object):
             self.param_grad_ep_mapping[ep]["grads"].append(send_vars[i])
 
         # step4: Concat the parameters splits together after recv.
+        all_recv_outputs = []
         for param_varname, splited_var in six.iteritems(self.param_var_mapping):
             eps = []
             for var in splited_var:
                 index = [v.name for v in recv_vars].index(var.name)
                 eps.append(eplist[index])
-            grad_send_dummy_out = grad_name_to_send_dummy_out[
-                self.param_name_to_grad_name[param_varname]]
+            if self.sync_mode:
+                recv_dep_in = send_barrier_out
+            else:
+                # connect deps to send op in async mode
+                recv_dep_in = grad_name_to_send_dummy_out[
+                    self.param_name_to_grad_name[param_varname]]
+            all_recv_outputs.extend(splited_var)
+            # get recv op_role_var, if not splited, the grad should have .trainer suffix
+            # if splited, grad should be the original grad var name. ParallelExecutor
+            # will use op_role_var to get expected device place to run this op.
+            orig_grad_name = self.param_name_to_grad_name[param_varname]
+            recv_op_role_var_name = orig_grad_name
+            splited_trainer_grad = self.grad_var_mapping[orig_grad_name]
+            if len(splited_trainer_grad) == 1:
+                recv_op_role_var_name = splited_trainer_grad[0].name
+
             program.global_block().append_op(
                 type="recv",
-                inputs={"X": [grad_send_dummy_out]},
+                inputs={"X": [recv_dep_in]},
                 outputs={"Out": splited_var},
                 attrs={
                     "epmap": eps,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
-                    OP_ROLE_VAR_ATTR_NAME: [
-                        param_varname,
-                        self.param_name_to_grad_name[param_varname]
-                    ],
+                    OP_ROLE_VAR_ATTR_NAME:
+                    [param_varname, recv_op_role_var_name],
                     "sync_mode": not self.sync_mode
                 })
 
         if self.sync_mode:
+            # form a WAW dependency
             program.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
-                outputs={},
+                outputs={"Out": all_recv_outputs},
                 attrs={
                     "endpoints": pserver_endpoints,
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -367,21 +395,18 @@ class DistributeTranspiler(object):
 
         return self.origin_program
 
-    def _get_trainer_startup_program(self,
-                                     recv_vars,
-                                     eplist,
-                                     startup_program=None):
+    def _get_trainer_startup_program(self, recv_vars, eplist):
         """
         Get transpiled trainer side startup program.
 
         Args:
-            startup_program(Program): Startup program.
+            recv_vars (list): Variable list to recv for current trainer_id
+            eplist (list): A list of strings indicating 
 
         Returns:
             Program: trainer side startup program.
         """
-        if startup_program is None:
-            startup_program = self.startup_program
+        startup_program = self.startup_program
 
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
@@ -414,10 +439,12 @@ class DistributeTranspiler(object):
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
                 })
 
+        fetch_barrier_out = startup_program.global_block().create_var(
+            name=framework.generate_control_dev_var_name())
         startup_program.global_block().append_op(
             type="fetch_barrier",
             inputs={},
-            outputs={},
+            outputs={"Out": fetch_barrier_out},
             attrs={
                 "endpoints": self.pserver_endpoints,
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
@@ -427,7 +454,18 @@ class DistributeTranspiler(object):
             #add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
-            orig_param = startup_program.global_block().vars[varname]
+            # NOTE: if enable memory optimization, origin vars maybe removed.
+            if startup_program.global_block().vars.has_key(varname):
+                orig_param = startup_program.global_block().vars[varname]
+            else:
+                origin_param_var = self.origin_program.global_block().vars[
+                    varname]
+                orig_param = startup_program.global_block().create_var(
+                    name=varname,
+                    persistable=origin_param_var.persistable,
+                    type=origin_param_var.type,
+                    dtype=origin_param_var.dtype,
+                    shape=origin_param_var.shape)
             startup_program.global_block().append_op(
                 type="concat",
                 inputs={"X": splited_var},
@@ -450,7 +488,9 @@ class DistributeTranspiler(object):
         # NOTE: assume blocks of the same variable is not distributed
         # on the same pserver, only change param/grad varnames for
         # trainers to fetch.
-
+        sys.stderr.write("get_pserver_program() is deprecated, call\
+            get_pserver_programs() to get pserver main and startup\
+            in a single call.")
         # step1
         pserver_program = Program()
         pserver_program.random_seed = self.origin_program.random_seed
@@ -640,32 +680,58 @@ class DistributeTranspiler(object):
             endpoint)
 
         pserver_program._sync_with_cpp()
+        # save pserver program to generate pserver side startup relatively.
+        self.pserver_program = pserver_program
         return pserver_program
+
+    def get_pserver_programs(self, endpoint):
+        """
+        Get pserver side main program and startup program for distributed training.
+
+        Args:
+            endpoint (str): current pserver endpoint.
+        
+        Returns:
+            tuple: (main_program, startup_program), of type "Program"
+        """
+        pserver_prog = self.get_pserver_program(endpoint)
+        pserver_startup = self.get_startup_program(endpoint)
+        return pserver_prog, pserver_startup
 
     def get_startup_program(self,
                             endpoint,
-                            pserver_program,
+                            pserver_program=None,
                             startup_program=None):
         """
+        **Deprecated**
+
         Get startup program for current parameter server.
         Modify operator input variables if there are variables that
         were split to several blocks.
 
         Args:
             endpoint (str): current pserver endpoint.
-            pserver_program (Program): call get_pserver_program first and
-                pass the result here.
-            startup_program (Program): if pass None, will use
-                default_startup_program
+            pserver_program (Program): deprecated, call get_pserver_program first.
+            startup_program (Program): deprecated, should pass startup_program
+                when initalizing 
 
         Returns:
             Program: parameter server side startup program.
         """
+        sys.stderr.write("get_startup_program() is deprecated, call\
+            get_pserver_programs() to get pserver main and startup\
+            in a single call.")
+        if pserver_program != None:
+            sys.stderr.write("passing pserver_program to get_startup_program()\
+                is deprecated, you can use new API get_pserver_programs() to\
+                get both pserver main program and startup program.")
+        if startup_program != None:
+            sys.stderr.write("passing startup_program to get_startup_program()\
+                is deprecated, use fluid.program_guard() or pass this argument\
+                to transpile() call.")
+
         s_prog = Program()
-        if not startup_program:
-            orig_s_prog = default_startup_program()
-        else:
-            orig_s_prog = startup_program
+        orig_s_prog = self.startup_program
         s_prog.random_seed = orig_s_prog.random_seed
         params = self.param_grad_ep_mapping[endpoint]["params"]
 
@@ -1030,7 +1096,8 @@ class DistributeTranspiler(object):
             self.table_name]
 
         zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / len(self.pserver_endpoints)))
+            math.ceil(origin_param_var.shape[0] / float(
+                len(self.pserver_endpoints))))
         table_shape = list(origin_param_var.shape)
         table_shape[0] = zero_dim
 
@@ -1324,13 +1391,11 @@ class DistributeTranspiler(object):
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
                 attrs={"use_mkldnn": False})
-            # TODO(panyx0718): What if it's SELECTED_ROWS.
-            if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                optimize_block.append_op(
-                    type="scale",
-                    inputs={"X": merged_var},
-                    outputs={"Out": merged_var},
-                    attrs={"scale": 1.0 / float(self.trainer_num)})
+            optimize_block.append_op(
+                type="scale",
+                inputs={"X": merged_var},
+                outputs={"Out": merged_var},
+                attrs={"scale": 1.0 / float(self.trainer_num)})
         return merged_var
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,

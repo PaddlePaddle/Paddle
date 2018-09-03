@@ -18,6 +18,11 @@ limitations under the License. */
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
 
+#if defined(_WIN32)
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#endif
+
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
@@ -117,7 +122,12 @@ struct EOFException : public std::exception {
 // always forces branch prediction of true.
 // This generates faster binary code. __builtin_expect is since C++11.
 // For more details, please check https://stackoverflow.com/a/43870188/724872.
+#if !defined(_WIN32)
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
+#else
+// there is no equivalent intrinsics in msvc.
+#define UNLIKELY(condition) (condition == 0)
+#endif
 
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
@@ -230,6 +240,7 @@ inline void throw_on_error(T e) {
   throw_on_error(e, "");
 }
 
+#if !defined(_WIN32)
 #define PADDLE_THROW(...)                                              \
   do {                                                                 \
     throw ::paddle::platform::EnforceNotMet(                           \
@@ -248,15 +259,28 @@ inline void throw_on_error(T e) {
                                               __FILE__, __LINE__);      \
     }                                                                   \
   } while (false)
-#else
-#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
-#endif
 
 #define PADDLE_THROW_EOF()                                                     \
   do {                                                                         \
     throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
                                            __LINE__);                          \
   } while (false)
+
+#else
+#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__)
+#endif  // REPLACE_ENFORCE_GLOG
+
+#else  // !_WIN32
+// disable enforce, caused by the varardic macro exception error
+#define PADDLE_THROW(x)                                      \
+  do {                                                       \
+    throw std::make_exception_ptr(                           \
+        std::runtime_error("Windows disable the enforce.")); \
+  } while (false)
+
+#define PADDLE_ENFORCE(x, ...) x
+#endif  // !_WIN32
+
 /*
  * Some enforce helpers here, usage:
  *    int a = 1;

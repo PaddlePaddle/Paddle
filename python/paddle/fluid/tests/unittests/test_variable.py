@@ -31,7 +31,8 @@ class TestVariable(unittest.TestCase):
         self.assertEqual(DT.INT16, convert("int16"))
         self.assertEqual(DT.INT64, convert("int64"))
         self.assertEqual(DT.BOOL, convert("bool"))
-        self.assertRaises(ValueError, lambda: convert("int8"))
+        self.assertEqual(DT.INT8, convert("int8"))
+        self.assertEqual(DT.UINT8, convert("uint8"))
 
     def test_var(self):
         b = default_main_program().current_block()

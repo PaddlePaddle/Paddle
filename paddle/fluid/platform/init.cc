@@ -85,9 +85,6 @@ void InitDevices(bool init_p2p) {
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
-#else
-  LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
 #endif
   InitDevices(init_p2p, devices);
 }
@@ -101,9 +98,6 @@ void InitDevices(bool init_p2p, const std::vector<int> devices) {
   } catch (const std::exception &exp) {
     LOG(WARNING) << "Compiled with WITH_GPU, but no GPU found in runtime.";
   }
-#else
-  LOG(WARNING)
-      << "'CUDA' is not supported, Please re-compile with WITH_GPU option";
 #endif
 
   for (size_t i = 0; i < devices.size(); ++i) {
