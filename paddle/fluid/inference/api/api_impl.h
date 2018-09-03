@@ -51,7 +51,9 @@ class NativePaddlePredictor : public PaddlePredictor {
                framework::Scope *scope);
   bool GetFetch(std::vector<PaddleTensor> *output_data,
                 framework::Scope *scope);
-
+  template <typename T>
+  void GetFetchOne(const framework::LoDTensor &fetchs,
+                   PaddleTensor *output_data);
   void PrepareFeedFetch();
 
   NativeConfig config_;
