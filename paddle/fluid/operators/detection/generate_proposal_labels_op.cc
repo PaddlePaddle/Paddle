@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -153,8 +154,8 @@ void BoxToDelta(int box_num, const Tensor& ex_boxes, const Tensor& gt_boxes,
 
     box_delta_et(i, 0) = (gt_ctr_x - ex_ctr_x) / ex_w / weights[0];
     box_delta_et(i, 1) = (gt_ctr_y - ex_ctr_y) / ex_h / weights[1];
-    box_delta_et(i, 2) = log(gt_w / ex_w) / ex_w / weights[2];
-    box_delta_et(i, 3) = log(gt_h / ex_h) / ex_h / weights[3];
+    box_delta_et(i, 2) = log(gt_w / ex_w) / weights[2];
+    box_delta_et(i, 3) = log(gt_h / ex_h) / weights[3];
   }
 }
 
@@ -243,7 +244,6 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
                        Tensor* sampled_labels, Tensor* sampled_gts) {
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
-  // int gt_num = fg_num + bg_num;
   Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
   int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
@@ -316,8 +316,8 @@ std::vector<Tensor> SampleRoisForOneImage(
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(fg_inds.size(), sampled_boxes, sampled_gts, bbox_reg_weights,
-                &bbox_targets_single);
+  BoxEncoder<T>(static_cast<int>(fg_inds.size()), sampled_boxes, sampled_gts,
+                nullptr, false, &bbox_targets_single);
 
   // Scale rois
   Tensor sampled_rois;
