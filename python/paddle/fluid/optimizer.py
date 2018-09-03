@@ -987,7 +987,7 @@ class RMSPropOptimizer(Optimizer):
                 "ParamOut": param_and_grad[0],
                 "MomentOut": momentum_acc,
                 "MeanSquareOut": mean_square_acc,
-                "MeanSquare1Out": mean_square1_acc
+                "MeanSquareOut1": mean_square1_acc
             },
             attrs={
                 "epsilon": self._epsilon,
