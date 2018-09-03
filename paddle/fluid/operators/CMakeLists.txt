@@ -87,7 +87,7 @@ function(op_library TARGET)
     if (WIN32)
     # no nccl, no avx instructions ops.
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
-     "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "lstm_op" "fusion_lstm_op")
+     "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "lstm_op" "fusion_lstm_op" "cumsum_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
