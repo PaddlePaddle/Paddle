@@ -113,7 +113,7 @@ endfunction(find_fluid_modules)
 # find all third_party modules is used for paddle static library
 # for reduce the dependency when building the inference libs.
 set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY)
-function(find_fluid_third_partys TARGET_NAME)
+function(find_fluid_thirdparties TARGET_NAME)
   get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
   string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
   string(FIND "${__target_path}" "third_party" pos)
@@ -122,7 +122,7 @@ function(find_fluid_third_partys TARGET_NAME)
     set(fluid_third_partys ${fluid_third_partys} ${TARGET_NAME})
     set_property(GLOBAL PROPERTY FLUID_THIRD_PARTY "${fluid_third_partys}")
   endif()
-endfunction(find_fluid_third_partys)
+endfunction(find_fluid_thirdparties)
 
 function(merge_static_libs TARGET_NAME)
   set(libs ${ARGN})
