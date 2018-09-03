@@ -125,7 +125,7 @@ class TestROIPoolOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype("int64")
+        self.rois = np.array(rois).astype("float32")
 
     def setUp(self):
         self.op_type = "roi_pool"
