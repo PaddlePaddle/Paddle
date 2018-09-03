@@ -413,8 +413,9 @@ class LayerHelper(object):
         act_type = act.pop('type')
         tmp = input_var
         # NOTE(dzhwinter): some activation support inplace compution.
-        if not core.IsInplace(act_type):
-            tmp = self.create_tmp_variable(dtype=input_var.dtype)
+        # if not core.IsInplace(act_type):
+        #     tmp = self.create_tmp_variable(dtype=input_var.dtype)
+        tmp = self.create_tmp_variable(dtype=input_var.dtype)
         self.append_op(
             type=act_type,
             inputs={"X": [input_var]},
