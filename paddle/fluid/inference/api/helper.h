@@ -16,6 +16,7 @@
 
 #include <sys/time.h>
 #include <algorithm>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -68,6 +69,13 @@ static void split_to_float(const std::string &str, char sep,
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*fs),
                  [](const std::string &v) { return std::stof(v); });
 }
+static void split_to_int64(const std::string &str, char sep,
+                           std::vector<int64_t> *is) {
+  std::vector<std::string> pieces;
+  split(str, sep, &pieces);
+  std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
+                 [](const std::string &v) { return std::stoi(v); });
+}
 template <typename T>
 std::string to_string(const std::vector<T> &vec) {
   std::stringstream ss;
@@ -84,14 +92,18 @@ template <>
 std::string to_string<std::vector<std::vector<float>>>(
     const std::vector<std::vector<std::vector<float>>> &vec);
 
-// clang-format off
-static void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>> &data) {
+template <typename T>
+static void TensorAssignData(PaddleTensor *tensor,
+                             const std::vector<std::vector<T>> &data) {
   // Assign buffer
-  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1, [](int a, int b) { return a * b; });
-  tensor->data.Resize(sizeof(float) * dim);
+  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+  tensor->data.Resize(sizeof(T) * dim);
   int c = 0;
   for (const auto &f : data) {
-    for (float v : f) { static_cast<float *>(tensor->data.data())[c++] = v; }
+    for (T v : f) {
+      static_cast<T *>(tensor->data.data())[c++] = v;
+    }
   }
 }
 
