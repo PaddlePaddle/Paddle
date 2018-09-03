@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/roi_perspective_transform_op.h"
+#include <vector>
 
 namespace paddle {
 namespace operators {
@@ -33,15 +34,12 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(
         ctx->HasOutput("Out"),
         "Output(Out) of ROIPerspectiveTransformOp should not be null.");
-    PADDLE_ENFORCE(
-        ctx->HasOutput("Mask"),
-        "Output(Mask) of ROIPerspectiveTransformOp should not be null.");
     auto input_dims = ctx->GetInputDim("X");
     auto rois_dims = ctx->GetInputDim("ROIs");
 
     PADDLE_ENFORCE(input_dims.size() == 4,
                    "The format of input tensor is NCHW.");
-    PADDLE_ENFORCE(rois_dims.size() == 9,
+    PADDLE_ENFORCE(rois_dims.size() == 2,
                    "ROIs should be a 2-D LoDTensor of shape (num_rois, 8)"
                    "given as [[x0, y0, x1, y1, x2, y2, x3, y3], ...]");
     PADDLE_ENFORCE(rois_dims[1] == 8,
@@ -58,17 +56,13 @@ class ROIPerspectiveTransformOp : public framework::OperatorWithKernel {
                       "The transformed output width must greater than 0");
     PADDLE_ENFORCE_GT(spatial_scale, 0.0f,
                       "The spatial scale must greater than 0");
-
-    auto out_dims = framework::DDim({rois_dims[0],   // num_rois
+    std::vector<int64_t> out_dims_v({rois_dims[0],   // num_rois
                                      input_dims[1],  // channels
-                                     transformed_height, transformed_widt});
-
-    auto mask_dims = framework::DDim({rois_dims[0],  // num_rois
-                                      1,             // channels
-                                      transformed_height, transformed_widt});
+                                     static_cast<int64_t>(transformed_height),
+                                     static_cast<int64_t>(transformed_width)});
+    auto out_dims = framework::make_ddim(out_dims_v);
 
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("Mask", mask_dims);
   }
 
  protected:
@@ -125,9 +119,6 @@ class ROIPerspectiveTransformOpMaker
         "(Tensor), "
         "The output of ROIPerspectiveTransformOp is a 4-D tensor with shape "
         "(num_rois, channels, pooled_h, pooled_w).");
-    AddOutput("mask",
-              "(Tensor), "
-              "");
     AddAttr<float>("spatial_scale",
                    "(float, default 1.0), "
                    "Multiplicative spatial scale factor "
@@ -158,14 +149,7 @@ REGISTER_OPERATOR(roi_perspective_transform, ops::ROIPerspectiveTransformOp,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(roi_perspective_transform_grad,
                   ops::ROIPerspectiveTransformGradOp);
-REGISTER_OP_CPU_KERNEL(
-    roi_perspective_transform,
-    ops::CPUROIPerspectiveTransformOpKernel<paddle::platform::CPUDeviceContext,
-                                            float>,
-    ops::CPUROIPerspectiveTransformOpKernel<paddle::platform::CPUDeviceContext,
-                                            double>);
+REGISTER_OP_CPU_KERNEL(roi_perspective_transform,
+                       ops::CPUROIPerspectiveTransformOpKernel<float>);
 REGISTER_OP_CPU_KERNEL(roi_perspective_transform_grad,
-                       ops::CPUROIPerspectiveTransformGradOpKernel<
-                           paddle::platform::CPUDeviceContext, float>,
-                       ops::CPUROIPerspectiveTransformOpKernel<
-                           paddle::platform::CPUDeviceContext, double>);
+                       ops::CPUROIPerspectiveTransformGradOpKernel<float>);
