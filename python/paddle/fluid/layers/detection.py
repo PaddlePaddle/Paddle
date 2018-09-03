@@ -156,7 +156,7 @@ def rpn_target_assign(loc,
         type="rpn_target_assign",
         inputs={'Anchor': anchor_box,
                 'GtBox': gt_box,
-                'DistMax': iou},
+                'DistMat': iou},
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
