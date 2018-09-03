@@ -25,7 +25,8 @@ namespace framework {
 namespace details {
 
 struct ScaleLossGradOpHandle : public OpHandleBase {
-  ScaleLossGradOpHandle(size_t num_dev, Scope *scope, platform::Place place,
+  ScaleLossGradOpHandle(ir::Node *node, size_t num_dev, Scope *scope,
+                        platform::Place place,
                         platform::DeviceContext *context);
 
   ~ScaleLossGradOpHandle() final;

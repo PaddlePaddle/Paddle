@@ -16,10 +16,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -58,9 +54,9 @@ class MulOp : public framework::OperatorWithKernel {
     auto x_mat_dims = framework::flatten_to_2d(x_dims, x_num_col_dims);
     auto y_mat_dims = framework::flatten_to_2d(y_dims, y_num_col_dims);
 
-    PADDLE_ENFORCE_EQ(
-        x_mat_dims[1], y_mat_dims[0],
-        "First matrix's width must be equal with second matrix's height.");
+    PADDLE_ENFORCE_EQ(x_mat_dims[1], y_mat_dims[0],
+                      "First matrix's width must be equal with second matrix's "
+                      "height. %s, %s");
     std::vector<int64_t> output_dims;
     output_dims.reserve(
         static_cast<size_t>(x_num_col_dims + y_dims.size() - y_num_col_dims));
@@ -76,28 +72,11 @@ class MulOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
     ctx->ShareLoD("X", /*->*/ "Out");
   }
-
- private:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-    }
-#endif
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library);
-  }
 };
 
 class MulOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MulOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor), The first input tensor of mul op.");
     AddInput("Y", "(Tensor), The second input tensor of mul op.");
     AddOutput("Out", "(Tensor), The output tensor of mul op.");
@@ -121,9 +100,6 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         )DOC")
         .SetDefault(1)
         .EqualGreaterThan(1);
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
     AddAttr<int>(
         "y_num_col_dims",
         R"DOC((int, default 1), The mul_op can take tensors with more than two,
@@ -177,22 +153,6 @@ class MulGradOp : public framework::OperatorWithKernel {
     if (ctx->HasOutput(y_grad_name)) {
       ctx->SetOutputDim(y_grad_name, y_dims);
     }
-  }
-
- private:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        platform::CanMKLDNNBeUsed(ctx)) {
-      library = framework::LibraryType::kMKLDNN;
-    }
-#endif
-    framework::DataLayout layout{framework::DataLayout::kAnyLayout};
-    return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("X")->type()), ctx.GetPlace(),
-        layout, library);
   }
 };
 

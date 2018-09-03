@@ -31,7 +31,6 @@ class FeedOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     // get device context from pool
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-    platform::RecordEvent record_event(Type(), dev_ctx);
 
     auto feed_var_name = Input("X");
     auto *feed_var = scope.FindVar(feed_var_name);
@@ -66,8 +65,7 @@ class FeedOp : public framework::OperatorBase {
 
 class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  FeedOpInfoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input of feed op");
     AddOutput("Out", "The output of feed op");
     AddAttr<int>("col", "(int) The column of feed");

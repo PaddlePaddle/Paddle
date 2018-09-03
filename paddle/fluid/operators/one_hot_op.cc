@@ -46,8 +46,7 @@ class OneHotOp : public framework::OperatorWithKernel {
 
 class OneHotOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  OneHotOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor, LoDTensor<int>) Input variable with rank at least 2. "
              "The last dimension of X should be 1. Each value of X is an index "

@@ -28,7 +28,7 @@ AUTOCONF_HASH=954bd69b391edc12d6a4a51a2dd1476543da5c6bbf05a95b59dc0dd6fd4c2969
 PYTHON_COMPILE_DEPS="zlib-devel bzip2-devel ncurses-devel sqlite-devel readline-devel tk-devel gdbm-devel db4-devel libpcap-devel xz-devel"
 
 # Libraries that are allowed as part of the manylinux1 profile
-MANYLINUX1_DEPS="glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-devel libXrender-devel  mesa-libGL-devel libICE-devel libSM-devel ncurses-devel"
+MANYLINUX1_DEPS="glibc-devel libstdc++-devel glib2-devel libX11-devel libXext-devel libXrender-devel  mesa-libGL-devel libICE-devel libSM-devel ncurses-devel freetype-devel libpng-devel"
 
 # Get build utilities
 MY_DIR=$(dirname "${BASH_SOURCE[0]}")
@@ -105,7 +105,7 @@ curl-config --features
 rm -rf /usr/local/ssl
 
 # Install patchelf (latest with unreleased bug fixes)
-curl -sLO https://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
+curl -sLO http://nipy.bic.berkeley.edu/manylinux/patchelf-0.9njs2.tar.gz
 check_sha256sum patchelf-0.9njs2.tar.gz $PATCHELF_HASH
 tar -xzf patchelf-0.9njs2.tar.gz
 (cd patchelf-0.9njs2 && ./configure && make && make install)

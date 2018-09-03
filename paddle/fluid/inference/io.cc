@@ -20,16 +20,20 @@ limitations under the License. */
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/pybind/pybind.h"
 
 DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
 DEFINE_bool(init_p2p, false, "Whether to init p2p.");
+DEFINE_int32(math_num_threads, 1,
+             "Number of threads used to run math functions.");
 
 namespace paddle {
 namespace inference {
 
 void Init(const std::vector<std::string> argv) {
   framework::InitGflags(argv);
+  platform::SetNumThreads(FLAGS_math_num_threads);
   // init devices
   std::vector<int> devices;
   std::string token;
@@ -137,6 +141,22 @@ std::unique_ptr<framework::ProgramDesc> Load(
 
   LoadPersistables(executor, scope, *main_program, "", param_filename);
   return main_program;
+}
+
+void SaveVars(const framework::Scope& scope,
+              const std::vector<std::string>& vars, const std::string& dirname,
+              bool predicate) {
+  framework::ProgramDesc prog;
+  auto* block = prog.MutableBlock(0);
+  auto* op = block->AppendOp();
+  op->SetType("save_combine");
+  op->SetInput("X", vars);
+  op->SetAttr("file_path", dirname + "/param");
+  op->CheckAttrs();
+
+  platform::CPUPlace place;
+  framework::Executor exe(place);
+  exe.Run(prog, const_cast<framework::Scope*>(&scope), 0, true, true);
 }
 
 }  // namespace inference

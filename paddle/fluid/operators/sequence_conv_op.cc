@@ -102,8 +102,7 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
 
 class SequenceConvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SequenceConvOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(LoDTensor) the input(X) is a LodTensor, which supports "

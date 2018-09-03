@@ -48,8 +48,7 @@ class LstmUnitOp : public framework::OperatorWithKernel {
 
 class LstmUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  LstmUnitOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "Lstm unit only applies non-linear activations, please make sure"
              "that linear tranformation has already been applied to `X`. "

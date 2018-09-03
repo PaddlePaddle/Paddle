@@ -14,9 +14,9 @@ limitations under the License. */
 #pragma once
 
 #include <curand.h>
-#include <dlfcn.h>
 
 #include <mutex>  // NOLINT
+#include "paddle/fluid/platform/port.h"
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
@@ -34,7 +34,7 @@ extern void *curand_dso_handle;
       std::call_once(curand_dso_flag, []() {                                 \
         curand_dso_handle = paddle::platform::dynload::GetCurandDsoHandle(); \
       });                                                                    \
-      void *p_##__name = dlsym(curand_dso_handle, #__name);                  \
+      static void *p_##__name = dlsym(curand_dso_handle, #__name);           \
       return reinterpret_cast<curandFunc>(p_##__name)(args...);              \
     }                                                                        \
   };                                                                         \

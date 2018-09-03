@@ -19,8 +19,7 @@ namespace operators {
 
 class SplitIdsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SplitIdsOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}");
     AddOutput("Out", "(LoDTensor) The outputs of the input Ids.")
         .AsDuplicable();

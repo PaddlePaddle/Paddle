@@ -46,7 +46,10 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
 
       const int64_t* label_data = labels->data<int64_t>();
       for (int i = 0; i < batch_size; ++i) {
-        int index = i * class_num + label_data[i];
+        int lbl = label_data[i];
+        PADDLE_ENFORCE_GE(lbl, 0);
+        PADDLE_ENFORCE_LT(lbl, class_num);
+        int index = i * class_num + lbl;
         loss_data[i] = -math::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }

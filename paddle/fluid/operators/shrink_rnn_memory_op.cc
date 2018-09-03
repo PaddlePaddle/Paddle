@@ -62,15 +62,17 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     }
 
     if (dst_num_rows != 0) {
-      out_tensor.ShareDataWith(x_tensor.Slice(0, height));
+      out_tensor.mutable_data(place, x_tensor.type());
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
+                            &out_tensor);
     }
   }
 };
 
 class ShrinkRNNMemoryOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ShrinkRNNMemoryOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(LoDTensor) The RNN step memory to be shrinked.");
     AddInput("RankTable", "(LoDRankTable) The lod_rank_table of dynamic RNN.");
     AddInput("I",

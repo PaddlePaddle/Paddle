@@ -28,9 +28,9 @@
 
 ### 准备预测模型
 
-准备预测模型部分，我们以手写数字识别任务为例进行介绍。手写数字识别任务定义了一个含有[两个隐层的简单全连接网络](https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/README.cn.md#softmax回归softmax-regression)，网络接受一幅图片作为输入，将图片分类到 0 ~ 9 类别标签之一。完整代码可以查看[此目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense) 中的相关脚本。
+准备预测模型部分，我们以手写数字识别任务为例进行介绍。手写数字识别任务定义了一个含有[两个隐层的简单全连接网络](https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/README.cn.md#softmax回归softmax-regression)，网络接受一幅图片作为输入，将图片分类到 0 ~ 9 类别标签之一。完整代码可以查看[此目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference/dense) 中的相关脚本。
 
-调用C-API开发预测程序需要一个训练好的模型，运行[MNIST手写数字识别目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense)下的[mnist_v2.py](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/examples/model_inference/dense/mnist_v2.py)脚本，在终端执行`python mnist_v2.py`，会使用 PaddlePaddle 内置的 [MNIST 数据集](http://yann.lecun.com/exdb/mnist/)进行训练。训练好的模型默认保存在当前运行目录下的`models`目录中。
+调用C-API开发预测程序需要一个训练好的模型，运行[MNIST手写数字识别目录](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference/dense)下的[mnist_v2.py](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/capi/examples/model_inference/dense/mnist_v2.py)脚本，在终端执行`python mnist_v2.py`，会使用 PaddlePaddle 内置的 [MNIST 数据集](http://yann.lecun.com/exdb/mnist/)进行训练。训练好的模型默认保存在当前运行目录下的`models`目录中。
 
 下面，我们将训练结束后存储下来的模型转换成预测模型。
 
@@ -48,7 +48,7 @@
     dump_v2_config(predict, "trainer_config.bin", True)
     ```
 
-    对[手写数字识别](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense)这个示例，[`mnist_v2.py`](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense/mnist_v2.py)脚本集成了序列化神经网络结构的过程，可以直接运行 `python mnist_v2.py --task dump_config` 对神经网络结构进行序列化，结果会写入当前运行目录下的`trainer_config.bin`文件中。
+    对[手写数字识别](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference/dense)这个示例，[`mnist_v2.py`](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference/dense/mnist_v2.py)脚本集成了序列化神经网络结构的过程，可以直接运行 `python mnist_v2.py --task dump_config` 对神经网络结构进行序列化，结果会写入当前运行目录下的`trainer_config.bin`文件中。
 
     使用这种方式，需要**在运行时将神经网络的多个可学习参数放在同一个目录中**，C-API可以通过分别指定序列化后的网络结构文件和参数目录来加载训练好的模型。
 
@@ -59,7 +59,7 @@
     代码示例如下：
 
     ```python
-    from paddle.utils.merge_model import merge_v2_modelss
+    from paddle.utils.merge_model import merge_v2_model
     from mnist_v2 import network
 
     net = network(is_infer=True)
@@ -68,7 +68,7 @@
     merge_v2_model(net, param_file, output_file)
     ```
 
-    对[手写数字识别](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense)这个示例，可直接运行 `python` [merge_v2_model.py](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference/dense/merge_v2_model.py)。序列化结果会写入当前运行目录下的`output.paddle.model`文件中。使用这种方式，运行时C-API可以通过指定`output.paddle.model`文件的路径来加载预测模型。
+    对[手写数字识别](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference/dense)这个示例，可直接运行 `python` [merge_v2_model.py](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference/dense/merge_v2_model.py)。序列化结果会写入当前运行目录下的`output.paddle.model`文件中。使用这种方式，运行时C-API可以通过指定`output.paddle.model`文件的路径来加载预测模型。
 
 #### 注意事项
 1. 为使用C-API，在调用`dump_v2_config`序列化神经网络结构时，参数`binary`必须指定为`True`。
@@ -77,10 +77,10 @@
 
 ### 编写预测代码
 
-预测代码更多详细示例代码请参考[C-API使用示例](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/capi/examples/model_inference) 目录下的代码示例。这一节对图1中预测代码编写的5个步骤进行介绍和说明。
+预测代码更多详细示例代码请参考[C-API使用示例](https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/legacy/capi/examples/model_inference) 目录下的代码示例。这一节对图1中预测代码编写的5个步骤进行介绍和说明。
 
 #### step 1. 初始化PaddlePaddle运行环境
-第一步需调用[`paddle_init`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/main.h#L27) 初始化PaddlePaddle运行环境，该接口接受两个参数：参数的个数和参数列表。
+第一步需调用[`paddle_init`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/capi/main.h#L27) 初始化PaddlePaddle运行环境，该接口接受两个参数：参数的个数和参数列表。
 
 #### step2. 加载模型
 
@@ -88,8 +88,8 @@
 
 概念上，在 PaddlePaddle 内部，一个GradientMachine类的对象管理着一组计算层（PaddlePaddle Layers）来完成前向和反向计算，并处理与之相关的所有细节。在调用C-API预测时，只需进行前向计算而无需调用反向计算。这篇文档之后部分会使用`gradient machine`来特指调用PaddlePaddle C-API创建的GradientMachine类的对象。每一个 `gradient machine` 都会管理维护一份训练好的模型，下面是C-API提供的，两种常用的模型加载方式：
 
-1. 调用[`paddle_gradient_machine_load_parameter_from_disk`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/gradient_machine.h#L61)接口，从磁盘加载预测模型。这时`gradient machine`会独立拥有一份训练好的模型；
-1. 调用[`paddle_gradient_machine_create_shared_param`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/gradient_machine.h#L88)接口，与其它`gradient machine`的共享已经加载的预测模型。这种情况多出现在使用多线程预测时，通过多个线程共享同一个模型来减少内存开销。可参考[此示例](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/examples/model_inference/multi_thread/main.c)。
+1. 调用[`paddle_gradient_machine_load_parameter_from_disk`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/capi/gradient_machine.h#L61)接口，从磁盘加载预测模型。这时`gradient machine`会独立拥有一份训练好的模型；
+1. 调用[`paddle_gradient_machine_create_shared_param`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/capi/gradient_machine.h#L88)接口，与其它`gradient machine`的共享已经加载的预测模型。这种情况多出现在使用多线程预测时，通过多个线程共享同一个模型来减少内存开销。可参考[此示例](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/capi/examples/model_inference/multi_thread/main.c)。
 
 - 注意事项
 
@@ -117,7 +117,7 @@ C-API支持的所有输入数据类型和他们的组织方式，请参考“输
 
 #### step 4. 前向计算
 
-完成上述准备之后，通过调用 [`paddle_gradient_machine_forward`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/capi/gradient_machine.h#L73) 接口完成神经网络的前向计算。
+完成上述准备之后，通过调用 [`paddle_gradient_machine_forward`](https://github.com/PaddlePaddle/Paddle/blob/develop/paddle/legacy/capi/gradient_machine.h#L73) 接口完成神经网络的前向计算。
 
 #### step 5. 清理
 

@@ -20,13 +20,12 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
+#include "paddle/fluid/operators/detail/macros.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(benchmark);
-DEFINE_bool(check_nan_inf, false,
-            "Checking whether operator produce NAN/INF or not. It will be "
-            "extremely slow so please use this flag wisely.");
+DEFINE_bool(use_mkldnn, false, "Use MKLDNN to run");
 
 namespace paddle {
 namespace framework {
@@ -45,6 +44,14 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 }
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
+
+void Executor::Close() {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  ::paddle::operators::distributed::RPCClient::GetInstance<
+      ::paddle::operators::distributed::GRPCClient>()
+      ->SendComplete();
+#endif
+}
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -76,21 +83,6 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
         "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
         var_type);
   }
-}
-
-static void CheckTensorNANOrInf(const std::string& name,
-                                const framework::Tensor& tensor) {
-  if (tensor.memory_size() == 0) {
-    return;
-  }
-  if (tensor.type().hash_code() != typeid(float).hash_code() &&   // NOLINT
-      tensor.type().hash_code() != typeid(double).hash_code()) {  // NOLINT
-    return;
-  }
-  PADDLE_ENFORCE(!framework::TensorContainsInf(tensor),
-                 "Tensor %s contains Inf", name);
-  PADDLE_ENFORCE(!framework::TensorContainsNAN(tensor),
-                 "Tensor %s contains NAN", name);
 }
 
 void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
@@ -133,6 +125,7 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    bool create_local_scope, bool create_vars) {
   platform::RecordBlock b(block_id);
+  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   auto ctx = Prepare(pdesc, block_id);
   RunPreparedContext(ctx.get(), scope, create_local_scope, create_vars);
 }
@@ -228,19 +221,22 @@ static bool has_fetch_operators(
 void Executor::Run(const ProgramDesc& program, Scope* scope,
                    std::map<std::string, const LoDTensor*>* feed_targets,
                    std::map<std::string, LoDTensor*>* fetch_targets,
-                   bool create_vars, const std::string& feed_holder_name,
+                   bool create_local_scope, bool create_vars,
+                   const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
+  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
   bool has_feed_ops =
       has_feed_operators(program.Block(0), *feed_targets, feed_holder_name);
   bool has_fetch_ops =
       has_fetch_operators(program.Block(0), *fetch_targets, fetch_holder_name);
 
   ProgramDesc* copy_program = const_cast<ProgramDesc*>(&program);
+  std::unique_ptr<ProgramDesc> unique_ptr_of_copy_program;
   if (!has_feed_ops || !has_fetch_ops) {
-    copy_program = std::unique_ptr<ProgramDesc>(new ProgramDesc(program)).get();
+    unique_ptr_of_copy_program.reset(new ProgramDesc(program));
+    copy_program = unique_ptr_of_copy_program.get();
   }
-
   auto* global_block = copy_program->MutableBlock(0);
 
   if (!has_feed_ops) {
@@ -290,19 +286,21 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
   }
 
   auto ctx = Prepare(*copy_program, 0);
-  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets, create_vars,
-                     feed_holder_name, fetch_holder_name);
+  RunPreparedContext(ctx.get(), scope, feed_targets, fetch_targets,
+                     create_local_scope, create_vars, feed_holder_name,
+                     fetch_holder_name);
 }
 
 std::unique_ptr<ExecutorPrepareContext> Executor::Prepare(
     const ProgramDesc& program, int block_id) {
-  auto* ctx = new ExecutorPrepareContext(program, block_id);
+  std::unique_ptr<ExecutorPrepareContext> ctx(
+      new ExecutorPrepareContext(program, block_id));
   PADDLE_ENFORCE_LT(static_cast<size_t>(block_id), program.Size());
   auto& block = program.Block(block_id);
   for (auto& op_desc : block.AllOps()) {
     ctx->ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
-  return std::unique_ptr<ExecutorPrepareContext>(ctx);
+  return ctx;
 }
 
 std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
@@ -321,7 +319,8 @@ std::vector<std::shared_ptr<ExecutorPrepareContext>> Executor::Prepare(
 }
 
 void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
-                                  bool create_local_scope, bool create_vars) {
+                                  bool create_local_scope, bool create_vars,
+                                  bool keep_kids) {
   Scope* local_scope = scope;
   if (create_vars) {
     if (create_local_scope) {
@@ -331,30 +330,28 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
     }
-    if (FLAGS_check_nan_inf) {
-      for (auto& vname : op->OutputVars(true)) {
-        auto* var = local_scope->FindVar(vname);
-        if (var == nullptr) continue;
-        if (var->IsType<framework::LoDTensor>()) {
-          CheckTensorNANOrInf(vname, var->Get<framework::LoDTensor>());
-        }
-      }
-    }
   }
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  if (create_vars && create_local_scope) {
+  if (local_scope != scope) {
     scope->DeleteScope(local_scope);
   } else {
-    // Delete the local scopes created in operators.
-    scope->DropKids();
+    if (!keep_kids) {
+      // By default, we should delete all kid scopes after run executor because
+      // some operators may create local scope when running, such as while_op.
+      // But when while_op also create a local executor to run it's sub block,
+      // the sub scopes it created should not be dropped immediately, because
+      // while_grad_op will use some variables created during while_op run, so
+      // we need to keep the kids and wait for the outer executor to drop them.
+      scope->DropKids();
+    }
   }
+
   if (FLAGS_benchmark) {
     VLOG(2) << "-------------------------------------------------------";
     VLOG(2) << "Memory used after deleting local scope: "
@@ -366,8 +363,9 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 void Executor::RunPreparedContext(
     ExecutorPrepareContext* ctx, Scope* scope,
     std::map<std::string, const LoDTensor*>* feed_targets,
-    std::map<std::string, LoDTensor*>* fetch_targets, bool create_vars,
-    const std::string& feed_holder_name, const std::string& fetch_holder_name) {
+    std::map<std::string, LoDTensor*>* fetch_targets, bool create_local_scope,
+    bool create_vars, const std::string& feed_holder_name,
+    const std::string& fetch_holder_name) {
   auto& global_block = ctx->prog_.Block(ctx->block_id_);
 
   PADDLE_ENFORCE(
@@ -387,7 +385,7 @@ void Executor::RunPreparedContext(
     }
   }
 
-  RunPreparedContext(ctx, scope, create_vars, create_vars);
+  RunPreparedContext(ctx, scope, create_local_scope, create_vars);
 
   // obtain the data of fetch_targets from fetch_holder
   for (auto* op : global_block.AllOps()) {
@@ -398,6 +396,23 @@ void Executor::RunPreparedContext(
           GetFetchVariable(*scope, fetch_holder_name, idx);
     }
   }
+}
+
+void Executor::EnableMKLDNN(const ProgramDesc& program) {
+#ifdef PADDLE_WITH_MKLDNN
+  VLOG(3) << "use_mkldnn=True";
+  for (size_t bid = 0; bid < program.Size(); ++bid) {
+    auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
+    for (auto* op : block->AllOps()) {
+      if (op->HasAttr("use_mkldnn")) {
+        op->SetAttr("use_mkldnn", true);
+      }
+    }
+  }
+#else
+  LOG(WARNING)
+      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
+#endif
 }
 
 }  // namespace framework

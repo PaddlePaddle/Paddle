@@ -20,8 +20,7 @@ namespace operators {
 
 class Unpool2dOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  Unpool2dOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(
         "X",
         "(Tensor) The input tensor of unpool operator. "

@@ -44,8 +44,7 @@ class CTCAlignOp : public framework::OperatorWithKernel {
 
 class CTCAlignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CTCAlignOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Input",
              "(LodTensor, default: LoDTensor<int>), Its shape is "
              "[Lp, 1], where Lp is the sum of all input sequences' length.");

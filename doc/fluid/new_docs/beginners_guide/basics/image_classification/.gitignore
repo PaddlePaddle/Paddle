@@ -1,0 +1,8 @@
+*.pyc
+train.log
+output
+data/cifar-10-batches-py/
+data/cifar-10-python.tar.gz
+data/*.txt
+data/*.list
+data/mean.meta

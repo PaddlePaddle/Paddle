@@ -63,8 +63,7 @@ class AccuracyOp : public framework::OperatorWithKernel {
 
 class AccuracyOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AccuracyOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     // TODO(typhoonzero): support both inference value and indices.
     AddInput("Out", "The network output of topk (inferences)");
     AddInput("Indices", "The the network output of topk (indices)");

@@ -53,8 +53,7 @@ class WarpCTCOp : public framework::OperatorWithKernel {
 
 class WarpCTCOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  WarpCTCOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Logits",
              "(LodTensor, default: LoDTensor<float>), the unscaled "
              "probabilities of variable-length sequences, which is a 2-D "

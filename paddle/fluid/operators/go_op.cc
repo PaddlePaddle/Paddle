@@ -89,8 +89,7 @@ class GoOp : public framework::OperatorBase {
 
 class GoOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  GoOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput(kX,
              "A set of variables, which are required by operators inside the "
              "block of Go Op.")

@@ -62,8 +62,7 @@ class MomentumOp : public framework::OperatorWithKernel {
 
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  MomentumOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("Param",
              "(Tensor, default Tensor<float>) "
              "Input parameter that has to be updated");
@@ -99,7 +98,7 @@ The update equations are as follows:
 $$
 velocity = mu * velocity + gradient \\
 if (use\_nesterov):   \\
-  param = param - gradient * learning\_rate + mu * velocity * learning\_rate \\
+  param = param - (gradient + mu * velocity) * learning\_rate \\
 else:   \\
   param = param - learning\_rate * velocity. \\
 $$

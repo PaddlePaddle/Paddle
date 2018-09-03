@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace framework {
@@ -46,8 +46,7 @@ class OpWithoutKernelTest : public OperatorBase {
 
 class OpWithoutKernelCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpWithoutKernelCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("input", "input of test op");
     AddOutput("output", "output of test op");
     AddAttr<float>("scale", "scale of cosine op");
@@ -98,8 +97,7 @@ namespace framework {
 
 class OpKernelTestProtoAndCheckerMaker : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestProtoAndCheckerMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("x", "input of test op");
     AddOutput("y", "output of test op");
     AddAttr<float>("scale", "scale of cosine op")
@@ -137,9 +135,7 @@ class CPUKernelTest : public OpKernel<float> {
 class OpKernelTestMultiInputsProtoAndCheckerMaker
     : public OpProtoAndCheckerMaker {
  public:
-  OpKernelTestMultiInputsProtoAndCheckerMaker(OpProto* proto,
-                                              OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() {
     AddInput("xs", "inputs of test op").AsDuplicable();
     AddInput("k", "input of test op");
     AddOutput("ys", "outputs of test op").AsDuplicable();
@@ -250,27 +246,4 @@ TEST(OpKernel, multi_inputs) {
 
   auto op = paddle::framework::OpRegistry::CreateOp(op_desc);
   op->Run(scope, cpu_place);
-}
-
-class OperatorClone : public paddle::framework::OperatorBase {
- public:
-  DEFINE_OP_CLONE_METHOD(OperatorClone);
-  OperatorClone(const std::string& type,
-                const paddle::framework::VariableNameMap& inputs,
-                const paddle::framework::VariableNameMap& outputs,
-                const paddle::framework::AttributeMap& attrs)
-      : OperatorBase(type, inputs, outputs, attrs) {}
-
- private:
-  void RunImpl(const paddle::framework::Scope& scope,
-               const paddle::platform::Place& place) const override {}
-};
-
-TEST(Operator, Clone) {
-  paddle::framework::InitDevices(true);
-  OperatorClone a("ABC", paddle::framework::VariableNameMap{},
-                  paddle::framework::VariableNameMap{},
-                  paddle::framework::AttributeMap{});
-  auto b = a.Clone();
-  ASSERT_EQ(a.Type(), b->Type());
 }

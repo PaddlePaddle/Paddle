@@ -56,8 +56,7 @@ class ExpandOp : public framework::OperatorWithKernel {
 
 class ExpandOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  ExpandOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
              "X is the input to be expanded.");

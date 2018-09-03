@@ -39,7 +39,7 @@ std::unordered_map<std::string, FileReaderCreator>& FileReaderRegistry() {
 }
 
 std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
-    const std::string& file_name, const std::vector<framework::DDim>& dims) {
+    const std::string& file_name) {
   size_t separator_pos = file_name.find_last_of(kFileFormatSeparator);
   PADDLE_ENFORCE_NE(separator_pos, std::string::npos,
                     "File name illegal! A legal file name should be like: "
@@ -49,15 +49,12 @@ std::unique_ptr<framework::ReaderBase> CreateReaderByFileName(
   auto itor = FileReaderRegistry().find(filetype);
   PADDLE_ENFORCE(itor != FileReaderRegistry().end(),
                  "No file reader registered for '%s' format.", filetype);
-  framework::ReaderBase* reader = (itor->second)(file_name, dims);
+  framework::ReaderBase* reader = (itor->second)(file_name);
   return std::unique_ptr<framework::ReaderBase>(reader);
 }
 
-FileReaderMakerBase::FileReaderMakerBase(
-    framework::OpProtoAndCheckerMaker::OpProto* op_proto,
-    framework::OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(op_proto, op_checker) {
-  AddOutput("Out", "(ReaderHolder) The created random reader.").AsDuplicable();
+void FileReaderMakerBase::Make() {
+  AddOutput("Out", "(ReaderHolder): The created random reader.").AsDuplicable();
   AddAttr<std::vector<int>>("shape_concat", "The concat of all data's shapes.");
   AddAttr<std::vector<int>>(
       "ranks",
@@ -68,6 +65,7 @@ FileReaderMakerBase::FileReaderMakerBase(
       "It means the reader will generate two data each time,"
       "whose shapes are [2,3,4] and [5,6] respectively.");
   AddAttr<std::vector<int>>("lod_levels", "The LoD levels of each data.");
+  Apply();
 }
 
 void FileReaderInferShape::operator()(framework::InferShapeContext* ctx) const {
@@ -117,6 +115,7 @@ void DecoratedReaderInferShape::operator()(
       boost::get<framework::VarDesc*>(ctx->GetOutputVarPtrs("Out")[0]);
   out_reader->SetLoDLevels(in_reader->GetLoDLevels());
 }
+
 void DecoratedReaderInferVarType::operator()(
     const framework::OpDesc& op_desc, framework::BlockDesc* block) const {
   std::string in_reader_name = op_desc.Input("UnderlyingReader")[0];
@@ -127,13 +126,11 @@ void DecoratedReaderInferVarType::operator()(
   out_reader->SetDataTypes(in_reader->GetDataTypes());
 }
 
-DecoratedReaderMakerBase::DecoratedReaderMakerBase(
-    framework::OpProtoAndCheckerMaker::OpProto* op_proto,
-    framework::OpAttrChecker* op_checker)
-    : OpProtoAndCheckerMaker(op_proto, op_checker) {
+void DecoratedReaderMakerBase::Make() {
   AddInput("UnderlyingReader",
            "(ReaderHolder) The underlying reader for creating a batch reader.");
   AddOutput("Out", "(ReaderHolder) The created batch reader.");
+  Apply();
 }
 
 }  // namespace reader

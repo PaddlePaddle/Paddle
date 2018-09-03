@@ -18,9 +18,9 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/init.h"
 
 namespace paddle {
 namespace inference {
@@ -40,6 +40,11 @@ std::unique_ptr<framework::ProgramDesc> Load(framework::Executor* executor,
                                              framework::Scope* scope,
                                              const std::string& prog_filename,
                                              const std::string& param_filename);
+
+// Save the variables from a scope to disk.
+void SaveVars(const framework::Scope& scope,
+              const std::vector<std::string>& vars, const std::string& dirname,
+              bool predicate = true);
 
 }  // namespace inference
 }  // namespace paddle

@@ -21,8 +21,7 @@ namespace operators {
 
 class CastOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  CastOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "The input tensor of cast op");
     AddOutput("Out", "The output tensor of cast op");
     AddAttr<int>("out_dtype", "output data type");
@@ -90,4 +89,5 @@ REGISTER_OP_CPU_KERNEL(cast, ops::CastOpKernel<CPU, float>,
                        ops::CastOpKernel<CPU, int>,
                        ops::CastOpKernel<CPU, int64_t>,
                        ops::CastOpKernel<CPU, bool>,
+                       ops::CastOpKernel<CPU, uint8_t>,
                        ops::CastOpKernel<CPU, paddle::platform::float16>);

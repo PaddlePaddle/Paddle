@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <string>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -57,53 +59,6 @@ class MKLDNNActivationGradKernel
       *attr.second = context.Attr<float>(attr.first);
     }
     functor(context);
-  }
-};
-
-namespace {  // NOLINT
-framework::OpKernelType GetKernelType(
-    const framework::ExecutionContext& ctx,
-    const framework::OperatorWithKernel& oper) {
-  framework::LibraryType library{framework::LibraryType::kPlain};
-#ifdef PADDLE_WITH_MKLDNN
-  if (library == framework::LibraryType::kPlain &&
-      platform::CanMKLDNNBeUsed(ctx)) {
-    library = framework::LibraryType::kMKLDNN;
-  }
-#endif
-  framework::DataLayout layout = framework::DataLayout::kAnyLayout;
-  return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::Tensor>("X")->type()),
-      ctx.GetPlace(), layout, library);
-}
-}  // anonymous namespace
-
-class ActivationWithMKLDNNOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
-    ctx->ShareLoD("X", /*->*/ "Out");
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this);
-  }
-};
-
-class ActivationWithMKLDNNOpGrad : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("Out"));
-  }
-
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return GetKernelType(ctx, *this);
   }
 };
 

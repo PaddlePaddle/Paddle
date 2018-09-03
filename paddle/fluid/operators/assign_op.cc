@@ -94,8 +94,7 @@ class AssignOp : public framework::OperatorBase {
 
 class AssignOpProtoMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AssignOpProtoMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X",
              "(LoDTensor, SelectedRows or LoDTensorArray) The input variable "
              "could be LoDTensor, SelectedRows or LoDTensorArray.")

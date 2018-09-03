@@ -48,8 +48,7 @@ class SquaredL2NormGradOp : public framework::OperatorWithKernel {
 
 class SquaredL2NormOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  SquaredL2NormOpMaker(OpProto* proto, OpAttrChecker* op_checker)
-      : framework::OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddInput("X", "(Tensor) The input of squared_l2_norm op.");
     AddOutput("Out", "(Scalar) The output of squared_l2_norm op.");
     AddComment(R"DOC(

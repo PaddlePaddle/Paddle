@@ -45,8 +45,7 @@ class AssignValueOp : public framework::OperatorWithKernel {
 
 class AssignValueOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  AssignValueOpMaker(OpProto *proto, OpAttrChecker *op_checker)
-      : OpProtoAndCheckerMaker(proto, op_checker) {
+  void Make() override {
     AddOutput("Out", "(Tensor) Output tensor of assign_value operator.");
     AddAttr<std::vector<int>>("shape",
                               "(vector<int>) "
@@ -71,6 +70,7 @@ $$Out = values$$
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(assign_value, ops::AssignValueOp, ops::AssignValueOpMaker);
+REGISTER_OPERATOR(assign_value, ops::AssignValueOp, ops::AssignValueOpMaker,
+                  paddle::framework::EmptyGradOpMaker);
 REGISTER_OP_CPU_KERNEL(assign_value, ops::AssignValueKernel<int>,
                        ops::AssignValueKernel<float>);

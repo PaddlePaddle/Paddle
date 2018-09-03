@@ -16,3 +16,4 @@ Here is an example of linear regression. It introduces workflow of PaddlePaddle,
   :maxdepth: 1
 
   concepts/index_en.rst
+  developer's_guide_to_paddle_fluid.md

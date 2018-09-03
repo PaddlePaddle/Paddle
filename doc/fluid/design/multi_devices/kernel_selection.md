@@ -74,10 +74,10 @@ void OperatorWithKernel::Run(
     auto kernel_type_for_var = this->GetKernelTypeForVar(...);
     if (kernel_type_for_var.place_ != expected_kernel_key.place_) {
       auto* trans_var = new_scope.Var(var_name);
-      auto* out = DataTransform(expected_kernel_key,
+      auto* out = TransformData(expected_kernel_key,
                                 kernel_type_for_var,
                                 *tensor_in);
-      CopyVariableWithTensor(...);
+      SetTensorToVariable(...);
     }
   }
 
