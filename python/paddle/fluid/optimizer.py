@@ -897,7 +897,20 @@ class RMSPropOptimizer(Optimizer):
 
         r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
 
-        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) +
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{r(w,t) +
+            \\epsilon}} \\nabla Q_{i}(w)
+
+        w & = w - v(w, t)
+
+    if centered is True:
+
+    ..  math::
+
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
+
+        g(w, t) & = \\rho g(w, t-1) + (1 - \\rho)\\nabla Q_{i}(w)
+
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{r(w,t) - (g(w, t))^2 +
             \\epsilon}} \\nabla Q_{i}(w)
 
         w & = w - v(w, t)
