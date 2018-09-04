@@ -50,6 +50,7 @@ OP_ROLE_VAR_ATTR_NAME = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
 RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName(
 )
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
+DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
 
 
 class VarBlock:
@@ -372,7 +373,10 @@ class DistributeTranspiler(object):
                 type="concat",
                 inputs={"X": splited_var},
                 outputs={"Out": [orig_param]},
-                attrs={"axis": 0})
+                attrs={
+                    "axis": 0,
+                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                })
 
         self._get_trainer_startup_program(recv_vars=recv_vars, eplist=eplist)
 
@@ -608,10 +612,9 @@ class DistributeTranspiler(object):
             per_opt_block = pserver_program.create_block(pre_block_idx)
             optimize_blocks.append(per_opt_block)
             # append grad merging ops before clip and weight decay
-            # cases may like:
-            # L2Decay op -> clip op -> optimize
+            # e.g. merge grad -> L2Decay op -> clip op -> optimize
             for _, op in enumerate(self.optimize_ops):
-                # find the origin @GRAD var before clipping
+                # find the origin @GRAD var before clipping/L2Decay
                 grad_varname_for_block = __op_have_grad_input__(op)
                 if ufind.is_connected(op, opt_op) and grad_varname_for_block:
                     merged_var = self._append_pserver_grad_merge_ops(
@@ -1289,7 +1292,10 @@ class DistributeTranspiler(object):
                 type="split_selected_rows",
                 inputs={"X": orig_var},
                 outputs={"Out": splited_vars},
-                attrs={"height_sections": height_sections})
+                attrs={
+                    "height_sections": height_sections,
+                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                })
         elif orig_var.type == core.VarDesc.VarType.LOD_TENSOR:
             sections = []
             for v in splited_vars:
@@ -1299,8 +1305,10 @@ class DistributeTranspiler(object):
                 type="split_byref",
                 inputs={"X": orig_var},
                 outputs={"Out": splited_vars},
-                attrs={"sections": sections}  # assume split evenly
-            )
+                attrs={
+                    "sections": sections,
+                    RPC_OP_ROLE_ATTR_NAME: DIST_OP_ROLE_ATTR_VALUE
+                })
         else:
             AssertionError("Variable type should be in set "
                            "[LOD_TENSOR, SELECTED_ROWS]")
@@ -1375,8 +1383,8 @@ class DistributeTranspiler(object):
             merged_var_name = '.'.join([orig_varname, block_name])
         else:
             merged_var_name = orig_varname
-        merged_var = \
-            pserver_block.vars[merged_var_name]
+
+        merged_var = pserver_block.vars[merged_var_name]
         grad_to_block_id.append(merged_var.name + ":" + str(optimize_block.idx))
         if self.sync_mode and self.trainer_num > 1:
             vars2merge = []
@@ -1462,7 +1470,6 @@ class DistributeTranspiler(object):
         outputs = self._get_output_map_from_op(
             self.origin_program.global_block().vars, opt_op)
         outputs["ParamOut"] = new_inputs["Param"]
-
         optimize_block.append_op(
             type=opt_op.type,
             inputs=new_inputs,
