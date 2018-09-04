@@ -291,7 +291,7 @@ class OpTest(unittest.TestCase):
                             return_numpy=False)
         return outs, fetch_list
 
-    def check_output_with_place(self, place, atol, equal_nan):
+    def check_output_with_place(self, place, atol, equal_nan=False):
         outs, fetch_list = self._calc_output(place)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
