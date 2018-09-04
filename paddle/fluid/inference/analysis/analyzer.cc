@@ -116,8 +116,9 @@ void Analyzer::Run(Argument* argument) {
   }
 }
 
-void Analyzer::DisableIrPasses(const std::vector<std::string>& passes) {
+Analyzer& Analyzer::DisableIrPasses(const std::vector<std::string>& passes) {
   disabled_ir_passes_.insert(passes.begin(), passes.end());
+  return *this;
 }
 
 }  // namespace analysis

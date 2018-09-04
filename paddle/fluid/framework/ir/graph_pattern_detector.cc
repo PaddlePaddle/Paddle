@@ -73,7 +73,6 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
 void GraphPatternDetector::operator()(Graph* graph,
                                       GraphPatternDetector::handle_t handler) {
   if (!MarkPDNodesInGraph(*graph)) {
-    LOG(INFO) << "Mark failed";
     return;
   }
 

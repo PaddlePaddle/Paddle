@@ -51,9 +51,9 @@ class Analyzer : public OrderedRegistry<PassManager> {
 
   void Run(Argument* argument);
 
-  DISABLE_COPY_AND_ASSIGN(Analyzer);
+  Analyzer& DisableIrPasses(const std::vector<std::string>& passes);
 
-  void DisableIrPasses(const std::vector<std::string>& passes);
+  DISABLE_COPY_AND_ASSIGN(Analyzer);
 
  private:
   // All avaiable IR passes.

@@ -91,7 +91,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  Analyzer().Run(&argument_);
+  PADDLE_ENFORCE(config_.ir_mode == AnalysisConfig::IrPassMode::kExclude,
+                 "Only kExclude is supported yet.");
+  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
   inference_program_.reset(
