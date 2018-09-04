@@ -15,7 +15,7 @@
 from __future__ import print_function
 import re
 from collections import defaultdict
-from paddle.fluid.framework import Program, Variable
+from paddle.fluid.framework import Program, Variable, name_scope
 from . import framework
 from . import layers
 from .backward import append_backward
@@ -237,7 +237,7 @@ class Optimizer(object):
                 if param_and_grad[1] is None:
                     continue
                 with param_and_grad[0].block.program.optimized_guard(
-                        param_and_grad):
+                        param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
                                                                param_and_grad)

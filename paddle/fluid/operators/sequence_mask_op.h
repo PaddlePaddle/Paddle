@@ -99,7 +99,7 @@ struct SequenceMaskFunctor {
       : ctx_(ctx), x_(x), y_(y), limits_(limits), maxlen_(maxlen) {}
 
   template <typename Ty>
-  void operator()() const {
+  void apply() const {
     auto *y_data = y_->mutable_data<Ty>(ctx_.GetPlace());
     platform::ForRange<DeviceContext> for_range(ctx_, limits_);
     for_range(SequenceMaskForRangeFunctor<Tx, Ty>(x_, y_data, maxlen_));

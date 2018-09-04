@@ -31,7 +31,7 @@ static inline int NumBlocks(const int N) {
 
 template <typename T>
 __global__ void GPUROIPoolForward(
-    const int nthreads, const T* input_data, const int64_t* input_rois,
+    const int nthreads, const T* input_data, const T* input_rois,
     const float spatial_scale, const int channels, const int height,
     const int width, const int pooled_height, const int pooled_width,
     int* roi_batch_id_data, T* output_data, int64_t* argmax_data) {
@@ -43,7 +43,7 @@ __global__ void GPUROIPoolForward(
     int c = (i / pooled_width / pooled_height) % channels;
     int n = i / pooled_width / pooled_height / channels;
 
-    const int64_t* offset_input_rois = input_rois + n * kROISize;
+    const T* offset_input_rois = input_rois + n * kROISize;
     int roi_batch_ind = roi_batch_id_data[n];
     int roi_start_w = round(offset_input_rois[0] * spatial_scale);
     int roi_start_h = round(offset_input_rois[1] * spatial_scale);
@@ -93,7 +93,7 @@ __global__ void GPUROIPoolForward(
 
 template <typename T>
 __global__ void GPUROIPoolBackward(
-    const int nthreads, const int64_t* input_rois, const T* output_grad,
+    const int nthreads, const T* input_rois, const T* output_grad,
     const int64_t* argmax_data, const int num_rois, const float spatial_scale,
     const int channels, const int height, const int width,
     const int pooled_height, const int pooled_width, int* roi_batch_id_data,
@@ -174,8 +174,8 @@ class GPUROIPoolOpKernel : public framework::OpKernel<T> {
 
     GPUROIPoolForward<
         T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-        output_size, in->data<T>(), rois->data<int64_t>(), spatial_scale,
-        channels, height, width, pooled_height, pooled_width,
+        output_size, in->data<T>(), rois->data<T>(), spatial_scale, channels,
+        height, width, pooled_height, pooled_width,
         roi_batch_id_list_gpu.data<int>(), out->mutable_data<T>(ctx.GetPlace()),
         argmax->mutable_data<int64_t>(ctx.GetPlace()));
   }
@@ -228,7 +228,7 @@ class GPUROIPoolGradOpKernel : public framework::OpKernel<T> {
       if (output_grad_size > 0) {
         GPUROIPoolBackward<
             T><<<blocks, threads, 0, ctx.cuda_device_context().stream()>>>(
-            output_grad_size, rois->data<int64_t>(), out_grad->data<T>(),
+            output_grad_size, rois->data<T>(), out_grad->data<T>(),
             argmax->data<int64_t>(), rois_num, spatial_scale, channels, height,
             width, pooled_height, pooled_width,
             roi_batch_id_list_gpu.data<int>(),

@@ -130,6 +130,9 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
                                     "Optimized for variable")
       .SetDefault({});
 
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
+      .SetDefault("");
+
   Validate();
 }
 

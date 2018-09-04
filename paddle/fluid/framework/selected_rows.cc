@@ -49,7 +49,7 @@ struct TensorCopyVisitor {
         size_(size) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     // TODO(Yancey1989): support other place
     platform::CPUPlace cpu;
     memory::Copy(cpu, dst_->mutable_data<T>(cpu) + dst_offset_, cpu,

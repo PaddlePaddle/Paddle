@@ -140,8 +140,9 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
         return node->IsOp() && (node->Name() == "op2" || node->Name() == "op3");
       },
       "OP0");
-  auto* any_var = x.mutable_pattern()->NewNode(
-      [](Node* node) { return node->IsVar(); }, "VAR");
+  auto* any_var = x.mutable_pattern()
+                      ->NewNode([](Node* node) { return node->IsVar(); }, "VAR")
+                      ->AsIntermediate();
   auto* any_op1 = x.mutable_pattern()->NewNode(
       [](Node* node) { return node->IsOp(); }, "OP1");
 
@@ -165,6 +166,39 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
   // But 2 and 3 and 4 overlapped, so keep 2, so the final choices are 1 and 2
   ASSERT_GE(count, 1);
   ASSERT_LE(count, 2);
+}
+
+TEST(GraphPatternDetector, IntermediateCheck) {
+  ProgramDesc program;
+  Graph graph(program);
+  BuildGraph(&graph);
+
+  // o2->v2->o3
+  // o2->v2->o4
+  // check o2+o3 fuse, should fail because v2 also link to o4.
+  GraphPatternDetector detector;
+  auto* op2 = detector.mutable_pattern()->NewNode(
+      [](Node* x) { return x && x->IsOp() && x->Name() == "op2"; }, "op2");
+  auto* op3 = detector.mutable_pattern()->NewNode(
+      [](Node* x) { return x && x->IsOp() && x->Name() == "op3"; }, "op3");
+  auto* v2 =
+      detector.mutable_pattern()
+          ->NewNode(
+              [](Node* x) { return x && x->IsVar() && x->Name() == "var2"; },
+              "var2")
+          ->AsIntermediate();
+  v2->LinksFrom({op2}).LinksTo({op3});
+
+  int count = 0;
+  detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
+                       Graph* graph) { ++count; });
+  EXPECT_EQ(count, 0);
+
+  count = 0;
+  v2->AsInput();
+  detector(&graph, [&](const GraphPatternDetector::subgraph_t& g,
+                       Graph* graph) { ++count; });
+  ASSERT_EQ(count, 1);
 }
 
 }  // namespace ir

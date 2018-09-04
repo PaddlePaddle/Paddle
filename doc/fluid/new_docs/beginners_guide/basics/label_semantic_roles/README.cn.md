@@ -21,7 +21,7 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_\mb
 5. 对第4步的结果，通过多分类得到论元的语义角色标签。可以看到，句法分析是基础，并且后续步骤常常会构造的一些人工特征，这些特征往往也来自句法分析。
 
 <div  align="center">
-<img src="image/dependency_parsing.png" width = "80%" align=center /><br>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/dependency_parsing.png?raw=true" width = "80%" align=center /><br>
 图1. 依存句法分析句法树示例
 </div>
 
@@ -30,7 +30,7 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_\mb
 我们继续以上面的这句话为例，图1展示了BIO表示方法。
 
 <div  align="center">
-<img src="image/bio_example.png" width = "90%"  align=center /><br>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/bio_example.png?raw=true" width = "90%"  align=center /><br>
 图2. BIO标注方法示例
 </div>
 
@@ -53,7 +53,7 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_\mb
 图3是最终得到的栈式循环神经网络结构示意图。
 
 <p align="center">  
-<img src="./image/stacked_lstm.png" width = "40%"  align=center><br>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/stacked_lstm.png?raw=true" width = "40%"  align=center><br>
 图3. 基于LSTM的栈式循环神经网络结构示意图
 </p>
 
@@ -64,7 +64,7 @@ $$\mbox{[小明]}_{\mbox{Agent}}\mbox{[昨天]}_{\mbox{Time}}\mbox{[晚上]}_\mb
 为了克服这一缺陷，我们可以设计一种双向循环网络单元，它的思想简单且直接：对上一节的栈式循环神经网络进行一个小小的修改，堆叠多个LSTM单元，让每一层LSTM单元分别以：正向、反向、正向 …… 的顺序学习上一层的输出序列。于是，从第2层开始，$t$时刻我们的LSTM单元便总是可以看到历史和未来的信息。图4是基于LSTM的双向循环神经网络结构示意图。
 
 <p align="center">  
-<img src="./image/bidirectional_stacked_lstm.png" width = "60%" align=center><br>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/bidirectional_stacked_lstm.png?raw=true" width = "60%" align=center><br>
 图4. 基于LSTM的双向循环神经网络结构示意图
 </p>
 
@@ -79,7 +79,7 @@ CRF是一种概率化结构模型，可以看作是一个概率无向图模型�
 序列标注任务只需要考虑输入和输出都是一个线性序列，并且由于我们只是将输入序列作为条件，不做任何条件独立假设，因此输入序列的元素之间并不存在图结构。综上，在序列标注任务中使用的是如图5所示的定义在链式图上的CRF，称之为线性链条件随机场（Linear Chain Conditional Random Field）。
 
 <p align="center">  
-<img src="./image/linear_chain_crf.png" width = "35%" align=center><br>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/linear_chain_crf.png?raw=true" width = "35%" align=center><br>
 图5. 序列标注任务中使用的线性链条件随机场
 </p>
 
@@ -123,7 +123,7 @@ $$\DeclareMathOperator*{\argmax}{arg\,max} L(\lambda, D) = - \text{log}\left(\pr
 4. CRF以第3步中LSTM学习到的特征为输入，以标记序列为监督信号，完成序列标注；
 
 <div  align="center">  
-<img src="image/db_lstm_network.png" width = "60%"  align=center /><br>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/07.label_semantic_roles/image/db_lstm_network.png?raw=true" width = "60%"  align=center /><br>
 图6. SRL任务上的深层双向LSTM模型
 </div>
 
