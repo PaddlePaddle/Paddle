@@ -297,6 +297,10 @@ PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
 
 }  // namespace patterns
 
+#define IR_NODE_LINK_TO(a, b) \
+  a->outputs.push_back(b);    \
+  b->inputs.push_back(a);
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
