@@ -52,6 +52,13 @@ RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpR
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
 
+PRINT_LOG = False
+
+
+def log(*args):
+    if PRINT_LOG:
+        print(args)
+
 
 class VarBlock:
     def __init__(self, varname, offset, size):
@@ -128,6 +135,7 @@ class DistributeTranspilerConfig(object):
     slice_var_up = True
     split_method = None
     min_block_size = 8192
+    print_log = False
 
 
 class DistributeTranspiler(object):
@@ -175,6 +183,9 @@ class DistributeTranspiler(object):
         if self.config.split_method is None:
             self.config.split_method = RoundRobin
 
+        global PRINT_LOG
+        if self.config.print_log:
+            PRINT_LOG = True
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
@@ -613,6 +624,7 @@ class DistributeTranspiler(object):
             optimize_blocks.append(per_opt_block)
             # append grad merging ops before clip and weight decay
             # e.g. merge grad -> L2Decay op -> clip op -> optimize
+            merged_var = None
             for _, op in enumerate(self.optimize_ops):
                 # find the origin @GRAD var before clipping/L2Decay
                 grad_varname_for_block = __op_have_grad_input__(op)
@@ -620,12 +632,17 @@ class DistributeTranspiler(object):
                     merged_var = self._append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, endpoint,
                         grad_to_block_id, self.origin_program)
-                    break  # append optimize op once then append other ops.
-            for _, op in enumerate(self.optimize_ops):
-                # optimizer is connected to itself
-                if ufind.is_connected(op, opt_op) and op not in global_ops:
-                    __append_optimize_op__(op, per_opt_block, grad_to_block_id,
-                                           merged_var, lr_ops)
+                    if merged_var:
+                        break  # append optimize op once then append other ops.
+            if merged_var:
+                for _, op in enumerate(self.optimize_ops):
+                    # optimizer is connected to itself
+                    if ufind.is_connected(op, opt_op) and op not in global_ops:
+                        log("append opt op: ", op.type, op.input_arg_names,
+                            merged_var)
+                        __append_optimize_op__(op, per_opt_block,
+                                               grad_to_block_id, merged_var,
+                                               lr_ops)
 
         # dedup grad to ids list
         grad_to_block_id = list(set(grad_to_block_id))
@@ -1377,7 +1394,7 @@ class DistributeTranspiler(object):
         if not grad_block:
             # do not append this op if current endpoint
             # is not dealing with this grad block
-            return
+            return None
         orig_varname, block_name, trainer_name = self._get_varname_parts(
             grad_block.name)
         if block_name:
@@ -1674,8 +1691,9 @@ class DistributeTranspiler(object):
                 # and op_role_var to get the pair.
                 for input_name in op.input_arg_names:
                     if input_name.find("@GRAD") != -1 and \
-                        op.attr(RPC_OP_ROLE_ATTR_NAME):
+                        op.attr(OP_ROLE_VAR_ATTR_NAME):
                         param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
+                        log("adding param_grad pair: ", param_name, input_name)
                         params_grads.append([
                             origin_var_dict[param_name],
                             origin_var_dict[input_name]
