@@ -19,6 +19,23 @@ import numpy as np
 from op_test import OpTest
 
 
+class TestData(object):
+    def __init__(self):
+        self.param = np.random.random((123, 321)).astype("float32")
+
+        self.mean_square = np.random.random((123, 321)).astype("float32")
+        self.mean_grad = np.random.random((123, 321)).astype("float32")
+
+        self.learning_rate = np.array([0.01]).astype("float32")
+
+        self.grad = np.random.random((123, 321)).astype("float32")
+        self.moment = np.zeros((123, 321)).astype("float32")
+
+        self.epsilon = 1e-6
+        self.decay = 0.9
+        self.momentum = 0.0
+
+
 class TestRmspropOp1(OpTest):
     ''' Test RMSProp with explicit inputs
     '''
@@ -39,6 +56,7 @@ class TestRmspropOp1(OpTest):
         self.inputs = {
             'Param': param,
             'MeanSquare': mean_square,
+            'MeanGrad': mean_square,  # just a place holder
             'LearningRate': learning_rate,
             'Grad': grad,
             'Moment': moment,
@@ -81,6 +99,7 @@ class TestRmspropOp2(OpTest):
         self.inputs = {
             'Param': param,
             'MeanSquare': mean_square,
+            'MeanGrad': mean_square,  # just a place holder
             'LearningRate': learning_rate,
             'Grad': grad,
             'Moment': moment,
@@ -110,7 +129,7 @@ class TestRmspropOpV1Mode(OpTest):
 
         param = np.random.random((123, 321)).astype("float32")
         mean_square = np.random.random((123, 321)).astype("float32")
-        mean_square1 = np.random.random((123, 321)).astype("float32")
+        mean_grad = np.random.random((123, 321)).astype("float32")
         learning_rate = np.array([0.01]).astype("float32")
         grad = np.random.random((123, 321)).astype("float32")
         moment = np.zeros((123, 321)).astype("float32")
@@ -122,7 +141,7 @@ class TestRmspropOpV1Mode(OpTest):
         self.inputs = {
             'Param': param,
             'MeanSquare': mean_square,
-            'MeanSquare1': mean_square1,
+            'MeanGrad': mean_grad,
             'LearningRate': learning_rate,
             'Grad': grad,
             'Moment': moment,
@@ -132,20 +151,20 @@ class TestRmspropOpV1Mode(OpTest):
             'epsilon': epsilon,
             'decay': decay,
             'momentum': momentum,
-            'v1_mode': True
+            'centered': True
         }
 
         ms_out = decay * mean_square + (1 - decay) * grad * grad
-        ms1_out = decay * mean_square1 + (1 - decay) * grad
+        mg_out = decay * mean_grad + (1 - decay) * grad
         moment_out = momentum * moment + \
-                     learning_rate * grad / np.sqrt(ms_out - np.square(ms1_out) + epsilon)
+                     learning_rate * grad / np.sqrt(ms_out - np.square(mg_out) + epsilon)
         param_out = param - moment_out
 
         self.outputs = {
             'ParamOut': param_out,
             'MomentOut': moment_out,
             'MeanSquareOut': ms_out,
-            'MeanSquareOut1': ms1_out
+            'MeanGradOut': mg_out
         }
 
     def test_check_output(self):

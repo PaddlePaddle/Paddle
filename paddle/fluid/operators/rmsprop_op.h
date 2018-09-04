@@ -31,23 +31,20 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto* param_out = ctx.Output<Tensor>("ParamOut");
     auto* moment_out = ctx.Output<Tensor>("MomentOut");
     auto* mean_square_out = ctx.Output<Tensor>("MeanSquareOut");
-    auto* mean_square1_out = ctx.Output<Tensor>("MeanSquareOut1");
 
     auto grad = ctx.Input<Tensor>("Grad");
 
     param_out->mutable_data<T>(ctx.GetPlace());
     moment_out->mutable_data<T>(ctx.GetPlace());
     mean_square_out->mutable_data<T>(ctx.GetPlace());
-    mean_square1_out->mutable_data<T>(ctx.GetPlace());
 
     float epsilon = ctx.Attr<float>("epsilon");
     float rho = ctx.Attr<float>("decay");
     float momentum = ctx.Attr<float>("momentum");
-    bool v1_mode = ctx.Attr<bool>("v1_mode");
+    bool centered = ctx.Attr<bool>("centered");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto ms = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare"));
-    auto ms1 = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare1"));
     auto lr = EigenVector<T>::Flatten(*ctx.Input<Tensor>("LearningRate"));
     auto g = EigenVector<T>::Flatten(*grad);
     auto mom = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Moment"));
@@ -55,18 +52,21 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto p_out = EigenVector<T>::Flatten(*param_out);
     auto mom_out = EigenVector<T>::Flatten(*moment_out);
     auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
-    auto ms1_out = EigenVector<T>::Flatten(*mean_square1_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+    Eigen::DSizes<int, 1> grad_dsize(static_cast<int>(grad->numel()));
 
     ms_out.device(place) = rho * ms + (1 - rho) * g * g;
-    if (v1_mode) {
-      std::cout << "v1 mode" << std::endl;
-      ms1_out.device(place) = rho * ms1 + (1 - rho) * g;
+    if (centered) {
+      auto mg = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanGrad"));
+      auto* mean_grad_out = ctx.Output<Tensor>("MeanGradOut");
+      mean_grad_out->mutable_data<T>(ctx.GetPlace());
+      auto mg_out = EigenVector<T>::Flatten(*mean_grad_out);
+
+      mg_out.device(place) = rho * mg + (1 - rho) * g;
       mom_out.device(place) = momentum * mom +
                               lr.broadcast(grad_dsize) * g /
-                                  (ms_out - ms1_out.square() + epsilon).sqrt();
+                                  (ms_out - mg_out.square() + epsilon).sqrt();
     } else {
       mom_out.device(place) =
           momentum * mom +
