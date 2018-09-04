@@ -260,11 +260,7 @@ void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
 
   LOG(INFO) << "===========profile result===========";
   if (num_threads == 1) {
-    std::vector<PaddleTensor> input_slots;
     // Prepare inputs.
-    DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
-    PrepareInputs(&input_slots, &data, batch_size);
-
     Timer timer;
     timer.tic();
     for (int i = 0; i < num_times; i++) {
@@ -273,21 +269,20 @@ void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
     print_time(batch_size, num_times, 1, 0, timer.toc() / num_times);
   } else {
     std::vector<std::thread> threads;
-    std::vector<PaddleTensor> input_slots;
-    // Prepare inputs.
-    PrepareInputs(&input_slots, &data, batch_size);
-    std::vector<PaddleTensor> outputs;
+    std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+    // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
+    // because AttentionLSTM's hard code nodeid will be damanged.
+    for (int tid = 0; tid < num_threads; ++tid) {
+      predictors.emplace_back(
+          CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
+              config));
+    }
     for (int tid = 0; tid < num_threads; ++tid) {
       threads.emplace_back([&, tid]() {
-        auto predictor_tid =
-            CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
-                config);
-        DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
-
         Timer timer;
         timer.tic();
         for (int i = 0; i < num_times; i++) {
-          predictor_tid->Run(input_slots, &outputs);
+          predictors[tid]->Run(input_slots, &outputs);
         }
         print_time(batch_size, num_times, num_threads, tid,
                    timer.toc() / num_times);
@@ -348,8 +343,9 @@ void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
 }
 
 TEST(Analyzer, DituRNN) {
-  TestDituRNNPrediction(false, 1);
-  TestDituRNNPrediction(true, 1);
+  // default FLAGS_num_threads = 1
+  TestDituRNNPrediction(false, FLAGS_num_threads);
+  TestDituRNNPrediction(true, FLAGS_num_threads);
 }
 
 TEST(Analyzer, DituRNN_multi_thread) {
