@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <random>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -46,156 +47,219 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
     auto in_dims = ctx->GetInputDim("DistMat");
     PADDLE_ENFORCE_EQ(in_dims.size(), 2,
                       "The rank of Input(DistMat) must be 2.");
+
+    ctx->SetOutputDim("LocationIndex", {-1});
+    ctx->SetOutputDim("ScoreIndex", {-1});
+    ctx->SetOutputDim("TargetLabel", {-1, 1});
+    ctx->SetOutputDim("TargetBBox", {-1, 4});
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return framework::OpKernelType(
+        framework::ToDataType(
+            ctx.Input<framework::LoDTensor>("DistMat")->type()),
+        platform::CPUPlace());
   }
 };
 
 template <typename T>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
-  void ScoreAssign(const T* dist_data, const Tensor& anchor_to_gt_max,
-                   const int row, const int col, const float pos_threshold,
-                   const float neg_threshold, int64_t* target_label_data,
-                   std::vector<int>* fg_inds, std::vector<int>* bg_inds) const {
-    int fg_offset = fg_inds->size();
-    int bg_offset = bg_inds->size();
-    for (int64_t i = 0; i < row; ++i) {
-      const T* v = dist_data + i * col;
-      T max_dist = *std::max_element(v, v + col);
-      for (int64_t j = 0; j < col; ++j) {
-        T val = dist_data[i * col + j];
-        if (val == max_dist) target_label_data[j] = 1;
-      }
-    }
-
-    // Pick the fg/bg and count the number
-    for (int64_t j = 0; j < col; ++j) {
-      if (anchor_to_gt_max.data<T>()[j] > pos_threshold) {
-        target_label_data[j] = 1;
-      } else if (anchor_to_gt_max.data<T>()[j] < neg_threshold) {
-        target_label_data[j] = 0;
-      }
-      if (target_label_data[j] == 1) {
-        fg_inds->push_back(fg_offset + j);
-      } else if (target_label_data[j] == 0) {
-        bg_inds->push_back(bg_offset + j);
-      }
-    }
-  }
-
-  void ReservoirSampling(const int num, const int offset,
-                         std::minstd_rand engine,
-                         std::vector<int>* inds) const {
-    std::uniform_real_distribution<float> uniform(0, 1);
-    const int64_t size = static_cast<int64_t>(inds->size() - offset);
-    if (size > num) {
-      for (int64_t i = num; i < size; ++i) {
-        int rng_ind = std::floor(uniform(engine) * i);
-        if (rng_ind < num)
-          std::iter_swap(inds->begin() + rng_ind + offset,
-                         inds->begin() + i + offset);
-      }
-    }
-  }
-
-  void RpnTargetAssign(const framework::ExecutionContext& ctx,
-                       const Tensor& dist, const float pos_threshold,
-                       const float neg_threshold, const int rpn_batch_size,
-                       const int fg_num, std::minstd_rand engine,
-                       std::vector<int>* fg_inds, std::vector<int>* bg_inds,
-                       int64_t* target_label_data) const {
-    auto* dist_data = dist.data<T>();
-    int64_t row = dist.dims()[0];
-    int64_t col = dist.dims()[1];
-    int fg_offset = fg_inds->size();
-    int bg_offset = bg_inds->size();
-
-    // Calculate the max IoU between anchors and gt boxes
-    Tensor anchor_to_gt_max;
-    anchor_to_gt_max.mutable_data<T>(
-        framework::make_ddim({static_cast<int64_t>(col), 1}),
-        platform::CPUPlace());
-    auto& place = *ctx.template device_context<platform::CPUDeviceContext>()
-                       .eigen_device();
-    auto x = EigenMatrix<T>::From(dist);
-    auto x_col_max = EigenMatrix<T>::From(anchor_to_gt_max);
-    x_col_max.device(place) =
-        x.maximum(Eigen::DSizes<int, 1>(0))
-            .reshape(Eigen::DSizes<int, 2>(static_cast<int64_t>(col), 1));
-    // Follow the Faster RCNN's implementation
-    ScoreAssign(dist_data, anchor_to_gt_max, row, col, pos_threshold,
-                neg_threshold, target_label_data, fg_inds, bg_inds);
-    // Reservoir Sampling
-    ReservoirSampling(fg_num, fg_offset, engine, fg_inds);
-    int bg_num = rpn_batch_size - (fg_inds->size() - fg_offset);
-    ReservoirSampling(bg_num, bg_offset, engine, bg_inds);
-  }
-
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* dist = context.Input<LoDTensor>("DistMat");
-    auto* loc_index = context.Output<Tensor>("LocationIndex");
-    auto* score_index = context.Output<Tensor>("ScoreIndex");
-    auto* tgt_lbl = context.Output<Tensor>("TargetLabel");
+    auto* anchor_t = context.Input<Tensor>("Anchor");  // (H*W*A) * 4
+    auto* gt_bbox_t = context.Input<Tensor>("GtBox");
+    auto* dist_t = context.Input<LoDTensor>("DistMat");
 
-    auto col = dist->dims()[1];
-    int64_t n = dist->lod().size() == 0UL
-                    ? 1
-                    : static_cast<int64_t>(dist->lod().back().size() - 1);
-    if (dist->lod().size()) {
-      PADDLE_ENFORCE_EQ(dist->lod().size(), 1UL,
-                        "Only support 1 level of LoD.");
-    }
+    auto* loc_index_t = context.Output<Tensor>("LocationIndex");
+    auto* score_index_t = context.Output<Tensor>("ScoreIndex");
+    auto* tgt_bbox_t = context.Output<Tensor>("TargetBBox");
+    auto* tgt_lbl_t = context.Output<Tensor>("TargetLabel");
+
+    auto lod = dist_t->lod().back();
+    int64_t batch_num = static_cast<int64_t>(lod.size() - 1);
+    int64_t anchor_num = dist_t->dims()[1];
+    PADDLE_ENFORCE_EQ(anchor_num, anchor_t->dims()[0]);
+
     int rpn_batch_size = context.Attr<int>("rpn_batch_size_per_im");
     float pos_threshold = context.Attr<float>("rpn_positive_overlap");
     float neg_threshold = context.Attr<float>("rpn_negative_overlap");
     float fg_fraction = context.Attr<float>("fg_fraction");
 
-    int fg_num = static_cast<int>(rpn_batch_size * fg_fraction);
+    int fg_num_per_batch = static_cast<int>(rpn_batch_size * fg_fraction);
 
-    int64_t* target_label_data =
-        tgt_lbl->mutable_data<int64_t>({n * col, 1}, context.GetPlace());
+    int64_t max_num = batch_num * anchor_num;
+    auto place = context.GetPlace();
 
+    tgt_bbox_t->mutable_data<T>({max_num, 4}, place);
+    auto* loc_index = loc_index_t->mutable_data<int>({max_num}, place);
+    auto* score_index = score_index_t->mutable_data<int>({max_num}, place);
+
+    Tensor tmp_tgt_lbl;
+    auto* tmp_lbl_data = tmp_tgt_lbl.mutable_data<int64_t>({max_num}, place);
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
     math::SetConstant<platform::CPUDeviceContext, int64_t> iset;
-    iset(dev_ctx, tgt_lbl, static_cast<int>(-1));
+    iset(dev_ctx, &tmp_tgt_lbl, static_cast<int64_t>(-1));
 
-    std::vector<int> fg_inds;
-    std::vector<int> bg_inds;
     std::random_device rnd;
     std::minstd_rand engine;
     int seed =
         context.Attr<bool>("fix_seed") ? context.Attr<int>("seed") : rnd();
     engine.seed(seed);
 
-    if (n == 1) {
-      RpnTargetAssign(context, *dist, pos_threshold, neg_threshold,
-                      rpn_batch_size, fg_num, engine, &fg_inds, &bg_inds,
-                      target_label_data);
-    } else {
-      auto lod = dist->lod().back();
-      for (size_t i = 0; i < lod.size() - 1; ++i) {
-        Tensor one_ins = dist->Slice(lod[i], lod[i + 1]);
-        RpnTargetAssign(context, one_ins, pos_threshold, neg_threshold,
-                        rpn_batch_size, fg_num, engine, &fg_inds, &bg_inds,
-                        target_label_data + i * col);
+    int fg_num = 0;
+    int bg_num = 0;
+    for (int i = 0; i < batch_num; ++i) {
+      Tensor dist = dist_t->Slice(lod[i], lod[i + 1]);
+      Tensor gt_bbox = gt_bbox_t->Slice(lod[i], lod[i + 1]);
+      auto fg_bg_gt = SampleFgBgGt(dev_ctx, dist, pos_threshold, neg_threshold,
+                                   rpn_batch_size, fg_num_per_batch, engine,
+                                   tmp_lbl_data + i * anchor_num);
+
+      int cur_fg_num = fg_bg_gt[0].size();
+      int cur_bg_num = fg_bg_gt[1].size();
+      std::transform(fg_bg_gt[0].begin(), fg_bg_gt[0].end(), loc_index,
+                     [i, anchor_num](int d) { return d + i * anchor_num; });
+      memcpy(score_index, loc_index, cur_fg_num * sizeof(int));
+      std::transform(fg_bg_gt[1].begin(), fg_bg_gt[1].end(),
+                     score_index + cur_fg_num,
+                     [i, anchor_num](int d) { return d + i * anchor_num; });
+
+      // get target bbox deltas
+      if (cur_fg_num) {
+        Tensor fg_gt;
+        T* gt_data = fg_gt.mutable_data<T>({cur_fg_num, 4}, place);
+        Tensor tgt_bbox = tgt_bbox_t->Slice(fg_num, fg_num + cur_fg_num);
+        T* tgt_data = tgt_bbox.data<T>();
+        Gather<T>(anchor_t->data<T>(), 4,
+                  reinterpret_cast<int*>(&fg_bg_gt[0][0]), cur_fg_num,
+                  tgt_data);
+        Gather<T>(gt_bbox.data<T>(), 4, reinterpret_cast<int*>(&fg_bg_gt[2][0]),
+                  cur_fg_num, gt_data);
+        BoxToDelta<T>(cur_fg_num, tgt_bbox, fg_gt, nullptr, false, &tgt_bbox);
+      }
+
+      loc_index += cur_fg_num;
+      score_index += cur_fg_num + cur_bg_num;
+      fg_num += cur_fg_num;
+      bg_num += cur_bg_num;
+    }
+
+    int lbl_num = fg_num + bg_num;
+    PADDLE_ENFORCE_LE(fg_num, max_num);
+    PADDLE_ENFORCE_LE(lbl_num, max_num);
+
+    tgt_bbox_t->Resize({fg_num, 4});
+    loc_index_t->Resize({fg_num});
+    score_index_t->Resize({lbl_num});
+    auto* lbl_data = tgt_lbl_t->mutable_data<int64_t>({lbl_num, 1}, place);
+    Gather<int64_t>(tmp_lbl_data, 1, score_index_t->data<int>(), lbl_num,
+                    lbl_data);
+  }
+
+ private:
+  void ScoreAssign(const T* dist_data, const Tensor& anchor_to_gt_max,
+                   const int row, const int col, const float pos_threshold,
+                   const float neg_threshold, int64_t* target_label,
+                   std::vector<int>* fg_inds, std::vector<int>* bg_inds) const {
+    float epsilon = 0.0001;
+    for (int64_t i = 0; i < row; ++i) {
+      const T* v = dist_data + i * col;
+      T max = *std::max_element(v, v + col);
+      for (int64_t j = 0; j < col; ++j) {
+        if (std::abs(max - v[j]) < epsilon) {
+          target_label[j] = 1;
+        }
       }
     }
-    int* loc_index_data = loc_index->mutable_data<int>(
-        {static_cast<int>(fg_inds.size())}, context.GetPlace());
-    int* score_index_data = score_index->mutable_data<int>(
-        {static_cast<int>(fg_inds.size() + bg_inds.size())},
-        context.GetPlace());
-    memcpy(loc_index_data, reinterpret_cast<int*>(&fg_inds[0]),
-           fg_inds.size() * sizeof(int));
-    memcpy(score_index_data, reinterpret_cast<int*>(&fg_inds[0]),
-           fg_inds.size() * sizeof(int));
-    memcpy(score_index_data + fg_inds.size(),
-           reinterpret_cast<int*>(&bg_inds[0]), bg_inds.size() * sizeof(int));
+
+    // Pick the fg/bg
+    const T* anchor_to_gt_max_data = anchor_to_gt_max.data<T>();
+    for (int64_t j = 0; j < col; ++j) {
+      if (anchor_to_gt_max_data[j] >= pos_threshold) {
+        target_label[j] = 1;
+      } else if (anchor_to_gt_max_data[j] < neg_threshold) {
+        target_label[j] = 0;
+      }
+      if (target_label[j] == 1) {
+        fg_inds->push_back(j);
+      } else if (target_label[j] == 0) {
+        bg_inds->push_back(j);
+      }
+    }
+  }
+
+  void ReservoirSampling(const int num, std::minstd_rand engine,
+                         std::vector<int>* inds) const {
+    std::uniform_real_distribution<float> uniform(0, 1);
+    size_t len = inds->size();
+    if (len > static_cast<size_t>(num)) {
+      for (size_t i = num; i < len; ++i) {
+        int rng_ind = std::floor(uniform(engine) * i);
+        if (rng_ind < num)
+          std::iter_swap(inds->begin() + rng_ind, inds->begin() + i);
+      }
+      inds->resize(num);
+    }
+  }
+
+  // std::vector<std::vector<int>> RpnTargetAssign(
+  std::vector<std::vector<int>> SampleFgBgGt(
+      const platform::CPUDeviceContext& ctx, const Tensor& dist,
+      const float pos_threshold, const float neg_threshold,
+      const int rpn_batch_size, const int fg_num, std::minstd_rand engine,
+      int64_t* target_label) const {
+    auto* dist_data = dist.data<T>();
+    int row = dist.dims()[0];
+    int col = dist.dims()[1];
+
+    std::vector<int> fg_inds;
+    std::vector<int> bg_inds;
+    std::vector<int> gt_inds;
+
+    // Calculate the max IoU between anchors and gt boxes
+    // Map from anchor to gt box that has highest overlap
+    auto place = ctx.GetPlace();
+    Tensor anchor_to_gt_max, anchor_to_gt_argmax;
+    anchor_to_gt_max.mutable_data<T>({col}, place);
+    int* argmax = anchor_to_gt_argmax.mutable_data<int>({col}, place);
+
+    auto x = framework::EigenMatrix<T>::From(dist);
+    auto x_col_max = framework::EigenVector<T>::Flatten(anchor_to_gt_max);
+    auto x_col_argmax =
+        framework::EigenVector<int>::Flatten(anchor_to_gt_argmax);
+    x_col_max = x.maximum(Eigen::DSizes<int, 1>(0));
+    x_col_argmax = x.argmax(0).template cast<int>();
+
+    // Follow the Faster RCNN's implementation
+    ScoreAssign(dist_data, anchor_to_gt_max, row, col, pos_threshold,
+                neg_threshold, target_label, &fg_inds, &bg_inds);
+    // Reservoir Sampling
+    ReservoirSampling(fg_num, engine, &fg_inds);
+    int fg_num2 = static_cast<int>(fg_inds.size());
+    int bg_num = rpn_batch_size - fg_num2;
+    ReservoirSampling(bg_num, engine, &bg_inds);
+
+    gt_inds.reserve(fg_num2);
+    for (int i = 0; i < fg_num2; ++i) {
+      gt_inds.emplace_back(argmax[fg_inds[i]]);
+    }
+    std::vector<std::vector<int>> fg_bg_gt;
+    fg_bg_gt.emplace_back(fg_inds);
+    fg_bg_gt.emplace_back(bg_inds);
+    fg_bg_gt.emplace_back(gt_inds);
+
+    return fg_bg_gt;
   }
 };
 
 class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
+    AddInput("Anchor",
+             "(Tensor) input anchor is a 2-D Tensor with shape [H*W*A, 4].");
+    AddInput("GtBox", "(LoDTensor) input groud-truth bbox with shape [K, 4].");
     AddInput(
         "DistMat",
         "(LoDTensor or Tensor) this input is a 2-D LoDTensor with shape "
@@ -241,12 +305,15 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         "ScoreIndex",
         "(Tensor), The indexes of foreground and background anchors in all "
         "RPN anchors(The rest anchors are ignored). The shape of the "
-        "ScoreIndex is [F + B], F and B depend on the value of input "
-        "tensor and attributes.");
-    AddOutput("TargetLabel",
-              "(Tensor<int64_t>), The target labels of each anchor with shape "
-              "[K * M, 1], "
-              "K and M is the same as they are in DistMat.");
+        "ScoreIndex is [F + B], F and B are sampled foreground and backgroud "
+        " number.");
+    AddOutput("TargetBBox",
+              "(Tensor<int64_t>), The target bbox deltas with shape "
+              "[F, 4], F is the sampled foreground number.");
+    AddOutput(
+        "TargetLabel",
+        "(Tensor<int64_t>), The target labels of each anchor with shape "
+        "[F + B, 1], F and B are sampled foreground and backgroud number.");
     AddComment(R"DOC(
 This operator can be, for given the IoU between the ground truth bboxes and the
 anchors, to assign classification and regression targets to each prediction.
