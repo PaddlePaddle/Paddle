@@ -82,7 +82,7 @@
 机器翻译任务的训练过程中，解码阶段的目标是最大化下一个正确的目标语言词的概率。思路是：
 1. 每一个时刻，根据源语言句子的编码信息（又叫上下文向量，context vector）`$c$`、真实目标语言序列的第`$i$`个词`$u_i$`和`$i$`时刻RNN的隐层状态`$z_i$`，计算出下一个隐层状态`$z_{i+1}$`。计算公式如下：
 $$z_{i+1}=\phi_{\theta '} \left ( c,u_i,z_i \right )$$
-其中`$\phi _{\theta '}$`是一个非线性激活函数；`$c=q\mathbf{h}$`是源语言句子的上下文向量，在不使用[注意力机制](#注意力机制)时，如果[编码器](#编码器)的输出是源语言句子编码后的最后一个元素，则可以定义`$c=h_T$`；`$u_i$`是目标语言序列的第`$i$`个单词，`$u_0$`是目标语言序列的开始标记`<s>`，表示解码开始；`$z_i$`是`$i$`时刻解码RNN的隐层状态，`$z_0$`是一个全零的向量。
+其中`$\phi _{\theta '}$`是一个非线性激活函数；`$c=q\mathbf{h}$`是源语言句子的上下文向量，在不使用注意力机制时，如果[编码器](#编码器)的输出是源语言句子编码后的最后一个元素，则可以定义`$c=h_T$`；`$u_i$`是目标语言序列的第`$i$`个单词，`$u_0$`是目标语言序列的开始标记`<s>`，表示解码开始；`$z_i$`是`$i$`时刻解码RNN的隐层状态，`$z_0$`是一个全零的向量。
 
 2. 将`$z_{i+1}$`通过`softmax`归一化，得到目标语言序列的第`$i+1$`个单词的概率分布`$p_{i+1}$`。概率分布公式如下：
 $$p\left ( u_{i+1}|u_{&lt;i+1},\mathbf{x} \right )=softmax(W_sz_{i+1}+b_z)$$
@@ -470,4 +470,3 @@ for data in test_data():
 
 <br/>
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br /><span xmlns:dct="http://purl.org/dc/terms/" href="http://purl.org/dc/dcmitype/Text" property="dct:title" rel="dct:type">本教程</span> 由 <a xmlns:cc="http://creativecommons.org/ns#" href="http://book.paddlepaddle.org" property="cc:attributionName" rel="cc:attributionURL">PaddlePaddle</a> 创作，采用 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">知识共享 署名-相同方式共享 4.0 国际 许可协议</a>进行许可。
-
