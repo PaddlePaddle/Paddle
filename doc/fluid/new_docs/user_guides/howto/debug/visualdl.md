@@ -149,7 +149,7 @@ python setup.py bdist_wheel
 pip install --upgrade dist/visualdl-*.whl
 ```
 
-如果打包和安装遇到其他问题，不安装只想运行Visual DL可以看[这里](https://github.com/PaddlePaddle/VisualDL/blob/develop/docs/how_to_dev_frontend_en.md)
+如果打包和安装遇到其他问题，不安装只想运行Visual DL可以看[这里](https://github.com/PaddlePaddle/VisualDL/blob/develop/docs/develop/how_to_dev_frontend_cn.md)
 
 
 ## SDK
