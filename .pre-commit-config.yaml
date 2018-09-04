@@ -28,6 +28,14 @@ repos:
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: local
     hooks:
+    -   id: cpplint-cpp-source
+        name: cpplint
+        description: Check C++ code style using cpplint.py.
+        entry: bash ./tools/codestyle/cpplint_pre_commit.hook
+        language: system
+        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+-   repo: local
+    hooks:
     -   id: pylint-doc-string
         name: pylint
         description: Check python docstring style using docstring_checker.
