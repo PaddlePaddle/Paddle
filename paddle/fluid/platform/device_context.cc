@@ -142,7 +142,58 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable unsigned int* semaphore_;
 };
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+  }
+
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_len) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
+  ~CudnnHolder() {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+    if (workspace_ != nullptr) {
+      paddle::memory::Free(place_, workspace_);
+    }
+  }
+
+ private:
+  void ReallocateWorkspace(size_t required_workspace_len) {
+    if (required_workspace_len <= workspace_len_) {
+      return;
+    }
+    if (workspace_ != nullptr) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      paddle::memory::Free(place_, workspace_);
+    }
+    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
+    workspace_len_ = required_workspace_len;
+  }
+
+  cudnnHandle_t cudnn_handle_;
+  void* workspace_;
+  size_t workspace_len_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : place_(place), cudnn_holder_(nullptr) {
   SetDeviceId(place_.device);
   compute_capability = GetCUDAComputeCapability(place_.device);
   multi_process = GetCUDAMultiProcessors(place_.device);
