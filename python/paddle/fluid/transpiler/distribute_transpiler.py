@@ -293,7 +293,7 @@ class DistributeTranspiler(object):
             input_deps = grad_name_to_send_dummy_out.values()
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={"X": input_deps},
+                inputs={"X": list(input_deps)},
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -394,7 +394,7 @@ class DistributeTranspiler(object):
 
         Args:
             recv_vars (list): Variable list to recv for current trainer_id
-            eplist (list): A list of strings indicating 
+            eplist (list): A list of strings indicating
 
         Returns:
             Program: trainer side startup program.
@@ -404,7 +404,7 @@ class DistributeTranspiler(object):
         # FIXME(gongwb): delete not need ops.
         # note that: some parameter is not trainable and those ops can't be deleted.
 
-        for varname, splited_var in self.param_var_mapping.iteritems():
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             # Get the eplist of recv vars
             eps = []
             for var in splited_var:
@@ -443,12 +443,12 @@ class DistributeTranspiler(object):
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-        for varname, splited_var in self.param_var_mapping.iteritems():
+        for varname, splited_var in six.iteritems(self.param_var_mapping):
             #add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
-            if startup_program.global_block().vars.has_key(varname):
+            if varname in startup_program.global_block().vars:
                 orig_param = startup_program.global_block().vars[varname]
             else:
                 origin_param_var = self.origin_program.global_block().vars[
@@ -677,7 +677,7 @@ class DistributeTranspiler(object):
 
         Args:
             endpoint (str): current pserver endpoint.
-        
+
         Returns:
             tuple: (main_program, startup_program), of type "Program"
         """
@@ -700,7 +700,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing 
+                when initalizing
 
         Returns:
             Program: parameter server side startup program.
