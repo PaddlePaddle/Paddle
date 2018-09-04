@@ -64,14 +64,14 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
     // TODO(typhoonzero): support weight input
-    AddInput("TP", "True-Positive value.");
-    AddInput("FP", "False-Positive value.");
+    AddInput("StatPos", "Statistic value when label = 1");
+    AddInput("StatNeg", "Statistic value when label = 0");
 
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
-    AddOutput("StatPos", "Statistic value when label = 1");
-    AddOutput("StatNeg", "Statistic value when label = 0");
+    AddOutput("StatPosOut", "Statistic value when label = 1");
+    AddOutput("StatNegOut", "Statistic value when label = 0");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
