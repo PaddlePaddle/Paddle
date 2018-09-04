@@ -245,6 +245,8 @@ class GraphPatternDetector {
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);
 
   // Remove overlapped match subgraphs, when overlapped, keep the previous one.
+  // The intermediate PDNodes will be removed, so can't shared by multiple
+  // patterns.
   void RemoveOverlappedMatch(std::vector<subgraph_t>* subgraphs);
 
   // Validate whether the intermediate nodes are linked by external nodes.

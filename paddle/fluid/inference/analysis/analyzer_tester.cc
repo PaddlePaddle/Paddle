@@ -327,9 +327,20 @@ void TestDituRNNPrediction(const std::string &model_path,
       LOG(INFO) << "fused " << item.first << " " << item.second;
     }
 
-    ASSERT_TRUE(fuse_statis.count("fc"));
-    EXPECT_EQ(fuse_statis.at("fc"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 1);
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(num_ops,
+              13);  // After graph optimization, only 13 operators exists.
   }
 }
 
