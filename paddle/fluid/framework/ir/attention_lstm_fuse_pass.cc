@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
+
+#include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -59,7 +62,7 @@ void FindWhileOp(Graph* graph) {
 
   auto handle = [&](const GraphPatternDetector::subgraph_t& subgraph,
                     Graph* g) {
-    auto* while_pat_node = gpd.pattern().RetriveNode("while");
+    auto* while_pat_node = gpd.pattern().RetrieveNode("while");
     auto* while_node = subgraph.at(while_pat_node);
     marked_nodes.insert(while_node);
   };
@@ -96,17 +99,13 @@ void FindWhileOp(Graph* graph) {
   auto* cell_init = graph->RetriveNode(6);
   auto* hidden_init = graph->RetriveNode(8);
 
-#define LINK_TO(node0, node1)      \
-  node0->outputs.push_back(node1); \
-  node1->inputs.push_back(node0);
-
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
 
-  LINK_TO(X, lstm_op);
-  LINK_TO(cell_init, lstm_op);
-  LINK_TO(hidden_init, lstm_op);
-  LINK_TO(lstm_op, LSTMOUT);
+  IR_NODE_LINK_TO(X, lstm_op);
+  IR_NODE_LINK_TO(cell_init, lstm_op);
+  IR_NODE_LINK_TO(hidden_init, lstm_op);
+  IR_NODE_LINK_TO(lstm_op, LSTMOUT);
 
   GraphSafeRemoveNodes(graph, marked_nodes);
 }
@@ -216,11 +215,11 @@ void PrepareLSTMWeight(const LoDTensor& W_forget_w0,
 
   float* out_data = out->mutable_data<float>(platform::CPUPlace());
   std::array<const float*, 4> tensors(
-      {W_forget_w0.data<float>(), W_input_w0.data<float>(),
-       W_output_w0.data<float>(), W_cell_w0.data<float>()});
+      {{W_forget_w0.data<float>(), W_input_w0.data<float>(),
+        W_output_w0.data<float>(), W_cell_w0.data<float>()}});
   std::array<const float*, 4> tensors1(
-      {W_forget_w1.data<float>(), W_input_w1.data<float>(),
-       W_output_w1.data<float>(), W_cell_w1.data<float>()});
+      {{W_forget_w1.data<float>(), W_input_w1.data<float>(),
+        W_output_w1.data<float>(), W_cell_w1.data<float>()}});
 
   for (int row = 0; row < D; row++) {
     for (int col = 0; col < 4; col++) {
@@ -243,8 +242,8 @@ void PrepareLSTMBias(const LoDTensor& B_forget, const LoDTensor& B_input,
                      const LoDTensor& B_output, const LoDTensor& B_cell,
                      LoDTensor* out) {
   std::array<const float*, 4> tensors(
-      {B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
-       B_cell.data<float>()});
+      {{B_forget.data<float>(), B_input.data<float>(), B_output.data<float>(),
+        B_cell.data<float>()}});
 
   PADDLE_ENFORCE_EQ(B_forget.dims().size(), 1);
   int D = B_forget.dims()[0];

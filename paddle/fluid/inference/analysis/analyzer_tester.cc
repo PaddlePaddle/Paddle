@@ -16,10 +16,14 @@
 
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
@@ -30,6 +34,8 @@ DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
@@ -196,13 +202,13 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   minute_tensor.lod.assign({one_batch.lod3});
   // clang-format on
   // assign data
-  TensorAssignData(&lod_attention_tensor,
-                   std::vector<std::vector<float>>({{0, 0}}));
+  TensorAssignData<float>(&lod_attention_tensor,
+                          std::vector<std::vector<float>>({{0, 0}}));
   std::vector<float> tmp_zeros(batch_size * 15, 0.);
-  TensorAssignData(&init_zero_tensor, {tmp_zeros});
-  TensorAssignData(&lod_tensor_tensor, one_batch.rnn_link_data);
-  TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
-  TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
+  TensorAssignData<float>(&init_zero_tensor, {tmp_zeros});
+  TensorAssignData<float>(&lod_tensor_tensor, one_batch.rnn_link_data);
+  TensorAssignData<float>(&week_tensor, one_batch.rnn_week_datas);
+  TensorAssignData<float>(&minute_tensor, one_batch.rnn_minute_datas);
   // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
@@ -307,9 +313,35 @@ void TestDituRNNPrediction(const std::string &model_path,
     PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
     float *base_data = static_cast<float *>(base_out.data.data());
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_data[i], 1e-3);
+    for (size_t j = 0; j < size; j++) {
+      EXPECT_NEAR(data[j], base_data[j], 1e-3);
     }
+  }
+
+  if (use_analysis && activate_ir) {
+    AnalysisPredictor *analysis_predictor =
+        dynamic_cast<AnalysisPredictor *>(predictor.get());
+    auto &fuse_statis = analysis_predictor->analysis_argument()
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
+    for (auto &item : fuse_statis) {
+      LOG(INFO) << "fused " << item.first << " " << item.second;
+    }
+
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(num_ops,
+              13);  // After graph optimization, only 13 operators exists.
   }
 }
 
@@ -337,10 +369,3 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(seq_concat_fc_fuse_pass);
-USE_PASS(fc_lstm_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);
-USE_PASS(attention_lstm_fuse_pass);

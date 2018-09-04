@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdint.h>
-#include <sys/stat.h>
 #include <fstream>
 #include <numeric>
 
@@ -25,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {
@@ -32,36 +32,6 @@ namespace operators {
 // define LOOKUP_TABLE_PATH for checkpoint notify to save lookup table variables
 // to directory specified.
 constexpr char LOOKUP_TABLE_PATH[] = "kLookupTablePath";
-
-// TODO(yuyang18): If the functions below are needed by other files, move them
-// to paddle::filesystem namespace.
-constexpr char kSEP = '/';
-static bool FileExists(const std::string &filepath) {
-  struct stat buffer;
-  return (stat(filepath.c_str(), &buffer) == 0);
-}
-
-static std::string DirName(const std::string &filepath) {
-  auto pos = filepath.rfind(kSEP);
-  if (pos == std::string::npos) {
-    return "";
-  }
-  return filepath.substr(0, pos);
-}
-
-static void MkDir(const char *path) {
-  if (mkdir(path, 0755)) {
-    PADDLE_ENFORCE_EQ(errno, EEXIST, "%s mkdir failed!", path);
-  }
-}
-
-static void MkDirRecursively(const char *fullpath) {
-  if (*fullpath == '\0') return;  // empty string
-  if (FileExists(fullpath)) return;
-
-  MkDirRecursively(DirName(fullpath).c_str());
-  MkDir(fullpath);
-}
 
 class SaveOp : public framework::OperatorBase {
  public:

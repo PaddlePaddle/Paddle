@@ -60,6 +60,7 @@ class Executor {
   void Run(const ProgramDesc& prog, Scope* scope, int block_id,
            bool create_local_scope = true, bool create_vars = true);
 
+  // This API is very slow.
   void Run(const ProgramDesc& program, Scope* scope,
            std::map<std::string, const LoDTensor*>* feed_targets,
            std::map<std::string, LoDTensor*>* fetch_targets,
@@ -79,6 +80,7 @@ class Executor {
                           bool create_local_scope = true,
                           bool create_vars = true, bool keep_kids = false);
 
+  // This API is very slow.
   void RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
                           std::map<std::string, const LoDTensor*>* feed_targets,
                           std::map<std::string, LoDTensor*>* fetch_targets,

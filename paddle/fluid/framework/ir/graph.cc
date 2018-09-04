@@ -87,6 +87,9 @@ bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
 }
 
 Graph::Graph(const ProgramDesc &program) : program_(program) {
+  // Make the nodes id start from 0.
+  Node::ResetId();
+
   VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
   for (auto *var : program.Block(0).AllVars()) {

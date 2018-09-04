@@ -180,16 +180,16 @@ PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
 
 std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  FusePassBase::Init(graph.get());
+  FusePassBase::Init("seq_concat_fc_fuse", graph.get());
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
   auto* concat_out = BuildSeqExpandConcatPattern(pattern);
   BuildFCPattern(pattern, concat_out);
 
-#define GET_NODE(id, pattern)                              \
-  PADDLE_ENFORCE(subgraph.count(pattern.RetriveNode(#id)), \
-                 "pattern has no Node called %s", #id);    \
-  auto* id = subgraph.at(pattern.RetriveNode(#id));        \
+#define GET_NODE(id, pattern)                               \
+  PADDLE_ENFORCE(subgraph.count(pattern.RetrieveNode(#id)), \
+                 "pattern has no Node called %s", #id);     \
+  auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
   detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
@@ -219,16 +219,13 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     op_desc.SetAttr("fc_activation", act->Op()->Type());
 
     auto* op_node = graph->CreateOpNode(&op_desc);
-// Add links
-#define NODE_LINKS(a, b)   \
-  a->outputs.push_back(b); \
-  b->inputs.push_back(a);
-    NODE_LINKS(fc_w, op_node);
-    NODE_LINKS(fc_bias, op_node);
-    NODE_LINKS(concat_in0, op_node);
-    NODE_LINKS(sequence_expand0_in, op_node);
-    NODE_LINKS(sequence_expand1_in, op_node);
-    NODE_LINKS(op_node, fc_out);
+    // Add links
+    IR_NODE_LINK_TO(fc_w, op_node);
+    IR_NODE_LINK_TO(fc_bias, op_node);
+    IR_NODE_LINK_TO(concat_in0, op_node);
+    IR_NODE_LINK_TO(sequence_expand0_in, op_node);
+    IR_NODE_LINK_TO(sequence_expand1_in, op_node);
+    IR_NODE_LINK_TO(op_node, fc_out);
 
     // Clean nodes.
     std::unordered_set<const Node*> marked_nodes;
@@ -241,7 +238,6 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     marked_nodes.erase(sequence_expand0_in);
     marked_nodes.erase(sequence_expand1_in);
     marked_nodes.erase(fc_out);
-
     GraphSafeRemoveNodes(graph, marked_nodes);
   });
 
