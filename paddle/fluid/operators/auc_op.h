@@ -47,12 +47,8 @@ class AucKernel : public framework::OpKernel<T> {
     auto *batch_auc = ctx.Output<Tensor>("BatchAUC");
     std::vector<int64_t> stat_pos_batch(num_thresholds + 1, 0);
     std::vector<int64_t> stat_neg_batch(num_thresholds + 1, 0);
-    //    int64_t stat_pos_batch[num_thresholds + 1];
-    //    memset(stat_pos_batch, 0, sizeof(stat_pos_batch));
-    //    int64_t stat_neg_batch[num_thresholds + 1];
-    //    memset(stat_neg_batch, 0, sizeof(stat_neg_batch));
-    calcAuc(ctx, label, predict, stat_pos_batch, stat_neg_batch, num_thresholds,
-            batch_auc);
+    calcAuc(ctx, label, predict, stat_pos_batch.data(), stat_neg_batch.data(),
+            num_thresholds, batch_auc);
   }
 
  private:
