@@ -929,9 +929,9 @@ class RMSPropOptimizer(Optimizer):
         momentum(float): :math:`\\beta` in equation is the momentum term,
             set 0.0 by default.
         centered(bool): If True, gradients are normalized by the estimated variance of
-        the gradient; if False, by the uncentered second moment. Setting this to
-        True may help with training, but is slightly more expensive in terms of
-        computation and memory. Defaults to False.
+            the gradient; if False, by the uncentered second moment. Setting this to
+            True may help with training, but is slightly more expensive in terms of
+            computation and memory. Defaults to False.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
