@@ -549,6 +549,13 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_sequence_enumerate(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
+            out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
+        print(str(program))
+        
     def test_cross_entropy(self):
         program = Program()
         with program_guard(program):

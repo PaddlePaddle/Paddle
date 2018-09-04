@@ -11,26 +11,29 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
-#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
-
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include <chrono>  // NOLINT
 
 namespace paddle {
 namespace inference {
-namespace analysis {
 
-TEST(FluidToIrPass, Test) {
-  FluidToIrPass pass;
-  Argument argument(FLAGS_inference_model_dir);
-  argument.Set(kFluidToIrPassesAttr,
-               new std::vector<std::string>({"infer_clean_graph_pass"}));
-  pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
-}
+// Timer for timer
+class Timer {
+ public:
+  std::chrono::high_resolution_clock::time_point start;
+  std::chrono::high_resolution_clock::time_point startu;
 
-}  // namespace analysis
+  void tic() { start = std::chrono::high_resolution_clock::now(); }
+  double toc() {
+    startu = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span =
+        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
+                                                                  start);
+    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
+    return used_time_ms;
+  }
+};
+
 }  // namespace inference
 }  // namespace paddle

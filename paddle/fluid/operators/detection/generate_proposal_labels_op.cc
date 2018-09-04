@@ -14,6 +14,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detection/bbox_util.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -134,31 +135,6 @@ void BboxOverlaps(const Tensor& r_boxes, const Tensor& c_boxes,
 }
 
 template <typename T>
-void BoxToDelta(int box_num, const Tensor& ex_boxes, const Tensor& gt_boxes,
-                const std::vector<float>& weights, Tensor* box_delta) {
-  auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
-  auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
-  auto box_delta_et = framework::EigenTensor<T, 2>::From(*box_delta);
-  T ex_w, ex_h, ex_ctr_x, ex_ctr_y, gt_w, gt_h, gt_ctr_x, gt_ctr_y;
-  for (int64_t i = 0; i < box_num; ++i) {
-    ex_w = ex_boxes_et(i, 2) - ex_boxes_et(i, 0) + 1;
-    ex_h = ex_boxes_et(i, 3) - ex_boxes_et(i, 1) + 1;
-    ex_ctr_x = ex_boxes_et(i, 0) + 0.5 * ex_w;
-    ex_ctr_y = ex_boxes_et(i, 1) + 0.5 * ex_h;
-
-    gt_w = gt_boxes_et(i, 2) - gt_boxes_et(i, 0) + 1;
-    gt_h = gt_boxes_et(i, 3) - gt_boxes_et(i, 1) + 1;
-    gt_ctr_x = gt_boxes_et(i, 0) + 0.5 * gt_w;
-    gt_ctr_y = gt_boxes_et(i, 1) + 0.5 * gt_h;
-
-    box_delta_et(i, 0) = (gt_ctr_x - ex_ctr_x) / ex_w / weights[0];
-    box_delta_et(i, 1) = (gt_ctr_y - ex_ctr_y) / ex_h / weights[1];
-    box_delta_et(i, 2) = log(gt_w / ex_w) / ex_w / weights[2];
-    box_delta_et(i, 3) = log(gt_h / ex_h) / ex_h / weights[3];
-  }
-}
-
-template <typename T>
 std::vector<std::vector<int>> SampleFgBgGt(
     const platform::CPUDeviceContext& context, Tensor* iou,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
@@ -243,12 +219,11 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
                        Tensor* sampled_labels, Tensor* sampled_gts) {
   int fg_num = fg_inds.size();
   int bg_num = bg_inds.size();
-  int gt_num = fg_num + bg_num;
   Tensor fg_inds_t, bg_inds_t, gt_box_inds_t, gt_label_inds_t;
   int* fg_inds_data = fg_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* bg_inds_data = bg_inds_t.mutable_data<int>({bg_num}, context.GetPlace());
   int* gt_box_inds_data =
-      gt_box_inds_t.mutable_data<int>({gt_num}, context.GetPlace());
+      gt_box_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   int* gt_label_inds_data =
       gt_label_inds_t.mutable_data<int>({fg_num}, context.GetPlace());
   std::copy(fg_inds.begin(), fg_inds.end(), fg_inds_data);
@@ -303,18 +278,20 @@ std::vector<Tensor> SampleRoisForOneImage(
 
   // Gather boxes and labels
   Tensor sampled_boxes, sampled_labels, sampled_gts;
-  int boxes_num = fg_inds.size() + bg_inds.size();
+  int fg_num = fg_inds.size();
+  int bg_num = bg_inds.size();
+  int boxes_num = fg_num + bg_num;
   framework::DDim bbox_dim({boxes_num, kBoxDim});
   sampled_boxes.mutable_data<T>(bbox_dim, context.GetPlace());
   sampled_labels.mutable_data<int>({boxes_num}, context.GetPlace());
-  sampled_gts.mutable_data<T>(bbox_dim, context.GetPlace());
+  sampled_gts.mutable_data<T>({fg_num, kBoxDim}, context.GetPlace());
   GatherBoxesLabels<T>(context, boxes, *gt_boxes, *gt_classes, fg_inds, bg_inds,
                        gt_inds, &sampled_boxes, &sampled_labels, &sampled_gts);
 
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(boxes_num, sampled_boxes, sampled_gts, bbox_reg_weights,
+  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, nullptr, false,
                 &bbox_targets_single);
 
   // Scale rois
@@ -427,7 +404,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     auto rpn_rois_lod = rpn_rois->lod().back();
     auto gt_classes_lod = gt_classes->lod().back();
     auto gt_boxes_lod = gt_boxes->lod().back();
-    for (size_t i = 0; i < n; ++i) {
+    for (int i = 0; i < n; ++i) {
       Tensor rpn_rois_slice =
           rpn_rois->Slice(rpn_rois_lod[i], rpn_rois_lod[i + 1]);
       Tensor gt_classes_slice =
