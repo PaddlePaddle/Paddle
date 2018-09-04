@@ -1258,15 +1258,17 @@ def anchor_generator(input,
 
 def generate_proposal_labels(rpn_rois,
                              gt_classes,
+                             is_crowd,
                              gt_boxes,
-                             im_scales,
+                             im_info,
                              batch_size_per_im=256,
                              fg_fraction=0.25,
                              fg_thresh=0.25,
                              bg_thresh_hi=0.5,
                              bg_thresh_lo=0.0,
                              bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
-                             class_nums=None):
+                             class_nums=None,
+                             use_random=True):
     """
     ** Generate proposal labels Faster-RCNN **
     TODO(buxingyuan): Add Document
@@ -1285,8 +1287,9 @@ def generate_proposal_labels(rpn_rois,
         inputs={
             'RpnRois': rpn_rois,
             'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
             'GtBoxes': gt_boxes,
-            'ImScales': im_scales
+            'ImInfo': im_info
         },
         outputs={
             'Rois': rois,
@@ -1302,7 +1305,8 @@ def generate_proposal_labels(rpn_rois,
             'bg_thresh_hi': bg_thresh_hi,
             'bg_thresh_lo': bg_thresh_lo,
             'bbox_reg_weights': bbox_reg_weights,
-            'class_nums': class_nums
+            'class_nums': class_nums,
+            'use_random': use_random
         })
 
     rois.stop_gradient = True
