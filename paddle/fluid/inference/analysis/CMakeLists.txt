@@ -54,14 +54,6 @@ if (NOT EXISTS ${DITU_INSTALL_DIR} AND WITH_TESTING)
   inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_MODEL_URL} "ditu_rnn_fluid%2Fmodel.tar.gz")
   inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
 endif()
-
-set(TEXT_CLASSIFICATION_MODEL_URL http://paddle-inference-dist.bj.bcebos.com/text-classification-Senta.tar.gz)
-set(TEXT_CLASSIFICATION_MODEL ${DITU_INSTALL_DIR}/text-classification-Senta)
-if (NOT EXISTS ${TEXT_CLASSIFICATION_MODEL})
-  inference_download_and_uncompress(text_classification_model ${TEXT_CLASSIFICATION_MODEL_URL} "text-classification-Senta.tar.gz")
-endif()
-
-
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
     ARGS --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
