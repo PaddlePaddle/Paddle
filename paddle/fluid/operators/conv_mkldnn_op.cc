@@ -296,6 +296,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    bool fuse_relu = ctx.Attr<bool>("fuse_relu");
     int groups = ctx.Attr<int>("groups");
 
     // TODO(pzelazko-intel) add support for group convolution and dilation
@@ -348,11 +349,12 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
-      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
-                                     strides, paddings, mkldnn_engine);
+      conv_pd =
+          ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md, strides,
+                               paddings, mkldnn_engine, fuse_relu);
     } else {
       conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
-                                     paddings, mkldnn_engine);
+                                     paddings, mkldnn_engine, fuse_relu);
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -402,11 +404,26 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
+  mkldnn::primitive_attr AddRelu() const {
+    // Fusion with ReLU layer is executed through the PostOps feature. Create a
+    // PostOps object and configure it to execute an eltwise relu operation.
+    mkldnn::primitive_attr conv_attr;
+    constexpr float scale = 1.0f;
+    constexpr float negative_slope = 0.0f;
+    constexpr float placeholder = 0.0f;
+    mkldnn::post_ops post_operations;
+    post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                   negative_slope, placeholder);
+    conv_attr.set_post_ops(post_operations);
+    return conv_attr;
+  }
+
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
                        const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine& engine) const {
+                       const mkldnn::engine& engine,
+                       const bool fuse_relu) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
@@ -415,8 +432,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
-    auto p_conv_pd =
-        new mkldnn::convolution_forward::primitive_desc(conv_desc, engine);
+    mkldnn::primitive_attr conv_attr;
+    if (fuse_relu) {
+      conv_attr = AddRelu();
+    }
+
+    auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+        conv_desc, conv_attr, engine);
 
     return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
         p_conv_pd);
@@ -427,7 +449,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const memory::desc& bias, const memory::desc& dst,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine& engine) const {
+                       const mkldnn::engine& engine,
+                       const bool fuse_relu) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
@@ -436,8 +459,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         bias, dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
-    auto p_conv_pd =
-        new mkldnn::convolution_forward::primitive_desc(conv_desc, engine);
+    mkldnn::primitive_attr conv_attr;
+    if (fuse_relu) {
+      conv_attr = AddRelu();
+    }
+
+    auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+        conv_desc, conv_attr, engine);
 
     return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
         p_conv_pd);
