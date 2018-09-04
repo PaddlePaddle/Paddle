@@ -126,6 +126,12 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
+        # Set 1 thread num under nccl2 distribute env.
+        if num_trainers > 1:
+            assert (use_cuda)
+            # FIXME(gongwb): avoid this set.
+            exec_strategy.num_threads = 1
+
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
