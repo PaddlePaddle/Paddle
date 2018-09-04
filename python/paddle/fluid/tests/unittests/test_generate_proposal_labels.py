@@ -177,8 +177,8 @@ def _box_to_delta(ex_boxes, gt_boxes, weights):
 
     dx = (gt_ctr_x - ex_ctr_x) / ex_w / weights[0]
     dy = (gt_ctr_y - ex_ctr_y) / ex_h / weights[1]
-    dw = (np.log(gt_w / ex_w)) / ex_w / weights[2]
-    dh = (np.log(gt_h / ex_h)) / ex_h / weights[3]
+    dw = (np.log(gt_w / ex_w)) / weights[2]
+    dh = (np.log(gt_h / ex_h)) / weights[3]
 
     targets = np.vstack([dx, dy, dw, dh]).transpose()
     return targets
