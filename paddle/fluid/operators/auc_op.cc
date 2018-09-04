@@ -35,15 +35,12 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(predict_height, label_height,
                       "Out and Label should have same height.");
 
-    int num_thres = ctx->Attrs().Get<int>("num_thresholds") + 1;
+    int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
 
     ctx->SetOutputDim("AUC", {1});
     ctx->SetOutputDim("BatchAUC", {1});
-    ctx->SetOutputDim("StatPosOut", {num_thres});
-    ctx->SetOutputDim("StatNegOut", {num_thres});
-
-    ctx->ShareLoD("Predict", /*->*/ "AUC");
-    ctx->ShareLoD("Predict", /*->*/ "BatchAUC");
+    ctx->SetOutputDim("StatPosOut", {num_pred_buckets});
+    ctx->SetOutputDim("StatNegOut", {num_pred_buckets});
   }
 
  protected:

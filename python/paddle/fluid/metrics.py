@@ -577,8 +577,9 @@ class Auc(MetricBase):
         self._curve = curve
         self._num_thresholds = num_thresholds
 
-        self._stat_pos = [0] * (self._num_thresholds + 1)
-        self._stat_neg = [0] * (self._num_thresholds + 1)
+        _num_pred_buckets = num_thresholds + 1
+        self._stat_pos = [0] * _num_pred_buckets
+        self._stat_neg = [0] * _num_pred_buckets
 
     def update(self, preds, labels):
         if not _is_numpy_(labels):

@@ -32,6 +32,7 @@ class AucKernel : public framework::OpKernel<T> {
 
     std::string curve = ctx.Attr<std::string>("curve");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
+    int num_pred_buckets = num_thresholds + 1;
 
     // Only use output var for now, make sure it's persistable and
     // not cleaned up for each batch.
@@ -45,8 +46,8 @@ class AucKernel : public framework::OpKernel<T> {
             auc);
 
     auto *batch_auc = ctx.Output<Tensor>("BatchAUC");
-    std::vector<int64_t> stat_pos_batch(num_thresholds + 1, 0);
-    std::vector<int64_t> stat_neg_batch(num_thresholds + 1, 0);
+    std::vector<int64_t> stat_pos_batch(num_pred_buckets, 0);
+    std::vector<int64_t> stat_neg_batch(num_pred_buckets, 0);
     calcAuc(ctx, label, predict, stat_pos_batch.data(), stat_neg_batch.data(),
             num_thresholds, batch_auc);
   }
