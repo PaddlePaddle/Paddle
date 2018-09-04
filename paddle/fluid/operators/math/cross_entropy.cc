@@ -50,12 +50,11 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
         int lbl = label_data[i];
         PADDLE_ENFORCE_GE(lbl, 0);
         PADDLE_ENFORCE_LT(lbl, class_num);
-        if (lbl != ignore_index) {
-          int index = i * class_num + lbl;
-          loss_data[i] = -math::TolerableValue<T>()(std::log(prob_data[index]));
-        } else {
-          loss_data[i] = 0;
-        }
+        int index = i * class_num + lbl;
+        loss_data[i] =
+            lbl == ignore_index
+                ? 0
+                : -math::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }
