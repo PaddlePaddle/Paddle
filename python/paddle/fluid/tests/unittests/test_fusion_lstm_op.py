@@ -114,7 +114,9 @@ class TestFusionLSTMOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        for use_seq in {True, False}:
+            self.attrs['use_seq'] = use_seq
+            self.check_output()
 
 
 class TestFusionLSTMOpInit(TestFusionLSTMOp):

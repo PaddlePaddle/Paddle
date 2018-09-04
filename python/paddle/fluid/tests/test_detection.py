@@ -146,6 +146,55 @@ class TestAnchorGenerator(unittest.TestCase):
         assert anchor.shape[3] == 4
 
 
+class TestGenerateProposalLabels(unittest.TestCase):
+    def test_generate_proposal_labels(self):
+        rpn_rois = layers.data(
+            name='rpn_rois',
+            shape=[4, 4],
+            dtype='float32',
+            lod_level=1,
+            append_batch_size=False)
+        gt_classes = layers.data(
+            name='gt_classes',
+            shape=[6],
+            dtype='int32',
+            lod_level=1,
+            append_batch_size=False)
+        gt_boxes = layers.data(
+            name='gt_boxes',
+            shape=[6, 4],
+            dtype='float32',
+            lod_level=1,
+            append_batch_size=False)
+        im_scales = layers.data(
+            name='im_scales',
+            shape=[1],
+            dtype='float32',
+            lod_level=1,
+            append_batch_size=False)
+        class_nums = 5
+        rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights = fluid.layers.generate_proposal_labels(
+            rpn_rois=rpn_rois,
+            gt_classes=gt_classes,
+            gt_boxes=gt_boxes,
+            im_scales=im_scales,
+            batch_size_per_im=2,
+            fg_fraction=0.5,
+            fg_thresh=0.5,
+            bg_thresh_hi=0.5,
+            bg_thresh_lo=0.0,
+            bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+            class_nums=class_nums)
+        assert rois.shape[1] == 4
+        assert rois.shape[0] == labels_int32.shape[0]
+        assert rois.shape[0] == bbox_targets.shape[0]
+        assert rois.shape[0] == bbox_inside_weights.shape[0]
+        assert rois.shape[0] == bbox_outside_weights.shape[0]
+        assert bbox_targets.shape[1] == 4 * class_nums
+        assert bbox_inside_weights.shape[1] == 4 * class_nums
+        assert bbox_outside_weights.shape[1] == 4 * class_nums
+
+
 class TestMultiBoxHead(unittest.TestCase):
     def test_multi_box_head(self):
         data_shape = [3, 224, 224]
@@ -199,6 +248,57 @@ class TestDetectionMAP(unittest.TestCase):
             self.assertIsNotNone(map_out)
             self.assertEqual(map_out.shape, (1, ))
         print(str(program))
+
+
+class TestRpnTargetAssign(unittest.TestCase):
+    def test_rpn_target_assign(self):
+        program = Program()
+        with program_guard(program):
+            loc_shape = [10, 50, 4]
+            score_shape = [10, 50, 2]
+            anchor_shape = [50, 4]
+
+            loc = layers.data(
+                name='loc',
+                shape=loc_shape,
+                append_batch_size=False,
+                dtype='float32')
+            scores = layers.data(
+                name='scores',
+                shape=score_shape,
+                append_batch_size=False,
+                dtype='float32')
+            anchor_box = layers.data(
+                name='anchor_box',
+                shape=anchor_shape,
+                append_batch_size=False,
+                dtype='float32')
+            anchor_var = layers.data(
+                name='anchor_var',
+                shape=anchor_shape,
+                append_batch_size=False,
+                dtype='float32')
+            gt_box = layers.data(
+                name='gt_box', shape=[4], lod_level=1, dtype='float32')
+
+            pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
+                loc=loc,
+                scores=scores,
+                anchor_box=anchor_box,
+                anchor_var=anchor_var,
+                gt_box=gt_box,
+                rpn_batch_size_per_im=256,
+                fg_fraction=0.25,
+                rpn_positive_overlap=0.7,
+                rpn_negative_overlap=0.3)
+
+            self.assertIsNotNone(pred_scores)
+            self.assertIsNotNone(pred_loc)
+            self.assertIsNotNone(tgt_lbl)
+            self.assertIsNotNone(tgt_bbox)
+            assert pred_scores.shape[1] == 1
+            assert pred_loc.shape[1] == 4
+            assert pred_loc.shape[1] == tgt_bbox.shape[1]
 
 
 class TestGenerateProposals(unittest.TestCase):

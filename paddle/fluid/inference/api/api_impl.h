@@ -15,6 +15,7 @@
 #pragma once
 
 #include <glog/logging.h>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -47,9 +48,13 @@ class NativePaddlePredictor : public PaddlePredictor {
 
  protected:
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
-               std::vector<framework::LoDTensor> *feeds);
-  bool GetFetch(const std::vector<framework::LoDTensor> &fetchs,
-                std::vector<PaddleTensor> *output_data);
+               framework::Scope *scope);
+  bool GetFetch(std::vector<PaddleTensor> *output_data,
+                framework::Scope *scope);
+  template <typename T>
+  void GetFetchOne(const framework::LoDTensor &fetchs,
+                   PaddleTensor *output_data);
+  void PrepareFeedFetch();
 
   NativeConfig config_;
   platform::Place place_;
@@ -57,8 +62,9 @@ class NativePaddlePredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
   std::unique_ptr<framework::ExecutorPrepareContext> ctx_;
   std::unique_ptr<framework::ProgramDesc> inference_program_;
-  std::vector<std::string> feed_target_names_;
-  std::vector<std::string> fetch_target_names_;
+  std::vector<framework::OpDesc *> feeds_;
+  std::map<std::string, size_t> feed_names_;
+  std::vector<framework::OpDesc *> fetchs_;
   // Do not use unique_ptr, use parent scope to delete
   framework::Scope *sub_scope_{nullptr};
 };
