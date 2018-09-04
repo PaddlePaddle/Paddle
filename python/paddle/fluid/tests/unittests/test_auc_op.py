@@ -33,8 +33,8 @@ class TestAucOp(OpTest):
         self.inputs = {
             'Predict': pred,
             'Label': labels,
-            "StatPos": [stat_pos],
-            "StatNeg": [stat_neg]
+            "StatPos": stat_pos,
+            "StatNeg": stat_neg
         }
         self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
 
