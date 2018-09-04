@@ -91,7 +91,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     auto &out_dim = bcast_y ? x_dim : y_dim;
     std::string out_lod = bcast_y ? "X" : "Y";
 
-    if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
+    if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx->HasOutput("IntermediateOut"),
                      "Output(IntermediateOut) of FusedElemwiseActivationOp "
                      "should not be null.");
@@ -163,7 +163,7 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("scale",
                    "scale is used by scale_op, the default value is 0.0.")
         .SetDefault(0.0);
-    AddAttr<bool>("keep_intermediate_value",
+    AddAttr<bool>("save_intermediate_out",
                   "Whether to save the intermediate_out.")
         .SetDefault(false);
     AddAttr<std::vector<std::string>>("functor_list",
@@ -244,7 +244,7 @@ class FusedElemwiseActivationGradMaker
     functor_names[1] += "_grad";
     grad_op->SetAttr("functor_list", functor_names);
 
-    if (boost::get<bool>(grad_op->GetAttr("keep_intermediate_value"))) {
+    if (boost::get<bool>(grad_op->GetAttr("save_intermediate_out"))) {
       PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
       grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
       grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
@@ -269,7 +269,7 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
     auto functor_list =
         ctx->Attrs().Get<std::vector<std::string>>("functor_list");
 
-    if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
+    if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx->HasInput("IntermediateOut"),
                      "Input(IntermediateOut) should not be null");
     } else {

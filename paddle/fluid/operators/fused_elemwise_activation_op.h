@@ -57,7 +57,7 @@ static void RunBinaryCompoundFunctor(
   paddle::operators::math::BinaryCompoundFunctor<T, BinaryFunctor, UnaryFunctor>
       compound_func(binary_functor, unary_functor);
   int axis = ctx.Attr<int>("axis");
-  if (ctx.Attr<bool>("keep_intermediate_value")) {
+  if (ctx.Attr<bool>("save_intermediate_out")) {
     FusedElemwiseAndActComputeEx<DeviceContext, T,
                                  paddle::operators::math::BinaryCompoundFunctor<
                                      T, BinaryFunctor, UnaryFunctor>,
@@ -89,7 +89,7 @@ static void RunUnaryCompoundFunctors(
   paddle::operators::math::UnaryCompoundFunctor<T, UnaryFunctor, BinaryFunctor>
       compound_func(unary_functor, binary_functor);
 
-  if (ctx.Attr<bool>("keep_intermediate_value")) {
+  if (ctx.Attr<bool>("save_intermediate_out")) {
     FusedElemwiseAndActComputeEx<DeviceContext, T,
                                  paddle::operators::math::UnaryCompoundFunctor<
                                      T, UnaryFunctor, BinaryFunctor>,
@@ -342,9 +342,9 @@ class FusedElemwiseActivationKernel : public framework::OpKernel<T> {
     std::vector<framework::Tensor *> outputs;
     outputs.emplace_back(output);
 
-    if (ctx.Attr<bool>("keep_intermediate_value")) {
+    if (ctx.Attr<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx.HasOutput("IntermediateOut"),
-                     "The keep_intermediate_value is enable, so the "
+                     "The save_intermediate_out is enable, so the "
                      "IntermediateOut should not be empty.");
       auto intermediate_out = ctx.Output<framework::Tensor>("IntermediateOut");
       outputs.emplace_back(intermediate_out);
@@ -381,14 +381,14 @@ class FusedElemwiseActivationGradKernel : public framework::OpKernel<T> {
 
     // Get intermediate_out
     framework::Tensor *in_intermediate_out = nullptr;
-    if (ctx.Attr<bool>("keep_intermediate_value")) {
-      // if keep_intermediate_value is true, for Unary(Binary(x, y)) and
+    if (ctx.Attr<bool>("save_intermediate_out")) {
+      // if save_intermediate_out is true, for Unary(Binary(x, y)) and
       // Binary(x, Unary(y)), the Binary(x, y) and Unary(y) not need to
       // recompute.
       in_intermediate_out = const_cast<framework::Tensor *>(
           ctx.Input<framework::Tensor>("IntermediateOut"));
       PADDLE_ENFORCE(in_intermediate_out != nullptr,
-                     "The option of 'keep_intermediate_value' is opened, "
+                     "The option of 'save_intermediate_out' is opened, "
                      "so the number of 'Out' should be two.");
     } else {
       if (!InputXCanBeAbsent(functor_list)) {

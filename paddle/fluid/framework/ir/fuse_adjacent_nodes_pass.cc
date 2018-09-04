@@ -25,25 +25,29 @@ namespace ir {
 
 std::unique_ptr<ir::Graph> FuseAdjacentNodesPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
-  std::vector<NodePtr> topo_order = ir::TopologySortOperations(*graph);
+  std::vector<Node *> topo_order = ir::TopologySortOperations(*graph);
 
   // internal_nodes is used to record the origin node and the fused node
   // which has the origin node.
-  std::unordered_map<NodePtr, InternalNodePtr> internal_nodes;
+  std::unordered_map<Node *, Node *> internal_nodes;
   // need_removed_nodes is used to record the useless nodes which should be
   // released.
-  std::unordered_set<NodePtr> need_removed_nodes;
+  std::unordered_set<Node *> need_removed_nodes;
 
   for (auto iter_node = topo_order.begin(); iter_node != topo_order.end();
        ++iter_node) {
     auto cur_op_node = *iter_node;
 
-    std::unordered_set<NodePtr> tobe_fused_nodes;
+    std::unordered_set<Node *> tobe_fused_nodes;
 
     if (FindToBeFusedNodes(cur_op_node, internal_nodes, &tobe_fused_nodes)) {
       // Generate the fused node.
-      NodePtr fused_node = FuseNodes(cur_op_node, tobe_fused_nodes,
-                                     &need_removed_nodes, graph.get());
+      Node *fused_node = FuseNodes(cur_op_node, tobe_fused_nodes,
+                                   &need_removed_nodes, graph.get());
+
+      if (fused_node == nullptr) {
+        continue;
+      }
 
       // Add the map between tobe_fused_nodes nodes and the fused node.
       tobe_fused_nodes.emplace(cur_op_node);
@@ -66,12 +70,11 @@ std::unique_ptr<ir::Graph> FuseAdjacentNodesPass::ApplyImpl(
 }
 
 bool FuseAdjacentNodesPass::FindToBeFusedNodes(
-    const NodePtr node,
-    const std::unordered_map<NodePtr, InternalNodePtr> &internal_nodes,
-    std::unordered_set<NodePtr> *tobe_fused_nodes) const {
+    Node *node, const std::unordered_map<Node *, Node *> &internal_nodes,
+    std::unordered_set<Node *> *tobe_fused_nodes) const {
   PADDLE_ENFORCE(node->IsOp(), "Node should be an operator.");
 
-  NodePtr cur_op_node = node;
+  Node *cur_op_node = node;
 
   // If the input node has be fused, get the fused_node from
   // internal_nodes, and the fused_node become the cur_op_node.
@@ -107,77 +110,69 @@ bool FuseAdjacentNodesPass::FindToBeFusedNodes(
   return need_fusion;
 }
 
-NodePtr FuseAdjacentNodesPass::FuseNodes(
-    const NodePtr cur_op_node,
-    const std::unordered_set<NodePtr> &tobe_fused_nodes,
-    std::unordered_set<NodePtr> *need_removed_nodes, ir::Graph *graph) const {
+Node *FuseAdjacentNodesPass::FuseNodes(
+    Node *cur_op_node, const std::unordered_set<Node *> &tobe_fused_nodes,
+    std::unordered_set<Node *> *need_removed_nodes, ir::Graph *graph) const {
   framework::OpDesc fused_op_desc;
   // intermediate_outs
-  std::unordered_set<NodePtr> intermediate_outs;
+  std::unordered_set<Node *> intermediate_outs;
   // Init OpDesc
   if (tobe_fused_nodes.size() == 1) {
-    if (IsElemwiseAndActivation(cur_op_node, tobe_fused_nodes)) {
-      FuseElemwiseAndActivation(cur_op_node, tobe_fused_nodes, &fused_op_desc,
-                                &intermediate_outs);
+    if (IsElemwiseAndActivation(cur_op_node, *tobe_fused_nodes.begin())) {
+      FuseElemwiseAndActivation(cur_op_node, *tobe_fused_nodes.begin(),
+                                &fused_op_desc, &intermediate_outs);
     } else {
-      PADDLE_THROW(
-          "Currently, only support fusing elementwise and activation "
-          "operator.");
+      // Currently, only support fusing elementwise and activation operator.
+      return nullptr;
     }
   } else {
-    PADDLE_THROW("Currently only support fusing two operators.");
+    // Currently only support fusing two operators.
+    return nullptr;
   }
 
   // Create Node
   auto fused_node = graph->CreateOpNode(&fused_op_desc);
 
-  // Adjust the link relationship between nodes
-
   // Replace cur_node with new_node.
-  auto replace_node = [](NodePtr cur_node, NodePtr new_node,
-                         std::vector<NodePtr> &nodes) -> std::vector<NodePtr> {
-    std::vector<NodePtr> new_list;
+  auto replace_node = [](Node *cur_node, Node *new_node,
+                         std::vector<Node *> &nodes) -> std::vector<Node *> {
+    std::vector<Node *> new_list(nodes.size());
     bool has_replaced = false;
-    for (auto &o : nodes) {
-      if (o == cur_node) {
-        has_replaced = true;
-        new_list.emplace_back(new_node);
-      } else {
-        new_list.emplace_back(o);
-      }
-    }
+    std::transform(nodes.begin(), nodes.end(), new_list.begin(),
+                   [&](Node *node) -> Node * {
+                     if (node == cur_node) {
+                       has_replaced = true;
+                       return new_node;
+                     }
+                     return node;
+                   });
     PADDLE_ENFORCE(has_replaced, "Not find %s in the node list.",
                    cur_node->Name());
     return new_list;
   };
 
   // Remove cur_node from nodes.
-  auto remove_node = [](NodePtr cur_node,
-                        std::vector<NodePtr> *nodes) -> std::vector<NodePtr> {
-    std::vector<NodePtr> new_list;
-    for (auto o : *nodes) {
-      if (o != cur_node) {
-        new_list.emplace_back(o);
-      }
-    }
+  auto remove_node = [](Node *cur_node,
+                        std::vector<Node *> *nodes) -> std::vector<Node *> {
+    std::vector<Node *> new_list(nodes->size());
+    auto end_iter =
+        std::copy_if(nodes->begin(), nodes->end(), new_list.begin(),
+                     [&](Node *node) -> bool { return node != cur_node; });
+    new_list.resize(
+        static_cast<uint64_t>(std::distance(new_list.begin(), end_iter)));
     return new_list;
   };
 
   // Get the input and output arguments of the fused_node.
   // Node: the in_args may have duplicated name.
   auto in_args = fused_node->Op()->InputArgumentNames();
-  std::unordered_set<std::string> in_args_set;
-  for (auto &in : in_args) {
-    in_args_set.emplace(in);
-  }
+  std::unordered_set<std::string> in_args_set(in_args.begin(), in_args.end());
   auto out_args = fused_node->Op()->OutputArgumentNames();
-  std::unordered_set<std::string> out_args_set;
-  for (auto &out : out_args) {
-    out_args_set.emplace(out);
-  }
+  std::unordered_set<std::string> out_args_set(out_args.begin(),
+                                               out_args.end());
 
-  std::unordered_set<NodePtr> visited_nodes;
-  std::vector<NodePtr> cur_op_node_ins = cur_op_node->inputs;
+  std::unordered_set<Node *> visited_nodes;
+  std::vector<Node *> cur_op_node_ins = cur_op_node->inputs;
 
   for (auto &var : cur_op_node_ins) {
     PADDLE_ENFORCE(var->IsVar(), "%s should be variable.", var->Name());
@@ -275,22 +270,18 @@ NodePtr FuseAdjacentNodesPass::FuseNodes(
   return fused_node;
 }
 
-bool FuseAdjacentNodesPass::IsBackward(
-    const NodePtr node,
-    const std::unordered_set<NodePtr> &tobe_fused_nodes) const {
+bool FuseAdjacentNodesPass::IsBackward(Node *node,
+                                       Node *tobe_fused_node) const {
   auto op_role = boost::get<int>(
       node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleAttrName()));
-
-  for (auto &tebe_node : tobe_fused_nodes) {
-    PADDLE_ENFORCE_EQ(op_role, boost::get<int>(tebe_node->Op()->GetAttr(
-                                   OpProtoAndCheckerMaker::OpRoleAttrName())),
-                      "Currently, only support fusing the same role operators");
-  }
+  PADDLE_ENFORCE_EQ(op_role, boost::get<int>(tobe_fused_node->Op()->GetAttr(
+                                 OpProtoAndCheckerMaker::OpRoleAttrName())),
+                    "Currently, only support fusing the same role operators");
   return op_role == static_cast<int>(OpRole::kBackward);
 }
 
-bool FuseAdjacentNodesPass::IsFusible(const NodePtr cur_op_node,
-                                      const NodePtr upstream_op_node) const {
+bool FuseAdjacentNodesPass::IsFusible(Node *cur_op_node,
+                                      Node *upstream_op_node) const {
   PADDLE_ENFORCE(cur_op_node->IsOp(), "cur_op_node should be an operation.");
   PADDLE_ENFORCE(upstream_op_node->IsOp(), "n2 should be an operation.");
 
@@ -300,7 +291,6 @@ bool FuseAdjacentNodesPass::IsFusible(const NodePtr cur_op_node,
   static std::unordered_set<std::string> elemwise_grads(
       {"elementwise_add_grad"});
 
-  // TODO(zcd): hard code
   bool case1 = (acts.count(cur_op_node->Op()->Type()) == 1) &&
                (elemwises.count(upstream_op_node->Op()->Type()) == 1);
   bool case2 = (elemwises.count(cur_op_node->Op()->Type()) == 1) &&
@@ -328,22 +318,17 @@ static bool IsElemwise(std::string op_type) {
 }
 
 bool FuseAdjacentNodesPass::IsElemwiseAndActivation(
-    const NodePtr node,
-    const std::unordered_set<NodePtr> &tobe_fused_nodes) const {
-  PADDLE_ENFORCE_EQ(tobe_fused_nodes.size(), 1);
+    Node *node, Node *tobe_fused_node) const {
   auto outside_op_name = node->Op()->Type();
-  auto inside_op_name = (*tobe_fused_nodes.begin())->Op()->Type();
+  auto inside_op_name = tobe_fused_node->Op()->Type();
 
   return (IsActivation(outside_op_name) && IsElemwise(inside_op_name)) ||
          (IsActivation(inside_op_name) && IsElemwise(outside_op_name));
 }
 
 void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
-    const NodePtr cur_op_node,
-    const std::unordered_set<NodePtr> &tobe_fused_nodes, OpDesc *op_desc,
-    std::unordered_set<NodePtr> *intermediate_out) const {
-  auto upstream_op_node = *tobe_fused_nodes.begin();
-
+    Node *cur_op_node, Node *upstream_op_node, OpDesc *op_desc,
+    std::unordered_set<Node *> *intermediate_out) const {
   auto upstream_op_type = upstream_op_node->Op()->Type();
   auto cur_op_type = cur_op_node->Op()->Type();
   auto upstream_op_node_in_args = upstream_op_node->Op()->InputArgumentNames();
@@ -352,7 +337,7 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
   auto cur_op_node_in_args = cur_op_node->Op()->InputArgumentNames();
   auto cur_op_node_out_args = cur_op_node->Op()->OutputArgumentNames();
 
-  if (IsBackward(cur_op_node, tobe_fused_nodes)) {
+  if (IsBackward(cur_op_node, upstream_op_node)) {
     auto check_unary_backward = [](const std::string &op_type,
                                    const std::vector<std::string> &in_args,
                                    const std::vector<std::string> &out_args) {
@@ -411,7 +396,7 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
         keep_intermediate = true;
       }
 
-      op_desc->SetAttr("keep_intermediate_value", keep_intermediate);
+      op_desc->SetAttr("save_intermediate_out", keep_intermediate);
       op_desc->SetInput("Y", cur_op_node->Op()->Input("Y"));
       op_desc->SetInput("Out", upstream_op_node->Op()->Input("Out"));
       op_desc->SetInput(out_grad, upstream_op_node->Op()->Input(out_grad));
@@ -463,7 +448,7 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
       check_unary_in_args(upstream_op_node_in_args);
       // NOTE(zcd): If the mem_opt is opened and the Unary is inplace, the
       // name of Y and intermediate_out maybe the same.
-      // In this situation, keep_intermediate_value should be true,
+      // In this situation, save_intermediate_out should be true,
       // and the backward should use intermediate_out directly but not Y.
 
       // Set the "Y"
@@ -494,9 +479,9 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
       op_desc->SetInput("X", upstream_op_node->Op()->Input("X"));
     }
 
-    // Another pass should check whether it is necessary to keep intermediate
+    // Another pass should check whether it is necessary to save intermediate
     // out.
-    op_desc->SetAttr("keep_intermediate_value", true);
+    op_desc->SetAttr("save_intermediate_out", true);
     op_desc->SetOutput("IntermediateOut", upstream_op_node_out_args);
     op_desc->SetOutput("Out", cur_op_node_out_args);
   }

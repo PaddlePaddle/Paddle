@@ -48,7 +48,7 @@ def create_test_class(test_case, callback, attrs):
                 'X': OpTest.np_dtype_to_fluid_dtype(self.x),
                 'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
             }
-            if self.attrs["keep_intermediate_value"]:
+            if self.attrs["save_intermediate_out"]:
                 self.outputs = {
                     'Out': self.out,
                     "IntermediateOut": self.intermediate_out
@@ -75,13 +75,13 @@ def create_test_class(test_case, callback, attrs):
 
         # FIXME(zcd): the intermediate_out_grad is not checked.
         def test_check_grad_normal(self):
-            if self.attrs["keep_intermediate_value"]:
+            if self.attrs["save_intermediate_out"]:
                 self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
             else:
                 self.check_grad(['X', 'Y'], ['Out'], max_relative_error=0.005)
 
         def test_check_grad_ingore_x(self):
-            if self.attrs["keep_intermediate_value"]:
+            if self.attrs["save_intermediate_out"]:
                 self.check_grad(
                     ['Y'], ['Out'],
                     max_relative_error=0.005,
@@ -93,7 +93,7 @@ def create_test_class(test_case, callback, attrs):
                     no_grad_set=set("X"))
 
         def test_check_grad_ingore_y(self):
-            if self.attrs["keep_intermediate_value"]:
+            if self.attrs["save_intermediate_out"]:
                 self.check_grad(
                     ['X'], ['Out'],
                     max_relative_error=0.005,
@@ -299,31 +299,31 @@ for mode in {0, 1}:
     relu_add_func = partial(relu_add_func, mode=mode)
     add_relu_func = partial(add_relu_func, mode=mode)
 
-    for keep_intermediate_value in {True, False}:
-        suffix = ("_keep_intermediate_value" if keep_intermediate_value else "") \
+    for save_intermediate_out in {True, False}:
+        suffix = ("_save_intermediate_out" if save_intermediate_out else "") \
                  + ("_mode_"+ str(mode))
         create_test_class('scale_add' + suffix, scale_add_func, {
             'scale': scale,
             'functor_list': ["scale", "elementwise_add"],
-            'keep_intermediate_value': keep_intermediate_value,
+            'save_intermediate_out': save_intermediate_out,
         })
         create_test_class('add_scale' + suffix, add_scale_func, {
             'scale': scale,
             'functor_list': ["elementwise_add", "scale"],
-            'keep_intermediate_value': keep_intermediate_value,
+            'save_intermediate_out': save_intermediate_out,
         })
         create_test_class('add_relu' + suffix, add_relu_func, {
             'functor_list': ["elementwise_add", "relu"],
-            'keep_intermediate_value': keep_intermediate_value,
+            'save_intermediate_out': save_intermediate_out,
         })
         create_test_class('relu_add' + suffix, relu_add_func, {
             'functor_list': ["relu", "elementwise_add"],
-            'keep_intermediate_value': keep_intermediate_value,
+            'save_intermediate_out': save_intermediate_out,
         })
         create_test_class('mul_scale' + suffix, mul_scale_func, {
             'scale': scale,
             'functor_list': ["elementwise_mul", "scale"],
-            'keep_intermediate_value': keep_intermediate_value,
+            'save_intermediate_out': save_intermediate_out,
         })
 
 if __name__ == '__main__':

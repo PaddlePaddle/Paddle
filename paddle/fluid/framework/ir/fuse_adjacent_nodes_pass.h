@@ -28,9 +28,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-using NodePtr = Node *;
-using InternalNodePtr = Node *;
-
 class FuseAdjacentNodesPass : public Pass {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(
@@ -41,8 +38,7 @@ class FuseAdjacentNodesPass : public Pass {
    * Whether the two nodes can be fused.
    * upstream_op_node's output is the input of cur_op_node here.
    */
-  bool IsFusible(const NodePtr cur_op_node,
-                 const NodePtr upstream_op_node) const;
+  bool IsFusible(Node* cur_op_node, Node* upstream_op_node) const;
 
   /**
    * Whether cur_op_node and some of it's adjacent nodes can be fused.
@@ -51,38 +47,34 @@ class FuseAdjacentNodesPass : public Pass {
    * If cur_op_node has been fused, cur_op_node will be reset to the fused node
    * which is stored in m_internal.
    */
-  bool FindToBeFusedNodes(
-      const NodePtr cur_op_node,
-      const std::unordered_map<NodePtr, InternalNodePtr> &m_internal,
-      std::unordered_set<NodePtr> *tobe_fused_nodes) const;
+  bool FindToBeFusedNodes(Node* cur_op_node,
+                          const std::unordered_map<Node*, Node*>& m_internal,
+                          std::unordered_set<Node*>* tobe_fused_nodes) const;
 
   /**
    * Fuse cur_op_node and tobe_fused_nodes, and insert the fused node graph.
    * In this process, some nodes will become useless, and they are stored in
    * need_removed_nodes.
    */
-  NodePtr FuseNodes(const NodePtr cur_op_node,
-                    const std::unordered_set<NodePtr> &tobe_fused_nodes,
-                    std::unordered_set<NodePtr> *need_removed_nodes,
-                    ir::Graph *graph) const;
+  Node* FuseNodes(Node* cur_op_node,
+                  const std::unordered_set<Node*>& tobe_fused_nodes,
+                  std::unordered_set<Node*>* need_removed_nodes,
+                  ir::Graph* graph) const;
 
   /**
    *  Generate the op_desc of the fused op.
    */
   void FuseElemwiseAndActivation(
-      const NodePtr node, const std::unordered_set<NodePtr> &tobe_fused,
-      OpDesc *op_desc, std::unordered_set<NodePtr> *intermediate_out) const;
+      Node* node, Node* tobe_fused_node, OpDesc* op_desc,
+      std::unordered_set<Node*>* intermediate_out) const;
 
   /**
-   *  The node and tobe_fused_nodes should be in the same stage,
+   *  The node and tobe_fused_node should be in the same stage,
    *  and the stage can be forward, backward and parameter optimization.
    */
-  bool IsBackward(const NodePtr node,
-                  const std::unordered_set<NodePtr> &tobe_fused_nodes) const;
+  bool IsBackward(Node* node, Node* tobe_fused_node) const;
 
-  bool IsElemwiseAndActivation(
-      const NodePtr node,
-      const std::unordered_set<NodePtr> &tobe_fused_node) const;
+  bool IsElemwiseAndActivation(Node* node, Node* tobe_fused_node) const;
 };
 
 }  // namespace ir

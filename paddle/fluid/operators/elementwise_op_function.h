@@ -1568,7 +1568,7 @@ void FusedElemwiseAndActComputeEx(const framework::ExecutionContext &ctx,
                                   framework::Tensor *intermediate_out) {
   if (KeepIntermediateOut) {
     PADDLE_ENFORCE(intermediate_out,
-                   "The keep_intermediate_value is opened, "
+                   "The save_intermediate_out is opened, "
                    "intermediate_out should not be nullptr.");
   }
 
