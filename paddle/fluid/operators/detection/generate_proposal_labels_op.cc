@@ -102,8 +102,8 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
                       "The rank of Input(IsCrowd) must be 1.");
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
                       "The rank of Input(GtBoxes) must be 2.");
-    PADDLE_ENFORCE_EQ(im_info_dims.size(), 1,
-                      "The rank of Input(ImInfo) must be 1.");
+    PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
+                      "The rank of Input(ImInfo) must be 2.");
 
     int class_nums = ctx->Attrs().Get<int>("class_nums");
 
@@ -173,7 +173,7 @@ std::vector<std::vector<int>> SampleFgBgGt(
   std::vector<int> bg_inds;
   std::vector<int> gt_inds;
   int64_t gt_num = is_crowd.numel();
-  bool* crowd_data = is_crowd.data<bool>();
+  const bool* crowd_data = is_crowd.data<bool>();
   T* proposal_to_gt_overlaps = iou->data<T>();
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];

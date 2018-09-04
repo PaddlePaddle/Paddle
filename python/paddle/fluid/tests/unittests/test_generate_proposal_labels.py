@@ -216,7 +216,7 @@ class TestGenerateProposalLabelsOp(OpTest):
             'GtClasses': (self.gt_classes[0], self.gts_lod),
             'IsCrowd': (self.is_crowd[0], self.gts_lod),
             'GtBoxes': (self.gt_boxes[0], self.gts_lod),
-            'ImInfo': self.im_info[0]
+            'ImInfo': self.im_info
         }
         self.attrs = {
             'batch_size_per_im': self.batch_size_per_im,
