@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/attention_lstm_fuse_pass.h"
+
+#include <string>
+
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -96,17 +99,13 @@ void FindWhileOp(Graph* graph) {
   auto* cell_init = graph->RetriveNode(6);
   auto* hidden_init = graph->RetriveNode(8);
 
-#define LINK_TO(node0, node1)      \
-  node0->outputs.push_back(node1); \
-  node1->inputs.push_back(node0);
-
   auto* lstm_op = graph->CreateOpNode(&op_desc);
   PrepareParameters(graph, param);
 
-  LINK_TO(X, lstm_op);
-  LINK_TO(cell_init, lstm_op);
-  LINK_TO(hidden_init, lstm_op);
-  LINK_TO(lstm_op, LSTMOUT);
+  IR_NODE_LINK_TO(X, lstm_op);
+  IR_NODE_LINK_TO(cell_init, lstm_op);
+  IR_NODE_LINK_TO(hidden_init, lstm_op);
+  IR_NODE_LINK_TO(lstm_op, LSTMOUT);
 
   GraphSafeRemoveNodes(graph, marked_nodes);
 }
