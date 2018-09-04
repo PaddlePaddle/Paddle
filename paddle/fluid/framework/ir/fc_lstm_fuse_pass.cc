@@ -147,13 +147,13 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-#define GET_NODE(name__) std::string name__##key =
-    name_scope + "/" + #name__;
-    auto* name__##n = pattern->RetrieveNode(name__##key);
-    PADDLE_ENFORCE(name__##n);
-    PADDLE_ENFORCE(subgraph.count(name__##n));
-    Node* name__##_n = subgraph.at(name__##n);
-    int name__ __attribute__((unused)) = name__##_n->id();
+#define GET_NODE(name__)                                \
+  std::string name__##key = name_scope + "/" + #name__; \
+  auto* name__##n = pattern->RetrieveNode(name__##key); \
+  PADDLE_ENFORCE(name__##n);                            \
+  PADDLE_ENFORCE(subgraph.count(name__##n));            \
+  Node* name__##_n = subgraph.at(name__##n);            \
+  int name__ __attribute__((unused)) = name__##_n->id();
 
     GET_NODE(x);
     GET_NODE(w);
