@@ -77,7 +77,7 @@ bool LinksReplace(std::vector<Node*>* links, Node* from, Node* to) {
 std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("fc", graph.get());
+  FusePassBase::Init("fc_fuse", graph.get());
 
   std::unordered_set<Node*> nodes2delete;
 
