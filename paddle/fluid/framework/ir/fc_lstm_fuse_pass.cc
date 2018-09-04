@@ -121,15 +121,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 #undef TMP_NEW
 #undef TMP_NAME
 
-#define LINK_TO(a, b)      \
-  a->outputs.push_back(b); \
-  b->inputs.push_back(a);
-    LINK_TO(input_n, op);
-    LINK_TO(weight_x_n, op);
-    LINK_TO(weight_h_n, op);
-    LINK_TO(bias_n, op);
-    LINK_TO(op, hidden_n);
-#undef LINK_TO
+    IR_NODE_LINK_TO(input_n, op);
+    IR_NODE_LINK_TO(weight_x_n, op);
+    IR_NODE_LINK_TO(weight_h_n, op);
+    IR_NODE_LINK_TO(bias_n, op);
+    IR_NODE_LINK_TO(op, hidden_n);
     return op;
   };
 
