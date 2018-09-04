@@ -281,7 +281,7 @@ class TestRpnTargetAssign(unittest.TestCase):
             gt_box = layers.data(
                 name='gt_box', shape=[4], lod_level=1, dtype='float32')
 
-            predicted_scores, predicted_location, target_label, target_bbox = layers.rpn_target_assign(
+            pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
                 loc=loc,
                 scores=scores,
                 anchor_box=anchor_box,
@@ -292,15 +292,13 @@ class TestRpnTargetAssign(unittest.TestCase):
                 rpn_positive_overlap=0.7,
                 rpn_negative_overlap=0.3)
 
-            self.assertIsNotNone(predicted_scores)
-            self.assertIsNotNone(predicted_location)
-            self.assertIsNotNone(target_label)
-            self.assertIsNotNone(target_bbox)
-            assert predicted_scores.shape[1] == 2
-            assert predicted_location.shape[1] == 4
-            assert predicted_location.shape[1] == target_bbox.shape[1]
-
-        print(str(program))
+            self.assertIsNotNone(pred_scores)
+            self.assertIsNotNone(pred_loc)
+            self.assertIsNotNone(tgt_lbl)
+            self.assertIsNotNone(tgt_bbox)
+            assert pred_scores.shape[1] == 1
+            assert pred_loc.shape[1] == 4
+            assert pred_loc.shape[1] == tgt_bbox.shape[1]
 
 
 class TestGenerateProposals(unittest.TestCase):

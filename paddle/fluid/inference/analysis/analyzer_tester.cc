@@ -22,6 +22,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -327,9 +328,20 @@ void TestDituRNNPrediction(const std::string &model_path,
       LOG(INFO) << "fused " << item.first << " " << item.second;
     }
 
-    ASSERT_TRUE(fuse_statis.count("fc"));
-    EXPECT_EQ(fuse_statis.at("fc"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 1);
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(num_ops,
+              13);  // After graph optimization, only 13 operators exists.
   }
 }
 
@@ -357,10 +369,3 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(seq_concat_fc_fuse_pass);
-USE_PASS(fc_lstm_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);
-USE_PASS(attention_lstm_fuse_pass);
