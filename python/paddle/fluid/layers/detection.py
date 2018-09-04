@@ -1299,7 +1299,7 @@ def roi_perspective_transform(input,
         type="roi_perspective_transform",
         inputs={"X": input,
                 "ROIs": rois},
-        outputs={"Out": pool_out},
+        outputs={"Out": out},
         attrs={
             "transformed_height": transformed_height,
             "transformed_width": transformed_width,
