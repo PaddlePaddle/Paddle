@@ -24,7 +24,8 @@ std::string GenNodeName(const std::string& prefix, const std::string& name) {
   return prefix + "/" + name;
 }
 
-void BuildPattern(PDPattern *pattern, const std::string &name_scope, bool with_fc_bias) {
+void BuildPattern(PDPattern* pattern, const std::string& name_scope,
+                  bool with_fc_bias) {
   PDNode* x = pattern->NewNode(name_scope, "x")
                   ->assert_is_op_input("mul")
                   ->assert_var_not_persistable();
