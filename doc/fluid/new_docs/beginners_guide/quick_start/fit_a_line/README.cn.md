@@ -15,7 +15,7 @@ $$y_i = \omega_1x_{i1} + \omega_2x_{i2} + \ldots + \omega_dx_{id} + b,  i=1,\ldo
 ## 效果展示
 我们使用从[UCI Housing Data Set](https://archive.ics.uci.edu/ml/datasets/Housing)获得的波士顿房价数据集进行模型的训练和预测。下面的散点图展示了使用模型对部分房屋价格进行的预测。其中，每个点的横坐标表示同一类房屋真实价格的中位数，纵坐标表示线性回归模型根据特征预测的结果，当二者值完全相等的时候就会落在虚线上。所以模型预测得越准确，则点离虚线越近。
 <p align="center">
-    <img src = "image/predictions.png" width=400><br/>
+    <img src = "https://github.com/PaddlePaddle/book/blob/develop/01.fit_a_line/image/predictions.png?raw=true" width=400><br/>
     图1. 预测值 V.S. 真实值
 </p>
 
@@ -40,13 +40,9 @@ $$MSE=\frac{1}{n}\sum_{i=1}^{n}{(\hat{Y_i}-Y_i)}^2$$
 ### 训练过程
 
 定义好模型结构之后，我们要通过以下几个步骤进行模型训练
-
  1. 初始化参数，其中包括权重$\omega_i$和偏置$b$，对其进行初始化（如0均值，1方差）。
-
  2. 网络正向传播计算网络输出和损失函数。
-
  3. 根据损失函数进行反向误差传播 （[backpropagation](https://en.wikipedia.org/wiki/Backpropagation)），将网络误差从输出层依次向前传递, 并更新网络中的参数。
-
  4. 重复2~3步骤，直至网络训练误差达到规定的程度或训练轮次达到设定值。
 
 ## 数据集
@@ -84,7 +80,7 @@ $$MSE=\frac{1}{n}\sum_{i=1}^{n}{(\hat{Y_i}-Y_i)}^2$$
 - 很多的机器学习技巧/模型（例如L1，L2正则项，向量空间模型-Vector Space Model）都基于这样的假设：所有的属性取值都差不多是以0为均值且取值范围相近的。
 
 <p align="center">
-    <img src = "image/ranges.png" width=550><br/>
+    <img src = "https://github.com/PaddlePaddle/book/blob/develop/01.fit_a_line/image/ranges.png?raw=true" width=550><br/>
     图2. 各维属性的取值范围
 </p>
 
@@ -199,10 +195,12 @@ step = 0
 def event_handler_plot(event):
     global step
     if isinstance(event, fluid.EndStepEvent):
-        if event.step % 10 == 0: # record the test cost every 10 seconds
+        if step % 10 == 0:   # record a train cost every 10 batches
+            plot_cost.append(train_title, step, event.metrics[0])
+
+        if step % 100 == 0:  # record a test cost every 100 batches
             test_metrics = trainer.test(
                 reader=test_reader, feed_order=feed_order)
-
             plot_cost.append(test_title, step, test_metrics[0])
             plot_cost.plot()
 
@@ -210,12 +208,13 @@ def event_handler_plot(event):
                 # If the accuracy is good enough, we can stop the training.
                 print('loss is less than 10.0, stop')
                 trainer.stop()
-
-        # We can save the trained parameters for the inferences later
-        if params_dirname is not None:
-            trainer.save_params(params_dirname)
-
         step += 1
+
+    if isinstance(event, fluid.EndEpochEvent):
+        if event.epoch % 10 == 0:
+            # We can save the trained parameters for the inferences later
+            if params_dirname is not None:
+                trainer.save_params(params_dirname)
 ```
 
 ### 开始训练
@@ -231,11 +230,10 @@ trainer.train(
     event_handler=event_handler_plot,
     feed_order=feed_order)
 ```
-
-<p align="center">
-    <img src = "image/train_and_test1.png" width=400><br/>
-    图3. 训练结果
-</p>
+<div align="center">
+<img src="https://github.com/PaddlePaddle/book/blob/develop/01.fit_a_line/image/train_and_test.png?raw=true" width="400"><br/>
+图3 训练结果
+</div>
 
 
 ## 预测
@@ -262,18 +260,18 @@ inferencer = fluid.Inferencer(
 batch_size = 10
 test_reader = paddle.batch(paddle.dataset.uci_housing.test(),batch_size=batch_size)
 test_data = test_reader().next()
-test_feat = numpy.array([data[0] for data in test_data]).astype("float32")
-test_label = numpy.array([data[1] for data in test_data]).astype("float32")
+test_x = numpy.array([data[0] for data in test_data]).astype("float32")
+test_y = numpy.array([data[1] for data in test_data]).astype("float32")
 
-results = inferencer.infer({'x': test_feat})
+results = inferencer.infer({'x': test_x})
 
 print("infer results: (House Price)")
-for k in range(0, batch_size-1):
-    print("%d. %f" % (k, results[0][k]))
+for idx, val in enumerate(results[0]):
+    print("%d: %.2f" % (idx, val))
 
 print("\nground truth:")
-for k in range(0, batch_size-1):
-    print("%d. %f" % (k, test_label[k]))
+for idx, val in enumerate(test_y):
+    print("%d: %.2f" % (idx, val))
 ```
 
 ## 总结

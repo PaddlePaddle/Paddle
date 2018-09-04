@@ -16,9 +16,6 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
-#ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/rw_lock.h"
-#endif
 
 namespace paddle {
 namespace platform {
@@ -208,7 +205,10 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
   if (dynload::HasCUDNN()) {
-    cudnn_holder_.reset(new CudnnHolder(&stream_, place));
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
+  } else {
+    cudnn_handle_ = nullptr;
   }
 }
 
@@ -216,6 +216,9 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
+  if (cudnn_handle_ != nullptr) {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -244,14 +247,7 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return cublas_handle_;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
-  return cudnn_holder_->cudnn_handle();
-}
-
-void CUDADeviceContext::RunCudnnFuncWithWorkspace(
-    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
-  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
-}
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
