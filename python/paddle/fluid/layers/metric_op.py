@@ -131,8 +131,12 @@ def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
 
     helper.append_op(
         type="auc",
-        inputs={"Predict": [input],
-                "Label": [label]},
+        inputs={
+            "Predict": [input],
+            "Label": [label],
+            "StatPos": [stat_pos],
+            "StatNeg": [stat_neg]
+        },
         attrs={"curve": curve,
                "num_thresholds": num_thresholds},
         outputs={
