@@ -24,8 +24,7 @@ std::string GenNodeName(const std::string& prefix, const std::string& name) {
   return prefix + "/" + name;
 }
 
-void BuildPattern(PDPattern* pattern, const std::string& name_scope,
-                  bool with_fc_bias, Scope* scope) {
+void BuildPattern(PDPattern *pattern, const std::string &name_scope, bool with_fc_bias) {
   PDNode* x = pattern->NewNode(name_scope, "x")
                   ->assert_is_op_input("mul")
                   ->assert_var_not_persistable();
@@ -40,7 +39,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  BuildPattern(pattern, name_scope, with_fc_bias, nullptr);
+  BuildPattern(pattern, name_scope, with_fc_bias);
 
   // Create New OpDesc
   auto lstm_creator = [&](int lstm, int input, int weight_x, int weight_h,
@@ -87,7 +86,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
       }
       op_desc.SetInput("Bias", {new_bias_var});
     }
-
 #undef GET_NODE
 
     // Create temp variables.
