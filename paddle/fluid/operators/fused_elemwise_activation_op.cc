@@ -17,12 +17,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-/*
- * Whether the compound function is Unary(Binary(X, Y)).
- * For Unary(Binary(X, Y)), the intermediate_out's shape is the same the final
- * out.
- */
-static bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
+bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(functor_list.size(), 2);
   static std::unordered_set<std::string> binary_fun = {
       "elementwise_add", "elementwise_mul", "elementwise_add_grad",
@@ -30,10 +25,17 @@ static bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   return binary_fun.count(functor_list[1]) != 0;
 }
 
-/*
- * Whether the Input(X) could be absent.
- */
-static bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
+bool HasInPlaceUnary(const std::vector<std::string> &functor_list) {
+  PADDLE_ENFORCE_EQ(functor_list.size(), 2);
+  static std::unordered_set<std::string> InplaceOpSet = {"relu", "relu_grad"};
+  bool is_in_place = false;
+  for (auto &func_name : functor_list) {
+    is_in_place |= (InplaceOpSet.count(func_name) == 1);
+  }
+  return is_in_place;
+}
+
+bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(functor_list.size(), 2);
   static std::unordered_set<std::string> binary_fun = {"elementwise_add_grad"};
   return binary_fun.count(functor_list[0]) != 0 ||
@@ -84,15 +86,7 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 
     // Whether the shape of Y is a continuous subsequence of X,
     // For more information please refer to the op's introduction.
-    bool bcast_y = x_dim.size() >= y_dim.size();
-    if (x_dim.size() == y_dim.size()) {
-      for (int i = 0; i < x_dim.size(); ++i) {
-        if (x_dim[i] < y_dim[i]) {
-          bcast_y = false;
-          break;
-        }
-      }
-    }
+    bool bcast_y = IsBcastY(x_dim, y_dim);
 
     auto &out_dim = bcast_y ? x_dim : y_dim;
     std::string out_lod = bcast_y ? "X" : "Y";
@@ -119,6 +113,20 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", out_dim);
     ctx->ShareLoD(out_lod, /*->*/ "Out");
+  }
+
+  static bool IsBcastY(const framework::DDim &x_dim,
+                       const framework::DDim &y_dim) {
+    bool bcast_y = x_dim.size() >= y_dim.size();
+    if (x_dim.size() == y_dim.size()) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (x_dim[i] < y_dim[i]) {
+          bcast_y = false;
+          break;
+        }
+      }
+    }
+    return bcast_y;
   }
 
  protected:
@@ -155,16 +163,6 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("scale",
                    "scale is used by scale_op, the default value is 0.0.")
         .SetDefault(0.0);
-    AddAttr<bool>(
-        "recomputation",
-        "Whether to recompute the Out."
-        "The computation of fused_elemwise_activation_grad has two methods to "
-        "get the dx and dy, one is to use the 'Out', and the other is not. "
-        "The former method will save the time of recomputing the 'Out', but it "
-        "must occupy the memory to store the 'out'. While, the later method "
-        "can avoid occupying the memory, but it must recompute the 'Out'. "
-        "It is useful for Unary(Binary(X, Y)). The default value is true.")
-        .SetDefault(true);
     AddAttr<bool>("keep_intermediate_value",
                   "Whether to save the intermediate_out.")
         .SetDefault(false);
@@ -267,16 +265,18 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@Grad) should not be null");
+
+    auto functor_list =
+        ctx->Attrs().Get<std::vector<std::string>>("functor_list");
+
     if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
       PADDLE_ENFORCE(ctx->HasInput("IntermediateOut"),
                      "Input(IntermediateOut) should not be null");
-      PADDLE_ENFORCE(ctx->HasOutput(framework::GradVarName("IntermediateOut")),
-                     "Output(%s) should not be null",
-                     framework::GradVarName("IntermediateOut"));
+    } else {
+      if (!InputXCanBeAbsent(functor_list)) {
+        PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+      }
     }
-
-    auto funtor_list =
-        ctx->Attrs().Get<std::vector<std::string>>("functor_list");
 
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
@@ -287,22 +287,14 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
         ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
         ctx->ShareLoD("X", x_grad_name);
       } else {
-        // Node: If "X" is absence, the shape of Y should be a continuous
-        // subsequence of X, if not, we could not infer the shape of dx.
-
-        // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
-        if (IsUnaryCompound(funtor_list)) {
-          PADDLE_ENFORCE(
-              ctx->HasInputs("IntermediateOut"),
-              "If the compound_functor is Unary(Binary(X, Y)) and Binary "
-              "is elementwise_add, the intermediate_out must be not absent.");
-        }
-
         // Currently, only when Binary is elementwise_add or elementwise_sub,
         // the "X" could be absent.
-        PADDLE_ENFORCE(InputXCanBeAbsent(funtor_list),
+        PADDLE_ENFORCE(InputXCanBeAbsent(functor_list),
                        "Only when BinaryFunctor is elementwise_add, the 'X' "
                        "could be absent.");
+
+        // Node: If "X" is absence, the shape of Y should be a continuous
+        // subsequence of X, otherwise, we could not infer the shape of dx.
 
         ctx->SetOutputDim(x_grad_name,
                           ctx->GetInputDim(framework::GradVarName("Out")));
@@ -318,11 +310,7 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
 
     if (ctx->HasOutput(inter_grad_name)) {
       // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
-      if (IsUnaryCompound(funtor_list)) {
-        PADDLE_ENFORCE(
-            ctx->HasInput("IntermediateOut"),
-            "If the compound_functor is Unary(Binary(X, Y)) and Binary "
-            "is elementwise_add, the intermediate_out must be not absent.");
+      if (IsUnaryCompound(functor_list)) {
         ctx->SetOutputDim(inter_grad_name,
                           ctx->GetInputDim(framework::GradVarName("Out")));
         ctx->ShareLoD(framework::GradVarName("Out"), inter_grad_name);

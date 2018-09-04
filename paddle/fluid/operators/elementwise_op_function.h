@@ -981,20 +981,23 @@ template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
 struct FusedElemwiseAndActGradNoBroadcast {
   HOSTDEVICE void operator()(size_t i) {
     if (dx_ != nullptr) {
-      dx_[i] = UseIntermediateOut ? dx_op_(x_[i], y_[i], intermediate_out_[i],
-                                           out_[i], dout_[i])
-                                  : dx_op_(x_[i], y_[i], out_[i], dout_[i]);
+      dx_[i] = UseIntermediateOut
+                   ? dx_op_.UseIntermediateOut(
+                         x_[i], y_[i], intermediate_out_[i], out_[i], dout_[i])
+                   : dx_op_.Recompute(x_[i], y_[i], out_[i], dout_[i]);
     }
     if (dy_ != nullptr) {
-      dy_[i] = UseIntermediateOut ? dy_op_(x_[i], y_[i], intermediate_out_[i],
-                                           out_[i], dout_[i])
-                                  : dy_op_(x_[i], y_[i], out_[i], dout_[i]);
+      dy_[i] = UseIntermediateOut
+                   ? dy_op_.UseIntermediateOut(
+                         x_[i], y_[i], intermediate_out_[i], out_[i], dout_[i])
+                   : dy_op_.Recompute(x_[i], y_[i], out_[i], dout_[i]);
     }
     if (dintermediate_ != nullptr) {
       dintermediate_[i] =
           UseIntermediateOut
-              ? dintermediate_op_.GetDout(y_[i], intermediate_out_[i], dout_[i])
-              : dintermediate_op_(x_[i], y_[i], dout_[i]);
+              ? dintermediate_op_.UseIntermediateOut(
+                    x_[i], intermediate_out_[i], out_[i], dout_[i])
+              : dintermediate_op_.Recompute(x_[i], y_[i], out_[i], dout_[i]);
     }
   }
 
@@ -1058,9 +1061,11 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
 
       if (dx != nullptr) {
         T tmp = UseIntermediateOut
-                    ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                            out[offset], dout[offset])
-                    : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+                    ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                               intermediate_out[tmp_out_idx],
+                                               out[offset], dout[offset])
+                    : dx_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                                      dout[offset]);
 
         if (BcastY) {
           dx[x_idx] = tmp;
@@ -1074,9 +1079,11 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
       }
       if (dy != nullptr) {
         T tmp = UseIntermediateOut
-                    ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                            out[offset], dout[offset])
-                    : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+                    ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                               intermediate_out[tmp_out_idx],
+                                               out[offset], dout[offset])
+                    : dy_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                                      dout[offset]);
         if (BcastY) {
           if (i == 0) {
             dy[y_idx] = tmp;
@@ -1089,9 +1096,11 @@ static void FusedElemwiseAndActGradBroadcast1CPU(
       }
       if (d_intermediate != nullptr) {
         T tmp = UseIntermediateOut
-                    ? dintermediate_op.GetDout(
-                          y[y_idx], intermediate_out[tmp_out_idx], dout[offset])
-                    : dintermediate_op(x[x_idx], y[y_idx], dout[i]);
+                    ? dintermediate_op.UseIntermediateOut(
+                          x[x_idx], intermediate_out[tmp_out_idx], out[offset],
+                          dout[offset])
+                    : dintermediate_op.Recompute(x[x_idx], y[y_idx],
+                                                 out[offset], dout[i]);
         if (SameShapeOfIntermediateOutAndOut) {
           d_intermediate[tmp_out_idx] = tmp;
         } else {
@@ -1129,9 +1138,11 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
 
         if (dx != nullptr) {
           T tmp = UseIntermediateOut
-                      ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                              out[offset], dout[offset])
-                      : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+                      ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                                 intermediate_out[tmp_out_idx],
+                                                 out[offset], dout[offset])
+                      : dx_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                                        dout[offset]);
 
           if (BcastY) {
             dx[x_idx] = tmp;
@@ -1145,9 +1156,11 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
         }
         if (dy != nullptr) {
           T tmp = UseIntermediateOut
-                      ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                              out[offset], dout[offset])
-                      : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+                      ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                                 intermediate_out[tmp_out_idx],
+                                                 out[offset], dout[offset])
+                      : dy_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                                        dout[offset]);
           if (BcastY) {
             if (i == 0 && k == 0) {
               dy[y_idx] = tmp;
@@ -1159,11 +1172,12 @@ static void FusedElemwiseAndActGradBroadcast2CPU(
           }
         }
         if (d_intermediate != nullptr) {
-          T tmp =
-              UseIntermediateOut
-                  ? dintermediate_op.GetDout(
-                        y[y_idx], intermediate_out[tmp_out_idx], dout[offset])
-                  : dintermediate_op(x[x_idx], y[y_idx], dout[i]);
+          T tmp = UseIntermediateOut
+                      ? dintermediate_op.UseIntermediateOut(
+                            x[x_idx], intermediate_out[tmp_out_idx],
+                            out[offset], dout[offset])
+                      : dintermediate_op.Recompute(x[x_idx], y[y_idx],
+                                                   out[offset], dout[i]);
           if (SameShapeOfIntermediateOutAndOut) {
             d_intermediate[tmp_out_idx] = tmp;
           } else {
@@ -1205,10 +1219,12 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     }
 
     if (dx != nullptr) {
-      T tmp = UseIntermediateOut
-                  ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                          out[offset], dout[offset])
-                  : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp =
+          UseIntermediateOut
+              ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                         intermediate_out[tmp_out_idx],
+                                         out[offset], dout[offset])
+              : dx_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
 
       if (BcastY) {
         dx[x_idx] = tmp;
@@ -1217,10 +1233,12 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
       }
     }
     if (dy != nullptr) {
-      T tmp = UseIntermediateOut
-                  ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                          out[offset], dout[offset])
-                  : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp =
+          UseIntermediateOut
+              ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                         intermediate_out[tmp_out_idx],
+                                         out[offset], dout[offset])
+              : dy_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
       if (BcastY) {
         val += tmp;
       } else {
@@ -1229,9 +1247,11 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     }
     if (d_intermediate != nullptr) {
       T tmp = UseIntermediateOut
-                  ? dintermediate_op.GetDout(
-                        y[y_idx], intermediate_out[tmp_out_idx], dout[offset])
-                  : dintermediate_op(x[x_idx], y[y_idx], dout[i]);
+                  ? dintermediate_op.UseIntermediateOut(
+                        y[y_idx], intermediate_out[tmp_out_idx], out[offset],
+                        dout[offset])
+                  : dintermediate_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                                               dout[offset]);
       if (SameShapeOfIntermediateOutAndOut) {
         d_intermediate[tmp_out_idx] = tmp;
       } else {
@@ -1313,10 +1333,12 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     }
 
     if (dx != nullptr) {
-      T tmp = UseIntermediateOut
-                  ? dx_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                          out[offset], dout[offset])
-                  : dx_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp =
+          UseIntermediateOut
+              ? dx_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                         intermediate_out[tmp_out_idx],
+                                         out[offset], dout[offset])
+              : dx_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
 
       if (BcastY) {
         dx[x_idx] = tmp;
@@ -1325,10 +1347,12 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
       }
     }
     if (dy != nullptr) {
-      T tmp = UseIntermediateOut
-                  ? dy_op(x[x_idx], y[y_idx], intermediate_out[tmp_out_idx],
-                          out[offset], dout[offset])
-                  : dy_op(x[x_idx], y[y_idx], out[offset], dout[offset]);
+      T tmp =
+          UseIntermediateOut
+              ? dy_op.UseIntermediateOut(x[x_idx], y[y_idx],
+                                         intermediate_out[tmp_out_idx],
+                                         out[offset], dout[offset])
+              : dy_op.Recompute(x[x_idx], y[y_idx], out[offset], dout[offset]);
       if (BcastY) {
         val += tmp;
       } else {
@@ -1337,9 +1361,11 @@ static __global__ void FusedElemwiseAndActGradBroadcast2CUDAKernel(
     }
     if (d_intermediate != nullptr) {
       T tmp = UseIntermediateOut
-                  ? dintermediate_op.GetDout(
-                        y[y_idx], intermediate_out[tmp_out_idx], dout[offset])
-                  : dintermediate_op(x[x_idx], y[y_idx], dout[i]);
+                  ? dintermediate_op.UseIntermediateOut(
+                        y[y_idx], intermediate_out[tmp_out_idx], out[offset],
+                        dout[offset])
+                  : dintermediate_op.Recompute(x[x_idx], y[y_idx], out[offset],
+                                               dout[offset]);
       if (SameShapeOfIntermediateOutAndOut) {
         d_intermediate[tmp_out_idx] = tmp;
       } else {

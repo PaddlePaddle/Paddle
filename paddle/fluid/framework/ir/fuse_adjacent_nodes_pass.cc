@@ -397,28 +397,21 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
                            upstream_op_node_out_args);
       check_binary_backward(cur_op_type, cur_op_node_in_args,
                             cur_op_node_out_args);
+      bool keep_intermediate = false;
 
       op_desc->SetInput("X", {});
-      // bool keep_intermediate = true;
       if (cur_op_node_in_args.size() == 4) {
         op_desc->SetInput("X", cur_op_node->Op()->Input("X"));
       }
 
+      op_desc->SetInput("IntermediateOut", {});
       if (upstream_op_node_in_args.size() == 3) {
         op_desc->SetInput("IntermediateOut",
                           upstream_op_node->Op()->Input("X"));
-
-      } else {
-        // If the mem_opt is opened and the number of upstream_op_node_in_args
-        // is 2, the Unary is inplace, so the IntermediateOut has been rewrote
-        // by Unary.
-        // In this situation, the backward should not use the the
-        // intermediate_out.
-        // keep_intermediate = false;
-        op_desc->SetInput("IntermediateOut",
-                          upstream_op_node->Op()->Input("Out"));
+        keep_intermediate = true;
       }
-      op_desc->SetAttr("keep_intermediate_value", true);
+
+      op_desc->SetAttr("keep_intermediate_value", keep_intermediate);
       op_desc->SetInput("Y", cur_op_node->Op()->Input("Y"));
       op_desc->SetInput("Out", upstream_op_node->Op()->Input("Out"));
       op_desc->SetInput(out_grad, upstream_op_node->Op()->Input(out_grad));
