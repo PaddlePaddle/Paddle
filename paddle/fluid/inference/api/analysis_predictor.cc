@@ -99,10 +99,11 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   VLOG(5) << "to prepare executor";
   inference_program_.reset(
       new framework::ProgramDesc(*argument_.transformed_program_desc));
-  PADDLE_ENFORCE(argument_.Has(framework::ir::kParamScopeAttr));
-  // Update scope.
-  scope_.reset(
-      argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
+  if (argument_.Has(framework::ir::kParamScopeAttr)) {
+    // Update scope.
+    scope_.reset(
+        argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
+  }
   LOG(INFO) << "== optimize end ==";
 }
 

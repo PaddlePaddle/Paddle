@@ -54,7 +54,7 @@ void Main(int batch_size) {
   AnalysisConfig config;
   config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
-  config.enable_ir_optim = true;
+  config.enable_ir_optim = false;
   auto predictor =
       CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           config);
