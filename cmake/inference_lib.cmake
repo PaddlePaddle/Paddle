@@ -128,16 +128,13 @@ set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
 if (NOT WIN32)
-copy(framework_lib DEPS framework_py_proto 
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
-)
-else()
-copy(framework_lib
-  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
-)
+set(framework_lib_deps framework_py_proto)
 endif(NOT WIN32)
+copy(framework_lib DEPS ${framework_lib_deps}
+  SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
+       ${src_dir}/${module}/ir/*.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}/ir
+)
 
 set(module "memory")
 copy(memory_lib
@@ -161,7 +158,8 @@ set(module "inference")
 copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
        ${src_dir}/${module}/api/paddle_inference_api.h ${src_dir}/${module}/api/demo_ci
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
 set(module "platform")
