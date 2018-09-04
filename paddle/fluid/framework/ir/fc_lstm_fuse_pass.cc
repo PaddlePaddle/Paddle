@@ -145,16 +145,10 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
   int fusion_count{0};
 
-<<<<<<< HEAD
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-
-=======
-  auto fc_no_bias_handler = [&](
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
->>>>>>> 9557cc218d3d71947d7204dce6d711126eb80ad0
-    #define GET_NODE(name__) std::string name__##key =
-                         name_scope + "/" + #name__;
+#define GET_NODE(name__) std::string name__##key =
+    name_scope + "/" + #name__;
     auto* name__##n = pattern->RetrieveNode(name__##key);
     PADDLE_ENFORCE(name__##n);
     PADDLE_ENFORCE(subgraph.count(name__##n));
