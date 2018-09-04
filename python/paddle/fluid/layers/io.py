@@ -246,7 +246,11 @@ def Send(endpoints, send_vars, dummy_output=None, sync=True):
             rpc_op_role_name: core.op_proto_and_checker_maker.OpRole.RPC
         })
     if sync:
-        helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
+        helper.append_op(
+            type="send_barrier",
+            inputs={"X": dummy_output},
+            outputs={"Out": []},
+            attrs={"endpoints": endpoints})
 
 
 def Recv(endpoints, get_vars, dummy_input=None, sync=True):
@@ -282,7 +286,10 @@ def Recv(endpoints, get_vars, dummy_input=None, sync=True):
         attrs={"endpoints": endpoints,
                "epmap": epmap})
     if sync:
-        helper.append_op(type="fetch_barrier", attrs={"endpoints": endpoints})
+        helper.append_op(
+            type="fetch_barrier",
+            outputs={"Out": get_vars},
+            attrs={"endpoints": endpoints})
     return get_vars
 
 

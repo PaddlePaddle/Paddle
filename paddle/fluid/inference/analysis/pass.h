@@ -63,7 +63,7 @@ class Pass {
   // Human-readable short representation.
   virtual std::string repr() const = 0;
   // Human-readable long description.
-  virtual std::string description() const = 0;
+  virtual std::string description() const { return "No DOC"; }
 };
 
 // NodePass process on any Node types.

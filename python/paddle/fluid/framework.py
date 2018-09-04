@@ -43,12 +43,83 @@ __all__ = [
     'default_main_program',
     'program_guard',
     'get_var',
+    'name_scope',
 ]
 
 EMPTY_VAR_NAME = core.kEmptyVarName()
 TEMP_VAR_NAME = core.kTempVarName()
 GRAD_VAR_SUFFIX = core.kGradVarSuffix()
 ZERO_VAR_SUFFIX = core.kZeroVarSuffix()
+CONTROL_DEP_VAR_PREFIX = core.kControlDepVarName()
+
+
+class NameScope(object):
+    def __init__(self, name="", parent=None):
+        self._children = dict()
+        self._name = name
+        self._parent = parent
+
+    def child(self, prefix):
+        if prefix not in self._children:
+            new_child = NameScope(prefix, self)
+            self._children[prefix] = [new_child]
+        else:
+            new_child = NameScope(prefix + "_%d" % len(self._children[prefix]),
+                                  self)
+            self._children[prefix].append(new_child)
+        return new_child
+
+    def parent(self):
+        return self._parent
+
+    def name(self):
+        return self._name
+
+
+_name_scope = NameScope()
+
+
+@contextlib.contextmanager
+def name_scope(prefix=None):
+    """
+    Generate hierarchical name prefix for the operators.
+
+    Note: This should only used for debugging and visualization purpose.
+    Don't use it for serious analysis such as graph/program transformations.
+
+    Args:
+        prefix(str): prefix.
+
+    Examples:
+        .. code-block:: python
+          with name_scope("encoder"):
+             ...
+          with name_scope("decoder"):
+             ...
+             with name_scope("attention"):
+                ...
+    """
+    # TODO(panyx0718): Only [0-9a-z].
+    assert prefix, "namescope prefix cannot be empty."
+    global _name_scope
+    _name_scope = _name_scope.child(prefix)
+    yield
+    _name_scope = _name_scope.parent()
+
+
+def _full_name_scope():
+    global _name_scope
+    scope = _name_scope
+    name = ""
+    while scope:
+        name = scope.name() + "/" + name
+        scope = scope.parent()
+    return name
+
+
+def generate_control_dev_var_name():
+    import random
+    return CONTROL_DEP_VAR_PREFIX + "@" + str(random.random())
 
 
 def grad_var_name(var_name):
@@ -89,6 +160,8 @@ def convert_np_dtype_to_dtype_(np_dtype):
         return core.VarDesc.VarType.INT16
     elif dtype == np.uint8:
         return core.VarDesc.VarType.UINT8
+    elif dtype == np.int8:
+        return core.VarDesc.VarType.INT8
     else:
         raise ValueError("Not supported numpy dtype %s" % dtype)
 
@@ -506,6 +579,9 @@ class Operator(object):
                 "`type` to initilized an Operator can not be None.")
         self.desc.set_type(type)
         proto = OpProtoHolder.instance().get_op_proto(type)
+
+        namescope_var_name = op_maker.kOpNameScopeAttrName()
+        op_attrs[namescope_var_name] = _full_name_scope()
 
         def find_name(var_list, name):
             for var_name in var_list:
@@ -1362,6 +1438,13 @@ class Program(object):
         self._seed = 0
         self._current_role = core.op_proto_and_checker_maker.OpRole.Forward
         self._op_role_var = []
+
+        # for distribute
+        self._is_distributed = False
+        self._is_chief = False
+        self._slice_vars_and_attrs = []
+        self._endpoints = []
+        self._distributed_lookup_table = None
 
     @property
     def op_role(self):

@@ -49,7 +49,7 @@ struct TensorCopyVisitor {
         size_(size) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     // TODO(Yancey1989): support other place
     platform::CPUPlace cpu;
     memory::Copy(cpu, dst_->mutable_data<T>(cpu) + dst_offset_, cpu,
@@ -139,7 +139,7 @@ int64_t SelectedRows::AutoGrownIndex(int64_t key, bool auto_grown) {
     }
     auto write_iter = id_to_index_.find(key);
     if (write_iter == id_to_index_.end()) {
-      size_t row_num = rows_.size();
+      int row_num = rows_.size();
       if (row_num == value_->dims()[0]) {
         rwlock_->UNLock();
         PADDLE_THROW("selected rows is full, then length exceed %d", row_num);
@@ -182,7 +182,7 @@ void SelectedRows::Get(const framework::Tensor& ids, framework::Tensor* value,
     PADDLE_ENFORCE_EQ(value_width, value->numel() / value->dims()[0],
                       "output tensor should have the same shape with table "
                       "except the dims[0].");
-    for (size_t i = 0; i < ids.numel(); ++i) {
+    for (int i = 0; i < ids.numel(); ++i) {
       int64_t index = AutoGrownIndex(ids.data<int64_t>()[i], auto_grown);
       framework::VisitDataType(
           framework::ToDataType(value_->type()),

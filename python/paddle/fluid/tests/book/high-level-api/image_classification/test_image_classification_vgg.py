@@ -16,7 +16,9 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy
+import os
 import cifar10_small_test_set
 
 
@@ -68,7 +70,7 @@ def optimizer_func():
     return fluid.optimizer.Adam(learning_rate=0.001)
 
 
-def train(use_cuda, train_program, params_dirname):
+def train(use_cuda, train_program, parallel, params_dirname):
     BATCH_SIZE = 128
     train_reader = paddle.batch(
         paddle.reader.shuffle(
@@ -93,7 +95,10 @@ def train(use_cuda, train_program, params_dirname):
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer_func=optimizer_func)
+        train_func=train_program,
+        place=place,
+        optimizer_func=optimizer_func,
+        parallel=parallel)
 
     trainer.train(
         reader=train_reader,
@@ -102,10 +107,13 @@ def train(use_cuda, train_program, params_dirname):
         feed_order=['pixel', 'label'])
 
 
-def infer(use_cuda, inference_program, params_dirname=None):
+def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=params_dirname, place=place)
+        infer_func=inference_program,
+        param_path=params_dirname,
+        place=place,
+        parallel=parallel)
 
     # The input's dimension of conv should be 4-D or 5-D.
     # Use normilized image pixels as input data, which should be in the range
@@ -116,22 +124,31 @@ def infer(use_cuda, inference_program, params_dirname=None):
     print("infer results: ", results)
 
 
-def main(use_cuda):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
-        return
+def main(use_cuda, parallel):
     save_path = "image_classification_vgg.inference.model"
 
+    os.environ['CPU_NUM'] = str(4)
     train(
         use_cuda=use_cuda,
         train_program=train_network,
-        params_dirname=save_path)
+        params_dirname=save_path,
+        parallel=parallel)
 
+    # FIXME(zcd): in the inference stage, the number of
+    # input data is one, it is not appropriate to use parallel.
+    if parallel and use_cuda:
+        return
+    os.environ['CPU_NUM'] = str(1)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_network,
-        params_dirname=save_path)
+        params_dirname=save_path,
+        parallel=parallel)
 
 
 if __name__ == '__main__':
     for use_cuda in (False, True):
-        main(use_cuda=use_cuda)
+        for parallel in (False, True):
+            if use_cuda and not core.is_compiled_with_cuda():
+                continue
+            main(use_cuda=use_cuda, parallel=parallel)

@@ -18,14 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/hostdevice.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-#define FLT_MAX \
-  __FLT_MAX__  // TODO(zcd) :It might need to be placed in another file, but I'm
-               // still wondering where to put it.
 
 /*
  * \brief Extracting simple operations from pooling.

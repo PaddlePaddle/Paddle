@@ -24,6 +24,9 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+if(WIN32)
+    set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
     find_package(CUDA QUIET)
@@ -138,12 +141,6 @@ else()
     set(THIRD_PARTY_BUILD_TYPE Release)
 endif()
 
-if(WITH_MKL)
-  option(MKL_SPLIT_GEMM "PaddlePaddle MKL gemm would split to small ones" OFF)
-  if (MKL_SPLIT_GEMM)
-    add_definitions(-DPADDLE_MKL_SPLIT_GEMM)
-  endif()
-endif()
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
     if (WITH_MKL AND AVX2_FOUND)
@@ -171,13 +168,20 @@ include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
-include(external/warpctc)   # download, build, install warpctc
 include(external/boost)     # download boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
 include(external/cub)
+
+if (NOT WIN32)
+# there is no official support of snappystream, warpctc, nccl, cupti in windows
+include(external/snappy)    # download snappy
+include(external/snappystream) # download snappystream
+include(external/warpctc)   # download, build, install warpctc
+include(cupti)
+endif (NOT WIN32)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -200,9 +204,11 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-include(external/snappy)    # download snappy
-include(external/snappystream)
+
 include(external/threadpool)
+include(flags)              # set paddle compile flags
+include(cudnn)              # set cudnn libraries, must before configure
+include(configure)          # add paddle env configuration
 
 if(WITH_GPU)
     include(cuda)
@@ -212,10 +218,6 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
 endif()
 
-include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
-include(cupti)
-include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
