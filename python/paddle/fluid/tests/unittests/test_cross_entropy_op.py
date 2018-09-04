@@ -210,7 +210,7 @@ class TestCrossEntropyOp6(OpTest):
 
 
 class TestCrossEntropyOp7(OpTest):
-    """Test cross-entropy with discrete one-hot labels.
+    """Test cross-entropy with ignore index.
     """
 
     def setUp(self):
