@@ -16,6 +16,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/memory/memory.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/rw_lock.h"
+#endif
 
 namespace paddle {
 namespace platform {
@@ -142,7 +145,59 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   mutable unsigned int* semaphore_;
 };
 
-CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
+class CudnnHolder {
+ public:
+  CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
+      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
+  }
+
+  cudnnHandle_t cudnn_handle() const { return cudnn_handle_; }
+
+  void RunFunc(const std::function<void(void*)>& cudnn_func,
+               size_t required_workspace_len) {
+    std::lock_guard<std::mutex> lock(mtx_);
+    if (required_workspace_len > workspace_len_) {
+      ReallocateWorkspace(required_workspace_len);
+    }
+    cudnn_func(workspace_);
+  }
+
+  ~CudnnHolder() {
+    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
+    if (workspace_ != nullptr) {
+      paddle::memory::Free(place_, workspace_);
+    }
+  }
+
+ private:
+  void ReallocateWorkspace(size_t required_workspace_len) {
+    if (required_workspace_len <= workspace_len_) {
+      return;
+    }
+    void* new_workspace = paddle::memory::Alloc(place_, required_workspace_len);
+    if (workspace_ != nullptr) {
+      // Maybe someone is using the current workspace
+      PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
+      paddle::memory::Free(place_, workspace_);
+    }
+    workspace_ = new_workspace;
+    workspace_len_ = required_workspace_len;
+  }
+
+  cudnnHandle_t cudnn_handle_;
+  void* workspace_;
+  size_t workspace_len_;
+
+  const cudaStream_t* stream_;  // not owned;
+  const CUDAPlace place_;
+
+  std::mutex mtx_;
+};
+
+CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
+    : place_(place), cudnn_holder_(nullptr) {
   SetDeviceId(place_.device);
   compute_capability = GetCUDAComputeCapability(place_.device);
   multi_process = GetCUDAMultiProcessors(place_.device);
@@ -154,10 +209,7 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
   if (dynload::HasCUDNN()) {
-    PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
-    PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
-  } else {
-    cudnn_handle_ = nullptr;
+    cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
 }
 
@@ -165,9 +217,6 @@ CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
-  if (cudnn_handle_ != nullptr) {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-  }
   eigen_stream_.reset();
   eigen_device_.reset();
   PADDLE_ENFORCE(cudaStreamDestroy(stream_));
@@ -196,7 +245,14 @@ cublasHandle_t CUDADeviceContext::cublas_handle() const {
   return cublas_handle_;
 }
 
-cudnnHandle_t CUDADeviceContext::cudnn_handle() const { return cudnn_handle_; }
+cudnnHandle_t CUDADeviceContext::cudnn_handle() const {
+  return cudnn_holder_->cudnn_handle();
+}
+
+void CUDADeviceContext::RunCudnnFuncWithWorkspace(
+    const std::function<void(void*)>& cudnn_func, size_t workspace_len) const {
+  cudnn_holder_->RunFunc(cudnn_func, workspace_len);
+}
 
 cudaStream_t CUDADeviceContext::stream() const { return stream_; }
 
