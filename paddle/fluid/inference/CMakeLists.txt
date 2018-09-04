@@ -17,9 +17,8 @@ get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 # paddle_fluid_origin exclude inference api interface
 cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 
-if(NOT APPLE)
-  add_subdirectory(api)
-endif()
+# fix macos compile error
+add_subdirectory(api)
 
 # Create static library
 cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
