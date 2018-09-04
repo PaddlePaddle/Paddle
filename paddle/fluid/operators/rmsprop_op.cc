@@ -36,7 +36,7 @@ class RmspropOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(param_out) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MomentOut"),
-                   "Output(Momentum_out) of RmspropOp should not be null.");
+                   "Output(MomentOut) of RmspropOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("MeanSquareOut"),
                    "Output(MeanSquareOut) of RmspropOp should not be null.");
     if (ctx->Attrs().Get<bool>("centered")) {
@@ -79,7 +79,8 @@ class RmspropOpMaker : public framework::OpProtoAndCheckerMaker {
              " The mean square value that gets updated.");
     AddInput("MeanGrad",
              "(Tensor, default Tensor<float>)"
-             " The moving average of gradient");
+             " The moving average of gradient")
+        .AsDispensable();
     AddInput("LearningRate",
              "(Tensor, default Tensor<float>) "
              "The learning rate should be a tensor of size 1.");
