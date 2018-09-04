@@ -111,6 +111,7 @@ __all__ = [
     'stack',
     'pad2d',
     'unstack',
+    'sequence_enumerate',
 ]
 
 
@@ -5823,6 +5824,51 @@ def flatten(x, axis=1, name=None):
     return out
 
 
+def sequence_enumerate(input, win_size, pad_value=0, name=None):
+    """
+    Generate a new sequence for the input index sequence, which enumerates all the
+    sub-sequences with length `win_size` of the input. 
+    The enumerated sequence has the same 1st dimension with variable `input`, and
+    the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
+    
+    Examples:
+    Case 1:
+      Input:
+        X.lod = [[0, 3, 5]]
+        X.data = [[1], [2], [3], [4], [5]]
+        X.dims = [5, 1]
+      Attrs:
+        win_size = 2
+        pad_value = 0
+      Output:
+        Out.lod = [[0, 3, 5]]
+        Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
+        Out.dims = [5, 2]
+
+    Args:
+        input (Variable): The input variable which is a index sequence.
+        win_size (int): The window size for enumerating all sub-sequences.
+        pad_value (int): The padding value, default 0.
+
+    Returns:
+        Variable: The enumerate sequence variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
+            out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
+    """
+    helper = LayerHelper('sequence_enumerate', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_enumerate',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'win_size': win_size,
+               'pad_value': pad_value})
+
+
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     """
     **SequenceMask Layer**
@@ -5902,6 +5948,7 @@ def stack(x, axis=0):
     helper.append_op(
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
+
     return out
 
 
