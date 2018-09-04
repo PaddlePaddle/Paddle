@@ -118,6 +118,7 @@ def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
     """
     helper = LayerHelper("auc", **locals())
     auc_out = helper.create_tmp_variable(dtype="float64")
+    batch_auc_out = helper.create_tmp_variable(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
     stat_pos = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[num_thresholds])
@@ -141,7 +142,8 @@ def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
                "num_thresholds": num_thresholds},
         outputs={
             "AUC": [auc_out],
+            "BatchAUC": [batch_auc_out],
             "StatPosOut": [stat_pos],
             "StatNegOut": [stat_neg]
         })
-    return auc_out, [stat_pos, stat_neg]
+    return auc_out, batch_auc_out, [stat_pos, stat_neg]

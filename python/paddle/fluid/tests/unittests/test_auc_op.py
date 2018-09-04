@@ -27,9 +27,14 @@ class TestAucOp(OpTest):
         labels = np.random.randint(0, 2, (128, 1))
         num_thresholds = 200
 
+        stat_pos = np.zeros((num_thresholds + 1, )).astype("int64")
+        stat_neg = np.zeros((num_thresholds + 1, )).astype("int64")
+
         self.inputs = {
             'Predict': pred,
             'Label': labels,
+            "StatPos": [stat_pos],
+            "StatNeg": [stat_neg]
         }
         self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
 
@@ -40,6 +45,7 @@ class TestAucOp(OpTest):
 
         self.outputs = {
             'AUC': np.array(python_auc.eval()),
+            'BatchAUC': np.array(python_auc.eval()),
             'StatPosOut': np.array(python_auc._stat_pos),
             'StatNegOut': np.array(python_auc._stat_neg)
         }

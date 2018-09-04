@@ -70,6 +70,7 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
+    AddOutput("BatchAUC", "The AUC for current batch");
     AddOutput("StatPosOut", "Statistic value when label = 1");
     AddOutput("StatNegOut", "Statistic value when label = 0");
 

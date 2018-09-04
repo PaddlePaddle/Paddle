@@ -29,36 +29,62 @@ class AucKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext &ctx) const override {
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
-    auto *auc = ctx.Output<Tensor>("AUC");
-    // Only use output var for now, make sure it's persistable and
-    // not cleaned up for each batch.
-    auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
-    auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
-    auto *auc_data = auc->mutable_data<double>(ctx.GetPlace());
 
     std::string curve = ctx.Attr<std::string>("curve");
-    int num_thresholds = ctx.Attr<int>("num_thresholds");
+    const int num_thresholds = ctx.Attr<int>("num_thresholds");
 
-    size_t batch_size = predict->dims()[0];
-    size_t inference_width = predict->dims()[1];
-
-    const T *inference_data = predict->data<T>();
-    const auto *label_data = label->data<int64_t>();
+    // Only use output var for now, make sure it's persistable and
+    // not cleaned up for each batch.
+    auto *auc = ctx.Output<Tensor>("AUC");
+    auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
+    auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
 
     auto *stat_pos_data = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *stat_neg_data = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
+    calcAuc(ctx, label, predict, stat_pos_data, stat_neg_data, num_thresholds,
+            auc);
+
+    auto *batch_auc = ctx.Output<Tensor>("BatchAUC");
+    std::vector<int64_t> stat_pos_batch(num_thresholds + 1, 0);
+    std::vector<int64_t> stat_neg_batch(num_thresholds + 1, 0);
+    //    int64_t stat_pos_batch[num_thresholds + 1];
+    //    memset(stat_pos_batch, 0, sizeof(stat_pos_batch));
+    //    int64_t stat_neg_batch[num_thresholds + 1];
+    //    memset(stat_neg_batch, 0, sizeof(stat_neg_batch));
+    calcAuc(ctx, label, predict, stat_pos_batch, stat_neg_batch, num_thresholds,
+            batch_auc);
+  }
+
+ private:
+  inline static double trapezoidArea(double X1, double X2, double Y1,
+                                     double Y2) {
+    return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
+  }
+
+  inline static void calcAuc(const framework::ExecutionContext &ctx,
+                             const framework::Tensor *label,
+                             const framework::Tensor *predict,
+                             int64_t *stat_pos, int64_t *stat_neg,
+                             int num_thresholds,
+                             framework::Tensor *auc_tensor) {
+    size_t batch_size = predict->dims()[0];
+    size_t inference_width = predict->dims()[1];
+    const T *inference_data = predict->data<T>();
+    const auto *label_data = label->data<int64_t>();
+
+    auto *auc = auc_tensor->mutable_data<double>(ctx.GetPlace());
 
     for (size_t i = 0; i < batch_size; i++) {
       uint32_t binIdx = static_cast<uint32_t>(
           inference_data[i * inference_width + 1] * num_thresholds);
       if (label_data[i]) {
-        stat_pos_data[binIdx] += 1.0;
+        stat_pos[binIdx] += 1.0;
       } else {
-        stat_neg_data[binIdx] += 1.0;
+        stat_neg[binIdx] += 1.0;
       }
     }
 
-    *auc_data = 0.0f;
+    *auc = 0.0f;
 
     double totPos = 0.0;
     double totNeg = 0.0;
@@ -70,21 +96,16 @@ class AucKernel : public framework::OpKernel<T> {
     while (idx >= 0) {
       totPosPrev = totPos;
       totNegPrev = totNeg;
-      totPos += stat_pos_data[idx];
-      totNeg += stat_neg_data[idx];
-      *auc_data += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
+      totPos += stat_pos[idx];
+      totNeg += stat_neg[idx];
+      *auc += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
+
       --idx;
     }
 
     if (totPos > 0.0 && totNeg > 0.0) {
-      *auc_data = *auc_data / totPos / totNeg;
+      *auc = *auc / totPos / totNeg;
     }
-  }
-
- private:
-  inline static double trapezoidArea(double X1, double X2, double Y1,
-                                     double Y2) {
-    return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
   }
 };
 
