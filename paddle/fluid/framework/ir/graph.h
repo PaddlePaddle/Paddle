@@ -28,6 +28,38 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
+/*
+ * The graph is a Directed Acyclic Single Static Assignment Graph.
+ *
+ * In more detail, the following properties must hold:
+ *
+ *   The graph shouldn't contain cycle. Each node is a black-box to the graph
+ *   so the node itself could be a loop operator.
+ *
+ *   Each Variable-type node has only one input (thus single static assignment).
+ *
+ *   The output/input of operator is variable and the output/input of variable
+ *   is operator.
+ *
+ * The following data harzards in Program are addressed in the Graph:
+ *
+ *   Write-After-Read
+ *     a = op1(x)
+ *     x = op2(b)
+ *     A control-dependency connection is created bettwen op1 and op2 such that
+ *     op1->op2, so as to ensure correct order.
+ *
+ *   Write-After-Write
+ *     x = op1(a)
+ *     x = op2(b)
+ *     A control-dependency connection is created between op1 and op2 such that
+ *     op1->op2, so as to ensure correct order.
+ *
+ * Other properties currently hold, but is not enforced yet:
+ *
+ *   Variable-type node (not control dep) with the same variable name share
+ *   the same underlying VarDesc.
+ */
 class Graph {
  public:
   explicit Graph(const ProgramDesc &program);
@@ -66,11 +98,13 @@ class Graph {
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
+    PADDLE_ENFORCE(var_desc);
     return AddNode(new ir::Node(var_desc));
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
+    PADDLE_ENFORCE(op_desc);
     return AddNode(new ir::Node(op_desc));
   }
 
@@ -102,6 +136,22 @@ class Graph {
     return ret;
   }
 
+  void RemoveNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
+    node_set_.erase(node);
+    nodes_.erase(node);
+  }
+
+  // NOTE low performance, but simple and secure.
+  Node *RetriveNode(int id) {
+    for (auto &node : nodes_) {
+      if (node.second->id() == id) {
+        return node.second.get();
+      }
+    }
+    return nullptr;
+  }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -111,14 +161,8 @@ class Graph {
     return node;
   }
 
-  void RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
-    nodes_.erase(node);
-  }
-
   // NOTE: program_ shouldn't be exposed to user.
-  const ProgramDesc &program_;
+  const ProgramDesc program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;

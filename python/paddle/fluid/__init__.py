@@ -122,7 +122,7 @@ def __bootstrap__():
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        'cpu_deterministic'
+        "dist_threadpool_size", 'cpu_deterministic'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')

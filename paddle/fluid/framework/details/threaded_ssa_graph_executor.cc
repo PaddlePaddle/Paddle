@@ -107,11 +107,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
-      if (exception_holder_.ExceptionCatched()) {
+      if (exception_holder_.IsCaught()) {
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
-        exception_holder_.Throw();
+        exception_holder_.ReThrow();
       } else {
         continue;
       }
@@ -220,12 +220,8 @@ void ThreadedSSAGraphExecutor::RunOp(
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
-    } catch (platform::EOFException ex) {
-      exception_holder_.Catch(ex);
-    } catch (platform::EnforceNotMet ex) {
-      exception_holder_.Catch(ex);
     } catch (...) {
-      LOG(FATAL) << "Unknown exception catched";
+      exception_holder_.Catch(std::current_exception());
     }
   };
   if (pool_) {

@@ -21,6 +21,7 @@ import paddle.fluid.nets as nets
 from paddle.fluid.framework import Program, program_guard, default_main_program
 from paddle.fluid.param_attr import ParamAttr
 import decorators
+from paddle.fluid.initializer import Constant
 
 
 class TestBook(unittest.TestCase):
@@ -158,7 +159,7 @@ class TestBook(unittest.TestCase):
                 input=crf_decode,
                 label=label,
                 chunk_scheme="IOB",
-                num_chunk_types=(label_dict_len - 1) / 2)
+                num_chunk_types=(label_dict_len - 1) // 2)
             self.assertFalse(crf is None)
             self.assertFalse(crf_decode is None)
 
@@ -239,6 +240,22 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(layers.softmax(hid))
         print(str(program))
 
+    def test_sequence_unsqueeze(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[8, 2], dtype='float32')
+            out = layers.unsqueeze(input=x, axes=[1])
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_squeeze(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name='x', shape=[1, 1, 4], dtype='float32')
+            out = layers.squeeze(input=x, axes=[2])
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_lrn(self):
         program = Program()
         with program_guard(program):
@@ -285,7 +302,7 @@ class TestBook(unittest.TestCase):
                     name='word_{0}'.format(i), shape=[1], dtype='int64'))
 
         dict_size = 10000
-        label_word = int(window_size / 2) + 1
+        label_word = int(window_size // 2) + 1
 
         embs = []
         for i in range(window_size):
@@ -344,6 +361,25 @@ class TestBook(unittest.TestCase):
             y = layers.data(name='label', shape=[4], dtype='float32')
             loss = layers.smooth_l1(x, y)
             self.assertIsNotNone(loss)
+        print(str(program))
+
+    def test_scatter(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                shape=[3, 3],
+                append_batch_size=False,
+                dtype='float32')
+            idx = layers.data(
+                name='idx', shape=[2], append_batch_size=False, dtype='int32')
+            updates = layers.data(
+                name='updates',
+                shape=[2, 3],
+                append_batch_size=False,
+                dtype='float32')
+            out = layers.scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
         print(str(program))
 
     def test_lod_reset(self):
@@ -465,6 +501,17 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_flatten(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                append_batch_size=False,
+                shape=[4, 4, 3],
+                dtype="float32")
+            out = layers.flatten(x, axis=1, name="flatten")
+            self.assertIsNotNone(out)
+
     def test_shape(self):
         program = Program()
         with program_guard(program):
@@ -472,6 +519,41 @@ class TestBook(unittest.TestCase):
                 name="input", shape=[3, 100, 100], dtype="float32")
             out = layers.shape(input, name="shape")
             self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_pad2d(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.pad2d(
+                input,
+                paddings=[1, 2, 3, 4],
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_prelu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[5, 200, 100, 100], dtype="float32")
+            mode = 'channel'
+            out = layers.prelu(
+                input,
+                mode,
+                param_attr=ParamAttr(initializer=Constant(1.0)),
+                name='prelu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sequence_enumerate(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
+            out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
         print(str(program))
 
 

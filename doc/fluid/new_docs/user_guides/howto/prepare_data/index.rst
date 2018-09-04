@@ -38,7 +38,6 @@ PaddlePaddle Fluid支持两种传入数据的方式:
    :maxdepth: 2
 
    feeding_data
-   use_recordio_reader
 
 Python Reader
 #############

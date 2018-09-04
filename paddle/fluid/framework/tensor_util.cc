@@ -149,7 +149,7 @@ struct AnyDTypeVisitor {
       : predicate_(predicate), tensor_(tensor), ctx_(ctx), out_(out) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto t = EigenVector<T>::Flatten(tensor_);
     auto o = EigenScalar<bool>::From(*out_);
     // return any of predicate_(t) is true.
@@ -400,7 +400,7 @@ struct DeserializedDataFunctor {
       : buf_(buf), tensor_(tensor), place_(place) {}
 
   template <typename T>
-  void operator()() {
+  void apply() {
     *buf_ = tensor_->mutable_data<T>(place_);
   }
 
