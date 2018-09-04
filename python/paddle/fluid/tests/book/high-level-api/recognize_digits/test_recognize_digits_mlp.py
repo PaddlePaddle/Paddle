@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import argparse
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle
 import sys
 import numpy
@@ -50,11 +51,14 @@ def optimizer_func():
     return fluid.optimizer.Adam(learning_rate=0.001)
 
 
-def train(use_cuda, train_program, params_dirname):
+def train(use_cuda, train_program, params_dirname, parallel):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     trainer = fluid.Trainer(
-        train_func=train_program, place=place, optimizer_func=optimizer_func)
+        train_func=train_program,
+        place=place,
+        optimizer_func=optimizer_func,
+        parallel=parallel)
 
     def event_handler(event):
         if isinstance(event, fluid.EndEpochEvent):
@@ -86,11 +90,14 @@ def train(use_cuda, train_program, params_dirname):
         feed_order=['img', 'label'])
 
 
-def infer(use_cuda, inference_program, params_dirname=None):
+def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=params_dirname, place=place)
+        infer_func=inference_program,
+        param_path=params_dirname,
+        place=place,
+        parallel=parallel)
 
     batch_size = 1
     tensor_img = numpy.random.uniform(-1.0, 1.0,
@@ -101,20 +108,32 @@ def infer(use_cuda, inference_program, params_dirname=None):
     print("infer results: ", results[0])
 
 
-def main(use_cuda):
+def main(use_cuda, parallel):
     params_dirname = "recognize_digits_mlp.inference.model"
 
     # call train() with is_local argument to run distributed train
+    os.environ['CPU_NUM'] = str(4)
     train(
         use_cuda=use_cuda,
         train_program=train_program,
-        params_dirname=params_dirname)
+        params_dirname=params_dirname,
+        parallel=parallel)
+
+    # FIXME(zcd): in the inference stage, the number of
+    # input data is one, it is not appropriate to use parallel.
+    if parallel and use_cuda:
+        return
+    os.environ['CPU_NUM'] = str(1)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_program,
-        params_dirname=params_dirname)
+        params_dirname=params_dirname,
+        parallel=parallel)
 
 
 if __name__ == '__main__':
-    # for use_cuda in (False, True):
-    main(use_cuda=False)
+    for use_cuda in (False, True):
+        for parallel in (False, True):
+            if use_cuda and not core.is_compiled_with_cuda():
+                continue
+            main(use_cuda=use_cuda, parallel=parallel)
