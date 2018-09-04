@@ -18,10 +18,7 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager
-  graph_viz_pass fc_fuse_pass
-  infer_clean_graph_pass
-  )
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
