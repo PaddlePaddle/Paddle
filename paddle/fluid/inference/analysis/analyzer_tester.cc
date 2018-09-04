@@ -22,6 +22,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -368,10 +369,3 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(seq_concat_fc_fuse_pass);
-USE_PASS(fc_lstm_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);
-USE_PASS(attention_lstm_fuse_pass);
