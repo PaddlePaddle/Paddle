@@ -339,22 +339,22 @@ PDNode& PDNode::LinksFrom(const std::vector<PDNode*>& others) {
 }
 
 PDNode* PDNode::assert_is_op() {
-  asserts_.emplace_back([this](Node* x) { return x && x->IsOp(); });
+  asserts_.emplace_back([](Node* x) { return x && x->IsOp(); });
   return this;
 }
 PDNode* PDNode::assert_is_op(const std::string& op_type) {
-  asserts_.emplace_back([this, op_type](Node* x) {
+  asserts_.emplace_back([op_type](Node* x) {
     return x && x->IsOp() && x->Op()->Type() == op_type;
   });
   return this;
 }
 PDNode* PDNode::assert_is_var() {
-  asserts_.emplace_back([this](Node* x) { return x && x->IsVar(); });
+  asserts_.emplace_back([](Node* x) { return x && x->IsVar(); });
   return this;
 }
 PDNode* PDNode::assert_var_not_persistable() {
   assert_is_var();
-  asserts_.emplace_back([this](Node* x) { return !x->Var()->Persistable(); });
+  asserts_.emplace_back([](Node* x) { return !x->Var()->Persistable(); });
   return this;
 }
 PDNode* PDNode::assert_is_persistable_var() {
@@ -496,14 +496,16 @@ void GraphSafeRemoveNodes(Graph* graph,
     for (auto it = node->inputs.begin(); it != node->inputs.end();) {
       if (nodes.count(*it)) {
         it = const_cast<Node*>(node)->inputs.erase(it);
-      } else
+      } else {
         it++;
+      }
     }
     for (auto it = node->outputs.begin(); it != node->outputs.end();) {
       if (nodes.count(*it)) {
         it = const_cast<Node*>(node)->outputs.erase(it);
-      } else
+      } else {
         it++;
+      }
     }
   }
 }
