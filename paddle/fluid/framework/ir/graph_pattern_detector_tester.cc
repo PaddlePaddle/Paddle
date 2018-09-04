@@ -140,8 +140,9 @@ TEST(GraphPatternDetecter, MultiSubgraph) {
         return node->IsOp() && (node->Name() == "op2" || node->Name() == "op3");
       },
       "OP0");
-  auto* any_var = x.mutable_pattern()->NewNode(
-      [](Node* node) { return node->IsVar(); }, "VAR");
+  auto* any_var = x.mutable_pattern()
+                      ->NewNode([](Node* node) { return node->IsVar(); }, "VAR")
+                      ->AsIntermediate();
   auto* any_op1 = x.mutable_pattern()->NewNode(
       [](Node* node) { return node->IsOp(); }, "OP1");
 
