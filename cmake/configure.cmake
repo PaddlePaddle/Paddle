@@ -61,6 +61,11 @@ if(NOT CMAKE_CROSSCOMPILING)
     endif()
 endif()
 
+if(WIN32)
+  # windows stupid compile option for all targets.
+  add_definitions(-D_XKEYCHECK_H)
+endif(WIN32)
+
 if(NOT WITH_GOLANG)
     add_definitions(-DPADDLE_WITHOUT_GOLANG)
 endif(NOT WITH_GOLANG)
@@ -112,8 +117,11 @@ if(WITH_GPU)
         endif()
     endif()
     if(WITH_ANAKIN)
-        set(ENV{CUDNN_INCLUDE_DIR} ${CUDNN_INCLUDE_DIR})
-        set(ENV{CUDNN_LIBRARY} ${CUDNN_LIBRARY})
+        # NOTICE(minqiyang): the end slash is important because $CUDNN_INCLUDE_DIR
+        # is a softlink to real cudnn.h directory
+        set(ENV{CUDNN_INCLUDE_DIR} "${CUDNN_INCLUDE_DIR}/")
+        get_filename_component(CUDNN_LIBRARY_DIR ${CUDNN_LIBRARY} DIRECTORY)
+        set(ENV{CUDNN_LIBRARY} ${CUDNN_LIBRARY_DIR})
     endif()
 elseif(WITH_AMD_GPU)
     add_definitions(-DPADDLE_WITH_HIP)

@@ -90,6 +90,11 @@ class Blas {
   void GEMM(bool transA, bool transB, int M, int N, int K, T alpha, const T* A,
             int lda, const T* B, int ldb, T beta, T* C, int ldc) const;
 
+  template <typename T>
+  void GEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
+            T alpha, const T* A, int lda, const T* B, int ldb, T beta, T* C,
+            int ldc) const;
+
 #ifdef PADDLE_WITH_MKLML
   template <typename T>
   T* GEMM_ALLOC(const CBLAS_IDENTIFIER id, const int M, const int N,
@@ -108,6 +113,10 @@ class Blas {
   template <typename T>
   void GEMM_FREE(T* data) const;
 #endif
+
+  template <typename T>
+  void MatMul(const int M, const int N, const int K, const T* A, const T* B,
+              T* C) const;
 
   template <typename T>
   void MatMul(const framework::Tensor& mat_a, bool trans_a,
@@ -135,11 +144,23 @@ class Blas {
   void VADD(int n, const T* x, const T* y, T* z) const;
 
   template <typename T>
+  void VMUL(int n, const T* x, const T* y, T* z) const;
+
+  template <typename T>
   void VCOPY(int n, const T* x, T* y) const;
+
+  template <typename T>
+  void VEXP(int n, const T* x, T* y) const;
 
   template <typename T>
   void GEMV(bool trans_a, int M, int N, T alpha, const T* A, const T* B, T beta,
             T* C) const;
+
+  template <typename T>
+  T DOT(int n, const T* x, const T* y) const;
+
+  template <typename T>
+  void SCAL(int n, const T a, T* x) const;
 
   template <typename T>
   void BatchedGEMM(CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N,
@@ -203,13 +224,33 @@ class BlasT : private Blas<DeviceContext> {
   }
 
   template <typename... ARGS>
+  void VMUL(ARGS... args) const {
+    Base()->template VMUL<T>(args...);
+  }
+
+  template <typename... ARGS>
   void VCOPY(ARGS... args) const {
     Base()->template VCOPY<T>(args...);
   }
 
   template <typename... ARGS>
+  void VEXP(ARGS... args) const {
+    Base()->template VEXP<T>(args...);
+  }
+
+  template <typename... ARGS>
   void GEMV(ARGS... args) const {
     Base()->template GEMV<T>(args...);
+  }
+
+  template <typename... ARGS>
+  T DOT(ARGS... args) const {
+    return Base()->template DOT<T>(args...);
+  }
+
+  template <typename... ARGS>
+  void SCAL(ARGS... args) const {
+    Base()->template SCAL<T>(args...);
   }
 
   template <typename... ARGS>
