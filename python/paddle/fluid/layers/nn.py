@@ -967,7 +967,7 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     return out
 
 
-def cross_entropy(input, label, soft_label=False):
+def cross_entropy(input, label, soft_label=False, ignore_index=-100):
     """
     **Cross Entropy Layer**
 
@@ -1011,7 +1011,9 @@ def cross_entropy(input, label, soft_label=False):
                                tensor<float/double> with shape [N x D].
         soft_label (bool): a flag indicating whether to
                                            interpretate the given labels as soft
-                                           labels, default `False`.
+                                           labels. Default: `False`.
+        ignore_index (int): Specifies a target value that is ignored and does not
+                            contribute to the input gradient. Default: -100
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -1036,7 +1038,8 @@ def cross_entropy(input, label, soft_label=False):
         inputs={'X': [input],
                 'Label': [label]},
         outputs={'Y': [out]},
-        attrs={"soft_label": soft_label})
+        attrs={"soft_label": soft_label,
+               "ignore_index": ignore_index})
     return out
 
 

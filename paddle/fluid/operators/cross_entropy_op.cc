@@ -138,6 +138,10 @@ class CrossEntropyOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false), a flag indicating whether to "
                   "interpretate the given labels as soft labels.")
         .SetDefault(false);
+    AddAttr<int>("ignore_index",
+                 "(int, default -100), Specifies a target value that is"
+                 "ignored and does not contribute to the input gradient.")
+        .SetDefault(-100);
     AddComment(R"DOC(
 CrossEntropy Operator.
 

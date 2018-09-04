@@ -272,7 +272,7 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
       math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(), logits,
                                      softmax);
       math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
-          context.cuda_device_context(), loss, softmax, labels, false);
+          context.cuda_device_context(), loss, softmax, labels, false, -100);
     }
   }
 };
