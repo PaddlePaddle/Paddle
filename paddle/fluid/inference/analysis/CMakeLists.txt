@@ -105,6 +105,18 @@ if (NOT EXISTS ${LAC_INSTALL_DIR} AND WITH_TESTING)
 endif()
 
 inference_analysis_test(test_analyzer_lac SRCS analyzer_lac_tester.cc
-    EXTRA_DEPS paddle_inference_api paddle_fluid_api
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
+    analysis_predictor
+    # ir
+    fc_fuse_pass
+    fc_lstm_fuse_pass
+    seq_concat_fc_fuse_pass
+    graph_viz_pass
+    infer_clean_graph_pass
+    graph_pattern_detector
+    infer_clean_graph_pass
+    attention_lstm_fuse_pass
+    paddle_inference_api
+    pass
     ARGS --infer_model=${LAC_INSTALL_DIR}/model
         --infer_data=${LAC_INSTALL_DIR}/data.txt)

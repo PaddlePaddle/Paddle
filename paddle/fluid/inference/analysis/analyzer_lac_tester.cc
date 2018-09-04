@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
@@ -102,6 +102,7 @@ struct DataRecord {
     return data;
   }
 };
+
 void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
                  int batch_size) {
   auto one_batch = data->NextBatch();
@@ -114,12 +115,14 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   PADDLE_ENFORCE_EQ(batch_size, static_cast<int>(one_batch.lod.size() - 1));
   input_slots->assign({input_tensor});
 }
+
 static void PrintTime(const double latency, const int bs, const int repeat) {
   LOG(INFO) << "===========profile result===========";
   LOG(INFO) << "batch_size: " << bs << ", repeat: " << repeat
             << ", avg latency: " << latency / repeat << "ms";
   LOG(INFO) << "=====================================";
 }
+
 void BenchAllData(const std::string &model_path, const std::string &data_file,
                   const int batch_size, const int repeat) {
   NativeConfig config;
@@ -147,36 +150,64 @@ void BenchAllData(const std::string &model_path, const std::string &data_file,
   }
   PrintTime(sum, batch_size, repeat);
 }
+
 const int64_t lac_ref_data[] = {24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25,
                                 25, 25, 25, 25, 44, 24, 25, 25, 25, 36, 42, 43,
                                 44, 14, 15, 44, 14, 15, 44, 14, 15, 44, 38, 39,
                                 14, 15, 44, 22, 23, 23, 23, 23, 23, 23, 23};
+
 void TestLACPrediction(const std::string &model_path,
                        const std::string &data_file, const int batch_size,
-                       const int repeat, bool test_all_data) {
-  if (test_all_data) {
-    BenchAllData(model_path, data_file, batch_size, repeat);
-    return;
-  }
+                       const int repeat, bool test_all_data,
+                       bool use_analysis = false) {
   NativeConfig config;
   config.model_dir = model_path;
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
-  std::vector<PaddleTensor> input_slots, outputs_slots;
+  std::vector<PaddleTensor> input_slots, outputs_slots, ref_outputs_slots;
   DataRecord data(data_file, batch_size);
   GetOneBatch(&input_slots, &data, batch_size);
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  std::unique_ptr<PaddlePredictor> predictor;
+  if (use_analysis) {
+    predictor =
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
+            config);
+  } else {
+    predictor =
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  }
   for (int i = 0; i < FLAGS_burning; i++) {
     predictor->Run(input_slots, &outputs_slots);
   }
   Timer timer;
+  if (test_all_data) {
+    double sum = 0;
+    for (int i = 0; i < repeat; i++) {
+      for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
+        GetOneBatch(&input_slots, &data, batch_size);
+        timer.tic();
+        predictor->Run(input_slots, &outputs_slots);
+        sum += timer.toc();
+      }
+    }
+    PrintTime(sum, batch_size, repeat);
+    return;
+  }
   timer.tic();
   for (int i = 0; i < repeat; i++) {
     predictor->Run(input_slots, &outputs_slots);
   }
   PrintTime(timer.toc(), batch_size, repeat);
+
+  // check result
+  if (use_analysis) {
+    // run once for comparion as reference
+    auto ref_predictor =
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+    ref_predictor->Run(input_slots, &ref_outputs_slots);
+  }
+
   EXPECT_EQ(outputs_slots.size(), 1UL);
   auto &out = outputs_slots[0];
   size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
@@ -188,12 +219,33 @@ void TestLACPrediction(const std::string &model_path,
   for (size_t i = 0; i < batch1_size; ++i) {
     EXPECT_EQ(pdata[i], lac_ref_data[i]);
   }
+
+  if (use_analysis) {
+    EXPECT_EQ(ref_outputs_slots.size(), outputs_slots.size());
+    auto &ref_out = ref_outputs_slots[0];
+    size_t ref_size =
+        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
+                        [](int a, int b) { return a * b; });
+    EXPECT_EQ(size, ref_size);
+    int64_t *pdata_ref = static_cast<int64_t *>(ref_out.data.data());
+    for (size_t i = 0; i < size; ++i) {
+      EXPECT_EQ(pdata_ref[i], pdata[i]);
+    }
+  }
 }
+
 TEST(Analyzer_LAC, native) {
   LOG(INFO) << "LAC with native";
   TestLACPrediction(FLAGS_infer_model, FLAGS_infer_data, FLAGS_batch_size,
                     FLAGS_repeat, FLAGS_test_all_data);
 }
+
+TEST(Analyzer_LAC, analysis) {
+  LOG(INFO) << "LAC with analysis";
+  TestLACPrediction(FLAGS_infer_model, FLAGS_infer_data, FLAGS_batch_size,
+                    FLAGS_repeat, FLAGS_test_all_data, true);
+}
+
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
