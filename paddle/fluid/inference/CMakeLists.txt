@@ -18,7 +18,7 @@ get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
 cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 
 # fix mac compile error
-add_subdirectory(api)
+  add_subdirectory(api)
 
 # Create static library
 cc_library(paddle_fluid DEPS ${fluid_modules} paddle_fluid_api paddle_inference_api)
