@@ -38,10 +38,12 @@ class AucOp : public framework::OperatorWithKernel {
     int num_thres = ctx->Attrs().Get<int>("num_thresholds") + 1;
 
     ctx->SetOutputDim("AUC", {1});
+    ctx->SetOutputDim("BatchAUC", {1});
     ctx->SetOutputDim("StatPosOut", {num_thres});
     ctx->SetOutputDim("StatNegOut", {num_thres});
 
     ctx->ShareLoD("Predict", /*->*/ "AUC");
+    ctx->ShareLoD("Predict", /*->*/ "BatchAUC");
   }
 
  protected:

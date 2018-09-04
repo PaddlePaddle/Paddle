@@ -121,9 +121,9 @@ def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
     batch_auc_out = helper.create_tmp_variable(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
     stat_pos = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
     stat_neg = helper.create_global_variable(
-        persistable=True, dtype='int64', shape=[num_thresholds])
+        persistable=True, dtype='int64', shape=[num_thresholds + 1])
 
     for var in [stat_pos, stat_neg]:
         helper.set_variable_initializer(

@@ -31,7 +31,7 @@ class AucKernel : public framework::OpKernel<T> {
     auto *label = ctx.Input<Tensor>("Label");
 
     std::string curve = ctx.Attr<std::string>("curve");
-    const int num_thresholds = ctx.Attr<int>("num_thresholds");
+    int num_thresholds = ctx.Attr<int>("num_thresholds");
 
     // Only use output var for now, make sure it's persistable and
     // not cleaned up for each batch.
