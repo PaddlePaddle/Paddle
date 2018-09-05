@@ -130,11 +130,7 @@ void TestChineseNERPrediction() {
   for (int i = 0; i < FLAGS_repeat; i++) {
     predictor->Run(input_slots, &outputs);
   }
-  LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << FLAGS_batch_size
-            << ", repeat: " << FLAGS_repeat
-            << ", latency: " << timer.toc() / FLAGS_repeat << "ms";
-  LOG(INFO) << "=====================================";
+  PrintTime(FLAGS_batch_size, FLAGS_repeat, 1, 0, timer.toc() / FLAGS_repeat);
 
   PADDLE_ENFORCE(outputs.size(), 1UL);
   auto &out = outputs[0];

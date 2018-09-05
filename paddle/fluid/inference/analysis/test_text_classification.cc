@@ -18,8 +18,8 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
 
 DEFINE_string(infer_model, "", "Directory of the inference model.");
 DEFINE_string(infer_data, "", "Path of the dataset.");
@@ -27,22 +27,7 @@ DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "How many times to repeat run.");
 
 namespace paddle {
-
-template <typename T>
-std::string to_string(const std::vector<T> &vec) {
-  std::stringstream ss;
-  for (const auto &c : vec) {
-    ss << c << " ";
-  }
-  return ss.str();
-}
-
-void PrintTime(const double latency, const int bs, const int repeat) {
-  LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << bs << ", repeat: " << repeat
-            << ", avg latency: " << latency / repeat << "ms";
-  LOG(INFO) << "=====================================";
-}
+namespace inference {
 
 void Main(int batch_size) {
   // Three sequence inputs.
@@ -78,7 +63,7 @@ void Main(int batch_size) {
     CHECK(predictor->Run(input_slots, &output_slots));
     sum += timer.toc();
   }
-  PrintTime(sum, batch_size, FLAGS_repeat);
+  PrintTime(batch_size, FLAGS_repeat, 1, 0, sum / FLAGS_repeat);
 
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();
@@ -99,6 +84,7 @@ void Main(int batch_size) {
 
 TEST(text_classification, basic) { Main(FLAGS_batch_size); }
 
+}  // namespace inference
 }  // namespace paddle
 
 USE_PASS(fc_fuse_pass);
