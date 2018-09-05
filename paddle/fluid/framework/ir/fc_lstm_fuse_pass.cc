@@ -86,15 +86,24 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
       }
       op_desc.SetInput("Bias", {new_bias_var});
     }
-
 #undef GET_NODE
+
+    // Create temp variables.
+    scope->Var(name_scope + "/BatchedInput.new")
+        ->GetMutable<framework::LoDTensor>();
+    scope->Var(name_scope + "/BatchCellPreAct.new")
+        ->GetMutable<framework::LoDTensor>();
+    scope->Var(name_scope + "/BatchedGate.new")
+        ->GetMutable<framework::LoDTensor>();
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden_n->Name()});
     op_desc.SetOutput("Cell", {cell_n->Name()});
     op_desc.SetOutput("XX", {xx_n->Name()});
-    op_desc.SetOutput("BatchedInput", {"blstm_0.tmp_2"});
+    op_desc.SetOutput("BatchedGate", {name_scope + "/BatchedGate.new"});
+    op_desc.SetOutput("BatchCellPreAct", {name_scope + "/BatchCellPreAct.new"});
+    op_desc.SetOutput("BatchedInput", {name_scope + "/BatchedInput.new"});
     op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm_n->Op()->GetAttr("use_peepholes"));
     // TODO(TJ): get from attr
@@ -130,8 +139,8 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
   int fusion_count{0};
 
-  auto fc_no_bias_handler = [&](
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
 #define GET_NODE(name__)                                \
   std::string name__##key = name_scope + "/" + #name__; \
   auto* name__##n = pattern->RetrieveNode(name__##key); \
@@ -152,21 +161,24 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
     if (with_fc_bias) {
       GET_NODE(fc_bias);
+      GET_NODE(elementwise_add);
       lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, fc_bias);
+      // Remove unneeded nodes.
+      std::unordered_set<const Node*> marked_nodes(
+          {mul_n, lstm_n, elementwise_add_n});
+      GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, -1);
+      // Remove unneeded nodes.
+      std::unordered_set<const Node*> marked_nodes({mul_n, lstm_n});
+      GraphSafeRemoveNodes(graph, marked_nodes);
     }
 #undef GET_NODE
-
-    // Remove unneeded nodes.
-    std::unordered_set<const Node*> marked_nodes({mul_n, lstm_n});
-
-    GraphSafeRemoveNodes(graph, marked_nodes);
 
     ++fusion_count;
   };
 
-  gpd(graph, fc_no_bias_handler);
+  gpd(graph, handler);
 
   return fusion_count;
 }
