@@ -12,25 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
+#include <gflags/gflags.h>
 
-#include <gtest/gtest.h>
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
-namespace paddle {
-namespace inference {
-namespace analysis {
-
-TEST(FluidToIrPass, Test) {
-  FluidToIrPass pass;
-  Argument argument(FLAGS_inference_model_dir);
-  argument.Set(kFluidToIrPassesAttr,
-               new std::vector<std::string>({"infer_clean_graph_pass"}));
-  pass.Initialize(&argument);
-  pass.Run(argument.main_dfg.get());
-}
-
-}  // namespace analysis
-}  // namespace inference
-}  // namespace paddle
+// TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
+// flag if not available.
+DECLARE_bool(IA_enable_tensorrt_subgraph_engine);
+DECLARE_string(IA_graphviz_log_root);
+DECLARE_string(IA_output_storage_path);
+DECLARE_bool(IA_enable_ir);
