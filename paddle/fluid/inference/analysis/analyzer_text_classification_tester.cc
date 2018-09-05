@@ -102,10 +102,11 @@ void Main(int batch_size) {
       timer.tic();
       CHECK(predictor->Run(input_slots, &output_slots));
       sum += timer.toc();
+      ++num_batches;
     }
   }
 
-  PrintTime(sum, batch_size, FLAGS_repeat * num_batches);
+  PrintTime(sum, batch_size, num_batches);
 
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();
