@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
