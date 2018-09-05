@@ -19,6 +19,7 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/timer.h"
 
 DEFINE_string(infer_model, "", "Directory of the inference model.");
 DEFINE_string(infer_data, "", "Path of the dataset.");
@@ -28,12 +29,19 @@ DEFINE_int32(repeat, 1, "How many times to repeat run.");
 namespace paddle {
 
 template <typename T>
-std::string to_string(const std::vector<T>& vec) {
+std::string to_string(const std::vector<T> &vec) {
   std::stringstream ss;
-  for (const auto& c : vec) {
+  for (const auto &c : vec) {
     ss << c << " ";
   }
   return ss.str();
+}
+
+void PrintTime(const double latency, const int bs, const int repeat) {
+  LOG(INFO) << "===========profile result===========";
+  LOG(INFO) << "batch_size: " << bs << ", repeat: " << repeat
+            << ", avg latency: " << latency / repeat << "ms";
+  LOG(INFO) << "=====================================";
 }
 
 void Main(int batch_size) {
@@ -42,7 +50,7 @@ void Main(int batch_size) {
   // one batch starts
   // data --
   int64_t data0[] = {0, 1, 2};
-  for (auto& input : input_slots) {
+  for (auto &input : input_slots) {
     input.data.Reset(data0, sizeof(data0));
     input.shape = std::vector<int>({3, 1});
     // dtype --
@@ -56,29 +64,37 @@ void Main(int batch_size) {
   AnalysisConfig config;
   config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
-  config.enable_ir_optim = false;
+  config.enable_ir_optim = true;
+  config.ir_passes.push_back("fc_lstm_fuse_pass");
   auto predictor =
       CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           config);
 
+  inference::Timer timer;
+  double sum = 0;
   std::vector<PaddleTensor> output_slots;
   for (int i = 0; i < FLAGS_repeat; i++) {
+    timer.tic();
     CHECK(predictor->Run(input_slots, &output_slots));
+    sum += timer.toc();
   }
+  PrintTime(sum, batch_size, FLAGS_repeat);
+
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();
-  for (auto& output : output_slots) {
+
+  for (auto &output : output_slots) {
     LOG(INFO) << "output.shape: " << to_string(output.shape);
     // no lod ?
     CHECK_EQ(output.lod.size(), 0UL);
     LOG(INFO) << "output.dtype: " << output.dtype;
     std::stringstream ss;
     for (int i = 0; i < 5; i++) {
-      ss << static_cast<float*>(output.data.data())[i] << " ";
+      ss << static_cast<float *>(output.data.data())[i] << " ";
     }
     LOG(INFO) << "output.data summary: " << ss.str();
+    // one batch ends
   }
-  // one batch ends
 }
 
 TEST(text_classification, basic) { Main(FLAGS_batch_size); }
