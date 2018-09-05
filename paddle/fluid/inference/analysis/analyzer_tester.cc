@@ -257,19 +257,24 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 // Test with a really complicate model.
 void TestDituRNNPrediction(bool use_analysis_and_activate_ir = false,
                            int num_threads = FLAGS_num_threads) {
-  NativeConfig config;
+  AnalysisConfig config;
   config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
   config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
+  config.enable_ir_optim = activate_ir;
+  PADDLE_ENFORCE(config.ir_mode ==
+                 AnalysisConfig::IrPassMode::kExclude);  // default
+  config.ir_passes.clear();  // Do not exclude any pass.
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
 
   auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
+      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+          config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
   // Prepare inputs.
