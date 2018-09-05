@@ -131,8 +131,13 @@ class Transpose2Op : public TransposeOp {
     TransposeOp::InferShape(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) should not be null");
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("XShape", x_dims);
+    const auto &in_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
+    x_shape_dim[0] = 0;
+    for (int i = 0; i < in_dims.size(); ++i) {
+      x_shape_dim[i + 1] = in_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(x_shape_dim));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 
@@ -177,8 +182,10 @@ class Transpose2OpGrad : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) should not be null");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      auto x_dims = ctx->GetInputDim("XShape");
-      ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+      auto xshape_dim = ctx->GetInputDim("XShape");
+      auto x_shape_dim =
+          framework::slice_ddim(xshape_dim, 1, xshape_dim.size());
+      ctx->SetOutputDim(framework::GradVarName("X"), x_shape_dim);
       ctx->ShareLoD("XShape", framework::GradVarName("X"));
     }
   }

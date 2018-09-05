@@ -180,8 +180,13 @@ class Unsqueeze2OpInferShape : public UnsqueezeOpInferShape {
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) of Unsqueeze operator should not be null.");
     const auto &x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("XShape", x_dims);
-    ctx->ShareLoD("X", "XShape");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", /*->*/ "XShape");
   }
 };
 
@@ -234,9 +239,15 @@ class Unsqueeze2GradOpMaker : public framework::SingleGradOpDescMaker {
 
 class Unsqueeze2GradInferShape : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext *ctx) const override {
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("XShape"));
-    ctx->ShareLoD("XShape", framework::GradVarName("X"));
+  void operator()(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE(context->HasInput("XShape"),
+                   "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) shouldn't be null.");
+    auto xshape_dims = context->GetInputDim("XShape");
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    context->SetOutputDim(framework::GradVarName("X"), x_dims);
+    context->ShareLoD("XShape", framework::GradVarName("X"));
   }
 };
 
@@ -249,15 +260,17 @@ class Unsqueeze2GradOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto dx_name = Output(framework::GradVarName("X"));
     auto dout_name = Input(framework::GradVarName("Out"));
-    auto x_shape = Input("XShape");
-    auto x_dims = scope.FindVar(x_shape)->Get<framework::LoDTensor>().dims();
+    auto xshape_name = Input("XShape");
+    auto xshape_dims =
+        scope.FindVar(xshape_name)->Get<framework::LoDTensor>().dims();
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(x_dims);
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
-        {{"Out", {dx_name}}, {"XShape", {x_shape}}}, attrs);
+        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };

@@ -122,7 +122,6 @@ Case 2:
     axis = 0
   We get:
     Out.shape = (1, 3 * 100 * 100 * 4)
-
 )DOC");
   }
 };
@@ -170,7 +169,12 @@ class Flatten2OpInferShape : public FlattenOpInferShape {
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output (XShape) of Flatten op should not be null.");
     const auto &in_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("XShape", in_dims);
+    std::vector<int64_t> xshape_dims(in_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < in_dims.size(); ++i) {
+      xshape_dims[i + 1] = in_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", "XShape");
   }
 };
@@ -227,8 +231,13 @@ class Flatten2GradOpMaker : public framework::SingleGradOpDescMaker {
 class Flatten2GradInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("XShape"));
+    PADDLE_ENFORCE(context->HasInput("XShape"),
+                   "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) shouldn't be null.");
+    auto xshape_dims = context->GetInputDim("XShape");
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    context->SetOutputDim(framework::GradVarName("X"), x_dims);
     context->ShareLoD("XShape", framework::GradVarName("X"));
   }
 };
@@ -242,8 +251,10 @@ class Flatten2GradOp : public framework::OperatorBase {
                const platform::Place &place) const override {
     auto dx_name = Output(framework::GradVarName("X"));
     auto dout_name = Input(framework::GradVarName("Out"));
-    auto x_shape = Input("XShape");
-    auto x_dims = scope.FindVar(x_shape)->Get<framework::LoDTensor>().dims();
+    auto xshape_name = Input("XShape");
+    auto xshape_dims =
+        scope.FindVar(xshape_name)->Get<framework::LoDTensor>().dims();
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
 
     framework::AttributeMap attrs;
     attrs["shape"] = framework::vectorize2int(x_dims);
@@ -251,7 +262,7 @@ class Flatten2GradOp : public framework::OperatorBase {
 
     auto reshape_op = framework::OpRegistry::CreateOp(
         "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
-        {{"Out", {dx_name}}, {"XShape", {x_shape}}}, attrs);
+        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
     reshape_op->Run(scope, place);
   }
 };

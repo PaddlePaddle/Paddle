@@ -262,8 +262,13 @@ class Reshape2Op : public ReshapeOp {
     ReshapeOp::InferShape(ctx);
     PADDLE_ENFORCE(ctx->HasOutput("XShape"),
                    "Output(XShape) of ReshapeOp should not be null.");
-    auto x_dims = ctx->GetInputDim("X");
-    ctx->SetOutputDim("XShape", x_dims);
+    const auto &x_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(x_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < x_dims.size(); ++i) {
+      xshape_dims[i + 1] = x_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
     ctx->ShareLoD("X", /*->*/ "XShape");
   }
 };
@@ -306,7 +311,9 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("XShape"), "Input(XShape) shouldn't be null.");
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@GRAD) shouldn't be null.");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("XShape"));
+    auto xshape_dims = ctx->GetInputDim("XShape");
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
     ctx->ShareLoD("XShape", framework::GradVarName("X"));
   }
 
