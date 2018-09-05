@@ -16,10 +16,12 @@ from __future__ import print_function
 
 from .distribute_transpiler import DistributeTranspiler, DistributeTranspilerConfig
 from .inference_transpiler import InferenceTranspiler
+from .quantize_transpiler import QuantizeTranspiler
 from .memory_optimization_transpiler import memory_optimize, release_memory
 from .ps_dispatcher import HashName, RoundRobin
 
 __all__ = [
     "DistributeTranspiler", "InferenceTranspiler", "memory_optimize",
-    "release_memory", "HashName", "RoundRobin", "DistributeTranspilerConfig"
+    "release_memory", "HashName", "RoundRobin", "DistributeTranspilerConfig",
+    "QuantizeTranspiler"
 ]
