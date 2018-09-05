@@ -70,7 +70,7 @@ struct PaddleTensor {
   std::vector<int> shape;
   PaddleBuf data;  // blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<uint64_t>> lod;  // lod data
+  std::vector<std::vector<size_t>> lod;  // lod data
 };
 
 enum class PaddleEngineKind {
