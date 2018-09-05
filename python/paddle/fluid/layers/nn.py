@@ -3546,11 +3546,6 @@ def topk(input, k, name=None):
 
             top5_values, top5_indices = layers.topk(input, k=5)
     """
-    shape = input.shape
-    if k < 1 or k >= shape[-1]:
-        raise ValueError("k must be greater than 0 and less than %d." %
-                         (shape[-1]))
-
     helper = LayerHelper("top_k", **locals())
     values = helper.create_tmp_variable(dtype=input.dtype)
     indices = helper.create_tmp_variable(dtype="int64")
