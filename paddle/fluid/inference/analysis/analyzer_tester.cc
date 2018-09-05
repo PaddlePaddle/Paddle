@@ -22,6 +22,7 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -270,17 +271,22 @@ void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
                            bool use_analysis, bool activate_ir,
                            int num_times = 1) {
-  NativeConfig config;
+  AnalysisConfig config;
   config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
   config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
+  config.enable_ir_optim = activate_ir;
+  PADDLE_ENFORCE(config.ir_mode ==
+                 AnalysisConfig::IrPassMode::kExclude);  // default
+  config.ir_passes.clear();  // Do not exclude any pass.
 
   auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
+      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+          config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
@@ -327,9 +333,20 @@ void TestDituRNNPrediction(const std::string &model_path,
       LOG(INFO) << "fused " << item.first << " " << item.second;
     }
 
-    ASSERT_TRUE(fuse_statis.count("fc"));
-    EXPECT_EQ(fuse_statis.at("fc"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 1);
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(num_ops,
+              13);  // After graph optimization, only 13 operators exists.
   }
 }
 
@@ -357,10 +374,3 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(seq_concat_fc_fuse_pass);
-USE_PASS(fc_lstm_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);
-USE_PASS(attention_lstm_fuse_pass);

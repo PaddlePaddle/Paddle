@@ -16,6 +16,7 @@
 
 #include <sys/time.h>
 #include <algorithm>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>

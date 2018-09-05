@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/inference/analysis/flags.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 
@@ -85,9 +86,11 @@ class FluidToIrPass final : public DataFlowGraphPass {
           new Scope *(&argument_->Get<Scope>(ir::kParamScopeAttr)));
     }
 
-    const auto &ir_passes_to_apply =
-        argument_->Get<std::vector<std::string>>(kFluidToIrPassesAttr);
-    ir_passes.Apply(ir_passes_to_apply);
+    if (FLAGS_IA_enable_ir) {
+      const auto &ir_passes_to_apply =
+          argument_->Get<std::vector<std::string>>(kFluidToIrPassesAttr);
+      ir_passes.Apply(ir_passes_to_apply);
+    }
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
