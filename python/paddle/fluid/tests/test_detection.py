@@ -250,6 +250,57 @@ class TestDetectionMAP(unittest.TestCase):
         print(str(program))
 
 
+class TestRpnTargetAssign(unittest.TestCase):
+    def test_rpn_target_assign(self):
+        program = Program()
+        with program_guard(program):
+            loc_shape = [10, 50, 4]
+            score_shape = [10, 50, 2]
+            anchor_shape = [50, 4]
+
+            loc = layers.data(
+                name='loc',
+                shape=loc_shape,
+                append_batch_size=False,
+                dtype='float32')
+            scores = layers.data(
+                name='scores',
+                shape=score_shape,
+                append_batch_size=False,
+                dtype='float32')
+            anchor_box = layers.data(
+                name='anchor_box',
+                shape=anchor_shape,
+                append_batch_size=False,
+                dtype='float32')
+            anchor_var = layers.data(
+                name='anchor_var',
+                shape=anchor_shape,
+                append_batch_size=False,
+                dtype='float32')
+            gt_box = layers.data(
+                name='gt_box', shape=[4], lod_level=1, dtype='float32')
+
+            pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
+                loc=loc,
+                scores=scores,
+                anchor_box=anchor_box,
+                anchor_var=anchor_var,
+                gt_box=gt_box,
+                rpn_batch_size_per_im=256,
+                fg_fraction=0.25,
+                rpn_positive_overlap=0.7,
+                rpn_negative_overlap=0.3)
+
+            self.assertIsNotNone(pred_scores)
+            self.assertIsNotNone(pred_loc)
+            self.assertIsNotNone(tgt_lbl)
+            self.assertIsNotNone(tgt_bbox)
+            assert pred_scores.shape[1] == 1
+            assert pred_loc.shape[1] == 4
+            assert pred_loc.shape[1] == tgt_bbox.shape[1]
+
+
 class TestGenerateProposals(unittest.TestCase):
     def test_generate_proposals(self):
         data_shape = [20, 64, 64]

@@ -293,7 +293,11 @@ class OpTest(unittest.TestCase):
                             return_numpy=False)
         return outs, fetch_list
 
-    def check_output_with_place(self, place, atol, no_check_set=None):
+    def check_output_with_place(self,
+                                place,
+                                atol,
+                                no_check_set=None,
+                                equal_nan=False):
         outs, fetch_list = self._calc_output(place, no_check_set=no_check_set)
         for out_name, out_dup in Operator.get_op_outputs(self.op_type):
             if out_name not in self.outputs:
@@ -325,7 +329,7 @@ class OpTest(unittest.TestCase):
                         if isinstance(expect, tuple) else expect
                     self.assertTrue(
                         np.allclose(
-                            actual_t, expect_t, atol=atol),
+                            actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                         "Output (" + sub_out_name + ") has diff at " +
                         str(place))
                     if isinstance(expect, tuple):
@@ -341,7 +345,7 @@ class OpTest(unittest.TestCase):
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
                 self.assertTrue(
                     np.allclose(
-                        actual_t, expect_t, atol=atol),
+                        actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
                     str(actual_t))
@@ -364,10 +368,10 @@ class OpTest(unittest.TestCase):
             places.append(core.CUDAPlace(0))
         return places
 
-    def check_output(self, atol=1e-5, no_check_set=None):
+    def check_output(self, atol=1e-5, no_check_set=None, equal_nan=False):
         places = self._get_places()
         for place in places:
-            self.check_output_with_place(place, atol, no_check_set)
+            self.check_output_with_place(place, atol, no_check_set, equal_nan)
 
     def check_output_customized(self, checker):
         places = self._get_places()

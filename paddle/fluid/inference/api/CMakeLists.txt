@@ -18,10 +18,7 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager
-  graph_viz_pass fc_fuse_pass
-  infer_clean_graph_pass
-  )
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
@@ -47,7 +44,19 @@ function(inference_api_test TARGET_NAME)
 endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor)
-cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api)
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api
+          analysis
+          ir_pass_manager
+          pass
+          fc_fuse_pass
+          fc_lstm_fuse_pass
+          seq_concat_fc_fuse_pass
+          graph_viz_pass
+          infer_clean_graph_pass
+          graph_pattern_detector
+          infer_clean_graph_pass
+          attention_lstm_fuse_pass
+  )
 
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc

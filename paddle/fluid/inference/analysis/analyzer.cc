@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
+#include <vector>
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
@@ -41,20 +42,16 @@ class DfgPassManagerImpl final : public DfgPassManager {
  public:
   DfgPassManagerImpl() {
     // TODO(Superjomn) set the key with pass reprs.
-    LOG(INFO)
-        << "-----------------------------------------------------------------";
-    if (FLAGS_IA_enable_ir) {
-      AddPass("fluid-to-ir-pass", new FluidToIrPass);
-    } else {
+    if (!FLAGS_IA_enable_ir) {
       AddPass("fluid-to-data-flow-graph", new FluidToDataFlowGraphPass);
+    } else {
+      AddPass("fluid-to-ir-pass", new FluidToIrPass);
     }
     TryAddTensorRtPass();
     AddPass("data-flow-graph-to-fluid", new DataFlowGraphToFluidPass);
     if (!FLAGS_IA_output_storage_path.empty()) {
       AddPass("model-store-pass", new ModelStorePass);
     }
-    LOG(INFO)
-        << "-----------------------------------------------------------------";
   }
 
   std::string repr() const override { return "dfg-pass-manager"; }
@@ -93,7 +90,6 @@ class DfgPassManagerImpl final : public DfgPassManager {
   void AddGraphvizDebugerPass(Pass* pass) {
     auto* debuger_pass = pass->CreateGraphvizDebugerPass();
     if (debuger_pass) {
-      LOG(INFO) << " - register debug pass [" << debuger_pass->repr() << "]";
       Register(debuger_pass->repr(), debuger_pass);
     }
   }
@@ -102,24 +98,27 @@ class DfgPassManagerImpl final : public DfgPassManager {
 Analyzer::Analyzer() { Register("manager1", new DfgPassManagerImpl); }
 
 void Analyzer::Run(Argument* argument) {
+  std::vector<std::string> passes;
+  for (auto& pass : all_ir_passes_) {
+    if (!disabled_ir_passes_.count(pass)) {
+      passes.push_back(pass);
+      passes.push_back("graph_viz_pass");  // add graphviz for debug.
+    }
+  }
+  passes.push_back("graph_viz_pass");
   // Ugly support fluid-to-ir-pass
-  argument->Set(kFluidToIrPassesAttr,
-                new std::vector<std::string>({
-                    // Manual update the passes here.
-                    "graph_viz_pass",                              //
-                    "infer_clean_graph_pass", "graph_viz_pass",    //
-                    "attention_lstm_fuse_pass", "graph_viz_pass",  //
-                    "fc_lstm_fuse_pass", "graph_viz_pass",         //
-                    "seq_concat_fc_fuse_pass", "graph_viz_pass",   //
-                    "fc_fuse_pass", "graph_viz_pass"               //
-
-                }));
+  argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(passes));
 
   for (auto& x : data_) {
     PADDLE_ENFORCE(x->Initialize(argument));
     x->RunAll();
     PADDLE_ENFORCE(x->Finalize());
   }
+}
+
+Analyzer& Analyzer::DisableIrPasses(const std::vector<std::string>& passes) {
+  disabled_ir_passes_.insert(passes.begin(), passes.end());
+  return *this;
 }
 
 }  // namespace analysis
