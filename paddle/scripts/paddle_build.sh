@@ -330,6 +330,11 @@ function assert_api_not_changed() {
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    if [ "$1" == "cp35-cp35m" ]; then
+        # Use sed to make python2 and python3 sepc keeps the same
+        sed -i 's/arg0: str/arg0: unicode/g' new.spec
+        sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
+    fi
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
 
@@ -623,7 +628,7 @@ function main() {
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
-        assert_api_not_changed
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       *)
         print_usage
