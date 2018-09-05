@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -170,9 +171,14 @@ void TestLACPrediction(const std::string &model_path,
   GetOneBatch(&input_slots, &data, batch_size);
   std::unique_ptr<PaddlePredictor> predictor;
   if (use_analysis) {
+    AnalysisConfig cfg;
+    cfg.model_dir = model_path;
+    cfg.use_gpu = false;
+    cfg.device = 0;
+    cfg.specify_input_name = true;
+    cfg.enable_ir_optim = true;
     predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(
-            config);
+        CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
   } else {
     predictor =
         CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
