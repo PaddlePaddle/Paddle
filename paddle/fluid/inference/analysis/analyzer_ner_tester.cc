@@ -25,6 +25,7 @@ DEFINE_string(infer_model, "", "model path");
 DEFINE_string(infer_data, "", "data path");
 DEFINE_int32(batch_size, 10, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
+DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
 
 namespace paddle {
 namespace inference {
@@ -35,6 +36,7 @@ struct DataRecord {
   std::vector<size_t> lod;  // two inputs have the same lod info.
   size_t batch_iter{0};
   size_t batch_size{1};
+  size_t num_samples;  // total number of samples
   DataRecord() = default;
   explicit DataRecord(const std::string &path, int batch_size = 1)
       : batch_size(batch_size) {
@@ -81,6 +83,7 @@ struct DataRecord {
       word_data_all.push_back(std::move(word_data));
       mention_data_all.push_back(std::move(mention_data));
     }
+    num_samples = num_lines;
   }
 };
 
@@ -120,12 +123,33 @@ void TestChineseNERPrediction() {
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   std::vector<PaddleTensor> input_slots;
-  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-  // Prepare inputs.
-  PrepareInputs(&input_slots, &data, FLAGS_batch_size);
   std::vector<PaddleTensor> outputs;
-
   Timer timer;
+
+  if (FLAGS_test_all_data) {
+    LOG(INFO) << "test all data";
+    double sum = 0;
+    size_t num_samples;
+    for (int i = 0; i < FLAGS_repeat; i++) {
+      DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+      num_samples = data.num_samples;
+      for (size_t bid = 0; bid < num_samples; ++bid) {
+        PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+        timer.tic();
+        predictor->Run(input_slots, &outputs);
+        sum += timer.toc();
+      }
+    }
+    LOG(INFO) << "total number of samples: " << num_samples;
+    PrintTime(FLAGS_batch_size, FLAGS_repeat, 1, 0, sum / FLAGS_repeat);
+    LOG(INFO) << "average latency of each sample: "
+              << sum / FLAGS_repeat / num_samples;
+    return;
+  }
+  // Prepare inputs.
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+  PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+
   timer.tic();
   for (int i = 0; i < FLAGS_repeat; i++) {
     predictor->Run(input_slots, &outputs);
