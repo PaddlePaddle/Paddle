@@ -304,8 +304,8 @@ std::vector<Tensor> SampleRoisForOneImage(
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, nullptr, false,
-                &bbox_targets_single);
+  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, bbox_reg_weights.data(),
+                false, &bbox_targets_single);
 
   // Scale rois
   Tensor sampled_rois;
