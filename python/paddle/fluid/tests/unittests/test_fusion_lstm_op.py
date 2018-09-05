@@ -183,7 +183,7 @@ class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
         self.is_reverse = True
 
 
-class TestFusionLSTMOpPoopholesBS1(TestFusionLSTMOp):
+class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
     def set_conf(self):
         self.use_peepholes = True
         self.lod = [[2]]
