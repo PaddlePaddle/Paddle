@@ -244,8 +244,8 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.set_data()
 
     def init_test_params(self):
-        self.batch_size_per_im = 10
-        self.fg_fraction = 1.0
+        self.batch_size_per_im = 512
+        self.fg_fraction = 0.25
         self.fg_thresh = 0.5
         self.bg_thresh_hi = 0.5
         self.bg_thresh_lo = 0.0
@@ -256,10 +256,10 @@ class TestGenerateProposalLabelsOp(OpTest):
         np.random.seed(0)
         image_nums = 1
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
-        proposal_nums = self.batch_size_per_im - gt_nums
+        proposal_nums = 2000  #self.batch_size_per_im - gt_nums
         images_shape = []
         for i in range(image_nums):
-            images_shape.append(np.random.randint(200, size=2))
+            images_shape.append(np.random.randint(50, size=2))
 
         self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
                                                                proposal_nums)
@@ -304,7 +304,8 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
         gt_classes = np.random.randint(
             low=1, high=class_nums, size=gt_nums).astype(np.int32)
         gt_boxes = _generate_boxes(image_shape, gt_nums)
-        is_crowd = np.ones((gt_nums), dtype=bool)
+        is_crowd = np.zeros((gt_nums), dtype=bool)
+        is_crowd[0] = True
         ground_truth.append(
             dict(
                 gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd))

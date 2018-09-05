@@ -26,31 +26,6 @@ using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 const int kBoxDim = 4;
 
-void PrintTensor(Tensor t) {
-  auto et = framework::EigenTensor<float, 2>::From(t);
-  int r = t.dims()[0];
-  int c = t.dims()[1];
-  for (int i = 0; i < r; ++i) {
-    for (int j = 0; j < c; ++j) {
-      std::cout << et(i, j) << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-void PrintVector(Tensor v) {
-  auto et = framework::EigenTensor<int, 1>::From(v);
-  int r = v.dims()[0];
-  for (int i = 0; i < r; ++i) {
-    std::cout << et(i) << ", ";
-  }
-  std::cout << std::endl;
-  std::cout << std::endl;
-}
-
-void PrintFlag(char c) { std::cout << c << c << c << std::endl; }
-
 template <typename T>
 void AppendRois(LoDTensor* out, int64_t offset, Tensor* to_add) {
   auto* out_data = out->data<T>();
@@ -329,8 +304,8 @@ std::vector<Tensor> SampleRoisForOneImage(
   // Compute targets
   Tensor bbox_targets_single;
   bbox_targets_single.mutable_data<T>(bbox_dim, context.GetPlace());
-  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, nullptr, false,
-                &bbox_targets_single);
+  BoxToDelta<T>(fg_num, sampled_boxes, sampled_gts, bbox_reg_weights.data(),
+                false, &bbox_targets_single);
 
   // Scale rois
   Tensor sampled_rois;
