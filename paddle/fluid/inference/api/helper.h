@@ -122,8 +122,8 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   return os.str();
 }
 
-void print_time(int batch_size, int repeat, int num_threads, int tid,
-                double latency) {
+void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+               double latency) {
   LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
             << ", latency: " << latency << "ms";
