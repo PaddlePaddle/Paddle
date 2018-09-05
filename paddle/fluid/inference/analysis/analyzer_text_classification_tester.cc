@@ -16,11 +16,12 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <gtest/gtest.h>
+#include <fstream>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/timer.h"
 
 DEFINE_string(infer_model, "", "Directory of the inference model.");
 DEFINE_string(infer_data, "", "Path of the dataset.");
@@ -45,21 +46,34 @@ void PrintTime(const double latency, const int bs, const int repeat) {
   LOG(INFO) << "=====================================";
 }
 
-void Main(int batch_size) {
-  // Three sequence inputs.
-  std::vector<PaddleTensor> input_slots(1);
-  // one batch starts
-  // data --
-  int64_t data0[] = {0, 1, 2};
-  for (auto &input : input_slots) {
-    input.data.Reset(data0, sizeof(data0));
-    input.shape = std::vector<int>({3, 1});
-    // dtype --
-    input.dtype = PaddleDType::INT64;
-    // LoD --
-    input.lod = std::vector<std::vector<size_t>>({{0, 3}});
+struct DataReader {
+  DataReader(const std::string &path) : file(new std::ifstream(path)) {}
+
+  bool NextBatch(PaddleTensor *tensor, int batch_size) {
+    PADDLE_ENFORCE_EQ(batch_size, 1);
+    std::string line;
+    tensor->lod.clear();
+    tensor->lod.emplace_back(std::vector<size_t>({0}));
+    std::vector<int64_t> data;
+
+    for (int i = 0; i < batch_size; i++) {
+      if (!std::getline(*file, line)) return false;
+      inference::split_to_int64(line, ' ', &data);
+    }
+    tensor->lod.front().push_back(data.size());
+
+    tensor->data.Resize(data.size() * sizeof(int64_t));
+    memcpy(tensor->data.data(), data.data(), data.size() * sizeof(int64_t));
+    tensor->shape.clear();
+    tensor->shape.push_back(data.size());
+    tensor->shape.push_back(1);
+    return true;
   }
 
+  std::unique_ptr<std::ifstream> file;
+};
+
+void Main(int batch_size) {
   // shape --
   // Create Predictor --
   AnalysisConfig config;
@@ -71,15 +85,27 @@ void Main(int batch_size) {
       CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           config);
 
+  std::vector<PaddleTensor> input_slots(1);
+  // one batch starts
+  // data --
+  auto &input = input_slots[0];
+  input.dtype = PaddleDType::INT64;
+
   inference::Timer timer;
   double sum = 0;
   std::vector<PaddleTensor> output_slots;
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    timer.tic();
-    CHECK(predictor->Run(input_slots, &output_slots));
-    sum += timer.toc();
+
+  int num_batches = 0;
+  for (int t = 0; t < FLAGS_repeat; t++) {
+    DataReader reader(FLAGS_infer_data);
+    while (reader.NextBatch(&input, FLAGS_batch_size)) {
+      timer.tic();
+      CHECK(predictor->Run(input_slots, &output_slots));
+      sum += timer.toc();
+    }
   }
-  PrintTime(sum, batch_size, FLAGS_repeat);
+
+  PrintTime(sum, batch_size, FLAGS_repeat * num_batches);
 
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();
