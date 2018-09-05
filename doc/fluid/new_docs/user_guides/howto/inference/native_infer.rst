@@ -4,13 +4,12 @@ Paddle 预测 API
 为了更简单方便的预测部署，Fluid 提供了一套高层 API
 用来隐藏底层不同的优化实现。
 
-`预测库相关代码 <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/contrib/inference>`__
+`预测库相关代码 <https://github.com/PaddlePaddle/Paddle/tree/develop/paddle/fluid/inference/api>`__
 包括
 
 -  头文件 ``paddle_inference_api.h`` 定义了所有的接口
 -  库文件\ ``libpaddle_fluid.so`` 或 ``libpaddle_fluid.a``
--  库文件 ``libpaddle_inference_api.so`` 或
-   ``libpaddle_inference_api.a``
+
 
 编译和依赖可以参考 :ref:`install_or_build_cpp_inference_lib` 。
 
@@ -97,8 +96,7 @@ engine
     CHECK(predictor->Run(slots, &outputs));
     // 获取 outputs ...
 
-编译时，联编 ``libpaddle_fluid.a/.so`` 和
-``libpaddle_inference_api.a/.so`` 便可。
+编译时，联编 ``libpaddle_fluid.a/.so`` 便可。
 
 详细代码参考
 ------------
