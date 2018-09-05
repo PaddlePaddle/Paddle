@@ -154,7 +154,7 @@
 	对于出现`Cannot uninstall 'six'.`问题的用户，可是由于您的系统中已有的Python安装问题造成的，请使用`pip install paddlepaddle --ignore-installed six`（CPU）或`pip 	install paddlepaddle --ignore-installed six`（GPU）解决。      
 	
 	* 对于有**其他要求**的用户：`pip install paddlepaddle==[版本号]`
-	> `版本号`参见[安装包列表](#whls)或者您如果需要获取并安装**最新的PaddlePaddle开发分支**，可以从我们的[CI系统](https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview) 中下载最新的whl安装包和c-api开发包并安装。如需登录，请点击“Log in as guest”。
+	> `版本号`参见[安装包列表](#whls)或者您如果需要获取并安装**最新的PaddlePaddle开发分支**，可以从[多版本whl包列表](#ciwhls)或者我们的[CI系统](https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview) 中下载最新的whl安装包和c-api开发包并安装。如需登录，请点击“Log in as guest”。
 	
 2. 使用以下指令将默认装在`/usr/local/lib`下的`libmkldnn`放在`LD_LIBRARY_PATH中`:
 
@@ -314,7 +314,7 @@
 	对于出现`Cannot uninstall 'six'.`问题的用户，可是由于您的系统中已有的Python安装问题造	成的，请使用`pip install paddlepaddle --ignore-installed six`（CPU）或`pip 	install paddlepaddle-gpu --ignore-installed six`（GPU）解决。
 	
 	* 对于有**其他要求**的用户：`pip install paddlepaddle==[版本号]`
-	> `版本号`参见[安装包列表](#whls)或者您如果需要获取并安装**最新的PaddlePaddle开发分支**，可以从我们的[CI系统](https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview) 中下载最新的whl安装包和c-api开发包并安装。如需登录，请点击“Log in as guest”。
+	> `版本号`参见[安装包列表](#whls)或者您如果需要获取并安装**最新的PaddlePaddle开发分支**，可以从[多版本whl包列表](#ciwhls)或者我们的[CI系统](https://paddleci.ngrok.io/project.html?projectId=Manylinux1&tab=projectOverview) 中下载最新的whl安装包和c-api开发包并安装。如需登录，请点击“Log in as guest”。
 	
 2. 使用以下指令将默认装在`/usr/lib`下的`libmkldnn`放在`LD_LIBRARY_PATH中`:
 
@@ -1151,7 +1151,7 @@
 
 - 磁盘不够？
 
-  本文中的例子里， :code:`docker run` 命令里都用了 :code:`--rm` 参数，这样保证运行结束之后的 containers 不会保留在磁盘上。可以用 :code:`docker ps -a` 命令看到停止后但是没有删除的 containers。 :code:`docker build` 命令有时候会产生一些中间结果，是没有名字的 images，也会占用磁盘。可以参考 [这篇文章](https://zaiste.net/posts/removing_docker_containers) 来清理这些内容。
+  本文中的例子里，`docker run` 命令里都用了 `--rm` 参数，这样保证运行结束之后的 containers 不会保留在磁盘上。可以用 `docker ps -a` 命令看到停止后但是没有删除的 containers。 `docker build` 命令有时候会产生一些中间结果，是没有名字的 images，也会占用磁盘。可以参考 [这篇文章](https://zaiste.net/posts/removing_docker_containers) 来清理这些内容。
 
 - 在DockerToolbox下使用book时`http://localhost:8888/`无法打开？
 	
@@ -1459,6 +1459,54 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 您可以在 [DockerHub](https://hub.docker.com/r/paddlepaddle/paddle/tags/) 中找到PaddlePaddle的各个发行的版本的docker镜像。
 
 
+***
+<a name="ciwhls"></a>
+</br></br>
+### **多版本whl包列表**   
+<p align="center">
+<table>
+	<thead>
+	<tr>
+		<th> 版本说明 </th>
+		<th> cp27-cp27mu </th>
+		<th> cp27-cp27m </th>
+	</tr>
+	</thead>
+	<tbody>
+	<tr>
+		<td> cpu_avx_mkl </td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl">	paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl</a></td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxCp27cp27mu/.lastSuccessful/paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl">	paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl</a></td>
+	</tr>
+	<tr>
+		<td> cpu_avx_mkl </td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl">	paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl</a></td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuAvxOpenblas/.lastSuccessful/paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl">	paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl</a></td>
+	</tr>
+		<tr>
+		<td> cpu_noavx_openblas </td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl">	paddlepaddle-latest-cp27-cp27mu-linux_x86_64.whl</a></td>
+		<td><a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_CpuNoavxOpenblas/.lastSuccessful/paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl">	paddlepaddle-latest-cp27-cp27m-linux_x86_64.whl</a></td>
+	</tr>
+	<tr>
+		<td> cuda8.0_cudnn5_avx_mkl </td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl">	paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl</a></td>
+		<td><a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda80cudnn5cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl">	paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl</a></td>
+	</tr>
+	<tr>
+		<td> cuda8.0_cudnn7_avx_mkl </td>
+		<td> <a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl">	paddlepaddle_gpu-latest-cp27-cp27mu-linux_x86_64.whl</a></td>
+		<td><a href="https://guest@paddleci.ngrok.io/repository/download/Manylinux1_Cuda8cudnn7cp27cp27mu/.lastSuccessful/paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl">	paddlepaddle_gpu-latest-cp27-cp27m-linux_x86_64.whl</a></td>
+	</tr>
+   </tbody>
+</table>
+</p>        
+
+
+
+
+
+
 
 <!--TODO this part should be in a new webpage-->
 
@@ -1485,7 +1533,7 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
      cd /work
      python train.py
 
-**注：PaddlePaddle Docker镜像为了减小体积，默认没有安装vim，您可以在容器中执行** :code:`apt-get install -y vim` **安装后，在容器中编辑代码。**
+**注：PaddlePaddle Docker镜像为了减小体积，默认没有安装vim，您可以在容器中执行** `apt-get install -y vim` **安装后，在容器中编辑代码。**
 
 </br></br>
 
