@@ -44,7 +44,6 @@ std::unique_ptr<ir::Graph> FuseAdjacentNodesPass::ApplyImpl(
       // Generate the fused node.
       Node *fused_node = FuseNodes(cur_op_node, tobe_fused_nodes,
                                    &need_removed_nodes, graph.get());
-
       if (fused_node == nullptr) {
         continue;
       }
@@ -62,11 +61,86 @@ std::unique_ptr<ir::Graph> FuseAdjacentNodesPass::ApplyImpl(
     }
   }
 
+  // Remove the removable intermediate_out.
+  RemoveIntermediateOut(graph.get(), &need_removed_nodes);
+
   // Release unnecessary nodes
   for (auto &node : need_removed_nodes) {
     graph->RemoveNode(node);
   }
+
   return graph;
+}
+
+void FuseAdjacentNodesPass::RemoveIntermediateOut(
+    const Graph *graph, std::unordered_set<Node *> *need_removed_nodes) const {
+  for (auto upstream_node : graph->Nodes()) {
+    if (upstream_node->IsVar()) continue;
+    if (upstream_node->Name() == "fused_elemwise_activation") {
+      bool save_intermediate_out = boost::get<bool>(
+          upstream_node->Op()->GetAttr("save_intermediate_out"));
+      auto intermediate_out_args =
+          upstream_node->Op()->Output("IntermediateOut");
+      PADDLE_ENFORCE(
+          save_intermediate_out && !intermediate_out_args.empty(),
+          "The %s should save the intermediate_out in the fusing stage.",
+          upstream_node->Name());
+
+      // If the intermediate_out's output is only
+      // fused_elemwise_activation_grad, but the fused_elemwise_activation_grad
+      // doesn't use the intermediate_out.
+      bool find_backward = false;
+      auto upstream_node_outputs = upstream_node->outputs;
+      for (auto out : upstream_node_outputs) {
+        if (out->Name() == intermediate_out_args[0]) {
+          if (out->outputs.size() == 1 &&
+              out->outputs[0]->Name() == "fused_elemwise_activation_grad") {
+            auto &backward_node = out->outputs[0];
+            bool use_intermediate_out = boost::get<bool>(
+                backward_node->Op()->GetAttr("save_intermediate_out"));
+            if (!use_intermediate_out) {
+              upstream_node->outputs =
+                  this->RemoveNode(out, upstream_node->outputs);
+              out->inputs.clear();
+              backward_node->inputs =
+                  this->RemoveNode(out, backward_node->inputs);
+              out->outputs.clear();
+              need_removed_nodes->emplace(out);
+            }
+            find_backward = true;
+          }
+        }
+      }
+      // If the backward is not found, it is unnecessary to save the
+      // intermediate_out
+      if (!find_backward) {
+        upstream_node->Op()->SetAttr("save_intermediate_out", false);
+        auto intermediate_node_iter = std::find_if(
+            upstream_node->outputs.begin(), upstream_node->outputs.end(),
+            [&intermediate_out_args](const Node *node) -> bool {
+              return node->Name() == intermediate_out_args[0];
+            });
+
+        PADDLE_ENFORCE(intermediate_node_iter != upstream_node->outputs.end());
+        upstream_node->outputs =
+            this->RemoveNode(*intermediate_node_iter, upstream_node->outputs);
+        need_removed_nodes->emplace(*intermediate_node_iter);
+      }
+    } else if (upstream_node->Name() == "fused_elemwise_activation_grad") {
+      // If the intermediate_out_grad's output is zero.
+      auto intermediate_out_arg =
+          upstream_node->Op()->Output(GradVarName("IntermediateOut"))[0];
+      auto upstream_node_outputs = upstream_node->outputs;
+      for (auto &out : upstream_node_outputs) {
+        if (out->Name() == intermediate_out_arg && out->outputs.empty()) {
+          upstream_node->Op()->SetOutput(GradVarName("IntermediateOut"), {});
+          upstream_node->outputs =
+              this->RemoveNode(out, upstream_node->outputs);
+          need_removed_nodes->emplace(out);
+        }
+      }
+    }
+  }
 }
 
 bool FuseAdjacentNodesPass::FindToBeFusedNodes(
@@ -133,36 +207,6 @@ Node *FuseAdjacentNodesPass::FuseNodes(
   // Create Node
   auto fused_node = graph->CreateOpNode(&fused_op_desc);
 
-  // Replace cur_node with new_node.
-  auto replace_node = [](Node *cur_node, Node *new_node,
-                         std::vector<Node *> &nodes) -> std::vector<Node *> {
-    std::vector<Node *> new_list(nodes.size());
-    bool has_replaced = false;
-    std::transform(nodes.begin(), nodes.end(), new_list.begin(),
-                   [&](Node *node) -> Node * {
-                     if (node == cur_node) {
-                       has_replaced = true;
-                       return new_node;
-                     }
-                     return node;
-                   });
-    PADDLE_ENFORCE(has_replaced, "Not find %s in the node list.",
-                   cur_node->Name());
-    return new_list;
-  };
-
-  // Remove cur_node from nodes.
-  auto remove_node = [](Node *cur_node,
-                        std::vector<Node *> *nodes) -> std::vector<Node *> {
-    std::vector<Node *> new_list(nodes->size());
-    auto end_iter =
-        std::copy_if(nodes->begin(), nodes->end(), new_list.begin(),
-                     [&](Node *node) -> bool { return node != cur_node; });
-    new_list.resize(
-        static_cast<uint64_t>(std::distance(new_list.begin(), end_iter)));
-    return new_list;
-  };
-
   // Get the input and output arguments of the fused_node.
   // Node: the in_args may have duplicated name.
   auto in_args = fused_node->Op()->InputArgumentNames();
@@ -175,9 +219,8 @@ Node *FuseAdjacentNodesPass::FuseNodes(
   std::vector<Node *> cur_op_node_ins = cur_op_node->inputs;
 
   for (auto &var : cur_op_node_ins) {
-    PADDLE_ENFORCE(var->IsVar(), "%s should be variable.", var->Name());
-
     if (visited_nodes.count(var)) continue;
+    PADDLE_ENFORCE(var->IsVar(), "%s should be variable.", var->Name());
     visited_nodes.emplace(var);
 
     // If the var's input is empty, or the var's input is not in
@@ -189,7 +232,7 @@ Node *FuseAdjacentNodesPass::FuseNodes(
       // the var should only be in the in_args_set or be a ControlDepVar.
       if (in_args_set.count(var->Name()) || ir::IsControlDepVar(*var)) {
         fused_node->inputs.emplace_back(var);
-        var->outputs = replace_node(cur_op_node, fused_node, var->outputs);
+        var->outputs = ReplaceNode(cur_op_node, fused_node, var->outputs);
       } else {
         PADDLE_THROW("%s is not the input of %s, and not a ControlDepVar.",
                      var->Name(), fused_node->Name());
@@ -206,7 +249,7 @@ Node *FuseAdjacentNodesPass::FuseNodes(
                        in_var->Name(), in_var_gen_node->Name());
         fused_node->inputs.emplace_back(in_var);
         in_var->outputs =
-            replace_node(in_var_gen_node, fused_node, in_var->outputs);
+            ReplaceNode(in_var_gen_node, fused_node, in_var->outputs);
       }
 
       // collect outputs
@@ -221,24 +264,22 @@ Node *FuseAdjacentNodesPass::FuseNodes(
         if (out_args_set.count(out_var->Name()) == 1) {
           fused_node->outputs.emplace_back(out_var);
           out_var->inputs[0] = fused_node;
-          cur_op_node->inputs = remove_node(cur_op_node, &cur_op_node->inputs);
-          out_var->outputs = remove_node(cur_op_node, &out_var->outputs);
+          cur_op_node->inputs = RemoveNode(cur_op_node, cur_op_node->inputs);
+          out_var->outputs = RemoveNode(cur_op_node, out_var->outputs);
         } else if (ir::IsControlDepVar(*out_var)) {
           if (out_var->outputs.size() > 1 ||
               out_var->outputs[0] != cur_op_node) {
             fused_node->outputs.emplace_back(out_var);
             out_var->inputs[0] = fused_node;
-            cur_op_node->inputs =
-                remove_node(cur_op_node, &cur_op_node->inputs);
-            out_var->outputs = remove_node(cur_op_node, &out_var->outputs);
+            cur_op_node->inputs = RemoveNode(cur_op_node, cur_op_node->inputs);
+            out_var->outputs = RemoveNode(cur_op_node, out_var->outputs);
           } else {
             PADDLE_ENFORCE(out_var->outputs.size() == 1);
             PADDLE_ENFORCE(out_var->outputs[0] == cur_op_node,
                            "The two nodes should be the same(%s,%s).",
                            out_var->outputs[0]->Name(), cur_op_node->Name());
             out_var->inputs.clear();
-            cur_op_node->inputs =
-                remove_node(cur_op_node, &cur_op_node->inputs);
+            cur_op_node->inputs = RemoveNode(cur_op_node, cur_op_node->inputs);
             out_var->outputs.clear();
             need_removed_nodes->emplace(out_var);
           }
@@ -492,6 +533,34 @@ void FuseAdjacentNodesPass::FuseElemwiseAndActivation(
       op_desc->SetAttr(m_ele.first, m_ele.second);
     }
   }
+}
+
+std::vector<Node *> FuseAdjacentNodesPass::ReplaceNode(
+    Node *cur_node, Node *new_node, const std::vector<Node *> &nodes) const {
+  std::vector<Node *> new_list(nodes.size());
+  bool has_replaced = false;
+  std::transform(nodes.begin(), nodes.end(), new_list.begin(),
+                 [&](Node *node) -> Node * {
+                   if (node == cur_node) {
+                     has_replaced = true;
+                     return new_node;
+                   }
+                   return node;
+                 });
+  PADDLE_ENFORCE(has_replaced, "Not find %s in the node list.",
+                 cur_node->Name());
+  return new_list;
+}
+
+std::vector<Node *> FuseAdjacentNodesPass::RemoveNode(
+    Node *trg_node, const std::vector<Node *> &nodes) const {
+  std::vector<Node *> new_list(nodes.size());
+  auto end_iter =
+      std::copy_if(nodes.begin(), nodes.end(), new_list.begin(),
+                   [&](Node *node) -> bool { return node != trg_node; });
+  new_list.resize(
+      static_cast<uint64_t>(std::distance(new_list.begin(), end_iter)));
+  return new_list;
 }
 
 }  // namespace ir
