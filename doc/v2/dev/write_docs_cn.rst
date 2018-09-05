@@ -104,7 +104,7 @@ PaddlePaddle文档使用 `sphinx <http://www.sphinx-doc.org/en/1.4.8/>`_ 自动�
 在build了新的pybind目标并测试了新的Python API之后，您可以继续测试文档字符串和注释的显示方式:
 
 - 我们建议回顾这些API文档贡献指南。
-- 确保构建的Python目录(包含 Paddle )在您运行`./runserver`的Python路径中可用。
+- 确保构建的Python目录(包含 Paddle )在您运行 ``./runserver`` 的Python路径中可用。
 - 在要更新的特定“API”页面上，单击右上角的Refresh Content。
 - 将修改的API添加到菜单或更改其在菜单上的位置，请单击页面左侧菜单顶部的Edit menu按钮，打开菜单编辑器。
 
