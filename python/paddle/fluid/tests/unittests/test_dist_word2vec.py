@@ -17,7 +17,7 @@ import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistSeResneXt2x2(TestDistBase):
+class TestDistW2V2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
@@ -25,7 +25,16 @@ class TestDistSeResneXt2x2(TestDistBase):
         self.check_with_place("dist_word2vec.py", delta=1e-4)
 
 
-class TestDistSeResneXt2x2Async(TestDistBase):
+class TestDistW2V2x2WithMemOpt(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._mem_opt = True
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_word2vec.py", delta=1e-4)
+
+
+class TestDistW2V2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
 
