@@ -40,30 +40,6 @@ bool RequestSendHandler::Handle(const std::string& varname,
                                 const std::string& out_var_name) {
   VLOG(4) << "RequestSendHandler:" << varname;
 
-  // Async
-  if (!sync_mode_) {
-    rpc_server_->Profiler().OneStep();
-    try {
-      framework::Scope* local = &(scope->NewScope());
-      if (enable_dc_asgd_) {
-        VLOG(3) << "got client trainer_id " << trainer_id;
-        // set @TRAINER_ID@ var only at runtime.
-        auto var = local->Var("@TRAINER_ID@");
-        auto t = var->GetMutable<framework::LoDTensor>();
-        t->Resize({1});
-        auto* d = t->mutable_data<int64_t>(dev_ctx_->GetPlace());
-        *d = trainer_id;
-      }
-
-      executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
-                                    local, /*create_local_scope=*/false);
-    } catch (std::exception& e) {
-      LOG(ERROR) << "async: run sub program error " << e.what();
-      return false;
-    }
-    return true;
-  }
-
   // Sync
   if (varname == BATCH_BARRIER_MESSAGE) {
     VLOG(3) << "sync: recv BATCH_BARRIER_MESSAGE";
@@ -72,17 +48,31 @@ bool RequestSendHandler::Handle(const std::string& varname,
     VLOG(3) << "sync: recv complete message";
     rpc_server_->Complete();
   } else {
-    VLOG(3) << "sync: received var_name: " << varname;
-    rpc_server_->WaitCond(kRequestSend);
-    VLOG(3) << "sync: processing received var: " << varname;
+    // Async
+    if (!sync_mode_) {
+      VLOG(3) << "async process var: " << varname;
+      rpc_server_->Profiler().OneStep();
+      try {
+        executor_->RunPreparedContext((*grad_to_prepared_ctx_)[varname].get(),
+                                      scope);
+      } catch (std::exception& e) {
+        LOG(ERROR) << "async: run sub program error " << e.what();
+        return false;
+      }
+      return true;
+    } else {  // sync
+      rpc_server_->WaitCond(kRequestSend);
+      VLOG(3) << "sync: processing received var: " << varname;
 
-    if (invar == nullptr) {
-      LOG(FATAL) << "sync: Can not find server side var: " << varname;
-      return false;
-    }
-    if (invar->IsType<framework::SelectedRows>()) {
-      std::unique_lock<std::mutex> lock(mutex_sparse_vars_);
-      sparse_vars_.push_back(invar);
+      if (invar == nullptr) {
+        LOG(FATAL) << "sync: Can not find server side var: " << varname;
+        return false;
+      }
+
+      if (invar->IsType<framework::SelectedRows>()) {
+        std::unique_lock<std::mutex> lock(mutex_sparse_vars_);
+        sparse_vars_.push_back(invar);
+      }
     }
   }
   return true;

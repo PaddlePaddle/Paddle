@@ -14,12 +14,16 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+using namespace framework;
+
+static const char kFluidToIrPassesAttr[] = "__fluid_to_ir_passes__";
 
 class FluidToIrPass final : public DataFlowGraphPass {
  public:
@@ -27,6 +31,9 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
   bool Initialize(Argument *argument) override {
     ANALYSIS_ARGUMENT_CHECK_FIELD(argument);
+    PADDLE_ENFORCE(argument->Has(kFluidToIrPassesAttr),
+                   "argument need the attr %s", kFluidToIrPassesAttr);
+    argument_ = argument;
     if (argument->origin_program_desc) {
       LOG(WARNING) << "argument's origin_program_desc is already set, might "
                       "duplicate called";
@@ -40,18 +47,26 @@ class FluidToIrPass final : public DataFlowGraphPass {
     ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_program_path);
     // Load program.
     auto program = LoadProgramDesc(*argument->fluid_model_program_path);
-    argument->origin_program_desc.reset(
-        new framework::proto::ProgramDesc(program));
+    argument->origin_program_desc.reset(new proto::ProgramDesc(program));
     // Create main data flow graph.
     if (!argument->main_dfg) {
       argument->main_dfg.reset(new DataFlowGraph);
     }
-    // Persist the ProgramDesc in graph's attribute. The IR graph just keep the
-    // address, will segfault if the original ProgramDesc destroys.
-    auto &ir_program_p = argument->main_dfg->Attr("ir_program_desc").Pointer();
-    ir_program_p = new framework::ProgramDesc(program);
+    argument->Set("ir_program_desc", new ProgramDesc(program));
 
-    argument_ = argument;
+    LOG(INFO) << "Loading parameters";
+    // Load parameters to argument if needed.
+    if (argument->fluid_model_dir || (argument->fluid_model_program_path &&
+                                      argument->fluid_model_param_path)) {
+#define SAFE_GET(ATTR) std::string ATTR = argument->ATTR ? *argument->ATTR : "";
+      SAFE_GET(fluid_model_dir);
+      SAFE_GET(fluid_model_program_path);
+      SAFE_GET(fluid_model_param_path);
+#undef SAFE_GET
+      EnableParamModify(fluid_model_dir, fluid_model_program_path,
+                        fluid_model_param_path);
+    }
+
     return true;
   }
 
@@ -59,19 +74,43 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
   void Run(DataFlowGraph *graph) override {
     // Call all the IR Passes
-    IRPassManager ir_passes(*static_cast<framework::ProgramDesc *>(
-        argument_->main_dfg->Attr("ir_program_desc").Pointer()));
-    ir_passes.Apply(std::vector<std::string>(
-        {// Manual update the passes here.
-         "graph_viz_pass", "infer_clean_graph_pass", "graph_viz_pass",
-         "fc_fuse_pass", "graph_viz_pass"}));
+    IRPassManager ir_passes(argument_->Get<ProgramDesc>("ir_program_desc"),
+                            nullptr);
+    // Pass the scope from analysis to IR if needed.
+    if (argument_->Has(ir::kParamScopeAttr)) {
+      // Here the address is passed, attention that IR doesn't own the scope, so
+      // the real scope in analysis should live during the IR phase.
+      ir_passes.graph().Set(
+          ir::kParamScopeAttr,
+          new Scope *(&argument_->Get<Scope>(ir::kParamScopeAttr)));
+    }
+
+    const auto &ir_passes_to_apply =
+        argument_->Get<std::vector<std::string>>(kFluidToIrPassesAttr);
+    ir_passes.Apply(ir_passes_to_apply);
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
-    // PADDLE_ENFORCE(argument_->main_dfg->IsFullyConnected());
+    // inherit the arguments from ir.
+    if (ir_passes.graph().Has(ir::kFuseStatisAttr)) {
+      argument_->Set(
+          ir::kFuseStatisAttr,
+          new std::unordered_map<std::string, int>(
+              ir_passes.graph().Get<std::unordered_map<std::string, int>>(
+                  ir::kFuseStatisAttr)));
+    }
   }
 
+  void EnableParamModify(const std::string &model_dir,
+                         const std::string &prog_file,
+                         const std::string &param_file);
+
   std::string repr() const override { return "fluid-to-ir-pass"; }
+
+ private:
+  // Load parameters from a single file or from a directory.
+  bool LoadParams(Scope *scope, const std::string &dir,
+                  const std::string &prog_file, const std::string &param_file);
 
  private:
   Argument *argument_{nullptr};

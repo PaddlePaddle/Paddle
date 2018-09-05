@@ -16,10 +16,15 @@
 
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
 DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
@@ -29,6 +34,8 @@ DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
@@ -195,13 +202,13 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   minute_tensor.lod.assign({one_batch.lod3});
   // clang-format on
   // assign data
-  TensorAssignData(&lod_attention_tensor,
-                   std::vector<std::vector<float>>({{0, 0}}));
+  TensorAssignData<float>(&lod_attention_tensor,
+                          std::vector<std::vector<float>>({{0, 0}}));
   std::vector<float> tmp_zeros(batch_size * 15, 0.);
-  TensorAssignData(&init_zero_tensor, {tmp_zeros});
-  TensorAssignData(&lod_tensor_tensor, one_batch.rnn_link_data);
-  TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
-  TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
+  TensorAssignData<float>(&init_zero_tensor, {tmp_zeros});
+  TensorAssignData<float>(&lod_tensor_tensor, one_batch.rnn_link_data);
+  TensorAssignData<float>(&week_tensor, one_batch.rnn_week_datas);
+  TensorAssignData<float>(&minute_tensor, one_batch.rnn_minute_datas);
   // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
@@ -264,39 +271,24 @@ void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
                            bool use_analysis, bool activate_ir,
                            int num_times = 1) {
-  FLAGS_IA_enable_ir = activate_ir;
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "./analysis.out";
-
-  std::string model_out;
-  if (use_analysis) {
-    Argument argument(model_path);
-    argument.model_output_store_path.reset(new std::string("./analysis.out"));
-
-    Analyzer analyzer;
-    analyzer.Run(&argument);
-
-    // Should get the transformed model stored to ./analysis.out
-    model_out = "./analysis.out";
-    ASSERT_TRUE(PathExists(model_out));
-  } else {
-    model_out = FLAGS_infer_ditu_rnn_model;
-  }
-
   NativeConfig config;
-  config.prog_file = model_out + "/__model__";
-  config.param_file = model_out + "/param";
+  config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
+  config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
 
-  auto predictor =
+  auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
   PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs;
+  std::vector<PaddleTensor> outputs, base_outputs;
+
+  base_predictor->Run(input_slots, &base_outputs);
 
   Timer timer;
   timer.tic();
@@ -308,35 +300,49 @@ void TestDituRNNPrediction(const std::string &model_path,
             << ", latency: " << timer.toc() / num_times << "ms";
   LOG(INFO) << "=====================================";
 
-  for (auto &out : outputs) {
+  PADDLE_ENFORCE_GT(outputs.size(), 0);
+  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
+  for (size_t i = 0; i < outputs.size(); i++) {
+    auto &out = outputs[i];
+    auto &base_out = base_outputs[i];
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
+    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
+                                   1, [](int a, int b) { return a * b; });
+    PADDLE_ENFORCE_EQ(size, size1);
+    PADDLE_ENFORCE_GT(size, 0);
     float *data = static_cast<float *>(out.data.data());
-    for (size_t i = 0;
-         i < std::min(sizeof(ditu_rnn_target_data) / sizeof(float), size);
-         i++) {
-      EXPECT_NEAR(data[i], ditu_rnn_target_data[i], 1e-3);
+    float *base_data = static_cast<float *>(base_out.data.data());
+    for (size_t j = 0; j < size; j++) {
+      EXPECT_NEAR(data[j], base_data[j], 1e-3);
     }
   }
-}
 
-// Turn on the IR pass supportion, run a real inference and check the result.
-TEST(Analyzer, SupportIRPass) {
-  FLAGS_IA_enable_ir = true;
-  FLAGS_IA_enable_tensorrt_subgraph_engine = false;
-  FLAGS_IA_output_storage_path = "./analysis.out";
+  if (use_analysis && activate_ir) {
+    AnalysisPredictor *analysis_predictor =
+        dynamic_cast<AnalysisPredictor *>(predictor.get());
+    auto &fuse_statis = analysis_predictor->analysis_argument()
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
+    for (auto &item : fuse_statis) {
+      LOG(INFO) << "fused " << item.first << " " << item.second;
+    }
 
-  Argument argument(FLAGS_inference_model_dir);
-  argument.model_output_store_path.reset(new std::string("./analysis.out"));
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
 
-  Analyzer analyzer;
-  analyzer.Run(&argument);
-
-  // Should get the transformed model stored to ./analysis.out
-  ASSERT_TRUE(PathExists("./analysis.out"));
-
-  // Inference from this path.
-  TestWord2vecPrediction("./analysis.out");
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(num_ops,
+              13);  // After graph optimization, only 13 operators exists.
+  }
 }
 
 // Directly infer with the original model.
@@ -363,7 +369,3 @@ TEST(Analyzer, DituRNN_with_analysis_with_IR) {
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);

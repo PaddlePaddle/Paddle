@@ -169,14 +169,19 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 # Release/Debug flags set by cmake. Such as -O3 -g -DNDEBUG etc.
 # So, don't set these flags here.
+if (NOT WIN32) # windows msvc2015 support c++11 natively. 
+# -std=c++11 -fPIC not recoginize by msvc, -Xcompiler will be added by cmake.
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
-list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
+endif(NOT WIN32)
+
+list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
 # in cuda9, suppress cuda warning on eigen 
 list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
 list(APPEND CUDA_NVCC_FLAGS "--expt-relaxed-constexpr")
 
+if (NOT WIN32)
 if(CMAKE_BUILD_TYPE  STREQUAL "Debug")
     list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_DEBUG})
 elseif(CMAKE_BUILD_TYPE  STREQUAL "Release")
@@ -187,6 +192,13 @@ elseif(CMAKE_BUILD_TYPE  STREQUAL "MinSizeRel")
     # nvcc 9 does not support -Os. Use Release flags instead
     list(APPEND CUDA_NVCC_FLAGS  ${CMAKE_CXX_FLAGS_RELEASE})
 endif()
+else(NOT WIN32)
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+  list(APPEND CUDA_NVCC_FLAGS "-O3 -DNDEBUG")
+else()
+  message(FATAL "Windows only support Release build now. Please set visual studio build type to Release, x64 build.")
+endif()
+endif(NOT WIN32)
 
 mark_as_advanced(CUDA_BUILD_CUBIN CUDA_BUILD_EMULATION CUDA_VERBOSE_BUILD)
 mark_as_advanced(CUDA_SDK_ROOT_DIR CUDA_SEPARABLE_COMPILATION)
