@@ -21,7 +21,7 @@ namespace operators {
  */
 template <typename T>
 inline void BoxToDelta(const int box_num, const framework::Tensor& ex_boxes,
-                       const framework::Tensor& gt_boxes, const float* weights,
+                       const framework::Tensor& gt_boxes, const T* weights,
                        const bool normalized, framework::Tensor* box_delta) {
   auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
   auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
