@@ -565,6 +565,7 @@ PDNode* patterns::FC(PDPattern* pattern, const std::string& name_scope,
 
   return fc_out;
 }
+
 PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
                        PDNode* x) {
   x->assert_is_op_input("lstm", "Input");
@@ -589,6 +590,32 @@ PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
   lstm_op->LinksTo({Hidden, Cell, BatchGate, BatchCellPreAct});
   return Hidden;
 }
+
+PDNode* patterns::GRU(PDPattern* pattern, const std::string& name_scope,
+                      PDNode* x) {
+  x->assert_is_op_input("gru", "Input");
+  auto* gru_op = pattern->NewNode(name_scope, "gru")->assert_is_op("gru");
+#define NEW_NODE(arg__, io__)                        \
+  auto* arg__ = pattern->NewNode(name_scope, #arg__) \
+                    ->assert_is_op_##io__("gru", #arg__);
+
+  NEW_NODE(Weight, input);
+  // TODO(Superjomn): upgrade the fuse framework to support optional.
+  // H0 and bias are optional
+  NEW_NODE(Bias, input);  // also optional
+  // NEW_NODE(H0, input);
+
+  NEW_NODE(Hidden, output);
+  // below are intermediate
+  NEW_NODE(BatchGate, output);
+  NEW_NODE(BatchResetHiddenPrev, output);
+  NEW_NODE(BatchHidden, output);
+
+  gru_op->LinksFrom({x, Weight, Bias});
+  gru_op->LinksTo({Hidden, BatchGate, BatchResetHiddenPrev, BatchHidden});
+  return Hidden;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
