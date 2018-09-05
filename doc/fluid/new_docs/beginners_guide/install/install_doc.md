@@ -1509,7 +1509,7 @@ PaddePaddle通过编译时指定路径来实现引用各种BLAS/CUDA/cuDNN库。
 
 
 <!--TODO this part should be in a new webpage-->
-s
+
 </br></br>
 
 ### 在Docker中执行PaddlePaddle训练程序     
