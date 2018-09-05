@@ -89,12 +89,12 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
                     "The first dimension of Input(Bias) should be 1.");
 
-  PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_peepholes"),
-                 "Do not support peephole yet.");
-  PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
+  auto use_peepholes = ctx->Attrs().Get<bool>("use_peepholes");
+  PADDLE_ENFORCE_EQ(b_dims[1], (use_peepholes ? 7 : 4) * frame_size,
                     "The second dimension of Input(Bias) should be "
-                    "4 * %d if disable peepholes connection",
-                    frame_size);
+                    "7 * %d if enable peepholes connection or"
+                    "4 * %d if disable peepholes",
+                    frame_size, frame_size);
 
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
@@ -232,16 +232,17 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     act_cand = act_functor(act_cand_str);                                      \
   }
 
-#define INIT_BASE_INPUT_OUTPUT                        \
-  auto* x = ctx.Input<LoDTensor>("X");                \
-  auto* h0 = ctx.Input<Tensor>("H0");                 \
-  auto* c0 = ctx.Input<Tensor>("C0");                 \
-  auto* wx = ctx.Input<Tensor>("WeightX");            \
-  auto* wh = ctx.Input<Tensor>("WeightH");            \
-  auto* bias = ctx.Input<Tensor>("Bias");             \
-  auto* xx = ctx.Output<LoDTensor>("XX");             \
-  auto* hidden_out = ctx.Output<LoDTensor>("Hidden"); \
-  auto* cell_out = ctx.Output<LoDTensor>("Cell");     \
+#define INIT_BASE_INPUT_OUTPUT                          \
+  auto* x = ctx.Input<LoDTensor>("X");                  \
+  auto* h0 = ctx.Input<Tensor>("H0");                   \
+  auto* c0 = ctx.Input<Tensor>("C0");                   \
+  auto* wx = ctx.Input<Tensor>("WeightX");              \
+  auto* wh = ctx.Input<Tensor>("WeightH");              \
+  auto* bias = ctx.Input<Tensor>("Bias");               \
+  auto* xx = ctx.Output<LoDTensor>("XX");               \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");   \
+  auto* cell_out = ctx.Output<LoDTensor>("Cell");       \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes"); \
   bool is_reverse = ctx.Attr<bool>("is_reverse");
 
 #define INIT_BASE_SIZES                  \
@@ -266,11 +267,20 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     const T* x_data = x->data<T>();
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
+    const T* bias_data = bias->data<T>();
+    const T* wc_data = bias_data + D4;  // w_ic, w_fc, w_oc
     const T* wx_data = wx->data<T>();
     const T* wh_data = wh->data<T>();
+
     T* xx_data = xx->mutable_data<T>(ctx.GetPlace());
     T* hidden_out_data = hidden_out->mutable_data<T>(ctx.GetPlace());
     T* cell_out_data = cell_out->mutable_data<T>(ctx.GetPlace());
+
+    // use local variable
+    framework::DDim check_dims({3, D});
+    Tensor checked_cell;  // w_ic * Ct-1, w_fc * Ct-1, w_oc * Ct
+    auto checked_cell_data =
+        checked_cell.mutable_data<T>(check_dims, ctx.GetPlace());
 
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
     math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
@@ -297,46 +307,86 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
       const T* prev_c_data = nullptr;
       const T* prev_h_data = nullptr;
+
       int tstart = 0;
       if (h0_data) {
         prev_h_data = h0_data + bid * D;
         prev_c_data = c0_data + bid * D;
       } else {
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
+        // If step == 0 and there is no initialized hidden state, that is to say
+        // the H0 is zeros. Then W_h * H_t-1 can be skipped
+
+        // ~C_t
         act_cand(D, xx_data, xx_data);
-        // cell out= input*tilde
+        if (use_peepholes) {
+          // I_t, F_t
+          act_gate(D2, xx_data + D, xx_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, xx_data + D, xx_data + D);
+        }
+        // C_t = I_t * ~C_t
         blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+          blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+          // O_t
+          act_gate(D, xx_data + D3, xx_data + D3);
+        }
+
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cell_out_data, xx_data + D2);
+        // H_t = O_t * act_state(C_t)
         blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
 
         // prev
         prev_h_data = hidden_out_data;
         prev_c_data = cell_out_data;
-        tstart = 1;
 
+        tstart = 1;
         move_step();
       }
+
       for (int step = tstart; step < seq_len; ++step) {
+        // + W_h * H_t-1
         blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
                   prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
 
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
+        // ~C_t
         act_cand(D, xx_data, xx_data);
 
-        // a = forget * prev_cell
+        if (use_peepholes) {
+          // + W_ic|W_fc * C_t-1 for peephole connection
+          blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+          blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+          blas.VADD(D2, xx_data + D, checked_cell_data, xx_data + D);
+          // I_t, F_t
+          act_gate(D2, xx_data + D, xx_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, xx_data + D, xx_data + D);
+        }
+
+        // F_t * C_t-1
         blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
-
-        // b = input * tilde
+        // I_t * ~C_t
         blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
-
-        // cell out= a+b
+        // C_t = F_t * C_t-1 + I_t * ~C_t
         blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+          blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+          // O_t
+          act_gate(D, xx_data + D3, xx_data + D3);
+        }
 
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cell_out_data, xx_data + D2);
+        // H_t = O_t * act_state(C_t)
         blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
 
         // prev
@@ -344,14 +394,14 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         prev_c_data = cell_out_data;
 
         move_step();
-      }
-    }
+      }  // for each step in batch
+    }    // for each batch
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = platform::CPUDeviceContext;
     INIT_BASE_INPUT_OUTPUT
-    if (x->lod()[0].size() == 2) {
+    if (x->lod()[0].size() == 2) {  // batch size == 1
       SeqCompute(ctx);
       return;
     }
@@ -367,6 +417,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     const T* x_data = x->data<T>();
     const T* wx_data = wx->data<T>();
     const T* wh_data = wh->data<T>();
+    const T* bias_data = bias->data<T>();
+    const T* wc_data = bias_data + D4;  // w_ic, w_fc, w_oc
     auto place = ctx.GetPlace();
     T* xx_data = xx->mutable_data<T>(place);
     T* batched_input_data = batched_input->mutable_data<T>(place);
@@ -374,6 +426,12 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     T* batched_h_out_data = batched_h_out->mutable_data<T>(place);
     hidden_out->mutable_data<T>(place);
     cell_out->mutable_data<T>(place);
+
+    // use local variable
+    framework::DDim check_dims({3, D});
+    Tensor checked_cell;  // w_ic * Ct-1, w_fc * Ct-1, w_oc * Ct
+    auto checked_cell_data =
+        checked_cell.mutable_data<T>(check_dims, ctx.GetPlace());
 
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -396,17 +454,27 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     reordered_h0->Resize({max_bs, D});
     reordered_c0->Resize({max_bs, D});
 
+    T* prev_batch_h_data = nullptr;
+    T* prev_batch_c_data = nullptr;
+    T* cur_batch_in_data = batched_input_data;
+    T* cur_batch_h_out_data = batched_h_out_data;
+    T* cur_batch_c_out_data = batched_c_out_data;
+
+    auto move_step = [&](int bs) {
+      cur_batch_in_data += bs * D4;
+      cur_batch_c_out_data += bs * D;
+      cur_batch_h_out_data += bs * D;
+    };
+
     int tstart = 0;
-    T* prev_h_data = nullptr;
-    T* prev_c_data = nullptr;
     if (h0) {
       // reorder h0, c0
       T* reordered_h0_data = reordered_h0->mutable_data<T>(place);
       T* reordered_c0_data = reordered_c0->mutable_data<T>(place);
       const T* h0_data = h0->data<T>();
       const T* c0_data = c0->data<T>();
-      prev_h_data = reordered_h0_data;
-      prev_c_data = reordered_c0_data;
+      prev_batch_h_data = reordered_h0_data;
+      prev_batch_c_data = reordered_c0_data;
       size_t sz = sizeof(T) * D;
       for (int i = 0; i < max_bs; ++i) {
         std::memcpy(reordered_h0_data, h0_data + seq_order[i] * D, sz);
@@ -415,71 +483,122 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         reordered_c0_data += D;
       }
     } else {
-      // compute without h0, c0
-      T* cur_in_data = batched_input_data;
-      T* cur_h_out_data = batched_h_out_data;
-      T* cur_c_out_data = batched_c_out_data;
-      // W_ch, W_ih, W_fh, W_oh
-      for (int i = 0; i < max_bs; ++i) {
-        act_gate(D3, cur_in_data + D, cur_in_data + D);
+      // Compute with no H0/C0
+      T* cur_in_data = cur_batch_in_data;
+      T* cur_c_out_data = cur_batch_c_out_data;
+      T* cur_h_out_data = cur_batch_h_out_data;
+
+      // If step == 0 and there is no initialized hidden state, that is to say
+      // the H0 is zeros. Then W_h * H_t-1 can be skiped
+
+      for (int i = 0; i < max_bs; ++i) {  // iterate each data in 1st batch
+        // ~C_t
         act_cand(D, cur_in_data, cur_in_data);
-        // cell out= input*tilde
+
+        if (use_peepholes) {
+          // I_t, F_t
+          act_gate(D2, cur_in_data + D, cur_in_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, cur_in_data + D, cur_in_data + D);
+        }
+
+        // C_t = I_t * ~C_t
         blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
+          blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
+                    cur_in_data + D3);
+          // O_t
+          act_gate(D, cur_in_data + D3, cur_in_data + D3);
+        }
+
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cur_c_out_data, cur_in_data + D2);
+        // H_t = O_t * act_state(C_t)
         blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
 
-        // add offset
+        // move to next data in the same batch
         cur_in_data += D4;
         cur_c_out_data += D;
         cur_h_out_data += D;
       }
+
+      // move to data for next timestep
+      prev_batch_h_data = cur_batch_h_out_data;
+      prev_batch_c_data = cur_batch_c_out_data;
+      move_step(max_bs);
       tstart = 1;
-      prev_h_data = batched_h_out_data;
-      prev_c_data = batched_c_out_data;
     }
-    // Then start from next
+
     const auto& batch_starts = batched_lod[0];
     const int max_seq_len = batch_starts.size() - 1;
-    const int offset = tstart * max_bs * D;
-    batched_input_data = batched_input_data + offset * 4;
-    batched_h_out_data = batched_h_out_data + offset;
-    batched_c_out_data = batched_c_out_data + offset;
     for (int step = tstart; step < max_seq_len; ++step) {
       const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      // + W_h * H_t-1
       blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
-                prev_h_data, D, wh_data, D4, static_cast<T>(1),
-                batched_input_data, D4);
+                prev_batch_h_data, D, wh_data, D4, static_cast<T>(1),
+                cur_batch_in_data, D4);
 
-      T* cur_in_data = batched_input_data;
-      T* cur_prev_c_data = prev_c_data;
-      T* cur_c_out_data = batched_c_out_data;
-      T* cur_h_out_data = batched_h_out_data;
-      for (int i = 0; i < cur_bs; ++i) {
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, cur_in_data + D, cur_in_data + D);
-        act_cand(D, cur_in_data, cur_in_data);
-        // a = forget * prev_cell
-        blas.VMUL(D, cur_in_data + D2, cur_prev_c_data, cur_in_data + D2);
-        // b = input * tilde
-        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
-        // cell out= a+b
-        blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cur_c_out_data, cur_in_data + D2);
-        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
-
+      T* cur_in_data = cur_batch_in_data;
+      T* cur_c_out_data = cur_batch_c_out_data;
+      T* cur_h_out_data = cur_batch_h_out_data;
+      T* prev_c_data = prev_batch_c_data;  // NULL if no C0 in step0
+      T* prev_h_data = prev_batch_h_data;  // NULL if no H0 in step0
+      auto next_data_in_batch = [&]() {
         cur_in_data += D4;
-        cur_prev_c_data += D;
         cur_c_out_data += D;
         cur_h_out_data += D;
-      }
+        prev_c_data = prev_c_data ? prev_c_data + D : nullptr;
+        prev_h_data = prev_h_data ? prev_h_data + D : nullptr;
+      };
 
-      prev_c_data = batched_c_out_data;
-      prev_h_data = batched_h_out_data;
-      batched_c_out_data = cur_c_out_data;
-      batched_h_out_data = cur_h_out_data;
-      batched_input_data = cur_in_data;
+      for (int i = 0; i < cur_bs; ++i) {  // iterate each data in same batch
+        // ~C_t
+        act_cand(D, cur_in_data, cur_in_data);
+
+        if (use_peepholes) {
+          // + W_ic|W_fc * C_t-1 for peephole connection
+          blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+          blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+          blas.VADD(D2, cur_in_data + D, checked_cell_data, cur_in_data + D);
+          // I_t, F_t
+          act_gate(D2, cur_in_data + D, cur_in_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, cur_in_data + D, cur_in_data + D);
+        }
+
+        // F_t * C_t-1
+        blas.VMUL(D, cur_in_data + D2, prev_c_data, cur_in_data + D2);
+        // I_t * ~C_t
+        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
+        // C_t = F_t * C_t-1 + I_t * ~C_t
+        blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
+          blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
+                    cur_in_data + D3);
+          // O_t
+          act_gate(D, cur_in_data + D3, cur_in_data + D3);
+        }
+
+        // hidden out= act_state(cellout) * outgate
+        act_cell(D, cur_c_out_data, cur_in_data + D2);
+        // H_t = O_t * act_state(C_t)
+        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
+
+        // move to next data in same batch
+        next_data_in_batch();
+      }
+      // move to data for next timestep
+      prev_batch_h_data = cur_batch_h_out_data;
+      prev_batch_c_data = cur_batch_c_out_data;
+      move_step(cur_bs);
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
