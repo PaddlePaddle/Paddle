@@ -271,17 +271,22 @@ void TestDituRNNPrediction(const std::string &model_path,
                            const std::string &data_path, int batch_size,
                            bool use_analysis, bool activate_ir,
                            int num_times = 1) {
-  NativeConfig config;
+  AnalysisConfig config;
   config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
   config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
+  config.enable_ir_optim = activate_ir;
+  PADDLE_ENFORCE(config.ir_mode ==
+                 AnalysisConfig::IrPassMode::kExclude);  // default
+  config.ir_passes.clear();  // Do not exclude any pass.
 
   auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
   auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
+      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+          config);
   std::vector<PaddleTensor> input_slots;
   DataRecord data(data_path, batch_size);
   // Prepare inputs.
