@@ -13,7 +13,7 @@ $$ r = min(max(x, a), b)$$
 $$ s = \frac{b - a}{n - 1} $$
 $$ q = \left \lfloor \frac{r - a}{s} \right \rceil $$
 
-where, $x$ is the float value to be quantized, $[a, b]$ is the quantization range, $a$ is the minimum value and $b$ is the maximal value. $\left \lfloor \right \rceil$  denotes rounding to the nearest integer. If the quantization level is $k$, $n$ is $2^k$, for example, $k$ is 8 and $n$ is 256. $q$ is the quantized integer. 
+where, $x$ is the float value to be quantized, $[a, b]$ is the quantization range, $a$ is the minimum value and $b$ is the maximal value. $\left \lfloor \right \rceil$  denotes rounding to the nearest integer. If the quantization level is $k$, $n$ is $2^{k - 1}$, for example, $k$ is 8 and $n$ is 128. $q$ is the quantized integer. 
 
 
 The quantization we applied is parameterized by the number of quantization levels and maximum absolute value:
@@ -21,7 +21,7 @@ The quantization we applied is parameterized by the number of quantization level
 $$ M  = max(abs(x))  $$
 $$ q = \left \lfloor \frac{x}{M} * (n - 1) \right \rceil $$
 
-where, $x$ is the float value to be quantized, $M$ is maximum absolute value. $\left \lfloor \right \rceil$ denotes rounding to the nearest integer.  For 8 bit quantization, $n=2^{8}=256$. $q$ is the quantized integer. 
+where, $x$ is the float value to be quantized, $M$ is maximum absolute value. $\left \lfloor \right \rceil$ denotes rounding to the nearest integer.  For 8 bit quantization, $n=2^{8 - 1}=128$. $q$ is the quantized integer. 
 
 
 Wether the *min-max* quantization or *max-abs* quantization, they also can be represent:
