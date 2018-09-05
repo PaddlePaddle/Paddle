@@ -14,10 +14,13 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
@@ -27,6 +30,8 @@ bool AnalysisPredictor::Init(
   VLOG(3) << "Predictor::init()";
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
+    LOG(WARNING) << "ir optimize only supports CPU currently";
+    config_.enable_ir_optim = false;
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -72,7 +77,7 @@ bool AnalysisPredictor::Init(
 
 void AnalysisPredictor::OptimizeInferenceProgram() {
   LOG(INFO) << "optimize begin";
-  FLAGS_IA_enable_ir = true;
+  FLAGS_IA_enable_ir = config_.enable_ir_optim;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "";  // Don't output the model.
   // Analyze inference_program
@@ -89,24 +94,26 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  Analyzer().Run(&argument_);
+  PADDLE_ENFORCE(config_.ir_mode == AnalysisConfig::IrPassMode::kExclude,
+                 "Only kExclude is supported yet.");
+  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
-  // LOG(INFO) << "transformed_parogram_desc " <<
-  // argument.transformed_program_desc->DebugString();
   inference_program_.reset(
       new framework::ProgramDesc(*argument_.transformed_program_desc));
-  PADDLE_ENFORCE(argument_.Has(framework::ir::kParamScopeAttr));
-  // Update scope.
-  scope_.reset(
-      argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
-  LOG(INFO) << "optimize end ==";
+  if (argument_.Has(framework::ir::kParamScopeAttr)) {
+    // Update scope.
+    scope_.reset(
+        argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
+  }
+  LOG(INFO) << "== optimize end ==";
 }
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kAnalysis>(const NativeConfig& config) {
-  VLOG(3) << "create NativePredictor";
+    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config) {
+  VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -133,7 +140,3 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 }
 
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);

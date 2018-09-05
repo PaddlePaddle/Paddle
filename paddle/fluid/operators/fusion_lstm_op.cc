@@ -16,13 +16,9 @@ limitations under the License. */
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
-#include "paddle/fluid/operators/math/lstm_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
-
-DEFINE_bool(seq_mode, true, "Use sequence mode");
 
 namespace paddle {
 namespace operators {
@@ -42,10 +38,16 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                  "Output(Hidden) of LSTM should not be null.");
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
                  "Output(Cell) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchedGate"),
-                 "Output(BatchedGate) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchCellPreAct"),
-                 "Output(BatchedGate) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
+                 "Output(BatchedInput) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
+                 "Output(BatchedHidden) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("BatchedCell"),
+                 "Output(BatchedCell) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
+                 "Output(ReorderedH0) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasOutput("ReorderedC0"),
+                 "Output(ReorderedC0) of LSTM should not be null.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
@@ -87,23 +89,24 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
                     "The first dimension of Input(Bias) should be 1.");
 
-  PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_peepholes"),
-                 "Do not support peephole yet.");
-  PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
+  auto use_peepholes = ctx->Attrs().Get<bool>("use_peepholes");
+  PADDLE_ENFORCE_EQ(b_dims[1], (use_peepholes ? 7 : 4) * frame_size,
                     "The second dimension of Input(Bias) should be "
-                    "4 * %d if disable peepholes connection",
-                    frame_size);
+                    "7 * %d if enable peepholes connection or"
+                    "4 * %d if disable peepholes",
+                    frame_size, frame_size);
 
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
-  ctx->SetOutputDim("BatchedGate", {x_dims[0], wx_dims[1]});
-  ctx->SetOutputDim("BatchCellPreAct", out_dims);
+  ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
+  ctx->SetOutputDim("BatchedHidden", out_dims);
+  ctx->SetOutputDim("BatchedCell", out_dims);
   ctx->ShareLoD("X", "Hidden");
   ctx->ShareLoD("X", "Cell");
 
   int xx_width;
-  if (FLAGS_seq_mode) {
+  if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
@@ -169,9 +172,11 @@ void FusionLSTMOpMaker::Make() {
             " where T is the total time steps in this mini-batch,"
             " D is the hidden size, M is the dim size of x input.")
       .AsIntermediate();
-  AddOutput("BatchedGate", "(LoDTensor) (same as LSTMOp).").AsIntermediate();
-  AddOutput("BatchCellPreAct", "(LoDTensor) (same as LSTMOp).")
-      .AsIntermediate();
+  AddOutput("BatchedInput", "(LoDTensor) (T x 4D).").AsIntermediate();
+  AddOutput("BatchedHidden", "(LoDTensor) (T x D).").AsIntermediate();
+  AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
+  AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
+  AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
   AddAttr<bool>("use_peepholes",
                 "(bool, defalut: True) "
                 "whether to enable diagonal/peephole connections.")
@@ -180,6 +185,10 @@ void FusionLSTMOpMaker::Make() {
                 "(bool, defalut: False) "
                 "whether to compute reversed LSTM.")
       .SetDefault(false);
+  AddAttr<bool>("use_seq",
+                "(bool, defalut: True) "
+                "whether to use seq mode to compute.")
+      .SetDefault(true);
   AddAttr<std::string>("gate_activation",
                        "(string, default: sigmoid)"
                        "The activation for input gate, forget gate and output "
@@ -203,69 +212,75 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 )DOC");
 }
 
-template <typename DeviceContext, typename T>
-inline void ReorderInitState(const DeviceContext& ctx,
-                             const framework::Tensor& src,
-                             framework::Vector<size_t> index_lod,
-                             framework::Tensor* dst, bool indexed_src) {
-  math::CopyMatrixRowsFunctor<DeviceContext, T> row_shuffle;
-  dst->mutable_data<T>(src.dims(), ctx.GetPlace());
-  // TODO(TJ): check mem copy perf
-  row_shuffle(ctx, src, index_lod, dst, indexed_src);
-}
-
 template <typename T>
 class FuisonLSTMKernel : public framework::OpKernel<T> {
  public:
+#define INIT_VEC_FUNC                                                          \
+  std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand; \
+  auto& act_gate_str = ctx.Attr<std::string>("gate_activation");               \
+  auto& act_cell_str = ctx.Attr<std::string>("cell_activation");               \
+  auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");          \
+  if (platform::jit::MayIUse(platform::jit::avx)) {                            \
+    math::VecActivations<T, platform::jit::avx> act_functor;                   \
+    act_gate = act_functor(act_gate_str);                                      \
+    act_cell = act_functor(act_cell_str);                                      \
+    act_cand = act_functor(act_cand_str);                                      \
+  } else {                                                                     \
+    math::VecActivations<T, platform::jit::isa_any> act_functor;               \
+    act_gate = act_functor(act_gate_str);                                      \
+    act_cell = act_functor(act_cell_str);                                      \
+    act_cand = act_functor(act_cand_str);                                      \
+  }
+
+#define INIT_BASE_INPUT_OUTPUT                          \
+  auto* x = ctx.Input<LoDTensor>("X");                  \
+  auto* h0 = ctx.Input<Tensor>("H0");                   \
+  auto* c0 = ctx.Input<Tensor>("C0");                   \
+  auto* wx = ctx.Input<Tensor>("WeightX");              \
+  auto* wh = ctx.Input<Tensor>("WeightH");              \
+  auto* bias = ctx.Input<Tensor>("Bias");               \
+  auto* xx = ctx.Output<LoDTensor>("XX");               \
+  auto* hidden_out = ctx.Output<LoDTensor>("Hidden");   \
+  auto* cell_out = ctx.Output<LoDTensor>("Cell");       \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes"); \
+  bool is_reverse = ctx.Attr<bool>("is_reverse");
+
+#define INIT_BASE_SIZES                  \
+  auto x_dims = x->dims();   /* T x M*/  \
+  auto wh_dims = wh->dims(); /* D x 4D*/ \
+  const int M = x_dims[1];               \
+  const int D = wh_dims[0];              \
+  const int D2 = D * 2;                  \
+  const int D3 = D * 3;                  \
+  const int D4 = wh_dims[1];
+
   void SeqCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* h0 = ctx.Input<Tensor>("H0");
-    auto* c0 = ctx.Input<Tensor>("C0");
-    auto* wx = ctx.Input<Tensor>("WeightX");
-    auto* wh = ctx.Input<Tensor>("WeightH");
-    auto* bias = ctx.Input<Tensor>("Bias");
-
-    auto* xx = ctx.Output<LoDTensor>("XX");
-    auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
-    bool is_reverse = ctx.Attr<bool>("is_reverse");
-
-    std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand;
-    auto& act_gate_str = ctx.Attr<std::string>("gate_activation");
-    auto& act_cell_str = ctx.Attr<std::string>("cell_activation");
-    auto& act_cand_str = ctx.Attr<std::string>("candidate_activation");
-    if (platform::jit::MayIUse(platform::jit::avx)) {
-      math::VecActivations<T, platform::jit::avx> act_functor;
-      act_gate = act_functor(act_gate_str);
-      act_cell = act_functor(act_cell_str);
-      act_cand = act_functor(act_cand_str);
-    } else {
-      math::VecActivations<T, platform::jit::isa_any> act_functor;
-      act_gate = act_functor(act_gate_str);
-      act_cell = act_functor(act_cell_str);
-      act_cand = act_functor(act_cand_str);
-    }
+    INIT_BASE_INPUT_OUTPUT
+    INIT_BASE_SIZES
+    INIT_VEC_FUNC
 
     auto x_lod = x->lod();
-    auto x_dims = x->dims();    // T x M
-    auto wh_dims = wh->dims();  // D x 4D
     const int total_T = x_dims[0];
     const int N = x_lod[0].size() - 1;  // batch size
-    const int M = x_dims[1];            // x frame size
-    const int D = wh_dims[0];
-    const int D2 = D * 2;
-    const int D3 = D * 3;
-    const int D4 = wh_dims[1];
 
     const T* x_data = x->data<T>();
-    const T* h0_data = h0 ? h0->data<T>() : NULL;
-    const T* c0_data = c0 ? c0->data<T>() : NULL;
+    const T* h0_data = h0 ? h0->data<T>() : nullptr;
+    const T* c0_data = c0 ? c0->data<T>() : nullptr;
+    const T* bias_data = bias->data<T>();
+    const T* wc_data = bias_data + D4;  // w_ic, w_fc, w_oc
     const T* wx_data = wx->data<T>();
     const T* wh_data = wh->data<T>();
+
     T* xx_data = xx->mutable_data<T>(ctx.GetPlace());
     T* hidden_out_data = hidden_out->mutable_data<T>(ctx.GetPlace());
     T* cell_out_data = cell_out->mutable_data<T>(ctx.GetPlace());
+
+    // use local variable
+    framework::DDim check_dims({3, D});
+    Tensor checked_cell;  // w_ic * Ct-1, w_fc * Ct-1, w_oc * Ct
+    auto checked_cell_data =
+        checked_cell.mutable_data<T>(check_dims, ctx.GetPlace());
 
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
     math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
@@ -290,199 +305,319 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     for (int i = 0; i < N; ++i) {
       int bid = is_reverse ? N - 1 - i : i;
       int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
-      const T* prev_cell_data = NULL;
-      const T* prev_hidden_data = NULL;
+      const T* prev_c_data = nullptr;
+      const T* prev_h_data = nullptr;
+
       int tstart = 0;
       if (h0_data) {
-        prev_hidden_data = h0_data + bid * D;
-        prev_cell_data = c0_data + bid * D;
+        prev_h_data = h0_data + bid * D;
+        prev_c_data = c0_data + bid * D;
       } else {
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
+        // If step == 0 and there is no initialized hidden state, that is to say
+        // the H0 is zeros. Then W_h * H_t-1 can be skipped
+
+        // ~C_t
         act_cand(D, xx_data, xx_data);
-        // cell out= input*tilde
+        if (use_peepholes) {
+          // I_t, F_t
+          act_gate(D2, xx_data + D, xx_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, xx_data + D, xx_data + D);
+        }
+        // C_t = I_t * ~C_t
         blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+          blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+          // O_t
+          act_gate(D, xx_data + D3, xx_data + D3);
+        }
+
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cell_out_data, xx_data + D2);
+        // H_t = O_t * act_state(C_t)
         blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
 
         // prev
-        prev_hidden_data = hidden_out_data;
-        prev_cell_data = cell_out_data;
-        tstart = 1;
+        prev_h_data = hidden_out_data;
+        prev_c_data = cell_out_data;
 
+        tstart = 1;
         move_step();
       }
-      for (int step = tstart; step < seq_len; ++step) {
-        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
-                  prev_hidden_data, D, wh_data, D4, static_cast<T>(1), xx_data,
-                  D4);
 
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
+      for (int step = tstart; step < seq_len; ++step) {
+        // + W_h * H_t-1
+        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
+                  prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
+
+        // ~C_t
         act_cand(D, xx_data, xx_data);
 
-        // a = forget * prev_cell
-        blas.VMUL(D, xx_data + D2, prev_cell_data, xx_data + D2);
+        if (use_peepholes) {
+          // + W_ic|W_fc * C_t-1 for peephole connection
+          blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+          blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+          blas.VADD(D2, xx_data + D, checked_cell_data, xx_data + D);
+          // I_t, F_t
+          act_gate(D2, xx_data + D, xx_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, xx_data + D, xx_data + D);
+        }
 
-        // b = input * tilde
+        // F_t * C_t-1
+        blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
+        // I_t * ~C_t
         blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
-
-        // cell out= a+b
+        // C_t = F_t * C_t-1 + I_t * ~C_t
         blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
 
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cell_out_data, checked_cell_data + D2);
+          blas.VADD(D, xx_data + D3, checked_cell_data + D2, xx_data + D3);
+          // O_t
+          act_gate(D, xx_data + D3, xx_data + D3);
+        }
+
         // hidden out= act_state(cellout) * outgate
         act_cell(D, cell_out_data, xx_data + D2);
+        // H_t = O_t * act_state(C_t)
         blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
 
         // prev
-        prev_hidden_data = hidden_out_data;
-        prev_cell_data = cell_out_data;
+        prev_h_data = hidden_out_data;
+        prev_c_data = cell_out_data;
 
         move_step();
-      }
-    }
+      }  // for each step in batch
+    }    // for each batch
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = platform::CPUDeviceContext;
-    auto* x = ctx.Input<LoDTensor>("X");
-    auto* wx = ctx.Input<Tensor>("WeightX");
-    auto* wh = ctx.Input<Tensor>("WeightH");
-    auto* bias = ctx.Input<Tensor>("Bias");
-    auto* hidden_t0 = ctx.Input<Tensor>("H0");
-    auto* cell_t0 = ctx.Input<Tensor>("C0");
+    INIT_BASE_INPUT_OUTPUT
+    if (x->lod()[0].size() == 2) {  // batch size == 1
+      SeqCompute(ctx);
+      return;
+    }
+    INIT_BASE_SIZES
+    INIT_VEC_FUNC
 
-    auto* xx = ctx.Output<LoDTensor>("XX");
-    auto* batched_gate = ctx.Output<LoDTensor>("BatchedGate");
-    auto* hidden_out = ctx.Output<LoDTensor>("Hidden");
-    auto* cell_out = ctx.Output<LoDTensor>("Cell");
-    bool is_reverse = ctx.Attr<bool>("is_reverse");
-
-    T* xx_data = xx->mutable_data<T>(ctx.GetPlace());
-    T* batched_gate_data = batched_gate->mutable_data<T>(ctx.GetPlace());
-    hidden_out->mutable_data<T>(ctx.GetPlace());
-    cell_out->mutable_data<T>(ctx.GetPlace());
+    auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
+    auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
+    auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
+    auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
+    auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
 
     const T* x_data = x->data<T>();
     const T* wx_data = wx->data<T>();
-    auto x_dims = x->dims();
-    auto wx_dims = wx->dims();
+    const T* wh_data = wh->data<T>();
+    const T* bias_data = bias->data<T>();
+    const T* wc_data = bias_data + D4;  // w_ic, w_fc, w_oc
+    auto place = ctx.GetPlace();
+    T* xx_data = xx->mutable_data<T>(place);
+    T* batched_input_data = batched_input->mutable_data<T>(place);
+    T* batched_c_out_data = batched_c_out->mutable_data<T>(place);
+    T* batched_h_out_data = batched_h_out->mutable_data<T>(place);
+    hidden_out->mutable_data<T>(place);
+    cell_out->mutable_data<T>(place);
+
+    // use local variable
+    framework::DDim check_dims({3, D});
+    Tensor checked_cell;  // w_ic * Ct-1, w_fc * Ct-1, w_oc * Ct
+    auto checked_cell_data =
+        checked_cell.mutable_data<T>(check_dims, ctx.GetPlace());
 
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    if (x_dims[1] > wx_dims[1]) {
-      math::FCCompute<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1],
-                                        x_data, wx_data, xx_data,
-                                        bias->data<T>());
-      to_batch(dev_ctx, *xx, batched_gate, true, is_reverse);
+    if (M > D4) {
+      math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, x_data, wx_data,
+                                        xx_data, bias->data<T>());
+      to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
     } else {
       to_batch(dev_ctx, *x, xx, true, is_reverse);
-      batched_gate->set_lod(xx->lod());
-      math::FCCompute<DeviceContext, T>(blas, x_dims[0], wx_dims[1], x_dims[1],
-                                        xx_data, wx_data, batched_gate_data,
+      batched_input->set_lod(xx->lod());
+      math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, xx_data,
+                                        wx_data, batched_input_data,
                                         bias->data<T>());
     }
 
-    int frame_size = static_cast<int>(wx_dims[1] / 4);
-    framework::DDim out_dims({x_dims[0], frame_size});
-    math::LstmMetaValue<T> lstm_value;
-    // no peephole
-    lstm_value.check_ig = nullptr;
-    lstm_value.check_fg = nullptr;
-    lstm_value.check_og = nullptr;
-    lstm_value.prev_state_value = nullptr;
-    Tensor ordered_c0;
+    auto batched_lod = batched_input->lod();
+    const auto& seq_order = batched_lod[2];
+    const int max_bs = seq_order.size();
+    reordered_h0->Resize({max_bs, D});
+    reordered_c0->Resize({max_bs, D});
 
-    framework::Vector<size_t> order(batched_gate->lod()[2]);
+    T* prev_batch_h_data = nullptr;
+    T* prev_batch_c_data = nullptr;
+    T* cur_batch_in_data = batched_input_data;
+    T* cur_batch_h_out_data = batched_h_out_data;
+    T* cur_batch_c_out_data = batched_c_out_data;
 
-    if (cell_t0) {
-      // Since the batch computing for LSTM reorders the input sequence
-      // according to their length. The initialized cell state also needs
-      // to reorder.
-      ReorderInitState<DeviceContext, T>(dev_ctx, *cell_t0, order, &ordered_c0,
-                                         true);
-      lstm_value.prev_state_value = ordered_c0.data<T>();
-    }
+    auto move_step = [&](int bs) {
+      cur_batch_in_data += bs * D4;
+      cur_batch_c_out_data += bs * D;
+      cur_batch_h_out_data += bs * D;
+    };
 
-    // Use the local variable as here.
-    LoDTensor batch_hidden, batch_cell;
-    auto* batch_cell_pre_act = ctx.Output<LoDTensor>("BatchCellPreAct");
-    batch_hidden.mutable_data<T>(out_dims, ctx.GetPlace());
-    batch_cell.mutable_data<T>(out_dims, ctx.GetPlace());
-    batch_cell_pre_act->mutable_data<T>(out_dims, ctx.GetPlace());
+    int tstart = 0;
+    if (h0) {
+      // reorder h0, c0
+      T* reordered_h0_data = reordered_h0->mutable_data<T>(place);
+      T* reordered_c0_data = reordered_c0->mutable_data<T>(place);
+      const T* h0_data = h0->data<T>();
+      const T* c0_data = c0->data<T>();
+      prev_batch_h_data = reordered_h0_data;
+      prev_batch_c_data = reordered_c0_data;
+      size_t sz = sizeof(T) * D;
+      for (int i = 0; i < max_bs; ++i) {
+        std::memcpy(reordered_h0_data, h0_data + seq_order[i] * D, sz);
+        std::memcpy(reordered_c0_data, c0_data + seq_order[i] * D, sz);
+        reordered_h0_data += D;
+        reordered_c0_data += D;
+      }
+    } else {
+      // Compute with no H0/C0
+      T* cur_in_data = cur_batch_in_data;
+      T* cur_c_out_data = cur_batch_c_out_data;
+      T* cur_h_out_data = cur_batch_h_out_data;
 
-    auto batch_starts = batched_gate->lod()[0];
-    size_t max_seq_len = batch_starts.size() - 1;
-    auto gate_act = math::detail::GetActivationType(
-        ctx.Attr<std::string>("gate_activation"));
-    auto cell_act = math::detail::GetActivationType(
-        ctx.Attr<std::string>("cell_activation"));
-    auto cand_act = math::detail::GetActivationType(
-        ctx.Attr<std::string>("candidate_activation"));
+      // If step == 0 and there is no initialized hidden state, that is to say
+      // the H0 is zeros. Then W_h * H_t-1 can be skiped
 
-    for (size_t n = 0; n < max_seq_len; n++) {
-      int bstart = static_cast<int>(batch_starts[n]);
-      int bend = static_cast<int>(batch_starts[n + 1]);
+      for (int i = 0; i < max_bs; ++i) {  // iterate each data in 1st batch
+        // ~C_t
+        act_cand(D, cur_in_data, cur_in_data);
 
-      Tensor gate_t = batched_gate->Slice(bstart, bend);
-      Tensor out_t = batch_hidden.Slice(bstart, bend);
-      Tensor cell_t = batch_cell.Slice(bstart, bend);
-      Tensor cell_pre_act_t = batch_cell_pre_act->Slice(bstart, bend);
+        if (use_peepholes) {
+          // I_t, F_t
+          act_gate(D2, cur_in_data + D, cur_in_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, cur_in_data + D, cur_in_data + D);
+        }
 
-      int cur_batch_size = bend - bstart;
+        // C_t = I_t * ~C_t
+        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
 
-      if (n > 0) {
-        int pre_h_start = static_cast<int>(batch_starts[n - 1]);
-        int pre_h_end = pre_h_start + cur_batch_size;
-        auto pre_hidden_t = batch_hidden.Slice(pre_h_start, pre_h_end);
-        // TODO(TJ): use gemm directly
-        blas.MatMul(pre_hidden_t, false, *wh, false, static_cast<T>(1.0),
-                    &gate_t, static_cast<T>(1.0));
-      } else if (hidden_t0) {
-        // TODO(TJ): move h0 outside for
-        // If n == 0 and there is no initialized hidden state, that is to say
-        // the H0 is zeros, the calculation W_h * H0 will be skiped.
-        // If n == 0 and there is initialized hidden state, calculate W_h * H0.
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
+          blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
+                    cur_in_data + D3);
+          // O_t
+          act_gate(D, cur_in_data + D3, cur_in_data + D3);
+        }
 
-        // Since the batch computing for LSTM reorders the input sequence
-        // according to their length. The initialized hidden state also needs
-        // to reorder.
-        Tensor ordered_h0;
-        ReorderInitState<DeviceContext, T>(dev_ctx, *hidden_t0, order,
-                                           &ordered_h0, true);
-        // TODO(TJ): use gemm directly
-        blas.MatMul(ordered_h0, false, *wh, false, static_cast<T>(1.0), &gate_t,
-                    static_cast<T>(1.0));
+        // hidden out= act_state(cellout) * outgate
+        act_cell(D, cur_c_out_data, cur_in_data + D2);
+        // H_t = O_t * act_state(C_t)
+        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
+
+        // move to next data in the same batch
+        cur_in_data += D4;
+        cur_c_out_data += D;
+        cur_h_out_data += D;
       }
 
-      lstm_value.gate_value = gate_t.data<T>();
-      lstm_value.output_value = out_t.data<T>();
-      lstm_value.state_value = cell_t.data<T>();
-      lstm_value.state_active_value = cell_pre_act_t.data<T>();
-      math::LstmUnitFunctor<DeviceContext, T>::compute(
-          dev_ctx, lstm_value, frame_size, cur_batch_size, gate_act, cell_act,
-          cand_act);
-      lstm_value.prev_state_value = lstm_value.state_value;
+      // move to data for next timestep
+      prev_batch_h_data = cur_batch_h_out_data;
+      prev_batch_c_data = cur_batch_c_out_data;
+      move_step(max_bs);
+      tstart = 1;
+    }
+
+    const auto& batch_starts = batched_lod[0];
+    const int max_seq_len = batch_starts.size() - 1;
+    for (int step = tstart; step < max_seq_len; ++step) {
+      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+      // + W_h * H_t-1
+      blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
+                prev_batch_h_data, D, wh_data, D4, static_cast<T>(1),
+                cur_batch_in_data, D4);
+
+      T* cur_in_data = cur_batch_in_data;
+      T* cur_c_out_data = cur_batch_c_out_data;
+      T* cur_h_out_data = cur_batch_h_out_data;
+      T* prev_c_data = prev_batch_c_data;  // NULL if no C0 in step0
+      T* prev_h_data = prev_batch_h_data;  // NULL if no H0 in step0
+      auto next_data_in_batch = [&]() {
+        cur_in_data += D4;
+        cur_c_out_data += D;
+        cur_h_out_data += D;
+        prev_c_data = prev_c_data ? prev_c_data + D : nullptr;
+        prev_h_data = prev_h_data ? prev_h_data + D : nullptr;
+      };
+
+      for (int i = 0; i < cur_bs; ++i) {  // iterate each data in same batch
+        // ~C_t
+        act_cand(D, cur_in_data, cur_in_data);
+
+        if (use_peepholes) {
+          // + W_ic|W_fc * C_t-1 for peephole connection
+          blas.VMUL(D, wc_data, prev_c_data, checked_cell_data);
+          blas.VMUL(D, wc_data + D, prev_c_data, checked_cell_data + D);
+          blas.VADD(D2, cur_in_data + D, checked_cell_data, cur_in_data + D);
+          // I_t, F_t
+          act_gate(D2, cur_in_data + D, cur_in_data + D);
+        } else {
+          // I_t, F_t, O_t
+          act_gate(D3, cur_in_data + D, cur_in_data + D);
+        }
+
+        // F_t * C_t-1
+        blas.VMUL(D, cur_in_data + D2, prev_c_data, cur_in_data + D2);
+        // I_t * ~C_t
+        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
+        // C_t = F_t * C_t-1 + I_t * ~C_t
+        blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
+
+        if (use_peepholes) {
+          // + W_oc * C_t for peephole connection
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, checked_cell_data + D2);
+          blas.VADD(D, cur_in_data + D3, checked_cell_data + D2,
+                    cur_in_data + D3);
+          // O_t
+          act_gate(D, cur_in_data + D3, cur_in_data + D3);
+        }
+
+        // hidden out= act_state(cellout) * outgate
+        act_cell(D, cur_c_out_data, cur_in_data + D2);
+        // H_t = O_t * act_state(C_t)
+        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
+
+        // move to next data in same batch
+        next_data_in_batch();
+      }
+      // move to data for next timestep
+      prev_batch_h_data = cur_batch_h_out_data;
+      prev_batch_c_data = cur_batch_c_out_data;
+      move_step(cur_bs);
     }
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
-    batch_hidden.set_lod(batched_gate->lod());
-    // restore the output hidden in LoDTensor from the batch hidden
-    to_seq(dev_ctx, batch_hidden, hidden_out);
-
-    batch_cell.set_lod(batched_gate->lod());
-    // restore the output cell state in LoDTensor from the batch cell
-    to_seq(dev_ctx, batch_cell, cell_out);
+    batched_h_out->set_lod(batched_lod);
+    to_seq(dev_ctx, *batched_h_out, hidden_out);
+    batched_c_out->set_lod(batched_lod);
+    to_seq(dev_ctx, *batched_c_out, cell_out);
   }
+
   void Compute(const framework::ExecutionContext& ctx) const override {
-    if (FLAGS_seq_mode) {
+    if (ctx.Attr<bool>("use_seq")) {
       SeqCompute(ctx);
     } else {
       BatchCompute(ctx);
     }
   }
+#undef INIT_BASE_SIZES
+#undef INIT_BASE_INPUT_OUTPUT
+#undef INIT_VEC_FUNC
 };
 
 }  // namespace operators

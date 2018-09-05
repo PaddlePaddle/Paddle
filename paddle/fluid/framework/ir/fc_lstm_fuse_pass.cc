@@ -11,8 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/fluid/framework/ir/fc_lstm_fuse_pass.h"
+#include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 
 namespace paddle {
@@ -86,37 +86,61 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
       }
       op_desc.SetInput("Bias", {new_bias_var});
     }
-
 #undef GET_NODE
+
+    // Create temp variables.
+    scope->Var(name_scope + "/BatchedInput.new")
+        ->GetMutable<framework::LoDTensor>();
+    scope->Var(name_scope + "/BatchCellPreAct.new")
+        ->GetMutable<framework::LoDTensor>();
+    scope->Var(name_scope + "/BatchedGate.new")
+        ->GetMutable<framework::LoDTensor>();
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden_n->Name()});
     op_desc.SetOutput("Cell", {cell_n->Name()});
     op_desc.SetOutput("XX", {xx_n->Name()});
-    op_desc.SetOutput("BatchedGate", {"blstm_0.tmp_2"});
-    op_desc.SetOutput("BatchCellPreAct", {"blstm_1.tmp_2"});
+    op_desc.SetOutput("BatchedGate", {name_scope + "/BatchedGate.new"});
+    op_desc.SetOutput("BatchCellPreAct", {name_scope + "/BatchCellPreAct.new"});
+    op_desc.SetOutput("BatchedInput", {name_scope + "/BatchedInput.new"});
     op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm_n->Op()->GetAttr("use_peepholes"));
-    auto* op = graph->CreateOpNode(&op_desc);
+    // TODO(TJ): get from attr
+    op_desc.SetAttr("use_seq", true);
 
-#define LINK_TO(a, b)      \
-  a->outputs.push_back(b); \
-  b->inputs.push_back(a);
-    LINK_TO(input_n, op);
-    LINK_TO(weight_x_n, op);
-    LINK_TO(weight_h_n, op);
-    LINK_TO(bias_n, op);
-    LINK_TO(op, hidden_n);
-#undef LINK_TO
+#define TMP_NAME(x) "at.new.tmp." #x
+#define OP_SET_OUT(x) op_desc.SetOutput(#x, {TMP_NAME(x)})
+    OP_SET_OUT(BatchedCell);
+    OP_SET_OUT(BatchedHidden);
+    OP_SET_OUT(ReorderedH0);
+    OP_SET_OUT(ReorderedC0);
+#undef OP_SET_OUT
+
+    auto* op = graph->CreateOpNode(&op_desc);
+    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
+    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+
+#define TMP_NEW(x) scope->Var(TMP_NAME(x))->GetMutable<LoDTensor>()
+    TMP_NEW(BatchedCell);
+    TMP_NEW(BatchedHidden);
+    TMP_NEW(ReorderedH0);
+    TMP_NEW(ReorderedC0);
+#undef TMP_NEW
+#undef TMP_NAME
+
+    IR_NODE_LINK_TO(input_n, op);
+    IR_NODE_LINK_TO(weight_x_n, op);
+    IR_NODE_LINK_TO(weight_h_n, op);
+    IR_NODE_LINK_TO(bias_n, op);
+    IR_NODE_LINK_TO(op, hidden_n);
     return op;
   };
 
   int fusion_count{0};
 
-  auto fc_no_bias_handler = [&](
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
-
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
 #define GET_NODE(name__)                                \
   std::string name__##key = name_scope + "/" + #name__; \
   auto* name__##n = pattern->RetrieveNode(name__##key); \
@@ -137,21 +161,24 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
     if (with_fc_bias) {
       GET_NODE(fc_bias);
+      GET_NODE(elementwise_add);
       lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, fc_bias);
+      // Remove unneeded nodes.
+      std::unordered_set<const Node*> marked_nodes(
+          {mul_n, lstm_n, elementwise_add_n});
+      GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, -1);
+      // Remove unneeded nodes.
+      std::unordered_set<const Node*> marked_nodes({mul_n, lstm_n});
+      GraphSafeRemoveNodes(graph, marked_nodes);
     }
 #undef GET_NODE
-
-    // Remove unneeded nodes.
-    std::unordered_set<const Node*> marked_nodes({mul_n, lstm_n});
-
-    GraphSafeRemoveNodes(graph, marked_nodes);
 
     ++fusion_count;
   };
 
-  gpd(graph, fc_no_bias_handler);
+  gpd(graph, handler);
 
   return fusion_count;
 }

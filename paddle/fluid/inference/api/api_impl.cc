@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <sys/time.h>
 #include <algorithm>
 #include <map>
 #include <set>
@@ -23,32 +22,14 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
 namespace paddle {
 namespace {
-
-// Timer for timer
-class Timer {
- public:
-  double start;
-  double startu;
-  void tic() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    start = tp.tv_sec;
-    startu = tp.tv_usec;
-  }
-  double toc() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    double used_time_ms =
-        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
-    return used_time_ms;
-  }
-};
+using paddle::inference::Timer;
 
 template <class T>
 std::string num2str(T a) {
@@ -80,7 +61,7 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
-
+#if !defined(_WIN32)
   if (FLAGS_profile) {
     LOG(WARNING) << "Profiler is actived, might affect the performance";
     LOG(INFO) << "You can turn off by set gflags '-profile false'";
@@ -89,6 +70,7 @@ bool NativePaddlePredictor::Init(
                                            : platform::ProfilerState::kCPU;
     platform::EnableProfiler(tracking_device);
   }
+#endif
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -133,10 +115,12 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
+#if !defined(_WIN32)
   if (FLAGS_profile) {
     platform::DisableProfiler(platform::EventSortingKey::kTotal,
                               "./profile.log");
   }
+#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
@@ -192,7 +176,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
+               << inputs.size();
     return false;
   }
   for (size_t i = 0; i < inputs.size(); ++i) {

@@ -14,7 +14,7 @@ else
 fi
 
 PREFIX=inference-vis-demos%2F
-URL_ROOT=http://paddlemodels.bj.bcebos.com/${PREFIX}
+URL_ROOT=http://paddlemodels.cdn.bcebos.com/${PREFIX}
 
 # download vis_demo data
 function download() {
