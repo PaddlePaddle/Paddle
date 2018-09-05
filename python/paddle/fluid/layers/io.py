@@ -312,6 +312,7 @@ def _copy_reader_var_(block, var):
     new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
+    new_var.desc.set_lod_levels(var.desc.lod_levels())
     new_var.persistable = True
     return new_var
 
@@ -633,6 +634,7 @@ def py_reader(capacity,
         })
 
     startup_var.desc.set_dtypes(dtypes)
+    startup_var.desc.set_lod_levels(lod_levels)
     startup_var.persistable = True
 
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
