@@ -33,7 +33,7 @@ function (inference_analysis_test TARGET)
         endif()
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
-                DEPS analysis graph fc_fuse_pass graph_viz_pass infer_clean_graph_pass graph_pattern_detector pass ${analysis_test_EXTRA_DEPS}
+                DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS}
                 ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt} ${analysis_test_ARGS})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
@@ -56,25 +56,13 @@ if (NOT EXISTS ${DITU_INSTALL_DIR} AND WITH_TESTING)
 endif()
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
-    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis
-    analysis_predictor
-		# ir
-		fc_fuse_pass
-		fc_lstm_fuse_pass
-    seq_concat_fc_fuse_pass
-		graph_viz_pass
-		infer_clean_graph_pass
-		graph_pattern_detector
-    infer_clean_graph_pass
-    attention_lstm_fuse_pass
-    paddle_inference_api
-		pass
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
     ARGS --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
-        --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
+         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
-inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc EXTRA_DEPS paddle_inference_api)
-inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc EXTRA_DEPS paddle_fluid)
+inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
+inference_analysis_test(test_fluid_to_ir_pass SRCS fluid_to_ir_pass_tester.cc)
 inference_analysis_test(test_fluid_to_data_flow_graph_pass SRCS fluid_to_data_flow_graph_pass_tester.cc)
 inference_analysis_test(test_subgraph_splitter SRCS subgraph_splitter_tester.cc)
 inference_analysis_test(test_dfg_graphviz_draw_pass SRCS dfg_graphviz_draw_pass_tester.cc)
@@ -86,7 +74,7 @@ inference_analysis_test(test_model_store_pass SRCS model_store_pass_tester.cc)
 set(CHINESE_NER_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/chinese_ner_model.tar.gz")
 set(CHINESE_NER_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/chinese_ner-data.txt.tar.gz")
 set(CHINESE_NER_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/chinese_ner" CACHE PATH "Chinese ner model and data root." FORCE)
-if (NOT EXISTS ${CHINESE_NER_INSTALL_DIR} AND WITH_TESTING)
+if (NOT EXISTS ${CHINESE_NER_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
   inference_download_and_uncompress(${CHINESE_NER_INSTALL_DIR} ${CHINESE_NER_MODEL_URL} "chinese_ner_model.tar.gz")
   inference_download_and_uncompress(${CHINESE_NER_INSTALL_DIR} ${CHINESE_NER_DATA_URL} "chinese_ner-data.txt.tar.gz")
 endif()
@@ -99,7 +87,7 @@ inference_analysis_test(test_analyzer_ner SRCS analyzer_ner_tester.cc
 set(LAC_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/lac_model.tar.gz")
 set(LAC_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/lac_data.txt.tar.gz")
 set(LAC_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/lac" CACHE PATH "LAC model and data root." FORCE)
-if (NOT EXISTS ${LAC_INSTALL_DIR} AND WITH_TESTING)
+if (NOT EXISTS ${LAC_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
     inference_download_and_uncompress(${LAC_INSTALL_DIR} ${LAC_MODEL_URL} "lac_model.tar.gz")
     inference_download_and_uncompress(${LAC_INSTALL_DIR} ${LAC_DATA_URL} "lac_data.txt.tar.gz")
 endif()
@@ -108,3 +96,15 @@ inference_analysis_test(test_analyzer_lac SRCS analyzer_lac_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api
     ARGS --infer_model=${LAC_INSTALL_DIR}/model
         --infer_data=${LAC_INSTALL_DIR}/data.txt)
+
+
+set(TEXT_CLASSIFICATION_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/text-classification-Senta.tar.gz")
+set(TEXT_CLASSIFICATION_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/text_classification" CACHE PATH "Text Classification model and data root." FORCE)
+
+if (NOT EXISTS ${TEXT_CLASSIFICATION_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
+  inference_download_and_uncompress(${TEXT_CLASSIFICATION_INSTALL_DIR} ${TEXT_CLASSIFICATION_MODEL_URL} "text-classification-Senta.tar.gz")
+endif()
+
+inference_analysis_test(test_text_classification SRCS test_text_classification.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
+    ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta)
