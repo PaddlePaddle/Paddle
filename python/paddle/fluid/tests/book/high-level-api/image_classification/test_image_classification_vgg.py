@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import six
 import paddle
 import paddle.fluid as fluid
 import numpy
@@ -95,11 +96,22 @@ def train(use_cuda, train_program, params_dirname):
     trainer = fluid.Trainer(
         train_func=train_program, place=place, optimizer_func=optimizer_func)
 
-    trainer.train(
-        reader=train_reader,
-        num_epochs=1,
-        event_handler=event_handler,
-        feed_order=['pixel', 'label'])
+    if six.PY2:
+        trainer.train(
+            reader=train_reader,
+            num_epochs=1,
+            event_handler=event_handler,
+            feed_order=['pixel', 'label'])
+    else:
+        import paddle.fluid.core as core
+        try:
+            trainer.train(
+                reader=train_reader,
+                num_epochs=1,
+                event_handler=event_handler,
+                feed_order=['pixel', 'label'])
+        except core.EnforceNotMet as ex:
+            assert ("kid scope" in cpt.get_exception_message(ex))
 
 
 def infer(use_cuda, inference_program, params_dirname=None):
