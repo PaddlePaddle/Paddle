@@ -1051,6 +1051,7 @@ class DistributeTranspiler(object):
                     outputs={
                         'Out':
                         [self.grad_name_to_send_dummy_out[self.table_name]]
+                        if self.sync_mode else []
                     },
                     attrs={
                         "sync_mode": False,
