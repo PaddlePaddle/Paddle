@@ -106,7 +106,6 @@ void Analyzer::Run(Argument* argument) {
     }
   }
   passes.push_back("graph_viz_pass");
-  // Ugly support fluid-to-ir-pass
   argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(passes));
 
   for (auto& x : data_) {
