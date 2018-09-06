@@ -27,7 +27,7 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
                                    const int ignore_index) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < N;
        i += blockDim.x * gridDim.x) {
-    PADDLE_ASSERT(label[i] >= 0 && label[i] < D);
+    PADDLE_ASSERT(label[i] >= 0 && label[i] < D || label[i] == ignore_index);
     Y[i] = ignore_index == label[i]
                ? 0
                : -math::TolerableValue<T>()(log(X[i * D + label[i]]));

@@ -50,6 +50,7 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
         int lbl = label_data[i];
         PADDLE_ENFORCE_GE(lbl, 0);
         PADDLE_ENFORCE_LT(lbl, class_num);
+        PADDLE_ENFORCE((lbl >= 0 && lbl < class_num) || lbl == ignore_index);
         int index = i * class_num + lbl;
         loss_data[i] =
             lbl == ignore_index
