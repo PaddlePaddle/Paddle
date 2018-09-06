@@ -30,7 +30,7 @@ x = Variable(randn(20, 1)))
 label = Variable(randint(1))
 W_1, W_2 = Variable(randn(20, 20)), Variable(randn(10, 20))
 h = matmul(W_1, x)
-pred = matmul(W_2, x)
+pred = matmul(W_2, h)
 loss = softmax(pred, label)
 loss.backward()
 ```
