@@ -17,9 +17,9 @@ ExternalProject_Add(
     UPDATE_COMMAND  ""
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    PATCH_COMMAND 
-    BUILD_COMMAND     make lib
-    INSTALL_COMMAND   export PREFIX=${XXHASH_INSTALL_DIR}/ && make install
+    PATCH_COMMAND
+    BUILD_COMMAND     echo heheh && sed -i "/\$(LIBXXH): xxhash.c/i$(LIBXXH): LDFLAGS += -fPIC" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib
+    INSTALL_COMMAND   echo heheh && sed -i "/\$(LIBXXH): xxhash.c/i\$\(LIBXXH\): LDFLAGS += -fPIC" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && export PREFIX=${XXHASH_INSTALL_DIR}/ && make install
     TEST_COMMAND      ""
 )
 
