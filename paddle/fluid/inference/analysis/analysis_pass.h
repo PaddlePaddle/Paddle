@@ -28,10 +28,10 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-class Pass {
+class AnalysisPass {
  public:
-  Pass() = default;
-  virtual ~Pass() = default;
+  AnalysisPass() = default;
+  virtual ~AnalysisPass() = default;
   // Mutable Pass.
   virtual bool Initialize(Argument *argument) { return false; }
   // Readonly Pass.
@@ -42,23 +42,16 @@ class Pass {
   virtual bool Finalize() { return false; }
 
   // Get a Pass appropriate to print the Node this pass operates on.
-  virtual Pass *CreatePrinterPass(std::ostream &os,
-                                  const std::string &banner) const {
+  virtual AnalysisPass *CreatePrinterPass(std::ostream &os,
+                                          const std::string &banner) const {
     return nullptr;
   }
 
   // Create a debugger Pass that draw the DFG by graphviz toolkit.
-  virtual Pass *CreateGraphvizDebugerPass() const { return nullptr; }
+  virtual AnalysisPass *CreateGraphvizDebugerPass() const { return nullptr; }
 
-  virtual void Run() { LOG(FATAL) << "not valid"; }
-  // Run on a single Node.
-  virtual void Run(Node *x) { LOG(FATAL) << "not valid"; }
-  // Run on a single Function.
-  virtual void Run(Function *x) { LOG(FATAL) << "not valid"; }
-  // Run on a single FunctionBlock.
-  virtual void Run(FunctionBlock *x) { LOG(FATAL) << "not valid"; }
   // Run on a single DataFlowGraph.
-  virtual void Run(DataFlowGraph *x) { LOG(FATAL) << "not valid"; }
+  virtual void Run(DataFlowGraph *x) = 0;
 
   // Human-readable short representation.
   virtual std::string repr() const = 0;
@@ -66,29 +59,8 @@ class Pass {
   virtual std::string description() const { return "No DOC"; }
 };
 
-// NodePass process on any Node types.
-class NodePass : public Pass {
- public:
-  virtual void Run(Node *node) = 0;
-};
-
-// NodePass process on any Function node types.
-class FunctionPass : public Pass {
- public:
-  virtual void Run(Function *node) = 0;
-};
-
-// NodePass process on any FunctionBlock node types.
-class FunctionBlockPass : public Pass {
- public:
-  virtual void Run(FunctionBlock *node) = 0;
-};
-
 // GraphPass processes on any GraphType.
-class DataFlowGraphPass : public Pass {
- public:
-  virtual void Run(DataFlowGraph *graph) = 0;
-};
+class DataFlowGraphPass : public AnalysisPass {};
 
 }  // namespace analysis
 }  // namespace inference
