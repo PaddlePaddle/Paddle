@@ -181,7 +181,6 @@ class DistributeTranspiler(object):
     def transpile(self,
                   trainer_id,
                   program=None,
-                  startup_program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
                   sync_mode=True,
