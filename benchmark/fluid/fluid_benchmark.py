@@ -347,14 +347,7 @@ def main():
     if args.update_method == "nccl2":
         nccl_id_var, num_trainers, trainer_id = append_nccl2_prepare(
             trainer_id, startup_prog)
-    # if args.gpus == 1:
-    #     # NOTE: parallel executor use profiler interanlly
-    #     if args.use_nvprof and args.device == 'GPU':
-    #         with profiler.cuda_profiler("cuda_profiler.txt", 'csv') as nvprof:
-    #             train(*all_args)
-    #     else:
-    #         train(*all_args)
-    # else:
+
     if args.device == "CPU":
         raise Exception("Only support GPU perf with parallel exe")
     all_args.extend([nccl_id_var, num_trainers, trainer_id])
