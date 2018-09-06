@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <sys/time.h>
 #include <algorithm>
 #include <numeric>
@@ -86,6 +87,46 @@ static void TensorAssignData(PaddleTensor *tensor,
       static_cast<T *>(tensor->data.data())[c++] = v;
     }
   }
+}
+
+std::string DescribeTensor(const PaddleTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name << "]\n";
+  os << " - type: ";
+  switch (tensor.dtype) {
+    case PaddleDType::FLOAT32:
+      os << "float32";
+      break;
+    case PaddleDType::INT64:
+      os << "int64";
+      break;
+    default:
+      os << "unset";
+  }
+  os << '\n';
+
+  os << " - shape: " << to_string(tensor.shape) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+
+  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+  for (int i = 0; i < dim; i++) {
+    os << static_cast<float *>(tensor.data.data())[i] << " ";
+  }
+  os << '\n';
+  return os.str();
+}
+
+void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+               double latency) {
+  LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << repeat
+            << ", threads: " << num_threads << ", thread id: " << tid
+            << ", latency: " << latency << "ms";
 }
 
 }  // namespace inference

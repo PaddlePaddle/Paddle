@@ -157,6 +157,116 @@ class FlattenGradOp : public framework::OperatorBase {
   }
 };
 
+// FIXME(zcd): flatten2 adds an intermediate output(XShape) based on flatten,
+// the XShape is used to carry the shape and lod of X which will be used in
+// flatten_grad, in this way, the framework can reuse the memory of X
+// immediately the flatten2_op is finished.
+// Considering compatibility issues, we could not fix flatten2_op
+class Flatten2OpInferShape : public FlattenOpInferShape {
+ public:
+  void operator()(framework::InferShapeContext *ctx) const override {
+    FlattenOpInferShape::operator()(ctx);
+    PADDLE_ENFORCE(ctx->HasOutput("XShape"),
+                   "Output (XShape) of Flatten op should not be null.");
+    const auto &in_dims = ctx->GetInputDim("X");
+    std::vector<int64_t> xshape_dims(in_dims.size() + 1);
+    xshape_dims[0] = 0;
+    for (int i = 0; i < in_dims.size(); ++i) {
+      xshape_dims[i + 1] = in_dims[i];
+    }
+    ctx->SetOutputDim("XShape", framework::make_ddim(xshape_dims));
+    ctx->ShareLoD("X", "XShape");
+  }
+};
+
+class Flatten2Op : public framework::OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto &axis = Attr<int>("axis");
+    auto in_dims =
+        scope.FindVar(Input("X"))->Get<framework::LoDTensor>().dims();
+    const auto &out_dims = FlattenOpInferShape::GetOutputShape(axis, in_dims);
+
+    framework::AttributeMap attrs;
+    attrs["shape"] = out_dims;
+    attrs["inplace"] = false;
+    // Invoke Reshape Op
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape2", {{"X", {Input("X")}}, {"Shape", {}}},
+        {{"Out", {Output("Out")}}, {"XShape", {Output("XShape")}}}, attrs);
+    reshape_op->Run(scope, place);
+  }
+};
+
+class Flatten2OpMaker : public FlattenOpMaker {
+ public:
+  void Make() override {
+    FlattenOpMaker::Make();
+    AddOutput("XShape",
+              "XShape is just used to store the shape and lod of X, which will "
+              "be used in FlattenGradOp.")
+        .AsIntermediate();
+  }
+};
+
+class Flatten2GradOpMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType("flatten2_grad");
+    grad_op->SetInput("XShape", Output("XShape"));
+    grad_op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    grad_op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    grad_op->SetAttrMap(Attrs());
+    return std::unique_ptr<framework::OpDesc>(grad_op);
+  }
+};
+
+class Flatten2GradInferShape : public framework::InferShapeBase {
+ public:
+  void operator()(framework::InferShapeContext *context) const override {
+    PADDLE_ENFORCE(context->HasInput("XShape"),
+                   "Input(XShape) shouldn't be null.");
+    PADDLE_ENFORCE(context->HasInput(framework::GradVarName("Out")),
+                   "Input(Out@GRAD) shouldn't be null.");
+    auto xshape_dims = context->GetInputDim("XShape");
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+    context->SetOutputDim(framework::GradVarName("X"), x_dims);
+    context->ShareLoD("XShape", framework::GradVarName("X"));
+  }
+};
+
+class Flatten2GradOp : public framework::OperatorBase {
+ public:
+  using OperatorBase::OperatorBase;
+
+ private:
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    auto dx_name = Output(framework::GradVarName("X"));
+    auto dout_name = Input(framework::GradVarName("Out"));
+    auto xshape_name = Input("XShape");
+    auto xshape_dims =
+        scope.FindVar(xshape_name)->Get<framework::LoDTensor>().dims();
+    auto x_dims = framework::slice_ddim(xshape_dims, 1, xshape_dims.size());
+
+    framework::AttributeMap attrs;
+    attrs["shape"] = framework::vectorize2int(x_dims);
+    attrs["inplace"] = false;
+
+    auto reshape_op = framework::OpRegistry::CreateOp(
+        "reshape2", {{"X", {dout_name}}, {"Shape", {}}},
+        {{"Out", {dx_name}}, {"XShape", {xshape_name}}}, attrs);
+    reshape_op->Run(scope, place);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -167,3 +277,8 @@ REGISTER_OPERATOR(flatten, ops::FlattenOp, ops::FlattenOpMaker,
                   ops::FlattenOpInferShape,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 REGISTER_OPERATOR(flatten_grad, ops::FlattenGradOp, ops::FlattenGradInferShape);
+
+REGISTER_OPERATOR(flatten2, ops::Flatten2Op, ops::Flatten2OpMaker,
+                  ops::Flatten2OpInferShape, ops::Flatten2GradOpMaker);
+REGISTER_OPERATOR(flatten2_grad, ops::Flatten2GradOp,
+                  ops::Flatten2GradInferShape);
