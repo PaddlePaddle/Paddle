@@ -97,10 +97,10 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     auto* score_index = score_index_t->mutable_data<int>({max_num}, place);
 
     Tensor tmp_tgt_lbl;
-    auto* tmp_lbl_data = tmp_tgt_lbl.mutable_data<int64_t>({max_num}, place);
+    auto* tmp_lbl_data = tmp_tgt_lbl.mutable_data<int>({max_num}, place);
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
-    math::SetConstant<platform::CPUDeviceContext, int64_t> iset;
-    iset(dev_ctx, &tmp_tgt_lbl, static_cast<int64_t>(-1));
+    math::SetConstant<platform::CPUDeviceContext, int> iset;
+    iset(dev_ctx, &tmp_tgt_lbl, static_cast<int>(-1));
 
     std::random_device rnd;
     std::minstd_rand engine;
@@ -153,9 +153,8 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     tgt_bbox_t->Resize({fg_num, 4});
     loc_index_t->Resize({fg_num});
     score_index_t->Resize({lbl_num});
-    auto* lbl_data = tgt_lbl_t->mutable_data<int64_t>({lbl_num, 1}, place);
-    Gather<int64_t>(tmp_lbl_data, 1, score_index_t->data<int>(), lbl_num,
-                    lbl_data);
+    auto* lbl_data = tgt_lbl_t->mutable_data<int>({lbl_num, 1}, place);
+    Gather<int>(tmp_lbl_data, 1, score_index_t->data<int>(), lbl_num, lbl_data);
   }
 
  private:
@@ -209,7 +208,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       const platform::CPUDeviceContext& ctx, const Tensor& dist,
       const float pos_threshold, const float neg_threshold,
       const int rpn_batch_size, const int fg_num, std::minstd_rand engine,
-      int64_t* target_label) const {
+      int* target_label) const {
     auto* dist_data = dist.data<T>();
     int row = dist.dims()[0];
     int col = dist.dims()[1];
@@ -308,11 +307,11 @@ class RpnTargetAssignOpMaker : public framework::OpProtoAndCheckerMaker {
         "ScoreIndex is [F + B], F and B are sampled foreground and backgroud "
         " number.");
     AddOutput("TargetBBox",
-              "(Tensor<int64_t>), The target bbox deltas with shape "
+              "(Tensor), The target bbox deltas with shape "
               "[F, 4], F is the sampled foreground number.");
     AddOutput(
         "TargetLabel",
-        "(Tensor<int64_t>), The target labels of each anchor with shape "
+        "(Tensor<int>), The target labels of each anchor with shape "
         "[F + B, 1], F and B are sampled foreground and backgroud number.");
     AddComment(R"DOC(
 This operator can be, for given the IoU between the ground truth bboxes and the

@@ -19,8 +19,8 @@ import numpy as np
 import paddle.fluid.core as core
 from op_test import OpTest
 from test_anchor_generator_op import anchor_generator_in_python
-from test_generate_proposal_labels import _generate_groundtruth
-from test_generate_proposal_labels import _bbox_overlaps, _box_to_delta
+from test_generate_proposal_labels_op import _generate_groundtruth
+from test_generate_proposal_labels_op import _bbox_overlaps, _box_to_delta
 
 
 def rpn_target_assign(anchor_by_gt_overlap, rpn_batch_size_per_im,
@@ -81,9 +81,10 @@ def unmap(ori_index, new_index):
     return ori_index[new_index]
 
 
-def rpn_blob(all_anchor, gt_boxes, is_crowd, im_info, lod, straddle_thresh,
-             rpn_batch_size_per_im, rpn_positive_overlap, rpn_negative_overlap,
-             fg_fraction):
+def rpn_target_assign_in_python(all_anchor, gt_boxes, is_crowd, im_info, lod,
+                                straddle_thresh, rpn_batch_size_per_im,
+                                rpn_positive_overlap, rpn_negative_overlap,
+                                fg_fraction):
 
     loc_indexes = []
     score_indexes = []
@@ -93,12 +94,13 @@ def rpn_blob(all_anchor, gt_boxes, is_crowd, im_info, lod, straddle_thresh,
 
     batch_size = len(lod) - 1
     for i in range(batch_size):
+        im_height = im_info[i][0]
+        im_width = im_info[i][1]
+        im_scale = im_info[i][2]
         if straddle_thresh >= 0:
             # Only keep anchors inside the image by a margin of straddle_thresh
             # Set TRAIN.RPN_STRADDLE_THRESH to -1 (or a large value) to keep all
             # anchors
-            im_height = im_info[i][0]
-            im_width = im_info[i][1]
             inds_inside = np.where((all_anchor[:, 0] >= -straddle_thresh) & (
                 all_anchor[:, 1] >= -straddle_thresh) & (
                     all_anchor[:, 2] < im_width + straddle_thresh) & (
@@ -110,7 +112,7 @@ def rpn_blob(all_anchor, gt_boxes, is_crowd, im_info, lod, straddle_thresh,
             inside_anchors = all_anchor
 
         b, e = lod[i], lod[i + 1]
-        gt_boxes_slice = gt_boxes[b:e, :]
+        gt_boxes_slice = gt_boxes[b:e, :] * im_scale
         is_crowd_slice = is_crowd[b:e]
 
         not_crowd_inds = np.where(is_crowd_slice == 0)[0]
@@ -174,7 +176,7 @@ class TestRpnTargetAssignOp(OpTest):
         fg_fraction = 0.25
         fix_seed = True
 
-        loc_index, score_index, tgt_bbox, labels = rpn_blob(
+        loc_index, score_index, tgt_bbox, labels = rpn_target_assign_in_python(
             anchor, gt_boxes, is_crowd, im_info, lod, straddle_thresh,
             rpn_batch_size_per_im, rpn_positive_overlap, rpn_negative_overlap,
             fg_fraction)
@@ -198,7 +200,7 @@ class TestRpnTargetAssignOp(OpTest):
             'LocationIndex': loc_index.astype('int32'),
             'ScoreIndex': score_index.astype('int32'),
             'TargetBBox': tgt_bbox.astype('float32'),
-            'TargetLabel': labels.astype('int64')
+            'TargetLabel': labels.astype('int32')
         }
 
     def test_check_output(self):
