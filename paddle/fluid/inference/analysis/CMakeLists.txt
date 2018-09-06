@@ -111,4 +111,5 @@ inference_analysis_test(test_text_classification SRCS analyzer_text_classificati
     EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
     ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta
          --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt
+         --topn=1 # Just run top 1 batch.
     )

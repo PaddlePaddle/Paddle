@@ -27,6 +27,7 @@ DEFINE_string(infer_model, "", "Directory of the inference model.");
 DEFINE_string(infer_data, "", "Path of the dataset.");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "How many times to repeat run.");
+DEFINE_int32(topn, -1, "Run top n batches of data to save time");
 
 namespace paddle {
 
@@ -98,6 +99,7 @@ void Main(int batch_size) {
   for (int t = 0; t < FLAGS_repeat; t++) {
     DataReader reader(FLAGS_infer_data);
     while (reader.NextBatch(&input, FLAGS_batch_size)) {
+      if (FLAGS_topn > 0 && num_batches > FLAGS_topn) break;
       timer.tic();
       CHECK(predictor->Run(input_slots, &output_slots));
       sum += timer.toc();
