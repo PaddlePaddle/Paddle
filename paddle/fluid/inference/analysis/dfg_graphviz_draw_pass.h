@@ -21,8 +21,8 @@ limitations under the License. */
 
 #include <fstream>
 #include <string>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/dot.h"
-#include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
 namespace inference {

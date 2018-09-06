@@ -6,6 +6,7 @@ cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits
   analyzer.cc
   helper.cc
   # passes
+  analysis_pass.cc
   fluid_to_data_flow_graph_pass.cc
   data_flow_graph_to_fluid_pass.cc
   dfg_graphviz_draw_pass.cc

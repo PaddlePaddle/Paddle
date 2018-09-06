@@ -15,8 +15,8 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/node.h"
-#include "paddle/fluid/inference/analysis/pass.h"
 #include "paddle/fluid/inference/analysis/subgraph_splitter.h"
 
 namespace paddle {
