@@ -80,7 +80,6 @@ void Main(int batch_size) {
   config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
   config.enable_ir_optim = true;
-  config.ir_passes.push_back("fc_lstm_fuse_pass");
   auto predictor =
       CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           config);
