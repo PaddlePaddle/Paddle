@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <gtest/gtest.h>
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
@@ -237,6 +238,30 @@ void TestLACPrediction(const std::string &model_path,
     for (size_t i = 0; i < size; ++i) {
       EXPECT_EQ(pdata_ref[i], pdata[i]);
     }
+
+    AnalysisPredictor *analysis_predictor =
+        dynamic_cast<AnalysisPredictor *>(predictor.get());
+    auto &fuse_statis = analysis_predictor->analysis_argument()
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
+    for (auto &item : fuse_statis) {
+      LOG(INFO) << "fused " << item.first << " " << item.second;
+    }
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+    LOG(INFO) << "fc fuse num:" << fuse_statis.at("fc_fuse");
+    LOG(INFO) << "fc gru fuse num:" << fuse_statis.at("fc_gru_fuse");
+
+    // ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+    // LOG(INFO) << fuse_statis.at("fc_gru_fuse");
   }
 }
 
