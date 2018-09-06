@@ -18,7 +18,7 @@ __all__ = ['parse_args', ]
 
 BENCHMARK_MODELS = [
     "machine_translation", "resnet", "se_resnext", "vgg", "mnist",
-    "stacked_dynamic_lstm"
+    "stacked_dynamic_lstm", "resnet_with_preprocess"
 ]
 
 
