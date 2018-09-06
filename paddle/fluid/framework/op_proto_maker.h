@@ -31,6 +31,8 @@ enum class OpRole {
   // Dist role is for split_byref/split_selected_rows/concat
   // used for distributed training.
   kDist = 0x0004,
+  // Tag all learning rate scheduler operators.
+  kLRSched = 0x0005,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and

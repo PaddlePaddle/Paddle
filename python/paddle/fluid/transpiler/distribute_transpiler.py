@@ -51,6 +51,7 @@ RPC_OP_ROLE_ATTR_NAME = op_role_attr_name = core.op_proto_and_checker_maker.kOpR
 )
 RPC_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.RPC
 DIST_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.Dist
+LR_SCHED_OP_ROLE_ATTR_VALUE = core.op_proto_and_checker_maker.OpRole.LRSched
 
 PRINT_LOG = False
 
@@ -1630,6 +1631,15 @@ class DistributeTranspiler(object):
         return iomap
 
     def _get_lr_ops(self):
+        lr_ops = []
+        block = self.origin_program.global_block()
+        for op in block.ops:
+            if int(op.attr(RPC_OP_ROLE_ATTR_NAME)) == int(
+                    LR_SCHED_OP_ROLE_ATTR_VALUE):
+                lr_ops.append(op)
+        return lr_ops
+
+    def _get_lr_ops_deprecated(self):
         lr_ops = []
         # find learning rate variables by optimize op
         lr_vars = set()
