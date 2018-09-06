@@ -109,6 +109,7 @@ def train(use_cuda, train_program, parallel, params_dirname):
             feed_order=['pixel', 'label'])
     else:
         import paddle.fluid.core as core
+        import paddle.compat as cpt
         try:
             trainer.train(
                 reader=train_reader,
