@@ -254,16 +254,18 @@ class TestGenerateProposalLabelsOp(OpTest):
 
     def init_test_input(self):
         np.random.seed(0)
-        image_nums = 1
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
         proposal_nums = 2000  #self.batch_size_per_im - gt_nums
-        images_shape = []
-        for i in range(image_nums):
-            images_shape.append(np.random.randint(50, size=2))
+        images_shape = [[64, 64]]
+        self.im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        for i in range(len(images_shape)):
+            self.im_info[i, 0] = images_shape[i][0]
+            self.im_info[i, 1] = images_shape[i][1]
+            self.im_info[i, 2] = 0.8  #scale
 
         self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
                                                                proposal_nums)
-        ground_truth, self.gts_lod, self.im_info = _generate_groundtruth(
+        ground_truth, self.gts_lod = _generate_groundtruth(
             images_shape, self.class_nums, gt_nums)
         self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
         self.gt_boxes = [gt['boxes'] for gt in ground_truth]
@@ -296,11 +298,8 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
     ground_truth = []
     gts_lod = []
     num_gts = 0
-    im_info = np.ones((len(images_shape), 3)).astype(np.float32)
     for i, image_shape in enumerate(images_shape):
         # Avoid background
-        im_info[i, 1] = image_shape[0]
-        im_info[i, 2] = image_shape[1]
         gt_classes = np.random.randint(
             low=1, high=class_nums, size=gt_nums).astype(np.int32)
         gt_boxes = _generate_boxes(image_shape, gt_nums)
@@ -311,7 +310,7 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
                 gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd))
         num_gts += len(gt_classes)
         gts_lod.append(num_gts)
-    return ground_truth, [gts_lod], im_info
+    return ground_truth, [gts_lod]
 
 
 def _generate_boxes(image_size, box_nums):
