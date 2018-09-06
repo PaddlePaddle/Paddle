@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -27,6 +28,8 @@ namespace paddle {
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope>& parent_scope) {
+  inference::Profiler::Start(config_.use_gpu);
+
   VLOG(3) << "Predictor::init()";
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -73,6 +76,8 @@ bool AnalysisPredictor::Init(
   PrepareFeedFetch();
   return true;
 }
+
+AnalysisPredictor::~AnalysisPredictor() { inference::Profiler::Stop(); }
 
 void AnalysisPredictor::OptimizeInferenceProgram() {
   LOG(INFO) << "optimize begin";

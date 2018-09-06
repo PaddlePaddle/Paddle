@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <sys/time.h>
 #include <algorithm>
@@ -23,6 +24,9 @@
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(profile);
 
 namespace paddle {
 namespace inference {
@@ -89,45 +93,46 @@ static void TensorAssignData(PaddleTensor *tensor,
   }
 }
 
-std::string DescribeTensor(const PaddleTensor &tensor) {
-  std::stringstream os;
-  os << "Tensor [" << tensor.name << "]\n";
-  os << " - type: ";
-  switch (tensor.dtype) {
-    case PaddleDType::FLOAT32:
-      os << "float32";
-      break;
-    case PaddleDType::INT64:
-      os << "int64";
-      break;
-    default:
-      os << "unset";
-  }
-  os << '\n';
+std::string DescribeTensor(const PaddleTensor &tensor);
 
-  os << " - shape: " << to_string(tensor.shape) << '\n';
-  os << " - lod: ";
-  for (auto &l : tensor.lod) {
-    os << to_string(l) << "; ";
-  }
-  os << "\n";
-  os << " - data: ";
-
-  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
-                            [](int a, int b) { return a * b; });
-  for (int i = 0; i < dim; i++) {
-    os << static_cast<float *>(tensor.data.data())[i] << " ";
-  }
-  os << '\n';
-  return os.str();
-}
-
-void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                double latency) {
   LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
             << ", latency: " << latency << "ms";
 }
+
+// Try to make the profile safer when multiple predictor is called.
+// NOTE not thread safe.
+// Usage:
+//   Call Profiler::Start() to start profile.
+//   Call profiler::Stope() to stop the profile and print the result.
+struct Profiler {
+  static int count;
+  // Start the profile, only start when first called.
+  static void Start(bool with_gpu) {
+#if !defined(_WIN32)
+    if (FLAGS_profile && count++ == 0) {
+      LOG(WARNING) << "Profiler is actived, might affect the performance";
+      LOG(INFO) << "You can turn off by set gflags '-profile false'";
+
+      auto tracking_device = with_gpu ? platform::ProfilerState::kAll
+                                      : platform::ProfilerState::kCPU;
+      platform::EnableProfiler(tracking_device);
+    }
+#endif
+  }
+
+  // Stop the profile and print the result. Only called when last called.
+  static void Stop() {
+#if !defined(_WIN32)
+    if (FLAGS_profile && --count == 0) {
+      platform::DisableProfiler(platform::EventSortingKey::kTotal,
+                                "./profile.log");
+    }
+#endif
+  }
+};
 
 }  // namespace inference
 }  // namespace paddle
