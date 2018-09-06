@@ -1140,6 +1140,11 @@ class DistributeTranspiler(object):
                 inputs={"X": pserver_side_table_grad_list},
                 outputs={"Out": [grad_var]},
                 attrs={"use_mkldnn": False})
+            table_opt_block.append_op(
+                type="scale",
+                inputs={"X": grad_var},
+                outputs={"Out": grad_var},
+                attrs={"scale": 1.0 / float(self.trainer_num)})
         else:
             # in async_mode, for table gradient, it also need to be splited to each parameter server
             origin_grad_name = grad_var.name
