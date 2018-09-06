@@ -84,23 +84,14 @@ def train(use_cuda, train_program, params_dirname, parallel):
             paddle.dataset.mnist.train(), buf_size=500),
         batch_size=BATCH_SIZE)
 
-    if six.PY2:
-        trainer.train(
-            num_epochs=1,
-            event_handler=event_handler,
-            reader=train_reader,
-            feed_order=['img', 'label'])
-    else:
-        import paddle.fluid.core as core
-        import paddle.compat as cpt
-        try:
-            trainer.train(
-                num_epochs=1,
-                event_handler=event_handler,
-                reader=train_reader,
-                feed_order=['img', 'label'])
-        except core.EnforceNotMet as ex:
-            assert ("kid scope" in cpt.get_exception_message(ex))
+    trainer.train(
+        num_epochs=1,
+        event_handler=event_handler,
+        reader=train_reader,
+        feed_order=['img', 'label'])
+
+    if six.PY3:
+        del trainer
 
 
 def infer(use_cuda, inference_program, parallel, params_dirname=None):
