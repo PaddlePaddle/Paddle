@@ -18,8 +18,8 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
     PATCH_COMMAND
-    BUILD_COMMAND     echo heheh && sed -i "/\$(LIBXXH): xxhash.c/i$(LIBXXH): LDFLAGS += -fPIC" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib
-    INSTALL_COMMAND   echo heheh && sed -i "/\$(LIBXXH): xxhash.c/i\$\(LIBXXH\): LDFLAGS += -fPIC" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && export PREFIX=${XXHASH_INSTALL_DIR}/ && make install
+    BUILD_COMMAND     sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/src/extern_xxhash/Makefile && make lib
+    INSTALL_COMMAND   export PREFIX=${XXHASH_INSTALL_DIR}/ && make install
     TEST_COMMAND      ""
 )
 
