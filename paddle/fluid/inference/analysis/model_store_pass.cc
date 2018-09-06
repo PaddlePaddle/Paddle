@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/model_store_pass.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string>
+
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/argument.h"
+#include "paddle/fluid/inference/analysis/model_store_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -33,19 +35,21 @@ void ModelStorePass::Run(DataFlowGraph *x) {
   std::stringstream ss;
   // NOTE these commands only works on linux.
   ss << "mkdir -p " << *argument_->model_output_store_path;
-  LOG(INFO) << "run command: " << ss.str();
+  VLOG(3) << "run command: " << ss.str();
   PADDLE_ENFORCE_EQ(system(ss.str().c_str()), 0);
   ss.str("");
 
   ss << "cp " << *argument_->fluid_model_dir << "/*"
      << " " << *argument_->model_output_store_path;
-  LOG(INFO) << "run command: " << ss.str();
+  VLOG(3) << "run command: " << ss.str();
   PADDLE_ENFORCE_EQ(system(ss.str().c_str()), 0);
 
   // Store program
   PADDLE_ENFORCE_NOT_NULL(argument_->transformed_program_desc,
                           "program desc is not transformed, should call "
                           "DataFlowGraphToFluidPass first.");
+  VLOG(3) << "store analyzed program to "
+          << *argument_->model_output_store_path;
   const std::string program_output_path =
       *argument_->model_output_store_path + "/__model__";
   std::ofstream file(program_output_path, std::ios::binary);
@@ -55,6 +59,8 @@ void ModelStorePass::Run(DataFlowGraph *x) {
       argument_->transformed_program_desc->SerializeAsString();
   file.write(serialized_message.c_str(), serialized_message.size());
 }
+
+bool ModelStorePass::Finalize() { return true; }
 
 }  // namespace analysis
 }  // namespace inference

@@ -17,6 +17,8 @@
  * model in the disk, and that model can be reloaded for prediction.
  */
 
+#pragma once
+#include <string>
 #include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
@@ -41,6 +43,8 @@ class ModelStorePass : public DataFlowGraphPass {
     return R"DD(This file defines ModelStorePass, which store the runtime DFG to a Paddle
     model in the disk, and that model can be reloaded for prediction again.)DD";
   }
+
+  bool Finalize() override;
 
  private:
   Argument* argument_{nullptr};

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -20,14 +22,17 @@ from op_test import OpTest
 
 class TestFlattenOp(OpTest):
     def setUp(self):
-        self.op_type = "flatten"
+        self.op_type = "flatten2"
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.in_shape).astype("float32")}
         self.init_attrs()
-        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+            "XShape": np.random.random(self.in_shape).astype("float32")
+        }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=["XShape"])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")

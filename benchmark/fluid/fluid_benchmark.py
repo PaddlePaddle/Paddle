@@ -215,6 +215,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
             if iters == args.iterations:
+                reader_generator.close()
                 break
 
             if iters == args.skip_batch_num:

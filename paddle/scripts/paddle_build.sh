@@ -115,8 +115,8 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
-        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON}
         -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
 EOF
@@ -145,8 +145,8 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DWITH_INFERENCE_DEMO=${WITH_INFERENCE_DEMO:-ON} \
         -DPY_VERSION=${PY_VERSION:-2.7}
 }
 
@@ -330,14 +330,25 @@ function assert_api_not_changed() {
     source .env/bin/activate
     pip install ${PADDLE_ROOT}/build/python/dist/*whl
     python ${PADDLE_ROOT}/tools/print_signatures.py paddle.fluid > new.spec
+    if [ "$1" == "cp35-cp35m" ]; then
+        # Use sed to make python2 and python3 sepc keeps the same
+        sed -i 's/arg0: str/arg0: unicode/g' new.spec
+        sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
+    fi
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
     deactivate
+}
 
-    API_CHANGE=`git diff --name-only upstream/develop | grep "paddle/fluid/API.spec" || true`
+function assert_api_spec_approvals() {
+    if [ -z ${BRANCH} ]; then
+        BRANCH="develop"
+    fi
+
+    API_CHANGE=`git diff --name-only upstream/$BRANCH | grep "paddle/fluid/API.spec" || true`
     echo "checking API.spec change, PR: ${GIT_PR_ID}, changes: ${API_CHANGE}"
     if [ ${API_CHANGE} ] && [ "${GIT_PR_ID}" != "" ]; then
-        # TODO: curl -H 'Authorization: token ${TOKEN}'
-        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews | \
+        # NOTE: per_page=10000 should be ok for all cases, a PR review > 10000 is not human readable.
+        APPROVALS=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000 | \
         python ${PADDLE_ROOT}/tools/check_pr_approval.py 2 7845005 2887803 728699 13348433`
         echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
         if [ "${APPROVALS}" == "FALSE" ]; then
@@ -419,6 +430,25 @@ EOF
     linkchecker doc/v2/en/html/index.html
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
+
+    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+
+    # Deploy to the the content server if its a "develop" or "release/version" branch
+    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
+    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
+        PPO_SCRIPT_BRANCH=develop
+    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
+        PPO_SCRIPT_BRANCH=master
+    else
+        # Early exit, this branch doesn't require documentation build
+        return 0;
+    fi
+     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
+    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
+    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
+    cd ..
+    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
+    cd -
 }
 
 function gen_html() {
@@ -470,7 +500,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.1.2-1+cuda${CUDA_MAJOR} libnccl-dev=2.1.2-1+cuda${CUDA_MAJOR} &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} &&"
     else
         NCCL_DEPS=""
     fi
@@ -600,11 +630,12 @@ function main() {
       cicheck)
         cmake_gen ${PYTHON_ABI:-""}
         build
+        assert_api_not_changed ${PYTHON_ABI:-""}
         run_test
         gen_capi_package
         gen_fluid_inference_lib
         test_fluid_inference_lib
-        assert_api_not_changed
+        assert_api_spec_approvals
         ;;
       *)
         print_usage

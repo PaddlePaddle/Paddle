@@ -18,7 +18,8 @@ if(APPLE)
 endif(APPLE)
 
 
-set(inference_deps paddle_inference_api paddle_fluid_api)
+set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager ${GLOB_PASS_LIB})
+
 if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
 endif()
@@ -42,8 +43,20 @@ function(inference_api_test TARGET_NAME)
     endif(WITH_TESTING)
 endfunction(inference_api_test)
 
-cc_library(paddle_inference_api SRCS api.cc api_impl.cc DEPS lod_tensor)
-
+cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor)
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api
+          analysis
+          ir_pass_manager
+          pass
+          fc_fuse_pass
+          fc_lstm_fuse_pass
+          seq_concat_fc_fuse_pass
+          graph_viz_pass
+          infer_clean_graph_pass
+          graph_pattern_detector
+          infer_clean_graph_pass
+          attention_lstm_fuse_pass
+  )
 
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
@@ -60,20 +73,22 @@ cc_library(paddle_inference_tensorrt_subgraph_engine
 inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()
 
-if (WITH_ANAKIN) # only needed in CI
-    # Due to Anakin do not have official library releases and the versions of protobuf and cuda do not match Paddle's,
-    # so anakin library will not be merged to our official inference library. To use anakin prediction API, one need to
+if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
-    nv_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc)
-    nv_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc)
-    target_compile_options(inference_anakin_api BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    target_compile_options(inference_anakin_api_shared BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-    target_link_libraries(inference_anakin_api anakin anakin_saber_common)
-    target_link_libraries(inference_anakin_api_shared anakin anakin_saber_common)
+    cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
+    cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
+    function(anakin_target target_name)
+      target_compile_options(${target_name} BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
+    endfunction()
+    anakin_target(inference_anakin_api)
+    anakin_target(inference_anakin_api_shared)
     if (WITH_TESTING)
-        cc_test(inference_anakin_test SRCS api_anakin_engine_tester.cc
-                                  ARGS --model=${ANAKIN_INSTALL_DIR}/mobilenet_v2.anakin.bin
-                                  DEPS inference_anakin_api)
-        target_compile_options(inference_anakin_test BEFORE PUBLIC ${ANAKIN_COMPILE_EXTRA_FLAGS})
-     endif(WITH_TESTING)
+        cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
+                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
+                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
+                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
+                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+    endif(WITH_TESTING)
 endif()
