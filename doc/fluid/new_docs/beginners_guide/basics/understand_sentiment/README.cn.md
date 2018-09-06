@@ -37,7 +37,7 @@
 循环神经网络是一种能对序列数据进行精确建模的有力工具。实际上，循环神经网络的理论计算能力是图灵完备的\[[4](#参考文献)\]。自然语言是一种典型的序列数据（词序列），近年来，循环神经网络及其变体（如long short term memory\[[5](#参考文献)\]等）在自然语言处理的多个领域，如语言模型、句法解析、语义角色标注（或一般的序列标注）、语义表示、图文生成、对话、机器翻译等任务上均表现优异甚至成为目前效果最好的方法。
 
 <p align="center">
-<img src="image/rnn.png" width = "60%" align="center"/><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/06.understand_sentiment/image/rnn.png?raw=true" width = "60%" align="center"/><br/>
 图1. 循环神经网络按时间展开的示意图
 </p>
 
@@ -66,7 +66,7 @@ $$ h_t = o_t\odot tanh(c_t) $$
 其中，$i_t, f_t, c_t, o_t$分别表示输入门，遗忘门，记忆单元及输出门的向量值，带角标的$W$及$b$为模型参数，$tanh$为双曲正切函数，$\odot$表示逐元素（elementwise）的乘法操作。输入门控制着新输入进入记忆单元$c$的强度，遗忘门控制着记忆单元维持上一时刻值的强度，输出门控制着输出记忆单元的强度。三种门的计算方式类似，但有着完全不同的参数，它们各自以不同的方式控制着记忆单元$c$，如图2所示：
 
 <p align="center">
-<img src="image/lstm.png" width = "65%" align="center"/><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/06.understand_sentiment/image/lstm.png?raw=true" width = "65%" align="center"/><br/>
 图2. 时刻$t$的LSTM [7]
 </p>
 
@@ -83,7 +83,7 @@ $$ h_t=Recrurent(x_t,h_{t-1})$$
 如图3所示（以三层为例），奇数层LSTM正向，偶数层LSTM反向，高一层的LSTM使用低一层LSTM及之前所有层的信息作为输入，对最高层LSTM序列使用时间维度上的最大池化即可得到文本的定长向量表示（这一表示充分融合了文本的上下文信息，并且对文本进行了深层次抽象），最后我们将文本表示连接至softmax构建分类模型。
 
 <p align="center">
-<img src="image/stacked_lstm.jpg" width=450><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/06.understand_sentiment/image/stacked_lstm.jpg?raw=true" width=450><br/>
 图3. 栈式双向LSTM用于文本分类
 </p>
 
@@ -148,6 +148,8 @@ def convolution_net(data, input_dim, class_dim, emb_dim, hid_dim):
 ```
 
 网络的输入`input_dim`表示的是词典的大小，`class_dim`表示类别数。这里，我们使用[`sequence_conv_pool`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/trainer_config_helpers/networks.py) API实现了卷积和池化操作。
+
+<a name="栈值双向LSTM"></a>
 
 ### 栈式双向LSTM
 

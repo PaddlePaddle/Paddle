@@ -167,7 +167,6 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
-  int node_count_{0};
 };
 
 bool IsControlDepVar(const ir::Node &var);
