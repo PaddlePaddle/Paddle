@@ -36,6 +36,7 @@ import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 from paddle.fluid import core
 from test_dist_base import TestDistRunnerBase, runtime_main
+import paddle.compat as cpt
 from paddle.compat import long_type
 
 import hashlib
@@ -315,8 +316,9 @@ def pad_batch_data(insts,
     """
     return_list = []
     max_len = max(len(inst) for inst in insts)
-    num_token = reduce(lambda x, y: x + y,
-                       [len(inst) for inst in insts]) if return_num_token else 0
+    num_token = six.moves.reduce(
+        lambda x, y: x + y,
+        [len(inst) for inst in insts]) if return_num_token else 0
     # Any token included in dict can be used to pad, since the paddings' loss
     # will be masked out by weights and make no effect on parameter gradients.
     inst_data = np.array(
@@ -328,7 +330,7 @@ def pad_batch_data(insts,
         return_list += [inst_weight.astype("float32").reshape([-1, 1])]
     else:  # position data
         inst_pos = np.array([
-            range(1, len(inst) + 1) + [0] * (max_len - len(inst))
+            list(range(1, len(inst) + 1)) + [0] * (max_len - len(inst))
             for inst in insts
         ])
         return_list += [inst_pos.astype("int64").reshape([-1, 1])]
@@ -385,10 +387,11 @@ def prepare_batch_input(insts, data_input_names, src_pad_idx, trg_pad_idx,
         return_num_token=True)
 
     data_input_dict = dict(
-        zip(data_input_names, [
-            src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
-            trg_slf_attn_bias, trg_src_attn_bias, lbl_word, lbl_weight
-        ]))
+        list(
+            zip(data_input_names, [
+                src_word, src_pos, src_slf_attn_bias, trg_word, trg_pos,
+                trg_slf_attn_bias, trg_src_attn_bias, lbl_word, lbl_weight
+            ])))
     return data_input_dict, np.asarray([num_token], dtype="float32")
 
 
@@ -561,7 +564,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                         np.log(TrainTaskConfig.label_smooth_eps / (
                             ModelHyperParams.trg_vocab_size - 1) + 1e-20))
     init = False
-    for pass_id in xrange(TrainTaskConfig.pass_num):
+    for pass_id in six.moves.xrange(TrainTaskConfig.pass_num):
         pass_start_time = time.time()
         for batch_id, data in enumerate(train_data()):
             if batch_id >= 5:
@@ -587,11 +590,11 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                     ModelHyperParams.eos_idx, ModelHyperParams.n_head,
                     ModelHyperParams.d_model)
                 total_num_token += num_token
-                feed_kv_pairs = data_input_dict.items()
+                feed_kv_pairs = list(data_input_dict.items())
                 if TrainTaskConfig.local:
-                    feed_kv_pairs += {
+                    feed_kv_pairs += list({
                         lr_scheduler.learning_rate.name: lr_rate
-                    }.items()
+                    }.items())
                 feed_list.append(dict(feed_kv_pairs))
 
                 if not init:
@@ -873,6 +876,7 @@ class DataReader(object):
 
             f = tarfile.open(fpaths[0], "r")
             for line in f.extractfile(tar_fname):
+                line = cpt.to_text(line)
                 fields = line.strip("\n").split(self._field_delimiter)
                 if (not self._only_src and len(fields) == 2) or (
                         self._only_src and len(fields) == 1):
@@ -882,8 +886,9 @@ class DataReader(object):
                 if not os.path.isfile(fpath):
                     raise IOError("Invalid file: %s" % fpath)
 
-                with open(fpath, "r") as f:
+                with open(fpath, "rb") as f:
                     for line in f:
+                        line = cpt.to_text(line)
                         fields = line.strip("\n").split(self._field_delimiter)
                         if (not self._only_src and len(fields) == 2) or (
                                 self._only_src and len(fields) == 1):
@@ -892,8 +897,9 @@ class DataReader(object):
     @staticmethod
     def load_dict(dict_path, reverse=False):
         word_dict = {}
-        with open(dict_path, "r") as fdict:
+        with open(dict_path, "rb") as fdict:
             for idx, line in enumerate(fdict):
+                line = cpt.to_text(line)
                 if reverse:
                     word_dict[idx] = line.strip("\n")
                 else:
@@ -1034,7 +1040,7 @@ def multi_head_attention(queries,
         # size of the input as the output dimension size.
         return layers.reshape(
             x=trans_x,
-            shape=map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]]))
+            shape=list(map(int, [0, 0, trans_x.shape[2] * trans_x.shape[3]])))
 
     def scaled_dot_product_attention(q, k, v, attn_bias, d_model, dropout_rate):
         """
@@ -1667,16 +1673,6 @@ def get_model(is_dist, is_async):
     return sum_cost, avg_cost, predict, token_num, local_lr_scheduler
 
 
-def get_transpiler(trainer_id, main_program, pserver_endpoints, trainers):
-    t = fluid.DistributeTranspiler()
-    t.transpile(
-        trainer_id=trainer_id,
-        program=main_program,
-        pservers=pserver_endpoints,
-        trainers=trainers)
-    return t
-
-
 def update_args():
     src_dict = DataReader.load_dict(TrainTaskConfig.src_vocab_fpath)
     trg_dict = DataReader.load_dict(TrainTaskConfig.trg_vocab_fpath)
@@ -1691,69 +1687,46 @@ def update_args():
 
 
 class DistTransformer2x2(TestDistRunnerBase):
-    def run_pserver(self, pserver_endpoints, trainers, current_endpoint,
-                    trainer_id, sync_mode):
-        get_model(True, not sync_mode)
-        t = get_transpiler(trainer_id,
-                           fluid.default_main_program(), pserver_endpoints,
-                           trainers)
-        pserver_prog = t.get_pserver_program(current_endpoint)
-        startup_prog = t.get_startup_program(current_endpoint, pserver_prog)
+    def run_pserver(self, args):
+        get_model(True, not args.sync_mode)
+        t = self.get_transpiler(args.trainer_id,
+                                fluid.default_main_program(), args.endpoints,
+                                args.trainers, args.sync_mode)
+        pserver_prog = t.get_pserver_program(args.current_endpoint)
+        startup_prog = t.get_startup_program(args.current_endpoint,
+                                             pserver_prog)
 
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def _wait_ps_ready(self, pid):
-        retry_times = 20
-        while True:
-            assert retry_times >= 0, "wait ps ready failed"
-            time.sleep(3)
-            try:
-                # the listen_and_serv_op would touch a file which contains the listen port
-                # on the /tmp directory until it was ready to process all the RPC call.
-                os.stat("/tmp/paddle.%d.port" % pid)
-                return
-            except os.error:
-                retry_times -= 1
-
-    def run_trainer(self,
-                    place,
-                    endpoints,
-                    trainer_id,
-                    trainers,
-                    is_dist=True,
-                    sync_mode=True):
+    def run_trainer(self, place, args):
 
         sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
-            is_dist, not sync_mode)
+            args.is_dist, not args.sync_mode)
 
-        if is_dist:
-            t = get_transpiler(trainer_id,
-                               fluid.default_main_program(), endpoints,
-                               trainers)
+        if args.is_dist:
+            t = self.get_transpiler(args.trainer_id,
+                                    fluid.default_main_program(),
+                                    args.endpoints, args.trainers,
+                                    args.sync_mode)
             trainer_prog = t.get_trainer_program()
             TrainTaskConfig.batch_size = 10
             TrainTaskConfig.train_file_pattern = TrainTaskConfig.data_path + "train.tok.clean.bpe.32000.en-de.train_{}".format(
-                trainer_id)
+                args.trainer_id)
         else:
             TrainTaskConfig.batch_size = 20
             trainer_prog = fluid.default_main_program()
 
         startup_exe = fluid.Executor(place)
 
-        TrainTaskConfig.local = not is_dist
+        TrainTaskConfig.local = not args.is_dist
 
         train_loop(startup_exe, trainer_prog, 1, sum_cost, avg_cost,
                    local_lr_scheduler, token_num, predict)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 8:
-        print(
-            "Usage: python dist_transformer.py [pserver/trainer] [endpoints] [trainer_id] [current_endpoint] [trainers] [is_dist] [sync_mode]"
-        )
-
     update_args()
     runtime_main(DistTransformer2x2)

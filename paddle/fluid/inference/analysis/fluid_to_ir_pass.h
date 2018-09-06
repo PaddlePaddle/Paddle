@@ -14,12 +14,15 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/inference/analysis/flags.h"
 #include "paddle/fluid/inference/analysis/ir_pass_manager.h"
 #include "paddle/fluid/inference/analysis/pass.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+using namespace framework;
 
 static const char kFluidToIrPassesAttr[] = "__fluid_to_ir_passes__";
 
@@ -45,13 +48,12 @@ class FluidToIrPass final : public DataFlowGraphPass {
     ANALYSIS_ARGUMENT_CHECK_FIELD(argument->fluid_model_program_path);
     // Load program.
     auto program = LoadProgramDesc(*argument->fluid_model_program_path);
-    argument->origin_program_desc.reset(
-        new framework::proto::ProgramDesc(program));
+    argument->origin_program_desc.reset(new proto::ProgramDesc(program));
     // Create main data flow graph.
     if (!argument->main_dfg) {
       argument->main_dfg.reset(new DataFlowGraph);
     }
-    argument->Set("ir_program_desc", new framework::ProgramDesc(program));
+    argument->Set("ir_program_desc", new ProgramDesc(program));
 
     LOG(INFO) << "Loading parameters";
     // Load parameters to argument if needed.
@@ -73,23 +75,33 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
   void Run(DataFlowGraph *graph) override {
     // Call all the IR Passes
-    IRPassManager ir_passes(
-        argument_->Get<framework::ProgramDesc>("ir_program_desc"), nullptr);
+    IRPassManager ir_passes(argument_->Get<ProgramDesc>("ir_program_desc"),
+                            nullptr);
     // Pass the scope from analysis to IR if needed.
-    if (argument_->Has("param_scope")) {
+    if (argument_->Has(ir::kParamScopeAttr)) {
       // Here the address is passed, attention that IR doesn't own the scope, so
       // the real scope in analysis should live during the IR phase.
       ir_passes.graph().Set(
-          "param_scope", new framework::Scope *(
-                             &argument_->Get<framework::Scope>("param_scope")));
+          ir::kParamScopeAttr,
+          new Scope *(&argument_->Get<Scope>(ir::kParamScopeAttr)));
     }
 
-    const auto &ir_passes_to_apply =
-        argument_->Get<std::vector<std::string>>(kFluidToIrPassesAttr);
-    ir_passes.Apply(ir_passes_to_apply);
+    if (FLAGS_IA_enable_ir) {
+      const auto &ir_passes_to_apply =
+          argument_->Get<std::vector<std::string>>(kFluidToIrPassesAttr);
+      ir_passes.Apply(ir_passes_to_apply);
+    }
 
     PADDLE_ENFORCE(argument_->main_dfg.get());
     argument_->main_dfg->Build(ir_passes.graph());
+    // inherit the arguments from ir.
+    if (ir_passes.graph().Has(ir::kFuseStatisAttr)) {
+      argument_->Set(
+          ir::kFuseStatisAttr,
+          new std::unordered_map<std::string, int>(
+              ir_passes.graph().Get<std::unordered_map<std::string, int>>(
+                  ir::kFuseStatisAttr)));
+    }
   }
 
   void EnableParamModify(const std::string &model_dir,
@@ -100,7 +112,7 @@ class FluidToIrPass final : public DataFlowGraphPass {
 
  private:
   // Load parameters from a single file or from a directory.
-  bool LoadParams(framework::Scope *scope, const std::string &dir,
+  bool LoadParams(Scope *scope, const std::string &dir,
                   const std::string &prog_file, const std::string &param_file);
 
  private:

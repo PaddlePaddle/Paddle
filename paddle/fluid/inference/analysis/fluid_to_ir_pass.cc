@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
@@ -26,11 +27,11 @@ void FluidToIrPass::EnableParamModify(const std::string &model_dir,
                                       const std::string &prog_file,
                                       const std::string &param_file) {
   PADDLE_ENFORCE(argument_);
-  argument_->Set("param_scope", new framework::Scope);
+  argument_->Set(framework::ir::kParamScopeAttr, new framework::Scope);
   // Load parameters.
   VLOG(3) << "Loading parameters from " << model_dir;
-  LoadParams(&argument_->Get<framework::Scope>("param_scope"), model_dir,
-             prog_file, param_file);
+  LoadParams(&argument_->Get<framework::Scope>(framework::ir::kParamScopeAttr),
+             model_dir, prog_file, param_file);
 }
 
 bool FluidToIrPass::LoadParams(framework::Scope *scope, const std::string &dir,

@@ -33,7 +33,7 @@ struct AppendProposalsFunctor {
       : out_(out), offset_(offset), to_add_(to_add) {}
 
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto *out_data = out_->data<T>();
     auto *to_add_data = to_add_->data<T>();
     memcpy(out_data + offset_, to_add_data, to_add_->numel() * sizeof(T));
@@ -311,8 +311,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
 
     rpn_rois->mutable_data<T>({bbox_deltas->numel() / 4, 4},
                               context.GetPlace());
-    rpn_roi_probs->mutable_data<T>({scores->numel() / 4, 1},
-                                   context.GetPlace());
+    rpn_roi_probs->mutable_data<T>({scores->numel(), 1}, context.GetPlace());
 
     Tensor bbox_deltas_swap, scores_swap;
     bbox_deltas_swap.mutable_data<T>({num, h_bbox, w_bbox, c_bbox},
@@ -421,7 +420,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     CPUGather<T>(ctx, proposals, keep, &bbox_sel);
     CPUGather<T>(ctx, scores_sel, keep, &scores_filter);
     if (nms_thresh <= 0) {
-      return std::make_pair(bbox_sel, scores_sel);
+      return std::make_pair(bbox_sel, scores_filter);
     }
 
     Tensor keep_nms = NMS<T>(ctx, &bbox_sel, &scores_filter, nms_thresh, eta);

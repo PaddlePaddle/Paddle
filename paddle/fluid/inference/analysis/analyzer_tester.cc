@@ -16,20 +16,27 @@
 
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
+#include <thread>  // NOLINT
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/utils/singleton.h"
 
 DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
 DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
 DEFINE_int32(batch_size, 10, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
+DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+using namespace framework;  // NOLINT
 
 TEST(Analyzer, analysis_without_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
@@ -196,13 +203,13 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   minute_tensor.lod.assign({one_batch.lod3});
   // clang-format on
   // assign data
-  TensorAssignData(&lod_attention_tensor,
-                   std::vector<std::vector<float>>({{0, 0}}));
+  TensorAssignData<float>(&lod_attention_tensor,
+                          std::vector<std::vector<float>>({{0, 0}}));
   std::vector<float> tmp_zeros(batch_size * 15, 0.);
-  TensorAssignData(&init_zero_tensor, {tmp_zeros});
-  TensorAssignData(&lod_tensor_tensor, one_batch.rnn_link_data);
-  TensorAssignData(&week_tensor, one_batch.rnn_week_datas);
-  TensorAssignData(&minute_tensor, one_batch.rnn_minute_datas);
+  TensorAssignData<float>(&init_zero_tensor, {tmp_zeros});
+  TensorAssignData<float>(&lod_tensor_tensor, one_batch.rnn_link_data);
+  TensorAssignData<float>(&week_tensor, one_batch.rnn_week_datas);
+  TensorAssignData<float>(&minute_tensor, one_batch.rnn_minute_datas);
   // Set inputs.
   auto init_zero_tensor1 = init_zero_tensor;
   init_zero_tensor1.name = "hidden_init";
@@ -212,39 +219,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   for (auto &tensor : *input_slots) {
     tensor.dtype = PaddleDType::FLOAT32;
   }
-}
-
-std::string DescribeTensor(const PaddleTensor &tensor) {
-  std::stringstream os;
-  os << "Tensor [" << tensor.name << "]\n";
-  os << " - type: ";
-  switch (tensor.dtype) {
-    case PaddleDType::FLOAT32:
-      os << "float32";
-      break;
-    case PaddleDType::INT64:
-      os << "int64";
-      break;
-    default:
-      os << "unset";
-  }
-  os << '\n';
-
-  os << " - shape: " << to_string(tensor.shape) << '\n';
-  os << " - lod: ";
-  for (auto &l : tensor.lod) {
-    os << to_string(l) << "; ";
-  }
-  os << "\n";
-  os << " - data: ";
-
-  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
-                            [](int a, int b) { return a * b; });
-  for (int i = 0; i < dim; i++) {
-    os << static_cast<float *>(tensor.data.data())[i] << " ";
-  }
-  os << '\n';
-  return os.str();
 }
 
 }  // namespace
@@ -260,40 +234,8 @@ const float ditu_rnn_target_data[] = {
     10.7286, 12.0595, 10.6672, 0,       0,       0,       0,       0,
     93.5771, 3.84641, 0,       0,       0,       0,       0,       0,
     169.426, 0,       0,       0,       0,       0,       0,       0};
-// Test with a really complicate model.
-void TestDituRNNPrediction(const std::string &model_path,
-                           const std::string &data_path, int batch_size,
-                           bool use_analysis, bool activate_ir,
-                           int num_times = 1) {
-  NativeConfig config;
-  config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
-  config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-
-  auto base_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kAnalysis>(config);
-  std::vector<PaddleTensor> input_slots;
-  DataRecord data(data_path, batch_size);
-  // Prepare inputs.
-  PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs, base_outputs;
-
-  base_predictor->Run(input_slots, &base_outputs);
-
-  Timer timer;
-  timer.tic();
-  for (int i = 0; i < num_times; i++) {
-    predictor->Run(input_slots, &outputs);
-  }
-  LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << num_times
-            << ", latency: " << timer.toc() / num_times << "ms";
-  LOG(INFO) << "=====================================";
-
+void CompareResult(const std::vector<PaddleTensor> &outputs,
+                   const std::vector<PaddleTensor> &base_outputs) {
   PADDLE_ENFORCE_GT(outputs.size(), 0);
   PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
   for (size_t i = 0; i < outputs.size(); i++) {
@@ -312,35 +254,127 @@ void TestDituRNNPrediction(const std::string &model_path,
     }
   }
 }
+// Test with a really complicate model.
+void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
+                           int num_threads) {
+  AnalysisConfig config;
+  config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
+  config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
+  config.use_gpu = false;
+  config.device = 0;
+  config.specify_input_name = true;
+  config.enable_ir_optim = activate_ir;
+  PADDLE_ENFORCE(config.ir_mode ==
+                 AnalysisConfig::IrPassMode::kExclude);  // default
+  config.ir_passes.clear();  // Do not exclude any pass.
+  int batch_size = FLAGS_batch_size;
+  int num_times = FLAGS_repeat;
 
-// Directly infer with the original model.
-TEST(Analyzer, DituRNN_without_analysis) {
-  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        FLAGS_batch_size, false, false, FLAGS_repeat);
+  auto base_predictor =
+      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto predictor =
+      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+          config);
+  std::vector<PaddleTensor> input_slots;
+  DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
+  // Prepare inputs.
+  PrepareInputs(&input_slots, &data, batch_size);
+  std::vector<PaddleTensor> outputs, base_outputs;
+
+  base_predictor->Run(input_slots, &base_outputs);
+
+  LOG(INFO) << "===========profile result===========";
+  if (num_threads == 1) {
+    // Prepare inputs.
+    Timer timer;
+    timer.tic();
+    for (int i = 0; i < num_times; i++) {
+      predictor->Run(input_slots, &outputs);
+    }
+    PrintTime(batch_size, num_times, 1, 0, timer.toc() / num_times);
+    CompareResult(outputs, base_outputs);
+  } else {
+    std::vector<std::thread> threads;
+    std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+    // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
+    // because AttentionLSTM's hard code nodeid will be damanged.
+    for (int tid = 0; tid < num_threads; ++tid) {
+      predictors.emplace_back(
+          CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+              config));
+    }
+    for (int tid = 0; tid < num_threads; ++tid) {
+      threads.emplace_back([&, tid]() {
+        // Each thread should have local input_slots and outputs.
+        std::vector<PaddleTensor> input_slots;
+        DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
+        PrepareInputs(&input_slots, &data, batch_size);
+        std::vector<PaddleTensor> outputs;
+        Timer timer;
+        timer.tic();
+        for (int i = 0; i < num_times; i++) {
+          predictors[tid]->Run(input_slots, &outputs);
+        }
+        PrintTime(batch_size, num_times, num_threads, tid,
+                  timer.toc() / num_times);
+        CompareResult(outputs, base_outputs);
+      });
+    }
+    for (int i = 0; i < num_threads; ++i) {
+      threads[i].join();
+    }
+  }
+  LOG(INFO) << "=====================================";
+
+  if (use_analysis && activate_ir) {
+    AnalysisPredictor *analysis_predictor =
+        dynamic_cast<AnalysisPredictor *>(predictor.get());
+    auto &fuse_statis = analysis_predictor->analysis_argument()
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
+    for (auto &item : fuse_statis) {
+      LOG(INFO) << "fused " << item.first << " " << item.second;
+    }
+
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(num_ops,
+              13);  // After graph optimization, only 13 operators exists.
+  }
 }
 
-// Inference with the original model with the analysis turned on, the analysis
-// module will transform the program to a data flow graph.
-TEST(Analyzer, DituRNN_with_analysis) {
-  LOG(INFO) << "ditu rnn with analysis";
-  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        FLAGS_batch_size, true, false, FLAGS_repeat);
+// Inference with analysis and IR, easy for profiling independently.
+TEST(Analyzer, DituRNN) {
+  TestDituRNNPrediction(true, true, FLAGS_num_threads);
 }
 
-// Inference with analysis and IR. The IR module will fuse some large kernels.
-TEST(Analyzer, DituRNN_with_analysis_with_IR) {
-  LOG(INFO) << "ditu rnn with analysis and IR fuse";
-  TestDituRNNPrediction(FLAGS_infer_ditu_rnn_model, FLAGS_infer_ditu_rnn_data,
-                        FLAGS_batch_size, true, true, FLAGS_repeat);
+// Other unit-tests of DituRNN, test different options of use_analysis,
+// activate_ir and multi-threads.
+TEST(Analyzer, DituRNN_tests) {
+  int num_threads[2] = {1, 4};
+  for (auto i : num_threads) {
+    // Directly infer with the original model.
+    TestDituRNNPrediction(false, false, i);
+    // Inference with the original model with the analysis turned on, the
+    // analysis
+    // module will transform the program to a data flow graph.
+    TestDituRNNPrediction(true, false, i);
+    // Inference with analysis and IR. The IR module will fuse some large
+    // kernels.
+    TestDituRNNPrediction(true, true, i);
+  }
 }
 
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle
-
-USE_PASS(fc_fuse_pass);
-USE_PASS(seq_concat_fc_fuse_pass);
-USE_PASS(fc_lstm_fuse_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(infer_clean_graph_pass);
-USE_PASS(attention_lstm_fuse_pass);
