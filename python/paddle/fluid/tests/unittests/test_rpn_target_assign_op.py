@@ -24,7 +24,8 @@ from test_generate_proposal_labels_op import _bbox_overlaps, _box_to_delta
 
 
 def rpn_target_assign(anchor_by_gt_overlap, rpn_batch_size_per_im,
-                      rpn_positive_overlap, rpn_negative_overlap, fg_fraction):
+                      rpn_positive_overlap, rpn_negative_overlap,
+                      rpn_fg_fraction):
     anchor_to_gt_argmax = anchor_by_gt_overlap.argmax(axis=1)
     anchor_to_gt_max = anchor_by_gt_overlap[np.arange(
         anchor_by_gt_overlap.shape[0]), anchor_to_gt_argmax]
@@ -39,7 +40,7 @@ def rpn_target_assign(anchor_by_gt_overlap, rpn_batch_size_per_im,
     labels[anchors_with_max_overlap] = 1
     labels[anchor_to_gt_max >= rpn_positive_overlap] = 1
 
-    num_fg = int(fg_fraction * rpn_batch_size_per_im)
+    num_fg = int(rpn_fg_fraction * rpn_batch_size_per_im)
     fg_inds = np.where(labels == 1)[0]
     if len(fg_inds) > num_fg:
         disable_inds = np.random.choice(
@@ -56,7 +57,6 @@ def rpn_target_assign(anchor_by_gt_overlap, rpn_batch_size_per_im,
 
     loc_index = fg_inds
     score_index = np.hstack((fg_inds, bg_inds))
-    #labels = np.expand_dims(labels, axis=1)
     labels = labels[score_index]
     assert not np.any(labels == -1), "Wrong labels with -1"
 
@@ -81,17 +81,11 @@ def unmap(ori_index, new_index):
     return ori_index[new_index]
 
 
-def rpn_target_assign_in_python(all_anchor, gt_boxes, is_crowd, im_info, lod,
+def rpn_target_assign_in_python(all_anchors, gt_boxes, is_crowd, im_info, lod,
                                 straddle_thresh, rpn_batch_size_per_im,
                                 rpn_positive_overlap, rpn_negative_overlap,
-                                fg_fraction):
-
-    loc_indexes = []
-    score_indexes = []
-    tmp_tgt_labels = []
-    tgt_bboxes = []
-    anchor_num = all_anchor.shape[0]
-
+                                rpn_fg_fraction):
+    anchor_num = all_anchors.shape[0]
     batch_size = len(lod) - 1
     for i in range(batch_size):
         im_height = im_info[i][0]
@@ -101,15 +95,15 @@ def rpn_target_assign_in_python(all_anchor, gt_boxes, is_crowd, im_info, lod,
             # Only keep anchors inside the image by a margin of straddle_thresh
             # Set TRAIN.RPN_STRADDLE_THRESH to -1 (or a large value) to keep all
             # anchors
-            inds_inside = np.where((all_anchor[:, 0] >= -straddle_thresh) & (
-                all_anchor[:, 1] >= -straddle_thresh) & (
-                    all_anchor[:, 2] < im_width + straddle_thresh) & (
-                        all_anchor[:, 3] < im_height + straddle_thresh))[0]
+            inds_inside = np.where((all_anchors[:, 0] >= -straddle_thresh) & (
+                all_anchors[:, 1] >= -straddle_thresh) & (
+                    all_anchors[:, 2] < im_width + straddle_thresh) & (
+                        all_anchors[:, 3] < im_height + straddle_thresh))[0]
             # keep only inside anchors
-            inside_anchors = all_anchor[inds_inside, :]
+            inside_anchors = all_anchors[inds_inside, :]
         else:
-            inds_inside = np.arange(all_anchor.shape[0])
-            inside_anchors = all_anchor
+            inds_inside = np.arange(all_anchors.shape[0])
+            inside_anchors = all_anchors
 
         b, e = lod[i], lod[i + 1]
         gt_boxes_slice = gt_boxes[b:e, :] * im_scale
@@ -121,13 +115,13 @@ def rpn_target_assign_in_python(all_anchor, gt_boxes, is_crowd, im_info, lod,
 
         loc_inds, score_inds, labels, gt_inds = rpn_target_assign(
             iou, rpn_batch_size_per_im, rpn_positive_overlap,
-            rpn_negative_overlap, fg_fraction)
+            rpn_negative_overlap, rpn_fg_fraction)
         # unmap to all anchor
         loc_inds = unmap(inds_inside, loc_inds)
         score_inds = unmap(inds_inside, score_inds)
 
         sampled_gt = gt_boxes_slice[gt_inds]
-        sampled_anchor = all_anchor[loc_inds]
+        sampled_anchor = all_anchors[loc_inds]
         box_deltas = _box_to_delta(sampled_anchor, sampled_gt, [1., 1., 1., 1.])
 
         if i == 0:
@@ -143,17 +137,16 @@ def rpn_target_assign_in_python(all_anchor, gt_boxes, is_crowd, im_info, lod,
             tgt_labels = np.concatenate([tgt_labels, labels])
             tgt_bboxes = np.vstack([tgt_bboxes, box_deltas])
 
-    #tgt_labels = tmp_tgt_labels[score_indexes]
     return loc_indexes, score_indexes, tgt_bboxes, tgt_labels
 
 
 class TestRpnTargetAssignOp(OpTest):
     def setUp(self):
         n, c, h, w = 2, 4, 14, 14
-        anchor = get_anchor(n, c, h, w)
+        all_anchors = get_anchor(n, c, h, w)
         gt_num = 10
-        anchor = anchor.reshape(-1, 4)
-        anchor_num = anchor.shape[0]
+        all_anchors = all_anchors.reshape(-1, 4)
+        anchor_num = all_anchors.shape[0]
 
         images_shape = [[64, 64], [64, 64]]
         groundtruth, lod = _generate_groundtruth(images_shape, 3, 4)
@@ -165,25 +158,25 @@ class TestRpnTargetAssignOp(OpTest):
         gt_boxes = np.vstack([v['boxes'] for v in groundtruth])
         is_crowd = np.hstack([v['is_crowd'] for v in groundtruth])
 
-        anchor = anchor.astype('float32')
+        all_anchors = all_anchors.astype('float32')
         gt_boxes = gt_boxes.astype('float32')
         lod = [0, 4, 8]
 
         straddle_thresh = 0.0
-        rpn_batch_size_per_im = 25600
-        rpn_positive_overlap = 0.95
-        rpn_negative_overlap = 0.03
-        fg_fraction = 0.25
-        fix_seed = True
+        rpn_batch_size_per_im = 256
+        rpn_positive_overlap = 0.7
+        rpn_negative_overlap = 0.3
+        rpn_fg_fraction = 0.5
+        use_random = False
 
         loc_index, score_index, tgt_bbox, labels = rpn_target_assign_in_python(
-            anchor, gt_boxes, is_crowd, im_info, lod, straddle_thresh,
+            all_anchors, gt_boxes, is_crowd, im_info, lod, straddle_thresh,
             rpn_batch_size_per_im, rpn_positive_overlap, rpn_negative_overlap,
-            fg_fraction)
+            rpn_fg_fraction)
 
         self.op_type = "rpn_target_assign"
         self.inputs = {
-            'Anchor': anchor,
+            'Anchor': all_anchors,
             'GtBox': (gt_boxes, [[4, 4]]),
             'IsCrowd': (is_crowd, [[4, 4]]),
             'ImInfo': (im_info, [[1, 1]])
@@ -193,8 +186,8 @@ class TestRpnTargetAssignOp(OpTest):
             'straddle_thresh': straddle_thresh,
             'rpn_positive_overlap': rpn_positive_overlap,
             'rpn_negative_overlap': rpn_negative_overlap,
-            'fg_fraction': fg_fraction,
-            'fix_seed': fix_seed
+            'rpn_fg_fraction': rpn_fg_fraction,
+            'use_random': use_random
         }
         self.outputs = {
             'LocationIndex': loc_index.astype('int32'),
