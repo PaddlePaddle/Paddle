@@ -366,16 +366,13 @@
 #### 选择如何安装PaddlePaddle
 在MacOS的系统下我们提供3种不同的安装方式：
 
-* Docker安装（不支持GPU版本）
-* 源码编译安装（不支持GPU版本）
-* Docker源码编译安装（不支持GPU版本）
+* Docker安装（不支持GPU版本）   
+* Docker源码编译安装（不支持GPU版本）    
 
 
 我们更加推荐**使用Docker进行安装**，因为我们在把工具和配置都安装在一个 Docker image 里，这样如果遇到问题，其他人可以复现问题以便帮助。另外，对于习惯使用Windows和MacOS的开发者来说，使用Docker就不用配置交叉编译环境了。需要强调的是：Docker 不会虚拟任何硬件，Docker container 里运行的编译工具实际上都是在本机的 CPU 和操作系统上直接运行的，性能和把编译工具安装在本机运行一样。        
 
 
-
-从**源码编译安装**，在MacOS下由于源码编译安装过于复杂因此我们提供了[一键编译包](http://paddle-macos.bj.bcebos.com/PaddlePaddle-MacOS.zip)供您使用, 而使用[**Docker进行源码编译**](#mac_docker)的过程将在文档的最后为您展示。
 
 
 
@@ -900,16 +897,18 @@
 在MacOS 10.12/10.13的系统下我们提供2种的编译方式：
 
 <!--* 直接本机源码编译-->
-* Docker源码编译
-* 本机一键编译包
+* Docker源码编译       
+
 
 
 
 我们更加推荐**使用Docker进行编译**，因为我们在把工具和配置都安装在一个 Docker image 里。这样如果遇到问题，其他人可以复现问题以便帮助。另外，对于习惯使用Windows和MacOS的开发者来说，使用Docker就不用配置交叉编译环境了。需要强调的是：Docker 不会虚拟任何硬件，Docker container 里运行的编译工具实际上都是在本机的 CPU 和操作系统上直接运行的，性能和把编译工具安装在本机运行一样。        
 
 
+      
 
-对于那些出于各种原因不能够安装Docker的用户我们也提供了可以使用我们提供的[一键编译包](http://paddle-macos.bj.bcebos.com/PaddlePaddle-MacOS.zip)<!--上传一键编译包之后请link到目标页面-->       
+
+
 
 <a name="mac_docker"></a>
 
@@ -987,15 +986,8 @@
 
 恭喜您，现在您已经完成使用Docker编译PaddlePaddle的过程。
 
-<br/><br/>
-##### ***使用一键编译包进行编译***
 
-1. 请在下载[一键编译包](http://paddle-macos.bj.bcebos.com/PaddlePaddle-MacOS.zip)后将其中的安装脚本置于您希望储存PaddlePaddle源代码的路径下，并保证所有脚本文件在同一个目录下。
-2. 请在**保证您具有管理员权限**的前提下启动命令行(这是由于我们需要修改一些文件的读写权限)，进入您储存脚本的目录下使用以下指令启动一件编译脚本： `01_start_check_OS.sh`      
-	
-	> 一键编译包包含两个脚本，第一个脚本用来检查您的本机环境然后会自动启动第二个脚本进行编译安装
 
-由于我们使用homebrew安装一些必要的第三方依赖，禁用MacOS的系统完整性保护SIP（System Integrity Protection）系统以便homebrew为您正确安装相关的依赖，请在重启电脑后出现Apple标志之前使用Command + R指令进入**在线恢复模式**，然后选择关掉SIP。具体操作详见[百度经验](https://jingyan.baidu.com/article/9c69d48ff88b3813c9024e9d.html)
 
 
 
