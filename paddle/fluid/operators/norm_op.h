@@ -65,9 +65,8 @@ class NormKernel : public framework::OpKernel<T> {
     Eigen::DSizes<int, 1> rdim(1);
     // y = x / sqrt((sum(x * x) + epsilon))
     // norm = sqrt(sum(x * x) + epsilon)
-    auto sum = x.pow(2).sum(rdim) + eps;
-    // auto x2 = x * x;
-    // auto sum = x2.sum(rdim) + eps;
+    auto x2 = x * x;
+    auto sum = x2.sum(rdim) + eps;
     norm.device(*place) = sum.sqrt();
 
     // y = x / norm
