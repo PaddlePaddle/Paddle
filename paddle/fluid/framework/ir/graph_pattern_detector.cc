@@ -73,7 +73,6 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
 void GraphPatternDetector::operator()(Graph* graph,
                                       GraphPatternDetector::handle_t handler) {
   if (!MarkPDNodesInGraph(*graph)) {
-    LOG(INFO) << "Mark failed";
     return;
   }
 
@@ -86,7 +85,7 @@ void GraphPatternDetector::operator()(Graph* graph,
   LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
   int id = 0;
   for (auto& g : subgraphs) {
-    LOG(INFO) << "optimizing #" << id++ << " subgraph";
+    VLOG(3) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
