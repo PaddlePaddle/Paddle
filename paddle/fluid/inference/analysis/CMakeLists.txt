@@ -6,6 +6,7 @@ cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits
   analyzer.cc
   helper.cc
   # passes
+  analysis_pass.cc
   fluid_to_data_flow_graph_pass.cc
   data_flow_graph_to_fluid_pass.cc
   dfg_graphviz_draw_pass.cc
@@ -105,6 +106,6 @@ if (NOT EXISTS ${TEXT_CLASSIFICATION_INSTALL_DIR} AND WITH_TESTING AND WITH_INFE
   inference_download_and_uncompress(${TEXT_CLASSIFICATION_INSTALL_DIR} ${TEXT_CLASSIFICATION_MODEL_URL} "text-classification-Senta.tar.gz")
 endif()
 
-inference_analysis_test(test_text_classification SRCS test_text_classification.cc
+inference_analysis_test(test_text_classification SRCS analyzer_text_classification_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
     ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta)

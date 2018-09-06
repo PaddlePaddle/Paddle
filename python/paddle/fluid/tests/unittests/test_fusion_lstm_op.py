@@ -53,12 +53,11 @@ class TestFusionLSTMOp(OpTest):
         self.M = 8
         self.D = 16
         self.has_initial_state = False
+        self.use_peepholes = False
         self.is_reverse = False
         self.act_gate = 'sigmoid'
         self.act_cell = 'tanh'
         self.act_cand = 'tanh'
-        self.use_peepholes = False
-        self.use_seq = False
         self.set_conf()
 
         T = sum(self.lod[0])
@@ -108,7 +107,6 @@ class TestFusionLSTMOp(OpTest):
         }
         self.attrs = {
             'use_peepholes': self.use_peepholes,
-            'use_seq': self.use_seq,
             'is_reverse': self.is_reverse,
             'gate_activation': self.act_gate,
             'cell_activation': self.act_cell,
@@ -178,50 +176,18 @@ class TestFusionLSTMOpPeepholesReverse(TestFusionLSTMOp):
         self.is_reverse = True
 
 
-class TestFusionLSTMOpPoopholesBS1(TestFusionLSTMOp):
+class TestFusionLSTMOpPeepholesInitReverse(TestFusionLSTMOp):
     def set_conf(self):
         self.use_peepholes = True
-        self.lod = [[3]]
-        self.D = 16
-
-
-class TestFusionLSTMOpSeqInit(TestFusionLSTMOp):
-    def set_conf(self):
-        self.use_seq = True
-        self.has_initial_state = True
-
-
-class TestFusionLSTMOpSeqReverse(TestFusionLSTMOp):
-    def set_conf(self):
-        self.use_seq = True
-        self.is_reverse = True
-
-
-class TestFusionLSTMOpSeqInitReverse(TestFusionLSTMOp):
-    def set_conf(self):
-        self.use_seq = True
         self.has_initial_state = True
         self.is_reverse = True
 
 
-class TestFusionLSTMOpSeqPeepholes(TestFusionLSTMOp):
+class TestFusionLSTMOpPeepholesBS1(TestFusionLSTMOp):
     def set_conf(self):
-        self.use_seq = True
         self.use_peepholes = True
-
-
-class TestFusionLSTMOpSeqPeepholesInit(TestFusionLSTMOp):
-    def set_conf(self):
-        self.use_seq = True
-        self.use_peepholes = True
-        self.has_initial_state = True
-
-
-class TestFusionLSTMOpSeqPeepholesReverse(TestFusionLSTMOp):
-    def set_conf(self):
-        self.use_seq = True
-        self.use_peepholes = True
-        self.is_reverse = True
+        self.lod = [[2]]
+        self.D = 8
 
 
 if __name__ == '__main__':
