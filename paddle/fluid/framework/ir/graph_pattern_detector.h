@@ -19,6 +19,9 @@
 #endif
 
 #include <numeric>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -245,6 +248,8 @@ class GraphPatternDetector {
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);
 
   // Remove overlapped match subgraphs, when overlapped, keep the previous one.
+  // The intermediate PDNodes will be removed, so can't shared by multiple
+  // patterns.
   void RemoveOverlappedMatch(std::vector<subgraph_t>* subgraphs);
 
   // Validate whether the intermediate nodes are linked by external nodes.
@@ -294,6 +299,10 @@ PDNode* FC(PDPattern* pattern, const std::string& name_scope, PDNode* x,
 PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
 
 }  // namespace patterns
+
+#define IR_NODE_LINK_TO(a, b) \
+  a->outputs.push_back(b);    \
+  b->inputs.push_back(a);
 
 }  // namespace ir
 }  // namespace framework
