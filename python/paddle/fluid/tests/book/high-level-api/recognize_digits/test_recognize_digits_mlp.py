@@ -92,6 +92,7 @@ def train(use_cuda, train_program, params_dirname, parallel):
             feed_order=['img', 'label'])
     else:
         import paddle.fluid.core as core
+        import paddle.compat as cpt
         try:
             trainer.train(
                 num_epochs=1,
