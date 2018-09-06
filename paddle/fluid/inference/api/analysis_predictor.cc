@@ -22,12 +22,25 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(profile);
 
 namespace paddle {
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope>& parent_scope) {
   VLOG(3) << "Predictor::init()";
+#if !defined(_WIN32)
+  if (FLAGS_profile) {
+    LOG(WARNING) << "Profiler is actived, might affect the performance";
+    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+    auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
+                                           : platform::ProfilerState::kCPU;
+    platform::EnableProfiler(tracking_device);
+  }
+#endif
+
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
     LOG(WARNING) << "ir optimize only supports CPU currently";
