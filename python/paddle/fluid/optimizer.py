@@ -897,7 +897,20 @@ class RMSPropOptimizer(Optimizer):
 
         r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
 
-        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{v(w,t) +
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{r(w,t) +
+            \\epsilon}} \\nabla Q_{i}(w)
+
+        w & = w - v(w, t)
+
+    if centered is True:
+
+    ..  math::
+
+        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
+
+        g(w, t) & = \\rho g(w, t-1) + (1 - \\rho)\\nabla Q_{i}(w)
+
+        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{r(w,t) - (g(w, t))^2 +
             \\epsilon}} \\nabla Q_{i}(w)
 
         w & = w - v(w, t)
@@ -915,6 +928,10 @@ class RMSPropOptimizer(Optimizer):
             avoid division by zero, set 1e-6 by default.
         momentum(float): :math:`\\beta` in equation is the momentum term,
             set 0.0 by default.
+        centered(bool): If True, gradients are normalized by the estimated variance of
+            the gradient; if False, by the uncentered second moment. Setting this to
+            True may help with training, but is slightly more expensive in terms of
+            computation and memory. Defaults to False.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
@@ -928,12 +945,14 @@ class RMSPropOptimizer(Optimizer):
 
     _momentum_acc_str = "momentum"
     _mean_square_acc_str = "mean_square"
+    _mean_grad_acc_str = "mean_grad"
 
     def __init__(self,
                  learning_rate,
                  rho=0.95,
                  epsilon=1.0e-6,
                  momentum=0.0,
+                 centered=False,
                  **kwargs):
         super(RMSPropOptimizer, self).__init__(
             learning_rate=learning_rate, **kwargs)
@@ -950,6 +969,7 @@ class RMSPropOptimizer(Optimizer):
         self._rho = rho
         self._epsilon = epsilon
         self._momentum = momentum
+        self._centered = centered
 
     def _create_accumulators(self, block, parameters):
         if not isinstance(block, framework.Block):
@@ -958,6 +978,7 @@ class RMSPropOptimizer(Optimizer):
         for p in parameters:
             self._add_accumulator(self._momentum_acc_str, p)
             self._add_accumulator(self._mean_square_acc_str, p)
+            self._add_accumulator(self._mean_grad_acc_str, p)
 
     def _append_optimize_op(self, block, param_and_grad):
         if not isinstance(block, framework.Block):
@@ -967,6 +988,8 @@ class RMSPropOptimizer(Optimizer):
                                              param_and_grad[0])
         mean_square_acc = self._get_accumulator(self._mean_square_acc_str,
                                                 param_and_grad[0])
+        mean_grad_acc = self._get_accumulator(self._mean_grad_acc_str,
+                                              param_and_grad[0])
         rmsprop_op = block.append_op(
             type=self.type,
             inputs={
@@ -974,17 +997,20 @@ class RMSPropOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "Moment": momentum_acc,
                 "MeanSquare": mean_square_acc,
+                "MeanGrad": mean_grad_acc,
                 "LearningRate": self._create_param_lr(param_and_grad),
             },
             outputs={
                 "ParamOut": param_and_grad[0],
                 "MomentOut": momentum_acc,
-                "MeanSquareOut": mean_square_acc
+                "MeanSquareOut": mean_square_acc,
+                "MeanGradOut": mean_grad_acc
             },
             attrs={
                 "epsilon": self._epsilon,
                 "decay": self._rho,
-                "momentum": self._momentum
+                "momentum": self._momentum,
+                "centered": self._centered
             })
 
         return rmsprop_op

@@ -21,3 +21,10 @@ REGISTER_OP_CUDA_KERNEL(
 REGISTER_OP_CUDA_KERNEL(
     transpose_grad,
     ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);
+
+REGISTER_OP_CUDA_KERNEL(
+    transpose2,
+    ops::TransposeKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    transpose2_grad,
+    ops::TransposeGradKernel<paddle::platform::CUDADeviceContext, float>);
