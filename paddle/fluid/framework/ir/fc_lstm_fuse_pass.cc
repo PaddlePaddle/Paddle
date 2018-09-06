@@ -19,12 +19,13 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::string GenNodeName(const std::string& prefix, const std::string& name) {
+static std::string GenNodeName(const std::string& prefix,
+                               const std::string& name) {
   return prefix + "/" + name;
 }
 
-void BuildPattern(PDPattern* pattern, const std::string& name_scope,
-                  bool with_fc_bias) {
+static void BuildPattern(PDPattern* pattern, const std::string& name_scope,
+                         bool with_fc_bias) {
   PDNode* x = pattern->NewNode(name_scope, "x")
                   ->assert_is_op_input("mul")
                   ->assert_var_not_persistable();
@@ -34,8 +35,8 @@ void BuildPattern(PDPattern* pattern, const std::string& name_scope,
   // LOG(INFO) << "\n" << pattern->DotString();
 }
 
-int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
-                bool with_fc_bias) {
+static int BuildFusion(Graph* graph, const std::string& name_scope,
+                       Scope* scope, bool with_fc_bias) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 

@@ -24,6 +24,7 @@ pass_library(fc_fuse_pass)
 pass_library(attention_lstm_fuse_pass)
 pass_library(infer_clean_graph_pass)
 pass_library(fc_lstm_fuse_pass)
+pass_library(fc_gru_fuse_pass)
 pass_library(seq_concat_fc_fuse_pass)
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 

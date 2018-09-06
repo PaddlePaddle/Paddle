@@ -50,6 +50,7 @@ cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_a
           pass
           fc_fuse_pass
           fc_lstm_fuse_pass
+          fc_gru_fuse_pass
           seq_concat_fc_fuse_pass
           graph_viz_pass
           infer_clean_graph_pass
