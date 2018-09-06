@@ -50,6 +50,7 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
+
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
 RUN pip install --upgrade pip && \
