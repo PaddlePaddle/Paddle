@@ -232,6 +232,8 @@ def embedding(input,
               is_sparse=False,
               is_distributed=False,
               padding_idx=None,
+              allowed_beyond_boundary=False,
+              candidate_idx=-1,
               param_attr=None,
               dtype='float32'):
     """
@@ -256,6 +258,11 @@ def embedding(input,
             with zeros whenever lookup encounters it in :attr:`input`. If
             :math:`padding_idx < 0`, the :attr:`padding_idx` to use in lookup is
             :math:`size[0] + dim`.
+        allowed_beyond_boundary(bool): Whether to allow the idx beyond the boundary.
+            If it's true, you must set a valid candidate idx which is used to replace
+            the beyond boundary idx.
+        candidate_idx(int|long): If allowed_beyond_boundary is true, the candidate idx
+            is used to replace the beyond boundary idx.
         param_attr(ParamAttr): Parameters for this layer
         dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
 
@@ -277,6 +284,9 @@ def embedding(input,
     tmp = helper.create_tmp_variable(dtype)
     padding_idx = -1 if padding_idx is None else padding_idx if padding_idx >= 0 else (
         size[0] + padding_idx)
+    if allowed_beyond_boundary:
+        assert isinstance(candidate_idx, int) and candidate_idx >= 0, \
+            "The allowed_beyond_boundary is True, so you must set the candidate_idx."
     helper.append_op(
         type='lookup_table',
         inputs={'Ids': input,
@@ -285,7 +295,9 @@ def embedding(input,
         attrs={
             'is_sparse': is_sparse,
             'is_distributed': is_distributed,
-            'padding_idx': padding_idx
+            'padding_idx': padding_idx,
+            'allowed_beyond_boundary': allowed_beyond_boundary,
+            'candidate_idx': candidate_idx,
         })
     return tmp
 

@@ -22,17 +22,22 @@ namespace paddle {
 namespace operators {
 
 template <typename T, int BlockDimX, int BlockDimY, int GridDimX,
-          bool PaddingFlag>
+          bool PaddingFlag, bool AllowedBeyondBoundary>
 __global__ void LookupTable(T *output, const T *table, const int64_t *ids,
                             const int64_t N, const int64_t K, const int64_t D,
-                            const int64_t padding_idx) {
+                            const int64_t padding_idx, int64_t candidate_idx) {
   int idx = threadIdx.x;
   int idy = blockIdx.x + threadIdx.y * GridDimX;
 
   while (idy < K) {
     int64_t id = ids[idy];
     PADDLE_ASSERT(id >= 0);
-    PADDLE_ASSERT(id < N);
+    if (id >= N && AllowedBeyondBoundary) {
+      id = candidate_idx;
+    } else {
+      PADDLE_ASSERT(id < N);
+    }
+
     T *out = output + idy * D;
     const T *tab = table + id * D;
     for (int i = idx; i < D; i += BlockDimX) {
@@ -78,6 +83,10 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     auto *output_t = context.Output<LoDTensor>("Out");
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
 
+    bool allowed_beyond_boundary =
+        context.Attr<bool>("allowed_beyond_boundary");
+    auto candidate_idx = context.Attr<int64_t>("candidate_idx");
+
     size_t N = table_t->dims()[0];
     size_t D = table_t->dims()[1];
     size_t K = ids_t->numel();
@@ -89,16 +98,31 @@ class LookupTableCUDAKernel : public framework::OpKernel<T> {
     dim3 threads(128, 8);
     dim3 grids(8, 1);
 
-    if (padding_idx == -1)
-      LookupTable<
-          T, 128, 8, 8,
-          false><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
-    else
-      LookupTable<
-          T, 128, 8, 8,
-          true><<<grids, threads, 0, context.cuda_device_context().stream()>>>(
-          output, table, ids, N, K, D, padding_idx);
+    if (allowed_beyond_boundary) {
+      if (padding_idx == -1) {
+        LookupTable<T, 128, 8, 8, false /*PaddingFlag*/,
+                    true /*AllowedBeyondBoundary*/><<<
+            grids, threads, 0, context.cuda_device_context().stream()>>>(
+            output, table, ids, N, K, D, padding_idx, candidate_idx);
+      } else {
+        LookupTable<T, 128, 8, 8, true /*PaddingFlag*/,
+                    true /*AllowedBeyondBoundary*/><<<
+            grids, threads, 0, context.cuda_device_context().stream()>>>(
+            output, table, ids, N, K, D, padding_idx, candidate_idx);
+      }
+    } else {
+      if (padding_idx == -1) {
+        LookupTable<T, 128, 8, 8, false /*PaddingFlag*/,
+                    false /*AllowedBeyondBoundary*/><<<
+            grids, threads, 0, context.cuda_device_context().stream()>>>(
+            output, table, ids, N, K, D, padding_idx, candidate_idx);
+      } else {
+        LookupTable<T, 128, 8, 8, true /*PaddingFlag*/,
+                    false /*AllowedBeyondBoundary*/><<<
+            grids, threads, 0, context.cuda_device_context().stream()>>>(
+            output, table, ids, N, K, D, padding_idx, candidate_idx);
+      }
+    }
   }
 };
 

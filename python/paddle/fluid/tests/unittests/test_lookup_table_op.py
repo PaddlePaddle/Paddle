@@ -150,5 +150,27 @@ class TestLookupTableWithTensorIdsWIsSelectedRows(
             assert (row == result_array[idx]).all()
 
 
+class TestLookupTableAllowBeyondBoundrayOp(OpTest):
+    def setUp(self):
+        self.op_type = "lookup_table"
+        table = np.random.random((17, 31)).astype("float32")
+        ids = np.random.randint(0, 17, 4).astype("int64")
+        self.candidate_idx = 1
+        ids_used = [self.candidate_idx] + list(ids) + [self.candidate_idx]
+        ids_expand = np.expand_dims([18] + list(ids) + [18], axis=1)
+        self.inputs = {'W': table, 'Ids': ids_expand}
+        self.outputs = {'Out': table[ids_used]}
+        self.attrs = {
+            'allowed_beyond_boundary': True,
+            "candidate_idx": self.candidate_idx
+        }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        pass
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -38,6 +38,16 @@ class LookupTableOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
                       "The last dimension of the 'Ids' tensor must be 1.");
 
+    if (ctx->Attrs().Get<bool>("allowed_beyond_boundary")) {
+      auto candidate_idx = ctx->Attrs().Get<int64_t>("candidate_idx");
+      PADDLE_ENFORCE_GT(candidate_idx, -1,
+                        "The allowed_beyond_boundary is True, so you must set "
+                        "the candidate_idx.");
+      PADDLE_ENFORCE_LT(candidate_idx, table_dims[0],
+                        "The allowed_beyond_boundary is True,"
+                        " but the candidate_idx is beyond the range of table.");
+    }
+
     auto output_dims =
         framework::vectorize(framework::slice_ddim(ids_dims, 0, ids_rank - 1));
     output_dims.push_back(table_dims[1]);
@@ -81,6 +91,15 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                      "Otherwise the given value indicates padding the output "
                      "with zeros whenever lookup encounters it in Ids.")
         .SetDefault(kNoPadding);
+    AddAttr<bool>("allowed_beyond_boundary",
+                  "(boolean, default false) Whether to allow the idx beyond "
+                  "the boundary.")
+        .SetDefault(false);
+    AddAttr<int64_t>(
+        "candidate_idx",
+        "(boolean, -1 ) If the allowed_beyond_boundary is enabled, "
+        "the idx of beyond boundary will be replaced with candidate_idx.")
+        .SetDefault(-1);
     AddComment(R"DOC(
 Lookup Table Operator.
 
@@ -108,6 +127,11 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    if (ctx->Attrs().Get<bool>("allowed_beyond_boundary")) {
+      PADDLE_THROW(
+          "The allowed_beyond_boundary is true, and"
+          "the gradient operator is not implemented yet.");
+    }
     auto table_dims = ctx->GetInputDim("W");
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
   }

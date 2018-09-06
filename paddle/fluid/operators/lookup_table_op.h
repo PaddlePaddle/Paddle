@@ -40,6 +40,10 @@ class LookupTableKernel : public framework::OpKernel<T> {
     auto *output_t = context.Output<LoDTensor>("Out");  // float tensor
     auto *table_var = context.InputVar("W");
 
+    bool allowed_beyond_boundary =
+        context.Attr<bool>("allowed_beyond_boundary");
+    auto candidate_idx = context.Attr<int64_t>("candidate_idx");
+
     int64_t padding_idx = context.Attr<int64_t>("padding_idx");
     int64_t *ids = const_cast<int64_t *>(ids_t->data<int64_t>());
     int64_t ids_numel = ids_t->numel();
@@ -53,12 +57,17 @@ class LookupTableKernel : public framework::OpKernel<T> {
       auto *output = output_t->mutable_data<T>(context.GetPlace());
 
       for (int64_t i = 0; i < ids_numel; ++i) {
-        if (padding_idx != kNoPadding && ids[i] == padding_idx) {
+        int64_t id = ids[i];
+        if (id >= row_number && allowed_beyond_boundary) {
+          id = candidate_idx;
+        }
+
+        if (padding_idx != kNoPadding && id == padding_idx) {
           memset(output + i * row_width, 0, row_width * sizeof(T));
         } else {
-          PADDLE_ENFORCE_LT(ids[i], row_number);
-          PADDLE_ENFORCE_GE(ids[i], 0, "ids %d", i);
-          memcpy(output + i * row_width, table + ids[i] * row_width,
+          PADDLE_ENFORCE_LT(id, row_number);
+          PADDLE_ENFORCE_GE(id, 0, "ids %d", i);
+          memcpy(output + i * row_width, table + id * row_width,
                  row_width * sizeof(T));
         }
       }
