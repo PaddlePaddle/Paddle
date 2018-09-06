@@ -24,13 +24,16 @@ from op_test import OpTest
 class TestUnsqueezeOp(OpTest):
     def setUp(self):
         self.init_test_case()
-        self.op_type = "unsqueeze"
+        self.op_type = "unsqueeze2"
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.init_attrs()
-        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+        }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=["XShape"])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
