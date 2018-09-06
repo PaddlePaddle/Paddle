@@ -43,6 +43,7 @@ paddle.fluid.Executor.run ArgSpec(args=['self', 'program', 'feed', 'fetch_list',
 paddle.fluid.global_scope ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.scope_guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
 paddle.fluid.Trainer.__init__ ArgSpec(args=['self', 'train_func', 'optimizer_func', 'param_path', 'place', 'parallel', 'checkpoint_config'], varargs=None, keywords=None, defaults=(None, None, False, None))
+paddle.fluid.Trainer.save_inference_model ArgSpec(args=['self', 'param_path', 'feeded_var_names', 'target_var_indexes'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Trainer.save_params ArgSpec(args=['self', 'param_path'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Trainer.stop ArgSpec(args=['self'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Trainer.test ArgSpec(args=['self', 'reader', 'feed_order'], varargs=None, keywords=None, defaults=None)

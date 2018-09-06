@@ -44,19 +44,7 @@ function(inference_api_test TARGET_NAME)
 endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor)
-cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api
-          analysis
-          ir_pass_manager
-          pass
-          fc_fuse_pass
-          fc_lstm_fuse_pass
-          seq_concat_fc_fuse_pass
-          graph_viz_pass
-          infer_clean_graph_pass
-          graph_pattern_detector
-          infer_clean_graph_pass
-          attention_lstm_fuse_pass
-  )
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis)
 
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
