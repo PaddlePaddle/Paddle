@@ -63,7 +63,7 @@ def noam_decay(d_model, warmup_steps):
     Returns:
         The decayed learning rate.
     """
-    with default_main_program().lr_schedule_guard():
+    with default_main_program()._lr_schedule_guard():
         global_step = _decay_step_counter(1)
 
         a = global_step**-0.5
@@ -109,7 +109,7 @@ def exponential_decay(learning_rate, decay_steps, decay_rate, staircase=False):
           sgd_optimizer.minimize(avg_cost)
 
     """
-    with default_main_program().lr_schedule_guard():
+    with default_main_program()._lr_schedule_guard():
         global_step = _decay_step_counter()
 
         div_res = global_step / decay_steps
@@ -138,7 +138,7 @@ def natural_exp_decay(learning_rate, decay_steps, decay_rate, staircase=False):
     Returns:
         The decayed learning rate
     """
-    with default_main_program().lr_schedule_guard():
+    with default_main_program()._lr_schedule_guard():
         global_step = _decay_step_counter()
 
         div_res = global_step / decay_steps
@@ -184,7 +184,7 @@ def inverse_time_decay(learning_rate, decay_steps, decay_rate, staircase=False):
                     staircase=True))
           sgd_optimizer.minimize(avg_cost)
     """
-    with default_main_program().lr_schedule_guard():
+    with default_main_program()._lr_schedule_guard():
         global_step = _decay_step_counter()
 
         div_res = global_step / decay_steps
@@ -224,7 +224,7 @@ def polynomial_decay(learning_rate,
     Returns:
         Variable: The decayed learning rate
     """
-    with default_main_program().lr_schedule_guard():
+    with default_main_program()._lr_schedule_guard():
         global_step = _decay_step_counter()
 
         if cycle:
@@ -273,7 +273,7 @@ def piecewise_decay(boundaries, values):
 
 
     """
-    with default_main_program().lr_schedule_guard():
+    with default_main_program()._lr_schedule_guard():
         if len(values) - len(boundaries) != 1:
             raise ValueError("len(values) - len(boundaries) should be 1")
 

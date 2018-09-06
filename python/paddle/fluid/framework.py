@@ -1510,7 +1510,7 @@ class Program(object):
         self._current_role = OpRole.Forward
 
     @contextlib.contextmanager
-    def lr_schedule_guard(self):
+    def _lr_schedule_guard(self):
         """
         A with guard to set :code:`LRSched` :code:`OpRole` and
         :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
