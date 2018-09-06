@@ -63,6 +63,8 @@ visualDL --logdir=scratch_log --port=8080
 # 访问 http://127.0.0.1:8080
 ```
 
+如果出现`TypeError: __init__() got an unexpected keyword argument 'file'`, 是因为protobuf不是3.5以上，运行`pip install --upgrade protobuf`就能解决。
+
 如果以上步骤出现问题，很可能是因为python或pip不同版本或不同位置所致，以下安装方法能解决。
 
 ## 使用 virtualenv 安装
