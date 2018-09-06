@@ -48,7 +48,6 @@ bool AnalysisPredictor::Init(
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  PADDLE_ENFORCE(!parent_scope);
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());

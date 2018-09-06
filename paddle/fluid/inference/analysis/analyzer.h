@@ -38,8 +38,9 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <string>
 #include <vector>
+
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/flags.h"
-#include "paddle/fluid/inference/analysis/pass.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 
 namespace paddle {
