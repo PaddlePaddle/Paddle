@@ -21,6 +21,7 @@ import copy
 import six
 from .. import compat as cpt
 from . import unique_name
+import os
 
 __all__ = ['append_backward']
 
@@ -312,6 +313,60 @@ def _callback_lookup_(op):
         return None
 
 
+def _addup_repetitive_outputs_mem_friendly_(op_descs):
+    written_ops = collections.defaultdict(list)
+    var_name_counter = collections.defaultdict(int)
+    pending_sum_ops = []
+    for idx, op_desc in enumerate(op_descs):
+        for var_name in op_desc.input_arg_names():
+            if var_name in written_ops:
+                written_ops[var_name] = []
+        possible_vars = set()
+        for param_idx, param_name in enumerate(op_desc.output_names()):
+            arg_names = op_desc.output(param_name)
+            for arg_idx, var_name in enumerate(arg_names):
+                if var_name == core.empty_var_name():
+                    continue
+
+                written_ops[var_name].append((op_desc, param_name, arg_idx))
+                possible_vars.add(var_name)
+
+        for var_name in possible_vars:
+            to_fuse_ops = written_ops[var_name]
+            if len(to_fuse_ops) > 1:
+                # Fuse eagerly
+                while len(to_fuse_ops) != 1:
+                    inplaced_op, inplaced_pname, inplaced_arg_idx = to_fuse_ops[
+                        0]
+                    to_fused_op, to_fused_pname, to_fused_arg_idx = to_fuse_ops[
+                        -1]
+                    arg_names = to_fused_op.output(to_fused_pname)
+                    old_name = copy.deepcopy(arg_names[to_fused_arg_idx])
+                    new_name = old_name + "@RENAME@" + str(var_name_counter[
+                        old_name])
+                    var_name_counter[old_name] += 1
+
+                    if inplaced_op == to_fused_op:
+                        # special case like elemwise_add(x, x)
+                        arg_names[to_fused_arg_idx] = new_name
+                        to_fused_op.set_output(param_name, arg_names)
+                    else:
+                        grad_name = inplaced_op.output(inplaced_pname)[
+                            inplaced_arg_idx]
+                        to_fused_op.rename_output(grad_name, new_name)
+
+                    pending_sum_ops.append((idx, grad_name, new_name))
+                    to_fuse_ops = to_fuse_ops[:-1]
+                written_ops[var_name] = to_fuse_ops
+
+    for idx, old_name, new_name in reversed(pending_sum_ops):
+        sum_op = _create_op_desc_("sum", {"X": [old_name, new_name]},
+                                  {"Out": [old_name]}, {"use_mkldnn": False})
+        op_descs.insert(idx + 1, sum_op)
+
+    return op_descs
+
+
 def _append_backward_ops_(block,
                           ops,
                           target_block,
@@ -371,7 +426,16 @@ def _append_backward_ops_(block,
         grad_op_descs.extend(grad_op_desc)
         grad_to_var.update(op_grad_to_var)
 
-    grad_op_descs = _addup_repetitive_outputs_(grad_op_descs)
+    mem_friendly_backward = os.environ.get(
+        "FLAGS_MEMOPT_FRIENDLY_BACKWARD",
+        "0").lower() in ['1', 'y', 'yes', 't', 'true']
+
+    if mem_friendly_backward:
+        addup_repetitive_outputs = _addup_repetitive_outputs_
+    else:
+        addup_repetitive_outputs = _addup_repetitive_outputs_mem_friendly_
+
+    grad_op_descs = addup_repetitive_outputs(grad_op_descs)
 
     grad_op_descs = _remove_no_grad_branch_(grad_op_descs,
                                             no_grad_dict[block.idx])
