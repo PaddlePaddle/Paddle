@@ -421,7 +421,7 @@
 
 
 #### 选择如何安装PaddlePaddle
-在Windows系统下请使用我们为您提供的[一键安装包](http://paddle-windows.bj.bcebos.com/PaddlePaddle-windows.zip)进行安装
+在Windows系统下请使用我们为您提供的[一键安装包](http://paddle-windows-0150.bj.bcebos.com/PaddlePaddle-windows-0.15.0.zip)进行安装
 	
 > 我们提供的一键安装包将基于Docker为您进行便捷的安装流程
 
