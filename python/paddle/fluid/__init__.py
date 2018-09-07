@@ -133,6 +133,10 @@ def __bootstrap__():
         read_env_flags += [
             'fraction_of_gpu_memory_to_use', 'cudnn_deterministic'
         ]
+
+    if core.is_compiled_with_brpc():
+        read_env_flags += ['brpc_channel_num_per_server']
+
     core.init_gflags([sys.argv[0]] +
                      ["--tryfromenv=" + ",".join(read_env_flags)])
     core.init_glog(sys.argv[0])

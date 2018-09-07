@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-DEFINE_int32(brpc_channel_num, 24,
+DEFINE_int32(brpc_channel_num_per_server, 12,
              "Number of channels to send requests connected to one server");
 DEFINE_int32(timeout_ms, 30000, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
@@ -283,13 +283,10 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
 
-#ifdef PADDLE_WITH_BRPC_RDMA
-  FLAGS_brpc_channel_num = 4;
-#endif
+  LOG(Info) << "create " << FLAGS_brpc_channel_num_per_server
+            << " brpc channels to pserver:" << ep;
 
-  VLOG(3) << "create " << FLAGS_brpc_channel_num
-          << " brpc channels to pserver:" << ep;
-  for (int i = 0; i < FLAGS_brpc_channel_num; ++i) {
+  for (int i = 0; i < FLAGS_brpc_channel_num_per_server; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());
     if (c->channel.Init(ep.c_str(), &options) != 0) {
       LOG(FATAL) << "Fail to initialize channel";
