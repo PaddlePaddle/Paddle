@@ -43,8 +43,9 @@ class ParallelExecutor(object):
         num_trainers(int): If greater than 1, NCCL will be initialized with
             multiple rank of nodes, each node should have same number of GPUs.
             Distributed training will be enabled then. Default 1.
-        trainer_id(int: Must use together with num_trainers. trainer_id is the
+        trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
+        scope(Scope): scope to run with, default use fluid.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
