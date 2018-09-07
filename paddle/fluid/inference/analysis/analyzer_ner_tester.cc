@@ -13,12 +13,11 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_model, "", "model path");
@@ -112,7 +111,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 const int chinese_ner_result_data[] = {30, 45, 41, 48, 17, 26,
                                        48, 39, 38, 16, 25};
 
-void TestChineseNERPrediction() {
+void TestChineseNERPrediction(bool use_analysis) {
   NativeConfig config;
   config.prog_file = FLAGS_infer_model + "/__model__";
   config.param_file = FLAGS_infer_model + "/param";
@@ -120,11 +119,23 @@ void TestChineseNERPrediction() {
   config.device = 0;
   config.specify_input_name = true;
 
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  std::vector<PaddleTensor> input_slots;
-  std::vector<PaddleTensor> outputs;
+  std::vector<PaddleTensor> input_slots, outputs;
+  std::unique_ptr<PaddlePredictor> predictor;
   Timer timer;
+  if (use_analysis) {
+    AnalysisConfig cfg;
+    cfg.prog_file = FLAGS_infer_model + "/__model__";
+    cfg.param_file = FLAGS_infer_model + "/param";
+    cfg.use_gpu = false;
+    cfg.device = 0;
+    cfg.specify_input_name = true;
+    cfg.enable_ir_optim = true;
+    predictor =
+        CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
+  } else {
+    predictor =
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  }
 
   if (FLAGS_test_all_data) {
     LOG(INFO) << "test all data";
@@ -165,10 +176,51 @@ void TestChineseNERPrediction() {
   for (size_t i = 0; i < std::min(11UL, size); i++) {
     PADDLE_ENFORCE(result[i], chinese_ner_result_data[i]);
   }
+
+  if (use_analysis) {
+    // run once for comparion as reference
+    auto ref_predictor =
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+    std::vector<PaddleTensor> ref_outputs_slots;
+    ref_predictor->Run(input_slots, &ref_outputs_slots);
+    EXPECT_EQ(ref_outputs_slots.size(), outputs.size());
+    auto &ref_out = ref_outputs_slots[0];
+    size_t ref_size =
+        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
+                        [](int a, int b) { return a * b; });
+    EXPECT_EQ(size, ref_size);
+    int64_t *pdata_ref = static_cast<int64_t *>(ref_out.data.data());
+    for (size_t i = 0; i < size; ++i) {
+      EXPECT_EQ(pdata_ref[i], result[i]);
+    }
+
+    AnalysisPredictor *analysis_predictor =
+        dynamic_cast<AnalysisPredictor *>(predictor.get());
+    auto &fuse_statis = analysis_predictor->analysis_argument()
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
+    for (auto &item : fuse_statis) {
+      LOG(INFO) << "fused " << item.first << " " << item.second;
+    }
+    int num_ops = 0;
+    for (auto &node :
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+      if (node->IsFunction()) {
+        ++num_ops;
+      }
+    }
+    LOG(INFO) << "has num ops: " << num_ops;
+    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+    ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 2);
+    EXPECT_EQ(num_ops, 14);
+  }
 }
 
-// Directly infer with the original model.
-TEST(Analyzer, Chinese_ner) { TestChineseNERPrediction(); }
+TEST(Analyzer_Chinese_ner, native) { TestChineseNERPrediction(false); }
+
+TEST(Analyzer_Chinese_ner, analysis) { TestChineseNERPrediction(true); }
 
 }  // namespace inference
 }  // namespace paddle

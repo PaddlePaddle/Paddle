@@ -15,11 +15,9 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_model, "", "model path for LAC");
@@ -160,7 +158,7 @@ void TestLACPrediction(const std::string &model_path,
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
-  std::vector<PaddleTensor> input_slots, outputs_slots, ref_outputs_slots;
+  std::vector<PaddleTensor> input_slots, outputs_slots;
   DataRecord data(data_file, batch_size);
   GetOneBatch(&input_slots, &data, batch_size);
   std::unique_ptr<PaddlePredictor> predictor;
@@ -217,6 +215,7 @@ void TestLACPrediction(const std::string &model_path,
     // run once for comparion as reference
     auto ref_predictor =
         CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+    std::vector<PaddleTensor> ref_outputs_slots;
     ref_predictor->Run(input_slots, &ref_outputs_slots);
     EXPECT_EQ(ref_outputs_slots.size(), outputs_slots.size());
     auto &ref_out = ref_outputs_slots[0];
@@ -246,9 +245,10 @@ void TestLACPrediction(const std::string &model_path,
     }
     LOG(INFO) << "has num ops: " << num_ops;
     ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    // ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
-    LOG(INFO) << "fc fuse num:" << fuse_statis.at("fc_fuse");
-    // LOG(INFO) << "fc gru fuse num:" << fuse_statis.at("fc_gru_fuse");
+    ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
+    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+    EXPECT_EQ(fuse_statis.at("fc_gru_fuse"), 4);
+    EXPECT_EQ(num_ops, 11);
   }
 }
 

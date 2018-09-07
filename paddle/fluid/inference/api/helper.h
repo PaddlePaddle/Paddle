@@ -124,11 +124,9 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
 
 void PrintTime(int batch_size, int repeat, int num_threads, int tid,
                double latency) {
-  LOG(INFO) << "=====================================";
-  LOG(INFO) << "batch_size: " << batch_size << ", repeat: " << repeat
+  LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
-            << ", latency: " << latency << "ms";
-  LOG(INFO) << "=====================================";
+            << ", latency: " << latency << "ms ======";
 }
 
 }  // namespace inference
