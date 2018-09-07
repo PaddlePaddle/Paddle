@@ -137,5 +137,7 @@ if __name__ == '__main__':
         for parallel in (False, True):
             if use_cuda and not core.is_compiled_with_cuda():
                 continue
+            # TODO(minqiyang): remove this line after fixing the deletion
+            # order problem of Scope in ParallelExecutor in manylinux
             if six.PY2:
                 main(use_cuda=use_cuda, parallel=parallel)
