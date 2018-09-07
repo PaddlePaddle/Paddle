@@ -193,7 +193,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             # NOTE: use an empty scope to avoid test exe using NCCLID
             test_scope = fluid.Scope()
         test_exe = fluid.ParallelExecutor(
-            True, main_program=test_prog, share_vars_from=exe, scope=test_scope)
+            True, main_program=test_prog, share_vars_from=exe)
 
     for pass_id in range(args.pass_num):
         num_samples = 0
