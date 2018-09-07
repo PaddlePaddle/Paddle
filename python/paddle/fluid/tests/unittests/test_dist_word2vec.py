@@ -21,7 +21,7 @@ class TestDistW2V2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
-    def test_se_resnext(self):
+    def test_dist_train(self):
         self.check_with_place("dist_word2vec.py", delta=1e-4)
 
 
@@ -30,7 +30,7 @@ class TestDistW2V2x2WithMemOpt(TestDistBase):
         self._sync_mode = True
         self._mem_opt = True
 
-    def test_se_resnext(self):
+    def test_dist_train(self):
         self.check_with_place("dist_word2vec.py", delta=1e-4)
 
 
@@ -38,7 +38,7 @@ class TestDistW2V2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
 
-    def test_se_resnext(self):
+    def test_dist_train(self):
         self.check_with_place("dist_word2vec.py", delta=1)
 
 
