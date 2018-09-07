@@ -28,7 +28,7 @@ static void BuildPattern(PDPattern* pattern, const std::string& name_scope,
   auto* fc_out = patterns::FC(pattern, name_scope, x, with_fc_bias);
   fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
   patterns::GRU(pattern, name_scope, fc_out);
-  VLOG(3) << "\n" << pattern->DotString();
+  VLOG(3) << "fc_gru pattern \n" << pattern->DotString();
 }
 
 static int BuildFusion(Graph* graph, const std::string& name_scope,
@@ -51,65 +51,72 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
+
+#define NEW_NAME(x) name_scope + "/at." #x ".new"
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__##_n->Name()});
     SET_IN(X, x);
     SET_IN(WeightX, weight_x);
     SET_IN(WeightH, weight_h);
-    SET_IN(Bias, bias);
-#undef SET_IN
     if (with_fc_bias) {
-      // Add FC-bias with LSTM-bias and create a new weight
-      PADDLE_ENFORCE(scope);
-      const std::string& new_bias_var = name_scope + "_bias.new";
-      auto* bias_var = scope->Var(new_bias_var);
-      PADDLE_ENFORCE(bias_var);
-      auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
-      auto* gru_bias_var = scope->FindVar(bias_n->Name());
-      PADDLE_ENFORCE(gru_bias_var);
-      const auto& gru_bias_tenosr = gru_bias_var->Get<framework::LoDTensor>();
-      bias_tensor->Resize(gru_bias_tenosr.dims());
-
-      GET_NODE(fc_bias);
-      auto* fc_bias_var = scope->FindVar(fc_bias_n->Name());
-      const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
-      // new bias = fc bias + gru bias
-      auto* data = bias_tensor->mutable_data<float>(platform::CPUPlace());
-      for (int i = 0; i < bias_tensor->numel(); i++) {
-        data[i] =
-            fc_bias_tensor.data<float>()[i] + gru_bias_tenosr.data<float>()[i];
-      }
-      op_desc.SetInput("Bias", {new_bias_var});
+      op_desc.SetInput("Bias", {NEW_NAME(bias) + bias_n->Name()});
+    } else {
+      SET_IN(Bias, bias);
     }
-#undef GET_NODE
-
+#undef SET_IN
     op_desc.SetInput("H0", {});
     op_desc.SetOutput("Hidden", {hidden_n->Name()});
     op_desc.SetAttr("is_reverse", gru_n->Op()->GetAttr("is_reverse"));
     // TODO(TJ): This should be a option for infer
     op_desc.SetAttr("use_seq", true);
 
-    // Create temp variables.
-    // TODO(TJ): clean code
-    scope->Var(name_scope + "/ReorderedH0.new")
-        ->GetMutable<framework::LoDTensor>();
-    scope->Var(name_scope + "/XX.new")->GetMutable<framework::LoDTensor>();
-    scope->Var(name_scope + "/BatchedInput.new")
-        ->GetMutable<framework::LoDTensor>();
-    scope->Var(name_scope + "/BatchedOut.new")
-        ->GetMutable<framework::LoDTensor>();
-    op_desc.SetOutput("ReorderedH0", {name_scope + "/ReorderedH0.new"});
-    op_desc.SetOutput("XX", {name_scope + "/XX.new"});
-    op_desc.SetOutput("BatchedInput", {name_scope + "/BatchedInput.new"});
-    op_desc.SetOutput("BatchedOut", {name_scope + "/BatchedOut.new"});
+#define SET_IMTERMEDIATE_OUT(key) op_desc.SetOutput(#key, {NEW_NAME(key)})
+    SET_IMTERMEDIATE_OUT(ReorderedH0);
+    SET_IMTERMEDIATE_OUT(XX);
+    SET_IMTERMEDIATE_OUT(BatchedInput);
+    SET_IMTERMEDIATE_OUT(BatchedOut);
+#undef SET_IMTERMEDIATE_OUT
 
     auto* op = graph->CreateOpNode(&op_desc);
     PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    // auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+    PADDLE_ENFORCE(scope);
+    if (with_fc_bias) {
+      // Fusion GRU bias = fcbias + grubias
+      auto* fusion_bias_var = scope->Var(NEW_NAME(bias) + bias_n->Name());
+      auto* out_bias_tensor =
+          fusion_bias_var->GetMutable<framework::LoDTensor>();
+      PADDLE_ENFORCE(fusion_bias_var);
+      GET_NODE(fc_bias);
+      PADDLE_ENFORCE(fc_bias_n);
+      auto* gru_bias_var = scope->FindVar(bias_n->Name());
+      auto* fc_bias_var = scope->FindVar(fc_bias_n->Name());
+      PADDLE_ENFORCE(gru_bias_var);
+      PADDLE_ENFORCE(fc_bias_var);
+      const auto& gru_bias_tenosr = gru_bias_var->Get<framework::LoDTensor>();
+      const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
+      // new bias = fc bias + gru bias
+      out_bias_tensor->Resize(gru_bias_tenosr.dims());
+      auto* data = out_bias_tensor->mutable_data<float>(platform::CPUPlace());
+      for (int i = 0; i < out_bias_tensor->numel(); i++) {
+        data[i] =
+            fc_bias_tensor.data<float>()[i] + gru_bias_tenosr.data<float>()[i];
+      }
+    }
+#undef GET_NODE
+
+#define NEW_IMTERMEDIATE_OUT(key) \
+  scope->Var(NEW_NAME(key))->GetMutable<framework::LoDTensor>()
+    NEW_IMTERMEDIATE_OUT(ReorderedH0);
+    NEW_IMTERMEDIATE_OUT(XX);
+    NEW_IMTERMEDIATE_OUT(BatchedInput);
+    NEW_IMTERMEDIATE_OUT(BatchedOut);
+#undef NEW_NAME
+#undef NEW_IMTERMEDIATE_OUT
 
     IR_NODE_LINK_TO(x_n, op);
     IR_NODE_LINK_TO(weight_x_n, op);
     IR_NODE_LINK_TO(weight_h_n, op);
-    IR_NODE_LINK_TO(bias_n, op);
+    IR_NODE_LINK_TO(bias_n, op);  // actually should link to new bias if have
     IR_NODE_LINK_TO(op, hidden_n);
     // h0?
     return op;
@@ -127,26 +134,33 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   int name__ __attribute__((unused)) = name__##_n->id();
 
     GET_NODE(x);
-    GET_NODE(w);
+    GET_NODE(w);  // fc weight
     GET_NODE(mul);
     GET_NODE(fc_out);
     GET_NODE(Weight);
     GET_NODE(gru);
     GET_NODE(Bias);
     GET_NODE(Hidden);
+    // nodes need be removed
+    GET_NODE(BatchGate);
+    GET_NODE(BatchResetHiddenPrev);
+    GET_NODE(BatchHidden);
 
     if (with_fc_bias) {
+      GET_NODE(mul_out);
       GET_NODE(fc_bias);
       GET_NODE(elementwise_add);
       gru_creater(gru, x, w, Weight, Bias, Hidden, fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul_n, gru_n, elementwise_add_n});
+          {mul_n, gru_n, elementwise_add_n, fc_bias_n, fc_out_n, mul_out_n,
+           BatchGate_n, BatchResetHiddenPrev_n, BatchHidden_n});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
       gru_creater(gru, x, w, Weight, Bias, Hidden, -1);
       // Remove unneeded nodes.
-      std::unordered_set<const Node*> marked_nodes({mul_n, gru_n});
+      std::unordered_set<const Node*> marked_nodes(
+          {mul_n, gru_n, BatchGate_n, BatchResetHiddenPrev_n, BatchHidden_n});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }
 #undef GET_NODE

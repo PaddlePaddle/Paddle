@@ -171,7 +171,6 @@ void TestLACPrediction(const std::string &model_path,
     cfg.device = 0;
     cfg.specify_input_name = true;
     cfg.enable_ir_optim = true;
-    cfg.ir_passes.push_back("fc_gru_fuse_pass");
     predictor =
         CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
   } else {
