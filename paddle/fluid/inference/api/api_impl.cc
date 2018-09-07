@@ -176,7 +176,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
+               << inputs.size();
     return false;
   }
   for (size_t i = 0; i < inputs.size(); ++i) {
