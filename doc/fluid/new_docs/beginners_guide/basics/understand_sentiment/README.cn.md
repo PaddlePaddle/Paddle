@@ -149,6 +149,8 @@ def convolution_net(data, input_dim, class_dim, emb_dim, hid_dim):
 
 网络的输入`input_dim`表示的是词典的大小，`class_dim`表示类别数。这里，我们使用[`sequence_conv_pool`](https://github.com/PaddlePaddle/Paddle/blob/develop/python/paddle/trainer_config_helpers/networks.py) API实现了卷积和池化操作。
 
+<a name="栈值双向LSTM"></a>
+
 ### 栈式双向LSTM
 
 栈式双向神经网络`stacked_lstm_net`的代码片段如下：
