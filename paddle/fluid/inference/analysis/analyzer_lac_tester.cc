@@ -192,7 +192,7 @@ void TestLACPrediction(const std::string &model_path,
         sum += timer.toc();
       }
     }
-    PrintTime(sum, batch_size, repeat);
+    PrintTime(batch_size, repeat, 1, 0, sum / batch_size);
     return;
   }
   timer.tic();
