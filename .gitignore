@@ -1,0 +1,27 @@
+paddle/operators/check_t.save
+paddle/operators/check_tensor.ls
+paddle/operators/tensor.save
+python/paddle/v2/fluid/tests/book/image_classification_resnet.inference.model/
+python/paddle/v2/fluid/tests/book/image_classification_vgg.inference.model/
+python/paddle/v2/fluid/tests/book/label_semantic_roles.inference.model/
+*.DS_Store
+build/
+build_doc/
+*.user
+
+.vscode
+.idea
+.project
+.cproject
+.pydevproject
+.settings/
+Makefile
+.test_env/
+third_party/
+
+*~
+bazel-*
+third_party/
+
+# clion workspace.
+cmake-build-*

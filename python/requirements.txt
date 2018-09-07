@@ -1,0 +1,11 @@
+requests==2.9.2
+numpy>=1.12
+protobuf==3.1
+recordio>=0.1.0
+matplotlib
+rarfile
+scipy>=0.19.0
+Pillow
+nltk>=3.2.2
+graphviz
+LinkChecker

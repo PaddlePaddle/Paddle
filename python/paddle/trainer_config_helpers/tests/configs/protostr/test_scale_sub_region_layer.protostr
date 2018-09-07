@@ -1,0 +1,51 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 2016
+  active_type: ""
+  height: 48
+  width: 42
+}
+layers {
+  name: "indices"
+  type: "data"
+  size: 6
+  active_type: ""
+}
+layers {
+  name: "__scale_sub_region_0__"
+  type: "scale_sub_region"
+  size: 2016
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    scale_sub_region_conf {
+      image_conf {
+        channels: 1
+        img_size: 42
+        img_size_y: 48
+      }
+      value: 0.0
+    }
+  }
+  inputs {
+    input_layer_name: "indices"
+  }
+  height: 48
+  width: 42
+}
+input_layer_names: "data"
+input_layer_names: "indices"
+output_layer_names: "__scale_sub_region_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "indices"
+  layer_names: "__scale_sub_region_0__"
+  input_layer_names: "data"
+  input_layer_names: "indices"
+  output_layer_names: "__scale_sub_region_0__"
+  is_recurrent_layer_group: false
+}
+

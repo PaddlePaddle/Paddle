@@ -1,0 +1,51 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 120
+  active_type: ""
+}
+layers {
+  name: "__gru_0__"
+  type: "gated_recurrent"
+  size: 40
+  active_type: "sigmoid"
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "___gru_0__.w0"
+  }
+  bias_parameter_name: "___gru_0__.wbias"
+  reversed: true
+  active_gate_type: "tanh"
+}
+parameters {
+  name: "___gru_0__.w0"
+  size: 4800
+  initial_mean: 0.0
+  initial_std: 0.158113883008
+  dims: 40
+  dims: 120
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___gru_0__.wbias"
+  size: 120
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 120
+  initial_strategy: 0
+  initial_smart: false
+}
+input_layer_names: "data"
+output_layer_names: "__gru_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__gru_0__"
+  input_layer_names: "data"
+  output_layer_names: "__gru_0__"
+  is_recurrent_layer_group: false
+}
+

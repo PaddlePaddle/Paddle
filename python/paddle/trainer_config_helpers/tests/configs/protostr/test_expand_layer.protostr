@@ -1,0 +1,56 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 30
+  active_type: ""
+}
+layers {
+  name: "data_seq"
+  type: "data"
+  size: 30
+  active_type: ""
+}
+layers {
+  name: "__expand_layer_0__"
+  type: "expand"
+  size: 30
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+  }
+  inputs {
+    input_layer_name: "data_seq"
+  }
+  trans_type: "seq"
+}
+layers {
+  name: "__expand_layer_1__"
+  type: "expand"
+  size: 30
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+  }
+  inputs {
+    input_layer_name: "data_seq"
+  }
+  trans_type: "non-seq"
+}
+input_layer_names: "data"
+input_layer_names: "data_seq"
+output_layer_names: "__expand_layer_0__"
+output_layer_names: "__expand_layer_1__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "data_seq"
+  layer_names: "__expand_layer_0__"
+  layer_names: "__expand_layer_1__"
+  input_layer_names: "data"
+  input_layer_names: "data_seq"
+  output_layer_names: "__expand_layer_0__"
+  output_layer_names: "__expand_layer_1__"
+  is_recurrent_layer_group: false
+}
+

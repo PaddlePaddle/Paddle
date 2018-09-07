@@ -1,0 +1,23 @@
+{# layout.html #}
+{# Import the theme's layout. #}
+{% extends "!layout.html" %}
+
+{# SIDE NAV, TOGGLES ON MOBILE #}		
+{% block menu %}
+<nav class="doc-menu-vertical" role="navigation">
+{% set toctree = toctree(maxdepth=-1, collapse=False,titles_only=True, includehidden=True) %}
+{{ toctree }}
+</nav>
+{% endblock %}
+
+{%- block extrahead %} 
+<script>
+var _hmt = _hmt || [];
+(function() {
+  var hm = document.createElement("script");
+  hm.src = "//hm.baidu.com/hm.js?b9a314ab40d04d805655aab1deee08ba";
+  var s = document.getElementsByTagName("script")[0]; 
+  s.parentNode.insertBefore(hm, s);
+})();
+</script>
+{% endblock %}

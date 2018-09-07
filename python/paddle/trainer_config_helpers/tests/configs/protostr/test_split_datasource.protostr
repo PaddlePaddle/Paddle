@@ -1,0 +1,72 @@
+model_config {
+  type: "nn"
+  layers {
+    name: "a"
+    type: "data"
+    size: 10
+    active_type: ""
+  }
+  input_layer_names: "a"
+  output_layer_names: "a"
+  sub_models {
+    name: "root"
+    layer_names: "a"
+    input_layer_names: "a"
+    output_layer_names: "a"
+    is_recurrent_layer_group: false
+  }
+}
+data_config {
+  type: "py2"
+  files: "train.list"
+  async_load_data: false
+  for_test: false
+  load_data_module: "a"
+  load_data_object: "c"
+  load_data_args: ""
+  data_ratio: 1
+  is_main_data: true
+  usage_ratio: 1.0
+}
+opt_config {
+  batch_size: 1000
+  algorithm: "sgd"
+  learning_rate: 0.001
+  learning_rate_decay_a: 0.0
+  learning_rate_decay_b: 0.0
+  l1weight: 0.1
+  l2weight: 0.0
+  c1: 0.0001
+  backoff: 0.5
+  owlqn_steps: 10
+  max_backoff: 5
+  l2weight_zero_iter: 0
+  average_window: 0
+  learning_method: "momentum"
+  ada_epsilon: 1e-06
+  do_average_in_cpu: false
+  ada_rou: 0.95
+  learning_rate_schedule: "poly"
+  delta_add_rate: 1.0
+  shrink_parameter_value: 0
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_epsilon: 1e-08
+  learning_rate_args: ""
+  async_lagged_grad_discard_ratio: 1.5
+}
+test_data_config {
+  type: "py2"
+  files: "test.list"
+  async_load_data: false
+  for_test: true
+  load_data_module: "b"
+  load_data_object: "d"
+  load_data_args: ""
+  data_ratio: 1
+  is_main_data: true
+  usage_ratio: 1.0
+}
+save_dir: "./output/model"
+start_pass: 0
+

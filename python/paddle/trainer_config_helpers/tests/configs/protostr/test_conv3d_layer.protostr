@@ -1,0 +1,132 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 36288
+  active_type: ""
+  height: 48
+  width: 42
+  depth: 6
+}
+layers {
+  name: "conv3d_1"
+  type: "conv3d"
+  size: 24192
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "_conv3d_1.w0"
+    conv_conf {
+      filter_size: 3
+      channels: 3
+      stride: 2
+      padding: 1
+      groups: 1
+      filter_channels: 3
+      output_x: 21
+      img_size: 42
+      caffe_mode: true
+      filter_size_y: 3
+      padding_y: 1
+      stride_y: 2
+      output_y: 24
+      img_size_y: 48
+      filter_size_z: 3
+      padding_z: 1
+      stride_z: 2
+      output_z: 3
+      img_size_z: 6
+    }
+  }
+  bias_parameter_name: "_conv3d_1.wbias"
+  num_filters: 16
+  shared_biases: true
+  height: 24
+  width: 21
+  depth: 3
+}
+layers {
+  name: "conv3d_2"
+  type: "conv3d"
+  size: 24192
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "_conv3d_2.w0"
+    conv_conf {
+      filter_size: 3
+      channels: 3
+      stride: 2
+      padding: 1
+      groups: 1
+      filter_channels: 3
+      output_x: 21
+      img_size: 42
+      caffe_mode: true
+      filter_size_y: 3
+      padding_y: 1
+      stride_y: 2
+      output_y: 24
+      img_size_y: 48
+      filter_size_z: 3
+      padding_z: 1
+      stride_z: 2
+      output_z: 3
+      img_size_z: 6
+    }
+  }
+  bias_parameter_name: "_conv3d_2.wbias"
+  num_filters: 16
+  shared_biases: true
+  height: 24
+  width: 21
+  depth: 3
+}
+parameters {
+  name: "_conv3d_1.w0"
+  size: 1296
+  initial_mean: 0.0
+  initial_std: 0.272165526976
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_conv3d_1.wbias"
+  size: 16
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 16
+  dims: 1
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_conv3d_2.w0"
+  size: 1296
+  initial_mean: 0.0
+  initial_std: 0.272165526976
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_conv3d_2.wbias"
+  size: 16
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 16
+  dims: 1
+  initial_strategy: 0
+  initial_smart: false
+}
+input_layer_names: "data"
+output_layer_names: "conv3d_2"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "conv3d_1"
+  layer_names: "conv3d_2"
+  input_layer_names: "data"
+  output_layer_names: "conv3d_2"
+  is_recurrent_layer_group: false
+}
+
