@@ -283,7 +283,6 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
 
   base_predictor->Run(input_slots, &base_outputs);
 
-  LOG(INFO) << "===========profile result===========";
   if (num_threads == 1) {
     // Prepare inputs.
     Timer timer;
@@ -324,7 +323,6 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
       threads[i].join();
     }
   }
-  LOG(INFO) << "=====================================";
 
   if (use_analysis && activate_ir) {
     AnalysisPredictor *analysis_predictor =

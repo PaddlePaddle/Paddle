@@ -81,7 +81,7 @@ if (NOT EXISTS ${CHINESE_NER_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
 endif()
 
 inference_analysis_test(test_analyzer_ner SRCS analyzer_ner_tester.cc
-    EXTRA_DEPS paddle_inference_api paddle_fluid_api
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
     ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model
         --infer_data=${CHINESE_NER_INSTALL_DIR}/data.txt)
 
