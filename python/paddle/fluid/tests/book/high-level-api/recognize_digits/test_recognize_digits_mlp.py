@@ -90,7 +90,11 @@ def train(use_cuda, train_program, params_dirname, parallel):
         reader=train_reader,
         feed_order=['img', 'label'])
 
-    return trainer
+    def _del_trainer(trainer):
+        del trainer
+
+    if six.PY3:
+        _del_trainer(trainer)
 
 
 def infer(use_cuda, inference_program, parallel, params_dirname=None):
@@ -116,14 +120,11 @@ def main(use_cuda, parallel):
 
     # call train() with is_local argument to run distributed train
     os.environ['CPU_NUM'] = str(4)
-    trainer = train(
+    train(
         use_cuda=use_cuda,
         train_program=train_program,
         params_dirname=params_dirname,
         parallel=parallel)
-
-    if six.PY3:
-        del trainer
 
     # FIXME(zcd): in the inference stage, the number of
     # input data is one, it is not appropriate to use parallel.
