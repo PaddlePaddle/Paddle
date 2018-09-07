@@ -31,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/distributed/brpc_sendrecvop_utils.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_client.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
@@ -75,20 +76,14 @@ class BRPCClient : public RPCClient {
   void AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
-  virtual void AsyncCheckpointNotify(const std::string& ep,
-                                     const std::string& dir,
-                                     int64_t time_out = FLAGS_rpc_deadline) {
-    // FIXME(gongwb): implement it!
-    assert(false);
-  }
+  void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
+                             int64_t time_out = FLAGS_rpc_deadline) override;
 
   bool Wait() override;
 
-  void SendComplete() override{
-      assert(false);
-  }
+  void SendComplete() override { assert(false); }
 
-private:
+ private:
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);
 
@@ -97,6 +92,10 @@ private:
 
   void AsyncSendMessage(const std::string& ep, const std::string& message,
                         int64_t time_out);
+
+  void AsyncSendVarMessage(const std::string& ep,
+                           const sendrecv::VariableMessage& req,
+                           int64_t time_out);
 
   friend void HandleSendResponse(brpc::Controller* cntl,
                                  sendrecv::VoidMessage* response,

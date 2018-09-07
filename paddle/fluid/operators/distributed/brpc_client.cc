@@ -310,9 +310,9 @@ void BRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
   AsyncSendMessage(ep, COMPLETE_MESSAGE, time_out);
 }
 
-void BRPCClient::AsyncSendMessage(const std::string& ep,
-                                  const std::string& message,
-                                  int64_t time_out) {
+void BRPCClient::AsyncSendVarMessage(const std::string& ep,
+                                     const sendrecv::VariableMessage& req,
+                                     int64_t time_out) {
   auto ch_ptr = GetChannel(ep);
   auto ch_ctx = ch_ptr->Pop();
 
@@ -320,18 +320,34 @@ void BRPCClient::AsyncSendMessage(const std::string& ep,
   sendrecv::VoidMessage* response = new sendrecv::VoidMessage();
   cntl->set_timeout_ms(time_out);
 
-  sendrecv::VariableMessage req;
-  req.set_varname(message);
-
   // varhandle
   VarHandle var_h;
-  var_h.name = message;
+  var_h.name = req.varname();
 
   google::protobuf::Closure* done = brpc::NewCallback(
       &HandleSendResponse, cntl, response, var_h, ch_ptr, ch_ctx, this);
 
   ch_ctx->stub->SendVariable(cntl, &req, response, done);
   req_count_++;
+}
+
+void BRPCClient::AsyncSendMessage(const std::string& ep,
+                                  const std::string& message,
+                                  int64_t time_out) {
+  sendrecv::VariableMessage req;
+  req.set_varname(message);
+
+  AsyncSendVarMessage(ep, req, time_out);
+}
+
+void BRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                       const std::string& dir,
+                                       int64_t time_out) {
+  sendrecv::VariableMessage req;
+  req.set_varname(CHECKPOINT_SAVE_MESSAGE);
+  req.set_out_varname(dir);
+
+  AsyncSendVarMessage(ep, req, time_out);
 }
 
 }  // namespace distributed
