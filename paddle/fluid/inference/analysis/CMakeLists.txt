@@ -35,7 +35,7 @@ function (inference_analysis_test TARGET)
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
                 DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS}
-                ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt} ${analysis_test_ARGS})
+                ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt} ${analysis_test_ARGS} ${GLOB_DISTRIBUTE_DEPS})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
 endfunction(inference_analysis_test)

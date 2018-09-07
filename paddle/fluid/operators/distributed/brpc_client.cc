@@ -283,8 +283,8 @@ ChannelQueuePtr BRPCClient::GetChannel(const std::string& ep) {
   options.timeout_ms = FLAGS_timeout_ms /*milliseconds*/;
   options.max_retry = FLAGS_max_retry;
 
-  LOG(Info) << "create " << FLAGS_brpc_channel_num_per_server
-            << " brpc channels to pserver:" << ep;
+  VLOG(1) << "create " << FLAGS_brpc_channel_num_per_server
+          << " brpc channels to pserver:" << ep;
 
   for (int i = 0; i < FLAGS_brpc_channel_num_per_server; ++i) {
     std::shared_ptr<ChannelContext> c(new ChannelContext());

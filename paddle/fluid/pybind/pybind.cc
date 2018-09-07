@@ -70,7 +70,7 @@ bool IsCompiledWithCUDA() {
 }
 
 bool IsCompiledWithBrpc() {
-#ifdef PADDLE_WITH_BRPC || PADDLE_WITH_BRPC_RDMA
+#if defined(PADDLE_WITH_BRPC) || defined(PADDLE_WITH_BRPC_RDMA)
   return true;
 #else
   return false;
