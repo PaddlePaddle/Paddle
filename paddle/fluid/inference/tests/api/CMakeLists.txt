@@ -85,3 +85,7 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
    endif()
 endif()
+
+# ResNet50
+set(RESNET50_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
+inference_analysis_api_test(test_analyzer_resnet50 ${RESNET50_INSTALL_DIR} analyzer_resnet50_tester.cc)
