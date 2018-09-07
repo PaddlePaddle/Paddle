@@ -504,9 +504,9 @@ class DistributeTranspiler(object):
         # NOTE: assume blocks of the same variable is not distributed
         # on the same pserver, only change param/grad varnames for
         # trainers to fetch.
-        sys.stderr.write("get_pserver_program() is deprecated, call\
-            get_pserver_programs() to get pserver main and startup\
-            in a single call.")
+        sys.stderr.write("get_pserver_program() is deprecated, call \
+get_pserver_programs() to get pserver main and startup \
+in a single call.")
         # step1
         pserver_program = Program()
         pserver_program.random_seed = self.origin_program.random_seed
@@ -623,13 +623,15 @@ class DistributeTranspiler(object):
         for idx, opt_op in enumerate(opt_op_on_pserver):
             per_opt_block = pserver_program.create_block(pre_block_idx)
             optimize_blocks.append(per_opt_block)
+            optimize_target_param_name = opt_op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
             # append grad merging ops before clip and weight decay
             # e.g. merge grad -> L2Decay op -> clip op -> optimize
             merged_var = None
             for _, op in enumerate(self.optimize_ops):
                 # find the origin @GRAD var before clipping/L2Decay
                 grad_varname_for_block = __op_have_grad_input__(op)
-                if ufind.is_connected(op, opt_op) and grad_varname_for_block:
+                if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
+                    grad_varname_for_block:
                     merged_var = self._append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, endpoint,
                         grad_to_block_id, self.origin_program)
@@ -638,7 +640,8 @@ class DistributeTranspiler(object):
             if merged_var:
                 for _, op in enumerate(self.optimize_ops):
                     # optimizer is connected to itself
-                    if ufind.is_connected(op, opt_op) and op not in global_ops:
+                    if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
+                        op not in global_ops:
                         log("append opt op: ", op.type, op.input_arg_names,
                             merged_var)
                         __append_optimize_op__(op, per_opt_block,
@@ -739,17 +742,17 @@ class DistributeTranspiler(object):
         Returns:
             Program: parameter server side startup program.
         """
-        sys.stderr.write("get_startup_program() is deprecated, call\
-            get_pserver_programs() to get pserver main and startup\
-            in a single call.")
+        sys.stderr.write("get_startup_program() is deprecated, call \
+get_pserver_programs() to get pserver main and startup \
+in a single call.")
         if pserver_program != None:
-            sys.stderr.write("passing pserver_program to get_startup_program()\
-                is deprecated, you can use new API get_pserver_programs() to\
-                get both pserver main program and startup program.")
+            sys.stderr.write("passing pserver_program to get_startup_program() \
+is deprecated, you can use new API get_pserver_programs() to \
+get both pserver main program and startup program.")
         if startup_program != None:
-            sys.stderr.write("passing startup_program to get_startup_program()\
-                is deprecated, use fluid.program_guard() or pass this argument\
-                to transpile() call.")
+            sys.stderr.write("passing startup_program to get_startup_program() \
+is deprecated, use fluid.program_guard() or pass this argument \
+to transpile() call.")
 
         s_prog = Program()
         orig_s_prog = self.startup_program
@@ -1637,6 +1640,7 @@ class DistributeTranspiler(object):
             if int(op.attr(RPC_OP_ROLE_ATTR_NAME)) == int(
                     LR_SCHED_OP_ROLE_ATTR_VALUE):
                 lr_ops.append(op)
+                log("append lr op: ", op.type)
         return lr_ops
 
     def _get_lr_ops_deprecated(self):
