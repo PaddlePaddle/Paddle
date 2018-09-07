@@ -12,28 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
-#include <vector>
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/analysis_predictor.h"
+#include "paddle/fluid/inference/analysis/mkldnn_analyzer.h"
 
 namespace paddle {
 
 using inference::analysis::Argument;
-using inference::analysis::Analyzer;
+using inference::analysis::MKLDNNAnalyzer;
 using framework::proto::ProgramDesc;
 
-/* This predictor is based on the original native predictor with IR and Analysis
- * support. It will optimize IR and Parameters in the runtime.
- * TODO(Superjomn) Replace the Navive predictor?
+/* This predictor is based on the AnalysisPredictor and lets one add and keep
+ * order of passes to execute depending on whether MKL-DNN is used or not.
  */
-class AnalysisPredictor : public NativePaddlePredictor {
+class MKLDNNAnalysisPredictor : public AnalysisPredictor {
  public:
-  explicit AnalysisPredictor(const AnalysisConfig& config)
-      : NativePaddlePredictor(config), config_(config) {}
+  explicit MKLDNNAnalysisPredictor(const MKLDNNAnalysisConfig& config)
+      : AnalysisPredictor(config), config_(config) {}
 
-  virtual bool Init(const std::shared_ptr<framework::Scope>& parent_scope);
+  bool Init(const std::shared_ptr<framework::Scope>& parent_scope) override;
 
   bool Run(const std::vector<PaddleTensor>& inputs,
            std::vector<PaddleTensor>* output_data,
@@ -41,13 +37,10 @@ class AnalysisPredictor : public NativePaddlePredictor {
     return NativePaddlePredictor::Run(inputs, output_data, batch_size);
   }
 
-  virtual void OptimizeInferenceProgram();
-
-  Argument& analysis_argument() { return argument_; }
+  void OptimizeInferenceProgram() override;
 
  private:
-  AnalysisConfig config_;
-  Argument argument_;
+  MKLDNNAnalysisConfig config_;
 };
 
 }  // namespace paddle

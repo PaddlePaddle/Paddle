@@ -45,6 +45,9 @@ endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor)
 cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis)
+if (WITH_MKLDNN)
+	cc_library(mkldnn_analysis_predictor SRCS mkldnn_analysis_predictor.cc DEPS analysis_predictor)
+endif()
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)

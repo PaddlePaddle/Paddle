@@ -55,3 +55,9 @@ inference_analysis_test(test_analyzer_text_classification SRCS analyzer_text_cla
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta
          --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt)
+
+# ResNet50
+set(RESNET50_MODEL "${THIRD_PARTY_PATH}/inference_demo/resnet50/resnet50-model")
+inference_analysis_test(test_resnet50 SRCS analyzer_resnet50_tester.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api mkldnn_analysis_predictor
+    ARGS --infer_model=${RESNET50_MODEL})

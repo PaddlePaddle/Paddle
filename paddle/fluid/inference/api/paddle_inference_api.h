@@ -165,6 +165,21 @@ struct AnalysisConfig : public NativeConfig {
   std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
 };
 
+struct MKLDNNAnalysisConfig : public AnalysisConfig {
+  // Define passes to be execute in a given order, depending also on MKLDNN
+  // enablement.
+  // Add passes to be executed, do not exclude.
+  IrPassMode ir_mode{IrPassMode::kInclude};
+  // the 'infer_clean_graph_pass' always has to be executed first
+  // passes to be executed without MKL-DNN
+  std::vector<std::string> ir_passes {"infer_clean_graph_pass"};
+  // passes to be executed with MKL-DNN
+  std::vector<std::string> ir_mkldnn_passes {"infer_clean_graph_pass"};
+  // state of the FLAGS_use_mkldnn flag; to be used for passes ordering
+  // TODO: add ordering passes depending on the use_mkldnn flag
+  bool use_mkldnn {false};
+};
+
 // A factory to help create different predictors.
 //
 // FOR EXTENSION DEVELOPER:
