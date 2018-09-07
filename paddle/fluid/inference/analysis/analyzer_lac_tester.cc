@@ -118,13 +118,6 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_slots->assign({input_tensor});
 }
 
-static void PrintTime(const double latency, const int bs, const int repeat) {
-  LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << bs << ", repeat: " << repeat
-            << ", avg latency: " << latency / repeat << "ms";
-  LOG(INFO) << "=====================================";
-}
-
 void BenchAllData(const std::string &model_path, const std::string &data_file,
                   const int batch_size, const int repeat) {
   NativeConfig config;
@@ -150,7 +143,7 @@ void BenchAllData(const std::string &model_path, const std::string &data_file,
       sum += timer.toc();
     }
   }
-  PrintTime(sum, batch_size, repeat);
+  PrintTime(batch_size, repeat, 1, 0, sum / repeat);
 }
 
 const int64_t lac_ref_data[] = {24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25,
@@ -206,7 +199,7 @@ void TestLACPrediction(const std::string &model_path,
   for (int i = 0; i < repeat; i++) {
     predictor->Run(input_slots, &outputs_slots);
   }
-  PrintTime(timer.toc(), batch_size, repeat);
+  PrintTime(batch_size, repeat, 1, 0, timer.toc() / repeat);
 
   // check result
   EXPECT_EQ(outputs_slots.size(), 1UL);
