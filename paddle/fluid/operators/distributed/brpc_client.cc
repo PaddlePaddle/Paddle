@@ -20,7 +20,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-DEFINE_int32(brpc_channel_num_per_server, 12,
+DEFINE_int32(brpc_channel_num_per_server, 24,
              "Number of channels to send requests connected to one server");
 DEFINE_int32(timeout_ms, 30000, "RPC timeout in milliseconds");
 DEFINE_int32(max_retry, 3, "Max retries(not including the first RPC)");
