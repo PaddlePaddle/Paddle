@@ -287,17 +287,31 @@ class TestRpnTargetAssign(unittest.TestCase):
                 shape=anchor_shape,
                 append_batch_size=False,
                 dtype='float32')
-            gt_box = layers.data(
-                name='gt_box', shape=[4], lod_level=1, dtype='float32')
-
+            gt_boxes = layers.data(
+                name='gt_boxes', shape=[4], lod_level=1, dtype='float32')
+            is_crowd = layers.data(
+                name='is_crowd',
+                shape=[10],
+                dtype='bool',
+                lod_level=1,
+                append_batch_size=False)
+            im_info = layers.data(
+                name='im_info',
+                shape=[1, 3],
+                dtype='float32',
+                lod_level=1,
+                append_batch_size=False)
             pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
                 loc=loc,
                 scores=scores,
                 anchor_box=anchor_box,
                 anchor_var=anchor_var,
-                gt_box=gt_box,
+                gt_boxes=gt_boxes,
+                is_crowd=is_crowd,
+                im_info=im_info,
                 rpn_batch_size_per_im=256,
-                fg_fraction=0.25,
+                rpn_straddle_thresh=0.0,
+                rpn_fg_fraction=0.5,
                 rpn_positive_overlap=0.7,
                 rpn_negative_overlap=0.3)
 

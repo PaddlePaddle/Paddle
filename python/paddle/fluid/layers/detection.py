@@ -59,9 +59,12 @@ def rpn_target_assign(loc,
                       scores,
                       anchor_box,
                       anchor_var,
-                      gt_box,
+                      gt_boxes,
+                      is_crowd,
+                      im_info,
                       rpn_batch_size_per_im=256,
-                      fg_fraction=0.25,
+                      rpn_straddle_thresh=0.0,
+                      rpn_fg_fraction=0.5,
                       rpn_positive_overlap=0.7,
                       rpn_negative_overlap=0.3):
     """
@@ -99,11 +102,16 @@ def rpn_target_assign(loc,
             coordinate of the anchor box.
         anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
             variances of anchors.
-        gt_box (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
             LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
             bboxes of mini-batch input.
+        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+        3 is the height, width and scale.
         rpn_batch_size_per_im(int): Total number of RPN examples per image.
-        fg_fraction(float): Target fraction of RoI minibatch that is labeled
+        rpn_straddle_thresh(float): Remove RPN anchors that go outside the image
+            by straddle_thresh pixels.
+        rpn_fg_fraction(float): Target fraction of RoI minibatch that is labeled
             foreground (i.e. class > 0), 0-th class is background.
         rpn_positive_overlap(float): Minimum overlap required between an anchor
             and ground-truth box for the (anchor, gt box) pair to be a positive
@@ -145,29 +153,31 @@ def rpn_target_assign(loc,
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
-    # Compute overlaps between the prior boxes and the gt boxes overlaps
-    iou = iou_similarity(x=gt_box, y=anchor_box)
     # Assign target label to anchors
     loc_index = helper.create_tmp_variable(dtype='int32')
     score_index = helper.create_tmp_variable(dtype='int32')
-    target_label = helper.create_tmp_variable(dtype='int64')
+    target_label = helper.create_tmp_variable(dtype='int32')
     target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
     helper.append_op(
         type="rpn_target_assign",
-        inputs={'Anchor': anchor_box,
-                'GtBox': gt_box,
-                'DistMat': iou},
+        inputs={
+            'Anchor': anchor_box,
+            'GtBoxes': gt_boxes,
+            'IsCrowd': is_crowd,
+            'ImInfo': im_info
+        },
         outputs={
             'LocationIndex': loc_index,
             'ScoreIndex': score_index,
             'TargetLabel': target_label,
-            'TargetBBox': target_bbox,
+            'TargetBBox': target_bbox
         },
         attrs={
             'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_straddle_thresh': rpn_straddle_thresh,
             'rpn_positive_overlap': rpn_positive_overlap,
             'rpn_negative_overlap': rpn_negative_overlap,
-            'fg_fraction': fg_fraction
+            'rpn_fg_fraction': rpn_fg_fraction
         })
 
     loc_index.stop_gradient = True

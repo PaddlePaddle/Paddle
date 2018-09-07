@@ -60,6 +60,7 @@ def rpn_target_assign(anchor_by_gt_overlap,
     else:
         enable_inds = bg_inds[:num_bg]
     labels[enable_inds] = 0
+    fg_inds = np.where(labels == 1)[0]
     bg_inds = np.where(labels == 0)[0]
 
     loc_index = fg_inds
@@ -158,7 +159,11 @@ class TestRpnTargetAssignOp(OpTest):
         anchor_num = all_anchors.shape[0]
 
         images_shape = [[64, 64], [64, 64]]
+        #images_shape = [[64, 64]]
         groundtruth, lod = _generate_groundtruth(images_shape, 3, 4)
+        lod = [0, 4, 8]
+        #lod = [0, 4]
+
         im_info = np.ones((len(images_shape), 3)).astype(np.float32)
         for i in range(len(images_shape)):
             im_info[i, 0] = images_shape[i][0]
@@ -169,7 +174,6 @@ class TestRpnTargetAssignOp(OpTest):
 
         all_anchors = all_anchors.astype('float32')
         gt_boxes = gt_boxes.astype('float32')
-        lod = [0, 4, 8]
 
         rpn_straddle_thresh = 0.0
         rpn_batch_size_per_im = 256

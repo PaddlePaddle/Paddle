@@ -289,7 +289,7 @@ def _generate_proposals(images_shape, proposal_nums):
     for i, image_shape in enumerate(images_shape):
         proposals = _generate_boxes(image_shape, proposal_nums)
         rpn_rois.append(proposals)
-        num_proposals += len(proposals)
+        num_proposals = len(proposals)
         rpn_rois_lod.append(num_proposals)
     return rpn_rois, [rpn_rois_lod]
 

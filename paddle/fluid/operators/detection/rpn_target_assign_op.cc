@@ -26,35 +26,6 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 
-void PrintTensor(Tensor t) {
-  auto et = framework::EigenTensor<float, 2>::From(t);
-  int r = t.dims()[0];
-  int c = t.dims()[1];
-  for (int i = 0; i < r; ++i) {
-    for (int j = 0; j < c; ++j) {
-      std::cout << et(i, j) << ", ";
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-void PrintVector(Tensor v) {
-  auto et = framework::EigenTensor<int, 1>::From(v);
-  int r = v.dims()[0];
-  for (int i = 0; i < r; ++i) {
-    std::cout << et(i) << ", ";
-  }
-  std::cout << std::endl;
-  std::cout << std::endl;
-}
-
-void PrintInt(int f) {
-  std::string s = std::to_string(f);
-  std::cout << s << std::endl;
-}
-void PrintChar(char c) { std::cout << c << c << c << std::endl; }
-
 class RpnTargetAssignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
@@ -177,60 +148,90 @@ Tensor FilterCrowdGt(const platform::CPUDeviceContext& context,
   return ncrowd_gt_boxes;
 }
 
+void ReservoirSampling(const int num, std::vector<int>* inds,
+                       std::minstd_rand engine, bool use_random) {
+  std::uniform_real_distribution<float> uniform(0, 1);
+  size_t len = inds->size();
+  if (len > static_cast<size_t>(num)) {
+    if (use_random) {
+      for (size_t i = num; i < len; ++i) {
+        int rng_ind = std::floor(uniform(engine) * i);
+        if (rng_ind < num)
+          std::iter_swap(inds->begin() + rng_ind, inds->begin() + i);
+      }
+    }
+    inds->resize(num);
+  }
+}
+
 template <typename T>
 void ScoreAssign(const T* anchor_by_gt_overlap_data,
                  const Tensor& anchor_to_gt_max, const Tensor& gt_to_anchor_max,
-                 const int anchor_num, const int gt_num,
+                 const int rpn_batch_size_per_im, const float rpn_fg_fraction,
                  const float rpn_positive_overlap,
                  const float rpn_negative_overlap, std::vector<int>* fg_inds,
-                 std::vector<int>* bg_inds, std::vector<int>* tgt_lbl) {
+                 std::vector<int>* bg_inds, std::vector<int>* tgt_lbl,
+                 std::minstd_rand engine, bool use_random) {
   float epsilon = 0.00001;
+  int anchor_num = anchor_to_gt_max.dims()[0];
+  int gt_num = gt_to_anchor_max.dims()[0];
   std::vector<int> target_label(anchor_num, -1);
+  std::vector<int> fg_inds_fake;
+  std::vector<int> bg_inds_fake;
   const T* anchor_to_gt_max_data = anchor_to_gt_max.data<T>();
   const T* gt_to_anchor_max_data = gt_to_anchor_max.data<T>();
   // TODO(buxingyuan): Match with Detectron now
   // but it seems here is a bug in two directions assignment
   // in which the later one may overwrites the former one.
   for (int64_t i = 0; i < anchor_num; ++i) {
+    bool is_anchors_with_max_overlap = false;
     for (int64_t j = 0; j < gt_num; ++j) {
       T value = anchor_by_gt_overlap_data[i * gt_num + j];
       T diff = std::abs(value - gt_to_anchor_max_data[j]);
       if (diff < epsilon) {
-        target_label[i] = 1;
+        is_anchors_with_max_overlap = true;
+        break;
       }
     }
-  }
-
-  // Pick the fg/bg
-  for (int64_t i = 0; i < anchor_num; ++i) {
-    if (anchor_to_gt_max_data[i] >= rpn_positive_overlap) {
+    bool is_anchor_great_than_thresh =
+        (anchor_to_gt_max_data[i] >= rpn_positive_overlap);
+    if (is_anchors_with_max_overlap || is_anchor_great_than_thresh) {
       target_label[i] = 1;
-    } else if (anchor_to_gt_max_data[i] < rpn_negative_overlap) {
-      target_label[i] = 0;
-    }
-    if (target_label[i] == 1) {
-      fg_inds->push_back(i);
-      tgt_lbl->push_back(1);
-    } else if (target_label[i] == 0) {
-      bg_inds->push_back(i);
-      tgt_lbl->push_back(0);
+      fg_inds_fake.push_back(i);
     }
   }
-}
 
-void ReservoirSampling(const int num, std::vector<int>* inds,
-                       std::minstd_rand engine, bool use_random) {
-  std::uniform_real_distribution<float> uniform(0, 1);
-  size_t len = inds->size();
-  if (len > static_cast<size_t>(num) && use_random) {
-    for (size_t i = num; i < len; ++i) {
-      int rng_ind = std::floor(uniform(engine) * i);
-      if (rng_ind < num)
-        std::iter_swap(inds->begin() + rng_ind, inds->begin() + i);
+  // Reservoir Sampling
+  int fg_num = static_cast<int>(rpn_fg_fraction * rpn_batch_size_per_im);
+  ReservoirSampling(fg_num, &fg_inds_fake, engine, use_random);
+  fg_num = static_cast<int>(fg_inds_fake.size());
+
+  int bg_num = rpn_batch_size_per_im - fg_num;
+  for (int64_t i = 0; i < anchor_num; ++i) {
+    if (anchor_to_gt_max_data[i] < rpn_negative_overlap) {
+      target_label[i] = 0;
+      bg_inds_fake.push_back(i);
     }
-  } else {
-    inds->resize(num);
   }
+  ReservoirSampling(bg_num, &bg_inds_fake, engine, use_random);
+  bg_num = static_cast<int>(bg_inds_fake.size());
+
+  for (int64_t i = 0; i < anchor_num; ++i) {
+    // -1, 0, 1
+    if (target_label[i] == 1) {
+      fg_inds->emplace_back(i);
+    } else {
+      if (target_label[i] == 0) bg_inds->emplace_back(i);
+    }
+  }
+  fg_num = fg_inds->size();
+  bg_num = bg_inds->size();
+
+  tgt_lbl->resize(fg_num + bg_num, 0);
+  std::vector<int> fg_lbl(fg_num, 1);
+  std::vector<int> bg_lbl(bg_num, 0);
+  std::copy(fg_lbl.begin(), fg_lbl.end(), tgt_lbl->data());
+  std::copy(bg_lbl.begin(), bg_lbl.end(), tgt_lbl->data() + fg_num);
 }
 
 template <typename T>
@@ -267,23 +268,20 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
   auto anchor_to_gt_argmax_et =
       framework::EigenVector<int>::Flatten(anchor_to_gt_argmax);
   anchor_to_gt_max_et =
-      anchor_by_gt_overlap_et.maximum(Eigen::DSizes<int, 1>(0));
-  anchor_to_gt_argmax_et =
-      anchor_by_gt_overlap_et.argmax(0).template cast<int>();
-  gt_to_anchor_max_et =
       anchor_by_gt_overlap_et.maximum(Eigen::DSizes<int, 1>(1));
+  anchor_to_gt_argmax_et =
+      anchor_by_gt_overlap_et.argmax(1).template cast<int>();
+  gt_to_anchor_max_et =
+      anchor_by_gt_overlap_et.maximum(Eigen::DSizes<int, 1>(0));
 
   // Follow the Faster RCNN's implementation
   ScoreAssign(anchor_by_gt_overlap_data, anchor_to_gt_max, gt_to_anchor_max,
-              anchor_num, gt_num, rpn_positive_overlap, rpn_negative_overlap,
-              &fg_inds, &bg_inds, &tgt_lbl);
-  // Reservoir Sampling
-  int fg_num = rpn_fg_fraction * rpn_batch_size_per_im;
-  ReservoirSampling(fg_num, &fg_inds, engine, use_random);
-  fg_num = static_cast<int>(fg_inds.size());
-  int bg_num = rpn_batch_size_per_im - fg_num;
-  ReservoirSampling(bg_num, &bg_inds, engine, use_random);
+              rpn_batch_size_per_im, rpn_fg_fraction, rpn_positive_overlap,
+              rpn_negative_overlap, &fg_inds, &bg_inds, &tgt_lbl, engine,
+              use_random);
 
+  int fg_num = fg_inds.size();
+  int bg_num = bg_inds.size();
   gt_inds.reserve(fg_num);
   for (int i = 0; i < fg_num; ++i) {
     gt_inds.emplace_back(argmax[fg_inds[i]]);
@@ -370,19 +368,18 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       auto im_width = im_info_data[1];
       auto im_scale = im_info_data[2];
 
+      // Filter straddle anchor
       std::vector<Tensor> filter_output = FilterStraddleAnchor<T>(
           dev_ctx, anchor, rpn_straddle_thresh, im_height, im_width);
       Tensor inds_inside = filter_output[0];
       Tensor inside_anchor = filter_output[1];
-      PrintChar('A');
-      PrintInt(inds_inside.dims()[0]);
+
+      // Filter crowd gt
       Tensor ncrowd_gt_boxes =
           FilterCrowdGt<T>(dev_ctx, &gt_boxes_slice, &is_crowd_slice);
       auto ncrowd_gt_boxes_et =
           framework::EigenTensor<T, 2>::From(ncrowd_gt_boxes);
       ncrowd_gt_boxes_et = ncrowd_gt_boxes_et * im_scale;
-      PrintChar('B');
-      PrintInt(ncrowd_gt_boxes.dims()[0]);
 
       Tensor anchor_by_gt_overlap;
       anchor_by_gt_overlap.mutable_data<T>(
@@ -398,6 +395,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       Tensor sampled_score_index = loc_score_tgtlbl_gt[1];
       Tensor sampled_tgtlbl = loc_score_tgtlbl_gt[2];
       Tensor sampled_gt_index = loc_score_tgtlbl_gt[3];
+
       int loc_num = sampled_loc_index.dims()[0];
       int score_num = sampled_score_index.dims()[0];
       // unmap to all anchor
@@ -422,29 +420,19 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       BoxToDelta<T>(loc_num, sampled_anchor, sampled_gt, nullptr, false,
                     &sampled_tgt_bbox);
 
-      PrintChar('a');
       AppendRpns<int>(loc_index, total_loc_num, &sampled_loc_index_unmap);
-      PrintChar('b');
       AppendRpns<int>(score_index, total_score_num, &sampled_score_index_unmap);
-      PrintChar('c');
       AppendRpns<T>(tgt_bbox, total_loc_num * 4, &sampled_tgt_bbox);
-      PrintChar('d');
       AppendRpns<int>(tgt_lbl, total_score_num, &sampled_tgtlbl);
       total_loc_num += loc_num;
-      PrintInt(total_loc_num);
+
       total_score_num += score_num;
-      PrintInt(total_score_num);
       lod0_loc.emplace_back(total_loc_num);
       lod0_score.emplace_back(total_score_num);
     }
 
     PADDLE_ENFORCE_LE(total_loc_num, max_num);
     PADDLE_ENFORCE_LE(total_score_num, max_num);
-
-    loc_index->mutable_data<int>({max_num}, place);
-    score_index->mutable_data<int>({max_num}, place);
-    tgt_bbox->mutable_data<T>({max_num, 4}, place);
-    tgt_lbl->mutable_data<T>({max_num}, place);
 
     lod_loc.emplace_back(lod0_loc);
     loc_score.emplace_back(lod0_score);
