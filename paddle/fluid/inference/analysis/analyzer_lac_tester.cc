@@ -182,6 +182,7 @@ void TestLACPrediction(const std::string &model_path,
   Timer timer;
   if (test_all_data) {
     double sum = 0;
+    LOG(INFO) << "Total number of samples: " << data.datasets.size();
     for (int i = 0; i < repeat; i++) {
       for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
         GetOneBatch(&input_slots, &data, batch_size);
@@ -190,7 +191,9 @@ void TestLACPrediction(const std::string &model_path,
         sum += timer.toc();
       }
     }
-    PrintTime(batch_size, repeat, 1, 0, sum / batch_size);
+    PrintTime(batch_size, repeat, 1, 0, sum / repeat);
+    LOG(INFO) << "Average latency of each sample: "
+              << sum / repeat / data.datasets.size() << " ms";
     return;
   }
   timer.tic();
