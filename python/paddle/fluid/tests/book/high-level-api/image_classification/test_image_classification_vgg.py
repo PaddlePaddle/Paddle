@@ -107,12 +107,6 @@ def train(use_cuda, train_program, parallel, params_dirname):
         event_handler=event_handler,
         feed_order=['pixel', 'label'])
 
-    def _del_trainer(trainer):
-        del trainer
-
-    if six.PY3:
-        _del_trainer(trainer)
-
 
 def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
@@ -158,4 +152,5 @@ if __name__ == '__main__':
         for parallel in (False, True):
             if use_cuda and not core.is_compiled_with_cuda():
                 continue
-            main(use_cuda=use_cuda, parallel=parallel)
+            if six.PY2:
+                main(use_cuda=use_cuda, parallel=parallel)
