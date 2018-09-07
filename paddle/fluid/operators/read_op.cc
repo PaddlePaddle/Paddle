@@ -15,6 +15,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -65,6 +66,12 @@ class ReadOp : public framework::OperatorBase {
             .GetMutable<framework::ReaderHolder>();
     std::vector<std::string> out_arg_names = Outputs("Out");
     std::vector<framework::LoDTensor> ins;
+
+    // For profiling
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto& ctx = *pool.Get(dev_place);
+    platform::RecordEvent record_event(Type(), &ctx);
+
     reader->ReadNext(&ins);
     if (ins.empty()) {
       if (Attr<bool>("throw_eof_exp")) {

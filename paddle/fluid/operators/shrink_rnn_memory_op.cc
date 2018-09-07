@@ -62,7 +62,10 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     }
 
     if (dst_num_rows != 0) {
-      out_tensor.ShareDataWith(x_tensor.Slice(0, height));
+      out_tensor.mutable_data(place, x_tensor.type());
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
+                            &out_tensor);
     }
   }
 };

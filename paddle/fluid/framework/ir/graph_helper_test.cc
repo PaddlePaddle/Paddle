@@ -116,8 +116,8 @@ TEST(GraphHelperTest, Basic) {
   for (size_t i = 0; i < sorted.size(); ++i) {
     node_map[sorted[i]->Name()] = i;
   }
-  ASSERT_EQ(node_map.at("op1"), 0);
-  ASSERT_EQ(node_map.at("op2"), 1);
+  ASSERT_EQ(node_map.at("op1"), 0UL);
+  ASSERT_EQ(node_map.at("op2"), 1UL);
   ASSERT_TRUE(node_map.at("op3") < node_map.at("op5"));
 }
 }  // namespace ir

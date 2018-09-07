@@ -14,7 +14,8 @@
 
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 
-#include "paddle/fluid/framework/details/ssa_graph_builder.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -34,6 +35,8 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
+  std::unique_ptr<platform::RecordEvent> event(
+      new platform::RecordEvent("ThreadedSSAGraphExecutorPrepare", nullptr));
   std::unordered_map<OpHandleBase *, size_t> pending_ops;
   std::unordered_set<VarHandleBase *> pending_vars;
   BlockingQueue<VarHandleBase *> ready_vars;
@@ -84,6 +87,7 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
   // Clean run context
   run_op_futures_.clear();
   exception_holder_.Clear();
+  event.reset(nullptr);
 
   // Step 3. Execution
   while (!pending_vars.empty()) {
@@ -103,11 +107,11 @@ FeedFetchList ThreadedSSAGraphExecutor::Run(
     auto cur_ready_vars = ready_vars.PopAll(1, &timeout);
 
     if (timeout) {
-      if (exception_holder_.ExceptionCatched()) {
+      if (exception_holder_.IsCaught()) {
         for (auto &run_op_future : run_op_futures_) {
           run_op_future.wait();
         }
-        exception_holder_.Throw();
+        exception_holder_.ReThrow();
       } else {
         continue;
       }
@@ -216,12 +220,8 @@ void ThreadedSSAGraphExecutor::RunOp(
       running_ops_--;
       ready_var_q->Extend(op->Outputs());
       VLOG(10) << op << " " << op->Name() << "Signal posted";
-    } catch (platform::EOFException ex) {
-      exception_holder_.Catch(ex);
-    } catch (platform::EnforceNotMet ex) {
-      exception_holder_.Catch(ex);
     } catch (...) {
-      LOG(FATAL) << "Unknown exception catched";
+      exception_holder_.Catch(std::current_exception());
     }
   };
   if (pool_) {

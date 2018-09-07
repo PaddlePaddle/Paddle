@@ -40,8 +40,6 @@ class RecvOp : public framework::OperatorBase {
 
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
 
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
@@ -59,6 +57,8 @@ class RecvOp : public framework::OperatorBase {
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDuplicable();
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
     AddComment(R"DOC(
 Recv operator

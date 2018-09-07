@@ -24,6 +24,9 @@ message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
         "${CMAKE_C_COMPILER_ID} ${CMAKE_C_COMPILER_VERSION}")
+if(WIN32)
+    set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+endif(WIN32)
 
 if(NOT CMAKE_CROSSCOMPILING)
     find_package(CUDA QUIET)
@@ -65,6 +68,7 @@ option(REPLACE_ENFORCE_GLOG "Replace PADDLE_ENFORCE with glog/CHECK for better d
 option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
+option(WITH_INFERENCE    "Compile fluid inference library"              ON)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 
@@ -72,6 +76,7 @@ option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VER
 if(NOT PY_VERSION)
   set(PY_VERSION 2.7)
 endif()
+set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 # CMAKE_BUILD_TYPE
 if(NOT CMAKE_BUILD_TYPE)
@@ -136,12 +141,6 @@ else()
     set(THIRD_PARTY_BUILD_TYPE Release)
 endif()
 
-if(WITH_MKL)
-  option(MKL_SPLIT_GEMM "PaddlePaddle MKL gemm would split to small ones" OFF)
-  if (MKL_SPLIT_GEMM)
-    add_definitions(-DPADDLE_MKL_SPLIT_GEMM)
-  endif()
-endif()
 set(WITH_MKLML ${WITH_MKL})
 if (NOT DEFINED WITH_MKLDNN)
     if (WITH_MKL AND AVX2_FOUND)
@@ -158,6 +157,7 @@ endif()
 ########################################################################################
 
 include(external/mklml)     # download mklml package
+include(external/xbyak)     # download xbyak package
 include(external/libxsmm)   # download, build, install libxsmm
 include(external/zlib)      # download, build, install zlib
 include(external/gflags)    # download, build, install gflags
@@ -168,12 +168,20 @@ include(external/python)    # download, build, install python
 include(external/openblas)  # download, build, install openblas
 include(external/mkldnn)    # download, build, install mkldnn
 include(external/swig)      # download, build, install swig
-include(external/warpctc)   # download, build, install warpctc
 include(external/boost)     # download boost
 include(external/any)       # download libn::any
 include(external/eigen)     # download eigen3
 include(external/pybind11)  # download pybind11
 include(external/cares)
+include(external/cub)
+
+if (NOT WIN32)
+# there is no official support of snappystream, warpctc, nccl, cupti in windows
+include(external/snappy)    # download snappy
+include(external/snappystream) # download snappystream
+include(external/warpctc)   # download, build, install warpctc
+include(cupti)
+endif (NOT WIN32)
 
 if(WITH_DISTRIBUTE)
     if(WITH_GRPC)
@@ -196,19 +204,27 @@ if(WITH_BRPC_RDMA)
     endif()
 endif()
 
-include(external/snappy)    # download snappy
-include(external/snappystream)
-include(external/threadpool)
 
+include(external/threadpool)
+include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
-include(cupti)
 include(configure)          # add paddle env configuration
+
+if(WITH_GPU)
+    include(cuda)
+    include(tensorrt)
+endif()
+if(WITH_MKL OR WITH_MKLML)
+    include(external/anakin)
+elseif()
+    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
+endif()
+
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
 include(util)               # set unittest and link libs
 include(rdma)               # set rdma libraries
-include(flags)              # set paddle compile flags
 include(version)            # set PADDLE_VERSION
 include(coveralls)          # set code coverage
 include(inference_lib)      # add paddle fluid inference libraries
@@ -227,14 +243,6 @@ set(EXTERNAL_LIBS
     zlib
     ${PYTHON_LIBRARIES}
 )
-
-if(WITH_GPU)
-    include(cuda)
-    include(tensorrt)
-    include(external/anakin)
-else()
-  set(WITH_ANAKIN OFF CACHE STRING "Anakin is valid only when GPU is set." FORCE)
-endif()
 
 if(WITH_AMD_GPU)
     find_package(HIP)

@@ -156,6 +156,7 @@ def train(avg_loss, infer_prog, optimizer, train_reader, test_reader, batch_acc,
                 if data == None:
                     break
             if iters == args.iterations:
+                reader_generator.close()
                 break
             if iters == args.skip_batch_num:
                 start_time = time.time()
@@ -257,6 +258,7 @@ def train_parallel(avg_loss, infer_prog, optimizer, train_reader, test_reader,
                 if data == None:
                     break
             if iters == args.iterations:
+                reader_generator.close()
                 break
             if args.profile and pass_id == 0 and batch_id == 5:
                 profiler.start_profiler("All")
