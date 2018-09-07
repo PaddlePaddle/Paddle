@@ -547,7 +547,7 @@ function gen_capi_package() {
         rm -rf $install_prefix
         make DESTDIR="$install_prefix" install
         cd $install_prefix/usr/local
-        ls | egrep -v "^Found.*item$" | xargs tar -cf ${PADDLE_ROOT}/build/paddle.tgz
+        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
     fi
 }
 
