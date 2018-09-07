@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -48,8 +49,10 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
+                   platform::DeviceContext* dev_ctx,
                    const std::vector<int>& prefetch_block_id_list,
-                   const int checkpoint_point_block_id) const;
+                   const int checkpoint_point_block_id,
+                   const std::vector<std::string>& recv_varnames) const;
 
   void RunAsyncLoop(framework::Executor* executor,
                     framework::ProgramDesc* program,
@@ -63,6 +66,11 @@ class ListenAndServOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
+
+  void ResetReceivedVars(const std::vector<std::string>& recv_varnames,
+                         framework::Scope* recv_scope,
+                         platform::DeviceContext* dev_ctx,
+                         bool only_sparse_vars = true) const;
 
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
