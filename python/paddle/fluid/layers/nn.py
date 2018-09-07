@@ -2669,19 +2669,19 @@ def sequence_pad(x, pad_value, maxlen=None):
 
     Args:
         x(Variable): Input variable which should contain lod information.
-        pad_value(Variable): The Variable that holds values that will be fill 
-            into padded steps. It can be a scalar or a tensor whose shape 
-            equals to time steps in sequences. If it's a scalar, it will be 
+        pad_value(Variable): The Variable that holds values that will be fill
+            into padded steps. It can be a scalar or a tensor whose shape
+            equals to time steps in sequences. If it's a scalar, it will be
             automatically broadcasted to the shape of time step.
-        maxlen(int, default None): The length of padded sequences. It can be 
-            None or any positive int. When it is None, all sequences will be 
-            padded up to the length of the longest one among them; when it a 
-            certain positive value, it must be greater than the length of the 
+        maxlen(int, default None): The length of padded sequences. It can be
+            None or any positive int. When it is None, all sequences will be
+            padded up to the length of the longest one among them; when it a
+            certain positive value, it must be greater than the length of the
             longest original sequence."
-    
+
     Returns:
         Variable: The padded sequence batch. All sequences has the same length.
-    
+
     Examples:
         .. code-block:: python
 
@@ -4537,14 +4537,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
 def squeeze(input, axes, name=None):
     """
-    Remove single-dimensional entries from the shape of a tensor. Takes a 
-    parameter axes with a list of axes to squeeze. If axes is not provided, all 
-    the single dimensions will be removed from the shape. If an axis is 
+    Remove single-dimensional entries from the shape of a tensor. Takes a
+    parameter axes with a list of axes to squeeze. If axes is not provided, all
+    the single dimensions will be removed from the shape. If an axis is
     selected with shape entry not equal to one, an error is raised.
-        
+
     Examples:
     Case 1:
-      Given 
+      Given
         X.shape = (1, 3, 1, 5)
       and
         axes = [0]
@@ -4553,11 +4553,11 @@ def squeeze(input, axes, name=None):
       Case 2:
         Given
           X.shape = (1, 3, 1, 5)
-        and 
+        and
           axes = []
         we get:
           Out.shape = (3, 5)
-    
+
     Args:
         input (Variable): The input variable to be squeezed.
         axes (list): List of integers, indicating the dimensions to be squeezed.
@@ -4587,14 +4587,14 @@ def squeeze(input, axes, name=None):
 
 def unsqueeze(input, axes, name=None):
     """
-    Insert single-dimensional entries to the shape of a tensor. Takes one 
-    required argument axes, a list of dimensions that will be inserted. 
-    Dimension indices in axes are as seen in the output tensor. 
+    Insert single-dimensional entries to the shape of a tensor. Takes one
+    required argument axes, a list of dimensions that will be inserted.
+    Dimension indices in axes are as seen in the output tensor.
 
-    For example: 
-      Given a tensor such that tensor with shape [3, 4, 5], 
+    For example:
+      Given a tensor such that tensor with shape [3, 4, 5],
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
-    
+
     Args:
         input (Variable): The input variable to be unsqueezed.
         axes (list): List of integers, indicating the dimensions to be inserted.
@@ -5633,39 +5633,39 @@ def pad2d(input,
     Example:
 
       Given that X is a channel of image from input:
-      
+
       X = [[1, 2, 3],
            [4, 5, 6]]
-      
+
       Case 0:
-      
+
         paddings = [0, 1, 2, 3],
         mode = 'constant'
         pad_value = 0
-        
+
         Out = [[0, 0, 1, 2, 3, 0, 0, 0]
                [0, 0, 4, 5, 6, 0, 0, 0]
                [0, 0, 0, 0, 0, 0, 0, 0]]
-      
+
       Case 1:
-      
+
         paddings = [0, 1, 2, 1],
         mode = 'reflect'
-        
+
         Out = [[3, 2, 1, 2, 3, 2]
                [6, 5, 4, 5, 6, 5]
                [3, 2, 1, 2, 3, 2]]
-        
+
       Case 2:
-      
+
         paddings = [0, 1, 2, 1],
         mode = 'edge'
-        
+
         Out = [[1, 1, 1, 2, 3, 3]
                [4, 4, 4, 5, 6, 6]
                [4, 4, 4, 5, 6, 6]]
-    
-  
+
+
     Args:
         input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
         paddings (tuple|list): The padding size. If padding is a tuple, it must
@@ -5722,7 +5722,7 @@ def prelu(x, mode, param_attr=None, name=None):
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
 	name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically. 
+                        will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -5832,10 +5832,10 @@ def flatten(x, axis=1, name=None):
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
     """
     Generate a new sequence for the input index sequence, which enumerates all the
-    sub-sequences with length `win_size` of the input. 
+    sub-sequences with length `win_size` of the input.
     The enumerated sequence has the same 1st dimension with variable `input`, and
     the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
-    
+
     Examples:
     Case 1:
       Input:
@@ -5919,6 +5919,24 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     return out
 
 
+def sequence_concat(x, axis=0, level=0, name=None):
+    """
+    **SequenceConcat Layer**
+    """
+    if not isinstance(x, list):
+        x = [x]
+
+    helper = LayerHelper('sequence_concat', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype())
+    helper.append_op(
+        type='sequence_concat',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'axis': axis,
+               'level': level})
+    return out
+
+
 def stack(x, axis=0):
     """
     **Stack Layer**
@@ -5962,20 +5980,20 @@ def unstack(x, axis=0, num=None):
     **UnStack Layer**
 
     This layer unstacks input :code:`x` into several tensors along axis.
-   
+
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
     If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
     and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
-    raised. 
+    raised.
 
     Args:
-        x (Variable): Input variable. 
+        x (Variable): Input variable.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
-    
+
     Returns:
         list(Variable): The unstacked variables.
-    
+
     """
 
     helper = LayerHelper('unstack', **locals())
@@ -5996,3 +6014,33 @@ def unstack(x, axis=0, num=None):
         attrs={'axis': axis,
                'num': num})
     return outs
+
+
+def hash(input, hash_size, num_hash=1, name=None):
+    """
+    hash the input
+
+    Args:
+        input (Variable): The input variable which is a one-hot word.
+        hash_size (int): The space size for hash algorithm.
+        num_hash (int): The times of hash, default 1.
+
+    Returns:
+        Variable: The hash result variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            word_dict = paddle.dataset.imdb.word_dict()
+            x = fluid.layers.data(shape[1], dtype='int32', lod_level=1)
+            out = fluid.layers.hash(input=x, len(word_dict))
+    """
+    helper = LayerHelper('hash', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='hash',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'num_hash': num_hash,
+               'mod_by': hash_size})
+    return out
