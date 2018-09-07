@@ -31,25 +31,11 @@ DEFINE_int32(repeat, 1, "How many times to repeat run.");
 DEFINE_int32(topn, -1, "Run top n batches of data to save time");
 
 namespace paddle {
-
-template <typename T>
-std::string to_string(const std::vector<T> &vec) {
-  std::stringstream ss;
-  for (const auto &c : vec) {
-    ss << c << " ";
-  }
-  return ss.str();
-}
-
-void PrintTime(const double latency, const int bs, const int repeat) {
-  LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << bs << ", repeat: " << repeat
-            << ", avg latency: " << latency / repeat << "ms";
-  LOG(INFO) << "=====================================";
-}
+namespace inference {
 
 struct DataReader {
-  DataReader(const std::string &path) : file(new std::ifstream(path)) {}
+  explicit DataReader(const std::string &path)
+      : file(new std::ifstream(path)) {}
 
   bool NextBatch(PaddleTensor *tensor, int batch_size) {
     PADDLE_ENFORCE_EQ(batch_size, 1);
@@ -107,8 +93,7 @@ void Main(int batch_size) {
       ++num_batches;
     }
   }
-
-  PrintTime(sum, batch_size, num_batches);
+  PrintTime(batch_size, FLAGS_repeat, 1, 0, sum / FLAGS_repeat);
 
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();
@@ -129,4 +114,5 @@ void Main(int batch_size) {
 
 TEST(text_classification, basic) { Main(FLAGS_batch_size); }
 
+}  // namespace inference
 }  // namespace paddle
