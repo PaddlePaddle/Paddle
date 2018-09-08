@@ -111,6 +111,7 @@ __all__ = [
     'stack',
     'pad2d',
     'unstack',
+    'sequence_enumerate',
 ]
 
 
@@ -3545,11 +3546,6 @@ def topk(input, k, name=None):
 
             top5_values, top5_indices = layers.topk(input, k=5)
     """
-    shape = input.shape
-    if k < 1 or k >= shape[-1]:
-        raise ValueError("k must be greater than 0 and less than %d." %
-                         (shape[-1]))
-
     helper = LayerHelper("top_k", **locals())
     values = helper.create_tmp_variable(dtype=input.dtype)
     indices = helper.create_tmp_variable(dtype="int64")
@@ -4029,10 +4025,12 @@ def transpose(x, perm, name=None):
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='transpose',
+        type='transpose2',
         inputs={'X': [x]},
-        outputs={'Out': [out]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
 
@@ -4502,7 +4500,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python lsit or tuple.")
+        raise ValueError("Input shape must be a python list or tuple.")
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -4524,13 +4522,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "Each dimension size given in shape must not be negtive "
                 "except one unknown dimension.")
 
-    helper = LayerHelper("reshape", **locals())
+    helper = LayerHelper("reshape2", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
+    x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="reshape",
+        type="reshape2",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return helper.append_activation(out)
 
@@ -4574,11 +4574,13 @@ def squeeze(input, axes, name=None):
     """
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="squeeze",
+        type="squeeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -4609,11 +4611,13 @@ def unsqueeze(input, axes, name=None):
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="unsqueeze",
+        type="unsqueeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -5815,12 +5819,59 @@ def flatten(x, axis=1, name=None):
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='flatten',
+        type='flatten2',
         inputs={"X": x},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'XShape': x_shape},
         attrs={"axis": axis})
     return out
+
+
+def sequence_enumerate(input, win_size, pad_value=0, name=None):
+    """
+    Generate a new sequence for the input index sequence, which enumerates all the
+    sub-sequences with length `win_size` of the input. 
+    The enumerated sequence has the same 1st dimension with variable `input`, and
+    the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
+    
+    Examples:
+    Case 1:
+      Input:
+        X.lod = [[0, 3, 5]]
+        X.data = [[1], [2], [3], [4], [5]]
+        X.dims = [5, 1]
+      Attrs:
+        win_size = 2
+        pad_value = 0
+      Output:
+        Out.lod = [[0, 3, 5]]
+        Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
+        Out.dims = [5, 2]
+
+    Args:
+        input (Variable): The input variable which is a index sequence.
+        win_size (int): The window size for enumerating all sub-sequences.
+        pad_value (int): The padding value, default 0.
+
+    Returns:
+        Variable: The enumerate sequence variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
+            out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
+    """
+    helper = LayerHelper('sequence_enumerate', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_enumerate',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'win_size': win_size,
+               'pad_value': pad_value})
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
@@ -5902,6 +5953,7 @@ def stack(x, axis=0):
     helper.append_op(
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
+
     return out
 
 
