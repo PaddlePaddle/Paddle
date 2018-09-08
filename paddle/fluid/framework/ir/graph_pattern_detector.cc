@@ -574,9 +574,39 @@ PDNode* patterns::LSTM::operator()(PDNode* x) {
   NEW_NODE(Cell, output);
   NEW_NODE(BatchGate, output);
   NEW_NODE(BatchCellPreAct, output);
+#undef NEW_NODE
 
   lstm_op->LinksFrom({x, Weight, Bias});
   lstm_op->LinksTo({Hidden, Cell, BatchGate, BatchCellPreAct});
+  return Hidden;
+}
+
+PDNode* patterns::GRU::operator()(PDNode* x) {
+  x->assert_is_op_input("gru", "Input");
+  auto* gru_op = pattern->NewNode(gru_repr())->assert_is_op("gru");
+#define NEW_NODE(arg__, io__) \
+  auto* arg__ =               \
+      pattern->NewNode(arg__##_repr())->assert_is_op_##io__("gru", #arg__);
+
+  NEW_NODE(Weight, input);
+  // TODO(Superjomn): upgrade the fuse framework to support optional.
+  // H0 and bias are optional
+  NEW_NODE(Bias, input);  // also optional
+  // NEW_NODE(H0, input);
+
+  NEW_NODE(Hidden, output);
+  // below are intermediate
+  NEW_NODE(BatchGate, output);
+  NEW_NODE(BatchResetHiddenPrev, output);
+  NEW_NODE(BatchHidden, output);
+#undef NEW_NODE
+
+  BatchGate->AsIntermediate();
+  BatchResetHiddenPrev->AsIntermediate();
+  BatchHidden->AsIntermediate();
+
+  gru_op->LinksFrom({x, Weight, Bias});
+  gru_op->LinksTo({Hidden, BatchGate, BatchResetHiddenPrev, BatchHidden});
   return Hidden;
 }
 

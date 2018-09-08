@@ -28,7 +28,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
 # from recordio_converter import imagenet_train, imagenet_test
-from imagenet_reader import train, val
+from imagenet_reader import train_raw, val
 
 
 def conv_bn_layer(input,
@@ -165,12 +165,12 @@ def _model_reader_dshape_classdim(args, is_train):
                 "Must specify --data_path when training with imagenet")
         if not args.use_reader_op:
             if is_train:
-                reader = train()
+                reader = train_raw()
             else:
                 reader = val()
         else:
             if is_train:
-                reader = train(xmap=False)
+                reader = train_raw()
             else:
                 reader = val(xmap=False)
     return model, reader, dshape, class_dim
@@ -188,17 +188,33 @@ def get_model(args, is_train, main_prog, startup_prog):
                 pyreader = fluid.layers.py_reader(
                     capacity=args.batch_size * args.gpus,
                     shapes=([-1] + dshape, (-1, 1)),
-                    dtypes=('float32', 'int64'),
+                    dtypes=('uint8', 'int64'),
                     name="train_reader" if is_train else "test_reader",
                     use_double_buffer=True)
                 input, label = fluid.layers.read_file(pyreader)
             else:
                 input = fluid.layers.data(
-                    name='data', shape=dshape, dtype='float32')
+                    name='data', shape=dshape, dtype='uint8')
                 label = fluid.layers.data(
                     name='label', shape=[1], dtype='int64')
 
-            predict = model(input, class_dim, is_train=is_train)
+            # add imagenet preprocessors
+            random_crop = fluid.layers.random_crop(input, dshape)
+            casted = fluid.layers.cast(random_crop, 'float32')
+            # input is HWC
+            trans = fluid.layers.transpose(casted, [0, 3, 1, 2]) / 255.0
+            img_mean = fluid.layers.tensor.assign(
+                np.array([0.485, 0.456, 0.406]).astype('float32').reshape((3, 1,
+                                                                           1)))
+            img_std = fluid.layers.tensor.assign(
+                np.array([0.229, 0.224, 0.225]).astype('float32').reshape((3, 1,
+                                                                           1)))
+            h1 = fluid.layers.elementwise_sub(trans, img_mean, axis=1)
+            h2 = fluid.layers.elementwise_div(h1, img_std, axis=1)
+
+            # pre_out = (trans - img_mean) / img_std
+
+            predict = model(h2, class_dim, is_train=is_train)
             cost = fluid.layers.cross_entropy(input=predict, label=label)
             avg_cost = fluid.layers.mean(x=cost)
 
@@ -243,8 +259,9 @@ def get_model(args, is_train, main_prog, startup_prog):
         batched_reader = None
         pyreader.decorate_paddle_reader(
             paddle.batch(
-                reader if args.no_random else paddle.reader.shuffle(
-                    reader, buf_size=5120),
+                # reader if args.no_random else paddle.reader.shuffle(
+                #     reader, buf_size=5120),
+                reader,
                 batch_size=args.batch_size))
 
     return avg_cost, optimizer, [batch_acc1,

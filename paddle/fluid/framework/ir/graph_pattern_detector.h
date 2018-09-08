@@ -302,32 +302,48 @@ struct KeyCounter {
   std::unordered_map<std::string, size_t> dic_;
 };
 
+// Generate a unique PDNode's name with name_scope and id.
+// The format is {name_scope}/{repr}/{id}/{name}
 static std::string PDNodeName(const std::string& name_scope,
                               const std::string& repr, size_t id,
                               const std::string& name) {
   return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
 }
+// Generate a unique PDNode's name.
+// The format is {name_scope}/{repr}/{id}
 static std::string PDNodeName(const std::string& name_scope,
                               const std::string& repr) {
   return string::Sprintf("%s/%s/%d", name_scope, repr,
                          KeyCounter::Instance().IncCounter(repr));
 }
+// Generate a unique key. It can be used for a universally unique temporary
+// name.
+// The format is {repr}/{id}
 static std::string UniqueKey(const std::string& repr) {
   return string::Sprintf("%s/%d", repr,
                          KeyCounter::Instance().IncCounter(repr));
 }
 
-// FC with bias
-// op: mul + elementwise_add
-// named nodes:
-// mul, elementwise_add
-// w, mul_out, bias, fc_out
+// Declare a PDNode in a pattern, will create two methods:
+// std::string xxx_repr(); return this PDNode's string id.
+// PDNode* xxx_n(); return the corresponding PDNode.
 #define PATTERN_DECL_NODE(name__)                        \
   std::string name__##_repr() const {                    \
     return PDNodeName(name_scope_, repr_, id_, #name__); \
   }                                                      \
   PDNode* name__##_n() const { return pattern->RetrieveNode(name__##_repr()); }
 
+// Get an ir::Node* from the matched subgraph.
+// var: variable.
+// arg: the argument declared by PATTERN_DECL_NODE in a pattern definition.
+// pat: the pattern object.
+#define GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                    \
+  PADDLE_ENFORCE(subgraph.count(pat.arg##_n()),                     \
+                 "Node not found for PDNode %s", pat.arg##_repr()); \
+  Node* var = subgraph.at(pat.arg##_n());                           \
+  PADDLE_ENFORCE(var, "node %s not exists in the sub-graph", #arg)
+
+// The base class of all the patterns.
 struct PatternBase {
   PatternBase(PDPattern* pattern, const std::string& name_scope,
               const std::string& repr)
@@ -344,6 +360,11 @@ struct PatternBase {
   size_t id_;
 };
 
+// FC with bias
+// op: mul + elementwise_add
+// named nodes:
+// mul, elementwise_add
+// w, mul_out, bias, fc_out
 struct FC : public PatternBase {
   FC(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "fc") {}
@@ -384,8 +405,29 @@ struct LSTM : public PatternBase {
   PATTERN_DECL_NODE(BatchCellPreAct);
 };
 
+struct GRU : public PatternBase {
+  GRU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "lstm") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // Operators
+  PATTERN_DECL_NODE(gru);
+
+  // Inputs
+  PATTERN_DECL_NODE(Bias);
+  PATTERN_DECL_NODE(Weight);
+
+  // Outputs
+  PATTERN_DECL_NODE(BatchGate);
+  PATTERN_DECL_NODE(BatchResetHiddenPrev);
+  PATTERN_DECL_NODE(BatchHidden);
+  PATTERN_DECL_NODE(Hidden);
+};
+
 }  // namespace patterns
 
+// Link two ir::Nodes from each other.
 #define IR_NODE_LINK_TO(a, b) \
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);

@@ -40,23 +40,12 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle FC fuse";
-// Currently, there is no FC op available, so I will just simulate the
-// scenerio.
-// FC's fusion is simple, just op fuse, no need to process the
-// parameters.
-#define GET_NODE(var, arg)                                               \
-  PADDLE_ENFORCE(subgraph.count(fc_pattern.arg##_n()),                   \
-                 "PDNode [%s] can not found the corresponding ir::Node", \
-                 fc_pattern.arg##_repr());                               \
-  auto* var = subgraph.at(fc_pattern.arg##_n());                         \
-  PADDLE_ENFORCE(var, "Node %s not exists in the subgraph.", #var);
-
-    GET_NODE(w, w);
-    GET_NODE(fc_bias, bias);
-    GET_NODE(fc_out, Out);
-    GET_NODE(mul, mul);
-    GET_NODE(elementwise_add, elementwise_add);
-    GET_NODE(mul_out, mul_out);
+    GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
 
     // Create an FC Node.
     OpDesc desc;

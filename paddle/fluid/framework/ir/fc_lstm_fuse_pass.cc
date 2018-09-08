@@ -71,7 +71,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
       }
       op_desc.SetInput("Bias", {new_bias_var});
     }
-#undef GET_NODE
 
     // Create temp variables.
     const std::string BatchedInput = patterns::UniqueKey("BatchedInput");
@@ -122,23 +121,17 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
 
-#define GET_NODE(var, arg, pat)                                               \
-  PADDLE_ENFORCE(subgraph.count(pat##_pattern.arg##_n()),                     \
-                 "Node not found for PDNode %s", pat##_pattern.arg##_repr()); \
-  Node* var = subgraph.at(pat##_pattern.arg##_n());                           \
-  PADDLE_ENFORCE(var, "node %s not exists in the sub-graph", #arg)
-
-    GET_NODE(lstm, lstm, lstm);
-    GET_NODE(Weight, Weight, lstm);
-    GET_NODE(Bias, Bias, lstm);
-    GET_NODE(Cell, Cell, lstm);
-    GET_NODE(Hidden, Hidden, lstm);
-    GET_NODE(w, w, fc);
-    GET_NODE(mul, mul, fc);
+    GET_IR_NODE_FROM_SUBGRAPH(lstm, lstm, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Cell, Cell, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Hidden, Hidden, lstm_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
     if (with_fc_bias) {
-      GET_NODE(fc_out, Out, fc);
-      GET_NODE(fc_bias, bias, fc);
-      GET_NODE(elementwise_add, elementwise_add, fc);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
                    fc_bias);
       // Remove unneeded nodes.
@@ -146,14 +139,13 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
           {mul, lstm, elementwise_add});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
-      GET_NODE(fc_out, mul_out, fc);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_out, mul_out, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
                    nullptr);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes({mul, lstm});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }
-#undef GET_NODE
 
     ++fusion_count;
   };
