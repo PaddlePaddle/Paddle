@@ -349,6 +349,7 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
     ASSERT_TRUE(fuse_statis.count("fc_fuse"));
     EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
     EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
     EXPECT_EQ(num_ops,
               13);  // After graph optimization, only 13 operators exists.
   }

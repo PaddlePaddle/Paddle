@@ -307,6 +307,15 @@ static std::string PDNodeName(const std::string& name_scope,
                               const std::string& name) {
   return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
 }
+static std::string PDNodeName(const std::string& name_scope,
+                              const std::string& repr) {
+  return string::Sprintf("%s/%s/%d", name_scope, repr,
+                         KeyCounter::Instance().IncCounter(repr));
+}
+static std::string UniqueKey(const std::string& repr) {
+  return string::Sprintf("%s/%d", repr,
+                         KeyCounter::Instance().IncCounter(repr));
+}
 
 // FC with bias
 // op: mul + elementwise_add

@@ -26,7 +26,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   auto* pattern = gpd.mutable_pattern();
 
   // Build pattern
-  PDNode* x = pattern->NewNode(name_scope, "x")
+  PDNode* x = pattern->NewNode(patterns::PDNodeName(name_scope, "x"))
                   ->assert_is_op_input("mul")
                   ->assert_var_not_persistable();
   patterns::FC fc_pattern(pattern, name_scope);
@@ -74,28 +74,34 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 #undef GET_NODE
 
     // Create temp variables.
-    scope->Var(name_scope + "/BatchedInput.new")
-        ->GetMutable<framework::LoDTensor>();
-    scope->Var(name_scope + "/BatchCellPreAct.new")
-        ->GetMutable<framework::LoDTensor>();
-    scope->Var(name_scope + "/BatchedGate.new")
-        ->GetMutable<framework::LoDTensor>();
+    const std::string BatchedInput = patterns::UniqueKey("BatchedInput");
+    const std::string BatchedCellPreAct =
+        patterns::UniqueKey("BatchedCellPreAct");
+    const std::string BatchedGate = patterns::UniqueKey("BatchedGate");
+
+    scope->Var(BatchedInput)->GetMutable<framework::LoDTensor>();
+    scope->Var(BatchedCellPreAct)->GetMutable<framework::LoDTensor>();
+    scope->Var(BatchedGate)->GetMutable<framework::LoDTensor>();
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
     op_desc.SetOutput("Hidden", {hidden->Name()});
     op_desc.SetOutput("Cell", {cell->Name()});
     op_desc.SetOutput("XX", {xx->Name()});
-    op_desc.SetOutput("BatchedGate", {name_scope + "/BatchedGate.new"});
-    op_desc.SetOutput("BatchCellPreAct", {name_scope + "/BatchCellPreAct.new"});
-    op_desc.SetOutput("BatchedInput", {name_scope + "/BatchedInput.new"});
+    op_desc.SetOutput("BatchedGate", {BatchedGate});
+    op_desc.SetOutput("BatchCellPreAct", {BatchedCellPreAct});
+    op_desc.SetOutput("BatchedInput", {BatchedInput});
     op_desc.SetAttr("is_reverse", lstm->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm->Op()->GetAttr("use_peepholes"));
     // TODO(TJ): get from attr
     op_desc.SetAttr("use_seq", true);
 
-#define TMP_NAME(x) "at.new.tmp." #x
-#define OP_SET_OUT(x) op_desc.SetOutput(#x, {TMP_NAME(x)})
+    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
+    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
+#define OP_SET_OUT(x)                            \
+  const std::string x = patterns::UniqueKey(#x); \
+  op_desc.SetOutput(#x, {x});                    \
+  scope->Var(x)->GetMutable<LoDTensor>()
     OP_SET_OUT(BatchedCell);
     OP_SET_OUT(BatchedHidden);
     OP_SET_OUT(ReorderedH0);
@@ -103,17 +109,6 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 #undef OP_SET_OUT
 
     auto* op = graph->CreateOpNode(&op_desc);
-    PADDLE_ENFORCE(graph->Has(kParamScopeAttr));
-    auto* scope = graph->Get<Scope*>(kParamScopeAttr);
-
-#define TMP_NEW(x) scope->Var(TMP_NAME(x))->GetMutable<LoDTensor>()
-    TMP_NEW(BatchedCell);
-    TMP_NEW(BatchedHidden);
-    TMP_NEW(ReorderedH0);
-    TMP_NEW(ReorderedC0);
-#undef TMP_NEW
-#undef TMP_NAME
-
     IR_NODE_LINK_TO(input, op);
     IR_NODE_LINK_TO(weight_x, op);
     IR_NODE_LINK_TO(weight_h, op);
