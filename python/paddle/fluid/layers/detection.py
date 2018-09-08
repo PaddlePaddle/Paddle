@@ -55,8 +55,8 @@ for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
 
 
-def rpn_target_assign(loc,
-                      scores,
+def rpn_target_assign(bbox_pred,
+                      cls_logits,
                       anchor_box,
                       anchor_var,
                       gt_boxes,
@@ -87,14 +87,13 @@ def rpn_target_assign(loc,
     the positive anchors.
 
     Args:
-        loc(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
             predicted locations of M bounding bboxes. N is the batch size,
             and each bounding box has four coordinate values and the layout
             is [xmin, ymin, xmax, ymax].
-        scores(Variable): A 3-D Tensor with shape [N, M, C] represents the
-            predicted confidence predictions. N is the batch size, C is the
-            class number, M is number of bounding boxes. For each category
-            there are total M scores which corresponding M bounding boxes.
+        cls_logits(Variable): A 3-D Tensor with shape [N, M, 1] represents the
+            predicted confidence predictions. N is the batch size, 1 is the
+            frontground and background sigmoid, M is number of bounding boxes.
         anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
             each box is represented as [xmin, ymin, xmax, ymax],
             [xmin, ymin] is the left top coordinate of the anchor box,
@@ -138,19 +137,19 @@ def rpn_target_assign(loc,
     Examples:
         .. code-block:: python
 
-        loc = layers.data(name='location', shape=[2, 80],
+        bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
                           append_batch_size=False, dtype='float32')
-        scores = layers.data(name='scores', shape=[2, 40],
+        cls_logits = layers.data(name='cls_logits', shape=[100, 1],
                           append_batch_size=False, dtype='float32')
         anchor_box = layers.data(name='anchor_box', shape=[20, 4],
                           append_batch_size=False, dtype='float32')
-        gt_box = layers.data(name='gt_box', shape=[10, 4],
+        gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
                          append_batch_size=False, dtype='float32')
         loc_pred, score_pred, loc_target, score_target =
-            fluid.layers.detection_output(loc=location,
-                                          scores=scores,
+            fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
+                                          cls_logits=cls_logits,
                                           anchor_box=anchor_box,
-                                          gt_box=gt_box)
+                                          gt_boxes=gt_boxes)
     """
 
     helper = LayerHelper('rpn_target_assign', **locals())
@@ -187,12 +186,12 @@ def rpn_target_assign(loc,
     target_label.stop_gradient = True
     target_bbox.stop_gradient = True
 
-    scores = nn.reshape(x=scores, shape=(-1, 1))
-    loc = nn.reshape(x=loc, shape=(-1, 4))
-    predicted_scores = nn.gather(scores, score_index)
-    predicted_location = nn.gather(loc, loc_index)
+    cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
+    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = nn.gather(cls_logits, score_index)
+    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
 
-    return predicted_scores, predicted_location, target_label, target_bbox
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox
 
 
 def detection_output(loc,

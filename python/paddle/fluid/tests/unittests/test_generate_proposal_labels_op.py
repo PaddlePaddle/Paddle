@@ -309,8 +309,8 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
         gt_classes = np.random.randint(
             low=1, high=class_nums, size=gt_nums).astype(np.int32)
         gt_boxes = _generate_boxes(image_shape, gt_nums)
-        is_crowd = np.zeros((gt_nums), dtype=bool)
-        is_crowd[0] = True
+        is_crowd = np.zeros((gt_nums), dtype=np.int32)
+        is_crowd[0] = 1
         ground_truth.append(
             dict(
                 gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd))

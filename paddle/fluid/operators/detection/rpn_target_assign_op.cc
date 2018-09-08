@@ -61,8 +61,8 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
                       "The rank of Input(Anchor) must be 2.");
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
                       "The rank of Input(GtBoxes) must be 2.");
-    PADDLE_ENFORCE_EQ(is_crowd_dims.size(), 1,
-                      "The rank of Input(IsCrowd) must be 1.");
+    // PADDLE_ENFORCE_EQ(is_crowd_dims.size(), 2,
+    //                   "The rank of Input(IsCrowd) must be 2.");
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                       "The rank of Input(ImInfo) must be 2.");
 
@@ -133,9 +133,9 @@ Tensor FilterCrowdGt(const platform::CPUDeviceContext& context,
                      Tensor* gt_boxes, Tensor* is_crowd) {
   int gt_num = gt_boxes->dims()[0];
   std::vector<int> not_crowd_inds;
-  auto* is_crowd_data = is_crowd->data<bool>();
+  auto* is_crowd_data = is_crowd->data<int>();
   for (int i = 0; i < gt_num; ++i) {
-    if (!is_crowd_data[i]) {
+    if (is_crowd_data[i] == 0) {
       not_crowd_inds.emplace_back(i);
     }
   }
