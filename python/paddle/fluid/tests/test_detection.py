@@ -263,18 +263,18 @@ class TestRpnTargetAssign(unittest.TestCase):
     def test_rpn_target_assign(self):
         program = Program()
         with program_guard(program):
-            loc_shape = [10, 50, 4]
-            score_shape = [10, 50, 2]
+            bbox_pred_shape = [10, 50, 4]
+            cls_logits_shape = [10, 50, 2]
             anchor_shape = [50, 4]
 
-            loc = layers.data(
-                name='loc',
-                shape=loc_shape,
+            bbox_pred = layers.data(
+                name='bbox_pred',
+                shape=bbox_pred_shape,
                 append_batch_size=False,
                 dtype='float32')
-            scores = layers.data(
-                name='scores',
-                shape=score_shape,
+            cls_logits = layers.data(
+                name='cls_logits',
+                shape=cls_logits_shape,
                 append_batch_size=False,
                 dtype='float32')
             anchor_box = layers.data(
@@ -302,8 +302,8 @@ class TestRpnTargetAssign(unittest.TestCase):
                 lod_level=1,
                 append_batch_size=False)
             pred_scores, pred_loc, tgt_lbl, tgt_bbox = layers.rpn_target_assign(
-                loc=loc,
-                scores=scores,
+                bbox_pred=bbox_pred,
+                cls_logits=cls_logits,
                 anchor_box=anchor_box,
                 anchor_var=anchor_var,
                 gt_boxes=gt_boxes,
