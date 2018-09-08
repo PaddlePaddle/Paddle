@@ -83,7 +83,7 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
     int class_nums = ctx->Attrs().Get<int>("class_nums");
 
     ctx->SetOutputDim("Rois", {-1, 4});
-    ctx->SetOutputDim("LabelsInt32", {-1});
+    ctx->SetOutputDim("LabelsInt32", {-1, 1});
     ctx->SetOutputDim("BboxTargets", {-1, 4 * class_nums});
     ctx->SetOutputDim("BboxInsideWeights", {-1, 4 * class_nums});
     ctx->SetOutputDim("BboxOutsideWeights", {-1, 4 * class_nums});
@@ -368,7 +368,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     int64_t n = static_cast<int64_t>(rpn_rois->lod().back().size() - 1);
 
     rois->mutable_data<T>({n * batch_size_per_im, kBoxDim}, context.GetPlace());
-    labels_int32->mutable_data<int>({n * batch_size_per_im},
+    labels_int32->mutable_data<int>({n * batch_size_per_im, 1},
                                     context.GetPlace());
     bbox_targets->mutable_data<T>({n * batch_size_per_im, kBoxDim * class_nums},
                                   context.GetPlace());
@@ -433,7 +433,7 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
     bbox_inside_weights->set_lod(lod);
     bbox_outside_weights->set_lod(lod);
     rois->Resize({num_rois, kBoxDim});
-    labels_int32->Resize({num_rois});
+    labels_int32->Resize({num_rois, 1});
     bbox_targets->Resize({num_rois, kBoxDim * class_nums});
     bbox_inside_weights->Resize({num_rois, kBoxDim * class_nums});
     bbox_outside_weights->Resize({num_rois, kBoxDim * class_nums});

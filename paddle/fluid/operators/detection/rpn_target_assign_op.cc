@@ -68,7 +68,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("LocationIndex", {-1});
     ctx->SetOutputDim("ScoreIndex", {-1});
-    ctx->SetOutputDim("TargetLabel", {-1});
+    ctx->SetOutputDim("TargetLabel", {-1, 1});
     ctx->SetOutputDim("TargetBBox", {-1, 4});
   }
 
@@ -341,7 +341,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     loc_index->mutable_data<int>({max_num}, place);
     score_index->mutable_data<int>({max_num}, place);
     tgt_bbox->mutable_data<T>({max_num, 4}, place);
-    tgt_lbl->mutable_data<int>({max_num}, place);
+    tgt_lbl->mutable_data<int>({max_num, 1}, place);
 
     auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
 
@@ -453,7 +453,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     loc_index->Resize({total_loc_num});
     score_index->Resize({total_score_num});
     tgt_bbox->Resize({total_loc_num, 4});
-    tgt_lbl->Resize({total_score_num});
+    tgt_lbl->Resize({total_score_num, 1});
   }
 };
 

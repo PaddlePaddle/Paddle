@@ -229,11 +229,11 @@ class TestGenerateProposalLabelsOp(OpTest):
             'use_random': False
         }
         self.outputs = {
-            'Rois': (self.rois[0], [self.lod]),
-            'LabelsInt32': (self.labels_int32[0], [self.lod]),
-            'BboxTargets': (self.bbox_targets[0], [self.lod]),
-            'BboxInsideWeights': (self.bbox_inside_weights[0], [self.lod]),
-            'BboxOutsideWeights': (self.bbox_outside_weights[0], [self.lod]),
+            'Rois': (self.rois, [self.lod]),
+            'LabelsInt32': (self.labels_int32, [self.lod]),
+            'BboxTargets': (self.bbox_targets, [self.lod]),
+            'BboxInsideWeights': (self.bbox_inside_weights, [self.lod]),
+            'BboxOutsideWeights': (self.bbox_outside_weights, [self.lod]),
         }
 
     def test_check_output(self):
@@ -280,6 +280,12 @@ class TestGenerateProposalLabelsOp(OpTest):
                 self.fg_thresh, self.bg_thresh_hi, self.bg_thresh_lo,
                 self.bbox_reg_weights, self.class_nums
             )
+        self.rois = np.vstack(self.rois)
+        self.labels_int32 = np.hstack(self.labels_int32)
+        self.labels_int32 = self.labels_int32[:, np.newaxis]
+        self.bbox_targets = np.vstack(self.bbox_targets)
+        self.bbox_inside_weights = np.vstack(self.bbox_inside_weights)
+        self.bbox_outside_weights = np.vstack(self.bbox_outside_weights)
 
 
 def _generate_proposals(images_shape, proposal_nums):

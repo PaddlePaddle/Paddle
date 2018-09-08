@@ -186,6 +186,7 @@ class TestRpnTargetAssignOp(OpTest):
             all_anchors, gt_boxes, is_crowd, im_info, lod, rpn_straddle_thresh,
             rpn_batch_size_per_im, rpn_positive_overlap, rpn_negative_overlap,
             rpn_fg_fraction, use_random)
+        labels = labels[:, np.newaxis]
 
         self.op_type = "rpn_target_assign"
         self.inputs = {
