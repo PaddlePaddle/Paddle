@@ -20,70 +20,15 @@ limitations under the License. */
 #include <iostream>
 #include <thread>  // NOLINT
 #include <vector>
-#include "framework/core/net/net.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/timer.h"
+#include "utils/logger/logger.h"
 
 DEFINE_string(model, "", "Directory of the inference model.");
 DEFINE_string(datapath, "", "Path of the dataset.");
 DEFINE_int32(batch_size, 1, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-
-// Timer for timer
-class Timer {
- public:
-  double start;
-  double startu;
-  void tic() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    start = tp.tv_sec;
-    startu = tp.tv_usec;
-  }
-  double toc() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    double used_time_ms =
-        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
-    return used_time_ms;
-  }
-};
-
-std::vector<std::string> string_split(std::string in_str,
-                                      std::string delimiter) {
-  std::vector<std::string> seq;
-  int found = in_str.find(delimiter);
-  int pre_found = -1;
-  while (found != std::string::npos) {
-    if (pre_found == -1) {
-      seq.push_back(in_str.substr(0, found));
-    } else {
-      seq.push_back(in_str.substr(pre_found + delimiter.length(),
-                                  found - delimiter.length() - pre_found));
-    }
-    pre_found = found;
-    found = in_str.find(delimiter, pre_found + delimiter.length());
-  }
-  seq.push_back(
-      in_str.substr(pre_found + 1, in_str.length() - (pre_found + 1)));
-  return seq;
-}
-std::vector<std::string> string_split(
-    std::string in_str, std::vector<std::string>& delimiter) {  // NOLINT
-  std::vector<std::string> in;
-  std::vector<std::string> out;
-  out.push_back(in_str);
-  for (auto del : delimiter) {
-    in = out;
-    out.clear();
-    for (auto s : in) {
-      auto out_s = string_split(s, del);
-      for (auto o : out_s) {
-        out.push_back(o);
-      }
-    }
-  }
-  return out;
-}
 
 class Data {
  public:
@@ -120,36 +65,24 @@ void Data::get_batch_data(
   week_fea.clear();
   time_fea.clear();
   while (_file.getline(buf, 10000)) {
-    std::string s = buf;
-    std::vector<std::string> deli_vec = {":"};
-    std::vector<std::string> data_vec = string_split(s, deli_vec);
+    std::vector<std::string> data_vec;
+    paddle::inference::split(buf, ':', &data_vec);
 
     std::vector<std::string> seq;
-    seq = string_split(data_vec[0], {"|"});
+    paddle::inference::split(data_vec[0], '|', &seq);
 
     for (auto link : seq) {
-      std::vector<std::string> data = string_split(link, ",");
       std::vector<float> vec;
-      for (int i = 0; i < data.size(); i++) {
-        vec.push_back(atof(data[i].c_str()));
-      }
+      paddle::inference::split_to_float(link, ',', &vec);
       fea.push_back(vec);
     }
-    std::vector<std::string> week_data;
-    std::vector<std::string> time_data;
 
-    week_data = string_split(data_vec[2], ",");
     std::vector<float> vec_w;
-    for (int i = 0; i < week_data.size(); i++) {
-      vec_w.push_back(atof(week_data[i].c_str()));
-    }
+    paddle::inference::split_to_float(data_vec[2], ',', &vec_w);
     week_fea.push_back(vec_w);
 
-    time_data = string_split(data_vec[1], ",");
     std::vector<float> vec_t;
-    for (int i = 0; i < time_data.size(); i++) {
-      vec_t.push_back(atof(time_data[i].c_str()));
-    }
+    paddle::inference::split_to_float(data_vec[1], ',', &vec_t);
     time_fea.push_back(vec_t);
 
     cum += seq.size();
@@ -275,14 +208,13 @@ void single_test() {
     inputs.push_back(tensor_2);
     inputs.push_back(tensor_0);
 
-    Timer timer;
+    paddle::inference::Timer timer;
     timer.tic();
     for (int i = 0; i < FLAGS_repeat; i++) predictor->Run(inputs, &outputs);
 
-    LOG(INFO) << "batch_size = " << FLAGS_batch_size
-              << ", repeat = " << FLAGS_repeat
-              << ", sequence_length = " << seq_offset[seq_offset.size() - 1]
-              << ", latency: " << timer.toc() / FLAGS_repeat << "ms";
+    paddle::inference::PrintTime(FLAGS_batch_size, FLAGS_repeat, 1, 0,
+                                 timer.toc() / FLAGS_repeat);
+    LOG(INFO) << "sequence_length = " << seq_offset[seq_offset.size() - 1];
 
     float* data_o = static_cast<float*>(outputs[0].data.data());
     VLOG(3) << "outputs[0].data.length() = " << outputs[0].data.length();
