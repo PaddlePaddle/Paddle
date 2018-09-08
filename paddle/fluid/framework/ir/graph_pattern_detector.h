@@ -375,12 +375,6 @@ struct LSTM : public PatternBase {
   PATTERN_DECL_NODE(BatchCellPreAct);
 };
 
-// PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
-
-// (X, Y) -> Out
-PDNode* sequence_expand(PDPattern* pattern, const std::string& name_scope,
-                        PDNode* X, PDNode* Y);
-
 }  // namespace patterns
 
 #define IR_NODE_LINK_TO(a, b) \

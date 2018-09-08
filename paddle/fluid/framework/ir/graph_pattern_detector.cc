@@ -580,20 +580,6 @@ PDNode* patterns::LSTM::operator()(PDNode* x) {
   return Hidden;
 }
 
-PDNode* patterns::sequence_expand(PDPattern* pattern,
-                                  const std::string& name_scope, PDNode* X,
-                                  PDNode* Y) {
-  X->assert_is_op_input("sequence_expand", "X");
-  Y->assert_is_op_input("sequence_expand", "Y");
-  auto* op = pattern->NewNode(name_scope, "sequence_expand")
-                 ->assert_is_op("sequence_expand");
-  auto* Out = pattern->NewNode(name_scope, "sequence_expand/Out")
-                  ->assert_is_op_output("sequence_expand");
-
-  op->LinksFrom({X, Y}).LinksTo({Out});
-  return Out;
-}
-
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
