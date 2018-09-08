@@ -107,7 +107,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
   for (auto& pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
       VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
-      //return false;
+      // return false;
     }
   }
   for (auto& item : pdnodes2nodes_) {
