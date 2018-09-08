@@ -286,17 +286,100 @@ void GraphSafeRemoveNodes(Graph* graph,
                           const std::unordered_set<const Node*>& nodes);
 
 // Some pre-defined patterns those can be reused in multiple passes.
+// The related Fluid Layer or Op should be one pattern here for better reusage
+// accross different fusion.
 namespace patterns {
+
+struct KeyCounter {
+  static KeyCounter& Instance() {
+    static KeyCounter x;
+    return x;
+  }
+
+  int IncCounter(const std::string& key) { return dic_[key]++; }
+
+ private:
+  std::unordered_map<std::string, size_t> dic_;
+};
+
+static std::string PDNodeName(const std::string& name_scope,
+                              const std::string& repr, size_t id,
+                              const std::string& name) {
+  return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
+}
 
 // FC with bias
 // op: mul + elementwise_add
 // named nodes:
 // mul, elementwise_add
 // w, mul_out, bias, fc_out
-PDNode* FC(PDPattern* pattern, const std::string& name_scope, PDNode* x,
-           bool with_bias);
+#define PATTERN_DECL_NODE(name__)                        \
+  std::string name__##_repr() const {                    \
+    return PDNodeName(name_scope_, repr_, id_, #name__); \
+  }                                                      \
+  PDNode* name__##_n() const { return pattern->RetrieveNode(name__##_repr()); }
 
-PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
+struct PatternBase {
+  PatternBase(PDPattern* pattern, const std::string& name_scope,
+              const std::string& repr)
+      : pattern(pattern),
+        name_scope_(name_scope),
+        repr_(repr),
+        id_(KeyCounter::Instance().IncCounter(repr)) {}
+
+  PDPattern* pattern;
+
+ protected:
+  std::string name_scope_;
+  std::string repr_;
+  size_t id_;
+};
+
+struct FC : public PatternBase {
+  FC(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc") {}
+
+  PDNode* operator()(PDNode* x, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(mul);
+  PATTERN_DECL_NODE(elementwise_add);
+  // declare variable node's name
+  PATTERN_DECL_NODE(w);
+  PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(Out);
+};
+
+struct LSTM : public PatternBase {
+  LSTM(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "lstm") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // Operators
+  PATTERN_DECL_NODE(lstm);
+
+  // Inputs
+  PATTERN_DECL_NODE(Input);
+  PATTERN_DECL_NODE(H0);
+  PATTERN_DECL_NODE(C0);
+  PATTERN_DECL_NODE(Weight);
+  PATTERN_DECL_NODE(Bias);
+
+  // Outputs
+  PATTERN_DECL_NODE(Hidden);
+  PATTERN_DECL_NODE(Cell);
+  PATTERN_DECL_NODE(BatchGate);
+  PATTERN_DECL_NODE(BatchCellPreAct);
+};
+
+// PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
+
+// (X, Y) -> Out
+PDNode* sequence_expand(PDPattern* pattern, const std::string& name_scope,
+                        PDNode* X, PDNode* Y);
 
 }  // namespace patterns
 

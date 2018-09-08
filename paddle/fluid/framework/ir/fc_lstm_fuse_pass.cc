@@ -19,44 +19,29 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-std::string GenNodeName(const std::string& prefix, const std::string& name) {
-  return prefix + "/" + name;
-}
-
-void BuildPattern(PDPattern* pattern, const std::string& name_scope,
-                  bool with_fc_bias) {
-  PDNode* x = pattern->NewNode(name_scope, "x")
-                  ->assert_is_op_input("mul")
-                  ->assert_var_not_persistable();
-  auto* fc_out = patterns::FC(pattern, name_scope, x, with_fc_bias);
-  fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
-  patterns::LSTM(pattern, name_scope, fc_out);
-  // LOG(INFO) << "\n" << pattern->DotString();
-}
-
 int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
                 bool with_fc_bias) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  BuildPattern(pattern, name_scope, with_fc_bias);
+  // Build pattern
+  PDNode* x = pattern->NewNode(name_scope, "x")
+                  ->assert_is_op_input("mul")
+                  ->assert_var_not_persistable();
+  patterns::FC fc_pattern(pattern, name_scope);
+
+  // fc_out is a tmp var, will be removed after fuse, so marked as intermediate.
+  auto* fc_out = fc_pattern(x, with_fc_bias)->AsIntermediate();
+  patterns::LSTM lstm_pattern(pattern, name_scope);
+  lstm_pattern(fc_out);
 
   // Create New OpDesc
-  auto lstm_creator = [&](int lstm, int input, int weight_x, int weight_h,
-                          int bias, int hidden, int cell, int xx, int fc_bias) {
-#define GET_NODE(x) auto* x##_n = graph->RetriveNode(x);
-    GET_NODE(input);
-    GET_NODE(weight_x);
-    GET_NODE(weight_h);
-    GET_NODE(bias);
-    GET_NODE(hidden);
-    GET_NODE(cell);
-    GET_NODE(xx);
-    GET_NODE(lstm);
-
+  auto lstm_creator = [&](Node* lstm, Node* input, Node* weight_x,
+                          Node* weight_h, Node* bias, Node* hidden, Node* cell,
+                          Node* xx, Node* fc_bias) {
     OpDesc op_desc;
     op_desc.SetType("fusion_lstm");
-#define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__##_n->Name()});
+#define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
     SET_IN(X, input);
     SET_IN(WeightX, weight_x);
     SET_IN(WeightH, weight_h);
@@ -69,13 +54,12 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
       auto* bias_var = scope->Var(new_bias_var);
       PADDLE_ENFORCE(bias_var);
       auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
-      auto* lstm_bias_var = scope->FindVar(bias_n->Name());
+      auto* lstm_bias_var = scope->FindVar(bias->Name());
       PADDLE_ENFORCE(lstm_bias_var);
       const auto& lstm_bias_tensor = lstm_bias_var->Get<framework::LoDTensor>();
       bias_tensor->Resize(lstm_bias_tensor.dims());
 
-      GET_NODE(fc_bias);
-      auto* fc_bias_var = scope->FindVar(fc_bias_n->Name());
+      auto* fc_bias_var = scope->FindVar(fc_bias->Name());
       const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
 
       auto* data = bias_tensor->mutable_data<float>(platform::CPUPlace());
@@ -98,14 +82,14 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
-    op_desc.SetOutput("Hidden", {hidden_n->Name()});
-    op_desc.SetOutput("Cell", {cell_n->Name()});
-    op_desc.SetOutput("XX", {xx_n->Name()});
+    op_desc.SetOutput("Hidden", {hidden->Name()});
+    op_desc.SetOutput("Cell", {cell->Name()});
+    op_desc.SetOutput("XX", {xx->Name()});
     op_desc.SetOutput("BatchedGate", {name_scope + "/BatchedGate.new"});
     op_desc.SetOutput("BatchCellPreAct", {name_scope + "/BatchCellPreAct.new"});
     op_desc.SetOutput("BatchedInput", {name_scope + "/BatchedInput.new"});
-    op_desc.SetAttr("is_reverse", lstm_n->Op()->GetAttr("is_reverse"));
-    op_desc.SetAttr("use_peepholes", lstm_n->Op()->GetAttr("use_peepholes"));
+    op_desc.SetAttr("is_reverse", lstm->Op()->GetAttr("is_reverse"));
+    op_desc.SetAttr("use_peepholes", lstm->Op()->GetAttr("use_peepholes"));
     // TODO(TJ): get from attr
     op_desc.SetAttr("use_seq", true);
 
@@ -129,11 +113,11 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 #undef TMP_NEW
 #undef TMP_NAME
 
-    IR_NODE_LINK_TO(input_n, op);
-    IR_NODE_LINK_TO(weight_x_n, op);
-    IR_NODE_LINK_TO(weight_h_n, op);
-    IR_NODE_LINK_TO(bias_n, op);
-    IR_NODE_LINK_TO(op, hidden_n);
+    IR_NODE_LINK_TO(input, op);
+    IR_NODE_LINK_TO(weight_x, op);
+    IR_NODE_LINK_TO(weight_h, op);
+    IR_NODE_LINK_TO(bias, op);
+    IR_NODE_LINK_TO(op, hidden);
     return op;
   };
 
@@ -141,36 +125,36 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-#define GET_NODE(name__)                                \
-  std::string name__##key = name_scope + "/" + #name__; \
-  auto* name__##n = pattern->RetrieveNode(name__##key); \
-  PADDLE_ENFORCE(name__##n);                            \
-  PADDLE_ENFORCE(subgraph.count(name__##n));            \
-  Node* name__##_n = subgraph.at(name__##n);            \
-  int name__ __attribute__((unused)) = name__##_n->id();
 
-    GET_NODE(x);
-    GET_NODE(w);
-    GET_NODE(mul);
-    GET_NODE(fc_out);
-    GET_NODE(Weight);
-    GET_NODE(lstm);
-    GET_NODE(Bias);
-    GET_NODE(Hidden);
-    GET_NODE(Cell);
+#define GET_NODE(var, arg, pat)                                               \
+  PADDLE_ENFORCE(subgraph.count(pat##_pattern.arg##_n()),                     \
+                 "Node not found for PDNode %s", pat##_pattern.arg##_repr()); \
+  Node* var = subgraph.at(pat##_pattern.arg##_n());                           \
+  PADDLE_ENFORCE(var, "node %s not exists in the sub-graph", #arg)
 
+    GET_NODE(lstm, lstm, lstm);
+    GET_NODE(Weight, Weight, lstm);
+    GET_NODE(Bias, Bias, lstm);
+    GET_NODE(Cell, Cell, lstm);
+    GET_NODE(Hidden, Hidden, lstm);
+    GET_NODE(w, w, fc);
+    GET_NODE(mul, mul, fc);
     if (with_fc_bias) {
-      GET_NODE(fc_bias);
-      GET_NODE(elementwise_add);
-      lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, fc_bias);
+      GET_NODE(fc_out, Out, fc);
+      GET_NODE(fc_bias, bias, fc);
+      GET_NODE(elementwise_add, elementwise_add, fc);
+      lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
+                   fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul_n, lstm_n, elementwise_add_n});
+          {mul, lstm, elementwise_add});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
-      lstm_creator(lstm, x, w, Weight, Bias, Hidden, Cell, fc_out, -1);
+      GET_NODE(fc_out, mul_out, fc);
+      lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
+                   nullptr);
       // Remove unneeded nodes.
-      std::unordered_set<const Node*> marked_nodes({mul_n, lstm_n});
+      std::unordered_set<const Node*> marked_nodes({mul, lstm});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }
 #undef GET_NODE

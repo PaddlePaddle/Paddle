@@ -267,6 +267,7 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
   PADDLE_ENFORCE(config.ir_mode ==
                  AnalysisConfig::IrPassMode::kExclude);  // default
   config.ir_passes.clear();  // Do not exclude any pass.
+
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
 

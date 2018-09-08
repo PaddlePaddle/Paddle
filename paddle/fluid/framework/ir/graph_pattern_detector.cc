@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
@@ -106,8 +107,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
   for (auto& pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
       VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
-
-      return false;
+      //return false;
     }
   }
   for (auto& item : pdnodes2nodes_) {
@@ -517,61 +517,51 @@ bool VarLinksFromOp(Node* node, const std::string& op_type) {
   return false;
 }
 
-PDNode* patterns::FC(PDPattern* pattern, const std::string& name_scope,
-                     PDNode* x, bool with_bias) {
-  // Create Operators
-  PDNode* elementwise_add_op{nullptr};
-  auto* mul_op = pattern->NewNode(name_scope, "mul")->assert_is_op("mul");
-  if (with_bias) {
-    elementwise_add_op = pattern->NewNode(name_scope, "elementwise_add")
-                             ->assert_is_op("elementwise_add");
-  }
-  // Create variables
-  // w
-  auto* mul_weight_var = pattern->NewNode(name_scope, "w")
-                             ->AsInput()
-                             ->assert_is_persistable_var()
-                             ->assert_is_op_nth_input("mul", "Y", 0);
-  PDNode* mul_out_var{nullptr};
-  if (with_bias) {
-    // intermediate variable, will be removed in the IR after fuse.
-    mul_out_var = pattern->NewNode(name_scope, "mul_out")
-                      ->AsIntermediate()
-                      ->assert_is_only_output_of_op("mul")
-                      ->assert_is_op_input("elementwise_add");
-  }
-  PDNode *bias{nullptr}, *fc_out{nullptr};
-  if (with_bias) {
-    // bias
-    bias = pattern->NewNode(name_scope, "fc_bias")
-               ->assert_is_op_input("elementwise_add")
-               ->AsInput();
-    // output
-    fc_out = pattern->NewNode(name_scope, "fc_out")
-                 ->AsOutput()
-                 ->assert_is_op_output("elementwise_add");
-  } else {
-    fc_out = pattern->NewNode(name_scope, "fc_out")
-                 ->AsOutput()
-                 ->assert_is_op_output("mul");
-  }
+PDNode* patterns::FC::operator()(paddle::framework::ir::PDNode* x,
+                                 bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("mul", "X");
+  auto* mul = pattern->NewNode(mul_repr())->assert_is_op("mul");
 
-  if (with_bias) {
-    mul_op->LinksFrom({mul_weight_var, x}).LinksTo({mul_out_var});
-    elementwise_add_op->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
-  } else {
-    mul_op->LinksFrom({mul_weight_var, x}).LinksTo({fc_out});
-  }
+  auto* mul_w_var = pattern->NewNode(w_repr())
+                        ->AsInput()
+                        ->assert_is_persistable_var()
+                        ->assert_is_op_input("mul", "Y");
 
-  return fc_out;
+  auto* mul_out_var =
+      pattern->NewNode(mul_out_repr())->assert_is_op_output("mul");
+
+  if (!with_bias) {  // not with bias
+    // Add links.
+    mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
+    return mul_out_var;
+
+  } else {  // with bias
+    mul_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+    // Create operators.
+    auto* elementwise_add = pattern->NewNode(elementwise_add_repr())
+                                ->assert_is_op("elementwise_add");
+    // Create variables.
+    auto* bias = pattern->NewNode(bias_repr())
+                     ->assert_is_op_input("elementwise_add")
+                     ->AsInput();
+
+    auto* fc_out = pattern->NewNode(Out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("elementwise_add");
+
+    mul->LinksFrom({mul_w_var, x}).LinksTo({mul_out_var});
+    elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
+    return fc_out;
+  }
 }
-PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
-                       PDNode* x) {
+
+PDNode* patterns::LSTM::operator()(PDNode* x) {
   x->assert_is_op_input("lstm", "Input");
-  auto* lstm_op = pattern->NewNode(name_scope, "lstm")->assert_is_op("lstm");
-#define NEW_NODE(arg__, io__)                        \
-  auto* arg__ = pattern->NewNode(name_scope, #arg__) \
-                    ->assert_is_op_##io__("lstm", #arg__);
+  auto* lstm_op = pattern->NewNode(lstm_repr())->assert_is_op("lstm");
+#define NEW_NODE(arg__, io__) \
+  auto* arg__ =               \
+      pattern->NewNode(arg__##_repr())->assert_is_op_##io__("lstm", #arg__);
 
   // Currently, the H0 and C0 are optional
   // TODO(Superjomn) upgrade the fuse framework to support optional.
@@ -589,6 +579,21 @@ PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
   lstm_op->LinksTo({Hidden, Cell, BatchGate, BatchCellPreAct});
   return Hidden;
 }
+
+PDNode* patterns::sequence_expand(PDPattern* pattern,
+                                  const std::string& name_scope, PDNode* X,
+                                  PDNode* Y) {
+  X->assert_is_op_input("sequence_expand", "X");
+  Y->assert_is_op_input("sequence_expand", "Y");
+  auto* op = pattern->NewNode(name_scope, "sequence_expand")
+                 ->assert_is_op("sequence_expand");
+  auto* Out = pattern->NewNode(name_scope, "sequence_expand/Out")
+                  ->assert_is_op_output("sequence_expand");
+
+  op->LinksFrom({X, Y}).LinksTo({Out});
+  return Out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

@@ -29,39 +29,38 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
   std::unordered_set<Node*> nodes2delete;
 
   GraphPatternDetector gpd;
-  // BuildFCPattern(gpd.mutable_pattern());
   auto* x = gpd.mutable_pattern()
                 ->NewNode("fc_fuse/x")
                 ->AsInput()
                 ->assert_is_op_input("mul", "X");
-  patterns::FC(gpd.mutable_pattern(), "fc_fuse", x, true /*with bias*/);
-
-#define GET_NODE(id)                                                         \
-  PADDLE_ENFORCE(subgraph.count(gpd.pattern().RetrieveNode("fc_fuse/" #id)), \
-                 "pattern has no Node called %s", #id);                      \
-  auto* id = subgraph.at(gpd.pattern().RetrieveNode("fc_fuse/" #id));        \
-  PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", "fc_fuse/" #id);
+  patterns::FC fc_pattern(gpd.mutable_pattern(), "fc_fuse");
+  fc_pattern(x, true /*with bias*/);
 
   int found_fc_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle FC fuse";
-    // Currently, there is no FC op available, so I will just simulate the
-    // scenerio.
-    // FC's fusion is simple, just op fuse, no need to process the
-    // parameters.
-    GET_NODE(x);                // x
-    GET_NODE(w);                // Y
-    GET_NODE(fc_bias);          // bias
-    GET_NODE(fc_out);           // Out
-    GET_NODE(mul);              // MUL op
-    GET_NODE(elementwise_add);  // ELEMENT_ADD op
-    GET_NODE(mul_out);          // tmp
-#undef GET_NODE
+// Currently, there is no FC op available, so I will just simulate the
+// scenerio.
+// FC's fusion is simple, just op fuse, no need to process the
+// parameters.
+#define GET_NODE(var, arg)                                               \
+  PADDLE_ENFORCE(subgraph.count(fc_pattern.arg##_n()),                   \
+                 "PDNode [%s] can not found the corresponding ir::Node", \
+                 fc_pattern.arg##_repr());                               \
+  auto* var = subgraph.at(fc_pattern.arg##_n());                         \
+  PADDLE_ENFORCE(var, "Node %s not exists in the subgraph.", #var);
+
+    GET_NODE(w, w);
+    GET_NODE(fc_bias, bias);
+    GET_NODE(fc_out, Out);
+    GET_NODE(mul, mul);
+    GET_NODE(elementwise_add, elementwise_add);
+    GET_NODE(mul_out, mul_out);
 
     // Create an FC Node.
     OpDesc desc;
-    std::string fc_x_in = x->Name();
+    std::string fc_x_in = subgraph.at(x)->Name();
     std::string fc_Y_in = w->Name();
     std::string fc_bias_in = fc_bias->Name();
     std::string fc_out_out = fc_out->Name();
@@ -73,7 +72,8 @@ std::unique_ptr<ir::Graph> FCFusePass::ApplyImpl(
     auto fc_node = g->CreateOpNode(&desc);  // OpDesc will be copied.
     GraphSafeRemoveNodes(graph.get(), {mul, elementwise_add, mul_out});
 
-    IR_NODE_LINK_TO(x, fc_node);
+    PADDLE_ENFORCE(subgraph.count(x));
+    IR_NODE_LINK_TO(subgraph.at(x), fc_node);
     IR_NODE_LINK_TO(w, fc_node);
     IR_NODE_LINK_TO(fc_bias, fc_node);
     IR_NODE_LINK_TO(fc_node, fc_out);
