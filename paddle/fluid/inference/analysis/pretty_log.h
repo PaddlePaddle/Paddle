@@ -1,6 +1,7 @@
 #include <gflags/gflags.h>
 #include <iostream>
 #include <sstream>
+#include "paddle/fluid/string/printf.h"
 
 DEFINE_bool(color, true, "Whether to turn on pretty log");
 
@@ -10,60 +11,46 @@ namespace analysis {
 
 namespace logging {
 
-inline const char* black() { return FLAGS_color ? "\e[30m" : ""; }
-inline const char* red() { return FLAGS_color ? "\e[31m" : ""; }
-inline const char* b_red() { return FLAGS_color ? "\e[41m" : ""; }
-inline const char* green() { return FLAGS_color ? "\e[32m" : ""; }
-inline const char* yellow() { return FLAGS_color ? "\e[33m" : ""; }
-inline const char* blue() { return FLAGS_color ? "\e[34m" : ""; }
-inline const char* purple() { return FLAGS_color ? "\e[35m" : ""; }
-inline const char* cyan() { return FLAGS_color ? "\e[36m" : ""; }
-inline const char* light_gray() { return FLAGS_color ? "\e[37m" : ""; }
-inline const char* white() { return FLAGS_color ? "\e[37m" : ""; }
-inline const char* light_red() { return FLAGS_color ? "\e[91m" : ""; }
-inline const char* dim() { return FLAGS_color ? "\e[2m" : ""; }
-inline const char* bold() { return FLAGS_color ? "\e[1m" : ""; }
-inline const char* underline() { return FLAGS_color ? "\e[4m" : ""; }
-inline const char* blink() { return FLAGS_color ? "\e[5m" : ""; }
-inline const char* reset() { return FLAGS_color ? "\e[0m" : ""; }
+inline std::string black() { return FLAGS_color ? "\e[30m" : ""; }
+inline std::string red() { return FLAGS_color ? "\e[31m" : ""; }
+inline std::string b_red() { return FLAGS_color ? "\e[41m" : ""; }
+inline std::string green() { return FLAGS_color ? "\e[32m" : ""; }
+inline std::string yellow() { return FLAGS_color ? "\e[33m" : ""; }
+inline std::string blue() { return FLAGS_color ? "\e[34m" : ""; }
+inline std::string purple() { return FLAGS_color ? "\e[35m" : ""; }
+inline std::string cyan() { return FLAGS_color ? "\e[36m" : ""; }
+inline std::string light_gray() { return FLAGS_color ? "\e[37m" : ""; }
+inline std::string white() { return FLAGS_color ? "\e[37m" : ""; }
+inline std::string light_red() { return FLAGS_color ? "\e[91m" : ""; }
+inline std::string dim() { return FLAGS_color ? "\e[2m" : ""; }
+inline std::string bold() { return FLAGS_color ? "\e[1m" : ""; }
+inline std::string underline() { return FLAGS_color ? "\e[4m" : ""; }
+inline std::string blink() { return FLAGS_color ? "\e[5m" : ""; }
+inline std::string reset() { return FLAGS_color ? "\e[0m" : ""; }
 
-struct LogStream {
-  enum Level { INFO, WARNING, SUCCESS };
-  LogStream(const char* header) : os_(std::cerr) { os_ << header << " "; }
+using TextBlock = std::pair<std::string, std::string>;
 
-  ~LogStream() { os_ << reset() << "\n"; }
+inline std::string info() { return black(); }
+inline std::string warn() { return b_red(); }
+inline std::string suc() { return green(); }
 
-  std::ostream& stream() { return os_; }
+static void PrettyLog(const std::vector<TextBlock>& texts) {
+  std::stringstream ss;
+  for (const auto& t : texts) {
+    ss << t.first << t.second << reset();
+  }
+  std::cerr << ss.str() << std::endl;
+}
 
-  void operator=(const LogStream&) = delete;
-  LogStream(const LogStream&) = delete;
-
- private:
-  std::ostream& os_;
-};
+template <typename... Args>
+static void PrettyLog(const std::string& style, const char* fmt,
+                      const Args&... args, bool end = true) {
+  std::cerr << style << strings::Sprintf(fmt, args...)
+            << (end ? std::endl : "");
+}
 
 }  // namespace logging
-
 }  // namespace analysis
 }  // namespace framework
+
 }  // namespace paddle
-
-#define PLOG(LEVEL) PLOG_##LEVEL
-#define PLOG_INFO                                    \
-  ::paddle::framework::analysis::logging::LogStream( \
-      paddle::framework::analysis::logging::black()) \
-      .stream()
-#define PLOG_SUCCESS                                 \
-  ::paddle::framework::analysis::logging::LogStream( \
-      paddle::framework::analysis::logging::green()) \
-      .stream()
-
-#define PLOG_WARNING                                 \
-  ::paddle::framework::analysis::logging::LogStream( \
-      paddle::framework::analysis::logging::bold())  \
-      .stream()
-
-#define PLOG_ERROR                                   \
-  ::paddle::framework::analysis::logging::LogStream( \
-      paddle::framework::analysis::logging::red())   \
-      .stream()

@@ -5,12 +5,12 @@ namespace paddle {
 namespace framework {
 namespace analysis {
 
-TEST(PLOG, INFO) {
-  PLOG(INFO) << "this is INFO";
-  std::cerr << "\033[32m hello" << std::endl;
-}
+using logging::info;
+using logging::warn;
+using logging::suc;
+using logging::PrettyLog;
 
-TEST(PLOG, WARNING) { PLOG(INFO) << "this is WARNING"; }
+TEST(PLOG, INFO) { PrettyLog({{warn(), "warn"}, {info(), "info"}, {suc(), "suc"}}); }
 
 }  // namespace analysis
 }  // namespace framework
