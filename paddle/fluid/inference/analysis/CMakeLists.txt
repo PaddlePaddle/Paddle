@@ -1,6 +1,6 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
 set(analysis_deps
-    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
+    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log)
 
 cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
@@ -85,7 +85,6 @@ inference_analysis_test(test_analyzer_ner SRCS analyzer_ner_tester.cc
     ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model
         --infer_data=${CHINESE_NER_INSTALL_DIR}/data.txt)
 
-cc_test(test_pretty_log SRCS pretty_log.cc)
 set(LAC_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/lac_model.tar.gz")
 set(LAC_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/lac_data.txt.tar.gz")
 set(LAC_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/lac" CACHE PATH "LAC model and data root." FORCE)
