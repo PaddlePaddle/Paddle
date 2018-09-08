@@ -98,3 +98,5 @@ inference_analysis_test(test_chinese_ner SRCS chinese_ner_tester.cc
     ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model
         --infer_model=${CHINESE_NER_INSTALL_DIR}/model
         --infer_data=${CHINESE_NER_INSTALL_DIR}/data.txt)
+
+cc_test(test_pretty_log SRCS pretty_log.cc)
