@@ -66,7 +66,8 @@ def rpn_target_assign(loc,
                       rpn_straddle_thresh=0.0,
                       rpn_fg_fraction=0.5,
                       rpn_positive_overlap=0.7,
-                      rpn_negative_overlap=0.3):
+                      rpn_negative_overlap=0.3,
+                      use_random=True):
     """
     ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
 
@@ -177,7 +178,8 @@ def rpn_target_assign(loc,
             'rpn_straddle_thresh': rpn_straddle_thresh,
             'rpn_positive_overlap': rpn_positive_overlap,
             'rpn_negative_overlap': rpn_negative_overlap,
-            'rpn_fg_fraction': rpn_fg_fraction
+            'rpn_fg_fraction': rpn_fg_fraction,
+            'use_random': use_random
         })
 
     loc_index.stop_gradient = True
