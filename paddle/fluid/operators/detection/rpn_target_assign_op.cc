@@ -325,6 +325,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
                       "RpnTargetAssignOp gt_boxes needs 1 level of LoD");
     PADDLE_ENFORCE_EQ(is_crowd->lod().size(), 1UL,
                       "RpnTargetAssignOp is_crowd needs 1 level of LoD");
+    int64_t anchor_num = static_cast<int64_t>(anchor->dims()[0]);
     int64_t batch_num = static_cast<int64_t>(gt_boxes->lod().back().size() - 1);
 
     int rpn_batch_size_per_im = context.Attr<int>("rpn_batch_size_per_im");
@@ -420,6 +421,15 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       BoxToDelta<T>(loc_num, sampled_anchor, sampled_gt, nullptr, false,
                     &sampled_tgt_bbox);
 
+      // Add anchor offset
+      int anchor_offset = i * anchor_num;
+      auto sampled_loc_index_unmap_et =
+          framework::EigenTensor<int, 1>::From(sampled_loc_index_unmap);
+      sampled_loc_index_unmap_et = sampled_loc_index_unmap_et + anchor_offset;
+      auto sampled_score_index_unmap_et =
+          framework::EigenTensor<int, 1>::From(sampled_score_index_unmap);
+      sampled_score_index_unmap_et =
+          sampled_score_index_unmap_et + anchor_offset;
       AppendRpns<int>(loc_index, total_loc_num, &sampled_loc_index_unmap);
       AppendRpns<int>(score_index, total_score_num, &sampled_score_index_unmap);
       AppendRpns<T>(tgt_bbox, total_loc_num * 4, &sampled_tgt_bbox);
