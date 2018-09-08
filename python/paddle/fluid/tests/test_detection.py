@@ -165,7 +165,7 @@ class TestGenerateProposalLabels(unittest.TestCase):
             is_crowd = layers.data(
                 name='is_crowd',
                 shape=[6],
-                dtype='bool',
+                dtype='int32',
                 lod_level=1,
                 append_batch_size=False)
             gt_boxes = layers.data(
@@ -292,7 +292,7 @@ class TestRpnTargetAssign(unittest.TestCase):
             is_crowd = layers.data(
                 name='is_crowd',
                 shape=[10],
-                dtype='bool',
+                dtype='int32',
                 lod_level=1,
                 append_batch_size=False)
             im_info = layers.data(
