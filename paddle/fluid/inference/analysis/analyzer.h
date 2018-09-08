@@ -38,7 +38,6 @@ limitations under the License. */
 #include <gflags/gflags.h>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/flags.h"
 #include "paddle/fluid/inference/analysis/pass_manager.h"
@@ -69,6 +68,8 @@ class Analyzer : public OrderedRegistry<PassManager> {
       "attention_lstm_fuse_pass",  //
       "fc_lstm_fuse_pass",         //
       "mul_lstm_fuse_pass",        //
+      "fc_gru_fuse_pass",          //
+      "mul_gru_fuse_pass",         //
       "seq_concat_fc_fuse_pass",   //
       "fc_fuse_pass",              //
   }};
