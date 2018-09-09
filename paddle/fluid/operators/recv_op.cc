@@ -45,7 +45,7 @@ class RecvOp : public framework::OperatorBase {
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
     std::shard_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
-    if (sync_send) {
+    if (sync_mode) {
       ret_q.reset(new framework::BlockingQueue<int>())
     }
 

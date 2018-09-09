@@ -277,7 +277,8 @@ bool GRPCClient::Wait() {
   return ok_;
 }
 
-bool Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q, int size) {
+bool GRPCClient::Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q,
+                      int size) {
   if (ret_q == nullptr) {
     return true;
   }

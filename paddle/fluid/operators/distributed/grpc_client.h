@@ -235,6 +235,8 @@ class GRPCClient : public RPCClient {
 
   bool Wait() override;
 
+  bool Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q, int size) = 0;
+
   void SendComplete() override;
 
  protected:

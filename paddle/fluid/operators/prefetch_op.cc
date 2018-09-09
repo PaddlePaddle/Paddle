@@ -44,22 +44,22 @@ class PrefetchOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    std::shard_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
-    if (sync_send) {
-      ret_q.reset(new framework::BlockingQueue<int>())
-    }
+    std::shard_ptr<framework::BlockingQueue<int>> ret_q(
+        new framework::BlockingQueue<int>())
 
+        int size = 0;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
                 << outs[i] << " back";
+        size++;
         rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope, ins[i], outs[i],
                                      ret_q);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait(ret_q, ins.size()),
+    PADDLE_ENFORCE(rpc_client->Wait(ret_q, size),
                    "internal error in RPCClient");
   }
 };
