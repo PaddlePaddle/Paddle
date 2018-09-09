@@ -44,7 +44,7 @@ class RecvOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    std::shard_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
+    std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
     if (sync_mode) {
       ret_q.reset(new framework::BlockingQueue<int>())
     }
@@ -54,7 +54,7 @@ class RecvOp : public framework::OperatorBase {
       rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i], ret_q);
     }
     if (sync_mode) {
-      PADDLE_ENFORCE(rpc_client->Wait(ret_q, out.size()),
+      PADDLE_ENFORCE(rpc_client->Wait(ret_q, outs.size()),
                      "internal error in RPCClient");
     }
   }
