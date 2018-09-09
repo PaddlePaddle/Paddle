@@ -46,9 +46,9 @@ class SendOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    std::shard_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
+    std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
     if (sync_send) {
-      ret_q.reset(new framework::BlockingQueue<int>())
+      ret_q.reset(new framework::BlockingQueue<int>());
     }
 
     int size = 0;
@@ -56,7 +56,7 @@ class SendOp : public framework::OperatorBase {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
         size++;
-        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i], req_q);
+        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i], ret_q);
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }

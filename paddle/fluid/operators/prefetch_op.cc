@@ -44,10 +44,10 @@ class PrefetchOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    std::shard_ptr<framework::BlockingQueue<int>> ret_q(
-        new framework::BlockingQueue<int>())
+    std::shared_ptr<framework::BlockingQueue<int>> ret_q(
+        new framework::BlockingQueue<int>());
 
-        int size = 0;
+    int size = 0;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "

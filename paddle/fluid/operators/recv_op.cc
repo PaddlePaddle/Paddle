@@ -46,7 +46,7 @@ class RecvOp : public framework::OperatorBase {
 
     std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
     if (sync_mode) {
-      ret_q.reset(new framework::BlockingQueue<int>())
+      ret_q.reset(new framework::BlockingQueue<int>());
     }
 
     for (size_t i = 0; i < outs.size(); i++) {
