@@ -21,7 +21,7 @@ We refer to the trace of the execution of the forward pass program as a *tape* [
 
 Deep learning systems that utilize the idea of dynamic networks gained their popularities in recent years.  This article surveys the following typical systems: 
 
-- DyNet](https://dynet.readthedocs.io/en/latest/)
+- [DyNet](https://dynet.readthedocs.io/en/latest/)
 - [PyTorch](https://pytorch.org/)
 - Chainer
 - Autograd from HIPS
