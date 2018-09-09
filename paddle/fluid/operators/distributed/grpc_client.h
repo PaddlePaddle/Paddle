@@ -176,7 +176,7 @@ class FetchBarrierProcessor : public BaseProcessor {
 
   virtual ~FetchBarrierProcessor() {}
 
-  void ProcessImpl() {}
+  void ProcessImpl() override {}
   sendrecv::VariableMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
