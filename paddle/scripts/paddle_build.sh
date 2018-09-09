@@ -547,14 +547,14 @@ function gen_capi_package() {
         rm -rf $install_prefix
         make DESTDIR="$install_prefix" install
         cd $install_prefix/usr/local
-        ls | egrep -v "^Found.*item$" | xargs tar -cf ${PADDLE_ROOT}/build/paddle.tgz
+        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
     fi
 }
 
 function gen_fluid_inference_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
     Deploying fluid inference library ...
@@ -569,7 +569,7 @@ EOF
 }
 
 function test_fluid_inference_lib() {
-    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
     Testing fluid inference library ...

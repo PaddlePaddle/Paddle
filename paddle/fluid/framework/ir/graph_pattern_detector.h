@@ -298,6 +298,8 @@ PDNode* FC(PDPattern* pattern, const std::string& name_scope, PDNode* x,
 
 PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
 
+PDNode* GRU(PDPattern* pattern, const std::string& name_scope, PDNode* x);
+
 }  // namespace patterns
 
 #define IR_NODE_LINK_TO(a, b) \
