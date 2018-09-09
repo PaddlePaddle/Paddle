@@ -21,6 +21,7 @@ __all__ = [
 from threading import Thread
 import subprocess
 import multiprocessing
+import json
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
@@ -334,19 +335,19 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     return xreader
 
 
-def multiprocess_reader(readers, queue_size):
-    def read_into_queue(reader, queue):
+def multiprocess_reader(readers, queue_size=1000, use_pipe=False):
+    def _read_into_queue(reader, queue):
         for sample in reader():
             if sample is None:
                 raise ValueError("sample has None")
             queue.put(sample)
         queue.put(None)
 
-    def reader():
+    def queue_reader():
         queue = multiprocessing.Queue(queue_size)
         for reader in readers:
             p = multiprocessing.Process(
-                target=read_into_queue, args=(reader, queue))
+                target=_read_into_queue, args=(reader, queue))
             p.start()
 
         reader_num = len(readers)
@@ -358,7 +359,38 @@ def multiprocess_reader(readers, queue_size):
             else:
                 yield sample
 
-    return reader
+    def _read_into_pipe(reader, conn):
+        for sample in reader():
+            if sample is None:
+                raise ValueError("sample has None!")
+            conn.send(json.dumps(sample))
+        conn.send(json.dumps(None))
+        conn.close()
+
+    def pipe_reader():
+        conns = []
+        for reader in readers:
+            parent_conn, child_conn = multiprocessing.Pipe()
+            conns.append(parent_conn)
+            p = multiprocessing.Process(
+                target=_read_into_pipe, args=(reader, child_conn))
+            p.start()
+
+        reader_num = len(readers)
+        finish_num = 0
+        while finish_num < reader_num:
+            for conn in conns:
+                sample = json.loads(conn.recv())
+                if sample is None:
+                    finish_num += 1
+                    conns.remove(conn)
+                else:
+                    yield sample
+
+    if use_pipe:
+        return pipe_reader
+    else:
+        return queue_reader
 
 
 def _buf2lines(buf, line_break="\n"):
