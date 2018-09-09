@@ -336,6 +336,31 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
 
 
 def multiprocess_reader(readers, queue_size=1000, use_pipe=False):
+    """
+    multiprocess_reader use python multi process to read data from readers
+    and then use multiprocess.Queue or multiprocess.Pipe to merge all
+    data. The process number is equal to the number of input readers, each
+    process call one reader.
+
+    Use multiprocess.Queue(use_pipe=False, default config) is much more
+    faster then multiprocess.Pipe but multiprocess.Queue require the rw
+    access right to /dev/shm, some platform does not support, in this
+    condition, we can use multiprocess.Pipe(use_pipe=False).
+
+    you need to create multiple readers first, these readers should be independent
+    to each other so that each process can work independently.
+
+    An example:
+
+    .. code-block:: python
+
+        reader0 = reader(["file01", "file02"])
+        reader1 = reader(["file11", "file12"])
+        reader1 = reader(["file21", "file22"])
+        reader = multiprocess_reader([reader0, reader1, reader2],
+            queue_size=100, use_pipe=False)
+    """
+
     def _read_into_queue(reader, queue):
         for sample in reader():
             if sample is None:
