@@ -53,8 +53,11 @@ void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
-  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
+  explicit BaseProcessor(
+      std::shared_ptr<grpc::Channel> ch,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr) {
     context_ = nullptr;
+    ret_q_ = ret_q;
   }
 
   virtual ~BaseProcessor() {}
@@ -81,11 +84,23 @@ class BaseProcessor {
     context_->set_deadline(deadline);
   }
 
-  virtual void Process() = 0;
+  void Process(int code = 0) {
+    ProcessImpl();
+    PushRet(code);
+  }
+
+  void PushRet(int code = 0) {
+    if (ret_q_) {
+      ret_q_->Push(code);
+    }
+  }
+
+  virtual void ProcessImpl() = 0;
 
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
   VarHandle var_h_;
+  std::shared_ptr<framework::BlockingQueue<int>> ret_q_;
 };
 
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
@@ -93,12 +108,14 @@ typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
 
 class SendProcessor : public BaseProcessor {
  public:
-  explicit SendProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch), stub_g_(ch) {}
+  explicit SendProcessor(
+      std::shared_ptr<grpc::Channel> ch,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
+      : BaseProcessor(ch, ret_q), stub_g_(ch) {}
 
   virtual ~SendProcessor() {}
 
-  virtual void Process() {
+  void ProcessImpl() override {
     if (response_call_back_) {
       response_call_back_(var_h_, reply_);
     }
@@ -114,12 +131,14 @@ typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
 
 class GetProcessor : public BaseProcessor {
  public:
-  explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch), stub_g_(ch) {}
+  explicit GetProcessor(
+      std::shared_ptr<grpc::Channel> ch,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
+      : BaseProcessor(ch, ret_q), stub_g_(ch) {}
 
   virtual ~GetProcessor() {}
 
-  virtual void Process() {
+  void ProcessImpl() override {
     if (response_call_back_) {
       response_call_back_(var_h_, reply_);
     }
@@ -132,42 +151,48 @@ class GetProcessor : public BaseProcessor {
 
 class BatchBarrierProcessor : public BaseProcessor {
  public:
-  explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {
+  explicit BatchBarrierProcessor(
+      std::shared_ptr<grpc::Channel> ch,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
+      : BaseProcessor(ch, ret_q) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
   virtual ~BatchBarrierProcessor() {}
 
-  virtual void Process() {}
+  void ProcessImpl() override {}
   sendrecv::VoidMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class FetchBarrierProcessor : public BaseProcessor {
  public:
-  explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {
+  explicit FetchBarrierProcessor(
+      std::shared_ptr<grpc::Channel> ch,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
+      : BaseProcessor(ch, ret_q) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
   virtual ~FetchBarrierProcessor() {}
 
-  virtual void Process() {}
+  void Process() override {}
   sendrecv::VariableMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
 
 class CheckpointNotifyProcessor : public BaseProcessor {
  public:
-  explicit CheckpointNotifyProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {
+  explicit CheckpointNotifyProcessor(
+      std::shared_ptr<grpc::Channel> ch,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
+      : BaseProcessor(ch, ret_q) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
   virtual ~CheckpointNotifyProcessor() {}
 
-  virtual void Process() {}
+  void ProcessImpl() override {}
   sendrecv::VoidMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
@@ -241,6 +266,6 @@ class GRPCClient : public RPCClient {
   volatile bool stopped_;
 };
 
-}  // namespace distributed
-}  // namespace operators
-}  // namespace paddle
+};  // namespace distributed
+};  // namespace operators
+};  // namespace paddle

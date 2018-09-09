@@ -17,6 +17,7 @@
 #include <string>
 #include "gflags/gflags.h"
 
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -31,24 +32,24 @@ class RPCClient {
  public:
   RPCClient() {}
   virtual ~RPCClient() {}
-  virtual bool AsyncSendVar(const std::string& ep,
-                            const platform::DeviceContext& ctx,
-                            const framework::Scope& scope,
-                            const std::string& var_name,
-                            int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual bool AsyncSendVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual bool AsyncGetVar(const std::string& ep,
-                           const platform::DeviceContext& ctx,
-                           const framework::Scope& scope,
-                           const std::string& var_name,
-                           int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual bool AsyncGetVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual bool AsyncPrefetchVar(const std::string& ep,
-                                const platform::DeviceContext& ctx,
-                                const framework::Scope& scope,
-                                const std::string& in_var_name,
-                                const std::string& out_var_name,
-                                int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual bool AsyncPrefetchVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& in_var_name,
+      const std::string& out_var_name,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   virtual void AsyncSendBatchBarrier(const std::string& ep,
                                      int64_t time_out = FLAGS_rpc_deadline) = 0;
@@ -69,6 +70,9 @@ class RPCClient {
   virtual void SendComplete() = 0;
 
   virtual bool Wait() = 0;
+
+  virtual bool Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q,
+                    int size) = 0;
 
   template <typename T>
   static RPCClient* GetInstance() {
