@@ -65,7 +65,7 @@ GRPCClient::~GRPCClient() {
   }
 
   for (int i = 0; i < FLAGS_rpc_client_process_thread_num; i++) {
-    threads[i]->Join();
+    threads_[i]->join();
   }
 }
 
@@ -79,7 +79,7 @@ bool GRPCClient::AsyncSendVar(
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
 
-  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch,
+  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, ret_q,
                       this] {
     auto* var = p_scope->FindVar(var_name_val);
 
@@ -135,7 +135,7 @@ bool GRPCClient::AsyncGetVar(
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
 
-  framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, ch,
+  framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, ch, ret_q,
                       this] {
     // prepare input
     sendrecv::VariableMessage req;
@@ -182,7 +182,7 @@ bool GRPCClient::AsyncPrefetchVar(
   const auto ch = GetChannel(ep_val);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      time_out, ch, this] {
+                      time_out, ch, ret_q, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -286,7 +286,7 @@ bool Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q, int size) {
   bool ret = true;
 
   while (1) {
-    int code = ret_q.Pop();
+    int code = ret_q->Pop();
     if (code != 0) {
       ret = false;
       return ret;

@@ -176,7 +176,7 @@ class FetchBarrierProcessor : public BaseProcessor {
 
   virtual ~FetchBarrierProcessor() {}
 
-  void Process() override {}
+  void ProcessImpl() {}
   sendrecv::VariableMessage reply_;
   std::unique_ptr<sendrecv::SendRecvService::Stub> stub_;
 };
@@ -202,20 +202,24 @@ class GRPCClient : public RPCClient {
   GRPCClient() : ok_(true), completed_(false), stopped_(false) {}
   virtual ~GRPCClient();
 
-  bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
-                    const framework::Scope& scope, const std::string& var_name,
-                    int64_t time_out = FLAGS_rpc_deadline) override;
+  bool AsyncSendVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
+      int64_t time_out = FLAGS_rpc_deadline) override;
 
-  bool AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
-                   const framework::Scope& scope, const std::string& var_name,
-                   int64_t time_out = FLAGS_rpc_deadline) override;
+  bool AsyncGetVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& var_name,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
+      int64_t time_out = FLAGS_rpc_deadline) override;
 
-  bool AsyncPrefetchVar(const std::string& ep,
-                        const platform::DeviceContext& ctx,
-                        const framework::Scope& scope,
-                        const std::string& in_var_name,
-                        const std::string& out_var_name,
-                        int64_t time_out = FLAGS_rpc_deadline) override;
+  bool AsyncPrefetchVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& in_var_name,
+      const std::string& out_var_name,
+      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
+      int64_t time_out = FLAGS_rpc_deadline) override;
 
   void AsyncSendBatchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
@@ -247,7 +251,7 @@ class GRPCClient : public RPCClient {
  private:
   grpc::CompletionQueue cq_;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  std::unique_ptr<std::thread> client_thread_;
+  std::vector<std::unique_ptr<std::thread>> threads_;
 
   // mutex for Wait client sync
   std::mutex sync_mutex_;
