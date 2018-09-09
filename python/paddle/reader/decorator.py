@@ -14,11 +14,13 @@
 
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
-    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader'
+    'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader',
+    'multiprocess_reader'
 ]
 
 from threading import Thread
 import subprocess
+import multiprocessing
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
@@ -330,6 +332,33 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
                 yield sample
 
     return xreader
+
+
+def multiprocess_reader(readers, queue_size):
+    def read_into_queue(reader, queue):
+        for sample in reader():
+            if sample is None:
+                raise ValueError("sample has None")
+            queue.put(sample)
+        queue.put(None)
+
+    def reader():
+        queue = multiprocessing.Queue(queue_size)
+        for reader in readers:
+            p = multiprocessing.Process(
+                target=read_into_queue, args=(reader, queue))
+            p.start()
+
+        reader_num = len(readers)
+        finish_num = 0
+        while finish_num < reader_num:
+            sample = queue.get()
+            if sample is None:
+                finish_num += 1
+            else:
+                yield sample
+
+    return reader
 
 
 def _buf2lines(buf, line_break="\n"):
