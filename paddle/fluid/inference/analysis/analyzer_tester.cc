@@ -244,8 +244,7 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
   }
 }
 // Test with a really complicate model.
-void TestRNN1Prediction(bool use_analysis, bool activate_ir,
-                           int num_threads) {
+void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
   AnalysisConfig config;
   config.prog_file = FLAGS_infer_model + "/__model__";
   config.param_file = FLAGS_infer_model + "/param";
@@ -341,9 +340,7 @@ void TestRNN1Prediction(bool use_analysis, bool activate_ir,
 }
 
 // Inference with analysis and IR, easy for profiling independently.
-TEST(Analyzer, rnn1) {
-  TestRNN1Prediction(true, true, FLAGS_num_threads);
-}
+TEST(Analyzer, rnn1) { TestRNN1Prediction(true, true, FLAGS_num_threads); }
 
 // Other unit-tests of RNN1, test different options of use_analysis,
 // activate_ir and multi-threads.
