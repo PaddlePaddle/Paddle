@@ -51,7 +51,6 @@ class RPCHandleCls {
   }
 
  protected:
-  // mutex for Wait RPC return.
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
   int ok_;

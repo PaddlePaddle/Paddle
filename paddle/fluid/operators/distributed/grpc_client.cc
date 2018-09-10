@@ -35,8 +35,7 @@ void GRPCClient::InitImpl() { InitEventLoop(); }
 
 void GRPCClient::InitEventLoop() {
   for (int i = 0; i < FLAGS_rpc_client_process_thread_num; i++) {
-    threads_.emplace_back(
-        new std::thread(std::bind(&GRPCClient::Proceed, this)));
+    framework::AsyncIO(std::bind(&GRPCClient::Proceed, this));
   }
 }
 

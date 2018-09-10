@@ -245,7 +245,6 @@ class GRPCClient : public RPCClient {
  private:
   grpc::CompletionQueue cq_;
   std::unordered_map<std::string, std::shared_ptr<grpc::Channel>> channels_;
-  std::vector<std::unique_ptr<std::thread>> threads_;
 
   // mutex for Wait client sync
   std::mutex sync_mutex_;
