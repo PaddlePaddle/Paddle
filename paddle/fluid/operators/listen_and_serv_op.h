@@ -51,8 +51,7 @@ class ListenAndServOp : public framework::OperatorBase {
                    framework::Scope* recv_scope,
                    platform::DeviceContext* dev_ctx,
                    const std::vector<int>& prefetch_block_id_list,
-                   const int checkpoint_point_block_id,
-                   const std::vector<std::string>& recv_varnames) const;
+                   const int checkpoint_point_block_id) const;
 
   void RunAsyncLoop(framework::Executor* executor,
                     framework::ProgramDesc* program,
@@ -67,10 +66,12 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
 
-  void ResetReceivedVars(const std::vector<std::string>& recv_varnames,
-                         framework::Scope* recv_scope,
+  void ResetReceivedVars(framework::Scope* recv_scope,
                          platform::DeviceContext* dev_ctx,
                          bool reset_all = false) const;
+
+  void CacheVarsType(const std::vector<std::string>& varnames,
+                     const framework::Scope& scope) const;
 
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
@@ -82,6 +83,8 @@ class ListenAndServOp : public framework::OperatorBase {
       request_checkpoint_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
+  mutable std::vector<std::string> sparse_vars_;
+  mutable std::vector<std::string> dense_vars_;
 };
 
 class SignalHandler {
