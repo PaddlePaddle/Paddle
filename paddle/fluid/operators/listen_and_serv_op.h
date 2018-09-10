@@ -70,7 +70,7 @@ class ListenAndServOp : public framework::OperatorBase {
   void ResetReceivedVars(const std::vector<std::string>& recv_varnames,
                          framework::Scope* recv_scope,
                          platform::DeviceContext* dev_ctx,
-                         bool only_sparse_vars = true) const;
+                         bool reset_all = false) const;
 
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
