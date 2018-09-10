@@ -42,18 +42,10 @@ class RPCHandleCls {
     return ok_;
   }
 
-  void Complete() {
+  void Finish(bool ok) {
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      ok_ = true;
-    }
-    sync_cond_.notify_all();
-  }
-
-  void Error() {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      ok_ = false;
+      ok_ = ok;
     }
     sync_cond_.notify_all();
   }

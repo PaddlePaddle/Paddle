@@ -84,16 +84,14 @@ class BaseProcessor {
 
   void Process() {
     ProcessImpl();
-    h_->Complete();
+    h_->Finish(true);
   }
 
   RPCHandle GetRPCHandle() { return h_; }
 
   bool Wait() { return h_->Wait(); }
 
-  void Complete() { return h_->Complete(); }
-
-  void Error() { return h_->Error(); }
+  void Finish(bool ok) { return h_->Finish(ok); }
 
   virtual void ProcessImpl() = 0;
 

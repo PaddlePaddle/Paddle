@@ -306,11 +306,11 @@ void GRPCClient::Proceed() {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
       }
-      c->Error();
+      c->Finish(false);
     } else {
       LOG(FATAL) << c->var_h_.String()
                  << " meets grpc error:" << c->status_.error_message();
-      c->Error();
+      c->Finish(false);
     }
 
     delete c;
