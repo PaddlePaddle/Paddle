@@ -6,6 +6,7 @@ cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits
   analyzer.cc
   helper.cc
   # passes
+  analysis_pass.cc
   fluid_to_data_flow_graph_pass.cc
   data_flow_graph_to_fluid_pass.cc
   dfg_graphviz_draw_pass.cc
@@ -47,18 +48,18 @@ function (inference_download_and_uncompress install_dir url gz_filename)
     message(STATUS "finish downloading ${gz_filename}")
 endfunction(inference_download_and_uncompress)
 
-set(DITU_RNN_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fmodel.tar.gz")
-set(DITU_RNN_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fdata.txt.tar.gz")
-set(DITU_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/ditu_rnn" CACHE PATH "Ditu RNN model and data root." FORCE)
-if (NOT EXISTS ${DITU_INSTALL_DIR} AND WITH_TESTING)
-  inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_MODEL_URL} "ditu_rnn_fluid%2Fmodel.tar.gz")
-  inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
+set(RNN1_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/rnn1%2Fmodel.tar.gz")
+set(RNN1_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/rnn1%2Fdata.txt.tar.gz")
+set(RNN1_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/rnn1" CACHE PATH "RNN1 model and data root." FORCE)
+if (NOT EXISTS ${RNN1_INSTALL_DIR} AND WITH_TESTING)
+  inference_download_and_uncompress(${RNN1_INSTALL_DIR} ${RNN1_MODEL_URL} "rnn1%2Fmodel.tar.gz")
+  inference_download_and_uncompress(${RNN1_INSTALL_DIR} ${RNN1_DATA_URL} "rnn1%2Fdata.txt.tar.gz")
 endif()
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
-    ARGS --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
-         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
+    ARGS --infer_model=${RNN1_INSTALL_DIR}/model
+         --infer_data=${RNN1_INSTALL_DIR}/data.txt)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
 inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
@@ -80,7 +81,7 @@ if (NOT EXISTS ${CHINESE_NER_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
 endif()
 
 inference_analysis_test(test_analyzer_ner SRCS analyzer_ner_tester.cc
-    EXTRA_DEPS paddle_inference_api paddle_fluid_api
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
     ARGS --infer_model=${CHINESE_NER_INSTALL_DIR}/model
         --infer_data=${CHINESE_NER_INSTALL_DIR}/data.txt)
 
@@ -93,18 +94,23 @@ if (NOT EXISTS ${LAC_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
 endif()
 
 inference_analysis_test(test_analyzer_lac SRCS analyzer_lac_tester.cc
-    EXTRA_DEPS paddle_inference_api paddle_fluid_api
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
     ARGS --infer_model=${LAC_INSTALL_DIR}/model
         --infer_data=${LAC_INSTALL_DIR}/data.txt)
 
 
 set(TEXT_CLASSIFICATION_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/text-classification-Senta.tar.gz")
+set(TEXT_CLASSIFICATION_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/text_classification_data.txt.tar.gz")
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/text_classification" CACHE PATH "Text Classification model and data root." FORCE)
 
 if (NOT EXISTS ${TEXT_CLASSIFICATION_INSTALL_DIR} AND WITH_TESTING AND WITH_INFERENCE)
   inference_download_and_uncompress(${TEXT_CLASSIFICATION_INSTALL_DIR} ${TEXT_CLASSIFICATION_MODEL_URL} "text-classification-Senta.tar.gz")
+  inference_download_and_uncompress(${TEXT_CLASSIFICATION_INSTALL_DIR} ${TEXT_CLASSIFICATION_DATA_URL} "text_classification_data.txt.tar.gz")
 endif()
 
-inference_analysis_test(test_text_classification SRCS test_text_classification.cc
+inference_analysis_test(test_text_classification SRCS analyzer_text_classification_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
-    ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta)
+    ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta
+         --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt
+         --topn=1 # Just run top 1 batch.
+    )

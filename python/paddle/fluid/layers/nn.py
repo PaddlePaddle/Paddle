@@ -4025,10 +4025,12 @@ def transpose(x, perm, name=None):
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='transpose',
+        type='transpose2',
         inputs={'X': [x]},
-        outputs={'Out': [out]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
 
@@ -4498,7 +4500,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python lsit or tuple.")
+        raise ValueError("Input shape must be a python list or tuple.")
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -4520,13 +4522,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "Each dimension size given in shape must not be negtive "
                 "except one unknown dimension.")
 
-    helper = LayerHelper("reshape", **locals())
+    helper = LayerHelper("reshape2", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
+    x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="reshape",
+        type="reshape2",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return helper.append_activation(out)
 
@@ -4570,11 +4574,13 @@ def squeeze(input, axes, name=None):
     """
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="squeeze",
+        type="squeeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -4605,11 +4611,13 @@ def unsqueeze(input, axes, name=None):
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="unsqueeze",
+        type="unsqueeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -5811,10 +5819,12 @@ def flatten(x, axis=1, name=None):
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='flatten',
+        type='flatten2',
         inputs={"X": x},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'XShape': x_shape},
         attrs={"axis": axis})
     return out
 
