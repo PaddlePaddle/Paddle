@@ -305,7 +305,7 @@ class DistributeTranspiler(object):
 
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={"X": input_deps},
+                inputs={"X": list(input_deps)},
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -406,7 +406,7 @@ class DistributeTranspiler(object):
 
         Args:
             recv_vars (list): Variable list to recv for current trainer_id
-            eplist (list): A list of strings indicating 
+            eplist (list): A list of strings indicating
 
         Returns:
             Program: trainer side startup program.
@@ -460,7 +460,7 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
-            if startup_program.global_block().vars.has_key(varname):
+            if varname in startup_program.global_block().vars:
                 orig_param = startup_program.global_block().vars[varname]
             else:
                 origin_param_var = self.origin_program.global_block().vars[
@@ -695,7 +695,7 @@ class DistributeTranspiler(object):
 
         Args:
             endpoint (str): current pserver endpoint.
-        
+
         Returns:
             tuple: (main_program, startup_program), of type "Program"
         """
@@ -718,7 +718,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing 
+                when initalizing
 
         Returns:
             Program: parameter server side startup program.

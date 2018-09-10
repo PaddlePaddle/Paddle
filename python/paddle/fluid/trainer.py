@@ -431,6 +431,28 @@ class Trainer(object):
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
 
+    def save_inference_model(self, param_path, feeded_var_names,
+                             target_var_indexes):
+        """
+        Save model for cpp inference into :code:`param_path`.
+
+        Args:
+            param_path(str): The path to save parameters.
+            feeded_var_names(list(str)): The name of the vars that you
+                need to feed in before run program.
+            target_var_indexes(list(int)): the index of target var that
+                you need to return in trainer.train_func.
+        Returns:
+            None
+        """
+        with self._prog_and_scope_guard():
+            exe = executor.Executor(self.place)
+            target_vars = [
+                self.train_func_outputs[index] for index in target_var_indexes
+            ]
+            io.save_inference_model(param_path, feeded_var_names, target_vars,
+                                    exe)
+
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
         with framework.program_guard(
