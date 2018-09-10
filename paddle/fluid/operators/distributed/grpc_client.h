@@ -53,11 +53,8 @@ void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
-  explicit BaseProcessor(
-      std::shared_ptr<grpc::Channel> ch,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr) {
+  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
     context_ = nullptr;
-    ret_q_ = ret_q;
   }
 
   virtual ~BaseProcessor() {}
@@ -84,15 +81,33 @@ class BaseProcessor {
     context_->set_deadline(deadline);
   }
 
-  void Process(int code = 0) {
+  void Process() {
     ProcessImpl();
-    PushRet(code);
+    Complete();
   }
 
-  void PushRet(int code = 0) {
-    if (ret_q_) {
-      ret_q_->Push(code);
+  bool Wait() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      sync_cond_.wait(lk, [] { return true; });
     }
+    return ok_;
+  }
+
+  void Complete() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      ok_ = true;
+    }
+    sync_cond_.notify_all();
+  }
+
+  void Error() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      ok_ = false;
+    }
+    sync_cond_.notify_all();
   }
 
   virtual void ProcessImpl() = 0;
@@ -100,7 +115,12 @@ class BaseProcessor {
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
   VarHandle var_h_;
-  std::shared_ptr<framework::BlockingQueue<int>> ret_q_;
+
+ protected:
+  // mutex for Wait client sync
+  std::mutex sync_mutex_;
+  std::condition_variable sync_cond_;
+  bool ok_;
 };
 
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
@@ -108,10 +128,8 @@ typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
 
 class SendProcessor : public BaseProcessor {
  public:
-  explicit SendProcessor(
-      std::shared_ptr<grpc::Channel> ch,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
-      : BaseProcessor(ch, ret_q), stub_g_(ch) {}
+  explicit SendProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~SendProcessor() {}
 
@@ -131,10 +149,8 @@ typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
 
 class GetProcessor : public BaseProcessor {
  public:
-  explicit GetProcessor(
-      std::shared_ptr<grpc::Channel> ch,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
-      : BaseProcessor(ch, ret_q), stub_g_(ch) {}
+  explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch), stub_g_(ch) {}
 
   virtual ~GetProcessor() {}
 
@@ -151,10 +167,8 @@ class GetProcessor : public BaseProcessor {
 
 class BatchBarrierProcessor : public BaseProcessor {
  public:
-  explicit BatchBarrierProcessor(
-      std::shared_ptr<grpc::Channel> ch,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
-      : BaseProcessor(ch, ret_q) {
+  explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
@@ -167,10 +181,8 @@ class BatchBarrierProcessor : public BaseProcessor {
 
 class FetchBarrierProcessor : public BaseProcessor {
  public:
-  explicit FetchBarrierProcessor(
-      std::shared_ptr<grpc::Channel> ch,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
-      : BaseProcessor(ch, ret_q) {
+  explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
@@ -183,10 +195,8 @@ class FetchBarrierProcessor : public BaseProcessor {
 
 class CheckpointNotifyProcessor : public BaseProcessor {
  public:
-  explicit CheckpointNotifyProcessor(
-      std::shared_ptr<grpc::Channel> ch,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr)
-      : BaseProcessor(ch, ret_q) {
+  explicit CheckpointNotifyProcessor(std::shared_ptr<grpc::Channel> ch)
+      : BaseProcessor(ch) {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
@@ -202,41 +212,41 @@ class GRPCClient : public RPCClient {
   GRPCClient() : ok_(true), completed_(false), stopped_(false) {}
   virtual ~GRPCClient();
 
-  bool AsyncSendVar(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& var_name,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
-      int64_t time_out = FLAGS_rpc_deadline) override;
-
-  bool AsyncGetVar(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& var_name,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
-      int64_t time_out = FLAGS_rpc_deadline) override;
-
-  bool AsyncPrefetchVar(
-      const std::string& ep, const platform::DeviceContext& ctx,
-      const framework::Scope& scope, const std::string& in_var_name,
-      const std::string& out_var_name,
-      std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr,
-      int64_t time_out = FLAGS_rpc_deadline) override;
-
-  void AsyncSendBatchBarrier(const std::string& ep,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
-
-  void AsyncSendFetchBarrier(const std::string& ep,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
-
-  void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
-
-  void AsyncSendComplete(const std::string& ep,
+  RPCHandle AsyncSendVar(const std::string& ep,
+                         const platform::DeviceContext& ctx,
+                         const framework::Scope& scope,
+                         const std::string& var_name,
                          int64_t time_out = FLAGS_rpc_deadline) override;
+
+  RPCHandle AsyncGetVar(const std::string& ep,
+                        const platform::DeviceContext& ctx,
+                        const framework::Scope& scope,
+                        const std::string& var_name,
+                        int64_t time_out = FLAGS_rpc_deadline) override;
+
+  RPCHandle AsyncPrefetchVar(const std::string& ep,
+                             const platform::DeviceContext& ctx,
+                             const framework::Scope& scope,
+                             const std::string& in_var_name,
+                             const std::string& out_var_name,
+                             int64_t time_out = FLAGS_rpc_deadline) override;
+
+  RPCHandle AsyncSendBatchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
+
+  RPCHandle AsyncSendFetchBarrier(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
+
+  RPCHandle AsyncCheckpointNotify(
+      const std::string& ep, const std::string& dir,
+      int64_t time_out = FLAGS_rpc_deadline) override;
+
+  RPCHandle AsyncSendComplete(const std::string& ep,
+                              int64_t time_out = FLAGS_rpc_deadline) override;
 
   bool Wait() override;
 
-  bool Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q,
-            int size) override;
+  bool Wait(RPCHandle h) override;
 
   void SendComplete() override;
 

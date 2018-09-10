@@ -46,24 +46,20 @@ class SendOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    std::shared_ptr<framework::BlockingQueue<int>> ret_q = nullptr;
-    if (sync_send) {
-      ret_q.reset(new framework::BlockingQueue<int>());
-    }
-
-    int size = 0;
+    std::vector<distributed::RPCHandle> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        size++;
-        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i], ret_q);
+        rets.push_back(rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
     if (sync_send) {
-      PADDLE_ENFORCE(rpc_client->Wait(ret_q, size),
-                     "internal error in RPCClient");
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rpc_client->Wait(rets[i]),
+                       "internal error in RPCClient");
+      }
     }
   }
 };

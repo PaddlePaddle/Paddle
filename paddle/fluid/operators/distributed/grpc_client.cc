@@ -69,18 +69,19 @@ GRPCClient::~GRPCClient() {
   }
 }
 
-bool GRPCClient::AsyncSendVar(
-    const std::string& ep, const platform::DeviceContext& ctx,
-    const framework::Scope& scope, const std::string& var_name,
-    std::shared_ptr<framework::BlockingQueue<int>> ret_q, int64_t time_out) {
+RPCHandle GRPCClient::AsyncSendVar(const std::string& ep,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope& scope,
+                                   const std::string& var_name,
+                                   int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
+  SendProcessor* s = new SendProcessor(ch);
 
-  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, ch, ret_q,
-                      this] {
+  framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, s, this] {
     auto* var = p_scope->FindVar(var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -97,7 +98,6 @@ bool GRPCClient::AsyncSendVar(
     VLOG(3) << var_h.String() << " begin";
 
     // stub context
-    SendProcessor* s = new SendProcessor(ch, ret_q);
     s->Prepare(var_h, time_out);
     s->response_call_back_ = nullptr;
 
@@ -108,7 +108,7 @@ bool GRPCClient::AsyncSendVar(
   });
   req_count_++;
 
-  return true;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
 void ProcGetResponse(const VarHandle& var_h,
@@ -125,18 +125,19 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-bool GRPCClient::AsyncGetVar(
-    const std::string& ep, const platform::DeviceContext& ctx,
-    const framework::Scope& scope, const std::string& var_name,
-    std::shared_ptr<framework::BlockingQueue<int>> ret_q, int64_t time_out) {
+RPCHandle GRPCClient::AsyncGetVar(const std::string& ep,
+                                  const platform::DeviceContext& ctx,
+                                  const framework::Scope& scope,
+                                  const std::string& var_name,
+                                  int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
+  GetProcessor* s = new GetProcessor(ch);
 
-  framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, ch, ret_q,
-                      this] {
+  framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, s, this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -154,7 +155,6 @@ bool GRPCClient::AsyncGetVar(
     VLOG(3) << var_h.String() << " begin";
 
     // stub context
-    GetProcessor* s = new GetProcessor(ch, ret_q);
     s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
@@ -166,23 +166,25 @@ bool GRPCClient::AsyncGetVar(
 
   req_count_++;
 
-  return true;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
-bool GRPCClient::AsyncPrefetchVar(
-    const std::string& ep, const platform::DeviceContext& ctx,
-    const framework::Scope& scope, const std::string& in_var_name,
-    const std::string& out_var_name,
-    std::shared_ptr<framework::BlockingQueue<int>> ret_q, int64_t time_out) {
+RPCHandle GRPCClient::AsyncPrefetchVar(const std::string& ep,
+                                       const platform::DeviceContext& ctx,
+                                       const framework::Scope& scope,
+                                       const std::string& in_var_name,
+                                       const std::string& out_var_name,
+                                       int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string in_var_name_val = in_var_name;
   const std::string out_var_name_val = out_var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
+  GetProcessor* s = new GetProcessor(ch);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      time_out, ch, ret_q, this] {
+                      time_out, s, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -199,7 +201,6 @@ bool GRPCClient::AsyncPrefetchVar(
     VLOG(3) << var_h.String() << " begin";
 
     // stub context
-    GetProcessor* s = new GetProcessor(ch, ret_q);
     s->Prepare(var_h, time_out);
     s->response_call_back_ = ProcGetResponse;
 
@@ -211,11 +212,11 @@ bool GRPCClient::AsyncPrefetchVar(
   });
 
   req_count_++;
-  return true;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
-void GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
-                                       int64_t time_out) {
+RPCHandle GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
+                                            int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -226,10 +227,11 @@ void GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
-void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
-                                       int64_t time_out) {
+RPCHandle GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
+                                            int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
   s->Prepare(time_out);
@@ -239,9 +241,11 @@ void GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
-void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
+RPCHandle GRPCClient::AsyncSendComplete(const std::string& ep,
+                                        int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
@@ -252,11 +256,12 @@ void GRPCClient::AsyncSendComplete(const std::string& ep, int64_t time_out) {
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
-void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
-                                       const std::string& dir,
-                                       int64_t time_out) {
+RPCHandle GRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                            const std::string& dir,
+                                            int64_t time_out) {
   const auto ch = GetChannel(ep);
 
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
@@ -269,6 +274,7 @@ void GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
+  return reinterpret_cast<RPCHandle>(s);
 }
 
 bool GRPCClient::Wait() {
@@ -277,29 +283,10 @@ bool GRPCClient::Wait() {
   return ok_;
 }
 
-bool GRPCClient::Wait(std::shared_ptr<framework::BlockingQueue<int>> ret_q,
-                      int size) {
-  if (ret_q == nullptr) {
-    return true;
-  }
-
-  int num = 0;
-  bool ret = true;
-
-  while (1) {
-    int code = ret_q->Pop();
-    if (code != 0) {
-      ret = false;
-      return ret;
-    }
-
-    num += 1;
-    if (num >= size) {
-      break;
-    }
-  }
-
-  return true;
+bool GRPCClient::Wait(RPCHandle h) {
+  PADDLE_ENFORCE(h, "rpc handler muste be valid");
+  BaseProcessor* c = reinterpret_cast<BaseProcessor*>(h);
+  return c->Wait();
 }
 
 void GRPCClient::Proceed() {
@@ -320,11 +307,11 @@ void GRPCClient::Proceed() {
         std::lock_guard<std::mutex> lk(sync_mutex_);
         ok_ = false;
       }
-      c->PushRet(-1);
+      c->Error();
     } else {
       LOG(FATAL) << c->var_h_.String()
                  << " meets grpc error:" << c->status_.error_message();
-      c->PushRet(-1);
+      c->Error();
     }
 
     delete c;
