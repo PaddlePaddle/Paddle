@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <string>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
@@ -22,26 +23,26 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-// The MulLstmFusePass and MulLstmFusePass will fuse to the same FusionLstm op.
+// The MulGRUFusePass and MulGRUFusePass will fuse to the same FusionGRU op.
 
-// Just FC without bias
-class FCLstmFusePass : public FusePassBase {
+class FCGRUFusePass : public FusePassBase {
  public:
-  virtual ~FCLstmFusePass() {}
+  virtual ~FCGRUFusePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 
-  const std::string name_scope_{"fc_lstm_fuse"};
+  const std::string name_scope_{"fc_gru_fuse"};
 };
 
-class MulLstmFusePass : public FusePassBase {
+// Just FC without bias
+class MulGRUFusePass : public FusePassBase {
  public:
-  virtual ~MulLstmFusePass() {}
+  virtual ~MulGRUFusePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
-  const std::string name_scope_{"fc_nobias_lstm_fuse"};
+  const std::string name_scope_{"fc_nobias_gru_fuse"};
 };
 
 }  // namespace ir

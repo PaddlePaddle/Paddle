@@ -73,7 +73,6 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
 void GraphPatternDetector::operator()(Graph* graph,
                                       GraphPatternDetector::handle_t handler) {
   if (!MarkPDNodesInGraph(*graph)) {
-    LOG(INFO) << "Mark failed";
     return;
   }
 
@@ -86,7 +85,7 @@ void GraphPatternDetector::operator()(Graph* graph,
   LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
   int id = 0;
   for (auto& g : subgraphs) {
-    LOG(INFO) << "optimizing #" << id++ << " subgraph";
+    VLOG(3) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
@@ -520,76 +519,96 @@ bool VarLinksFromOp(Node* node, const std::string& op_type) {
 
 PDNode* patterns::FC(PDPattern* pattern, const std::string& name_scope,
                      PDNode* x, bool with_bias) {
-  // Create Operators
-  PDNode* elementwise_add_op{nullptr};
+  // mul op
   auto* mul_op = pattern->NewNode(name_scope, "mul")->assert_is_op("mul");
-  if (with_bias) {
-    elementwise_add_op = pattern->NewNode(name_scope, "elementwise_add")
-                             ->assert_is_op("elementwise_add");
-  }
-  // Create variables
-  // w
   auto* mul_weight_var = pattern->NewNode(name_scope, "w")
                              ->AsInput()
                              ->assert_is_persistable_var()
-                             ->assert_is_op_nth_input("mul", "Y", 0);
-  PDNode* mul_out_var{nullptr};
+                             ->assert_is_op_input("mul", "Y");
+
+  PDNode* fc_out{nullptr};
   if (with_bias) {
+    PDNode* elementwise_add_op{nullptr};
+    PDNode *mul_out_var{nullptr}, *bias{nullptr};
+    elementwise_add_op = pattern->NewNode(name_scope, "elementwise_add")
+                             ->assert_is_op("elementwise_add");
     // intermediate variable, will be removed in the IR after fuse.
     mul_out_var = pattern->NewNode(name_scope, "mul_out")
                       ->AsIntermediate()
                       ->assert_is_only_output_of_op("mul")
                       ->assert_is_op_input("elementwise_add");
-  }
-  PDNode *bias{nullptr}, *fc_out{nullptr};
-  if (with_bias) {
     // bias
     bias = pattern->NewNode(name_scope, "fc_bias")
-               ->assert_is_op_input("elementwise_add")
-               ->AsInput();
+               ->AsInput()
+               ->assert_is_op_input("elementwise_add");
     // output
     fc_out = pattern->NewNode(name_scope, "fc_out")
                  ->AsOutput()
                  ->assert_is_op_output("elementwise_add");
+    mul_op->LinksFrom({x, mul_weight_var}).LinksTo({mul_out_var});
+    elementwise_add_op->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
   } else {
     fc_out = pattern->NewNode(name_scope, "fc_out")
                  ->AsOutput()
                  ->assert_is_op_output("mul");
-  }
-
-  if (with_bias) {
-    mul_op->LinksFrom({mul_weight_var, x}).LinksTo({mul_out_var});
-    elementwise_add_op->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
-  } else {
     mul_op->LinksFrom({mul_weight_var, x}).LinksTo({fc_out});
   }
-
   return fc_out;
 }
+
+#define NEW_NODE(op__, arg__, io__)                  \
+  auto* arg__ = pattern->NewNode(name_scope, #arg__) \
+                    ->assert_is_op_##io__(#op__, #arg__);
+
 PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
                        PDNode* x) {
   x->assert_is_op_input("lstm", "Input");
   auto* lstm_op = pattern->NewNode(name_scope, "lstm")->assert_is_op("lstm");
-#define NEW_NODE(arg__, io__)                        \
-  auto* arg__ = pattern->NewNode(name_scope, #arg__) \
-                    ->assert_is_op_##io__("lstm", #arg__);
 
   // Currently, the H0 and C0 are optional
   // TODO(Superjomn) upgrade the fuse framework to support optional.
   // NEW_NODE(H0, input);
   // NEW_NODE(C0, input);
-  NEW_NODE(Weight, input);
-  NEW_NODE(Bias, input);
+  NEW_NODE(lstm, Weight, input);
+  NEW_NODE(lstm, Bias, input);
 
-  NEW_NODE(Hidden, output);
-  NEW_NODE(Cell, output);
-  NEW_NODE(BatchGate, output);
-  NEW_NODE(BatchCellPreAct, output);
+  NEW_NODE(lstm, Hidden, output);
+  NEW_NODE(lstm, Cell, output);
+  NEW_NODE(lstm, BatchGate, output);
+  NEW_NODE(lstm, BatchCellPreAct, output);
 
   lstm_op->LinksFrom({x, Weight, Bias});
   lstm_op->LinksTo({Hidden, Cell, BatchGate, BatchCellPreAct});
   return Hidden;
 }
+
+PDNode* patterns::GRU(PDPattern* pattern, const std::string& name_scope,
+                      PDNode* x) {
+  x->assert_is_op_input("gru", "Input");
+  auto* gru_op = pattern->NewNode(name_scope, "gru")->assert_is_op("gru");
+
+  NEW_NODE(gru, Weight, input);
+  // TODO(Superjomn): upgrade the fuse framework to support optional.
+  // H0 and bias are optional
+  NEW_NODE(gru, Bias, input);  // also optional
+  // NEW_NODE(H0, input);
+
+  NEW_NODE(gru, Hidden, output);
+  // below are intermediate
+  NEW_NODE(gru, BatchGate, output);
+  NEW_NODE(gru, BatchResetHiddenPrev, output);
+  NEW_NODE(gru, BatchHidden, output);
+
+  BatchGate->AsIntermediate();
+  BatchResetHiddenPrev->AsIntermediate();
+  BatchHidden->AsIntermediate();
+
+  gru_op->LinksFrom({x, Weight, Bias});
+  gru_op->LinksTo({Hidden, BatchGate, BatchResetHiddenPrev, BatchHidden});
+  return Hidden;
+}
+#undef NEW_NODE
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

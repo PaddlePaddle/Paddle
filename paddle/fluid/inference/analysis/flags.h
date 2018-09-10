@@ -1,4 +1,4 @@
-//   Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,4 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/pass.h"
+#include <gflags/gflags.h>
+
+// TODO(Superjomn) add a definition flag like PADDLE_WITH_TENSORRT and hide this
+// flag if not available.
+DECLARE_bool(IA_enable_tensorrt_subgraph_engine);
+DECLARE_string(IA_graphviz_log_root);
+DECLARE_string(IA_output_storage_path);
+DECLARE_bool(IA_enable_ir);
