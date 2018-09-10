@@ -19,6 +19,9 @@
 #endif
 
 #include <numeric>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -294,6 +297,8 @@ PDNode* FC(PDPattern* pattern, const std::string& name_scope, PDNode* x,
            bool with_bias);
 
 PDNode* LSTM(PDPattern* pattern, const std::string& name_scope, PDNode* x);
+
+PDNode* GRU(PDPattern* pattern, const std::string& name_scope, PDNode* x);
 
 }  // namespace patterns
 
