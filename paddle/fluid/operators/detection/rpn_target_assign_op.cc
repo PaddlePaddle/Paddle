@@ -196,7 +196,7 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
     bool is_anchor_great_than_thresh =
         (anchor_to_gt_max_data[i] >= rpn_positive_overlap);
     if (is_anchors_with_max_overlap || is_anchor_great_than_thresh) {
-      target_label[i] = 1;
+      // target_label[i] = 1;
       fg_inds_fake.push_back(i);
     }
   }
@@ -205,24 +205,26 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
   int fg_num = static_cast<int>(rpn_fg_fraction * rpn_batch_size_per_im);
   ReservoirSampling(fg_num, &fg_inds_fake, engine, use_random);
   fg_num = static_cast<int>(fg_inds_fake.size());
+  for (int64_t i = 0; i < fg_num; ++i) {
+    target_label[fg_inds_fake[i]] = 1;
+  }
 
   int bg_num = rpn_batch_size_per_im - fg_num;
   for (int64_t i = 0; i < anchor_num; ++i) {
     if (anchor_to_gt_max_data[i] < rpn_negative_overlap) {
-      target_label[i] = 0;
+      // target_label[i] = 0;
       bg_inds_fake.push_back(i);
     }
   }
   ReservoirSampling(bg_num, &bg_inds_fake, engine, use_random);
   bg_num = static_cast<int>(bg_inds_fake.size());
+  for (int64_t i = 0; i < bg_num; ++i) {
+    target_label[bg_inds_fake[i]] = 0;
+  }
 
   for (int64_t i = 0; i < anchor_num; ++i) {
-    // -1, 0, 1
-    if (target_label[i] == 1) {
-      fg_inds->emplace_back(i);
-    } else {
-      if (target_label[i] == 0) bg_inds->emplace_back(i);
-    }
+    if (target_label[i] == 1) fg_inds->emplace_back(i);
+    if (target_label[i] == 0) bg_inds->emplace_back(i);
   }
   fg_num = fg_inds->size();
   bg_num = bg_inds->size();
