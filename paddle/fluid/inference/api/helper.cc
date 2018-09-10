@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/inference/api/helper.h"
 
+DEFINE_bool(profile, false, "Turn on profiler for fluid");
+
 namespace paddle {
 namespace inference {
 
@@ -38,6 +40,41 @@ std::string to_string<std::vector<std::vector<float>>>(
     ss << '\n';
   }
   return ss.str();
+}
+
+int Profiler::count = 0;
+
+std::string DescribeTensor(const PaddleTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name << "]\n";
+  os << " - type: ";
+  switch (tensor.dtype) {
+    case PaddleDType::FLOAT32:
+      os << "float32";
+      break;
+    case PaddleDType::INT64:
+      os << "int64";
+      break;
+    default:
+      os << "unset";
+  }
+  os << '\n';
+
+  os << " - shape: " << to_string(tensor.shape) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+
+  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+  for (int i = 0; i < dim; i++) {
+    os << static_cast<float *>(tensor.data.data())[i] << " ";
+  }
+  os << '\n';
+  return os.str();
 }
 
 }  // namespace inference

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -44,6 +46,8 @@ class AnalysisPredictor : public NativePaddlePredictor {
   void OptimizeInferenceProgram();
 
   Argument& analysis_argument() { return argument_; }
+
+  ~AnalysisPredictor();
 
  private:
   AnalysisConfig config_;

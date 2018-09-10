@@ -22,10 +22,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/platform/profiler.h"
-
-DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
 namespace paddle {
 namespace {
@@ -61,16 +60,7 @@ void NativePaddlePredictor::PrepareFeedFetch() {
 bool NativePaddlePredictor::Init(
     std::shared_ptr<framework::Scope> parent_scope) {
   VLOG(3) << "Predictor::init()";
-#if !defined(_WIN32)
-  if (FLAGS_profile) {
-    LOG(WARNING) << "Profiler is actived, might affect the performance";
-    LOG(INFO) << "You can turn off by set gflags '-profile false'";
-
-    auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
-                                           : platform::ProfilerState::kCPU;
-    platform::EnableProfiler(tracking_device);
-  }
-#endif
+  inference::Profiler::Start(config_.use_gpu);
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
@@ -115,15 +105,10 @@ bool NativePaddlePredictor::Init(
 }
 
 NativePaddlePredictor::~NativePaddlePredictor() {
-#if !defined(_WIN32)
-  if (FLAGS_profile) {
-    platform::DisableProfiler(platform::EventSortingKey::kTotal,
-                              "./profile.log");
-  }
-#endif
   if (sub_scope_) {
     scope_->DeleteScope(sub_scope_);
   }
+  inference::Profiler::Stop();
 }
 
 bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
