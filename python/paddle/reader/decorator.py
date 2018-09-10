@@ -21,7 +21,7 @@ __all__ = [
 from threading import Thread
 import subprocess
 import multiprocessing
-import json
+import ujson as json
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
@@ -335,7 +335,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     return xreader
 
 
-def multiprocess_reader(readers, queue_size=1000, use_pipe=False):
+def multiprocess_reader(readers, queue_size=1000, use_pipe=True):
     """
     multiprocess_reader use python multi process to read data from readers
     and then use multiprocess.Queue or multiprocess.Pipe to merge all
