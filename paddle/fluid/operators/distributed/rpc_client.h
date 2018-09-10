@@ -14,10 +14,10 @@
 
 #pragma once
 
+#include <condition_variable>  // NOLINT
 #include <string>
 #include "gflags/gflags.h"
 
-#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
@@ -30,8 +30,8 @@ namespace distributed {
 
 class RPCHandleCls {
  public:
-  RPCHandleCls();
-  virtual ~RPCHandleCls();
+  RPCHandleCls() : ok_(false) {}
+  virtual ~RPCHandleCls() {}
 
  public:
   bool Wait() {
