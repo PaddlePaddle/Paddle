@@ -21,13 +21,17 @@ import paddle
 
 
 def delete_ops(block, ops):
-    try:
-        start = list(block.ops).index(ops[0])
-        end = list(block.ops).index(ops[-1])
-        [block._remove_op(start) for _ in six.moves.range(end - start + 1)]
-    except Exception as e:
-        raise e
-    block.program._sync_with_cpp()
+    for op in ops:
+        try:
+            idx = list(block.ops).index(op)
+            block._remove_op(idx)
+            # del block.ops[idx]
+            # end = list(block.ops).index(ops[-1])
+            # [block._remove_op(start) for _ in six.moves.range(end - start + 1)]
+        except Exception as e:
+            print(e)
+        # raise e
+        # block.program._sync_with_cpp()
 
 
 def find_op_by_input_arg(block, arg_name):
@@ -37,10 +41,18 @@ def find_op_by_input_arg(block, arg_name):
     return -1
 
 
-def find_op_by_output_arg(block, arg_name):
-    for index, op in enumerate(block.ops):
-        if arg_name in op.output_arg_names:
-            return index
+def find_op_by_output_arg(block, arg_name, reverse=False):
+    if reverse:
+        pos = len(block.ops) - 1
+        while pos >= 0:
+            op = block.ops[pos]
+            if arg_name in op.output_arg_names:
+                return pos
+            pos -= 1
+    else:
+        for index, op in enumerate(block.ops):
+            if arg_name in op.output_arg_names:
+                return index
     return -1
 
 

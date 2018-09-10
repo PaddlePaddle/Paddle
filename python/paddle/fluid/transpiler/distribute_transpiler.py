@@ -270,12 +270,12 @@ class DistributeTranspiler(object):
             splited_grad_varname = grad_varname
             if len(splited_vars) == 1:
                 splited_grad_varname = splited_vars[0].name
-                index = find_op_by_output_arg(program.global_block(),
-                                              splited_grad_varname)
+                index = find_op_by_output_arg(
+                    program.global_block(), splited_grad_varname, reverse=True)
             elif len(splited_vars) > 1:
                 orig_var = program.global_block().vars[splited_grad_varname]
-                index = find_op_by_output_arg(program.global_block(),
-                                              splited_grad_varname)
+                index = find_op_by_output_arg(
+                    program.global_block(), splited_grad_varname, reverse=True)
                 self._insert_split_op(program, orig_var, index, splited_vars)
                 index += 1
             else:
@@ -310,7 +310,7 @@ class DistributeTranspiler(object):
         if self.sync_mode:
             send_barrier_out = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
-            input_deps = grad_name_to_send_dummy_out.values()
+            input_deps = list(grad_name_to_send_dummy_out.values())
             program.global_block().append_op(
                 type="send_barrier",
                 inputs={"X": input_deps},
@@ -471,7 +471,7 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
-            if startup_program.global_block().vars.has_key(varname):
+            if varname in startup_program.global_block().vars:
                 orig_param = startup_program.global_block().vars[varname]
             else:
                 origin_param_var = self.origin_program.global_block().vars[
@@ -628,10 +628,11 @@ in a single call.")
             # e.g. merge grad -> L2Decay op -> clip op -> optimize
             merged_var = None
             for _, op in enumerate(self.optimize_ops):
-                # find the origin @GRAD var before clipping/L2Decay
-                grad_varname_for_block = __op_have_grad_input__(op)
-                if op.attr(OP_ROLE_VAR_ATTR_NAME)[0] == optimize_target_param_name and \
-                    grad_varname_for_block:
+                # find the origin grad var before clipping/L2Decay,
+                # merged_var should be the input var name of L2Decaybuil
+                grad_varname_for_block = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
+                if op.attr(OP_ROLE_VAR_ATTR_NAME)[
+                        0] == optimize_target_param_name:
                     merged_var = self._append_pserver_grad_merge_ops(
                         per_opt_block, grad_varname_for_block, endpoint,
                         grad_to_block_id, self.origin_program)
@@ -1696,21 +1697,21 @@ to transpile() call.")
         block = self.origin_program.global_block()
         opt_ops = []
         params_grads = []
+        # tmp set to dedup
+        optimize_params = set()
         origin_var_dict = self.origin_program.global_block().vars
         for op in block.ops:
             if self._is_opt_role_op(op):
                 opt_ops.append(op)
-                # HACK(wuyi): if we find grad vars from input of optimize
-                # ops, we may get the output of clip op. Use syntax "@GRAD"
-                # and op_role_var to get the pair.
-                for input_name in op.input_arg_names:
-                    if input_name.find("@GRAD") != -1 and \
-                        op.attr(OP_ROLE_VAR_ATTR_NAME):
-                        param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
-                        log("adding param_grad pair: ", param_name, input_name)
+                if op.attr(OP_ROLE_VAR_ATTR_NAME):
+                    param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
+                    grad_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[1]
+                    if not param_name in optimize_params:
+                        optimize_params.add(param_name)
+                        log("adding param_grad pair: ", param_name, grad_name)
                         params_grads.append([
                             origin_var_dict[param_name],
-                            origin_var_dict[input_name]
+                            origin_var_dict[grad_name]
                         ])
             else:
                 pass
