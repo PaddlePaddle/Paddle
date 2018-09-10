@@ -21,44 +21,13 @@
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/operators/distributed/request_handler.h"
 
 DECLARE_int32(rpc_deadline);
 
 namespace paddle {
 namespace operators {
 namespace distributed {
-
-class RPCHandleCls {
- public:
-  RPCHandleCls() : ok_(-1) {}
-  virtual ~RPCHandleCls() {}
-
- public:
-  bool Wait() {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      sync_cond_.wait(lk, [this] { return ok_ != -1; });
-    }
-    VLOG(7) << "RPCHandleCls wait:" << ok_;
-    return ok_ != 0;
-  }
-
-  void Finish(bool ok) {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      ok_ = ok;
-    }
-    VLOG(7) << "RPCHandleCls finish:" << ok;
-    sync_cond_.notify_all();
-  }
-
- protected:
-  std::mutex sync_mutex_;
-  std::condition_variable sync_cond_;
-  int ok_;
-};
-
-typedef std::shared_ptr<RPCHandleCls> RPCHandle;
 
 class RPCClient {
  public:

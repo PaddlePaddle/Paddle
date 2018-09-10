@@ -55,14 +55,17 @@ class BaseProcessor {
  public:
   explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
     context_ = nullptr;
-    h_.reset(new RPCHandleCls());
+    var_h_.reset(new VarHandle());
   }
 
   virtual ~BaseProcessor() {}
 
-  virtual void Prepare(const VarHandle& var_info, int64_t time_out) {
+  virtual void Prepare(const std::string ep, const platform::DeviceContext* ctx,
+                       const framework::Scope* scope, const std::string& name,
+                       const std::string& method, int64_t time_out) {
+    var_h_->SetContext(ep, ctx, scope, name, method);
+
     context_.reset(new grpc::ClientContext());
-    var_h_ = var_info;
     context_->set_wait_for_ready(true);
     if (time_out) {
       std::chrono::system_clock::time_point deadline =
@@ -84,24 +87,22 @@ class BaseProcessor {
 
   void Process() {
     ProcessImpl();
-    h_->Finish(true);
+    var_h_->Finish(true);
   }
 
-  RPCHandle GetRPCHandle() { return h_; }
+  RPCHandle GetRPCHandle() { return var_h_; }
 
-  bool Wait() { return h_->Wait(); }
+  bool Wait() { return var_h_->Wait(); }
 
-  void Finish(bool ok) { return h_->Finish(ok); }
+  void Finish(bool ok) { return var_h_->Finish(ok); }
 
   virtual void ProcessImpl() = 0;
 
   std::unique_ptr<grpc::ClientContext> context_;
   grpc::Status status_;
-  VarHandle var_h_;
 
  protected:
-  // Handler for rpc wait;
-  RPCHandle h_;
+  RPCHandle var_h_;
 };
 
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
@@ -116,7 +117,7 @@ class SendProcessor : public BaseProcessor {
 
   void ProcessImpl() override {
     if (response_call_back_) {
-      response_call_back_(var_h_, reply_);
+      response_call_back_(*var_h_.get(), reply_);
     }
   }
 
@@ -137,7 +138,7 @@ class GetProcessor : public BaseProcessor {
 
   void ProcessImpl() override {
     if (response_call_back_) {
-      response_call_back_(var_h_, reply_);
+      response_call_back_(*var_h_.get(), reply_);
     }
   }
 

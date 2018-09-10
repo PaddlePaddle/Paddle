@@ -28,6 +28,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
@@ -49,22 +50,76 @@ constexpr char kRequestPassBarrier[] = "RequestPassBarrier";
 
 class RPCServer;
 
-struct VarHandle {
-  // RPC endpoint.
-  std::string ep;
-  const platform::DeviceContext* ctx;
-  const framework::Scope* scope;
-  // Variable name.
-  std::string name;
-  // RPC method name.
-  std::string method;
+class VarHandle {
+ public:
+  VarHandle() : ok_(-1) {}
+  virtual ~VarHandle() {}
+
+ public:
+  bool Wait() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      sync_cond_.wait(lk, [this] { return ok_ != -1; });
+    }
+    VLOG(7) << "VarHandle wait:" << ok_;
+    return ok_ != 0;
+  }
+
+  void Finish(bool ok) {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      ok_ = ok;
+    }
+    VLOG(7) << "VarHandle finish:" << ok;
+    sync_cond_.notify_all();
+  }
+
+  void SetContext(const std::string ep, const platform::DeviceContext* ctx,
+                  const framework::Scope* scope, const std::string& name,
+                  const std::string& method) {
+    ep_ = ep;
+    scope_ = scope;
+    name_ = name;
+    ctx_ = ctx;
+    method_ = method;
+  }
 
   std::string String() const {
     std::ostringstream s;
-    s << method << " name:[" << name << "], ep:[" << ep << "]";
+    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "]";
     return s.str();
   }
+
+  std::string ep() const { return ep_; }
+
+  const platform::DeviceContext* ctx() const { return ctx_; }
+
+  const framework::Scope* scope() const { return scope_; }
+
+  std::string name() const { return name_; }
+
+  std::string method() const { return method_; }
+
+ protected:
+  // RPC endpoint.
+  std::string ep_;
+  const platform::DeviceContext* ctx_;
+  const framework::Scope* scope_;
+  // Variable name.
+  std::string name_;
+  // RPC method name.
+  std::string method_;
+
+ protected:
+  std::mutex sync_mutex_;
+  std::condition_variable sync_cond_;
+  int ok_;
+
+ private:
+  DISABLE_COPY_AND_ASSIGN(VarHandle);
 };
+
+typedef std::shared_ptr<VarHandle> RPCHandle;
 
 class RequestHandler {
  public:
