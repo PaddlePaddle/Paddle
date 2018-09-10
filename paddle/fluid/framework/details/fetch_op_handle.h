@@ -29,7 +29,7 @@ namespace details {
 struct FetchOpHandle : public OpHandleBase {
  public:
   FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
-                std::vector<Scope *> *local_scopes);
+                std::vector<std::shared_ptr<Scope>> *local_scopes);
 
   ~FetchOpHandle();
 
@@ -47,7 +47,7 @@ struct FetchOpHandle : public OpHandleBase {
  private:
   FeedFetchList *data_;
   size_t offset_;
-  std::vector<Scope *> *local_scopes_;
+  std::vector<std::shared_ptr<Scope>> *local_scopes_;
   std::vector<LoDTensor> tensors_;
 };
 

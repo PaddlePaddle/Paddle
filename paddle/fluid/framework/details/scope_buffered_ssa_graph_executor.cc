@@ -23,7 +23,8 @@ namespace paddle {
 namespace framework {
 namespace details {
 ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
-    ExecutionStrategy strategy, std::vector<Scope *> local_scopes,
+    ExecutionStrategy strategy,
+    std::vector<std::shared_ptr<Scope>> local_scopes,
     std::vector<VariableInfo> var_infos, std::vector<platform::Place> places,
     std::unique_ptr<SSAGraphExecutor> &&underlying_executor)
     : strategy_(std::move(strategy)),
