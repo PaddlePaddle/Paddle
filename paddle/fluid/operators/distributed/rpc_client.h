@@ -39,6 +39,7 @@ class RPCHandleCls {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       sync_cond_.wait(lk, [this] { return ok_ != -1; });
     }
+    VLOG(7) << "RPCHandleCls wait:" << ok_;
     return ok_ != 0;
   }
 
@@ -47,6 +48,7 @@ class RPCHandleCls {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       ok_ = ok;
     }
+    VLOG(7) << "RPCHandleCls finish:" << ok;
     sync_cond_.notify_all();
   }
 

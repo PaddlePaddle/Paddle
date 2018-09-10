@@ -75,6 +75,7 @@ RPCHandle GRPCClient::AsyncSendVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   SendProcessor* s = new SendProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
 
   framework::AsyncIO([var_name_val, p_ctx, ep_val, p_scope, time_out, s, this] {
     auto* var = p_scope->FindVar(var_name_val);
@@ -103,7 +104,7 @@ RPCHandle GRPCClient::AsyncSendVar(const std::string& ep,
   });
   req_count_++;
 
-  return s->GetRPCHandle();
+  return h;
 }
 
 void ProcGetResponse(const VarHandle& var_h,
@@ -131,6 +132,7 @@ RPCHandle GRPCClient::AsyncGetVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
 
   framework::AsyncIO([var_name_val, ep_val, p_scope, p_ctx, time_out, s, this] {
     // prepare input
@@ -161,7 +163,7 @@ RPCHandle GRPCClient::AsyncGetVar(const std::string& ep,
 
   req_count_++;
 
-  return s->GetRPCHandle();
+  return h;
 }
 
 RPCHandle GRPCClient::AsyncPrefetchVar(const std::string& ep,
@@ -177,6 +179,7 @@ RPCHandle GRPCClient::AsyncPrefetchVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
                       time_out, s, this] {
@@ -207,7 +210,7 @@ RPCHandle GRPCClient::AsyncPrefetchVar(const std::string& ep,
   });
 
   req_count_++;
-  return s->GetRPCHandle();
+  return h;
 }
 
 RPCHandle GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
@@ -215,6 +218,7 @@ RPCHandle GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -222,13 +226,14 @@ RPCHandle GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return s->GetRPCHandle();
+  return h;
 }
 
 RPCHandle GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
                                             int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -236,7 +241,7 @@ RPCHandle GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return s->GetRPCHandle();
+  return h;
 }
 
 RPCHandle GRPCClient::AsyncSendComplete(const std::string& ep,
@@ -244,6 +249,7 @@ RPCHandle GRPCClient::AsyncSendComplete(const std::string& ep,
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -251,7 +257,7 @@ RPCHandle GRPCClient::AsyncSendComplete(const std::string& ep,
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return s->GetRPCHandle();
+  return h;
 }
 
 RPCHandle GRPCClient::AsyncCheckpointNotify(const std::string& ep,
@@ -260,6 +266,7 @@ RPCHandle GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   const auto ch = GetChannel(ep);
 
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
+  RPCHandle h = s->GetRPCHandle();
   s->Prepare(time_out);
 
   sendrecv::VariableMessage req;
@@ -269,7 +276,7 @@ RPCHandle GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return s->GetRPCHandle();
+  return h;
 }
 
 bool GRPCClient::Wait() {
