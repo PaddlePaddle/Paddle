@@ -4501,7 +4501,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python lsit or tuple.")
+        raise ValueError("Input shape must be a python list or tuple.")
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
