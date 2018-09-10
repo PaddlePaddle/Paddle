@@ -38,7 +38,7 @@ __global__ void SparseSGDFunctorKernel(const T* selected_rows,
                                        const int64_t* rows,
                                        const T* learning_rate, T* tensor_out,
                                        int64_t row_numel) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
 
   selected_rows += ty * row_numel;
@@ -98,10 +98,8 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       auto* out_data = param_out->data<T>();
 
       const int block_size = 256;
-      dim3 threads(block_size, 1);
-      dim3 grid(1, in_rows.size());
-      SparseSGDFunctorKernel<
-          T, 256><<<grid, threads, 0, ctx.cuda_device_context().stream()>>>(
+      SparseSGDFunctorKernel<T, 256><<<in_rows.size(), block_size, 0,
+                                       ctx.cuda_device_context().stream()>>>(
           in_data, in_rows.CUDAData(ctx.GetPlace()), learning_rate->data<T>(),
           out_data, in_row_numel);
 

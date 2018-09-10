@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <numeric>  // std::iota
 #include <sstream>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
@@ -89,9 +90,37 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto* y = context.Input<LoDTensor>("Y");
     auto* out = context.Output<LoDTensor>("Out");
     int ref_level = context.Attr<int>("ref_level");
+
     auto& x_lod = x->lod();
+    VLOG(1) << "X LoD.size() = " << x_lod.size();
+    if (VLOG_IS_ON(3)) {
+      for (size_t i = 0; i < x_lod.size(); ++i) {
+        std::ostringstream os;
+        auto& cur = x_lod[i];
+        os << "  level=" << i;
+        for (auto& elem : cur) {
+          os << " " << elem;
+        }
+        os << std::endl;
+        VLOG(3) << os.str();
+      }
+    }
+
     auto& y_lod = y->lod();
     PADDLE_ENFORCE(!y_lod.empty(), "LoD of Y should not be empty.");
+    VLOG(1) << "Y LoD.size() = " << y_lod.size();
+    if (VLOG_IS_ON(3)) {
+      for (size_t i = 0; i < y_lod.size(); ++i) {
+        std::ostringstream os;
+        auto& cur = y_lod[i];
+        os << " level = " << i;
+        for (auto& elem : cur) {
+          os << " " << elem;
+        }
+        os << std::endl;
+        VLOG(3) << os.str();
+      }
+    }
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
 

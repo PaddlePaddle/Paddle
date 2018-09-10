@@ -47,14 +47,18 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     int rank = x[0].dims().size();
     platform::Place place = x[0].place();
     std::type_index data_type = x[0].type();
-    framework::DDim ins_dims = framework::slice_ddim(x[0].dims(), 1, rank);
     int64_t batch_size = x[0].dims()[0];
+    framework::DDim ins_dims = rank > 1
+                                   ? framework::slice_ddim(x[0].dims(), 1, rank)
+                                   : framework::make_ddim({0});
     for (size_t i = 1; i < x.size(); ++i) {
-      PADDLE_ENFORCE_EQ(framework::slice_ddim(x[i].dims(), 1, rank), ins_dims,
+      auto ins_i_dims = rank > 1 ? framework::slice_ddim(x[i].dims(), 1, rank)
+                                 : framework::make_ddim({0});
+      PADDLE_ENFORCE_EQ(ins_i_dims, ins_dims,
                         "The dimension of the %zu'th element in LoDTensorArray "
                         "differs from previous ones.",
                         i);
-      PADDLE_ENFORCE(platform::places_are_same_class(x[i].place(), place),
+      PADDLE_ENFORCE(x[i].place() == place,
                      "The place class of the %zu'th element in LoDTensorArray "
                      "differs from previous ones.",
                      i);
@@ -89,6 +93,7 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     cur_level_lod.push_back(0);
     for (size_t idx : table_item_idx) {
       cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
+      PADDLE_ENFORCE_LE(table_items[idx].length, x.size());
       for (size_t x_idx = 0; x_idx < table_items[idx].length; ++x_idx) {
         auto lod_and_offset = framework::GetSubLoDAndAbsoluteOffset(
             x[x_idx].lod(), idx, idx + 1, 0);
