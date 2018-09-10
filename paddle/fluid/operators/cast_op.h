@@ -37,7 +37,7 @@ struct CastOpFunctor {
       : in_(in), out_(out), ctx_(ctx) {}
 
   template <typename OutT>
-  void operator()() const {
+  void apply() const {
     auto* in_begin = in_->data<InT>();
     auto numel = in_->numel();
     auto* in_end = in_begin + numel;

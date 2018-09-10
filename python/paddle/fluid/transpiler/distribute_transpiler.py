@@ -300,7 +300,7 @@ class DistributeTranspiler(object):
             input_deps = grad_name_to_send_dummy_out.values()
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={"X": input_deps},
+                inputs={"X": list(input_deps)},
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -401,7 +401,7 @@ class DistributeTranspiler(object):
 
         Args:
             recv_vars (list): Variable list to recv for current trainer_id
-            eplist (list): A list of strings indicating 
+            eplist (list): A list of strings indicating
 
         Returns:
             Program: trainer side startup program.
@@ -455,7 +455,7 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
-            if startup_program.global_block().vars.has_key(varname):
+            if varname in startup_program.global_block().vars:
                 orig_param = startup_program.global_block().vars[varname]
             else:
                 origin_param_var = self.origin_program.global_block().vars[
@@ -690,7 +690,7 @@ class DistributeTranspiler(object):
 
         Args:
             endpoint (str): current pserver endpoint.
-        
+
         Returns:
             tuple: (main_program, startup_program), of type "Program"
         """
@@ -713,7 +713,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing 
+                when initalizing
 
         Returns:
             Program: parameter server side startup program.
@@ -1096,7 +1096,8 @@ class DistributeTranspiler(object):
             self.table_name]
 
         zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / len(self.pserver_endpoints)))
+            math.ceil(origin_param_var.shape[0] / float(
+                len(self.pserver_endpoints))))
         table_shape = list(origin_param_var.shape)
         table_shape[0] = zero_dim
 
@@ -1390,13 +1391,11 @@ class DistributeTranspiler(object):
                 inputs={"X": vars2merge},
                 outputs={"Out": merged_var},
                 attrs={"use_mkldnn": False})
-            # TODO(panyx0718): What if it's SELECTED_ROWS.
-            if not merged_var.type == core.VarDesc.VarType.SELECTED_ROWS:
-                optimize_block.append_op(
-                    type="scale",
-                    inputs={"X": merged_var},
-                    outputs={"Out": merged_var},
-                    attrs={"scale": 1.0 / float(self.trainer_num)})
+            optimize_block.append_op(
+                type="scale",
+                inputs={"X": merged_var},
+                outputs={"Out": merged_var},
+                attrs={"scale": 1.0 / float(self.trainer_num)})
         return merged_var
 
     def _append_pserver_ops(self, optimize_block, opt_op, endpoint,
