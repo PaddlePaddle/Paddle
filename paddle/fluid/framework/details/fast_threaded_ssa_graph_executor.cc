@@ -22,8 +22,7 @@ namespace framework {
 namespace details {
 
 FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
-    const ExecutionStrategy &strategy,
-    const std::vector<std::shared_ptr<Scope>> &local_scopes,
+    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     std::unique_ptr<ir::Graph> &&graph)
     : strategy_(strategy),

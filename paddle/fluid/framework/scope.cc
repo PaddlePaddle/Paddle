@@ -38,8 +38,8 @@ Scope::~Scope() { DropKids(); }
 
 Scope& Scope::NewScope() const {
   std::unique_lock<std::mutex> lock(mutex_);
-  kids_.push_back(std::shared_ptr<Scope>(new Scope(this)));
-  return kids_.back().get();
+  kids_.push_back(new Scope(this));
+  return *kids_.back();
 }
 
 Variable* Scope::Var(const std::string& name) {
@@ -68,7 +68,14 @@ const Scope* Scope::FindScope(const Variable* var) const {
 
 void Scope::DropKids() {
   std::unique_lock<std::mutex> lock(mutex_);
+  for (Scope* s : kids_) delete s;
   kids_.clear();
+}
+
+bool Scope::HasKid(const Scope* scope) const {
+  std::unique_lock<std::mutex> lock(mutex_);
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  return it != this->kids_.end();
 }
 
 std::vector<std::string> Scope::LocalVarNames() const {
@@ -83,12 +90,8 @@ std::vector<std::string> Scope::LocalVarNames() const {
 
 void Scope::DeleteScope(Scope* scope) const {
   std::unique_lock<std::mutex> lock(mutex_);
-  auto it = std::find_if(this->kids_.begin(), this->kids_.end(),
-                         [&scope](const std::shared_ptr<Scope>& kid) {
-                           return kid.get() == scope;
-                         });
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
   PADDLE_ENFORCE(it != this->kids_.end(), "Cannot find %p as kid scope", scope);
-  it->reset();
   this->kids_.erase(it);
   // When making memory benchmark on Fluid, we have to delete scope sync.
   if (FLAGS_benchmark || FLAGS_eager_delete_scope) {

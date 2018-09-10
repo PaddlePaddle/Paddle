@@ -39,8 +39,7 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
     const std::unordered_set<std::string> &param_names,
-    const std::vector<std::shared_ptr<Scope>> &local_scopes,
-    const bool use_cuda,
+    const std::vector<Scope *> &local_scopes, const bool use_cuda,
 #ifdef PADDLE_WITH_CUDA
     const BuildStrategy &strategy, platform::NCCLContextMap *nccl_ctxs) {
 #else
@@ -67,8 +66,8 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
                                                      &loss_var_name);
   multi_devices_pass->SetNotOwned<const std::unordered_set<std::string>>(
       "params", &param_names);
-  multi_devices_pass->SetNotOwned<const std::vector<std::shared_ptr<Scope>>>(
-      "local_scopes", &local_scopes);
+  multi_devices_pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
+                                                              &local_scopes);
   multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy", &strategy);
 
 #ifdef PADDLE_WITH_CUDA
@@ -101,8 +100,8 @@ class ParallelExecutorPrivate {
       : places_(places) {}
 
   std::vector<platform::Place> places_;
-  std::vector<std::shared_ptr<Scope>> local_scopes_;
-  std::shared_ptr<Scope> global_scope_;
+  std::vector<Scope *> local_scopes_;
+  Scope *global_scope_;
   std::unique_ptr<details::SSAGraphExecutor> executor_;
 
 #ifdef PADDLE_WITH_CUDA
@@ -113,7 +112,7 @@ class ParallelExecutorPrivate {
   bool use_all_reduce_;
 };
 
-std::vector<std::shared_ptr<Scope>> &ParallelExecutor::GetLocalScopes() {
+std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
   return member_->local_scopes_;
 }
 
@@ -122,8 +121,7 @@ ParallelExecutor::ParallelExecutor(
     const std::unordered_set<std::string> &params,
     const std::unordered_set<std::string> &bcast_vars,
     const ProgramDesc &main_program, const std::string &loss_var_name,
-    const std::shared_ptr<Scope> &scope,
-    const std::vector<std::shared_ptr<Scope>> &local_scopes,
+    Scope *scope, const std::vector<Scope *> &local_scopes,
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
     size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
@@ -144,13 +142,13 @@ ParallelExecutor::ParallelExecutor(
     member_->own_local_scope_ = true;
     member_->local_scopes_.emplace_back(member_->global_scope_);
     for (size_t i = 1; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(scope->NewSharedScope());
+      member_->local_scopes_.emplace_back(&scope->NewScope());
     }
   } else {
     member_->own_local_scope_ = false;
     PADDLE_ENFORCE_EQ(member_->places_.size(), local_scopes.size());
     for (size_t i = 0; i < member_->places_.size(); ++i) {
-      member_->local_scopes_.emplace_back(local_scopes[i]->NewSharedScope());
+      member_->local_scopes_.emplace_back(&local_scopes[i]->NewScope());
     }
   }
 
@@ -323,7 +321,7 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &map = tensors[i];
-    auto &scope = member_->local_scopes_[i];
+    auto *scope = member_->local_scopes_[i];
     for (auto &pair : map) {
       auto *trg = scope->Var(pair.first)->GetMutable<LoDTensor>();
       trg->ShareDataWith(pair.second);
@@ -353,15 +351,11 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 
 ParallelExecutor::~ParallelExecutor() {
   if (member_->own_local_scope_) {
-    std::vector<Scope *> local_scopes_ptrs;
-    local_scopes_ptrs.reserve(member_->local_scopes_.size());
     for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-      local_scopes_ptrs.emplace_back(member_->local_scopes_[i].get());
-      member_->local_scopes_[i].reset();
-    }
-
-    for (size_t i = 0; i != local_scopes_ptrs.size(); ++i) {
-      member_->global_scope_->DeleteScope(local_scopes_ptrs[i]);
+      Scope *local_scope = member_->local_scopes_[i];
+      if (member_->global_scope_->HasKid(local_scope)) {
+        member_->global_scope_->DeleteScope(local_scope);
+      }
     }
   }
 }

@@ -22,7 +22,7 @@ namespace framework {
 namespace details {
 
 FetchOpHandle::FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
-                             std::vector<std::shared_ptr<Scope>> *local_scopes)
+                             std::vector<Scope *> *local_scopes)
     : OpHandleBase(node),
       data_(data),
       offset_(offset),
