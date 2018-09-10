@@ -48,7 +48,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DEPENDS             ${MKLML_PROJECT}
     GIT_REPOSITORY      "https://github.com/PaddlePaddle/Anakin"
-    GIT_TAG             "9424277cf9ae180a14aff09560d3cd60a49c76d2"
+    GIT_TAG             "3c8554f4978628183566ab7dd6c1e7e66493c7cd"
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          ${CMAKE_ARGS_PREFIX}
