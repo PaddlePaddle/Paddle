@@ -39,19 +39,20 @@ class ParallelExecutor {
   DISABLE_COPY_AND_ASSIGN(ParallelExecutor);
 
  public:
-  explicit ParallelExecutor(const std::vector<platform::Place> &places,
-                            const std::unordered_set<std::string> &params,
-                            const std::unordered_set<std::string> &bcast_vars,
-                            const ProgramDesc &main_program,
-                            const std::string &loss_var_name, Scope *scope,
-                            const std::vector<Scope *> &local_scopes,
-                            const ExecutionStrategy &exec_strategy,
-                            const BuildStrategy &build_strategy,
-                            size_t num_trainers = 1, size_t trainer_id = 0);
+  explicit ParallelExecutor(
+      const std::vector<platform::Place> &places,
+      const std::unordered_set<std::string> &params,
+      const std::unordered_set<std::string> &bcast_vars,
+      const ProgramDesc &main_program, const std::string &loss_var_name,
+      const std::shared_ptr<Scope> &scope,
+      const std::vector<std::shared_ptr<Scope>> &local_scopes,
+      const ExecutionStrategy &exec_strategy,
+      const BuildStrategy &build_strategy, size_t num_trainers = 1,
+      size_t trainer_id = 0);
 
   ~ParallelExecutor();
 
-  std::vector<Scope *> &GetLocalScopes();
+  std::vector<std::shared_ptr<Scope>> &GetLocalScopes();
 
   /**
    * Feed tensors to local scopes. The size of tensors should be equal to the
