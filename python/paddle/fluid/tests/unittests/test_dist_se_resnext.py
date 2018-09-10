@@ -15,14 +15,14 @@
 from __future__ import print_function
 import unittest
 from test_dist_base import TestDistBase
-"""
+
+
 class TestDistSeResneXt2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
 
     def test_se_resnext(self):
         self.check_with_place("dist_se_resnext.py", delta=1e-7)
-"""
 
 
 class TestDistSeResneXt2x2Async(TestDistBase):
@@ -30,7 +30,8 @@ class TestDistSeResneXt2x2Async(TestDistBase):
         self._sync_mode = False
 
     def test_se_resnext(self):
-        self.check_with_place("dist_se_resnext.py", delta=100)
+        self.check_with_place(
+            "dist_se_resnext.py", delta=100, check_error_log=True)
 
 
 if __name__ == "__main__":

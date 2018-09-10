@@ -24,9 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_int32(rpc_client_process_thread_num, 12,
-             "number of threads used for distributed executed.");
-
 namespace paddle {
 namespace operators {
 namespace distributed {
@@ -34,9 +31,9 @@ namespace distributed {
 void GRPCClient::InitImpl() { InitEventLoop(); }
 
 void GRPCClient::InitEventLoop() {
-  for (int i = 0; i < FLAGS_rpc_client_process_thread_num; i++) {
-    framework::AsyncIO(std::bind(&GRPCClient::Proceed, this));
-  }
+  // start the client process thread
+  // TODO(wuyi): can make this in a threadpool
+  client_thread_.reset(new std::thread(std::bind(&GRPCClient::Proceed, this)));
 }
 
 void GRPCClient::SendComplete() {
@@ -62,6 +59,7 @@ GRPCClient::~GRPCClient() {
     }
     channels_.clear();
   }
+  client_thread_->join();
 }
 
 RPCHandle GRPCClient::AsyncSendVar(const std::string& ep,
@@ -294,6 +292,7 @@ void GRPCClient::Proceed() {
   void* tag = nullptr;
   bool ok = false;
 
+  VLOG(3) << "GRPCClient Proceed begin";
   while (!stopped_ && cq_.Next(&tag, &ok)) {
     BaseProcessor* c = static_cast<BaseProcessor*>(tag);
     GPR_ASSERT(ok);
@@ -322,6 +321,7 @@ void GRPCClient::Proceed() {
     }
     sync_cond_.notify_all();
   }
+  VLOG(3) << "GRPCClient Proceed end";
 }
 
 std::shared_ptr<grpc::Channel> GRPCClient::GetChannel(const std::string& ep) {
