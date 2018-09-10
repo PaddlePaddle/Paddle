@@ -35,10 +35,14 @@ function (inference_analysis_test TARGET)
         cc_test(${TARGET}
                 SRCS "${analysis_test_SRCS}"
                 DEPS analysis pass ${GLOB_PASS_LIB} ${analysis_test_EXTRA_DEPS}
-                ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model ${mem_opt} ${analysis_test_ARGS})
+                ARGS ${mem_opt} ${analysis_test_ARGS})
         set_tests_properties(${TARGET} PROPERTIES DEPENDS test_word2vec)
     endif(WITH_TESTING)
 endfunction(inference_analysis_test)
+
+inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
+    ARGS --inference_model_dir=${PYTHON_TESTS_DIR}/book/word2vec.inference.model)
 
 function (inference_download_and_uncompress install_dir url gz_filename)
     message(STATUS "Download inference test stuff ${gz_filename} from ${url}")
@@ -56,7 +60,7 @@ if (NOT EXISTS ${RNN1_INSTALL_DIR} AND WITH_TESTING)
   inference_download_and_uncompress(${RNN1_INSTALL_DIR} ${RNN1_DATA_URL} "rnn1%2Fdata.txt.tar.gz")
 endif()
 
-inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
+inference_analysis_test(test_analyzer_rnn1 SRCS analyzer_rnn1_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
     ARGS --infer_model=${RNN1_INSTALL_DIR}/model
          --infer_data=${RNN1_INSTALL_DIR}/data.txt)
