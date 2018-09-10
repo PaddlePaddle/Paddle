@@ -55,6 +55,7 @@ class BaseProcessor {
  public:
   explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
     context_ = nullptr;
+    h_.reset(new RPCHandleCls());
   }
 
   virtual ~BaseProcessor() {}
@@ -83,32 +84,16 @@ class BaseProcessor {
 
   void Process() {
     ProcessImpl();
-    Complete();
+    h_->Complete();
   }
 
-  bool Wait() {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      sync_cond_.wait(lk, [] { return true; });
-    }
-    return ok_;
-  }
+  RPCHandle GetRPCHandle() { return h_; }
 
-  void Complete() {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      ok_ = true;
-    }
-    sync_cond_.notify_all();
-  }
+  bool Wait() { return h_->Wait(); }
 
-  void Error() {
-    {
-      std::unique_lock<std::mutex> lk(sync_mutex_);
-      ok_ = false;
-    }
-    sync_cond_.notify_all();
-  }
+  void Complete() { return h_->Complete(); }
+
+  void Error() { return h_->Error(); }
 
   virtual void ProcessImpl() = 0;
 
@@ -117,10 +102,8 @@ class BaseProcessor {
   VarHandle var_h_;
 
  protected:
-  // mutex for Wait client sync
-  std::mutex sync_mutex_;
-  std::condition_variable sync_cond_;
-  bool ok_;
+  // Handler for rpc wait;
+  RPCHandle h_;
 };
 
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>

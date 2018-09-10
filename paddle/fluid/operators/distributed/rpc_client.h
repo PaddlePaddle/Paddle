@@ -28,7 +28,44 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-typedef void* RPCHandle;
+class RPCHandleCls {
+ public:
+  RPCHandleCls();
+  virtual ~RPCHandleCls();
+
+ public:
+  bool Wait() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      sync_cond_.wait(lk, [] { return true; });
+    }
+    return ok_;
+  }
+
+  void Complete() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      ok_ = true;
+    }
+    sync_cond_.notify_all();
+  }
+
+  void Error() {
+    {
+      std::unique_lock<std::mutex> lk(sync_mutex_);
+      ok_ = false;
+    }
+    sync_cond_.notify_all();
+  }
+
+ protected:
+  // mutex for Wait RPC return.
+  std::mutex sync_mutex_;
+  std::condition_variable sync_cond_;
+  bool ok_;
+};
+
+typedef std::shared_ptr<RPCHandleCls> RPCHandle;
 
 class RPCClient {
  public:

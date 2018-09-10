@@ -108,7 +108,7 @@ RPCHandle GRPCClient::AsyncSendVar(const std::string& ep,
   });
   req_count_++;
 
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 void ProcGetResponse(const VarHandle& var_h,
@@ -166,7 +166,7 @@ RPCHandle GRPCClient::AsyncGetVar(const std::string& ep,
 
   req_count_++;
 
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 RPCHandle GRPCClient::AsyncPrefetchVar(const std::string& ep,
@@ -212,7 +212,7 @@ RPCHandle GRPCClient::AsyncPrefetchVar(const std::string& ep,
   });
 
   req_count_++;
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 RPCHandle GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
@@ -227,7 +227,7 @@ RPCHandle GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 RPCHandle GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
@@ -241,7 +241,7 @@ RPCHandle GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
   auto rpc = s->stub_->AsyncGetVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 RPCHandle GRPCClient::AsyncSendComplete(const std::string& ep,
@@ -256,7 +256,7 @@ RPCHandle GRPCClient::AsyncSendComplete(const std::string& ep,
   auto rpc = s->stub_->AsyncSendVariable(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 RPCHandle GRPCClient::AsyncCheckpointNotify(const std::string& ep,
@@ -274,7 +274,7 @@ RPCHandle GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   auto rpc = s->stub_->AsyncCheckpointNotify(s->context_.get(), req, &cq_);
   rpc->Finish(&s->reply_, &s->status_, reinterpret_cast<void*>(s));
   req_count_++;
-  return reinterpret_cast<RPCHandle>(s);
+  return s->GetRPCHandle();
 }
 
 bool GRPCClient::Wait() {
@@ -284,9 +284,8 @@ bool GRPCClient::Wait() {
 }
 
 bool GRPCClient::Wait(RPCHandle h) {
-  PADDLE_ENFORCE(h, "rpc handler muste be valid");
-  BaseProcessor* c = reinterpret_cast<BaseProcessor*>(h);
-  return c->Wait();
+  PADDLE_ENFORCE(h != nullptr, "rpc handler muste be valid");
+  return h->Wait();
 }
 
 void GRPCClient::Proceed() {
