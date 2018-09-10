@@ -46,7 +46,7 @@ class SendOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    std::vector<distributed::RPCHandle> rets;
+    std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
@@ -57,8 +57,7 @@ class SendOp : public framework::OperatorBase {
     }
     if (sync_send) {
       for (size_t i = 0; i < rets.size(); i++) {
-        PADDLE_ENFORCE(rpc_client->Wait(rets[i]),
-                       "internal error in RPCClient");
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
       }
     }
   }

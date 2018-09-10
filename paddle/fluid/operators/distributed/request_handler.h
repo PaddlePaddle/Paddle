@@ -52,7 +52,18 @@ class RPCServer;
 
 class VarHandle {
  public:
-  VarHandle() : ok_(-1) {}
+  VarHandle(const std::string ep, const std::string& method,
+            const std::string& name,
+            const platform::DeviceContext* p_ctx = nullptr,
+            const framework::Scope* p_scope = nullptr)
+      : ok_(-1) {
+    ep_ = ep;
+    ctx_ = p_ctx;
+    scope_ = p_scope;
+    name_ = name;
+    method_ = method;
+  }
+
   virtual ~VarHandle() {}
 
  public:
@@ -72,16 +83,6 @@ class VarHandle {
     }
     VLOG(7) << "VarHandle finish:" << ok;
     sync_cond_.notify_all();
-  }
-
-  void SetContext(const std::string ep, const platform::DeviceContext* ctx,
-                  const framework::Scope* scope, const std::string& name,
-                  const std::string& method) {
-    ep_ = ep;
-    ctx_ = ctx;
-    scope_ = scope;
-    name_ = name;
-    method_ = method;
   }
 
   std::string String() const {
@@ -115,7 +116,7 @@ class VarHandle {
   DISABLE_COPY_AND_ASSIGN(VarHandle);
 };
 
-typedef std::shared_ptr<VarHandle> RPCHandle;
+typedef std::shared_ptr<VarHandle> VarHandlePtr;
 
 class RequestHandler {
  public:

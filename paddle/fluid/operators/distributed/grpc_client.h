@@ -55,15 +55,15 @@ class BaseProcessor {
  public:
   explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
     context_ = nullptr;
-    var_h_.reset(new VarHandle());
   }
 
   virtual ~BaseProcessor() {}
 
-  virtual void Prepare(const std::string ep, const platform::DeviceContext* ctx,
-                       const framework::Scope* scope, const std::string& name,
-                       const std::string& method, int64_t time_out) {
-    var_h_->SetContext(ep, ctx, scope, name, method);
+  virtual void Prepare(const std::string ep, const std::string& method,
+                       const std::string& name,
+                       const platform::DeviceContext* ctx,
+                       const framework::Scope* scope, int64_t time_out) {
+    var_h_.reset(new VarHandle(ep, method, name, ctx, scope));
 
     context_.reset(new grpc::ClientContext());
     context_->set_wait_for_ready(true);
@@ -75,22 +75,12 @@ class BaseProcessor {
     }
   }
 
-  virtual void Prepare(int64_t time_out) {
-    context_.reset(new grpc::ClientContext());
-    context_->set_wait_for_ready(true);
-
-    std::chrono::system_clock::time_point deadline =
-        std::chrono::system_clock::now() + std::chrono::milliseconds(time_out);
-
-    context_->set_deadline(deadline);
-  }
-
   void Process() {
     ProcessImpl();
     var_h_->Finish(true);
   }
 
-  RPCHandle GetRPCHandle() { return var_h_; }
+  VarHandlePtr GetVarHandlePtr() { return var_h_; }
 
   bool Wait() { return var_h_->Wait(); }
 
@@ -102,7 +92,7 @@ class BaseProcessor {
   grpc::Status status_;
 
  protected:
-  RPCHandle var_h_;
+  VarHandlePtr var_h_;
 };
 
 typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
@@ -194,41 +184,39 @@ class GRPCClient : public RPCClient {
   GRPCClient() : ok_(true), completed_(false), stopped_(false) {}
   virtual ~GRPCClient();
 
-  RPCHandle AsyncSendVar(const std::string& ep,
-                         const platform::DeviceContext& ctx,
-                         const framework::Scope& scope,
-                         const std::string& var_name,
-                         int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncSendVar(const std::string& ep,
+                            const platform::DeviceContext& ctx,
+                            const framework::Scope& scope,
+                            const std::string& var_name,
+                            int64_t time_out = FLAGS_rpc_deadline) override;
 
-  RPCHandle AsyncGetVar(const std::string& ep,
-                        const platform::DeviceContext& ctx,
-                        const framework::Scope& scope,
-                        const std::string& var_name,
-                        int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncGetVar(const std::string& ep,
+                           const platform::DeviceContext& ctx,
+                           const framework::Scope& scope,
+                           const std::string& var_name,
+                           int64_t time_out = FLAGS_rpc_deadline) override;
 
-  RPCHandle AsyncPrefetchVar(const std::string& ep,
-                             const platform::DeviceContext& ctx,
-                             const framework::Scope& scope,
-                             const std::string& in_var_name,
-                             const std::string& out_var_name,
-                             int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncPrefetchVar(const std::string& ep,
+                                const platform::DeviceContext& ctx,
+                                const framework::Scope& scope,
+                                const std::string& in_var_name,
+                                const std::string& out_var_name,
+                                int64_t time_out = FLAGS_rpc_deadline) override;
 
-  RPCHandle AsyncSendBatchBarrier(
+  VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
-  RPCHandle AsyncSendFetchBarrier(
+  VarHandlePtr AsyncSendFetchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
-  RPCHandle AsyncCheckpointNotify(
+  VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
       int64_t time_out = FLAGS_rpc_deadline) override;
 
-  RPCHandle AsyncSendComplete(const std::string& ep,
-                              int64_t time_out = FLAGS_rpc_deadline) override;
+  VarHandlePtr AsyncSendComplete(
+      const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) override;
 
   bool Wait() override;
-
-  bool Wait(RPCHandle h) override;
 
   void SendComplete() override;
 

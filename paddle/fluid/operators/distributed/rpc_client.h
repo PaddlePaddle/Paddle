@@ -33,36 +33,35 @@ class RPCClient {
  public:
   RPCClient() {}
   virtual ~RPCClient() {}
-  virtual RPCHandle AsyncSendVar(const std::string& ep,
-                                 const platform::DeviceContext& ctx,
-                                 const framework::Scope& scope,
-                                 const std::string& var_name,
-                                 int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncSendVar(const std::string& ep,
+                                    const platform::DeviceContext& ctx,
+                                    const framework::Scope& scope,
+                                    const std::string& var_name,
+                                    int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual RPCHandle AsyncGetVar(const std::string& ep,
-                                const platform::DeviceContext& ctx,
-                                const framework::Scope& scope,
-                                const std::string& var_name,
-                                int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncGetVar(const std::string& ep,
+                                   const platform::DeviceContext& ctx,
+                                   const framework::Scope& scope,
+                                   const std::string& var_name,
+                                   int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual RPCHandle AsyncPrefetchVar(const std::string& ep,
-                                     const platform::DeviceContext& ctx,
-                                     const framework::Scope& scope,
-                                     const std::string& in_var_name,
-                                     const std::string& out_var_name,
-                                     int64_t time_out = FLAGS_rpc_deadline) = 0;
+  virtual VarHandlePtr AsyncPrefetchVar(
+      const std::string& ep, const platform::DeviceContext& ctx,
+      const framework::Scope& scope, const std::string& in_var_name,
+      const std::string& out_var_name,
+      int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual RPCHandle AsyncSendBatchBarrier(
+  virtual VarHandlePtr AsyncSendBatchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual RPCHandle AsyncSendFetchBarrier(
+  virtual VarHandlePtr AsyncSendFetchBarrier(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual RPCHandle AsyncCheckpointNotify(
+  virtual VarHandlePtr AsyncCheckpointNotify(
       const std::string& ep, const std::string& dir,
       int64_t time_out = FLAGS_rpc_deadline) = 0;
 
-  virtual RPCHandle AsyncSendComplete(
+  virtual VarHandlePtr AsyncSendComplete(
       const std::string& ep, int64_t time_out = FLAGS_rpc_deadline) = 0;
 
   // Complete tells all the pserver instances that finishe the training,
@@ -71,8 +70,6 @@ class RPCClient {
   virtual void SendComplete() = 0;
 
   virtual bool Wait() = 0;
-
-  virtual bool Wait(RPCHandle h) = 0;
 
   template <typename T>
   static RPCClient* GetInstance() {
