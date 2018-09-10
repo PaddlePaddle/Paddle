@@ -342,10 +342,8 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     data. The process number is equal to the number of input readers, each
     process call one reader.
 
-    Use multiprocess.Queue(use_pipe=False, default config) is much more
-    faster then multiprocess.Pipe but multiprocess.Queue require the rw
-    access right to /dev/shm, some platform does not support, in this
-    condition, we can use multiprocess.Pipe(use_pipe=True).
+    Multiprocess.Queue require the rw access right to /dev/shm, some
+    platform does not support.
 
     you need to create multiple readers first, these readers should be independent
     to each other so that each process can work independently.
