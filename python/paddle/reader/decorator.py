@@ -21,7 +21,12 @@ __all__ = [
 from threading import Thread
 import subprocess
 import multiprocessing
-import ujson as json
+
+try:
+    import ujson as json
+except Exception as e:
+    print("import ujson error: " + str(e))
+    import json
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
