@@ -39,8 +39,8 @@ import six
 from .ps_dispatcher import RoundRobin, HashName, PSDispatcher
 from .. import core, framework
 from ..framework import Program, default_main_program, \
-                        default_startup_program, Block, \
-                        Parameter, grad_var_name
+    default_startup_program, Block, \
+    Parameter, grad_var_name
 from .details import *
 from functools import reduce
 
@@ -381,6 +381,8 @@ class DistributeTranspiler(object):
                                                         pserver_endpoints)
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
+        self._append_distributed_metric()
+
     def get_trainer_program(self):
         """
         Get transpiled trainer side program.
@@ -451,7 +453,7 @@ class DistributeTranspiler(object):
             })
 
         for varname, splited_var in six.iteritems(self.param_var_mapping):
-            #add concat ops to merge splited parameters received from parameter servers.
+            # add concat ops to merge splited parameters received from parameter servers.
             if len(splited_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
@@ -642,19 +644,19 @@ class DistributeTranspiler(object):
             table_opt_block = self._create_table_optimize_block(
                 pserver_index, pserver_program, pre_block_idx, grad_to_block_id)
             optimize_blocks.append(table_opt_block)
-            prefetch_var_name_to_block_id = self._create_prefetch_block(
+            lookup_table_var_name_to_block_id = self._create_prefetch_block(
                 pserver_index, pserver_program, table_opt_block)
             checkpoint_block_id = self._create_checkpoint_save_block(
                 pserver_program, table_opt_block.idx)
 
             pserver_program._distributed_lookup_table = self.table_name
+            prefetch_var_name_to_block_id.extend(
+                lookup_table_var_name_to_block_id)
 
-        # NOTE: if has_distributed_lookup_table is False, then prefetch_block will
-        # not be executed, so it's safe to use optimize_block to hold the place
-        if self.has_distributed_lookup_table:
-            assert len(prefetch_var_name_to_block_id) > 0
-        else:
-            assert len(prefetch_var_name_to_block_id) == 0
+        if self.has_distributed_metrics:
+            metrics_var_name_to_block_id = self._create_distributed_metrics_block(
+            )
+            prefetch_var_name_to_block_id.extend(metrics_var_name_to_block_id)
 
         attrs = {
             "optimize_blocks": optimize_blocks,
@@ -663,10 +665,13 @@ class DistributeTranspiler(object):
             "sync_mode": self.sync_mode,
             "grad_to_block_id": grad_to_block_id,
         }
-        if len(prefetch_var_name_to_block_id) > 0:
-            attrs['prefetch_var_name_to_block_id'] \
-                = prefetch_var_name_to_block_id
+
+        if self.has_distributed_lookup_table:
             attrs['checkpint_block_id'] = checkpoint_block_id
+
+        if len(prefetch_var_name_to_block_id) > 0:
+            attrs[
+                'prefetch_var_name_to_block_id'] = prefetch_var_name_to_block_id
 
         # step5 append the listen_and_serv op
         pserver_program.global_block().append_op(
@@ -866,6 +871,59 @@ class DistributeTranspiler(object):
                 ]
         return param_list, grad_list
 
+    def _append_distributed_metric(self):
+        support_distributed_metric_ops = ['auc']
+        self.distributed_metric_ops = []
+        for op in self.origin_program.global_block().ops:
+            if op.type in support_distributed_metric_ops and op.attr(
+                    'is_distributed') is True:
+                self.distributed_metric_ops.append(op)
+
+        if len(self.distributed_metric_ops) == 0:
+            self.has_distributed_metrics = False
+            return
+
+        self.has_distributed_metrics = True
+
+        for op in self.distributed_metric_ops:
+            if op.type == "auc":
+                self._append_distributed_auc(op)
+
+    def _append_distributed_auc(self, auc_op):
+        predict = auc_op.inputs["Predict"]
+        label = auc_op.inputs["Label"]
+        auc_out = auc_op.outputs["AUC"]
+
+        all_ops = self.origin_program.global_block().ops
+        auc_op_idx = list(all_ops).index(auc_op)
+
+        prev_label_concat = self.origin_program.global_block().create_var(
+            name="distributed_auc.trainer_%d.pserver_%d" % (self.trainer_id, 0),
+            persistable=False,
+            dtype=label.dtype,
+            type=label.type,
+            shape=label.shape)
+
+        self.origin_program.global_block()._insert_op(
+            index=auc_op_idx + 1,
+            type="concat",
+            inputs={"Predict": predict,
+                    "Label": label},
+            attrs={"axis": 0},
+            outputs={"Out": prev_label_concat})
+
+        self.origin_program.global_block()._insert_op(
+            index=auc_op_idx + 2,
+            type="prefetch",
+            inputs={'X': prev_label_concat},
+            attrs={
+                "epmap": self.pserver_endpoints[:1],
+                # FIXME(qiao) temporarily disable this config because prefetch
+                # is not act as other rpc op, it's more like a forward op
+                # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+            },
+            outputs={"Out": auc_out})
+
     def _init_splited_vars(self):
         # update these mappings for further transpile:
         # 1. param_var_mapping: param var name -> [splited params vars]
@@ -921,7 +979,7 @@ class DistributeTranspiler(object):
         for g, p in zip(grad_blocks, param_blocks):
             g_name, g_bid, _ = g.split(":")
             p_name, p_bid, _ = p.split(":")
-            self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_bid)]] =  \
+            self.grad_param_mapping[self.grad_var_mapping[g_name][int(g_bid)]] = \
                 self.param_var_mapping[p_name][int(p_bid)]
 
         # create mapping of endpoint -> split var to create pserver side program
@@ -1192,6 +1250,65 @@ class DistributeTranspiler(object):
 
         return checkpoint_save_block.idx
 
+    def _create_distributed_metrics_block(self, pserver_program, pre_block_idx):
+        metrics_var_name_to_block_id = []
+        distributed_metrics_block = pserver_program.create_block(pre_block_idx)
+
+        for auc_op in self.distributed_metric_ops:
+            predict = auc_op.inputs["Predict"]
+            label = auc_op.inputs["Label"]
+
+            auc_out = auc_op.outputs["AUC"]
+            batch_auc_out = auc_op.outputs["BatchAUC"]
+
+            num_thresholds = auc_op.attrs["num_thresholds"]
+            curve = auc_op.attrs["curve"]
+            is_distributed = auc_op.attrs["is_distributed"]
+
+            stat_pos = distributed_metrics_block.create_var(
+                persistable=True, dtype='int64', shape=[num_thresholds + 1])
+            stat_neg = distributed_metrics_block.create_var(
+                persistable=True, dtype='int64', shape=[num_thresholds + 1])
+
+            for i in range(self.trainer_num):
+                var = distributed_metrics_block.create_var(
+                    name="%s.trainer_%d.pserver_%d" % ("distributed_auc", i, 0),
+                    shape=[1],
+                    dtype="float32")
+                metrics_var_name_to_block_id.append(var.name + ":" + str(
+                    distributed_metrics_block.idx))
+
+            distributed_auc = distributed_metrics_block.create_var(
+                name="%s.pserver_%d" % ("distributed_auc", 0),
+                shape=[1],
+                dtype="float32")
+            distributed_metrics_block.append_op(
+                type="split",
+                inputs={"X": distributed_auc},
+                attrs={"axis": 0,
+                       "sections": 2},
+                outputs={"Out": [predict, label]})
+            distributed_metrics_block.append_op(
+                type="auc",
+                inputs={
+                    "Predict": [predict],
+                    "Label": [label],
+                    "StatPos": [stat_pos],
+                    "StatNeg": [stat_neg]
+                },
+                attrs={
+                    "curve": curve,
+                    "num_thresholds": num_thresholds,
+                    "is_distributed": is_distributed
+                },
+                outputs={
+                    "AUC": [auc_out],
+                    "BatchAUC": [batch_auc_out],
+                    "StatPosOut": [stat_pos],
+                    "StatNegOut": [stat_neg]
+                })
+        return metrics_var_name_to_block_id
+
     def _create_vars_from_blocklist(self,
                                     program,
                                     block_list,
@@ -1224,7 +1341,7 @@ class DistributeTranspiler(object):
             if len(splited) == 1:
                 if self.sync_mode and add_trainer_suffix:
                     new_var_name = "%s.trainer_%d" % \
-                        (orig_var.name, self.trainer_id)
+                                   (orig_var.name, self.trainer_id)
                     program.global_block()._rename_var(varname, new_var_name)
                     var_mapping[varname] = \
                         [program.global_block().var(new_var_name)]
@@ -1247,10 +1364,10 @@ class DistributeTranspiler(object):
                 new_var_name = ""
                 if self.sync_mode and add_trainer_suffix:
                     new_var_name = "%s.block%d.trainer_%d" % \
-                        (varname, i, self.trainer_id)
+                                   (varname, i, self.trainer_id)
                 else:
                     new_var_name = "%s.block%d" % \
-                        (varname, i)
+                                   (varname, i)
                 var = program.global_block().create_var(
                     name=new_var_name,
                     persistable=False,
@@ -1383,7 +1500,7 @@ class DistributeTranspiler(object):
             vars2merge = []
             for i in range(self.trainer_num):
                 per_trainer_name = "%s.trainer_%d" % \
-                (merged_var_name, i)
+                                   (merged_var_name, i)
                 vars2merge.append(pserver_block.vars[per_trainer_name])
 
             optimize_block.append_op(
@@ -1545,7 +1662,7 @@ class DistributeTranspiler(object):
         # one op's output is another op's input, we say
         # the two operator is connected.
         if set(op1.desc.output_arg_names()) & set(op2.desc.input_arg_names()) or \
-           set(op1.desc.input_arg_names()) & set(op2.desc.output_arg_names()):
+                set(op1.desc.input_arg_names()) & set(op2.desc.output_arg_names()):
             return True
         return False
 
@@ -1562,7 +1679,7 @@ class DistributeTranspiler(object):
 
     def _is_optimizer_op(self, op):
         if "Param" in op.input_names and \
-            "LearningRate" in op.input_names:
+                "LearningRate" in op.input_names:
             return True
         return False
 
@@ -1627,7 +1744,7 @@ class DistributeTranspiler(object):
                 # NOTE: we need to skip all optimize ops, since it is connected
                 # with forward/backward ops and lr ops, we only need the lr ops.
                 if op1 != op2 and self._is_op_connected(op1, op2) and \
-                    not self._is_optimizer_op(op1) and not self._is_optimizer_op(op2):
+                        not self._is_optimizer_op(op1) and not self._is_optimizer_op(op2):
                     ufind.union(op1, op2)
         # find all ops which is related with lr var
         for op1 in block.ops:
@@ -1667,7 +1784,7 @@ class DistributeTranspiler(object):
                 # and op_role_var to get the pair.
                 for input_name in op.input_arg_names:
                     if input_name.find("@GRAD") != -1 and \
-                        op.attr(RPC_OP_ROLE_ATTR_NAME):
+                            op.attr(RPC_OP_ROLE_ATTR_NAME):
                         param_name = op.attr(OP_ROLE_VAR_ATTR_NAME)[0]
                         params_grads.append([
                             origin_var_dict[param_name],

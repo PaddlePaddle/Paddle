@@ -78,7 +78,12 @@ def accuracy(input, label, k=1, correct=None, total=None):
     return acc_out
 
 
-def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
+def auc(input,
+        label,
+        curve='ROC',
+        num_thresholds=2**12 - 1,
+        topk=1,
+        is_distributed=False):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -105,6 +110,7 @@ def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
         num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 200.
         topk(int): only topk number of prediction output will be used for auc.
+        is_distributed(bool): distributed auc calc.
 
     Returns:
         Variable: A scalar representing the current AUC.
@@ -138,8 +144,11 @@ def auc(input, label, curve='ROC', num_thresholds=2**12 - 1, topk=1):
             "StatPos": [stat_pos],
             "StatNeg": [stat_neg]
         },
-        attrs={"curve": curve,
-               "num_thresholds": num_thresholds},
+        attrs={
+            "curve": curve,
+            "num_thresholds": num_thresholds,
+            "is_distributed": is_distributed
+        },
         outputs={
             "AUC": [auc_out],
             "BatchAUC": [batch_auc_out],
