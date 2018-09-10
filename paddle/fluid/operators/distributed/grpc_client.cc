@@ -62,10 +62,6 @@ GRPCClient::~GRPCClient() {
     }
     channels_.clear();
   }
-
-  for (int i = 0; i < FLAGS_rpc_client_process_thread_num; i++) {
-    threads_[i]->join();
-  }
 }
 
 RPCHandle GRPCClient::AsyncSendVar(const std::string& ep,
