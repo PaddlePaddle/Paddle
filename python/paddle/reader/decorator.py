@@ -345,7 +345,7 @@ def multiprocess_reader(readers, queue_size=1000, use_pipe=False):
     Use multiprocess.Queue(use_pipe=False, default config) is much more
     faster then multiprocess.Pipe but multiprocess.Queue require the rw
     access right to /dev/shm, some platform does not support, in this
-    condition, we can use multiprocess.Pipe(use_pipe=False).
+    condition, we can use multiprocess.Pipe(use_pipe=True).
 
     you need to create multiple readers first, these readers should be independent
     to each other so that each process can work independently.
@@ -403,12 +403,17 @@ def multiprocess_reader(readers, queue_size=1000, use_pipe=False):
 
         reader_num = len(readers)
         finish_num = 0
+        conn_to_remove = []
         while finish_num < reader_num:
+            for conn in conn_to_remove:
+                conns.remove(conn)
+            conn_to_remove = []
             for conn in conns:
                 sample = json.loads(conn.recv())
                 if sample is None:
                     finish_num += 1
-                    conns.remove(conn)
+                    conn.close()
+                    conn_to_remove.append(conn)
                 else:
                     yield sample
 
