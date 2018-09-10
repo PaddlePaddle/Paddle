@@ -78,9 +78,9 @@ class VarHandle {
                   const framework::Scope* scope, const std::string& name,
                   const std::string& method) {
     ep_ = ep;
+    ctx_ = ctx;
     scope_ = scope;
     name_ = name;
-    ctx_ = ctx;
     method_ = method;
   }
 
@@ -91,13 +91,9 @@ class VarHandle {
   }
 
   std::string ep() const { return ep_; }
-
   const platform::DeviceContext* ctx() const { return ctx_; }
-
   const framework::Scope* scope() const { return scope_; }
-
   std::string name() const { return name_; }
-
   std::string method() const { return method_; }
 
  protected:
