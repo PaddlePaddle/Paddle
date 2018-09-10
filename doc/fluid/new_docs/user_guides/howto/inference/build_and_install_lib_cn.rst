@@ -40,7 +40,6 @@ WITH_MKL            ON/OFF
 
   .. code-block:: bash
 
-     pip install paddlepaddle-gpu
      PADDLE_ROOT=/path/of/capi
      git clone https://github.com/PaddlePaddle/Paddle.git
      cd Paddle
