@@ -30,16 +30,16 @@ namespace distributed {
 
 class RPCHandleCls {
  public:
-  RPCHandleCls() : ok_(false) {}
+  RPCHandleCls() : ok_(-1) {}
   virtual ~RPCHandleCls() {}
 
  public:
   bool Wait() {
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      sync_cond_.wait(lk, [] { return true; });
+      sync_cond_.wait(lk, [this] { return ok_ != -1; });
     }
-    return ok_;
+    return ok_ != 0;
   }
 
   void Finish(bool ok) {
@@ -54,7 +54,7 @@ class RPCHandleCls {
   // mutex for Wait RPC return.
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
-  bool ok_;
+  int ok_;
 };
 
 typedef std::shared_ptr<RPCHandleCls> RPCHandle;
