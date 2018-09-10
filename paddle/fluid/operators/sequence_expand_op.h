@@ -170,6 +170,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     SequenceExpandFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *x, ref_x_lod,
             y_lod[ref_level], out);
+    context.template device_context<DeviceContext>().Wait();
   }
 };
 
@@ -249,6 +250,7 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     SequenceExpandGradFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
             ref_lod, g_x);
+    context.template device_context<DeviceContext>().Wait();
   }
 };
 

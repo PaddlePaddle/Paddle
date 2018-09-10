@@ -88,7 +88,7 @@ class SequenceExpandOp : public framework::OperatorWithKernel {
       out_dims[0] = -1;
     }
     ctx->SetOutputDim("Out", out_dims);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->ShareLoD("Y", /*->*/ "Out");
   }
 };
 
