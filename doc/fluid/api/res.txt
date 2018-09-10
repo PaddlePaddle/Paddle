@@ -1,0 +1,3557 @@
+diff -r -y -W 50 ./average.rst /ssd3/paddle/Paddle014/doc/fluid/api/average.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=============		=============
+fluid.average		fluid.average
+=============		=============
+
+.. _api_fluid_average	.. _api_fluid_average
+
+WeightedAverage		WeightedAverage
+---------------		---------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./backward.rst /ssd3/paddle/Paddle014/doc/fluid/api/backward.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+==============		==============
+fluid.backward		fluid.backward
+==============		==============
+
+.. _api_fluid_backwar	.. _api_fluid_backwar
+
+append_backward		append_backward
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_backwar
+		      >
+		      >	calc_gradient
+		      >	-------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+diff -r -y -W 50 ./clip.rst /ssd3/paddle/Paddle014/doc/fluid/api/clip.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+==========		==========
+fluid.clip		fluid.clip
+==========		==========
+
+.. _api_fluid_clip_Er	.. _api_fluid_clip_Er
+
+ErrorClipByValue	ErrorClipByValue
+----------------	----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_clip_Gr	.. _api_fluid_clip_Gr
+
+GradientClipByValue	GradientClipByValue
+-------------------	-------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_clip_Gr	.. _api_fluid_clip_Gr
+
+GradientClipByNorm	GradientClipByNorm
+------------------	------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_clip_Gr	.. _api_fluid_clip_Gr
+
+GradientClipByGlobalN	GradientClipByGlobalN
+---------------------	---------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./CMakeLists.txt /ssd3/paddle/Paddle014/doc/fluid/api/CMakeLists.txt
+# configured document	# configured document
+set(BINARY_BUILD_DIR_	set(BINARY_BUILD_DIR_
+
+# Sphinx cache with p	# Sphinx cache with p
+set(SPHINX_CACHE_DIR_	set(SPHINX_CACHE_DIR_
+
+# HTML output directo	# HTML output directo
+set(SPHINX_HTML_DIR_E	set(SPHINX_HTML_DIR_E
+
+set(IMPORT_PADDLE_STR	set(IMPORT_PADDLE_STR
+set(IMPORT_PADDLEV2_S	set(IMPORT_PADDLEV2_S
+
+configure_file(		configure_file(
+    "${CMAKE_CURRENT_	    "${CMAKE_CURRENT_
+    "${BINARY_BUILD_D	    "${BINARY_BUILD_D
+    @ONLY)		    @ONLY)
+
+sphinx_add_target(pad	sphinx_add_target(pad
+                  htm	                  htm
+                  ${B	                  ${B
+                  ${S	                  ${S
+                  ${C	                  ${C
+                  ${S	                  ${S
+
+add_dependencies(padd	add_dependencies(padd
+diff -r -y -W 50 ./data/data_reader.rst /ssd3/paddle/Paddle014/doc/fluid/api/data/data_reader.rst
+=====================	=====================
+Data Reader Interface	Data Reader Interface
+=====================	=====================
+
+
+DataTypes		DataTypes
+=========		=========
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+DataFeeder		DataFeeder
+==========		==========
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+Reader			Reader
+======			======
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+minibatch		minibatch
+=========		=========
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+diff -r -y -W 50 ./data/dataset.rst /ssd3/paddle/Paddle014/doc/fluid/api/data/dataset.rst
+Dataset			Dataset
+=======			=======
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+mnist			mnist
++++++			+++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+cifar			cifar
++++++			+++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+conll05			conll05
++++++++			+++++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members: get_dic	    :members: get_dic
+    :noindex:		    :noindex:
+
+imdb			imdb
+++++			++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+imikolov		imikolov
+++++++++		++++++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+movielens		movielens
++++++++++		+++++++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :noindex:		    :noindex:
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :noindex:		    :noindex:
+
+sentiment		sentiment
++++++++++		+++++++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+uci_housing		uci_housing
++++++++++++		+++++++++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+wmt14			wmt14
++++++			+++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+wmt16			wmt16
++++++			+++++
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+    :noindex:		    :noindex:
+diff -r -y -W 50 ./data/image.rst /ssd3/paddle/Paddle014/doc/fluid/api/data/image.rst
+Image Interface		Image Interface
+===============		===============
+
+..  automodule:: padd	..  automodule:: padd
+    :members:		    :members:
+diff -r -y -W 50 ./data_feeder.rst /ssd3/paddle/Paddle014/doc/fluid/api/data_feeder.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=================	=================
+fluid.data_feeder	fluid.data_feeder
+=================	=================
+
+.. _api_fluid_data_fe	.. _api_fluid_data_fe
+
+DataFeeder		DataFeeder
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./executor.rst /ssd3/paddle/Paddle014/doc/fluid/api/executor.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+==============		==============
+fluid.executor		fluid.executor
+==============		==============
+
+.. _api_fluid_executo	.. _api_fluid_executo
+
+Executor		Executor
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_executo	.. _api_fluid_executo
+
+global_scope		global_scope
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_executo	.. _api_fluid_executo
+
+scope_guard		scope_guard
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_executo	.. _api_fluid_executo
+
+_switch_scope		_switch_scope
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_executo
+		      >
+		      >	fetch_var
+		      >	---------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+diff -r -y -W 50 ./fluid.rst /ssd3/paddle/Paddle014/doc/fluid/api/fluid.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=====			=====
+fluid			fluid
+=====			=====
+
+		      >	.. _api_fluid_Block:
+		      >
+		      >	Block
+		      >	-----
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_Variabl
+		      >
+		      >	Variable
+		      >	--------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+.. _api_fluid_Program	.. _api_fluid_Program
+
+Program			Program
+-------			-------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Operato	.. _api_fluid_Operato
+
+Operator		Operator
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Paramet <
+		      <
+Parameter	      <
+---------	      <
+		      <
+..  autoclass:: paddl <
+    :members:	      <
+    :noindex:	      <
+		      <
+.. _api_fluid_default	.. _api_fluid_default
+
+default_startup_progr	default_startup_progr
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_default	.. _api_fluid_default
+
+default_main_program	default_main_program
+--------------------	--------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_program	.. _api_fluid_program
+
+program_guard		program_guard
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_get_var	.. _api_fluid_get_var
+
+get_var			get_var
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_Executo	.. _api_fluid_Executo
+
+Executor		Executor
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_global_	.. _api_fluid_global_
+
+global_scope		global_scope
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_scope_g	.. _api_fluid_scope_g
+
+scope_guard		scope_guard
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid__switch	.. _api_fluid__switch
+
+_switch_scope		_switch_scope
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_fetch_v
+		      >
+		      >	fetch_var
+		      >	---------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_Go:
+		      >
+		      >	Go
+		      >	--
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_make_ch
+		      >
+		      >	make_channel
+		      >	------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_channel
+		      >
+		      >	channel_send
+		      >	------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_channel
+		      >
+		      >	channel_recv
+		      >	------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_channel
+		      >
+		      >	channel_close
+		      >	-------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_Select:
+		      >
+		      >	Select
+		      >	------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+.. _api_fluid_Trainer	.. _api_fluid_Trainer
+
+Trainer			Trainer
+-------			-------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_BeginEp	.. _api_fluid_BeginEp
+
+BeginEpochEvent		BeginEpochEvent
+---------------		---------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_EndEpoc	.. _api_fluid_EndEpoc
+
+EndEpochEvent		EndEpochEvent
+-------------		-------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_BeginSt	.. _api_fluid_BeginSt
+
+BeginStepEvent		BeginStepEvent
+--------------		--------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_EndStep	.. _api_fluid_EndStep
+
+EndStepEvent		EndStepEvent
+------------		------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Checkpo	.. _api_fluid_Checkpo
+
+CheckpointConfig	CheckpointConfig
+----------------	----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Inferen	.. _api_fluid_Inferen
+
+Inferencer		Inferencer
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Distrib	.. _api_fluid_Distrib
+
+DistributeTranspiler	DistributeTranspiler
+--------------------	--------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Inferen <
+		      <
+InferenceTranspiler   <
+-------------------   <
+		      <
+..  autoclass:: paddl <
+    :members:	      <
+    :noindex:	      <
+		      <
+.. _api_fluid_memory_	.. _api_fluid_memory_
+
+memory_optimize		memory_optimize
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_release	.. _api_fluid_release
+
+release_memory		release_memory
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_Distrib <
+		      <
+DistributeTranspilerC <
+--------------------- <
+		      <
+..  autoclass:: paddl <
+    :members:	      <
+    :noindex:	      <
+		      <
+.. _api_fluid_Paralle	.. _api_fluid_Paralle
+
+ParallelExecutor	ParallelExecutor
+----------------	----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Executi	.. _api_fluid_Executi
+
+ExecutionStrategy	ExecutionStrategy
+-----------------	-----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_BuildSt	.. _api_fluid_BuildSt
+
+BuildStrategy		BuildStrategy
+-------------		-------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_create_	.. _api_fluid_create_
+
+create_lod_tensor	create_lod_tensor
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_create_	.. _api_fluid_create_
+
+create_random_int_lod	create_random_int_lod
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_LoDTens	.. _api_fluid_LoDTens
+
+LoDTensor		LoDTensor
+---------		---------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_LoDTens <
+		      <
+LoDTensorArray	      <
+--------------	      <
+		      <
+..  autoclass:: paddl <
+    :members:	      <
+    :noindex:	      <
+		      <
+.. _api_fluid_CPUPlac	.. _api_fluid_CPUPlac
+
+CPUPlace		CPUPlace
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_CUDAPla	.. _api_fluid_CUDAPla
+
+CUDAPlace		CUDAPlace
+---------		---------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_CUDAPin	.. _api_fluid_CUDAPin
+
+CUDAPinnedPlace		CUDAPinnedPlace
+---------------		---------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Tensor:	.. _api_fluid_Tensor:
+
+Tensor			Tensor
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_ParamAt	.. _api_fluid_ParamAt
+
+ParamAttr		ParamAttr
+---------		---------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_WeightN	.. _api_fluid_WeightN
+
+WeightNormParamAttr	WeightNormParamAttr
+-------------------	-------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_DataFee	.. _api_fluid_DataFee
+
+DataFeeder		DataFeeder
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_Scope:	.. _api_fluid_Scope:
+
+Scope			Scope
+-----			-----
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./gen_doc.py /ssd3/paddle/Paddle014/doc/fluid/api/gen_doc.py
+#   Copyright (c) 201	#   Copyright (c) 201
+#			#
+# Licensed under the 	# Licensed under the 
+# you may not use thi	# you may not use thi
+# You may obtain a co	# You may obtain a co
+#			#
+#     http://www.apac	#     http://www.apac
+#			#
+# Unless required by 	# Unless required by 
+# distributed under t	# distributed under t
+# WITHOUT WARRANTIES 	# WITHOUT WARRANTIES 
+# See the License for	# See the License for
+# limitations under t	# limitations under t
+
+from __future__ impor	from __future__ impor
+import argparse		import argparse
+import sys		import sys
+import types		import types
+
+import paddle.fluid a	import paddle.fluid a
+
+
+def parse_arg():	def parse_arg():
+    parser = argparse	    parser = argparse
+    parser.add_argume	    parser.add_argume
+    parser.add_argume	    parser.add_argume
+        'module', typ	        'module', typ
+    return parser.par	    return parser.par
+
+
+class DocGenerator(ob	class DocGenerator(ob
+    def __init__(self	    def __init__(self
+        if module_nam	        if module_nam
+            module_na	            module_na
+        self.stream =	        self.stream =
+        if module_nam	        if module_nam
+            self.modu	            self.modu
+        else:		        else:
+            self.modu	            self.modu
+        if module_nam	        if module_nam
+            self.modu	            self.modu
+        else:		        else:
+            if not ha	            if not ha
+                raise	                raise
+            else:	            else:
+                self.	                self.
+        self.stream.w	        self.stream.w
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+''')			''')
+
+        self._print_h	        self._print_h
+
+    def print_submodu	    def print_submodu
+        submodule = g	        submodule = g
+        if submodule 	        if submodule 
+            raise Val	            raise Val
+        self.print_se	        self.print_se
+
+        for item in s	        for item in s
+            self.prin	            self.prin
+
+    def print_current	    def print_current
+        for item in s	        for item in s
+            self.prin	            self.prin
+
+    def print_section	    def print_section
+        self._print_h	        self._print_h
+
+    def print_item(se	    def print_item(se
+        item = getatt	        item = getatt
+        if item is No	        if item is No
+            return	            return
+        if isinstance	        if isinstance
+            self.prin	            self.prin
+        elif isinstan	        elif isinstan
+            self.prin	            self.prin
+        else:		        else:
+            pass	            pass
+
+    def print_class(s	    def print_class(s
+        self._print_r	        self._print_r
+        self._print_h	        self._print_h
+        self.stream.w	        self.stream.w
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+'''.format(self.modul	'''.format(self.modul
+
+    def print_method(	    def print_method(
+        self._print_r	        self._print_r
+        self._print_h	        self._print_h
+        self.stream.w	        self.stream.w
+    :noindex:		    :noindex:
+
+'''.format(self.modul	'''.format(self.modul
+
+    def _print_header	    def _print_header
+        dot_line = do	        dot_line = do
+        if is_title:	        if is_title:
+            self.stre	            self.stre
+            self.stre	            self.stre
+        self.stream.w	        self.stream.w
+        self.stream.w	        self.stream.w
+        self.stream.w	        self.stream.w
+        self.stream.w	        self.stream.w
+        self.stream.w	        self.stream.w
+
+    def _print_ref_(s	    def _print_ref_(s
+        self.stream.w	        self.stream.w
+            self.modu	            self.modu
+
+
+def main():		def main():
+    args = parse_arg(	    args = parse_arg(
+    gen = DocGenerato	    gen = DocGenerato
+    if args.submodule	    if args.submodule
+        gen.print_cur	        gen.print_cur
+    else:		    else:
+        for submodule	        for submodule
+            gen.print	            gen.print
+
+
+if __name__ == '__mai	if __name__ == '__mai
+    main()		    main()
+diff -r -y -W 50 ./gen_doc.sh /ssd3/paddle/Paddle014/doc/fluid/api/gen_doc.sh
+#!/bin/bash		#!/bin/bash
+python gen_doc.py lay	python gen_doc.py lay
+
+for module in data_fe	for module in data_fe
+do			do
+  python gen_doc.py $	  python gen_doc.py $
+done			done
+
+python gen_doc.py "" 	python gen_doc.py "" 
+diff -r -y -W 50 ./index_en.rst /ssd3/paddle/Paddle014/doc/fluid/api/index_en.rst
+=============		=============
+API Reference		API Reference
+=============		=============
+
+..  toctree::		..  toctree::
+    :maxdepth: 1	    :maxdepth: 1
+
+    fluid.rst		    fluid.rst
+    layers.rst		    layers.rst
+    data_feeder.rst	    data_feeder.rst
+    executor.rst	    executor.rst
+    initializer.rst	    initializer.rst
+    metrics.rst		    metrics.rst
+    nets.rst		    nets.rst
+    clip.rst		    clip.rst
+    optimizer.rst	    optimizer.rst
+    param_attr.rst	    param_attr.rst
+    profiler.rst	    profiler.rst
+    regularizer.rst	    regularizer.rst
+    io.rst		    io.rst
+    data.rst		    data.rst
+    transpiler.rst	    transpiler.rst
+    recordio_writer.r	    recordio_writer.r
+    backward.rst	    backward.rst
+    average.rst		    average.rst
+    profiler.rst	    profiler.rst
+diff -r -y -W 50 ./initializer.rst /ssd3/paddle/Paddle014/doc/fluid/api/initializer.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=================	=================
+fluid.initializer	fluid.initializer
+=================	=================
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+Constant		Constant
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+Uniform			Uniform
+-------			-------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+Normal			Normal
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+Xavier			Xavier
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+Bilinear		Bilinear
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+MSRA			MSRA
+----			----
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+force_init_on_cpu	force_init_on_cpu
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+init_on_cpu		init_on_cpu
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+ConstantInitializer	ConstantInitializer
+-------------------	-------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+UniformInitializer	UniformInitializer
+------------------	------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+NormalInitializer	NormalInitializer
+-----------------	-----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+XavierInitializer	XavierInitializer
+-----------------	-----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+BilinearInitializer	BilinearInitializer
+-------------------	-------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_initial	.. _api_fluid_initial
+
+MSRAInitializer		MSRAInitializer
+---------------		---------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./io.rst /ssd3/paddle/Paddle014/doc/fluid/api/io.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+========		========
+fluid.io		fluid.io
+========		========
+
+.. _api_fluid_io_save	.. _api_fluid_io_save
+
+save_vars		save_vars
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_save	.. _api_fluid_io_save
+
+save_params		save_params
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_save	.. _api_fluid_io_save
+
+save_persistables	save_persistables
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_load	.. _api_fluid_io_load
+
+load_vars		load_vars
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_load	.. _api_fluid_io_load
+
+load_params		load_params
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_load	.. _api_fluid_io_load
+
+load_persistables	load_persistables
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_save	.. _api_fluid_io_save
+
+save_inference_model	save_inference_model
+--------------------	--------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_load	.. _api_fluid_io_load
+
+load_inference_model	load_inference_model
+--------------------	--------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_io_get_	.. _api_fluid_io_get_
+
+get_inference_program	get_inference_program
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_io_save
+		      >
+		      >	save_checkpoint
+		      >	---------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_io_load
+		      >
+		      >	load_checkpoint
+		      >	---------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_io_clea
+		      >
+		      >	clean_checkpoint
+		      >	----------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_io_load
+		      >
+		      >	load_persist_vars_wit
+		      >	---------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_io_save
+		      >
+		      >	save_persist_vars_wit
+		      >	---------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_io_get_
+		      >
+		      >	get_latest_checkpoint
+		      >	---------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+diff -r -y -W 50 ./layers.rst /ssd3/paddle/Paddle014/doc/fluid/api/layers.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+============		============
+fluid.layers		fluid.layers
+============		============
+
+control_flow		control_flow
+============		============
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	split_lod_tensor
+		      >	----------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	merge_lod_tensor
+		      >	----------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	BlockGuard
+		      >	----------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	BlockGuardWithComplet
+		      >	---------------------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	WhileGuard
+		      >	----------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+While			While
+-----			-----
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+Switch			Switch
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	lod_rank_table
+		      >	--------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	max_sequence_len
+		      >	----------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	lod_tensor_to_array
+		      >	-------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	array_to_lod_tensor
+		      >	-------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+increment		increment
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+array_write		array_write
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_array		create_array
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+less_than		less_than
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+equal			equal
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+array_read		array_read
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	shrink_memory
+		      >	-------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+array_length		array_length
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+IfElse			IfElse
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+DynamicRNN		DynamicRNN
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	ConditionalBlock
+		      >	----------------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+StaticRNN		StaticRNN
+---------		---------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reorder_lod_tensor_by	reorder_lod_tensor_by
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+ParallelDo		ParallelDo
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+Print			Print
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+is_empty		is_empty
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+device			device
+======			======
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	get_places
+		      >	----------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+io			io
+==			==
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+data			data
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	BlockGuardServ
+		      >	--------------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	ListenAndServ
+		      >	-------------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	Send
+		      >	----
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+		      >	.. _api_fluid_layers_
+		      >
+		      >	Recv
+		      >	----
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+open_recordio_file	open_recordio_file
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+open_files		open_files
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+read_file		read_file
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+shuffle			shuffle
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+batch			batch
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+double_buffer		double_buffer
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+random_data_generator	random_data_generator
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+py_reader	      <
+---------	      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+Preprocessor		Preprocessor
+------------		------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+load			load
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+nn			nn
+==			==
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+fc			fc
+--			--
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+embedding		embedding
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+dynamic_lstm		dynamic_lstm
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+dynamic_lstmp		dynamic_lstmp
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+dynamic_gru		dynamic_gru
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+gru_unit		gru_unit
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+linear_chain_crf	linear_chain_crf
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+crf_decoding		crf_decoding
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+cos_sim			cos_sim
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+cross_entropy		cross_entropy
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+square_error_cost	square_error_cost
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+chunk_eval		chunk_eval
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_conv		sequence_conv
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+conv2d			conv2d
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+conv3d			conv3d
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_pool		sequence_pool
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_softmax	sequence_softmax
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+softmax			softmax
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+pool2d			pool2d
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+pool3d			pool3d
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+batch_norm		batch_norm
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+beam_search_decode	beam_search_decode
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+conv2d_transpose	conv2d_transpose
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+conv3d_transpose	conv3d_transpose
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_expand		sequence_expand
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+sequence_pad	      <
+------------	      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+lstm_unit		lstm_unit
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reduce_sum		reduce_sum
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reduce_mean		reduce_mean
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reduce_max		reduce_max
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reduce_min		reduce_min
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reduce_prod		reduce_prod
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_first_step	sequence_first_step
+-------------------	-------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_last_step	sequence_last_step
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+dropout			dropout
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+split			split
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+ctc_greedy_decoder	ctc_greedy_decoder
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+edit_distance		edit_distance
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+l2_normalize		l2_normalize
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+matmul			matmul
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+topk			topk
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+warpctc			warpctc
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sequence_reshape	sequence_reshape
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+transpose		transpose
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+im2sequence		im2sequence
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+nce			nce
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+hsigmoid	      <
+--------	      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+beam_search		beam_search
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+row_conv		row_conv
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+multiplex		multiplex
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+layer_norm		layer_norm
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+softmax_with_cross_en	softmax_with_cross_en
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+smooth_l1		smooth_l1
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+one_hot			one_hot
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+autoincreased_step_co	autoincreased_step_co
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reshape			reshape
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+lod_reset		lod_reset
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+lrn			lrn
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+pad			pad
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+label_smooth		label_smooth
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+roi_pool		roi_pool
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+dice_loss		dice_loss
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+image_resize		image_resize
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+image_resize_short	image_resize_short
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+resize_bilinear		resize_bilinear
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+gather			gather
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+random_crop		random_crop
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+mean_iou		mean_iou
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+relu			relu
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+log			log
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+crop			crop
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+rank_loss	      <
+---------	      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_ <
+		      <
+prelu		      <
+-----		      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_ <
+		      <
+flatten		      <
+-------		      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+ops			ops
+===			===
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+mean			mean
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+mul			mul
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+scale			scale
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sigmoid_cross_entropy	sigmoid_cross_entropy
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_add		elementwise_add
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_div		elementwise_div
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_sub		elementwise_sub
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_mul		elementwise_mul
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_max		elementwise_max
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_min		elementwise_min
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elementwise_pow		elementwise_pow
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+clip			clip
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+clip_by_norm		clip_by_norm
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+logical_and		logical_and
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+logical_or		logical_or
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+logical_xor		logical_xor
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+logical_not		logical_not
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+uniform_random_batch_	uniform_random_batch_
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+gaussian_random		gaussian_random
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+gaussian_random_batch	gaussian_random_batch
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+scatter			scatter
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sum			sum
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+slice			slice
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	polygon_box_transform
+		      >	---------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+shape			shape
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_layers_
+		      >
+		      >	iou_similarity
+		      >	--------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+maxout			maxout
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sigmoid			sigmoid
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+logsigmoid		logsigmoid
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+exp			exp
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+tanh			tanh
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+tanh_shrink		tanh_shrink
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+softshrink		softshrink
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sqrt			sqrt
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+abs			abs
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+ceil			ceil
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+floor			floor
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+cos			cos
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sin			sin
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+round			round
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reciprocal		reciprocal
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+square			square
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+softplus		softplus
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+softsign		softsign
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+brelu			brelu
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+leaky_relu		leaky_relu
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+soft_relu		soft_relu
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+elu			elu
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+relu6			relu6
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+pow			pow
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+stanh			stanh
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+hard_sigmoid		hard_sigmoid
+------------		------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+swish			swish
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+uniform_random		uniform_random
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+hard_shrink		hard_shrink
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+cumsum			cumsum
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+thresholded_relu	thresholded_relu
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+tensor			tensor
+======			======
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_tensor		create_tensor
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_parameter	create_parameter
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_global_var	create_global_var
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+cast			cast
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+concat			concat
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sums			sums
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+assign			assign
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+fill_constant_batch_s	fill_constant_batch_s
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+fill_constant		fill_constant
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+argmin			argmin
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+argmax			argmax
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+argsort		      <
+-------		      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+ones			ones
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+zeros			zeros
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reverse			reverse
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+learning_rate_schedul	learning_rate_schedul
+=====================	=====================
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+exponential_decay	exponential_decay
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+natural_exp_decay	natural_exp_decay
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+inverse_time_decay	inverse_time_decay
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+polynomial_decay	polynomial_decay
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+piecewise_decay		piecewise_decay
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+noam_decay		noam_decay
+----------		----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+append_LARS		append_LARS
+-----------		-----------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+detection		detection
+=========		=========
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+prior_box		prior_box
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+multi_box_head		multi_box_head
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+bipartite_match		bipartite_match
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+target_assign		target_assign
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+detection_output	detection_output
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+ssd_loss		ssd_loss
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+detection_map		detection_map
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+rpn_target_assign     <
+-----------------     <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_ <
+		      <
+anchor_generator      <
+----------------      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+iou_similarity		iou_similarity
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+box_coder		box_coder
+---------		---------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+polygon_box_transform <
+--------------------- <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+metric_op		metric_op
+=========		=========
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+accuracy		accuracy
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+auc			auc
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+tensor			tensor
+======			======
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_tensor		create_tensor
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_parameter	create_parameter
+----------------	----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+create_global_var	create_global_var
+-----------------	-----------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+cast			cast
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+concat			concat
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+sums			sums
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+assign			assign
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+fill_constant_batch_s	fill_constant_batch_s
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+fill_constant		fill_constant
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+argmin			argmin
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+argmax			argmax
+------			------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_ <
+		      <
+argsort		      <
+-------		      <
+		      <
+..  autofunction:: pa <
+    :noindex:	      <
+		      <
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+ones			ones
+----			----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+zeros			zeros
+-----			-----
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_layers_	.. _api_fluid_layers_
+
+reverse			reverse
+-------			-------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./metrics.rst /ssd3/paddle/Paddle014/doc/fluid/api/metrics.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=============		=============
+fluid.metrics		fluid.metrics
+=============		=============
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+MetricBase		MetricBase
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+CompositeMetric		CompositeMetric
+---------------		---------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+Precision		Precision
+---------		---------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+Recall			Recall
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+Accuracy		Accuracy
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+ChunkEvaluator		ChunkEvaluator
+--------------		--------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+EditDistance		EditDistance
+------------		------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+DetectionMAP		DetectionMAP
+------------		------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_metrics	.. _api_fluid_metrics
+
+Auc			Auc
+---			---
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./nets.rst /ssd3/paddle/Paddle014/doc/fluid/api/nets.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+==========		==========
+fluid.nets		fluid.nets
+==========		==========
+
+.. _api_fluid_nets_si	.. _api_fluid_nets_si
+
+simple_img_conv_pool	simple_img_conv_pool
+--------------------	--------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_nets_se	.. _api_fluid_nets_se
+
+sequence_conv_pool	sequence_conv_pool
+------------------	------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_nets_gl	.. _api_fluid_nets_gl
+
+glu			glu
+---			---
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_nets_sc	.. _api_fluid_nets_sc
+
+scaled_dot_product_at	scaled_dot_product_at
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./optimizer.rst /ssd3/paddle/Paddle014/doc/fluid/api/optimizer.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+===============		===============
+fluid.optimizer		fluid.optimizer
+===============		===============
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+SGD			SGD
+---			---
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+Momentum		Momentum
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+Adagrad			Adagrad
+-------			-------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+Adam			Adam
+----			----
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+Adamax			Adamax
+------			------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+DecayedAdagrad		DecayedAdagrad
+--------------		--------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+Ftrl			Ftrl
+----			----
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+SGDOptimizer		SGDOptimizer
+------------		------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+MomentumOptimizer	MomentumOptimizer
+-----------------	-----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+AdagradOptimizer	AdagradOptimizer
+----------------	----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+AdamOptimizer		AdamOptimizer
+-------------		-------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+AdamaxOptimizer		AdamaxOptimizer
+---------------		---------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+DecayedAdagradOptimiz	DecayedAdagradOptimiz
+---------------------	---------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+RMSPropOptimizer	RMSPropOptimizer
+----------------	----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+FtrlOptimizer		FtrlOptimizer
+-------------		-------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+Adadelta		Adadelta
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+ModelAverage		ModelAverage
+------------		------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+		      >	.. _api_fluid_optimiz
+		      >
+		      >	Optimizer
+		      >	---------
+		      >
+		      >	..  autoclass:: paddl
+		      >	    :members:
+		      >	    :noindex:
+		      >
+.. _api_fluid_optimiz	.. _api_fluid_optimiz
+
+RMSPropOptimizer	RMSPropOptimizer
+----------------	----------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./param_attr.rst /ssd3/paddle/Paddle014/doc/fluid/api/param_attr.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+================	================
+fluid.param_attr	fluid.param_attr
+================	================
+
+.. _api_fluid_param_a	.. _api_fluid_param_a
+
+ParamAttr		ParamAttr
+---------		---------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_param_a	.. _api_fluid_param_a
+
+WeightNormParamAttr	WeightNormParamAttr
+-------------------	-------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+Only in .: pip-uninstall-ob91Bo
+diff -r -y -W 50 ./profiler.rst /ssd3/paddle/Paddle014/doc/fluid/api/profiler.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+==============		==============
+fluid.profiler		fluid.profiler
+==============		==============
+
+.. _api_fluid_profile	.. _api_fluid_profile
+
+cuda_profiler		cuda_profiler
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_profile	.. _api_fluid_profile
+
+reset_profiler		reset_profiler
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_profile	.. _api_fluid_profile
+
+profiler		profiler
+--------		--------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_profile	.. _api_fluid_profile
+
+start_profiler		start_profiler
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_profile	.. _api_fluid_profile
+
+stop_profiler		stop_profiler
+-------------		-------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./recordio_writer.rst /ssd3/paddle/Paddle014/doc/fluid/api/recordio_writer.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=====================	=====================
+fluid.recordio_writer	fluid.recordio_writer
+=====================	=====================
+
+.. _api_fluid_recordi	.. _api_fluid_recordi
+
+convert_reader_to_rec	convert_reader_to_rec
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_recordi	.. _api_fluid_recordi
+
+convert_reader_to_rec	convert_reader_to_rec
+---------------------	---------------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+diff -r -y -W 50 ./regularizer.rst /ssd3/paddle/Paddle014/doc/fluid/api/regularizer.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+=================	=================
+fluid.regularizer	fluid.regularizer
+=================	=================
+
+		      >	.. _api_fluid_regular
+		      >
+		      >	append_regularization
+		      >	---------------------
+		      >
+		      >	..  autofunction:: pa
+		      >	    :noindex:
+		      >
+.. _api_fluid_regular	.. _api_fluid_regular
+
+L1Decay			L1Decay
+-------			-------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_regular	.. _api_fluid_regular
+
+L2Decay			L2Decay
+-------			-------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_regular	.. _api_fluid_regular
+
+L1DecayRegularizer	L1DecayRegularizer
+------------------	------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_regular	.. _api_fluid_regular
+
+L2DecayRegularizer	L2DecayRegularizer
+------------------	------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+Only in .: res.txt
+diff -r -y -W 50 ./transpiler.rst /ssd3/paddle/Paddle014/doc/fluid/api/transpiler.rst
+..  THIS FILE IS GENE	..  THIS FILE IS GENE
+    !DO NOT EDIT THIS	    !DO NOT EDIT THIS
+
+================	================
+fluid.transpiler	fluid.transpiler
+================	================
+
+.. _api_fluid_transpi	.. _api_fluid_transpi
+
+DistributeTranspiler	DistributeTranspiler
+--------------------	--------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_transpi	.. _api_fluid_transpi
+
+InferenceTranspiler	InferenceTranspiler
+-------------------	-------------------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_transpi	.. _api_fluid_transpi
+
+memory_optimize		memory_optimize
+---------------		---------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_transpi	.. _api_fluid_transpi
+
+release_memory		release_memory
+--------------		--------------
+
+..  autofunction:: pa	..  autofunction:: pa
+    :noindex:		    :noindex:
+
+.. _api_fluid_transpi	.. _api_fluid_transpi
+
+HashName		HashName
+--------		--------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_transpi	.. _api_fluid_transpi
+
+RoundRobin		RoundRobin
+----------		----------
+
+..  autoclass:: paddl	..  autoclass:: paddl
+    :members:		    :members:
+    :noindex:		    :noindex:
+
+.. _api_fluid_transpi <
+		      <
+DistributeTranspilerC <
+--------------------- <
+		      <
+..  autoclass:: paddl <
+    :members:	      <
+    :noindex:	      <
+		      <

@@ -13,11 +13,3 @@ append_backward
 ..  autofunction:: paddle.fluid.backward.append_backward
     :noindex:
 
-.. _api_fluid_backward_calc_gradient:
-
-calc_gradient
--------------
-
-..  autofunction:: paddle.fluid.backward.calc_gradient
-    :noindex:
-
