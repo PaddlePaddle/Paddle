@@ -19,6 +19,9 @@
 #endif
 
 #include <numeric>
+#include <string>
+#include <utility>
+#include <vector>
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/inference/analysis/dot.h"
@@ -95,7 +98,11 @@ struct PDNode {
   PDNode* assert_var_not_persistable();
   PDNode* assert_is_persistable_var();
   PDNode* assert_is_op_output(const std::string& op_type);
+  PDNode* assert_is_op_output(const std::string& op_type,
+                              const std::string& argument);
   PDNode* assert_is_op_input(const std::string& op_type);
+  PDNode* assert_is_op_input(const std::string& op_type,
+                             const std::string& argument);
   PDNode* assert_is_op_nth_input(const std::string& op_type,
                                  const std::string& argument, int nth);
   PDNode* assert_is_op_nth_output(const std::string& op_type,
@@ -167,6 +174,9 @@ class PDPattern {
 
   PDNode* NewNode(PDNode::teller_t&& teller, const std::string& name = NewID());
   PDNode* NewNode(const std::string& name = NewID());
+  PDNode* NewNode(const std::string& prefix, const std::string& name) {
+    return NewNode(prefix + "/" + name);
+  }
   PDNode* RetrieveNode(const std::string& id) const;
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
@@ -238,6 +248,8 @@ class GraphPatternDetector {
   void UniquePatterns(std::vector<subgraph_t>* subgraphs);
 
   // Remove overlapped match subgraphs, when overlapped, keep the previous one.
+  // The intermediate PDNodes will be removed, so can't shared by multiple
+  // patterns.
   void RemoveOverlappedMatch(std::vector<subgraph_t>* subgraphs);
 
   // Validate whether the intermediate nodes are linked by external nodes.
@@ -257,64 +269,168 @@ class GraphPatternDetector {
 
 // some helper methods.
 
-// Op's input.
-static bool VarLinksToOp(Node* node, const std::string& op_type) {
-  for (auto* out : node->outputs) {
-    if (out->IsOp() && out->Op()->Type() == op_type) {
-      return true;
-    }
-  }
-  return false;
-}
+// Tell if a var links to an Op
+bool VarLinksToOp(Node* node, const std::string& op_type);
 
-// Op's output.
-static bool VarLinksFromOp(Node* node, const std::string& op_type) {
-  for (auto* out : node->inputs) {
-    if (out->IsOp() && out->Op()->Type() == op_type) {
-      return true;
-    }
-  }
-  return false;
-}
+// Tell if an op links to a var
+bool VarLinksFromOp(Node* node, const std::string& op_type);
 
 // Check whether a var node is a op node's nth input.
-static bool IsNthInput(Node* var, Node* op, const std::string& argument,
-                       size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
-  if (op->inputs.size() <= nth) return false;
-  return var->Name() == op->Op()->Input(argument)[nth];
-}
+bool IsNthInput(Node* var, Node* op, const std::string& argument, size_t nth);
 
-static bool IsNthOutput(Node* var, Node* op, const std::string& argument,
-                        size_t nth) {
-  PADDLE_ENFORCE(var->IsVar());
-  PADDLE_ENFORCE(op->IsOp());
-  if (op->inputs.size() <= nth) return false;
-  return var->Name() == op->Op()->Output(argument)[nth];
-}
+// Tell whether a var node is a op node's nth output.
+bool IsNthOutput(Node* var, Node* op, const std::string& argument, size_t nth);
 
-static void GraphSafeRemoveNodes(Graph* graph,
-                                 const std::unordered_set<const Node*>& nodes) {
-  for (auto* node : nodes) {
-    graph->RemoveNode(const_cast<Node*>(node));
+// Graph safely remove some nodes, will automatically clean up the edges.
+void GraphSafeRemoveNodes(Graph* graph,
+                          const std::unordered_set<const Node*>& nodes);
+
+// Some pre-defined patterns those can be reused in multiple passes.
+// The related Fluid Layer or Op should be one pattern here for better reusage
+// accross different fusion.
+namespace patterns {
+
+struct KeyCounter {
+  static KeyCounter& Instance() {
+    static KeyCounter x;
+    return x;
   }
 
-  for (auto* node : graph->Nodes()) {
-    for (auto it = node->inputs.begin(); it != node->inputs.end();) {
-      if (nodes.count(*it)) {
-        it = const_cast<Node*>(node)->inputs.erase(it);
-      } else
-        it++;
-    }
-    for (auto it = node->outputs.begin(); it != node->outputs.end();) {
-      if (nodes.count(*it)) {
-        it = const_cast<Node*>(node)->outputs.erase(it);
-      } else
-        it++;
-    }
-  }
+  int IncCounter(const std::string& key) { return dic_[key]++; }
+
+ private:
+  std::unordered_map<std::string, size_t> dic_;
+};
+
+// Generate a unique PDNode's name with name_scope and id.
+// The format is {name_scope}/{repr}/{id}/{name}
+static std::string PDNodeName(const std::string& name_scope,
+                              const std::string& repr, size_t id,
+                              const std::string& name) {
+  return string::Sprintf("%s/%s/%d/%s", name_scope, repr, id, name);
 }
+// Generate a unique PDNode's name.
+// The format is {name_scope}/{repr}/{id}
+static std::string PDNodeName(const std::string& name_scope,
+                              const std::string& repr) {
+  return string::Sprintf("%s/%s/%d", name_scope, repr,
+                         KeyCounter::Instance().IncCounter(repr));
+}
+// Generate a unique key. It can be used for a universally unique temporary
+// name.
+// The format is {repr}/{id}
+static std::string UniqueKey(const std::string& repr) {
+  return string::Sprintf("%s/%d", repr,
+                         KeyCounter::Instance().IncCounter(repr));
+}
+
+// Declare a PDNode in a pattern, will create two methods:
+// std::string xxx_repr(); return this PDNode's string id.
+// PDNode* xxx_n(); return the corresponding PDNode.
+#define PATTERN_DECL_NODE(name__)                        \
+  std::string name__##_repr() const {                    \
+    return PDNodeName(name_scope_, repr_, id_, #name__); \
+  }                                                      \
+  PDNode* name__##_n() const { return pattern->RetrieveNode(name__##_repr()); }
+
+// Get an ir::Node* from the matched subgraph.
+// var: variable.
+// arg: the argument declared by PATTERN_DECL_NODE in a pattern definition.
+// pat: the pattern object.
+#define GET_IR_NODE_FROM_SUBGRAPH(var, arg, pat)                    \
+  PADDLE_ENFORCE(subgraph.count(pat.arg##_n()),                     \
+                 "Node not found for PDNode %s", pat.arg##_repr()); \
+  Node* var = subgraph.at(pat.arg##_n());                           \
+  PADDLE_ENFORCE(var, "node %s not exists in the sub-graph", #arg)
+
+// The base class of all the patterns.
+struct PatternBase {
+  PatternBase(PDPattern* pattern, const std::string& name_scope,
+              const std::string& repr)
+      : pattern(pattern),
+        name_scope_(name_scope),
+        repr_(repr),
+        id_(KeyCounter::Instance().IncCounter(repr)) {}
+
+  PDPattern* pattern;
+
+ protected:
+  std::string name_scope_;
+  std::string repr_;
+  size_t id_;
+};
+
+// FC with bias
+// op: mul + elementwise_add
+// named nodes:
+// mul, elementwise_add
+// w, mul_out, bias, fc_out
+struct FC : public PatternBase {
+  FC(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc") {}
+
+  PDNode* operator()(PDNode* x, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(fc);
+  PATTERN_DECL_NODE(mul);
+  PATTERN_DECL_NODE(elementwise_add);
+  // declare variable node's name
+  PATTERN_DECL_NODE(w);
+  PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(Out);
+};
+
+struct LSTM : public PatternBase {
+  LSTM(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "lstm") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // Operators
+  PATTERN_DECL_NODE(lstm);
+
+  // Inputs
+  PATTERN_DECL_NODE(Input);
+  PATTERN_DECL_NODE(H0);
+  PATTERN_DECL_NODE(C0);
+  PATTERN_DECL_NODE(Weight);
+  PATTERN_DECL_NODE(Bias);
+
+  // Outputs
+  PATTERN_DECL_NODE(Hidden);
+  PATTERN_DECL_NODE(Cell);
+  PATTERN_DECL_NODE(BatchGate);
+  PATTERN_DECL_NODE(BatchCellPreAct);
+};
+
+struct GRU : public PatternBase {
+  GRU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "lstm") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // Operators
+  PATTERN_DECL_NODE(gru);
+
+  // Inputs
+  PATTERN_DECL_NODE(Bias);
+  PATTERN_DECL_NODE(Weight);
+
+  // Outputs
+  PATTERN_DECL_NODE(BatchGate);
+  PATTERN_DECL_NODE(BatchResetHiddenPrev);
+  PATTERN_DECL_NODE(BatchHidden);
+  PATTERN_DECL_NODE(Hidden);
+};
+
+}  // namespace patterns
+
+// Link two ir::Nodes from each other.
+#define IR_NODE_LINK_TO(a, b) \
+  a->outputs.push_back(b);    \
+  b->inputs.push_back(a);
 
 }  // namespace ir
 }  // namespace framework

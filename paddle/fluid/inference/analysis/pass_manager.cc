@@ -40,17 +40,6 @@ void DfgPassManager::RunAll() {
   }
 }
 
-void NodePassManager::RunAll() {
-  PADDLE_ENFORCE(argument_);
-  PADDLE_ENFORCE(argument_->main_dfg.get());
-  auto trait = GraphTraits<DataFlowGraph>(*argument_->main_dfg).nodes_in_DFS();
-  for (auto& node : trait) {
-    for (auto& pass : data_) {
-      pass->Run(&node);
-    }
-  }
-}
-
 }  // namespace analysis
 }  // namespace inference
 }  // namespace paddle

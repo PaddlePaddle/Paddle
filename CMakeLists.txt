@@ -213,9 +213,11 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+endif()
+if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
+    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
 include(generic)            # simplify cmake module

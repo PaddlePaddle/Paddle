@@ -521,6 +521,20 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_pad2d(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 100, 100], dtype="float32")
+            out = layers.pad2d(
+                input,
+                paddings=[1, 2, 3, 4],
+                mode='reflect',
+                data_format='NCHW',
+                name="shape")
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_prelu(self):
         program = Program()
         with program_guard(program):
@@ -533,6 +547,13 @@ class TestBook(unittest.TestCase):
                 param_attr=ParamAttr(initializer=Constant(1.0)),
                 name='prelu')
             self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sequence_enumerate(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="input", shape=[1], dtype='int32', lod_level=1)
+            out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
         print(str(program))
 
 
