@@ -57,7 +57,7 @@ class ProgramDesc {
 
   proto::ProgramDesc *Proto();
 
-  int Version() const;
+  int64_t Version() const;
 
   // The output variable of feed_op is referenced as feed_target.
   // This function is used to collect the output variable's name of all

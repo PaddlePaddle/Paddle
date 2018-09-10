@@ -39,7 +39,7 @@ proto::ProgramDesc *ProgramDesc::Proto() {
   return &desc_;
 }
 
-int ProgramDesc::Version() const { return desc_.version().version(); }
+int64_t ProgramDesc::Version() const { return desc_.version().version(); }
 
 ProgramDesc::ProgramDesc() {
   desc_.mutable_version()->set_version(kCurProgramVersion);
