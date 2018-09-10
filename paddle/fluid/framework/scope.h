@@ -71,6 +71,9 @@ class Scope {
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
 
+  /// Find if a scope exists in the kid scopes
+  bool HasKid(const Scope* scope) const;
+
   // enumerate all the variables current contains.
   std::vector<std::string> LocalVarNames() const;
 
@@ -105,7 +108,7 @@ class Scope {
   Variable* FindVarLocally(const std::string& name) const;
 
   // Scope in `kids_` are owned by this class.
-  mutable std::list<std::shared_ptr<Scope>> kids_;
+  mutable std::list<Scope*> kids_;
   Scope const* parent_{nullptr};
 
   DISABLE_COPY_AND_ASSIGN(Scope);

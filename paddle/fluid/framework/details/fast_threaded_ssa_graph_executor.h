@@ -29,17 +29,16 @@ namespace details {
 class OpHandleBase;
 class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
  public:
-  FastThreadedSSAGraphExecutor(
-      const ExecutionStrategy &strategy,
-      const std::vector<std::shared_ptr<Scope>> &local_scopes,
-      const std::vector<platform::Place> &places,
-      std::unique_ptr<ir::Graph> &&graph);
+  FastThreadedSSAGraphExecutor(const ExecutionStrategy &strategy,
+                               const std::vector<Scope *> &local_scopes,
+                               const std::vector<platform::Place> &places,
+                               std::unique_ptr<ir::Graph> &&graph);
   FeedFetchList Run(const std::vector<std::string> &fetch_tensors) override;
   const ir::Graph &Graph() const override;
 
  private:
   ExecutionStrategy strategy_;
-  std::vector<std::shared_ptr<Scope>> local_scopes_;
+  std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
   std::unique_ptr<ir::Graph> graph_;
 

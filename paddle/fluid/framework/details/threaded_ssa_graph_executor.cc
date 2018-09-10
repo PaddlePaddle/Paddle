@@ -21,8 +21,7 @@ namespace paddle {
 namespace framework {
 namespace details {
 ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
-    const ExecutionStrategy &strategy,
-    const std::vector<std::shared_ptr<Scope>> &local_scopes,
+    const ExecutionStrategy &strategy, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     std::unique_ptr<ir::Graph> &&graph)
     : graph_(std::move(graph)),
