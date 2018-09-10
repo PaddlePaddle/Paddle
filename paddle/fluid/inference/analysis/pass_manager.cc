@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/analysis/pass_manager.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
+#include "paddle/fluid/string/pretty_log.h"
 
 namespace paddle {
 namespace inference {
@@ -22,7 +23,7 @@ namespace analysis {
 bool PassManager::Initialize(Argument* argument) {
   argument_ = argument;
   for (auto& pass : data_) {
-    LOG(WARNING) << "Initializing pass [" << pass->repr() << "]";
+    VLOG(3) << "Initializing pass [" << pass->repr() << "]";
     if (!pass->Initialize(argument)) {
       LOG(ERROR) << "Failed to initialize pass [" << pass->repr() << "]";
       return false;
@@ -33,9 +34,10 @@ bool PassManager::Initialize(Argument* argument) {
 
 void DfgPassManager::RunAll() {
   PADDLE_ENFORCE(argument_);
-  LOG(INFO) << "Total " << data_.size() << " Analysys passes";
+  VLOG(3) << "Total " << data_.size() << " Analysys passes";
   for (auto& pass : data_) {
-    LOG(WARNING) << "Running Analysis pass [" << pass->repr() << "]";
+    string::PrettyLogEndl(string::Style::H1(), "* Running Analysis pass [%s]",
+                          pass->repr());
     pass->Run(argument_->main_dfg.get());
   }
 }
