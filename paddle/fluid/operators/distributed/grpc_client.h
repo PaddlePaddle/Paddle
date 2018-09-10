@@ -264,6 +264,6 @@ class GRPCClient : public RPCClient {
   volatile bool stopped_;
 };
 
-};  // namespace distributed
-};  // namespace operators
-};  // namespace paddle
+}  // namespace distributed
+}  // namespace operators
+}  // namespace paddle

@@ -30,8 +30,7 @@ class TestDistSeResneXt2x2Async(TestDistBase):
         self._sync_mode = False
 
     def test_se_resnext(self):
-        self.check_with_place(
-            "dist_se_resnext.py", delta=100, check_error_log=True)
+        self.check_with_place("dist_se_resnext.py", delta=100)
 
 
 if __name__ == "__main__":
