@@ -335,7 +335,7 @@ def xmap_readers(mapper, reader, process_num, buffer_size, order=False):
     return xreader
 
 
-def multiprocess_reader(readers, queue_size=1000, use_pipe=True):
+def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
     """
     multiprocess_reader use python multi process to read data from readers
     and then use multiprocess.Queue or multiprocess.Pipe to merge all
@@ -360,6 +360,8 @@ def multiprocess_reader(readers, queue_size=1000, use_pipe=True):
         reader = multiprocess_reader([reader0, reader1, reader2],
             queue_size=100, use_pipe=False)
     """
+
+    assert type(readers) is list and len(readers) > 0
 
     def _read_into_queue(reader, queue):
         for sample in reader():
