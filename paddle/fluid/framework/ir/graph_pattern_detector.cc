@@ -21,11 +21,16 @@
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+using string::PrettyLogEndl;
+using string::PrettyLog;
+using string::Style;
 
 size_t PDPattern::id_ = 0UL;
 
@@ -83,7 +88,7 @@ void GraphPatternDetector::operator()(Graph* graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
+  PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
   int id = 0;
   for (auto& g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
