@@ -22,12 +22,6 @@ from threading import Thread
 import subprocess
 import multiprocessing
 
-try:
-    import ujson as json
-except Exception as e:
-    print("import ujson error: " + str(e))
-    import json
-
 from six.moves.queue import Queue
 from six.moves import zip_longest
 from six.moves import map
@@ -363,6 +357,12 @@ def multiprocess_reader(readers, use_pipe=True, queue_size=1000):
         reader = multiprocess_reader([reader0, reader1, reader2],
             queue_size=100, use_pipe=False)
     """
+
+    try:
+        import ujson as json
+    except Exception as e:
+        sys.stderr.write("import ujson error: " + str(e) + " use json\n")
+        import json
 
     assert type(readers) is list and len(readers) > 0
 
