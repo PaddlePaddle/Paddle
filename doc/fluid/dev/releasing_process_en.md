@@ -17,13 +17,23 @@ Each time we release a new PaddlePaddle version, we should follow the below step
     * Update the Docker images (see below instructions for detail).
 1. After above step, merge `release/[version]` branch to master and push a tag on the master commit,
    then merge `master` to `develop`.
-1. Update the Release Note.          
+1. Update the Release Note.
 
-***NOTE:***
+1. Create a new release branch from `develop`，named `release/[version]`. E.g.，`release/0.10.0`
+2. Create a new tag for the release branch, tag format: `version-rc.Patch`. The first tag is `0.10.0-rc0`。
+3. New release branch normally doesn't accept new features or optimizations. QA will test on the release branch. Developer should develop based on `develop` branch.
+4. If QA or Developer find bugs. They should first fix and verity on `develop` branch. Then cherry-pick to the release branch. Wait until the release branch is stable.
+5. If necessary, create a new tag on the relese branch, e.g. `0.10.0-rc1`. Involve more users to try it and repeat step 3-4.
+6. After release branch is stable，Create the official release tag，such as `0.10.0`.
+7. Release the python wheel package to pypi.
+8. Update the docker image (More details below).
 
-* Do ***NOT*** merge commits from develop branch to release branches to keep the release branch contain
-  features only for current release, so that we can test on that version.
-* If we want to fix bugs on release branches, we must merge the fix to master, develop and release branch.
+NOTE:
+
+* bug fix should happen on `develop` branch, then cherry-pick to relese branch. Avoid developing directly on release branch.
+
+* release normally only accept bug fixes. Don't add new features.
+
 
 ## Publish Wheel Packages to pypi
 
@@ -95,27 +105,41 @@ Tags that need to be updated are:
 
 You can then checkout the latest pushed tags at https://hub.docker.com/r/paddlepaddle/paddle/tags/.
 
+## PaddlePaddle 分支规范
+
+PaddlePaddle开发过程使用[Trunk Based Development](https://trunkbaseddevelopment.com/) 开发规范。
+
+* `develop`分支为开发(develop branch)版本分支。每一个`develop`分支的版本都经过单元测试。并且会经过模型回归测试。
+* `release/版本号`分支为每一次Release时建立的临时分支。release分支主要用于测试，bug修复和最终发版。
+* `master`分支因为历史原因，已经废弃。
+
+* 其他开发者fork的feature branch。
+	* 建议，开发者fork的版本库使用`develop`分支同步主版本库的`develop`分支
+	* 建议，开发者fork的版本库中，再基于`develop`版本fork出自己的feature branch。
+	* 当feature branch开发完毕后，向PaddlePaddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
+		* 在评审过程中，开发者修改自己的代码，可以继续在自己的feature branch提交代码。
+
+## PaddlePaddle回归测试列表
+
+TODO
+
 ## Branching Model
 
-We use [git-flow](http://nvie.com/posts/a-successful-git-branching-model/) as our branching model,
-with some modifications:
+PaddlePaddle uses [Trunk Based Development](https://trunkbaseddevelopment.com/) as our branching model.
 
-* `master` branch is the stable branch. Each version on the master branch is tested and guaranteed.
-* `develop` branch is for development. Each commit on develop branch has passed CI unit test, but no
-  regression tests are run.
-* `release/[version]` branch is used to publish each release. Latest release version branches have
-  bugfix only for that version, but no feature updates.
-* Developer forks are not required to follow
-  [git-flow](http://nvie.com/posts/a-successful-git-branching-model/)
-  branching model, all forks is like a feature branch.
-    * Advise: developer fork's develop branch is used to sync up with main repo's develop branch.
-    * Advise: developer use it's fork's develop branch to for new branch to start developing.
-  * Use that branch on developer's fork to create pull requests and start reviews.
-      * developer can push new commits to that branch when the pull request is open.
-* Bug fixes are also started from developers forked repo. And, bug fixes branch can merge to
-  `master`, `develop` and `releases`.
+* `develop` branch is used for development. Each comment to `develop` branc goes through unit tests and model regression tests.
+* `release/[version]` branch is used for each release. Release branch is used for tests, bug fix and evetual release.
+* `master` branch as been deprecated for historical reasons
+
+* Developer's feature branch。
+	* Developer's feature branch should sync with upstream `develop` branch.
+	* Developer's feature branch should be forked from upstream `develop` branch.
+	* After feature branch is ready, create a `Pull Request` against the Paddle repo and go through code review.
+	   * In the review process, develop modify codes and push to their own feature branch.
 
 ## PaddlePaddle Regression Test List
+
+TODO
 
 ### All Chapters of PaddlePaddle Book
 
