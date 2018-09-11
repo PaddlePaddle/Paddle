@@ -440,6 +440,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     }
     return false;
   };
+
   for (auto &node : graph) {
     for (auto *in : node->inlinks) {
       // The Value that is written by nodes inside a sub-graph shouldn't be the
@@ -459,6 +460,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
                         std::vector<Node *>(outputs.begin(), outputs.end()));
 }
 
+// Filter the Intermediate results of the subgraph node.
 void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph) {
   std::vector<Node *> op_nodes;
   for (auto &node : GraphTraits<DataFlowGraph>(*graph).nodes_in_TS()) {
@@ -484,43 +486,8 @@ void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph) {
         out->SetDeleted();
       }
     }
-    PADDLE_ENFORCE_GE(filtered_subgraph_outlinks.size(), 1UL);
+    // The filtered_subgraph_outlinks may be empty.
     op_nodes[i]->outlinks = filtered_subgraph_outlinks;
-  }
-}
-
-void FlexibleDFS(const std::vector<Node *> &source, bool reverse,
-                 const std::function<bool(const Node *)> &enter,
-                 const std::function<bool(const Node *)> &leave) {
-  typedef struct {
-    const Node *node;
-    bool leave;
-  } FNode;
-  std::vector<FNode> stack;
-  for (auto &node : source) {
-    stack.push_back(FNode{node, false});
-  }
-  std::unordered_set<const Node *> visited;
-  while (!stack.empty()) {
-    auto fnode = stack.back();
-    stack.pop_back();
-
-    if (fnode.leave) {
-      if (leave && !leave(fnode.node)) return;
-    }
-    if (visited.count(fnode.node)) continue;
-    visited.insert(fnode.node);
-
-    if (enter && !enter(fnode.node)) return;
-
-    if (leave) stack.push_back(FNode{fnode.node, true});
-    const std::vector<Node *> iter_nodes =
-        reverse == true ? fnode.node->inlinks : fnode.node->outlinks;
-    for (const Node *node : iter_nodes) {
-      if (!visited.count(node)) {
-        stack.push_back(FNode{node, false});
-      }
-    }
   }
 }
 

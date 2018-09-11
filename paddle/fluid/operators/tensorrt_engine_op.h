@@ -160,11 +160,21 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
           fluid_t->mutable_data<float>(platform::CUDAPlace(
               boost::get<platform::CUDAPlace>(context.GetPlace()).device)),
           size * sizeof(float));
-      //} else {
-      // engine->GetOutputInGPU(
-      // y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
-      // size * sizeof(float));
-      //}
+
+      // TODO(zhaolong) : delete it sometimes
+      /* THIS CODE JUST FOR TEST
+      std::cout << output_maps[output_index] << std::endl;
+      platform::CPUPlace cpu_place;
+      framework::LoDTensor temp_tensor;
+      temp_tensor.Resize(framework::make_ddim(ddim));
+      auto* temp_data = temp_tensor.mutable_data<float>(cpu_place);
+
+      TensorCopySync(*fluid_t, cpu_place ,&temp_tensor);
+      for(int i = 0; i < size; i++) {
+        std::cout << temp_data[i] <<  " " ;
+      }
+      std::cout << std::endl;
+      */
       output_index += 1;
     }
 

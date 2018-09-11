@@ -106,20 +106,23 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
 
   // collect inputs
   std::unordered_set<std::string> input_names;
+  std::unordered_set<std::string> input_names_with_id;
   for (auto *x : func->inlinks) {
     input_names.insert(x->name());
+    input_names_with_id.insert(x->name() + std::to_string(x->id()));
   }
   desc.SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
   std::unordered_set<std::string> output_names;
+  std::unordered_set<std::string> output_names_with_id;
   for (auto *x : func->outlinks) {
     output_names.insert(x->name());
+    output_names_with_id.insert(x->name() + std::to_string(x->id()));
   }
 
-  std::vector<std::string> output_temp(output_names.begin(),
-                                       output_names.end());
-  desc.SetOutput("Ys", output_temp);
+  desc.SetOutput(
+      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   desc.SetType("tensorrt_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -153,11 +156,12 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
       std::vector<std::string> replaced_names;
       for (int k = 0; k < in_var->arguments_size(); k++) {
         std::string arg_value = in_var->arguments(k);
-        if (input_names.count(arg_value)) {
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
         } else {
-          replaced_names.push_back(arg_value +
-                                   std::to_string(var2id[arg_value]));
+          replaced_names.push_back(arg_value_with_id);
         }
       }
       in_var->clear_arguments();
@@ -176,11 +180,12 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
       std::vector<std::string> replaced_names;
       for (int k = 0; k < out_var->arguments_size(); k++) {
         std::string arg_value = out_var->arguments(k);
-        if (output_names.count(arg_value)) {
-          output_name_map[arg_value] =
-              arg_value + std::to_string(var2id[arg_value]);
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (output_names_with_id.count(arg_value_with_id)) {
+          output_name_map[arg_value] = arg_value_with_id;
         }
-        replaced_names.push_back(arg_value + std::to_string(var2id[arg_value]));
+        replaced_names.push_back(arg_value_with_id);
       }
       out_var->clear_arguments();
       for (size_t k = 0; k < replaced_names.size(); k++) {
