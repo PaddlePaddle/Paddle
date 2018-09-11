@@ -262,7 +262,7 @@ void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
   if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
     buffer.Resize(sizeof(T) * data.size());
   }
-  std::memcpy(buffer.data(), data.data(), buffer.length());
+  std::memcpy(buffer.data(), data.data(), sizeof(T) * data.size());
   // copy LoD
   for (const auto &level : fetch.lod()) {
     output->lod.emplace_back(level);
