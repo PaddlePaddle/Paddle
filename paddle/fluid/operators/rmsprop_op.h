@@ -41,6 +41,7 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     float epsilon = ctx.Attr<float>("epsilon");
     float rho = ctx.Attr<float>("decay");
     float momentum = ctx.Attr<float>("momentum");
+    bool centered = ctx.Attr<bool>("centered");
 
     auto p = EigenVector<T>::Flatten(*ctx.Input<Tensor>("Param"));
     auto ms = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanSquare"));
@@ -53,12 +54,24 @@ class RmspropOpKernel : public framework::OpKernel<T> {
     auto ms_out = EigenVector<T>::Flatten(*mean_square_out);
     auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
 
-    Eigen::DSizes<int, 1> grad_dsize(grad->numel());
+    Eigen::DSizes<int, 1> grad_dsize(static_cast<int>(grad->numel()));
 
     ms_out.device(place) = rho * ms + (1 - rho) * g * g;
-    mom_out.device(place) =
-        momentum * mom +
-        lr.broadcast(grad_dsize) * g / (ms_out + epsilon).sqrt();
+    if (centered) {
+      auto mg = EigenVector<T>::Flatten(*ctx.Input<Tensor>("MeanGrad"));
+      auto* mean_grad_out = ctx.Output<Tensor>("MeanGradOut");
+      mean_grad_out->mutable_data<T>(ctx.GetPlace());
+      auto mg_out = EigenVector<T>::Flatten(*mean_grad_out);
+
+      mg_out.device(place) = rho * mg + (1 - rho) * g;
+      mom_out.device(place) = momentum * mom +
+                              lr.broadcast(grad_dsize) * g /
+                                  (ms_out - mg_out.square() + epsilon).sqrt();
+    } else {
+      mom_out.device(place) =
+          momentum * mom +
+          lr.broadcast(grad_dsize) * g / (ms_out + epsilon).sqrt();
+    }
     p_out.device(place) = p - mom_out;
   }
 };

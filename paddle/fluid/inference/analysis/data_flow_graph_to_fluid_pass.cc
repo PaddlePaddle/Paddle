@@ -268,7 +268,7 @@ class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
 };
 }  // namespace
 
-Pass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
+AnalysisPass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
   return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
       FLAGS_IA_graphviz_log_root,
       "data_flow_graph_to_fluid_graphviz_debugger"));
