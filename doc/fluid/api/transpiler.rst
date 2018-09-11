@@ -57,3 +57,12 @@ RoundRobin
     :members:
     :noindex:
 
+.. _api_fluid_transpiler_DistributeTranspilerConfig:
+
+DistributeTranspilerConfig
+--------------------------
+
+..  autoclass:: paddle.fluid.transpiler.DistributeTranspilerConfig
+    :members:
+    :noindex:
+
