@@ -130,8 +130,8 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
-      const std::vector<mkldnn::primitive>& pipeline,
-      bool is_persistent = false) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
+      bool is_persistent = false) {
     auto user_weights_pd = user_weights_memory_p->get_primitive_desc();
     auto weights_pd = conv_pd_->weights_primitive_desc();
     return this->AcquireMemory(weights_pd, user_weights_pd,
