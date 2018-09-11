@@ -43,8 +43,9 @@ class ParallelExecutor(object):
         num_trainers(int): If greater than 1, NCCL will be initialized with
             multiple rank of nodes, each node should have same number of GPUs.
             Distributed training will be enabled then. Default 1.
-        trainer_id(int: Must use together with num_trainers. trainer_id is the
+        trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
+        scope(Scope): scope to run with, default use fluid.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -73,6 +74,7 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
+                 scope=None,
                  **kwargs):
         if len(kwargs) != 0:
             err_msg = ""
@@ -131,7 +133,8 @@ class ParallelExecutor(object):
 
         main = main_program
         main = main if main else framework.default_main_program()
-        scope = executor.global_scope()
+        if scope == None:
+            scope = executor.global_scope()
         # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
         # train program, call self.bcast_param() at the end of each mini-batch.
         self.is_dist = True if "recv" in [

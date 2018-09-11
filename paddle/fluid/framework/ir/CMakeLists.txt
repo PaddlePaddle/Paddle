@@ -19,7 +19,7 @@ function(pass_library TARGET DEST)
 endfunction()
 
 cc_library(node SRCS node.cc DEPS proto_desc)
-cc_library(graph SRCS graph.cc DEPS node)
+cc_library(graph SRCS graph.cc DEPS node pretty_log)
 cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
@@ -31,7 +31,9 @@ pass_library(fc_fuse_pass inference)
 pass_library(attention_lstm_fuse_pass inference)
 pass_library(infer_clean_graph_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
+pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
+
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)

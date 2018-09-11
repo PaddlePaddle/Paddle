@@ -164,6 +164,7 @@ class DistributeTranspiler(object):
            elif role == "TRAINER":
                 trainer_program = t.get_trainer_program()
     """
+>>>>>>> develop
 
     def __init__(self, config=None):
         if config is not None:

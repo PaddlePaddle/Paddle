@@ -11,6 +11,7 @@ RC      = 0
 
 
 
+
 def git_commit():
     try:
         cmd = ['git', 'rev-parse', 'HEAD']
