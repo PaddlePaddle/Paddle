@@ -9,14 +9,14 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-class MKLDNNConvElementwiseAddFusePass : public FusePassBase {
+class ConvElementwiseAddMKLDNNFusePass : public FusePassBase {
  public:
-  virtual ~FCGRUFusePass() {}
+  virtual ~ConvElementwiseAddMKLDNNFusePass() {}
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 
-  const std::string name_scope_{"mkldnn_conv_elementwise_add_fuse"};
+  const std::string name_scope_{"conv_elementwise_add_mkldnn_fuse_pass"};
 };
 
 }  // namespace ir
