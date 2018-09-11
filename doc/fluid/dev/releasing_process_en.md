@@ -7,7 +7,7 @@ Each time we release a new PaddlePaddle version, we should follow the below step
 1. Create a new release branch from `develop`，named `release/[version]`. E.g.，`release/0.10.0`
 2. Create a new tag for the release branch, tag format: `version-rc.Patch`. E.g. the first tag is `0.10.0-rc0`。
 3. New release branch normally doesn't accept new features or optimizations. QA will test on the release branch. Developer should develop based on `develop` branch.
-4. If QA or Developer find bugs. They should first fix and verity on `develop` branch. Then cherry-pick to the release branch. Wait until the release branch is stable.
+4. If QA or Developer find bugs. They should first fix and verify on `develop` branch. Then cherry-pick the fix to the release branch. Wait until the release branch is stable.
 5. If necessary, create a new tag on the relese branch, e.g. `0.10.0-rc1`. Involve more users to try it and repeat step 3-4.
 6. After release branch is stable，Create the official release tag，such as `0.10.0`.
 7. Release the python wheel package to pypi.
