@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/attention_lstm_op.h"
 #include <string>
-#include "paddle/fluid/operators/fusion_infershape_define.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
@@ -24,28 +23,28 @@ namespace paddle {
 namespace operators {
 
 void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  FUSION_INFERSHAPE_INIT;
-  PADDLE_ENFORCE(fair_input("X"), "Assert only one Input(X) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_input("C0"),
+  PADDLE_ENFORCE(ctx->HasInput("X"),
+                 "Assert only one Input(X) of AttentionLSTM.");
+  PADDLE_ENFORCE(ctx->HasInput("C0"),
                  "Assert only one Input(C0) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_input("LSTMWeight"),
+  PADDLE_ENFORCE(ctx->HasInput("LSTMWeight"),
                  "Assert only one Input(LSTMWeight) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_input("LSTMBias"),
+  PADDLE_ENFORCE(ctx->HasInput("LSTMBias"),
                  "Assert only one Input(LSTMBias) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_input("AttentionWeight"),
+  PADDLE_ENFORCE(ctx->HasInput("AttentionWeight"),
                  "Assert only one Input(AttentionWeight) of AttentionLSTM.");
 
-  PADDLE_ENFORCE(fair_output("Hidden"),
+  PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
                  "Assert only one Output(Hidden) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_output("Cell"),
+  PADDLE_ENFORCE(ctx->HasOutput("Cell"),
                  "Assert only one Output(Cell) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_output("AttentionedX"),
+  PADDLE_ENFORCE(ctx->HasOutput("AttentionedX"),
                  "Assert only one Output(AttentionedX) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_output("AttentionFCOut"),
+  PADDLE_ENFORCE(ctx->HasOutput("AttentionFCOut"),
                  "Assert only one Output(AttentionFCOut) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_output("LSTMX"),
+  PADDLE_ENFORCE(ctx->HasOutput("LSTMX"),
                  "Assert only one Output(LSTMX) of AttentionLSTM.");
-  PADDLE_ENFORCE(fair_output("LSTMOUT"),
+  PADDLE_ENFORCE(ctx->HasOutput("LSTMOUT"),
                  "Assert only one Output(LSTMOUT) of AttentionLSTM.");
 
   auto x_dims = ctx->GetInputDim("X");
@@ -66,7 +65,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   auto c_dims = ctx->GetInputDim("C0");
   PADDLE_ENFORCE_EQ(c_dims.size(), 2, "Input(C0)'s rank must be 2.");
   PADDLE_ENFORCE_EQ(c_dims[1], D, "C0 dims should be N x %d.", D);
-  if (fair_input("H0")) {
+  if (ctx->HasInput("H0")) {
     auto h_dims = ctx->GetInputDim("H0");
     PADDLE_ENFORCE(h_dims == c_dims,
                    "The dimension of Input(H0) and Input(C0) "
@@ -80,7 +79,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                     "AttentionWeight shapes must be (%d + %d) * 1.", M, D);
   PADDLE_ENFORCE_EQ(atten_w_dims[1], 1,
                     "AttentionWeight shapes must be (%d + %d) * 1.", M, D);
-  if (fair_input("AttentionBias")) {
+  if (ctx->HasInput("AttentionBias")) {
     auto atten_b_dims = ctx->GetInputDim("AttentionBias");
     PADDLE_ENFORCE_EQ(atten_b_dims.size(), 2,
                       "Input(AttentionBias)'s rank must be 2.");
@@ -90,7 +89,7 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                       "AttentionBias shapes must be 1 * 1.");
   }
 
-  if (fair_input("AttentionScalar")) {
+  if (ctx->HasInput("AttentionScalar")) {
     auto dims = ctx->GetInputDim("AttentionScalar");
     PADDLE_ENFORCE_EQ(dims.size(), 2,
                       "Input(AttentionScalar)'s rank must be 2.");
@@ -98,10 +97,10 @@ void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     PADDLE_ENFORCE_EQ(dims[1], 1, "AttentionScalar shapes must be 1 * 1.");
   }
 
-  if (fair_input("AttentionScalarBias")) {
+  if (ctx->HasInput("AttentionScalarBias")) {
     auto dims = ctx->GetInputDim("AttentionScalarBias");
     PADDLE_ENFORCE(
-        fair_input("AttentionScalar"),
+        ctx->HasInput("AttentionScalar"),
         "AttentionScalar should not be null when have AttentionScalarBias.");
     PADDLE_ENFORCE_EQ(dims.size(), 2,
                       "Input(AttentionScalarBias)'s rank must be 2.");
