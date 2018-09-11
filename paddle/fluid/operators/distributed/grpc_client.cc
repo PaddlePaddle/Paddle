@@ -73,8 +73,8 @@ VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   SendProcessor* s = new SendProcessor(ch);
-  s->Prepare(ep, "Send", var_name_val, p_ctx, p_scope, time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(new VarHandle(ep, "Send", var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
 
   framework::AsyncIO([var_name_val, p_scope, p_ctx, s, this] {
     auto* var = p_scope->FindVar(var_name_val);
@@ -122,8 +122,8 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
-  s->Prepare(ep, "Get", var_name_val, p_ctx, p_scope, time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(new VarHandle(ep, "Get", var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
 
   framework::AsyncIO([var_name_val, p_scope, p_ctx, s, this] {
     // prepare input
@@ -161,8 +161,9 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
   GetProcessor* s = new GetProcessor(ch);
-  s->Prepare(ep, "Prefetch", out_var_name_val, p_ctx, p_scope, time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(
+      new VarHandle(ep, "Prefetch", out_var_name_val, p_ctx, p_scope));
+  s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
                       time_out, s, this] {
@@ -192,9 +193,9 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  s->Prepare(ep, "BatchBarrier", BATCH_BARRIER_MESSAGE, nullptr, nullptr,
-             time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(new VarHandle(ep, "BatchBarrier", BATCH_BARRIER_MESSAGE,
+                               nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(BATCH_BARRIER_MESSAGE);
@@ -208,9 +209,9 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
-  s->Prepare(ep, "FetchBarrier", FETCH_BARRIER_MESSAGE, nullptr, nullptr,
-             time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(new VarHandle(ep, "FetchBarrier", FETCH_BARRIER_MESSAGE,
+                               nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(FETCH_BARRIER_MESSAGE);
@@ -225,8 +226,9 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
   const auto ch = GetChannel(ep);
 
   BatchBarrierProcessor* s = new BatchBarrierProcessor(ch);
-  s->Prepare(ep, "SendComplete", COMPLETE_MESSAGE, nullptr, nullptr, time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(
+      new VarHandle(ep, "SendComplete", COMPLETE_MESSAGE, nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(COMPLETE_MESSAGE);
@@ -242,9 +244,9 @@ VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
   const auto ch = GetChannel(ep);
 
   CheckpointNotifyProcessor* s = new CheckpointNotifyProcessor(ch);
-  s->Prepare(ep, "CheckPointNotify", CHECKPOINT_SAVE_MESSAGE, nullptr, nullptr,
-             time_out);
-  VarHandlePtr h = s->GetVarHandlePtr();
+  VarHandlePtr h(new VarHandle(ep, "CheckPointNotify", CHECKPOINT_SAVE_MESSAGE,
+                               nullptr, nullptr));
+  s->Prepare(h, time_out);
 
   sendrecv::VariableMessage req;
   req.set_varname(CHECKPOINT_SAVE_MESSAGE);

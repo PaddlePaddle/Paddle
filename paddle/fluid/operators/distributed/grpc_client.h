@@ -53,17 +53,12 @@ void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
 
 class BaseProcessor {
  public:
-  explicit BaseProcessor(std::shared_ptr<grpc::Channel> ch) {
-    context_ = nullptr;
-  }
+  BaseProcessor() { context_ = nullptr; }
 
   virtual ~BaseProcessor() {}
 
-  virtual void Prepare(const std::string ep, const std::string& method,
-                       const std::string& name,
-                       const platform::DeviceContext* ctx,
-                       const framework::Scope* scope, int64_t time_out) {
-    var_h_.reset(new VarHandle(ep, method, name, ctx, scope));
+  virtual void Prepare(VarHandlePtr h, int64_t time_out) {
+    var_h_ = h;
 
     context_.reset(new grpc::ClientContext());
     context_->set_wait_for_ready(true);
@@ -81,11 +76,8 @@ class BaseProcessor {
   }
 
   VarHandlePtr GetVarHandlePtr() { return var_h_; }
-
   bool Wait() { return var_h_->Wait(); }
-
   void Finish(bool ok) { return var_h_->Finish(ok); }
-
   virtual void ProcessImpl() = 0;
 
   std::unique_ptr<grpc::ClientContext> context_;
@@ -101,7 +93,7 @@ typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
 class SendProcessor : public BaseProcessor {
  public:
   explicit SendProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch), stub_g_(ch) {}
+      : BaseProcessor(), stub_g_(ch) {}
 
   virtual ~SendProcessor() {}
 
@@ -122,7 +114,7 @@ typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
 class GetProcessor : public BaseProcessor {
  public:
   explicit GetProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch), stub_g_(ch) {}
+      : BaseProcessor(), stub_g_(ch) {}
 
   virtual ~GetProcessor() {}
 
@@ -140,7 +132,7 @@ class GetProcessor : public BaseProcessor {
 class BatchBarrierProcessor : public BaseProcessor {
  public:
   explicit BatchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {
+      : BaseProcessor() {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
@@ -154,7 +146,7 @@ class BatchBarrierProcessor : public BaseProcessor {
 class FetchBarrierProcessor : public BaseProcessor {
  public:
   explicit FetchBarrierProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {
+      : BaseProcessor() {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
@@ -168,7 +160,7 @@ class FetchBarrierProcessor : public BaseProcessor {
 class CheckpointNotifyProcessor : public BaseProcessor {
  public:
   explicit CheckpointNotifyProcessor(std::shared_ptr<grpc::Channel> ch)
-      : BaseProcessor(ch) {
+      : BaseProcessor() {
     stub_ = sendrecv::SendRecvService::NewStub(ch);
   }
 
