@@ -1,6 +1,6 @@
 cc_library(ir_pass_manager SRCS ir_pass_manager.cc DEPS graph pass)
 set(analysis_deps
-    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor)
+    framework_proto proto_desc ir_pass_manager graph pass paddle_fluid_api executor pretty_log)
 
 cc_library(analysis SRCS pass_manager.cc node.cc data_flow_graph.cc graph_traits.cc subgraph_splitter.cc
   analyzer.cc
@@ -48,18 +48,18 @@ function (inference_download_and_uncompress install_dir url gz_filename)
     message(STATUS "finish downloading ${gz_filename}")
 endfunction(inference_download_and_uncompress)
 
-set(DITU_RNN_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fmodel.tar.gz")
-set(DITU_RNN_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/ditu_rnn_fluid%2Fdata.txt.tar.gz")
-set(DITU_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/ditu_rnn" CACHE PATH "Ditu RNN model and data root." FORCE)
-if (NOT EXISTS ${DITU_INSTALL_DIR} AND WITH_TESTING)
-  inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_MODEL_URL} "ditu_rnn_fluid%2Fmodel.tar.gz")
-  inference_download_and_uncompress(${DITU_INSTALL_DIR} ${DITU_RNN_DATA_URL} "ditu_rnn_fluid%2Fdata.txt.tar.gz")
+set(RNN1_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/rnn1%2Fmodel.tar.gz")
+set(RNN1_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/rnn1%2Fdata.txt.tar.gz")
+set(RNN1_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/rnn1" CACHE PATH "RNN1 model and data root." FORCE)
+if (NOT EXISTS ${RNN1_INSTALL_DIR} AND WITH_TESTING)
+  inference_download_and_uncompress(${RNN1_INSTALL_DIR} ${RNN1_MODEL_URL} "rnn1%2Fmodel.tar.gz")
+  inference_download_and_uncompress(${RNN1_INSTALL_DIR} ${RNN1_DATA_URL} "rnn1%2Fdata.txt.tar.gz")
 endif()
 
 inference_analysis_test(test_analyzer SRCS analyzer_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
-    ARGS --infer_ditu_rnn_model=${DITU_INSTALL_DIR}/model
-         --infer_ditu_rnn_data=${DITU_INSTALL_DIR}/data.txt)
+    ARGS --infer_model=${RNN1_INSTALL_DIR}/model
+         --infer_data=${RNN1_INSTALL_DIR}/data.txt)
 
 inference_analysis_test(test_data_flow_graph SRCS data_flow_graph_tester.cc)
 inference_analysis_test(test_data_flow_graph_to_fluid_pass SRCS data_flow_graph_to_fluid_pass_tester.cc)
