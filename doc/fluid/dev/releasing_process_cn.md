@@ -7,7 +7,7 @@ PaddlePaddle每次发新的版本，遵循以下流程:
 1. 从`develop`分支派生出新的分支，分支名为`release/版本号`。例如，`release/0.10.0`
 2. 将新分支的版本打上tag，tag为`版本号rc-Patch号`。例如，第一个tag为`0.10.0-rc0`。
 3. 新分支一般不接受新的feature和优化。QA在release分支上进行测试。研发基于最新的develop开发。
-4. QA和研发发现的bug，在develop上修复验证后，cherry-pick到release分支。直到release分支相对稳定。
+4. QA和研发发现的bug，在develop上修复验证后，cherry-pick修复到release分支。直到release分支相对稳定。
 5. 如果有需要，在release分支最新代码上打上新的tag，比如`0.10.0-rc1`，让更多的用户加入测试。重复3-4步。
 6. release分支稳定后，打上正式的release tag，比如`0.10.0`。
 7. 将这个版本的python wheel包发布到pypi。
@@ -68,7 +68,7 @@ PaddlePaddle开发过程使用[Trunk Based Development](https://trunkbaseddevelo
 
 * 其他开发者fork的feature branch。
 	* 建议，开发者的feature branch需要同步主版本库的`develop`分支。
-	* 建议，开发者的feature branch需要基于朱版本库中的`develop`分支。
+	* 建议，开发者的feature branch需要基于主版本库中的`develop`分支。
 	* 当feature branch开发完毕后，向PaddlePaddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
 		* 在评审过程中，开发者修改自己的代码，可以继续在自己的feature branch提交代码。
 
