@@ -70,7 +70,7 @@ class VarHandle {
   bool Wait() {
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      sync_cond_.wait(lk, [this] { return ok_ != kVarHandleDefaultState; });
+      wait_cond_.wait(lk, [this] { return ok_ != kVarHandleDefaultState; });
     }
     VLOG(7) << "VarHandle wait:" << ok_;
     return ok_ != 0;
@@ -82,7 +82,7 @@ class VarHandle {
       ok_ = ok;
     }
     VLOG(7) << "VarHandle finish:" << ok;
-    sync_cond_.notify_all();
+    wait_cond_.notify_all();
   }
 
   std::string String() const {
@@ -110,7 +110,7 @@ class VarHandle {
 
  protected:
   std::mutex sync_mutex_;
-  std::condition_variable sync_cond_;
+  std::condition_variable wait_cond_;
   int ok_;
 
   static const int kVarHandleDefaultState = -1;
