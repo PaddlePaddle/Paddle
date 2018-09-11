@@ -21,6 +21,7 @@ __all__ = [
 from threading import Thread
 import subprocess
 import multiprocessing
+import sys
 
 from six.moves.queue import Queue
 from six.moves import zip_longest
