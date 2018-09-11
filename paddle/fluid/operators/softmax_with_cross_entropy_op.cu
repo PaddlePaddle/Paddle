@@ -26,7 +26,8 @@ using Tensor = framework::Tensor;
 namespace {
 template <typename T>
 __global__ void CrossEntropyGrad(T* logit_grad, const int64_t* labels,
-                                 const int batch_size, const int class_num) {
+                                 const int batch_size, const int class_num,
+                                 const int ignore_index) {
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < batch_size;
        i += blockDim.x * gridDim.x) {
     int idx = i * class_num + labels[i];
@@ -260,6 +261,7 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
     auto* loss_data = loss->mutable_data<T>(context.GetPlace());
 
     auto soft_label = context.Attr<bool>("soft_label");
+    auto ignore_index = context.Attr<int>("ignore_index");
     if (soft_label) {
       int batch_size = logits->dims()[0];
       int feature_size = logits->dims()[1];
@@ -272,7 +274,8 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
       math::SoftmaxCUDNNFunctor<T>()(context.cuda_device_context(), logits,
                                      softmax);
       math::CrossEntropyFunctor<platform::CUDADeviceContext, T>()(
-          context.cuda_device_context(), loss, softmax, labels, false);
+          context.cuda_device_context(), loss, softmax, labels, false,
+          ignore_index);
     }
   }
 };
@@ -295,7 +298,7 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const int class_num = logit_grad->dims()[1];
     int block = 512;
     auto stream = context.cuda_device_context().stream();
-
+    auto ignore_index = context.Attr<int>("ignore_index");
     if (context.Attr<bool>("soft_label")) {
       int grid = (batch_size * class_num + block - 1) / block;
       const T* label_data = labels->data<T>();
@@ -305,7 +308,7 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
       int grid = (batch_size + block - 1) / block;
       const int64_t* label_data = labels->data<int64_t>();
       CrossEntropyGrad<T><<<grid, block, 0, stream>>>(
-          logit_grad_data, label_data, batch_size, class_num);
+          logit_grad_data, label_data, batch_size, class_num, ignore_index);
       int num = batch_size * class_num;
       grid = (num + block - 1) / block;
       Scale<T><<<grid, block, 0, stream>>>(logit_grad_data, loss_grad_data, num,
