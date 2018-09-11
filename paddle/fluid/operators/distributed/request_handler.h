@@ -56,7 +56,7 @@ class VarHandle {
             const std::string& name,
             const platform::DeviceContext* p_ctx = nullptr,
             const framework::Scope* p_scope = nullptr)
-      : ok_(-1) {
+      : ok_(kVarHandleDefaultState) {
     ep_ = ep;
     ctx_ = p_ctx;
     scope_ = p_scope;
@@ -70,7 +70,7 @@ class VarHandle {
   bool Wait() {
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      sync_cond_.wait(lk, [this] { return ok_ != -1; });
+      sync_cond_.wait(lk, [this] { return ok_ != kVarHandleDefaultState; });
     }
     VLOG(7) << "VarHandle wait:" << ok_;
     return ok_ != 0;
@@ -112,6 +112,8 @@ class VarHandle {
   std::mutex sync_mutex_;
   std::condition_variable sync_cond_;
   int ok_;
+
+  static const int kVarHandleDefaultState = -1;
 
  private:
   DISABLE_COPY_AND_ASSIGN(VarHandle);
