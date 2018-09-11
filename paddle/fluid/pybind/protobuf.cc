@@ -137,7 +137,10 @@ void BindProgramDesc(pybind11::module *m) {
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
-           });
+           })
+      .def("_version", [](pd::ProgramDesc &self) -> int64_t {
+        return self.Proto()->version().version();
+      });
 }
 
 void BindBlockDesc(pybind11::module *m) {
