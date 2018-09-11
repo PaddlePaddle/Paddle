@@ -1,0 +1,79 @@
+type: "nn"
+layers {
+  name: "input_loc"
+  type: "data"
+  size: 16
+  active_type: ""
+  height: 16
+  width: 1
+}
+layers {
+  name: "input_conf"
+  type: "data"
+  size: 8
+  active_type: ""
+  height: 1
+  width: 8
+}
+layers {
+  name: "priorbox"
+  type: "data"
+  size: 32
+  active_type: ""
+  height: 4
+  width: 8
+}
+layers {
+  name: "label"
+  type: "data"
+  size: 24
+  active_type: ""
+  height: 4
+  width: 6
+}
+layers {
+  name: "test_multibox_loss"
+  type: "multibox_loss"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "priorbox"
+    multibox_loss_conf {
+      num_classes: 21
+      overlap_threshold: 0.5
+      neg_pos_ratio: 3.0
+      neg_overlap: 0.5
+      background_id: 0
+      input_num: 1
+    }
+  }
+  inputs {
+    input_layer_name: "label"
+  }
+  inputs {
+    input_layer_name: "input_loc"
+  }
+  inputs {
+    input_layer_name: "input_conf"
+  }
+}
+input_layer_names: "priorbox"
+input_layer_names: "label"
+input_layer_names: "input_loc"
+input_layer_names: "input_conf"
+output_layer_names: "test_multibox_loss"
+sub_models {
+  name: "root"
+  layer_names: "input_loc"
+  layer_names: "input_conf"
+  layer_names: "priorbox"
+  layer_names: "label"
+  layer_names: "test_multibox_loss"
+  input_layer_names: "priorbox"
+  input_layer_names: "label"
+  input_layer_names: "input_loc"
+  input_layer_names: "input_conf"
+  output_layer_names: "test_multibox_loss"
+  is_recurrent_layer_group: false
+}
+

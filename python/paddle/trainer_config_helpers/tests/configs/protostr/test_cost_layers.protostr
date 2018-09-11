@@ -1,0 +1,375 @@
+type: "nn"
+layers {
+  name: "input"
+  type: "data"
+  size: 200
+  active_type: ""
+}
+layers {
+  name: "labels"
+  type: "data"
+  size: 5000
+  active_type: ""
+}
+layers {
+  name: "probs"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "xe-label"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "__fc_layer_0__"
+  type: "fc"
+  size: 4
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "___fc_layer_0__.w0"
+  }
+  bias_parameter_name: "___fc_layer_0__.wbias"
+}
+layers {
+  name: "__ctc_layer_0__"
+  type: "ctc"
+  size: 5001
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  norm_by_times: false
+}
+layers {
+  name: "__warp_ctc_layer_0__"
+  type: "warp_ctc"
+  size: 5001
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  norm_by_times: false
+  blank: 0
+}
+layers {
+  name: "crf_label"
+  type: "data"
+  size: 4
+  active_type: ""
+}
+layers {
+  name: "__crf_layer_0__"
+  type: "crf"
+  size: 4
+  active_type: ""
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+    input_parameter_name: "___crf_layer_0__.w0"
+  }
+  inputs {
+    input_layer_name: "crf_label"
+  }
+  coeff: 1.0
+}
+layers {
+  name: "left"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "right"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "label"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "__rank_cost_0__"
+  type: "rank-cost"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "left"
+  }
+  inputs {
+    input_layer_name: "right"
+  }
+  inputs {
+    input_layer_name: "label"
+  }
+  coeff: 1.0
+}
+layers {
+  name: "list_feature"
+  type: "data"
+  size: 100
+  active_type: ""
+}
+layers {
+  name: "list_scores"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "__lambda_cost_0__"
+  type: "lambda_cost"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "list_feature"
+  }
+  inputs {
+    input_layer_name: "list_scores"
+  }
+  NDCG_num: 5
+  max_sort_size: -1
+}
+layers {
+  name: "__cross_entropy_0__"
+  type: "multi-class-cross-entropy"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "probs"
+  }
+  inputs {
+    input_layer_name: "xe-label"
+  }
+  coeff: 1.0
+}
+layers {
+  name: "__cross_entropy_with_selfnorm_0__"
+  type: "multi_class_cross_entropy_with_selfnorm"
+  active_type: ""
+  inputs {
+    input_layer_name: "probs"
+  }
+  inputs {
+    input_layer_name: "xe-label"
+  }
+  softmax_selfnorm_alpha: 0.1
+  coeff: 1.0
+}
+layers {
+  name: "__huber_regression_cost_0__"
+  type: "huber_regression"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  coeff: 1.0
+  delta: 1.0
+}
+layers {
+  name: "huber_probs"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "huber_label"
+  type: "data"
+  size: 1
+  active_type: ""
+}
+layers {
+  name: "__huber_classification_cost_0__"
+  type: "huber_classification"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "huber_probs"
+  }
+  inputs {
+    input_layer_name: "huber_label"
+  }
+  coeff: 1.0
+}
+layers {
+  name: "__multi_binary_label_cross_entropy_0__"
+  type: "multi_binary_label_cross_entropy"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "probs"
+  }
+  inputs {
+    input_layer_name: "xe-label"
+  }
+  coeff: 1.0
+}
+layers {
+  name: "__sum_cost_0__"
+  type: "sum_cost"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+  }
+  coeff: 1.0
+}
+layers {
+  name: "__nce_layer_0__"
+  type: "nce"
+  size: 1
+  active_type: "sigmoid"
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+    input_parameter_name: "___nce_layer_0__.w0"
+  }
+  inputs {
+    input_layer_name: "labels"
+  }
+  bias_parameter_name: "___nce_layer_0__.wbias"
+  num_classes: 5000
+  num_neg_samples: 10
+}
+parameters {
+  name: "___fc_layer_0__.w0"
+  size: 800
+  initial_mean: 0.0
+  initial_std: 0.0707106781187
+  dims: 200
+  dims: 4
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___fc_layer_0__.wbias"
+  size: 4
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 4
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___crf_layer_0__.w0"
+  size: 24
+  initial_mean: 0.0
+  initial_std: 0.408248290464
+  dims: 6
+  dims: 4
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___nce_layer_0__.w0"
+  size: 20000
+  initial_mean: 0.0
+  initial_std: 0.0141421356237
+  dims: 5000
+  dims: 4
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "___nce_layer_0__.wbias"
+  size: 5000
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 5000
+  initial_strategy: 0
+  initial_smart: false
+}
+input_layer_names: "input"
+input_layer_names: "labels"
+input_layer_names: "crf_label"
+input_layer_names: "left"
+input_layer_names: "right"
+input_layer_names: "label"
+input_layer_names: "list_feature"
+input_layer_names: "list_scores"
+input_layer_names: "probs"
+input_layer_names: "xe-label"
+input_layer_names: "huber_probs"
+input_layer_names: "huber_label"
+output_layer_names: "__ctc_layer_0__"
+output_layer_names: "__warp_ctc_layer_0__"
+output_layer_names: "__crf_layer_0__"
+output_layer_names: "__rank_cost_0__"
+output_layer_names: "__lambda_cost_0__"
+output_layer_names: "__cross_entropy_0__"
+output_layer_names: "__cross_entropy_with_selfnorm_0__"
+output_layer_names: "__huber_regression_cost_0__"
+output_layer_names: "__huber_classification_cost_0__"
+output_layer_names: "__multi_binary_label_cross_entropy_0__"
+output_layer_names: "__sum_cost_0__"
+output_layer_names: "__nce_layer_0__"
+sub_models {
+  name: "root"
+  layer_names: "input"
+  layer_names: "labels"
+  layer_names: "probs"
+  layer_names: "xe-label"
+  layer_names: "__fc_layer_0__"
+  layer_names: "__ctc_layer_0__"
+  layer_names: "__warp_ctc_layer_0__"
+  layer_names: "crf_label"
+  layer_names: "__crf_layer_0__"
+  layer_names: "left"
+  layer_names: "right"
+  layer_names: "label"
+  layer_names: "__rank_cost_0__"
+  layer_names: "list_feature"
+  layer_names: "list_scores"
+  layer_names: "__lambda_cost_0__"
+  layer_names: "__cross_entropy_0__"
+  layer_names: "__cross_entropy_with_selfnorm_0__"
+  layer_names: "__huber_regression_cost_0__"
+  layer_names: "huber_probs"
+  layer_names: "huber_label"
+  layer_names: "__huber_classification_cost_0__"
+  layer_names: "__multi_binary_label_cross_entropy_0__"
+  layer_names: "__sum_cost_0__"
+  layer_names: "__nce_layer_0__"
+  input_layer_names: "input"
+  input_layer_names: "labels"
+  input_layer_names: "crf_label"
+  input_layer_names: "left"
+  input_layer_names: "right"
+  input_layer_names: "label"
+  input_layer_names: "list_feature"
+  input_layer_names: "list_scores"
+  input_layer_names: "probs"
+  input_layer_names: "xe-label"
+  input_layer_names: "huber_probs"
+  input_layer_names: "huber_label"
+  output_layer_names: "__ctc_layer_0__"
+  output_layer_names: "__warp_ctc_layer_0__"
+  output_layer_names: "__crf_layer_0__"
+  output_layer_names: "__rank_cost_0__"
+  output_layer_names: "__lambda_cost_0__"
+  output_layer_names: "__cross_entropy_0__"
+  output_layer_names: "__cross_entropy_with_selfnorm_0__"
+  output_layer_names: "__huber_regression_cost_0__"
+  output_layer_names: "__huber_classification_cost_0__"
+  output_layer_names: "__multi_binary_label_cross_entropy_0__"
+  output_layer_names: "__sum_cost_0__"
+  output_layer_names: "__nce_layer_0__"
+  is_recurrent_layer_group: false
+}
+

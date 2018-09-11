@@ -1,0 +1,233 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 2304
+  active_type: ""
+  height: 48
+  width: 48
+}
+layers {
+  name: "__conv_0__"
+  type: "exconv"
+  size: 36864
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "___conv_0__.w0"
+    conv_conf {
+      filter_size: 3
+      channels: 1
+      stride: 1
+      padding: 1
+      groups: 1
+      filter_channels: 1
+      output_x: 48
+      img_size: 48
+      caffe_mode: true
+      filter_size_y: 3
+      padding_y: 1
+      stride_y: 1
+      output_y: 48
+      img_size_y: 48
+      dilation: 1
+      dilation_y: 1
+    }
+  }
+  bias_parameter_name: "___conv_0__.wbias"
+  num_filters: 16
+  shared_biases: true
+  height: 48
+  width: 48
+}
+layers {
+  name: "__maxout_layer_0__"
+  type: "maxout"
+  size: 18432
+  active_type: ""
+  inputs {
+    input_layer_name: "__conv_0__"
+    maxout_conf {
+      image_conf {
+        channels: 16
+        img_size: 48
+        img_size_y: 48
+      }
+      groups: 2
+    }
+  }
+  height: 48
+  width: 48
+}
+layers {
+  name: "__pool_0__"
+  type: "pool"
+  size: 4608
+  active_type: ""
+  inputs {
+    input_layer_name: "__maxout_layer_0__"
+    pool_conf {
+      pool_type: "max-projection"
+      channels: 8
+      size_x: 2
+      stride: 2
+      output_x: 24
+      img_size: 48
+      padding: 0
+      size_y: 2
+      stride_y: 2
+      output_y: 24
+      img_size_y: 48
+      padding_y: 0
+    }
+  }
+  height: 24
+  width: 24
+}
+layers {
+  name: "__conv_1__"
+  type: "exconv"
+  size: 73728
+  active_type: ""
+  inputs {
+    input_layer_name: "__pool_0__"
+    input_parameter_name: "___conv_1__.w0"
+    conv_conf {
+      filter_size: 3
+      channels: 8
+      stride: 1
+      padding: 1
+      groups: 1
+      filter_channels: 8
+      output_x: 24
+      img_size: 24
+      caffe_mode: true
+      filter_size_y: 3
+      padding_y: 1
+      stride_y: 1
+      output_y: 24
+      img_size_y: 24
+      dilation: 1
+      dilation_y: 1
+    }
+  }
+  bias_parameter_name: "___conv_1__.wbias"
+  num_filters: 128
+  shared_biases: true
+  height: 24
+  width: 24
+}
+layers {
+  name: "__maxout_layer_1__"
+  type: "maxout"
+  size: 18432
+  active_type: ""
+  inputs {
+    input_layer_name: "__conv_1__"
+    maxout_conf {
+      image_conf {
+        channels: 128
+        img_size: 24
+        img_size_y: 24
+      }
+      groups: 4
+    }
+  }
+  height: 24
+  width: 24
+}
+layers {
+  name: "__block_expand_layer_0__"
+  type: "blockexpand"
+  size: 192
+  active_type: ""
+  inputs {
+    input_layer_name: "__maxout_layer_1__"
+    block_expand_conf {
+      channels: 32
+      stride_x: 1
+      stride_y: 1
+      padding_x: 0
+      padding_y: 0
+      block_x: 1
+      block_y: 6
+      output_x: 0
+      output_y: 0
+      img_size_x: 0
+      img_size_y: 0
+    }
+  }
+}
+layers {
+  name: "__fc_layer_0__"
+  type: "fc"
+  size: 384
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "__block_expand_layer_0__"
+    input_parameter_name: "___fc_layer_0__.w0"
+  }
+}
+parameters {
+  name: "___conv_0__.w0"
+  size: 144
+  initial_mean: 0.0
+  initial_std: 0.471404520791
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___conv_0__.wbias"
+  size: 16
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 16
+  dims: 1
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___conv_1__.w0"
+  size: 9216
+  initial_mean: 0.0
+  initial_std: 0.166666666667
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___conv_1__.wbias"
+  size: 128
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 128
+  dims: 1
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "___fc_layer_0__.w0"
+  size: 73728
+  initial_mean: 0.0
+  initial_std: 0.0721687836487
+  dims: 192
+  dims: 384
+  initial_strategy: 0
+  initial_smart: true
+}
+input_layer_names: "data"
+output_layer_names: "__fc_layer_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__conv_0__"
+  layer_names: "__maxout_layer_0__"
+  layer_names: "__pool_0__"
+  layer_names: "__conv_1__"
+  layer_names: "__maxout_layer_1__"
+  layer_names: "__block_expand_layer_0__"
+  layer_names: "__fc_layer_0__"
+  input_layer_names: "data"
+  output_layer_names: "__fc_layer_0__"
+  is_recurrent_layer_group: false
+}
+

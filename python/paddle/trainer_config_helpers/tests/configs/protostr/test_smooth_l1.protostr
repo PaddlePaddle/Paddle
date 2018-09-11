@@ -1,0 +1,40 @@
+type: "nn"
+layers {
+  name: "input"
+  type: "data"
+  size: 300
+  active_type: ""
+}
+layers {
+  name: "label"
+  type: "data"
+  size: 300
+  active_type: ""
+}
+layers {
+  name: "__smooth_l1_cost_0__"
+  type: "smooth_l1"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+  }
+  inputs {
+    input_layer_name: "label"
+  }
+  coeff: 1.0
+}
+input_layer_names: "input"
+input_layer_names: "label"
+output_layer_names: "__smooth_l1_cost_0__"
+sub_models {
+  name: "root"
+  layer_names: "input"
+  layer_names: "label"
+  layer_names: "__smooth_l1_cost_0__"
+  input_layer_names: "input"
+  input_layer_names: "label"
+  output_layer_names: "__smooth_l1_cost_0__"
+  is_recurrent_layer_group: false
+}
+

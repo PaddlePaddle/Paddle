@@ -1,0 +1,51 @@
+type: "nn"
+layers {
+  name: "data1"
+  type: "data"
+  size: 30
+  active_type: ""
+}
+layers {
+  name: "data2"
+  type: "data"
+  size: 30
+  active_type: ""
+}
+layers {
+  name: "__seqconcat_0__"
+  type: "seqconcat"
+  size: 30
+  active_type: ""
+  inputs {
+    input_layer_name: "data1"
+  }
+  inputs {
+    input_layer_name: "data2"
+  }
+}
+layers {
+  name: "__seqreshape_0__"
+  type: "seqreshape"
+  size: 5
+  active_type: ""
+  inputs {
+    input_layer_name: "data1"
+  }
+}
+input_layer_names: "data1"
+input_layer_names: "data2"
+output_layer_names: "__seqconcat_0__"
+output_layer_names: "__seqreshape_0__"
+sub_models {
+  name: "root"
+  layer_names: "data1"
+  layer_names: "data2"
+  layer_names: "__seqconcat_0__"
+  layer_names: "__seqreshape_0__"
+  input_layer_names: "data1"
+  input_layer_names: "data2"
+  output_layer_names: "__seqconcat_0__"
+  output_layer_names: "__seqreshape_0__"
+  is_recurrent_layer_group: false
+}
+

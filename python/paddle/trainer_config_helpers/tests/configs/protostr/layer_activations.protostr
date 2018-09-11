@@ -1,0 +1,423 @@
+type: "nn"
+layers {
+  name: "input"
+  type: "data"
+  size: 100
+  active_type: ""
+}
+layers {
+  name: "layer_0"
+  type: "fc"
+  size: 100
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_0.w0"
+  }
+  bias_parameter_name: "_layer_0.wbias"
+}
+layers {
+  name: "layer_1"
+  type: "fc"
+  size: 100
+  active_type: "sigmoid"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_1.w0"
+  }
+  bias_parameter_name: "_layer_1.wbias"
+}
+layers {
+  name: "layer_2"
+  type: "fc"
+  size: 100
+  active_type: "softmax"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_2.w0"
+  }
+  bias_parameter_name: "_layer_2.wbias"
+}
+layers {
+  name: "layer_3"
+  type: "fc"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_3.w0"
+  }
+  bias_parameter_name: "_layer_3.wbias"
+}
+layers {
+  name: "layer_4"
+  type: "fc"
+  size: 100
+  active_type: ""
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_4.w0"
+  }
+  bias_parameter_name: "_layer_4.wbias"
+}
+layers {
+  name: "layer_5"
+  type: "fc"
+  size: 100
+  active_type: "exponential"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_5.w0"
+  }
+  bias_parameter_name: "_layer_5.wbias"
+}
+layers {
+  name: "layer_6"
+  type: "fc"
+  size: 100
+  active_type: "relu"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_6.w0"
+  }
+  bias_parameter_name: "_layer_6.wbias"
+}
+layers {
+  name: "layer_7"
+  type: "fc"
+  size: 100
+  active_type: "brelu"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_7.w0"
+  }
+  bias_parameter_name: "_layer_7.wbias"
+}
+layers {
+  name: "layer_8"
+  type: "fc"
+  size: 100
+  active_type: "softrelu"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_8.w0"
+  }
+  bias_parameter_name: "_layer_8.wbias"
+}
+layers {
+  name: "layer_9"
+  type: "fc"
+  size: 100
+  active_type: "stanh"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_9.w0"
+  }
+  bias_parameter_name: "_layer_9.wbias"
+}
+layers {
+  name: "layer_10"
+  type: "fc"
+  size: 100
+  active_type: "abs"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_10.w0"
+  }
+  bias_parameter_name: "_layer_10.wbias"
+}
+layers {
+  name: "layer_11"
+  type: "fc"
+  size: 100
+  active_type: "square"
+  inputs {
+    input_layer_name: "input"
+    input_parameter_name: "_layer_11.w0"
+  }
+  bias_parameter_name: "_layer_11.wbias"
+}
+parameters {
+  name: "_layer_0.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_0.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_1.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_1.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_2.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_2.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_3.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_3.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_4.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_4.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_5.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_5.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_6.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_6.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_7.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_7.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_8.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_8.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_9.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_9.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_10.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_10.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "_layer_11.w0"
+  size: 10000
+  initial_mean: 0.0
+  initial_std: 0.1
+  dims: 100
+  dims: 100
+  initial_strategy: 0
+  initial_smart: true
+}
+parameters {
+  name: "_layer_11.wbias"
+  size: 100
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 100
+  initial_strategy: 0
+  initial_smart: false
+}
+input_layer_names: "input"
+output_layer_names: "layer_0"
+output_layer_names: "layer_1"
+output_layer_names: "layer_2"
+output_layer_names: "layer_3"
+output_layer_names: "layer_4"
+output_layer_names: "layer_5"
+output_layer_names: "layer_6"
+output_layer_names: "layer_7"
+output_layer_names: "layer_8"
+output_layer_names: "layer_9"
+output_layer_names: "layer_10"
+output_layer_names: "layer_11"
+sub_models {
+  name: "root"
+  layer_names: "input"
+  layer_names: "layer_0"
+  layer_names: "layer_1"
+  layer_names: "layer_2"
+  layer_names: "layer_3"
+  layer_names: "layer_4"
+  layer_names: "layer_5"
+  layer_names: "layer_6"
+  layer_names: "layer_7"
+  layer_names: "layer_8"
+  layer_names: "layer_9"
+  layer_names: "layer_10"
+  layer_names: "layer_11"
+  input_layer_names: "input"
+  output_layer_names: "layer_0"
+  output_layer_names: "layer_1"
+  output_layer_names: "layer_2"
+  output_layer_names: "layer_3"
+  output_layer_names: "layer_4"
+  output_layer_names: "layer_5"
+  output_layer_names: "layer_6"
+  output_layer_names: "layer_7"
+  output_layer_names: "layer_8"
+  output_layer_names: "layer_9"
+  output_layer_names: "layer_10"
+  output_layer_names: "layer_11"
+  is_recurrent_layer_group: false
+}
+

@@ -1,0 +1,2 @@
+add_simple_unittest(test_common)
+add_simple_unittest(test_argument)

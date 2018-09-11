@@ -1,0 +1,7 @@
+{
+	global:
+		*paddle*;
+                *Pass*;
+	local:
+		*;
+};

@@ -1,0 +1,39 @@
+type: "nn"
+layers {
+  name: "data"
+  type: "data"
+  size: 1024
+  active_type: ""
+}
+layers {
+  name: "__factorization_machine_0__"
+  type: "factorization_machine"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "data"
+    input_parameter_name: "___factorization_machine_0__.w0"
+  }
+  factor_size: 10
+}
+parameters {
+  name: "___factorization_machine_0__.w0"
+  size: 10240
+  initial_mean: 0.0
+  initial_std: 0.03125
+  dims: 1024
+  dims: 10
+  initial_strategy: 0
+  initial_smart: true
+}
+input_layer_names: "data"
+output_layer_names: "__factorization_machine_0__"
+sub_models {
+  name: "root"
+  layer_names: "data"
+  layer_names: "__factorization_machine_0__"
+  input_layer_names: "data"
+  output_layer_names: "__factorization_machine_0__"
+  is_recurrent_layer_group: false
+}
+

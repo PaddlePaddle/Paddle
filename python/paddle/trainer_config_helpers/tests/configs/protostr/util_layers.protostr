@@ -1,0 +1,87 @@
+type: "nn"
+layers {
+  name: "a"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "b"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "__addto_0__"
+  type: "addto"
+  size: 10
+  active_type: ""
+  inputs {
+    input_layer_name: "a"
+  }
+  inputs {
+    input_layer_name: "b"
+  }
+  height: 0
+  width: 0
+  depth: 1
+}
+layers {
+  name: "__concat_0__"
+  type: "concat"
+  size: 20
+  active_type: ""
+  inputs {
+    input_layer_name: "a"
+  }
+  inputs {
+    input_layer_name: "b"
+  }
+  height: 0
+  width: 0
+  depth: 1
+}
+layers {
+  name: "__concat_1__"
+  type: "concat2"
+  size: 20
+  active_type: ""
+  inputs {
+    input_layer_name: "a"
+    proj_conf {
+      type: "identity"
+      name: "___concat_1__.w0"
+      input_size: 10
+      output_size: 10
+    }
+  }
+  inputs {
+    input_layer_name: "b"
+    proj_conf {
+      type: "identity"
+      name: "___concat_1__.w1"
+      input_size: 10
+      output_size: 10
+    }
+  }
+}
+input_layer_names: "a"
+input_layer_names: "b"
+output_layer_names: "__addto_0__"
+output_layer_names: "__concat_0__"
+output_layer_names: "__concat_1__"
+sub_models {
+  name: "root"
+  layer_names: "a"
+  layer_names: "b"
+  layer_names: "__addto_0__"
+  layer_names: "__concat_0__"
+  layer_names: "__concat_1__"
+  input_layer_names: "a"
+  input_layer_names: "b"
+  output_layer_names: "__addto_0__"
+  output_layer_names: "__concat_0__"
+  output_layer_names: "__concat_1__"
+  is_recurrent_layer_group: false
+}
+

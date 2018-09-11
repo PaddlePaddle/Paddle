@@ -1,0 +1,125 @@
+type: "nn"
+layers {
+  name: "feature_a"
+  type: "data"
+  size: 200
+  active_type: ""
+}
+layers {
+  name: "feature_b"
+  type: "data"
+  size: 200
+  active_type: ""
+}
+layers {
+  name: "__fc_layer_0__"
+  type: "fc"
+  size: 200
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "feature_a"
+    input_parameter_name: "fc_param"
+  }
+  bias_parameter_name: "bias_param"
+}
+layers {
+  name: "__fc_layer_1__"
+  type: "fc"
+  size: 200
+  active_type: "tanh"
+  inputs {
+    input_layer_name: "feature_b"
+    input_parameter_name: "fc_param"
+  }
+  bias_parameter_name: "bias_param"
+}
+layers {
+  name: "__fc_layer_2__"
+  type: "fc"
+  size: 10
+  active_type: "softmax"
+  inputs {
+    input_layer_name: "__fc_layer_0__"
+    input_parameter_name: "softmax_param"
+  }
+  inputs {
+    input_layer_name: "__fc_layer_1__"
+    input_parameter_name: "softmax_param"
+  }
+}
+layers {
+  name: "label"
+  type: "data"
+  size: 10
+  active_type: ""
+}
+layers {
+  name: "__cost_0__"
+  type: "multi-class-cross-entropy"
+  size: 1
+  active_type: ""
+  inputs {
+    input_layer_name: "__fc_layer_2__"
+  }
+  inputs {
+    input_layer_name: "label"
+  }
+  coeff: 1.0
+}
+parameters {
+  name: "fc_param"
+  size: 40000
+  initial_mean: 0.0
+  initial_std: 1.0
+  dims: 200
+  dims: 200
+  initial_strategy: 1
+  initial_smart: false
+}
+parameters {
+  name: "bias_param"
+  size: 200
+  initial_mean: 0.0
+  initial_std: 0.0
+  dims: 1
+  dims: 200
+  initial_strategy: 0
+  initial_smart: false
+}
+parameters {
+  name: "softmax_param"
+  size: 2000
+  initial_mean: 0.0
+  initial_std: 1.0
+  dims: 200
+  dims: 10
+  initial_strategy: 1
+  initial_smart: false
+}
+input_layer_names: "feature_a"
+input_layer_names: "feature_b"
+input_layer_names: "label"
+output_layer_names: "__cost_0__"
+evaluators {
+  name: "classification_error_evaluator"
+  type: "classification_error"
+  input_layers: "__fc_layer_2__"
+  input_layers: "label"
+}
+sub_models {
+  name: "root"
+  layer_names: "feature_a"
+  layer_names: "feature_b"
+  layer_names: "__fc_layer_0__"
+  layer_names: "__fc_layer_1__"
+  layer_names: "__fc_layer_2__"
+  layer_names: "label"
+  layer_names: "__cost_0__"
+  input_layer_names: "feature_a"
+  input_layer_names: "feature_b"
+  input_layer_names: "label"
+  output_layer_names: "__cost_0__"
+  evaluator_names: "classification_error_evaluator"
+  is_recurrent_layer_group: false
+}
+
