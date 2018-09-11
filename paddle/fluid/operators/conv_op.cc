@@ -109,6 +109,7 @@ framework::OpKernelType ConvOp::GetExpectedKernelType(
 }
 
 void Conv2DOpMaker::Make() {
+  AddAttr<bool>("is_test", "").SetDefault(false);
   AddInput(
       "Input",
       "(Tensor) The input tensor of convolution operator. "
