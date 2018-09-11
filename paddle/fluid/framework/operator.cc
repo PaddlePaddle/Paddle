@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/shape_runtime_infer.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -458,187 +459,147 @@ bool OpSupportGPU(const std::string& op_type) {
   return false;
 }
 
-class RuntimeInferShapeContext : public InferShapeContext {
- public:
-  RuntimeInferShapeContext(const OperatorBase& op, const Scope& scope)
-      : op_(op), scope_(scope) {}
-
-  bool HasInput(const std::string& name) const override {
-    if (!op_.HasInputs(name)) {
-      return false;
-    }
-    auto& ins = Inputs(name);
-    size_t length = ins.size();
-    if (length == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Input %s should not have more than one inputs", name);
-    auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+bool RuntimeInferShapeContext::HasInput(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
   }
-
-  bool HasOutput(const std::string& name) const override {
-    if (!op_.HasOutputs(name)) {
-      return false;
-    }
-    auto& outs = Outputs(name);
-    size_t length = outs.size();
-    if (length == 0) {
-      return false;
-    }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output %s should not have more than one inputs", name);
-    auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+  auto& ins = Inputs(name);
+  size_t length = ins.size();
+  if (length == 0) {
+    return false;
   }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Input %s should not have more than one inputs", name);
+  auto ipt = ins[0];
+  auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+  return var != nullptr;
+}
 
-  bool HasInputs(const std::string& name) const override {
-    if (!op_.HasInputs(name)) {
+bool RuntimeInferShapeContext::HasOutput(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto& outs = Outputs(name);
+  size_t length = outs.size();
+  if (length == 0) {
+    return false;
+  }
+  PADDLE_ENFORCE_EQ(length, 1UL,
+                    "Output %s should not have more than one inputs", name);
+  auto ipt = outs[0];
+  auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
+  return var != nullptr;
+}
+
+bool RuntimeInferShapeContext::HasInputs(const std::string& name) const {
+  if (!op_.HasInputs(name)) {
+    return false;
+  }
+  auto inputs = op_.Inputs(name);
+  if (inputs.empty()) {
+    return false;
+  }
+  for (auto& input : inputs) {
+    if (scope_.FindVar(input) == nullptr) {
       return false;
     }
-    auto inputs = op_.Inputs(name);
-    if (inputs.empty()) {
+  }
+  return true;
+}
+
+bool RuntimeInferShapeContext::HasOutputs(const std::string& name) const {
+  if (!op_.HasOutputs(name)) {
+    return false;
+  }
+  auto outputs = op_.Outputs(name);
+  if (outputs.empty()) {
+    return false;
+  }
+  for (auto& output : outputs) {
+    if (scope_.FindVar(output) == nullptr) {
       return false;
     }
-    for (auto& input : inputs) {
-      if (scope_.FindVar(input) == nullptr) {
-        return false;
-      }
-    }
-    return true;
   }
+  return true;
+}
 
-  bool HasOutputs(const std::string& name) const override {
-    if (!op_.HasOutputs(name)) {
-      return false;
-    }
-    auto outputs = op_.Outputs(name);
-    if (outputs.empty()) {
-      return false;
-    }
-    for (auto& output : outputs) {
-      if (scope_.FindVar(output) == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  AttrReader Attrs() const override { return AttrReader(op_.Attrs()); }
-
-  const std::vector<std::string>& Inputs(
-      const std::string& name) const override {
-    return op_.Inputs(name);
-  }
-
-  const std::vector<std::string>& Outputs(
-      const std::string& name) const override {
-    return op_.Outputs(name);
-  }
-
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const override {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
-    if (!in_var->IsType<LoDTensor>()) return;
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_lod(in_tensor.lod());
+void RuntimeInferShapeContext::ShareLoD(const std::string& in,
+                                        const std::string& out, size_t i,
+                                        size_t j) const {
+  PADDLE_ENFORCE_LT(i, Inputs(in).size());
+  PADDLE_ENFORCE_LT(j, Outputs(out).size());
+  Variable* in_var = scope_.FindVar(Inputs(in)[i]);
+  Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+  if (!in_var->IsType<LoDTensor>()) return;
+  PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                 "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+  auto in_tensor = in_var->Get<LoDTensor>();
+  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+  out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
 // Shall we have a better method to shared info between in/out Tensor?
 #ifdef PADDLE_WITH_MKLDNN
-    // Fix me: ugly workaround below
-    // Correct solution:
-    //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
-    //    layout of output tensor should be set "manually" in Compute()
-    //    of each OPKernel. The reason layout should NOT be shared between
-    //    input and output "automatically" (now by InferShape()->ShareLoD())
-    //    is that layout transform may occur after InferShape().
-    // Workaround:
-    //    Skip set_layout() when input layout is kMKLDNN
-    //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
-    //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
-    //    in Compute()
-    if (in_tensor.layout() != DataLayout::kMKLDNN)
+  // Fix me: ugly workaround below
+  // Correct solution:
+  //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
+  //    layout of output tensor should be set "manually" in Compute()
+  //    of each OPKernel. The reason layout should NOT be shared between
+  //    input and output "automatically" (now by InferShape()->ShareLoD())
+  //    is that layout transform may occur after InferShape().
+  // Workaround:
+  //    Skip set_layout() when input layout is kMKLDNN
+  //    This is to avoid kMKLDNN is populated wrongly into a non-MKLDNN
+  //    OPKernel. In all MKLDNN OPkernel, set_layout(kMKLDNN) should be called
+  //    in Compute()
+  if (in_tensor.layout() != DataLayout::kMKLDNN)
 #endif
-      out_tensor->set_layout(in_tensor.layout());
-  }
-
-  void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
-                   size_t j = 0) const {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
-    if (!in_var->IsType<LoDTensor>()) return;
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
     out_tensor->set_layout(in_tensor.layout());
+}
+
+void RuntimeInferShapeContext::ShareLayout(const std::string& in,
+                                           const std::string& out, size_t i,
+                                           size_t j) const {
+  PADDLE_ENFORCE_LT(i, Inputs(in).size());
+  PADDLE_ENFORCE_LT(j, Outputs(out).size());
+  Variable* in_var = scope_.FindVar(Inputs(in)[i]);
+  Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+  if (!in_var->IsType<LoDTensor>()) return;
+  PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
+                 "The %d-th output of Output(%s) must be LoDTensor.", j, out);
+  auto in_tensor = in_var->Get<LoDTensor>();
+  auto* out_tensor = out_var->GetMutable<LoDTensor>();
+  out_tensor->set_layout(in_tensor.layout());
+}
+
+DDim RuntimeInferShapeContext::GetDim(const std::string& name) const {
+  Variable* var = scope_.FindVar(name);
+  PADDLE_ENFORCE_NOT_NULL(var);
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>().dims();
+  } else if (var->IsType<SelectedRows>()) {
+    return var->Get<SelectedRows>().GetCompleteDims();
+  } else {
+    PADDLE_THROW(
+        "Only LoDTensor/SelectedRows support 'GetDim', but Variable %s's "
+        "type_id is %s.",
+        name, var->Type().name());
   }
+}
 
-  bool IsRuntime() const override { return true; }
-
- protected:
-  DDim GetDim(const std::string& name) const override {
-    Variable* var = scope_.FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(var);
-    if (var->IsType<LoDTensor>()) {
-      return var->Get<LoDTensor>().dims();
-    } else if (var->IsType<SelectedRows>()) {
-      return var->Get<SelectedRows>().GetCompleteDims();
-    } else {
-      PADDLE_THROW(
-          "Only LoDTensor/SelectedRows support 'GetDim', but Variable %s's "
-          "type_id is %s.",
-          name, var->Type().name());
-    }
+void RuntimeInferShapeContext::SetDim(const std::string& name,
+                                      const DDim& dim) {
+  Variable* var = scope_.FindVar(name);
+  if (var->IsType<LoDTensor>()) {
+    var->GetMutable<LoDTensor>()->Resize(dim);
+  } else if (var->IsType<SelectedRows>()) {
+    var->GetMutable<SelectedRows>()->set_height(dim[0]);
+  } else {
+    PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.", name,
+                 var->Type().name());
   }
-
-  std::vector<DDim> GetRepeatedDims(const std::string& name) const override {
-    PADDLE_THROW("Only compile time support this method");
-  }
-
-  void SetDim(const std::string& name, const DDim& dim) override {
-    Variable* var = scope_.FindVar(name);
-    if (var->IsType<LoDTensor>()) {
-      var->GetMutable<LoDTensor>()->Resize(dim);
-    } else if (var->IsType<SelectedRows>()) {
-      var->GetMutable<SelectedRows>()->set_height(dim[0]);
-    } else {
-      PADDLE_THROW("Variable %s type_id %s, expect LoDTensor/SelectedRows.",
-                   name, var->Type().name());
-    }
-  }
-
-  void SetRepeatedDims(const std::string& name,
-                       const std::vector<DDim>& dims) override {
-    PADDLE_THROW("Only compile time support this method");
-  }
-
-  proto::VarType::Type GetVarType(const std::string& name) const override {
-    auto* var = scope_.FindVar(name);
-    return ToVarType(var->Type());
-  }
-
-  InferShapeVarPtr GetVarPtr(const std::string& name) override {
-    return scope_.FindVar(name);
-  }
-
- private:
-  const OperatorBase& op_;
-  const Scope& scope_;
-};
+}
 
 static void CheckTensorNANOrInf(const std::string& name,
                                 const framework::Tensor& tensor) {

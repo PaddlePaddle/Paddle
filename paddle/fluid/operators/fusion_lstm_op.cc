@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/fusion_lstm_op.h"
 #include <string>
+#include "paddle/fluid/framework/shape_runtime_infer.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
@@ -24,26 +25,54 @@ namespace paddle {
 namespace operators {
 
 void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("WeightX"),
-                 "Input(WeightX) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("WeightH"),
-                 "Input(WeightH) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                 "Input(Bias) of LSTM should not be null.");
+  auto* runtime_ctx = dynamic_cast<framework::RuntimeInferShapeContext*>(ctx);
+  if (runtime_ctx == nullptr) {
+    LOG(FATAL) << "Should have runtime infer context";
+  }
+  const auto& ins = runtime_ctx->OpBase().Inputs();
+  const auto& outs = runtime_ctx->OpBase().Outputs();
+  const auto& scope = runtime_ctx->InferScope();
+  const auto ins_end = ins.end();
+  const auto outs_end = outs.end();
+  auto fair_input = [&](const std::string& name) -> bool {
+    auto it = ins.find(name);
+    if (it == ins_end) {
+      return false;
+    }
+    const auto& in = it->second;
+    if (in.size() != 1 || in[0] == framework::kEmptyVarName) {
+      return false;
+    }
+    return scope.FindVar(in[0]) != nullptr;
+  };
+  auto fair_output = [&](const std::string& name) -> bool {
+    auto it = outs.find(name);
+    if (it == outs_end) {
+      return false;
+    }
+    const auto& out = it->second;
+    if (out.size() != 1 || out[0] == framework::kEmptyVarName) {
+      return false;
+    }
+    return scope.FindVar(out[0]) != nullptr;
+  };
 
-  PADDLE_ENFORCE(ctx->HasOutput("XX"),
-                 "Output(XX) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                 "Output(Hidden) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                 "Output(Cell) of LSTM should not be null.");
+  PADDLE_ENFORCE(fair_input("X"), "Assert only one Input(X) of LSTM.");
+  PADDLE_ENFORCE(fair_input("WeightX"),
+                 "Assert only one Input(WeightX) of LSTM.");
+  PADDLE_ENFORCE(fair_input("WeightH"),
+                 "Assert only one Input(WeightH) of LSTM.");
+  PADDLE_ENFORCE(fair_input("Bias"), "Assert only one Input(Bias) of LSTM.");
+  PADDLE_ENFORCE(fair_output("XX"), "Assert only one Output(XX) of LSTM.");
+  PADDLE_ENFORCE(fair_output("Hidden"),
+                 "Assert only one Output(Hidden) of LSTM.");
+  PADDLE_ENFORCE(fair_output("Cell"), "Assert only one Output(Cell) of LSTM.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
 
-  if (ctx->HasInput("H0")) {
-    PADDLE_ENFORCE(ctx->HasInput("C0"),
+  if (fair_input("H0")) {
+    PADDLE_ENFORCE(fair_input("C0"),
                    "Input(Cell) and Input(Hidden) of LSTM should not "
                    "be null at the same time.");
     auto h_dims = ctx->GetInputDim("H0");
@@ -95,16 +124,16 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
-    PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
-                   "Output(BatchedInput) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
-                   "Output(BatchedHidden) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("BatchedCell"),
-                   "Output(BatchedCell) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
-                   "Output(ReorderedH0) of LSTM should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("ReorderedC0"),
-                   "Output(ReorderedC0) of LSTM should not be null.");
+    PADDLE_ENFORCE(fair_output("BatchedInput"),
+                   "Assert only one Output(BatchedInput) of LSTM.");
+    PADDLE_ENFORCE(fair_output("BatchedHidden"),
+                   "Assert only one Output(BatchedHidden) of LSTM.");
+    PADDLE_ENFORCE(fair_output("BatchedCell"),
+                   "Assert only one Output(BatchedCell) of LSTM.");
+    PADDLE_ENFORCE(fair_output("ReorderedH0"),
+                   "Assert only one Output(ReorderedH0) of LSTM");
+    PADDLE_ENFORCE(fair_output("ReorderedC0"),
+                   "Assert only one Output(ReorderedC0) of LSTM.");
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedHidden", out_dims);
     ctx->SetOutputDim("BatchedCell", out_dims);
