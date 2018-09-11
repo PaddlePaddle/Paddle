@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import os
 import numpy as np
@@ -23,9 +25,6 @@ import paddle.fluid.core as core
 
 class TestProfiler(unittest.TestCase):
     def net_profiler(self, state, profile_path='/tmp/profile'):
-        enable_if_gpu = state == 'GPU' or state == "All"
-        if enable_if_gpu and not core.is_compiled_with_cuda():
-            return
         startup_program = fluid.Program()
         main_program = fluid.Program()
 
@@ -82,12 +81,16 @@ class TestProfiler(unittest.TestCase):
     def test_cpu_profiler(self):
         self.net_profiler('CPU')
 
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "profiler is enabled only with GPU")
     def test_cuda_profiler(self):
         self.net_profiler('GPU')
 
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "profiler is enabled only with GPU")
     def test_all_profiler(self):
         self.net_profiler('All', '/tmp/profile_out')
-        with open('/tmp/profile_out', 'r') as f:
+        with open('/tmp/profile_out', 'rb') as f:
             self.assertGreater(len(f.read()), 0)
 
 

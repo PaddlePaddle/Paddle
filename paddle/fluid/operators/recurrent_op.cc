@@ -429,7 +429,8 @@ class RecurrentGradOp : public RecurrentBase {
 
           auto sum_op = framework::OpRegistry::CreateOp(
               "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-              {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
+              {{"Out", {pg_names[param_id]}}},
+              framework::AttributeMap{{"use_mkldnn", {false}}});
           sum_op->Run(cur_scope, place);
 
           cur_scope.Rename(new_inside_name, inside_grad_name);

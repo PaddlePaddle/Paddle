@@ -14,34 +14,26 @@
 
 #ifdef PADDLE_WITH_CUDA
 
+#include <string>
+#include <vector>
+
 #include "paddle/fluid/operators/tensorrt_engine_op.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
-#include "paddle/fluid/inference/utils/singleton.h"
 
 namespace paddle {
-namespace operators {
 
-template <typename DeviceContext, typename T>
-void paddle::operators::TensorRTEngineKernel<DeviceContext, T>::Prepare(
-    const framework::ExecutionContext &context) const {
-  // Get the ProgramDesc and pass to convert.
-  const auto &block = context.Attr<framework::proto::BlockDesc>("subgraph");
-  max_batch_ = context.Attr<int>("max_batch");
-  auto max_workspace = context.Attr<int>("max_workspace");
-  engine_.reset(new inference::tensorrt::TensorRTEngine(
-      max_batch_, max_workspace, nullptr));
-  inference::Singleton<inference::tensorrt::OpConverter>::Global().ConvertBlock(
-      block, engine_.get());
-  engine_->FreezeNetwork();
-}
+DEFINE_int32(tensorrt_engine_batch_size, 1, "the batch_size of TensorRT");
+DEFINE_int32(tensorrt_max_batch_size, 1, "TensorRT maximum batch size");
+DEFINE_int32(tensorrt_workspace_size, 16 << 20, "TensorRT workspace size");
+
+namespace operators {
 
 class TensorRTEngineOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("Xs", "A list of inputs.").AsDuplicable();
     AddOutput("Ys", "A list of outputs").AsDuplicable();
-    AddAttr<std::string>("subgraph", "the subgraph");
+    AddAttr<std::string>("subgraph", "the subgraph.");
+    AddAttr<std::string>("engine_uniq_key", "unique key for the TRT engine.");
     AddComment("TensorRT engine operator.");
   }
 };
@@ -59,12 +51,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(tensorrt_engine, ops::TensorRTEngineOp,
                   ops::TensorRTEngineOpMaker, ops::TensorRTEngineOpMaker);
-
-REGISTER_OP_CPU_KERNEL(
-    tensorrt_engine,
-    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::TensorRTEngineKernel<paddle::platform::CPUDeviceContext, int64_t>);
 
 #endif  // PADDLE_WITH_CUDA

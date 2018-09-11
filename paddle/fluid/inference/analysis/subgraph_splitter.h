@@ -18,6 +18,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <vector>
+
 #include "paddle/fluid/inference/analysis/data_flow_graph.h"
 #include "paddle/fluid/inference/analysis/node.h"
 

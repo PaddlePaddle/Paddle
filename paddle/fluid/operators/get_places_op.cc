@@ -85,7 +85,7 @@ class GetPlacesOpProtoMaker : public framework::OpProtoAndCheckerMaker {
         .InEnum({"CUDA", "CPU", "AUTO"})
         .SetDefault("AUTO");
     AddComment(R"DOC(
-Returns a list of places based on flags. The list will be used for parallel
+Returns a list of places based on arguments. The list will be used for parallel
 execution.
 )DOC");
   }

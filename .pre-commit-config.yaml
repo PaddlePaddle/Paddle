@@ -23,7 +23,7 @@ repos:
     -   id: clang-format-with-version-check
         name: clang-format
         description: Format files with ClangFormat.
-        entry: bash ./.clang_format.hook -i
+        entry: bash ./tools/codestyle/clang_format.hook -i
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto)$
 -   repo: local
@@ -52,7 +52,7 @@ repos:
     hooks:
     -   id: copyright_checker
         name: copyright_checker
-        entry: python ./.copyright.hook
+        entry: python ./tools/codestyle/copyright.hook
         language: system
         files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx|proto|py)$
         exclude: (?!.*third_party)^.*$ | (?!.*book)^.*$

@@ -28,7 +28,7 @@ namespace details {
 
 struct FetchOpHandle : public OpHandleBase {
  public:
-  FetchOpHandle(FeedFetchList *data, size_t offset,
+  FetchOpHandle(ir::Node *node, FeedFetchList *data, size_t offset,
                 std::vector<Scope *> *local_scopes);
 
   ~FetchOpHandle();

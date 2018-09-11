@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -44,6 +46,18 @@ class TestMKLDNNBatchNormOpTraining(TestBatchNormOpTraining):
 class TestMKLDNNBatchNormOpInference(TestBatchNormOpInference):
     def init_kernel_type(self):
         self.use_mkldnn = True
+
+    def test_check_output(self):
+        place = core.CPUPlace()
+        data_format = "NCHW"
+
+        self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
+
+
+class TestMKLDNNBatchNormOpWithReluInference(TestBatchNormOpInference):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+        self.fuse_with_relu = True
 
     def test_check_output(self):
         place = core.CPUPlace()

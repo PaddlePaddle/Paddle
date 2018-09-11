@@ -13,13 +13,12 @@
    limitations under the License. */
 
 #include <algorithm>
-#include <ctime>
-
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/framework/var_type.h"
 
 namespace paddle {
 namespace operators {
+using framework::GradVarName;
 
 #define CLOG std::cout
 
@@ -34,7 +33,7 @@ struct Formater {
   std::type_index dtype{typeid(const char)};
   framework::LoD lod;
   int summarize;
-  void* data{nullptr};
+  void *data{nullptr};
 
   void operator()(size_t size) {
     PrintMessage();
@@ -62,7 +61,7 @@ struct Formater {
     }
   }
   void PrintDtype() {
-    if (dtype.hash_code() != typeid(const char).hash_code()) {
+    if (!framework::IsType<const char>(dtype)) {
       CLOG << "\tdtype: " << dtype.name() << std::endl;
     }
   }
@@ -83,15 +82,15 @@ struct Formater {
   void PrintData(size_t size) {
     PADDLE_ENFORCE_NOT_NULL(data);
     // print float
-    if (dtype.hash_code() == typeid(const float).hash_code()) {
+    if (framework::IsType<const float>(dtype)) {
       Display<float>(size);
-    } else if (dtype.hash_code() == typeid(const double).hash_code()) {
+    } else if (framework::IsType<const double>(dtype)) {
       Display<double>(size);
-    } else if (dtype.hash_code() == typeid(const int).hash_code()) {
+    } else if (framework::IsType<const int>(dtype)) {
       Display<int>(size);
-    } else if (dtype.hash_code() == typeid(const int64_t).hash_code()) {
+    } else if (framework::IsType<const int64_t>(dtype)) {
       Display<int64_t>(size);
-    } else if (dtype.hash_code() == typeid(const bool).hash_code()) {
+    } else if (framework::IsType<const bool>(dtype)) {
       Display<bool>(size);
     } else {
       CLOG << "\tdata: unprintable type: " << dtype.name() << std::endl;
@@ -100,7 +99,7 @@ struct Formater {
 
   template <typename T>
   void Display(size_t size) {
-    auto* d = reinterpret_cast<T*>(data);
+    auto *d = reinterpret_cast<T *>(data);
     CLOG << "\tdata: ";
     if (summarize != -1) {
       summarize = std::min(size, (size_t)summarize);
@@ -119,51 +118,36 @@ struct Formater {
 // TODO(ChunweiYan) there should be some other printers for TensorArray
 class TensorPrintOp : public framework::OperatorBase {
  public:
-  TensorPrintOp(const std::string& type,
-                const framework::VariableNameMap& inputs,
-                const framework::VariableNameMap& outputs,
-                const framework::AttributeMap& attrs)
+  TensorPrintOp(const std::string &type,
+                const framework::VariableNameMap &inputs,
+                const framework::VariableNameMap &outputs,
+                const framework::AttributeMap &attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  TensorPrintOp(const TensorPrintOp& o)
+  TensorPrintOp(const TensorPrintOp &o)
       : framework::OperatorBase(
-            static_cast<const framework::OperatorBase&>(o)) {
+            static_cast<const framework::OperatorBase &>(o)) {
     PADDLE_THROW("Not implemented.");
   }
 
  private:
-  void RunImpl(const framework::Scope& scope,
-               const platform::Place& place) const override {
-    const framework::Variable* in_var_ptr = nullptr;
-    std::string phase(kForward);
+  void RunImpl(const framework::Scope &scope,
+               const platform::Place &place) const override {
+    const framework::Variable *in_var_ptr = nullptr;
     std::string printed_var_name = "";
 
-    auto& inputs = Inputs();
-    if (inputs.find("In") != inputs.end() && !Inputs("In").empty()) {
-      in_var_ptr = scope.FindVar(Input("In"));
-      printed_var_name = Inputs("In").front();
-    } else if (inputs.find("In@GRAD") != inputs.end() &&
-               !Inputs("In@GRAD").empty()) {
-      in_var_ptr = scope.FindVar(Input("In@GRAD"));
-      printed_var_name = Inputs("In@GRAD").front();
-      phase = std::string(kBackward);
-    } else {
-      PADDLE_THROW("Unknown phase, should be forward or backward.");
-    }
+    in_var_ptr = scope.FindVar(Input("In"));
+    printed_var_name = Inputs("In").front();
 
     PADDLE_ENFORCE_NOT_NULL(in_var_ptr);
 
-    auto& in_tensor = in_var_ptr->Get<framework::LoDTensor>();
-    auto* out_var_ptr = scope.FindVar(Output("Out"));
-    auto& out_tensor = *out_var_ptr->GetMutable<framework::LoDTensor>();
-
-    // Just copy data from input tensor to output tensor
-    // output tensor share same memory with input tensor
-    out_tensor.ShareDataWith(in_tensor);
-    out_tensor.set_lod(in_tensor.lod());
+    auto &in_tensor = in_var_ptr->Get<framework::LoDTensor>();
 
     std::string print_phase = Attr<std::string>("print_phase");
-    if (print_phase != phase && print_phase != std::string(kBoth)) {
+    bool is_forward = Attr<bool>("is_forward");
+
+    if ((is_forward && print_phase == kBackward) ||
+        (!is_forward && print_phase == kForward)) {
       return;
     }
 
@@ -191,7 +175,7 @@ class TensorPrintOp : public framework::OperatorBase {
       formater.dtype = printed_tensor.type();
     }
     if (Attr<bool>("print_tensor_shape")) {
-      auto& dims = printed_tensor.dims();
+      auto &dims = printed_tensor.dims();
       formater.dims.resize(dims.size());
       for (int i = 0; i < dims.size(); ++i) formater.dims[i] = dims[i];
     }
@@ -199,7 +183,7 @@ class TensorPrintOp : public framework::OperatorBase {
       formater.lod = printed_tensor.lod();
     }
     formater.summarize = Attr<int>("summarize");
-    formater.data = reinterpret_cast<void*>(printed_tensor.data<void>());
+    formater.data = reinterpret_cast<void *>(printed_tensor.data<void>());
     formater(printed_tensor.numel());
   }
 
@@ -218,14 +202,14 @@ class PrintOpProtoAndCheckMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("print_tensor_type", "Whether to print the tensor's dtype.");
     AddAttr<bool>("print_tensor_shape", "Whether to print the tensor's shape.");
     AddAttr<bool>("print_tensor_lod", "Whether to print the tensor's lod.");
-    AddAttr<std::string>(
-        "print_phase",
-        "(string, default 'BOTH') Which phase to display including 'FORWARD' "
-        "'BACKWARD' and 'BOTH'.")
+    AddAttr<std::string>("print_phase",
+                         "(string, default 'FORWARD') Which phase to display "
+                         "including 'FORWARD' "
+                         "'BACKWARD' and 'BOTH'.")
         .SetDefault(std::string(kBoth))
         .InEnum({std::string(kForward), std::string(kBackward),
                  std::string(kBoth)});
-    AddOutput("Out", "Output tensor with same data as input tensor.");
+    AddAttr<bool>("is_forward", "Whether is forward or not").SetDefault(true);
     AddComment(R"DOC(
 Creates a print op that will print when a tensor is accessed.
 
@@ -237,40 +221,21 @@ tensor `t`.)DOC");
 
 class InferShapeForward : public framework::InferShapeBase {
  public:
-  void operator()(framework::InferShapeContext* context) const override {
+  void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("In"), "Input(In) should not be null.");
-    context->ShareLoD("In", /*->*/ "Out");
-    context->SetOutputDim("Out", context->GetInputDim("In"));
   }
 };
 
-class InferShapeBackward : public framework::InferShapeBase {
- public:
-  void operator()(framework::InferShapeContext* context) const override {
-    PADDLE_ENFORCE(context->HasInput("In@GRAD"),
-                   "Input(In@GRAD) should not be null.");
-    context->ShareLoD("In@GRAD", /*->*/ "Out");
-    context->SetOutputDim("Out", context->GetInputDim("In@GRAD"));
-  }
-};
-
-class InferVarType : public framework::VarTypeInference {
- public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {}
-};
-
-class PrintOpProtoAndCheckGradOpMaker
-    : public framework::SingleGradOpDescMaker {
+class PrintOpGradientMaker : public framework::SingleGradOpDescMaker {
  public:
   using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
 
   std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto* op_desc_ptr = new framework::OpDesc();
-    op_desc_ptr->SetType("print_grad");
-    op_desc_ptr->SetInput("In@GRAD", OutputGrad("Out"));
-    op_desc_ptr->SetOutput("Out", InputGrad("In"));
+    auto *op_desc_ptr = new framework::OpDesc();
+    op_desc_ptr->SetType("print");
+    op_desc_ptr->SetInput("In", InputGrad("In"));
     op_desc_ptr->SetAttrMap(Attrs());
+    op_desc_ptr->SetAttr("is_forward", false);
     return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
   }
 };
@@ -281,6 +246,4 @@ class PrintOpProtoAndCheckGradOpMaker
 namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(print, ops::TensorPrintOp, ops::PrintOpProtoAndCheckMaker,
-                  ops::PrintOpProtoAndCheckGradOpMaker, ops::InferShapeForward,
-                  ops::InferVarType);
-REGISTER_OPERATOR(print_grad, ops::TensorPrintOp, ops::InferShapeBackward);
+                  ops::PrintOpGradientMaker, ops::InferShapeForward);

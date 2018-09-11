@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <vector>
+
 #include "paddle/fluid/memory/malloc.h"
 
 #include "glog/logging.h"
@@ -20,6 +22,12 @@ limitations under the License. */
 #include "paddle/fluid/memory/detail/system_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
+DEFINE_bool(init_allocated_mem, false,
+            "It is a mistake that the values of the memory allocated by "
+            "BuddyAllocator are always zeroed in some op's implementation. "
+            "To find this error in time, we use init_allocated_mem to indicate "
+            "that initializing the allocated memory with a small value "
+            "during unit testing.");
 DECLARE_double(fraction_of_gpu_memory_to_use);
 
 namespace paddle {
@@ -28,12 +36,15 @@ namespace memory {
 using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
+  static std::once_flag init_flag;
   static detail::BuddyAllocator* a = nullptr;
-  if (a == nullptr) {
-    a = new detail::BuddyAllocator(new detail::CPUAllocator,
-                                   platform::CpuMinChunkSize(),
-                                   platform::CpuMaxChunkSize());
-  }
+
+  std::call_once(init_flag, []() {
+    a = new detail::BuddyAllocator(
+        std::unique_ptr<detail::SystemAllocator>(new detail::CPUAllocator),
+        platform::CpuMinChunkSize(), platform::CpuMaxChunkSize());
+  });
+
   return a;
 }
 
@@ -41,6 +52,9 @@ template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
+  if (FLAGS_init_allocated_mem) {
+    memset(p, 0xEF, size);
+  }
   VLOG(10) << "  pointer=" << p;
   return p;
 }
@@ -59,27 +73,33 @@ size_t Used<platform::CPUPlace>(platform::CPUPlace place) {
 #ifdef PADDLE_WITH_CUDA
 
 BuddyAllocator* GetGPUBuddyAllocator(int gpu_id) {
-  static BuddyAllocator** as = NULL;
-  if (as == NULL) {
+  static std::once_flag init_flag;
+  static detail::BuddyAllocator** a_arr = nullptr;
+
+  std::call_once(init_flag, [gpu_id]() {
     int gpu_num = platform::GetCUDADeviceCount();
-    as = new BuddyAllocator*[gpu_num];
-    for (int gpu = 0; gpu < gpu_num; gpu++) {
-      as[gpu] = nullptr;
+    PADDLE_ENFORCE(gpu_id < gpu_num, "gpu_id:%d should < gpu_num:%d", gpu_id,
+                   gpu_num);
+
+    a_arr = new BuddyAllocator*[gpu_num];
+    for (int i = 0; i < gpu_num; i++) {
+      a_arr[i] = nullptr;
+      platform::SetDeviceId(i);
+      a_arr[i] = new BuddyAllocator(
+          std::unique_ptr<detail::SystemAllocator>(new detail::GPUAllocator(i)),
+          platform::GpuMinChunkSize(), platform::GpuMaxChunkSize());
+
+      VLOG(10) << "\n\nNOTE: each GPU device use "
+               << FLAGS_fraction_of_gpu_memory_to_use * 100
+               << "% of GPU memory.\n"
+               << "You can set GFlags environment variable '"
+               << "FLAGS_fraction_of_gpu_memory_to_use"
+               << "' to change the fraction of GPU usage.\n\n";
     }
-  }
+  });
+
   platform::SetDeviceId(gpu_id);
-  if (!as[gpu_id]) {
-    as[gpu_id] = new BuddyAllocator(new detail::GPUAllocator(gpu_id),
-                                    platform::GpuMinChunkSize(),
-                                    platform::GpuMaxChunkSize());
-    VLOG(10) << "\n\nNOTE: each GPU device use "
-             << FLAGS_fraction_of_gpu_memory_to_use * 100
-             << "% of GPU memory.\n"
-             << "You can set GFlags environment variable '"
-             << "FLAGS_fraction_of_gpu_memory_to_use"
-             << "' to change the fraction of GPU usage.\n\n";
-  }
-  return as[gpu_id];
+  return a_arr[gpu_id];
 }
 
 template <>
@@ -104,6 +124,9 @@ void* Alloc<platform::CUDAPlace>(platform::CUDAPlace place, size_t size) {
     LOG(WARNING) << "GPU memory used: " << Used<platform::CUDAPlace>(place);
     platform::SetDeviceId(cur_dev);
   }
+  if (FLAGS_init_allocated_mem) {
+    cudaMemset(ptr, 0xEF, size);
+  }
   return ptr;
 }
 
@@ -113,12 +136,16 @@ void Free<platform::CUDAPlace>(platform::CUDAPlace place, void* p) {
 }
 
 BuddyAllocator* GetCUDAPinnedBuddyAllocator() {
-  static BuddyAllocator* ba = NULL;
-  if (ba == NULL) {
-    ba = new BuddyAllocator(new detail::CUDAPinnedAllocator,
+  static std::once_flag init_flag;
+  static BuddyAllocator* ba = nullptr;
+
+  std::call_once(init_flag, []() {
+    ba = new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                new detail::CUDAPinnedAllocator),
                             platform::CUDAPinnedMinChunkSize(),
                             platform::CUDAPinnedMaxChunkSize());
-  }
+  });
+
   return ba;
 }
 
@@ -136,6 +163,9 @@ void* Alloc<platform::CUDAPinnedPlace>(platform::CUDAPinnedPlace place,
   if (ptr == nullptr) {
     LOG(WARNING) << "cudaMallocHost Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
+  }
+  if (FLAGS_init_allocated_mem) {
+    memset(ptr, 0xEF, size);
   }
   return ptr;
 }

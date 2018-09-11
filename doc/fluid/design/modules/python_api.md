@@ -98,13 +98,13 @@ class Block(objects):
     def append_operator(self, ...):
         self.ops.append(Operator(self, ...))
 
-    def prepend_operator(self, ...): # Parameter's ctor prepands initialize operators.
+    def _prepend_operator(self, ...): # Parameter's ctor prepands initialize operators.
        self.ops.prepend(Operator(self, ...))
 ```
 
 `create_parameter` is necessary because parameters are global variables, defined in the global block, but can be created in some sub-blocks. For example, an FC layer in the step block of an RNN operator.
 
-`prepend_operator` is necessary because the constructor of `Parameter` needs to create the initialize (or load) operator of the parameter, and would like to put it in the *preamble* of the global block.
+`_prepend_operator` is necessary because the constructor of `Parameter` needs to create the initialize (or load) operator of the parameter, and would like to put it in the *preamble* of the global block.
 
 ### Operator
 

@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 
-#include <dlfcn.h>
 #include <mutex>  // NOLINT
-
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
+#include "paddle/fluid/platform/port.h"
 #include "warpctc/include/ctc.h"
 
 namespace paddle {
@@ -40,7 +39,7 @@ extern void* warpctc_dso_handle;
       std::call_once(warpctc_dso_flag, []() {                                  \
         warpctc_dso_handle = paddle::platform::dynload::GetWarpCTCDsoHandle(); \
       });                                                                      \
-      void* p_##_name = dlsym(warpctc_dso_handle, #__name);                    \
+      static void* p_##_name = dlsym(warpctc_dso_handle, #__name);             \
       return reinterpret_cast<warpctcFunc>(p_##_name)(args...);                \
     }                                                                          \
   };                                                                           \

@@ -16,7 +16,10 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import numpy
+import six
+import os
 import cifar10_small_test_set
 
 
@@ -57,7 +60,7 @@ def resnet_cifar10(input, depth=32):
         return tmp
 
     assert (depth - 2) % 6 == 0
-    n = (depth - 2) / 6
+    n = (depth - 2) // 6
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1)
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
@@ -85,17 +88,22 @@ def train_network():
     return [avg_cost, accuracy]
 
 
-def train(use_cuda, train_program, params_dirname):
+def optimizer_func():
+    return fluid.optimizer.Adam(learning_rate=0.001)
+
+
+def train(use_cuda, train_program, parallel, params_dirname):
     BATCH_SIZE = 128
     EPOCH_NUM = 1
 
     train_reader = paddle.batch(
         paddle.reader.shuffle(
             cifar10_small_test_set.train10(batch_size=10), buf_size=128 * 10),
-        batch_size=BATCH_SIZE)
+        batch_size=BATCH_SIZE,
+        drop_last=False)
 
     test_reader = paddle.batch(
-        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE)
+        paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE, drop_last=False)
 
     def event_handler(event):
         if isinstance(event, fluid.EndStepEvent):
@@ -112,8 +120,9 @@ def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     trainer = fluid.Trainer(
         train_func=train_program,
-        optimizer=fluid.optimizer.Adam(learning_rate=0.001),
-        place=place)
+        optimizer_func=optimizer_func,
+        place=place,
+        parallel=parallel)
 
     trainer.train(
         reader=train_reader,
@@ -122,10 +131,13 @@ def train(use_cuda, train_program, params_dirname):
         feed_order=['pixel', 'label'])
 
 
-def infer(use_cuda, inference_program, params_dirname=None):
+def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     inferencer = fluid.Inferencer(
-        infer_func=inference_program, param_path=params_dirname, place=place)
+        infer_func=inference_program,
+        param_path=params_dirname,
+        place=place,
+        parallel=parallel)
 
     # The input's dimension of conv should be 4-D or 5-D.
     # Use normilized image pixels as input data, which should be in the range
@@ -136,22 +148,37 @@ def infer(use_cuda, inference_program, params_dirname=None):
     print("infer results: ", results)
 
 
-def main(use_cuda):
+def main(use_cuda, parallel):
     if use_cuda and not fluid.core.is_compiled_with_cuda():
         return
     save_path = "image_classification_resnet.inference.model"
 
+    os.environ['CPU_NUM'] = str(4)
     train(
         use_cuda=use_cuda,
         train_program=train_network,
-        params_dirname=save_path)
+        params_dirname=save_path,
+        parallel=parallel)
 
+    # FIXME(zcd): in the inference stage, the number of
+    # input data is one, it is not appropriate to use parallel.
+    if parallel and use_cuda:
+        return
+
+    os.environ['CPU_NUM'] = str(1)
     infer(
         use_cuda=use_cuda,
         inference_program=inference_network,
-        params_dirname=save_path)
+        params_dirname=save_path,
+        parallel=parallel)
 
 
 if __name__ == '__main__':
     for use_cuda in (False, True):
-        main(use_cuda=use_cuda)
+        for parallel in (False, True):
+            if use_cuda and not core.is_compiled_with_cuda():
+                continue
+            # TODO(minqiyang): remove this line after fixing the deletion
+            # order problem of Scope in ParallelExecutor in manylinux
+            if six.PY2:
+                main(use_cuda=use_cuda, parallel=parallel)

@@ -76,9 +76,9 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
 
     AddComment(R"DOC(
-Cosine Similarity Operator.
+**Cosine Similarity Operator**
 
-$Out = X^T * Y / (\sqrt{X^T * X} * \sqrt{Y^T * Y})$
+$Out = \frac{X^T * Y}{(\sqrt{X^T * X} * \sqrt{Y^T * Y})}$
 
 The input X and Y must have the same shape, except that the 1st dimension
 of input Y could be just 1 (different from input X), which will be

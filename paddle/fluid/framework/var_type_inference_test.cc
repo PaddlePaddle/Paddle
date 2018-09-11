@@ -22,6 +22,17 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+class NOP : public OperatorBase {
+ public:
+  NOP(const std::string &type, const VariableNameMap &inputs,
+      const VariableNameMap &outputs, const AttributeMap &attrs)
+      : OperatorBase(type, inputs, outputs, attrs) {}
+
+ private:
+  void RunImpl(const Scope &scope,
+               const platform::Place &place) const override {}
+};
+
 class SumOpMaker : public OpProtoAndCheckerMaker {
  public:
   void Make() {

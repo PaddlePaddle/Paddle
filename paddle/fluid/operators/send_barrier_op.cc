@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/detail/macros.h"
 
-#include "paddle/fluid/operators/detail/grpc_client.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
@@ -37,30 +37,29 @@ class SendBarrierOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
     std::vector<std::string> eps = Attr<std::vector<std::string>>("endpoints");
-    bool sync_mode = Attr<bool>("sync_mode");
 
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto& ctx = *pool.Get(place);
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
+    distributed::RPCClient* rpc_client =
+        distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
-    auto rpc_client = detail::RPCClient::GetInstance();
+    VLOG(3) << "SendBarrierOp sync";
 
     // need to wait before sending send_barrier message
-    PADDLE_ENFORCE(rpc_client->Wait());
-    if (sync_mode) {
-      for (auto& ep : eps) {
-        VLOG(3) << "send barrier, ep: " << ep;
-        rpc_client->AsyncSendBatchBarrier(ep);
-      }
-      PADDLE_ENFORCE(rpc_client->Wait());
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+    for (auto& ep : eps) {
+      VLOG(3) << "send barrier, ep: " << ep;
+      rpc_client->AsyncSendBatchBarrier(ep);
     }
+    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
   }
 };
 
 class SendBarrierOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
+        .AsDuplicable();
     AddComment(R"DOC(
 SendBarrier operator
 
@@ -72,7 +71,6 @@ the Parameter Server would knew all variables have been sent.
                                       "(string vector, default 127.0.0.1:6164)"
                                       "Server endpoints to send variables to.")
         .SetDefault({"127.0.0.1:6164"});
-    AddAttr<bool>("sync_mode", "work in sync_mode or not").SetDefault(true);
   }
 };
 

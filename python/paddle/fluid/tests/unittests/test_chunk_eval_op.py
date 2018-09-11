@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -63,7 +65,7 @@ class TestChunkEvalOp(OpTest):
         # generate chunk beginnings
         chunk_begins = sorted(
             np.random.choice(
-                range(starts[-1]), num_chunks, replace=False))
+                list(range(starts[-1])), num_chunks, replace=False))
         seq_chunk_begins = []
         begin_idx = 0
         # divide chunks into sequences
@@ -93,7 +95,7 @@ class TestChunkEvalOp(OpTest):
                                   self.num_infer_chunks + self.num_label_chunks
                                   - self.num_correct_chunks)
         correct_chunks = np.random.choice(
-            range(len(chunks)), self.num_correct_chunks, replace=False)
+            list(range(len(chunks))), self.num_correct_chunks, replace=False)
         infer_chunks = np.random.choice(
             [x for x in range(len(chunks)) if x not in correct_chunks],
             self.num_infer_chunks - self.num_correct_chunks,
@@ -138,16 +140,17 @@ class TestChunkEvalOp(OpTest):
         infer.fill(self.num_chunk_types * self.num_tag_types)
         label = np.copy(infer)
         starts = np.random.choice(
-            range(1, self.batch_size), self.num_sequences - 1,
+            list(range(1, self.batch_size)),
+            self.num_sequences - 1,
             replace=False).tolist()
         starts.extend([0, self.batch_size])
         starts = sorted(starts)
         self.num_correct_chunks, self.num_infer_chunks, self.num_label_chunks = self.gen_chunks(
             infer, label, starts)
-        self.inputs = {
-            'Inference': (infer, [starts]),
-            'Label': (label, [starts])
-        }
+        lod = []
+        for i in range(len(starts) - 1):
+            lod.append(starts[i + 1] - starts[i])
+        self.inputs = {'Inference': (infer, [lod]), 'Label': (label, [lod])}
         precision = float(
             self.num_correct_chunks
         ) / self.num_infer_chunks if self.num_infer_chunks else 0

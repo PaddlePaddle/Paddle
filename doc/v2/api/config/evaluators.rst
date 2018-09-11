@@ -101,7 +101,7 @@ value_printer
     :noindex:
 
 Detection
-=====
+==========
 
 detection_map
 -------------

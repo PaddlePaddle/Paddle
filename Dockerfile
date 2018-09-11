@@ -23,8 +23,8 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
-    apt-get install -y --allow-downgrades \
-    git python-pip python-dev openssh-server bison \
+    apt-get install -y --allow-downgrades patchelf \
+    git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
@@ -53,7 +53,7 @@ RUN curl -s -q https://glide.sh/get | sh
 #    and its size is only one-third of the official one.
 # 2. Manually add ~IPluginFactory() in IPluginFactory class of NvInfer.h, otherwise, it couldn't work in paddle.
 #    See https://github.com/PaddlePaddle/Paddle/issues/10129 for details.
-RUN wget -qO- http://paddlepaddledeps.bj.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
+RUN wget -qO- http://paddlepaddledeps.cdn.bcebos.com/TensorRT-4.0.0.3.Ubuntu-16.04.4.x86_64-gnu.cuda-8.0.cudnn7.0.tar.gz | \
     tar -xz -C /usr/local && \
     cp -rf /usr/local/TensorRT/include /usr && \
     cp -rf /usr/local/TensorRT/lib /usr
@@ -80,7 +80,7 @@ RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install opencv-python
 
 #For docstring checker
-RUN pip install pylint pytest astroid isort
+RUN pip install pylint pytest astroid isort LinkChecker
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt

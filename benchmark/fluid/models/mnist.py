@@ -20,6 +20,7 @@ import numpy as np
 import argparse
 import time
 import cProfile
+import os
 
 import paddle
 import paddle.fluid as fluid
@@ -64,31 +65,50 @@ def cnn_model(data):
     return predict
 
 
-def get_model(args):
-    # Input data
-    images = fluid.layers.data(name='pixel', shape=[1, 28, 28], dtype=DTYPE)
-    label = fluid.layers.data(name='label', shape=[1], dtype='int64')
+def get_model(args, is_train, main_prog, startup_prog):
+    # NOTE: mnist is small, we don't implement data sharding yet.
+    filelist = [
+        os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
+    ]
+    with fluid.program_guard(main_prog, startup_prog):
+        if args.use_reader_op:
+            data_file_handle = fluid.layers.open_files(
+                filenames=filelist,
+                shapes=[[-1, 1, 28, 28], (-1, 1)],
+                lod_levels=[0, 0],
+                dtypes=["float32", "int64"],
+                thread_num=1,
+                pass_num=1)
+            data_file = fluid.layers.double_buffer(
+                fluid.layers.batch(
+                    data_file_handle, batch_size=args.batch_size))
+        with fluid.unique_name.guard():
+            if args.use_reader_op:
+                input, label = fluid.layers.read_file(data_file)
+            else:
+                images = fluid.layers.data(
+                    name='pixel', shape=[1, 28, 28], dtype='float32')
+                label = fluid.layers.data(
+                    name='label', shape=[1], dtype='int64')
 
-    # Train program
-    predict = cnn_model(images)
-    cost = fluid.layers.cross_entropy(input=predict, label=label)
-    avg_cost = fluid.layers.mean(x=cost)
-
-    # Evaluator
-    batch_size_tensor = fluid.layers.create_tensor(dtype='int64')
-    batch_acc = fluid.layers.accuracy(
-        input=predict, label=label, total=batch_size_tensor)
-
-    # inference program
-    inference_program = fluid.default_main_program().clone()
-
-    # Optimization
-    opt = fluid.optimizer.AdamOptimizer(
-        learning_rate=0.001, beta1=0.9, beta2=0.999)
+            predict = cnn_model(images)
+            cost = fluid.layers.cross_entropy(input=predict, label=label)
+            avg_cost = fluid.layers.mean(x=cost)
+            # Evaluator
+            batch_acc = fluid.layers.accuracy(input=predict, label=label)
+            # Optimization
+            if is_train:
+                opt = fluid.optimizer.AdamOptimizer(
+                    learning_rate=0.001, beta1=0.9, beta2=0.999)
+                opt.minimize()
+                if args.memory_optimize:
+                    fluid.memory_optimize(main_prog)
 
     # Reader
-    train_reader = paddle.batch(
-        paddle.dataset.mnist.train(), batch_size=args.batch_size)
-    test_reader = paddle.batch(
-        paddle.dataset.mnist.test(), batch_size=args.batch_size)
-    return avg_cost, inference_program, opt, train_reader, test_reader, batch_acc
+    if is_train:
+        reader = paddle.dataset.mnist.train()
+    else:
+        reader = paddle.dataset.mnist.test()
+    batched_reader = paddle.batch(
+        reader, batch_size=args.batch_size * args.gpus)
+    return avg_cost, opt, [batch_acc], batched_reader, data_file_handle

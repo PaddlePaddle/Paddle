@@ -20,7 +20,6 @@ class RandomCropOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
- protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
@@ -36,11 +35,16 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Seed", "The random seed.");
     AddOutput("Out", "The cropped instance batch.");
     AddOutput("SeedOut", "The random seed after random cropping.")
-        .AsDispensable();
+        .AsIntermediate();
     AddAttr<std::vector<int>>("shape", "The shape of a cropped instance.");
+    AddAttr<int>("startup_seed",
+                 "If the input 'Seed' is not initialized, the 'startup_seed' "
+                 "will be used to replace it. Even so, the seed after random "
+                 "crop will also be outputed to the 'SeedOut'.")
+        .SetDefault(0);
     AddComment(R"DOC(
-      This operator takes a batch of instance, and do random cropping on each instance. 
-      It means that cropping positions differs on each instance, which is determined 
+      This operator takes a batch of instance, and do random cropping on each instance.
+      It means that cropping positions differs on each instance, which is determined
       by an uniform random generator. All cropped instances have the same shape, which 
       is determined by the operator's attribute 'shape'.
     )DOC");
@@ -50,8 +54,6 @@ class RandomCropOpMaker : public framework::OpProtoAndCheckerMaker {
 class RandomCropOpInferShape : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext* ctx) const override {
-    auto seed_dim = ctx->GetInputDim("Seed");
-    PADDLE_ENFORCE(seed_dim.size() == 1 && seed_dim[0] == 1);
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
     auto x_dim = ctx->GetInputDim("X");
     PADDLE_ENFORCE_GT(x_dim.size(), static_cast<int64_t>(shape.size()));
@@ -63,7 +65,6 @@ class RandomCropOpInferShape : public framework::InferShapeBase {
       out_dim[x_i] = shape[shape_i];
     }
     ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
-    ctx->SetOutputDim("SeedOut", framework::make_ddim({1}));
   }
 };
 

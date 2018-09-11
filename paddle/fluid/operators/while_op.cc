@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 
 namespace paddle {
@@ -56,12 +57,16 @@ class WhileOp : public framework::OperatorBase {
 
     PADDLE_ENFORCE(platform::is_cpu_place(cond.place()),
                    "Condition of while op must in CPU memory.");
+
+    bool is_test = Attr<bool>("is_test");
+    auto ctx = executor.Prepare(*program, block->ID());
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
-
-      executor.Run(*program, &current_scope, block->ID(),
-                   false /*create_local_scope*/);
+      executor.RunPreparedContext(ctx.get(), &current_scope, false);
+      if (is_test) {
+        scope.DeleteScope(&current_scope);
+      }
     }
   }
 };
@@ -87,6 +92,7 @@ class WhileOpMaker : public framework::OpProtoAndCheckerMaker {
               "variables generated in the i'th step.");
     AddAttr<framework::BlockDesc *>(kStepBlock,
                                     "The step block inside WhileOp");
+    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddComment(R"DOC(
 )DOC");
   }
@@ -102,12 +108,15 @@ class WhileGradOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope &scope,
                const platform::Place &dev_place) const override {
+    PADDLE_ENFORCE(!Attr<bool>("is_test"),
+                   "GradOp is only callable when is_test is false");
     // get device context from pool
     platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
     auto &dev_ctx = *pool.Get(dev_place);
     framework::Executor executor(dev_place);
     auto *block = Attr<framework::BlockDesc *>(kStepBlock);
     auto *program = block->Program();
+    auto ctx = executor.Prepare(*program, block->ID());
 
     auto *step_scopes =
         scope.FindVar(Input(kStepScopes))->GetMutable<StepScopeVar>();
@@ -135,15 +144,14 @@ class WhileGradOp : public framework::OperatorBase {
         auto &og_inside =
             detail::Ref(cur_scope.Var(inside_og_name),
                         "Cannot find inside gradient %s", inside_og_name);
-        if (og_outside.Type().hash_code() ==
-            typeid(framework::LoDTensor).hash_code()) {
+        if (framework::IsType<framework::LoDTensor>(og_outside.Type())) {
           auto &outside_tensor = og_outside.Get<framework::LoDTensor>();
           auto &inside_tensor =
               detail::Ref(og_inside.GetMutable<framework::LoDTensor>());
           inside_tensor.set_lod(outside_tensor.lod());
           inside_tensor.ShareDataWith(outside_tensor);
-        } else if (og_outside.Type().hash_code() ==
-                   typeid(framework::LoDTensorArray).hash_code()) {
+        } else if (framework::IsType<framework::LoDTensorArray>(
+                       og_outside.Type())) {
           auto &outside_array = og_outside.Get<framework::LoDTensorArray>();
           auto &inside_array =
               detail::Ref(og_inside.GetMutable<framework::LoDTensorArray>());
@@ -161,8 +169,7 @@ class WhileGradOp : public framework::OperatorBase {
           }
         }
       }
-
-      executor.Run(*program, *cur_scope_iter, block->ID(), false);
+      executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false);
 
       auto &pg_names = Outputs(kXGRAD);
       auto &p_names = Inputs(kX);
@@ -203,11 +210,11 @@ class WhileGradOp : public framework::OperatorBase {
                 ->set_lod(inside_tensor.lod());
           }
         }
-
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
         auto sum_op = framework::OpRegistry::CreateOp(
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-            {{"Out", {pg_names[param_id]}}}, framework::AttributeMap{});
+            {{"Out", {pg_names[param_id]}}},
+            framework::AttributeMap{{"use_mkldnn", {false}}});
         sum_op->Run(cur_scope, dev_place);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }

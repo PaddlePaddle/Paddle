@@ -18,9 +18,12 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(use_mkldnn);
 
 template <typename T>
 void SetupTensor(paddle::framework::LoDTensor* input,
@@ -133,24 +136,20 @@ std::vector<std::vector<int64_t>> GetFeedTargetShapes(
   return feed_target_shapes;
 }
 
-void EnableMKLDNN(
-    const std::unique_ptr<paddle::framework::ProgramDesc>& program) {
-  for (size_t bid = 0; bid < program->Size(); ++bid) {
-    auto* block = program->MutableBlock(bid);
-    for (auto* op : block->AllOps()) {
-      if (op->HasAttr("use_mkldnn")) {
-        op->SetAttr("use_mkldnn", true);
-      }
-    }
-  }
+void Compile(paddle::framework::ProgramDesc* program) {
+  std::unique_ptr<paddle::framework::ir::Graph> g(
+      new paddle::framework::ir::Graph(*program));
+  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
+      "graph_to_program_pass");
+  pass->SetNotOwned<paddle::framework::ProgramDesc>("program", program);
+  pass->Apply(std::move(g));
 }
 
 template <typename Place, bool CreateVars = true, bool PrepareContext = false>
 void TestInference(const std::string& dirname,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_feeds,
                    const std::vector<paddle::framework::LoDTensor*>& cpu_fetchs,
-                   const int repeat = 1, const bool is_combined = false,
-                   const bool use_mkldnn = false) {
+                   const int repeat = 1, const bool is_combined = false) {
   // 1. Define place, executor, scope
   auto place = Place();
   auto executor = paddle::framework::Executor(place);
@@ -182,10 +181,9 @@ void TestInference(const std::string& dirname,
         "init_program",
         paddle::platform::DeviceContextPool::Instance().Get(place));
     inference_program = InitProgram(&executor, scope, dirname, is_combined);
-    if (use_mkldnn) {
-      EnableMKLDNN(inference_program);
-    }
   }
+  Compile(inference_program.get());
+
   // Disable the profiler and print the timing information
   paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kDefault,
                                     "load_program_profiler");
@@ -210,7 +208,10 @@ void TestInference(const std::string& dirname,
     fetch_targets[fetch_target_names[i]] = cpu_fetchs[i];
   }
 
-  // 6. Run the inference program
+  // 6. If export Flags_use_mkldnn=True, use mkldnn related ops.
+  if (FLAGS_use_mkldnn) executor.EnableMKLDNN(*inference_program);
+
+  // 7. Run the inference program
   {
     if (!CreateVars) {
       // If users don't want to create and destroy variables every time they
@@ -221,13 +222,14 @@ void TestInference(const std::string& dirname,
 
     // Ignore the profiling results of the first run
     std::unique_ptr<paddle::framework::ExecutorPrepareContext> ctx;
+    bool CreateLocalScope = CreateVars;
     if (PrepareContext) {
       ctx = executor.Prepare(*inference_program, 0);
       executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                  &fetch_targets, true, CreateVars);
+                                  &fetch_targets, CreateLocalScope, CreateVars);
     } else {
       executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                   true, CreateVars);
+                   CreateLocalScope, CreateVars);
     }
 
     // Enable the profiler
@@ -243,10 +245,11 @@ void TestInference(const std::string& dirname,
         // Note: if you change the inference_program, you need to call
         // executor.Prepare() again to get a new ExecutorPrepareContext.
         executor.RunPreparedContext(ctx.get(), scope, &feed_targets,
-                                    &fetch_targets, CreateVars);
+                                    &fetch_targets, CreateLocalScope,
+                                    CreateVars);
       } else {
         executor.Run(*inference_program, scope, &feed_targets, &fetch_targets,
-                     CreateVars);
+                     CreateLocalScope, CreateVars);
       }
     }
 
@@ -258,3 +261,5 @@ void TestInference(const std::string& dirname,
 
   delete scope;
 }
+
+USE_PASS(graph_to_program_pass);

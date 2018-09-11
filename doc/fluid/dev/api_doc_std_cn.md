@@ -1,8 +1,9 @@
 # API注释撰写标准
 
-- [API注释模块](#API注释模块)
-- [格式及示例](#格式及示例)
-- [完整示例](#完整示例)
+- [API注释撰写标准](#api)
+    - [API注释模块](#api)
+    - [格式及示例](#)
+    - [完整示例](#)
 
 
 ## API注释模块
@@ -217,4 +218,4 @@ API文档须使用reStructuredText格式撰写，该格式详情请参考[链接
 
 ## 完整示例
 
-fc 的完整注释见[示例](src/fc.py)。
+fc 的完整注释见[示例](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/fluid/dev/src/fc.py)。

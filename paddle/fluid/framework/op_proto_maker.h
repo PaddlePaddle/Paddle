@@ -14,6 +14,8 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_set>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
@@ -37,6 +39,7 @@ class OpProtoAndCheckerMaker {
  public:
   static const char *OpRoleAttrName() { return "op_role"; }
   static const char *OpRoleVarAttrName() { return "op_role_var"; }
+  static const char *OpNamescopeAttrName() { return "op_namescope"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
@@ -64,12 +67,19 @@ class OpProtoAndCheckerMaker {
       var_->set_dispensable(true);
       return *this;
     }
+
+    VariableBuilder &Reuse(const std::string &name) {
+      var_->set_reuse(name);
+      return *this;
+    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);
 
   VariableBuilder AddOutput(const std::string &name,
                             const std::string &comment);
+
+  void Reuse(const std::string &name, const std::string &reused_name);
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,
@@ -88,6 +98,8 @@ class OpProtoAndCheckerMaker {
  private:
   void CheckNoDuplicatedInOutAttrs();
   void Validate();
+
+  void CheckReuseVars();
 
   proto::OpProto *proto_;
   OpAttrChecker *op_checker_;

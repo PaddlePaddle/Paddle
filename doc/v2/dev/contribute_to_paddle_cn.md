@@ -104,7 +104,7 @@ no changes added to commit (use "git add" and/or "git commit -a")
 ➜  docker run -it -v $(pwd):/paddle paddle:latest-dev bash -c "cd /paddle/build && ctest"
 ```
 
-关于构建和测试的更多信息，请参见[这篇文档](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/getstarted/build_and_install/docker_install_cn.rst)。
+关于构建和测试的更多信息，请参见[使用Docker安装运行](https://github.com/PaddlePaddle/Paddle/blob/develop/doc/v2/build_and_install/docker_install_cn.rst)。
 
 ## 提交（commit）
 

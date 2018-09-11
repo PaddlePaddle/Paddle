@@ -142,16 +142,22 @@ template <typename DeviceContext, typename T>
 class RandomCropKernel : public framework::OpKernel<T> {
  public:
   virtual void Compute(const framework::ExecutionContext& ctx) const {
-    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
     int64_t seed = 0;
-    if (platform::is_cpu_place(seed_tensor.place())) {
-      seed = *seed_tensor.data<int64_t>();
+    auto& seed_tensor = detail::Ref(ctx.Input<framework::LoDTensor>("Seed"));
+    if (seed_tensor.IsInitialized()) {
+      if (platform::is_cpu_place(seed_tensor.place())) {
+        seed = *seed_tensor.data<int64_t>();
+      } else {
+        LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
+                        "your program";
+        framework::LoDTensor cpu_seed;
+        framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
+        seed = *cpu_seed.data<int64_t>();
+      }
     } else {
-      LOG(WARNING) << "It is slow to place seed in GPU memory. Please verify "
-                      "your program";
-      framework::LoDTensor cpu_seed;
-      framework::TensorCopySync(seed_tensor, platform::CPUPlace(), &cpu_seed);
-      seed = *cpu_seed.data<int64_t>();
+      VLOG(5) << "WARNING: The input 'Seed' is not initialized, use attribute "
+                 "'startup_seed' instead.";
+      seed = ctx.Attr<int>("startup_seed");
     }
     auto shape = ctx.Attr<std::vector<int>>("shape");
     auto& x = detail::Ref(ctx.Input<framework::LoDTensor>("X"));
@@ -171,7 +177,7 @@ class RandomCropKernel : public framework::OpKernel<T> {
     engine.discard(functor.prod_batchsize_dims_ *
                    (functor.rank_ - functor.num_batchsize_dims_));
     *ctx.Output<framework::LoDTensor>("SeedOut")->mutable_data<int64_t>(
-        platform::CPUPlace()) = engine();
+        framework::make_ddim({1}), platform::CPUPlace()) = engine();
   }
 };
 

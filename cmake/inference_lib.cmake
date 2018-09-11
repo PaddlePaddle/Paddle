@@ -12,19 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set_property(GLOBAL PROPERTY FLUID_MODULES "")
-# find all fluid modules is used for paddle fluid static library
-function(find_fluid_modules TARGET_NAME)
-  get_filename_component(__target_path ${TARGET_NAME} ABSOLUTE)
-  string(REGEX REPLACE "^${PADDLE_SOURCE_DIR}/" "" __target_path ${__target_path})
-  string(FIND "${__target_path}" "fluid" pos)
-  if(pos GREATER 1)
-    get_property(fluid_modules GLOBAL PROPERTY FLUID_MODULES)
-    set(fluid_modules ${fluid_modules} ${TARGET_NAME})
-    set_property(GLOBAL PROPERTY FLUID_MODULES "${fluid_modules}")
-  endif()
-endfunction(find_fluid_modules)
-
 # make package for paddle fluid shared and static library
 function(copy TARGET)
     set(options "")
@@ -39,7 +26,7 @@ function(copy TARGET)
         message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
     endif()
     math(EXPR len "${copy_lib_SRCS_len} - 1")
-    
+
     add_custom_target(${TARGET} DEPENDS ${copy_lib_DEPS})
     foreach(index RANGE ${len})
         list(GET copy_lib_SRCS ${index} src)
@@ -114,6 +101,7 @@ if(WITH_MKLDNN)
   )
 endif()
 
+if (NOT WIN32)
 if(NOT MOBILE_INFERENCE AND NOT RPI)
   set(dst_dir "${FLUID_INSTALL_DIR}/third_party/install/snappy")
   copy(snappy_lib
@@ -133,14 +121,19 @@ if(NOT MOBILE_INFERENCE AND NOT RPI)
     DSTS ${dst_dir} ${dst_dir}/lib
     DEPS zlib)
 endif()
+endif(NOT WIN32)
 
 # paddle fluid module
 set(src_dir "${PADDLE_SOURCE_DIR}/paddle/fluid")
 set(dst_dir "${FLUID_INSTALL_DIR}/paddle/fluid")
 set(module "framework")
-copy(framework_lib DEPS framework_py_proto 
+if (NOT WIN32)
+set(framework_lib_deps framework_py_proto)
+endif(NOT WIN32)
+copy(framework_lib DEPS ${framework_lib_deps}
   SRCS ${src_dir}/${module}/*.h ${src_dir}/${module}/details/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/framework/framework.pb.h
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module}
+       ${src_dir}/${module}/ir/*.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module}/details ${dst_dir}/${module} ${dst_dir}/${module}/ir
 )
 
 set(module "memory")
@@ -149,10 +142,24 @@ copy(memory_lib
   DSTS ${dst_dir}/${module} ${dst_dir}/${module}/detail
 )
 
+set(inference_deps paddle_fluid_shared paddle_fluid)
+
+set(module "inference/api")
+if (WITH_ANAKIN AND WITH_MKL)
+    copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
+        SRCS
+        ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
+        ${ANAKIN_INSTALL_DIR} # anakin release
+        DSTS ${dst_dir}/inference/anakin ${FLUID_INSTALL_DIR}/third_party/install/anakin)
+     list(APPEND inference_deps anakin_inference_lib)
+endif()
+
 set(module "inference")
-copy(inference_lib DEPS paddle_fluid_shared paddle_fluid
+copy(inference_lib DEPS ${inference_deps}
   SRCS ${src_dir}/${module}/*.h ${PADDLE_BINARY_DIR}/paddle/fluid/inference/libpaddle_fluid.*
-  DSTS ${dst_dir}/${module} ${dst_dir}/${module}
+       ${src_dir}/${module}/api/paddle_inference_api.h ${src_dir}/${module}/api/demo_ci
+       ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h
+  DSTS ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module} ${dst_dir}/${module}
 )
 
 set(module "platform")

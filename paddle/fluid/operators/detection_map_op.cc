@@ -175,12 +175,12 @@ class DetectionMAPOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 Detection mAP evaluate operator.
 The general steps are as follows. First, calculate the true positive and
- false positive according to the input of detection and labels, then
- calculate the mAP evaluate value.
- Supporting '11 point' and 'integral' mAP algorithm. Please get more information
- from the following articles:
- https://sanchom.wordpress.com/tag/average-precision/
- https://arxiv.org/abs/1512.02325
+false positive according to the input of detection and labels, then
+calculate the mAP evaluate value.
+Supporting '11 point' and 'integral' mAP algorithm. Please get more information
+from the following articles:
+https://sanchom.wordpress.com/tag/average-precision/
+https://arxiv.org/abs/1512.02325
 
 )DOC");
   }

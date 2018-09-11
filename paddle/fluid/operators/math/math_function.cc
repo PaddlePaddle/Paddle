@@ -30,6 +30,7 @@ template struct SetConstant<platform::CPUDeviceContext, double>;
 template struct SetConstant<platform::CPUDeviceContext, int>;
 template struct SetConstant<platform::CPUDeviceContext, int64_t>;
 template struct SetConstant<platform::CPUDeviceContext, bool>;
+template struct SetConstant<platform::CPUDeviceContext, uint8_t>;
 
 #define DEFINE_CPU_TRANS(RANK)                                             \
   template struct Transpose<platform::CPUDeviceContext, platform::float16, \
@@ -40,7 +41,8 @@ template struct SetConstant<platform::CPUDeviceContext, bool>;
   template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>;    \
   template struct Transpose<platform::CPUDeviceContext, bool, RANK>;       \
   template struct Transpose<platform::CPUDeviceContext, int16_t, RANK>;    \
-  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;
+  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;    \
+  template struct Transpose<platform::CPUDeviceContext, int8_t, RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
@@ -53,7 +55,7 @@ struct TensorSetConstantCPU {
   TensorSetConstantCPU(framework::Tensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto cpu = platform::CPUPlace();
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));
