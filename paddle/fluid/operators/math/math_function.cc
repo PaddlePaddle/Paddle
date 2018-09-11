@@ -55,7 +55,7 @@ struct TensorSetConstantCPU {
   TensorSetConstantCPU(framework::Tensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto cpu = platform::CPUPlace();
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));

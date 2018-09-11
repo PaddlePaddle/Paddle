@@ -109,7 +109,9 @@ __all__ = [
     'flatten',
     'sequence_mask',
     'stack',
+    'pad2d',
     'unstack',
+    'sequence_enumerate',
 ]
 
 
@@ -966,7 +968,7 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     return out
 
 
-def cross_entropy(input, label, soft_label=False):
+def cross_entropy(input, label, soft_label=False, ignore_index=-100):
     """
     **Cross Entropy Layer**
 
@@ -1010,7 +1012,10 @@ def cross_entropy(input, label, soft_label=False):
                                tensor<float/double> with shape [N x D].
         soft_label (bool): a flag indicating whether to
                                            interpretate the given labels as soft
-                                           labels, default `False`.
+                                           labels. Default: `False`.
+        ignore_index (int): Specifies a target value that is ignored and does 
+                            not contribute to the input gradient. Only valid 
+                            if soft_label is set to False. Default: -100
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -1035,7 +1040,8 @@ def cross_entropy(input, label, soft_label=False):
         inputs={'X': [input],
                 'Label': [label]},
         outputs={'Y': [out]},
-        attrs={"soft_label": soft_label})
+        attrs={"soft_label": soft_label,
+               "ignore_index": ignore_index})
     return out
 
 
@@ -3544,11 +3550,6 @@ def topk(input, k, name=None):
 
             top5_values, top5_indices = layers.topk(input, k=5)
     """
-    shape = input.shape
-    if k < 1 or k >= shape[-1]:
-        raise ValueError("k must be greater than 0 and less than %d." %
-                         (shape[-1]))
-
     helper = LayerHelper("top_k", **locals())
     values = helper.create_tmp_variable(dtype=input.dtype)
     indices = helper.create_tmp_variable(dtype="int64")
@@ -4028,10 +4029,12 @@ def transpose(x, perm, name=None):
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='transpose',
+        type='transpose2',
         inputs={'X': [x]},
-        outputs={'Out': [out]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
 
@@ -4243,7 +4246,10 @@ def multiplex(inputs, index):
     return out
 
 
-def softmax_with_cross_entropy(logits, label, soft_label=False):
+def softmax_with_cross_entropy(logits,
+                               label,
+                               soft_label=False,
+                               ignore_index=-100):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4285,6 +4291,10 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
             soft_label is set to true, Label is a Tensor<float/double> with
         soft_label (bool): A flag to indicate whether to interpretate the given
             labels as soft labels. By default, `soft_label` is set to False.
+        ignore_index (int): Specifies a target value that is ignored and does 
+                            not contribute to the input gradient. Only valid 
+                            if soft_label is set to False. Default: -100
+
     Returns:
         Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
 
@@ -4306,7 +4316,8 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label})
+        attrs={'soft_label': soft_label,
+               'ignore_index': ignore_index})
     return loss
 
 
@@ -4501,7 +4512,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python lsit or tuple.")
+        raise ValueError("Input shape must be a python list or tuple.")
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -4523,13 +4534,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "Each dimension size given in shape must not be negtive "
                 "except one unknown dimension.")
 
-    helper = LayerHelper("reshape", **locals())
+    helper = LayerHelper("reshape2", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
+    x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="reshape",
+        type="reshape2",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return helper.append_activation(out)
 
@@ -4573,11 +4586,13 @@ def squeeze(input, axes, name=None):
     """
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="squeeze",
+        type="squeeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -4608,11 +4623,13 @@ def unsqueeze(input, axes, name=None):
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="unsqueeze",
+        type="unsqueeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -5614,6 +5631,94 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def pad2d(input,
+          paddings=[0, 0, 0, 0],
+          mode='constant',
+          pad_value=0.0,
+          data_format="NCHW",
+          name=None):
+    """
+    Pad 2-d images accordding to 'paddings' and 'mode'.
+    If mode is 'reflect', paddings[0] and paddings[1] must be no greater
+    than height-1. And the width dimension has the same condition.
+
+    Example:
+
+      Given that X is a channel of image from input:
+      
+      X = [[1, 2, 3],
+           [4, 5, 6]]
+      
+      Case 0:
+      
+        paddings = [0, 1, 2, 3],
+        mode = 'constant'
+        pad_value = 0
+        
+        Out = [[0, 0, 1, 2, 3, 0, 0, 0]
+               [0, 0, 4, 5, 6, 0, 0, 0]
+               [0, 0, 0, 0, 0, 0, 0, 0]]
+      
+      Case 1:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'reflect'
+        
+        Out = [[3, 2, 1, 2, 3, 2]
+               [6, 5, 4, 5, 6, 5]
+               [3, 2, 1, 2, 3, 2]]
+        
+      Case 2:
+      
+        paddings = [0, 1, 2, 1],
+        mode = 'edge'
+        
+        Out = [[1, 1, 1, 2, 3, 3]
+               [4, 4, 4, 5, 6, 6]
+               [4, 4, 4, 5, 6, 6]]
+    
+  
+    Args:
+        input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
+        paddings (tuple|list): The padding size. If padding is a tuple, it must
+            contain four integers, (padding_top, padding_bottom, padding_left, padding_right).
+            Default: padding = [0, 0, 0, 0].
+        mode (str): Three modes: constant(default), reflect, edge. Default: constant
+        pad_value (float32): The value to fill the padded areas in constant mode. Default: 0
+        data_format (str): An optional string from: "NHWC", "NCHW". Specify the data format of
+                           the input data.
+                           Default: "NCHW"
+        name (str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Variable: The tensor variable padded accordding to paddings and mode.
+
+
+    Examples:
+        .. code-block:: python
+
+          data = fluid.layers.data(name='data', shape=[3, 32, 32], dtype='float32')
+          result = fluid.layers.pad2d(input=data, padding=[1,2,3,4], mode='reflect')
+    """
+
+    helper = LayerHelper('pad2d', **locals())
+    dtype = helper.input_dtype(input_param_name='input')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='pad2d',
+        inputs={'X': input},
+        outputs={"Out": out},
+        attrs={
+            'paddings': paddings,
+            'mode': mode,
+            'pad_value': pad_value,
+            'data_frmat': data_format
+        })
+
+    return out
+
+
 def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
@@ -5628,8 +5733,8 @@ def prelu(x, mode, param_attr=None, name=None):
 		       all: all elements share same weight
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
-	  name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically.
+	name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically. 
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -5726,12 +5831,59 @@ def flatten(x, axis=1, name=None):
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='flatten',
+        type='flatten2',
         inputs={"X": x},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'XShape': x_shape},
         attrs={"axis": axis})
     return out
+
+
+def sequence_enumerate(input, win_size, pad_value=0, name=None):
+    """
+    Generate a new sequence for the input index sequence, which enumerates all the
+    sub-sequences with length `win_size` of the input. 
+    The enumerated sequence has the same 1st dimension with variable `input`, and
+    the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
+    
+    Examples:
+    Case 1:
+      Input:
+        X.lod = [[0, 3, 5]]
+        X.data = [[1], [2], [3], [4], [5]]
+        X.dims = [5, 1]
+      Attrs:
+        win_size = 2
+        pad_value = 0
+      Output:
+        Out.lod = [[0, 3, 5]]
+        Out.data = [[1, 2], [2, 3], [3, 0], [4, 5], [5, 0]]
+        Out.dims = [5, 2]
+
+    Args:
+        input (Variable): The input variable which is a index sequence.
+        win_size (int): The window size for enumerating all sub-sequences.
+        pad_value (int): The padding value, default 0.
+
+    Returns:
+        Variable: The enumerate sequence variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(shape[30, 1], dtype='int32', lod_level=1)
+            out = fluid.layers.sequence_enumerate(input=x, win_size=3, pad_value=0)
+    """
+    helper = LayerHelper('sequence_enumerate', **locals())
+    out = helper.create_tmp_variable(helper.input_dtype(), stop_gradient=True)
+    helper.append_op(
+        type='sequence_enumerate',
+        inputs={'X': input},
+        outputs={'Out': out},
+        attrs={'win_size': win_size,
+               'pad_value': pad_value})
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
@@ -5813,6 +5965,7 @@ def stack(x, axis=0):
     helper.append_op(
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
+
     return out
 
 
