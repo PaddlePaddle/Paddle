@@ -158,15 +158,6 @@ ModelAverage
     :members:
     :noindex:
 
-.. _api_fluid_optimizer_Optimizer:
-
-Optimizer
----------
-
-..  autoclass:: paddle.fluid.optimizer.Optimizer
-    :members:
-    :noindex:
-
 .. _api_fluid_optimizer_RMSPropOptimizer:
 
 RMSPropOptimizer

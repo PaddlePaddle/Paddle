@@ -8,49 +8,6 @@ fluid.layers
 control_flow
 ============
 
-.. _api_fluid_layers_split_lod_tensor:
-
-split_lod_tensor
-----------------
-
-..  autofunction:: paddle.fluid.layers.split_lod_tensor
-    :noindex:
-
-.. _api_fluid_layers_merge_lod_tensor:
-
-merge_lod_tensor
-----------------
-
-..  autofunction:: paddle.fluid.layers.merge_lod_tensor
-    :noindex:
-
-.. _api_fluid_layers_BlockGuard:
-
-BlockGuard
-----------
-
-..  autoclass:: paddle.fluid.layers.BlockGuard
-    :members:
-    :noindex:
-
-.. _api_fluid_layers_BlockGuardWithCompletion:
-
-BlockGuardWithCompletion
-------------------------
-
-..  autoclass:: paddle.fluid.layers.BlockGuardWithCompletion
-    :members:
-    :noindex:
-
-.. _api_fluid_layers_WhileGuard:
-
-WhileGuard
-----------
-
-..  autoclass:: paddle.fluid.layers.WhileGuard
-    :members:
-    :noindex:
-
 .. _api_fluid_layers_While:
 
 While
@@ -67,38 +24,6 @@ Switch
 
 ..  autoclass:: paddle.fluid.layers.Switch
     :members:
-    :noindex:
-
-.. _api_fluid_layers_lod_rank_table:
-
-lod_rank_table
---------------
-
-..  autofunction:: paddle.fluid.layers.lod_rank_table
-    :noindex:
-
-.. _api_fluid_layers_max_sequence_len:
-
-max_sequence_len
-----------------
-
-..  autofunction:: paddle.fluid.layers.max_sequence_len
-    :noindex:
-
-.. _api_fluid_layers_lod_tensor_to_array:
-
-lod_tensor_to_array
--------------------
-
-..  autofunction:: paddle.fluid.layers.lod_tensor_to_array
-    :noindex:
-
-.. _api_fluid_layers_array_to_lod_tensor:
-
-array_to_lod_tensor
--------------------
-
-..  autofunction:: paddle.fluid.layers.array_to_lod_tensor
     :noindex:
 
 .. _api_fluid_layers_increment:
@@ -149,14 +74,6 @@ array_read
 ..  autofunction:: paddle.fluid.layers.array_read
     :noindex:
 
-.. _api_fluid_layers_shrink_memory:
-
-shrink_memory
--------------
-
-..  autofunction:: paddle.fluid.layers.shrink_memory
-    :noindex:
-
 .. _api_fluid_layers_array_length:
 
 array_length
@@ -180,15 +97,6 @@ DynamicRNN
 ----------
 
 ..  autoclass:: paddle.fluid.layers.DynamicRNN
-    :members:
-    :noindex:
-
-.. _api_fluid_layers_ConditionalBlock:
-
-ConditionalBlock
-----------------
-
-..  autoclass:: paddle.fluid.layers.ConditionalBlock
     :members:
     :noindex:
 
@@ -237,14 +145,6 @@ is_empty
 device
 ======
 
-.. _api_fluid_layers_get_places:
-
-get_places
-----------
-
-..  autofunction:: paddle.fluid.layers.get_places
-    :noindex:
-
 io
 ==
 
@@ -254,40 +154,6 @@ data
 ----
 
 ..  autofunction:: paddle.fluid.layers.data
-    :noindex:
-
-.. _api_fluid_layers_BlockGuardServ:
-
-BlockGuardServ
---------------
-
-..  autoclass:: paddle.fluid.layers.BlockGuardServ
-    :members:
-    :noindex:
-
-.. _api_fluid_layers_ListenAndServ:
-
-ListenAndServ
--------------
-
-..  autoclass:: paddle.fluid.layers.ListenAndServ
-    :members:
-    :noindex:
-
-.. _api_fluid_layers_Send:
-
-Send
-----
-
-..  autofunction:: paddle.fluid.layers.Send
-    :noindex:
-
-.. _api_fluid_layers_Recv:
-
-Recv
-----
-
-..  autofunction:: paddle.fluid.layers.Recv
     :noindex:
 
 .. _api_fluid_layers_open_recordio_file:
@@ -344,6 +210,14 @@ random_data_generator
 ---------------------
 
 ..  autofunction:: paddle.fluid.layers.random_data_generator
+    :noindex:
+
+.. _api_fluid_layers_py_reader:
+
+py_reader
+---------
+
+..  autofunction:: paddle.fluid.layers.py_reader
     :noindex:
 
 .. _api_fluid_layers_Preprocessor:
@@ -566,6 +440,14 @@ sequence_expand
 ..  autofunction:: paddle.fluid.layers.sequence_expand
     :noindex:
 
+.. _api_fluid_layers_sequence_pad:
+
+sequence_pad
+------------
+
+..  autofunction:: paddle.fluid.layers.sequence_pad
+    :noindex:
+
 .. _api_fluid_layers_lstm_unit:
 
 lstm_unit
@@ -724,6 +606,14 @@ nce
 ---
 
 ..  autofunction:: paddle.fluid.layers.nce
+    :noindex:
+
+.. _api_fluid_layers_hsigmoid:
+
+hsigmoid
+--------
+
+..  autofunction:: paddle.fluid.layers.hsigmoid
     :noindex:
 
 .. _api_fluid_layers_beam_search:
@@ -918,6 +808,30 @@ crop
 ..  autofunction:: paddle.fluid.layers.crop
     :noindex:
 
+.. _api_fluid_layers_rank_loss:
+
+rank_loss
+---------
+
+..  autofunction:: paddle.fluid.layers.rank_loss
+    :noindex:
+
+.. _api_fluid_layers_prelu:
+
+prelu
+-----
+
+..  autofunction:: paddle.fluid.layers.prelu
+    :noindex:
+
+.. _api_fluid_layers_flatten:
+
+flatten
+-------
+
+..  autofunction:: paddle.fluid.layers.flatten
+    :noindex:
+
 ops
 ===
 
@@ -1105,28 +1019,12 @@ slice
 ..  autofunction:: paddle.fluid.layers.slice
     :noindex:
 
-.. _api_fluid_layers_polygon_box_transform:
-
-polygon_box_transform
----------------------
-
-..  autofunction:: paddle.fluid.layers.polygon_box_transform
-    :noindex:
-
 .. _api_fluid_layers_shape:
 
 shape
 -----
 
 ..  autofunction:: paddle.fluid.layers.shape
-    :noindex:
-
-.. _api_fluid_layers_iou_similarity:
-
-iou_similarity
---------------
-
-..  autofunction:: paddle.fluid.layers.iou_similarity
     :noindex:
 
 .. _api_fluid_layers_maxout:
@@ -1618,6 +1516,22 @@ detection_map
 ..  autofunction:: paddle.fluid.layers.detection_map
     :noindex:
 
+.. _api_fluid_layers_rpn_target_assign:
+
+rpn_target_assign
+-----------------
+
+..  autofunction:: paddle.fluid.layers.rpn_target_assign
+    :noindex:
+
+.. _api_fluid_layers_anchor_generator:
+
+anchor_generator
+----------------
+
+..  autofunction:: paddle.fluid.layers.anchor_generator
+    :noindex:
+
 .. _api_fluid_layers_iou_similarity:
 
 iou_similarity
@@ -1632,6 +1546,14 @@ box_coder
 ---------
 
 ..  autofunction:: paddle.fluid.layers.box_coder
+    :noindex:
+
+.. _api_fluid_layers_polygon_box_transform:
+
+polygon_box_transform
+---------------------
+
+..  autofunction:: paddle.fluid.layers.polygon_box_transform
     :noindex:
 
 metric_op
@@ -1744,6 +1666,14 @@ argmax
 ..  autofunction:: paddle.fluid.layers.argmax
     :noindex:
 
+.. _api_fluid_layers_argsort:
+
+argsort
+-------
+
+..  autofunction:: paddle.fluid.layers.argsort
+    :noindex:
+
 .. _api_fluid_layers_ones:
 
 ones
@@ -1766,13 +1696,5 @@ reverse
 -------
 
 ..  autofunction:: paddle.fluid.layers.reverse
-    :noindex:
-
-.. _api_fluid_layers_rank_loss:
-
-rank_loss
--------
-
-..  autofunction:: paddle.fluid.layers.rank_loss
     :noindex:
 

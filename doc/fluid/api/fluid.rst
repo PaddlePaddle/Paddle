@@ -5,24 +5,6 @@
 fluid
 =====
 
-.. _api_fluid_Block:
-
-Block
------
-
-..  autoclass:: paddle.fluid.Block
-    :members:
-    :noindex:
-
-.. _api_fluid_Variable:
-
-Variable
---------
-
-..  autoclass:: paddle.fluid.Variable
-    :members:
-    :noindex:
-
 .. _api_fluid_Program:
 
 Program
@@ -38,6 +20,15 @@ Operator
 --------
 
 ..  autoclass:: paddle.fluid.Operator
+    :members:
+    :noindex:
+
+.. _api_fluid_Parameter:
+
+Parameter
+---------
+
+..  autoclass:: paddle.fluid.Parameter
     :members:
     :noindex:
 
@@ -104,48 +95,6 @@ _switch_scope
 -------------
 
 ..  autofunction:: paddle.fluid._switch_scope
-    :noindex:
-
-
-.. _api_fluid_make_channel:
-
-make_channel
-------------
-
-..  autofunction:: paddle.fluid.make_channel
-    :noindex:
-
-.. _api_fluid_channel_send:
-
-channel_send
-------------
-
-..  autofunction:: paddle.fluid.channel_send
-    :noindex:
-
-.. _api_fluid_channel_recv:
-
-channel_recv
-------------
-
-..  autofunction:: paddle.fluid.channel_recv
-    :noindex:
-
-.. _api_fluid_channel_close:
-
-channel_close
--------------
-
-..  autofunction:: paddle.fluid.channel_close
-    :noindex:
-
-.. _api_fluid_Select:
-
-Select
-------
-
-..  autoclass:: paddle.fluid.Select
-    :members:
     :noindex:
 
 .. _api_fluid_Trainer:
@@ -220,6 +169,15 @@ DistributeTranspiler
     :members:
     :noindex:
 
+.. _api_fluid_InferenceTranspiler:
+
+InferenceTranspiler
+-------------------
+
+..  autoclass:: paddle.fluid.InferenceTranspiler
+    :members:
+    :noindex:
+
 .. _api_fluid_memory_optimize:
 
 memory_optimize
@@ -234,6 +192,15 @@ release_memory
 --------------
 
 ..  autofunction:: paddle.fluid.release_memory
+    :noindex:
+
+.. _api_fluid_DistributeTranspilerConfig:
+
+DistributeTranspilerConfig
+--------------------------
+
+..  autoclass:: paddle.fluid.DistributeTranspilerConfig
+    :members:
     :noindex:
 
 .. _api_fluid_ParallelExecutor:
@@ -285,6 +252,15 @@ LoDTensor
 ---------
 
 ..  autoclass:: paddle.fluid.LoDTensor
+    :members:
+    :noindex:
+
+.. _api_fluid_LoDTensorArray:
+
+LoDTensorArray
+--------------
+
+..  autoclass:: paddle.fluid.LoDTensorArray
     :members:
     :noindex:
 
