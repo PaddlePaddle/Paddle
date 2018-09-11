@@ -11,7 +11,7 @@ Each release has version of the following format: MAJOR.MINOR.PATCH
  * Minor version number change always maintain backward compatibility. It normally contains compatible improvements and bug fixes.
 
  * Patch number change is for bug fixes.
-g
+
  * Violation of the policy are considered as bugs and should be fixed.
 
 ### What is Covered
