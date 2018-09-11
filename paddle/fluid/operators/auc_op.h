@@ -32,6 +32,7 @@ class AucKernel : public framework::OpKernel<T> {
 
     std::string curve = ctx.Attr<std::string>("curve");
     bool is_distributed = ctx.Attr<bool>("is_distributed");
+    bool is_trainer = ctx.Attr<bool>("is_distributed");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int num_pred_buckets = num_thresholds + 1;
 
@@ -41,7 +42,7 @@ class AucKernel : public framework::OpKernel<T> {
     calcAuc(ctx, label, predict, stat_pos_batch.data(), stat_neg_batch.data(),
             num_thresholds, batch_auc);
 
-    if (!is_distributed) {
+    if (!is_distributed || (is_distributed && is_trainer)) {
       // Only use output var for now, make sure it's persistable and
       // not cleaned up for each batch.
       auto *auc = ctx.Output<Tensor>("AUC");

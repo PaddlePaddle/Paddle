@@ -80,7 +80,12 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
         "num_thresholds",
         "The number of thresholds to use when discretizing the roc curve.")
         .SetDefault((2 << 12) - 1);
+    AddAttr<int>("steps", "Use slide steps to calc batch auc.").SetDefault(1);
+
     AddAttr<bool>("is_distributed", "Use distributed auc calc.")
+        .SetDefault(false);
+    AddAttr<bool>("is_trainer",
+                  "Use distributed auc and current role is trainer or pserver")
         .SetDefault(false);
 
     AddComment(R"DOC(

@@ -655,7 +655,7 @@ class DistributeTranspiler(object):
 
         if self.has_distributed_metrics:
             metrics_var_name_to_block_id = self._create_distributed_metrics_block(
-            )
+                pserver_program)
             prefetch_var_name_to_block_id.extend(metrics_var_name_to_block_id)
 
         attrs = {
@@ -890,33 +890,47 @@ class DistributeTranspiler(object):
                 self._append_distributed_auc(op)
 
     def _append_distributed_auc(self, auc_op):
-        predict = auc_op.inputs["Predict"]
-        label = auc_op.inputs["Label"]
-        auc_out = auc_op.outputs["AUC"]
+        def print_k(k_name, k):
+            print("{}: {}, SHAPE: {}".format(k_name, k, k.shape))
+
+        predict = self.origin_program.global_block().var(
+            auc_op.input("Predict")[0])
+        label = self.origin_program.global_block().var(auc_op.input("Label")[0])
+        auc_out = self.origin_program.global_block().var(
+            auc_op.output("AUC")[0])
 
         all_ops = self.origin_program.global_block().ops
         auc_op_idx = list(all_ops).index(auc_op)
 
-        zero_dim = label.shape[0] * 2
-        table_shape = list(label.shape)
-        table_shape[0] = zero_dim
+        label_cast = self.origin_program.global_block().create_var(
+            name="label_cast_tmp.0",
+            persistable=False,
+            dtype="float32",
+            shape=label.shape)
 
         prev_label_concat = self.origin_program.global_block().create_var(
             name="distributed_auc.trainer_%d.pserver_%d" % (self.trainer_id, 0),
             persistable=False,
-            dtype=label.dtype,
-            shape=table_shape)
+            dtype="float32",
+            shape=(-1, 3))
 
         self.origin_program.global_block()._insert_op(
             index=auc_op_idx + 1,
-            type="concat",
-            inputs={"Predict": predict,
-                    "Label": label},
-            attrs={"axis": 0},
-            outputs={"Out": prev_label_concat})
+            type="cast",
+            inputs={"X": label},
+            attrs={"in_dtype": 5,
+                   "out_dtype": 3},
+            outputs={"Out": label_cast})
 
         self.origin_program.global_block()._insert_op(
             index=auc_op_idx + 2,
+            type="concat",
+            inputs={"X": [predict, label_cast]},
+            attrs={"axis": 1},
+            outputs={"Out": [prev_label_concat]})
+
+        self.origin_program.global_block()._insert_op(
+            index=auc_op_idx + 3,
             type="prefetch",
             inputs={'X': prev_label_concat},
             attrs={
@@ -1253,48 +1267,58 @@ class DistributeTranspiler(object):
 
         return checkpoint_save_block.idx
 
-    def _create_distributed_metrics_block(self, pserver_program, pre_block_idx):
+    def _create_distributed_metrics_block(self, pserver_program):
+        def print_k(k_name, k):
+            print("{}: {}, SHAPE: {}".format(k_name, k, k.shape))
+
         metrics_var_name_to_block_id = []
-        distributed_metrics_block = pserver_program.create_block(pre_block_idx)
+        distributed_metrics_block = pserver_program.create_block()
 
         for auc_op in self.distributed_metric_ops:
-            predict = auc_op.inputs["Predict"]
-            label = auc_op.inputs["Label"]
+            predict = self.origin_program.global_block().var(
+                auc_op.input("Predict")[0])
+            label = self.origin_program.global_block().var(
+                auc_op.input("Label")[0])
 
-            auc_out = auc_op.outputs["AUC"]
-            batch_auc_out = auc_op.outputs["BatchAUC"]
+            auc_out = self.origin_program.global_block().var(
+                auc_op.output("AUC")[0])
+            batch_auc_out = self.origin_program.global_block().var(
+                auc_op.output("BatchAUC")[0])
 
-            num_thresholds = auc_op.attrs["num_thresholds"]
-            curve = auc_op.attrs["curve"]
-            is_distributed = auc_op.attrs["is_distributed"]
+            num_thresholds = auc_op.attr("num_thresholds")
+            curve = auc_op.attr("curve")
+            is_distributed = auc_op.attr("is_distributed")
 
-            zero_dim = label.shape[0] * 2
-            table_shape = list(label.shape)
-            table_shape[0] = zero_dim
-
-            stat_pos = distributed_metrics_block.create_var(
+            stat_pos = self.origin_program.global_block().create_var(
                 persistable=True, dtype='int64', shape=[num_thresholds + 1])
-            stat_neg = distributed_metrics_block.create_var(
+            stat_neg = self.origin_program.global_block().create_var(
                 persistable=True, dtype='int64', shape=[num_thresholds + 1])
 
             for i in range(self.trainer_num):
-                var = distributed_metrics_block.create_var(
+                var = self.origin_program.global_block().create_var(
                     name="%s.trainer_%d.pserver_%d" % ("distributed_auc", i, 0),
-                    shape=table_shape,
+                    shape=(-1, 3),
                     dtype="float32")
                 metrics_var_name_to_block_id.append(var.name + ":" + str(
                     distributed_metrics_block.idx))
 
-            distributed_auc = distributed_metrics_block.create_var(
+            distributed_auc = self.origin_program.global_block().create_var(
                 name="%s.pserver_%d" % ("distributed_auc", 0),
-                shape=table_shape,
+                shape=(-1, 3),
                 dtype="float32")
+
+            # distributed_metrics_block.append_op(
+            #     type="scale",
+            #     inputs={"X": label},
+            #     outputs={"Out": label})
+
             distributed_metrics_block.append_op(
                 type="split",
                 inputs={"X": distributed_auc},
-                attrs={"axis": 0,
-                       "sections": 2},
+                attrs={'axis': 1,
+                       'sections': [2, 1]},
                 outputs={"Out": [predict, label]})
+
             distributed_metrics_block.append_op(
                 type="auc",
                 inputs={
