@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/attention_lstm_op.h"
 #include <string>
-#include "paddle/fluid/framework/shape_runtime_infer.h"
+#include "paddle/fluid/operators/fusion_infershape_define.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
@@ -24,38 +24,7 @@ namespace paddle {
 namespace operators {
 
 void AttentionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  auto* runtime_ctx = dynamic_cast<framework::RuntimeInferShapeContext*>(ctx);
-  if (runtime_ctx == nullptr) {
-    LOG(FATAL) << "Should have runtime infer context";
-  }
-  const auto& ins = runtime_ctx->OpBase().Inputs();
-  const auto& outs = runtime_ctx->OpBase().Outputs();
-  const auto& scope = runtime_ctx->InferScope();
-  const auto ins_end = ins.end();
-  const auto outs_end = outs.end();
-  auto fair_input = [&](const std::string& name) -> bool {
-    auto it = ins.find(name);
-    if (it == ins_end) {
-      return false;
-    }
-    const auto& in = it->second;
-    if (in.size() != 1 || in[0] == framework::kEmptyVarName) {
-      return false;
-    }
-    return scope.FindVar(in[0]) != nullptr;
-  };
-  auto fair_output = [&](const std::string& name) -> bool {
-    auto it = outs.find(name);
-    if (it == outs_end) {
-      return false;
-    }
-    const auto& out = it->second;
-    if (out.size() != 1 || out[0] == framework::kEmptyVarName) {
-      return false;
-    }
-    return scope.FindVar(out[0]) != nullptr;
-  };
-
+  FUSION_INFERSHAPE_INIT;
   PADDLE_ENFORCE(fair_input("X"), "Assert only one Input(X) of AttentionLSTM.");
   PADDLE_ENFORCE(fair_input("C0"),
                  "Assert only one Input(C0) of AttentionLSTM.");
