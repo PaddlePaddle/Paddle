@@ -381,7 +381,7 @@ class DistributeTranspiler(object):
                                                         pserver_endpoints)
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
-    def get_trainer_program(self):
+    def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program.
 
@@ -393,7 +393,8 @@ class DistributeTranspiler(object):
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
 
-        wait_server_ready(self.pserver_endpoints)
+        if wait_port:
+            wait_server_ready(self.pserver_endpoints)
 
         return self.origin_program
 
