@@ -138,7 +138,7 @@ void UnionContractedNodes(const std::unordered_map<int, BriefNode *> &node_map,
   }
 }
 
-// FlexibleDfS
+// FlexibleDFS
 // If reverse is true, do reverse dfs.
 // If enter func is not nullptr, calls enter(node) before visiting any children
 // of node.
