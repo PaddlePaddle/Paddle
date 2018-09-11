@@ -26,8 +26,8 @@
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 
-DEFINE_string(infer_ditu_rnn_model, "", "model path for ditu RNN");
-DEFINE_string(infer_ditu_rnn_data, "", "data path for ditu RNN");
+DEFINE_string(infer_model, "", "model path");
+DEFINE_string(infer_data, "", "data path");
 DEFINE_int32(batch_size, 10, "batch size.");
 DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
 DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
@@ -223,6 +223,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 
 }  // namespace
 
+
 // const float ditu_rnn_target_data[] = {
 //     104.711, 11.2431, 1.35422, 0,       0,       0,       0,       0,
 //     27.7039, 1.41486, 7.09526, 0,       0,       0,       0,       0,
@@ -234,6 +235,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
 //     10.7286, 12.0595, 10.6672, 0,       0,       0,       0,       0,
 //     93.5771, 3.84641, 0,       0,       0,       0,       0,       0,
 //     169.426, 0,       0,       0,       0,       0,       0,       0};
+
 void CompareResult(const std::vector<PaddleTensor> &outputs,
                    const std::vector<PaddleTensor> &base_outputs) {
   PADDLE_ENFORCE_GT(outputs.size(), 0);
@@ -255,11 +257,10 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
   }
 }
 // Test with a really complicate model.
-void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
-                           int num_threads) {
+void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
   AnalysisConfig config;
-  config.prog_file = FLAGS_infer_ditu_rnn_model + "/__model__";
-  config.param_file = FLAGS_infer_ditu_rnn_model + "/param";
+  config.prog_file = FLAGS_infer_model + "/__model__";
+  config.param_file = FLAGS_infer_model + "/param";
   config.use_gpu = false;
   config.device = 0;
   config.specify_input_name = true;
@@ -267,6 +268,7 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
   PADDLE_ENFORCE(config.ir_mode ==
                  AnalysisConfig::IrPassMode::kExclude);  // default
   config.ir_passes.clear();  // Do not exclude any pass.
+
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
 
@@ -276,7 +278,7 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
       CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
           config);
   std::vector<PaddleTensor> input_slots;
-  DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
+  DataRecord data(FLAGS_infer_data, batch_size);
   // Prepare inputs.
   PrepareInputs(&input_slots, &data, batch_size);
   std::vector<PaddleTensor> outputs, base_outputs;
@@ -306,7 +308,7 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
       threads.emplace_back([&, tid]() {
         // Each thread should have local input_slots and outputs.
         std::vector<PaddleTensor> input_slots;
-        DataRecord data(FLAGS_infer_ditu_rnn_data, batch_size);
+        DataRecord data(FLAGS_infer_data, batch_size);
         PrepareInputs(&input_slots, &data, batch_size);
         std::vector<PaddleTensor> outputs;
         Timer timer;
@@ -346,30 +348,29 @@ void TestDituRNNPrediction(bool use_analysis, bool activate_ir,
     ASSERT_TRUE(fuse_statis.count("fc_fuse"));
     EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
     EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+    EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
     EXPECT_EQ(num_ops,
               13);  // After graph optimization, only 13 operators exists.
   }
 }
 
 // Inference with analysis and IR, easy for profiling independently.
-TEST(Analyzer, DituRNN) {
-  TestDituRNNPrediction(true, true, FLAGS_num_threads);
-}
+TEST(Analyzer, rnn1) { TestRNN1Prediction(true, true, FLAGS_num_threads); }
 
-// Other unit-tests of DituRNN, test different options of use_analysis,
+// Other unit-tests of RNN1, test different options of use_analysis,
 // activate_ir and multi-threads.
-TEST(Analyzer, DituRNN_tests) {
+TEST(Analyzer, RNN_tests) {
   int num_threads[2] = {1, 4};
   for (auto i : num_threads) {
     // Directly infer with the original model.
-    TestDituRNNPrediction(false, false, i);
+    TestRNN1Prediction(false, false, i);
     // Inference with the original model with the analysis turned on, the
     // analysis
     // module will transform the program to a data flow graph.
-    TestDituRNNPrediction(true, false, i);
+    TestRNN1Prediction(true, false, i);
     // Inference with analysis and IR. The IR module will fuse some large
     // kernels.
-    TestDituRNNPrediction(true, true, i);
+    TestRNN1Prediction(true, true, i);
   }
 }
 

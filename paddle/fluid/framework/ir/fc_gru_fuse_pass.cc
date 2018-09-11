@@ -20,52 +20,43 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static void BuildPattern(PDPattern* pattern, const std::string& name_scope,
-                         bool with_fc_bias) {
-  PDNode* x = pattern->NewNode(name_scope, "x")
-                  ->assert_is_op_input("mul")
-                  ->assert_var_not_persistable();
-  auto* fc_out = patterns::FC(pattern, name_scope, x, with_fc_bias);
-  fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
-  patterns::GRU(pattern, name_scope, fc_out);
-  VLOG(3) << "fc_gru pattern \n" << pattern->DotString();
-}
-
 static int BuildFusion(Graph* graph, const std::string& name_scope,
                        Scope* scope, bool with_fc_bias) {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
-  BuildPattern(pattern, name_scope, with_fc_bias);
+  // Create pattern.
+  patterns::FC fc_pattern(pattern, name_scope);
+  patterns::GRU gru_pattern(pattern, name_scope);
+
+  PDNode* x =
+      pattern->NewNode(patterns::UniqueKey("x"))->assert_var_not_persistable();
+
+  auto* fc_out = fc_pattern(x, with_fc_bias);
+  fc_out->AsIntermediate();  // fc_out is a tmp var, will be removed after fuse.
+  gru_pattern(fc_out);
 
   // Create New OpDesc
-  auto gru_creater = [&](int gru, int x, int weight_x, int weight_h, int bias,
-                         int hidden, int fc_bias) {
-#define GET_NODE(x) auto* x##_n = graph->RetriveNode(x);
-    GET_NODE(x);
-    GET_NODE(weight_x);
-    GET_NODE(weight_h);
-    GET_NODE(bias);
-    GET_NODE(hidden);
-    GET_NODE(gru);
+  auto gru_creater = [&](Node* gru, Node* x, Node* weight_x, Node* weight_h,
+                         Node* bias, Node* hidden, Node* fc_bias) {
 
     OpDesc op_desc;
     op_desc.SetType("fusion_gru");
 
 #define NEW_NAME(x) name_scope + "/at." #x ".new"
-#define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__##_n->Name()});
+#define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
     SET_IN(X, x);
     SET_IN(WeightX, weight_x);
     SET_IN(WeightH, weight_h);
     if (with_fc_bias) {
-      op_desc.SetInput("Bias", {NEW_NAME(bias) + bias_n->Name()});
+      op_desc.SetInput("Bias", {NEW_NAME(bias) + bias->Name()});
     } else {
       SET_IN(Bias, bias);
     }
 #undef SET_IN
     op_desc.SetInput("H0", {});
-    op_desc.SetOutput("Hidden", {hidden_n->Name()});
-    op_desc.SetAttr("is_reverse", gru_n->Op()->GetAttr("is_reverse"));
+    op_desc.SetOutput("Hidden", {hidden->Name()});
+    op_desc.SetAttr("is_reverse", gru->Op()->GetAttr("is_reverse"));
     // TODO(TJ): This should be a option for infer
     op_desc.SetAttr("use_seq", true);
 
@@ -82,14 +73,12 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
     PADDLE_ENFORCE(scope);
     if (with_fc_bias) {
       // Fusion GRU bias = fcbias + grubias
-      auto* fusion_bias_var = scope->Var(NEW_NAME(bias) + bias_n->Name());
+      auto* fusion_bias_var = scope->Var(NEW_NAME(bias) + bias->Name());
       auto* out_bias_tensor =
           fusion_bias_var->GetMutable<framework::LoDTensor>();
       PADDLE_ENFORCE(fusion_bias_var);
-      GET_NODE(fc_bias);
-      PADDLE_ENFORCE(fc_bias_n);
-      auto* gru_bias_var = scope->FindVar(bias_n->Name());
-      auto* fc_bias_var = scope->FindVar(fc_bias_n->Name());
+      auto* gru_bias_var = scope->FindVar(bias->Name());
+      auto* fc_bias_var = scope->FindVar(fc_bias->Name());
       PADDLE_ENFORCE(gru_bias_var);
       PADDLE_ENFORCE(fc_bias_var);
       const auto& gru_bias_tenosr = gru_bias_var->Get<framework::LoDTensor>();
@@ -113,11 +102,11 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 #undef NEW_NAME
 #undef NEW_IMTERMEDIATE_OUT
 
-    IR_NODE_LINK_TO(x_n, op);
-    IR_NODE_LINK_TO(weight_x_n, op);
-    IR_NODE_LINK_TO(weight_h_n, op);
-    IR_NODE_LINK_TO(bias_n, op);  // actually should link to new bias if have
-    IR_NODE_LINK_TO(op, hidden_n);
+    IR_NODE_LINK_TO(x, op);
+    IR_NODE_LINK_TO(weight_x, op);
+    IR_NODE_LINK_TO(weight_h, op);
+    IR_NODE_LINK_TO(bias, op);  // actually should link to new bias if have
+    IR_NODE_LINK_TO(op, hidden);
     // h0?
     return op;
   };
@@ -125,42 +114,35 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
   int fusion_count{0};
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-#define GET_NODE(name__)                                \
-  std::string name__##key = name_scope + "/" + #name__; \
-  auto* name__##n = pattern->RetrieveNode(name__##key); \
-  PADDLE_ENFORCE(name__##n);                            \
-  PADDLE_ENFORCE(subgraph.count(name__##n));            \
-  Node* name__##_n = subgraph.at(name__##n);            \
-  int name__ __attribute__((unused)) = name__##_n->id();
-
-    GET_NODE(x);
-    GET_NODE(w);  // fc weight
-    GET_NODE(mul);
-    GET_NODE(fc_out);
-    GET_NODE(Weight);
-    GET_NODE(gru);
-    GET_NODE(Bias);
-    GET_NODE(Hidden);
+    auto* x_n = subgraph.at(x);
+    GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(fc_out, Out, fc_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(gru, gru, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(Hidden, Hidden, gru_pattern);
     // nodes need be removed
-    GET_NODE(BatchGate);
-    GET_NODE(BatchResetHiddenPrev);
-    GET_NODE(BatchHidden);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchGate, BatchGate, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchResetHiddenPrev, BatchGate, gru_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(BatchHidden, BatchGate, gru_pattern);
 
     if (with_fc_bias) {
-      GET_NODE(mul_out);
-      GET_NODE(fc_bias);
-      GET_NODE(elementwise_add);
-      gru_creater(gru, x, w, Weight, Bias, Hidden, fc_bias);
+      GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
+      GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
+
+      gru_creater(gru, x_n, w, Weight, Bias, Hidden, fc_bias);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul_n, gru_n, elementwise_add_n, fc_bias_n, fc_out_n, mul_out_n,
-           BatchGate_n, BatchResetHiddenPrev_n, BatchHidden_n});
+          {mul, gru, elementwise_add, fc_bias, fc_out, mul_out, BatchGate,
+           BatchResetHiddenPrev, BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     } else {
-      gru_creater(gru, x, w, Weight, Bias, Hidden, -1);
+      gru_creater(gru, x_n, w, Weight, Bias, Hidden, nullptr);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
-          {mul_n, gru_n, BatchGate_n, BatchResetHiddenPrev_n, BatchHidden_n});
+          {mul, gru, BatchGate, BatchResetHiddenPrev, BatchHidden});
       GraphSafeRemoveNodes(graph, marked_nodes);
     }
 #undef GET_NODE
