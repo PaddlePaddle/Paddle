@@ -31,25 +31,28 @@ class AucKernel : public framework::OpKernel<T> {
     auto *label = ctx.Input<Tensor>("Label");
 
     std::string curve = ctx.Attr<std::string>("curve");
+    bool is_distributed = ctx.Attr<bool>("is_distributed");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
     int num_pred_buckets = num_thresholds + 1;
-
-    // Only use output var for now, make sure it's persistable and
-    // not cleaned up for each batch.
-    auto *auc = ctx.Output<Tensor>("AUC");
-    auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
-    auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
-
-    auto *stat_pos_data = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
-    auto *stat_neg_data = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
-    calcAuc(ctx, label, predict, stat_pos_data, stat_neg_data, num_thresholds,
-            auc);
 
     auto *batch_auc = ctx.Output<Tensor>("BatchAUC");
     std::vector<int64_t> stat_pos_batch(num_pred_buckets, 0);
     std::vector<int64_t> stat_neg_batch(num_pred_buckets, 0);
     calcAuc(ctx, label, predict, stat_pos_batch.data(), stat_neg_batch.data(),
             num_thresholds, batch_auc);
+
+    if (!is_distributed) {
+      // Only use output var for now, make sure it's persistable and
+      // not cleaned up for each batch.
+      auto *auc = ctx.Output<Tensor>("AUC");
+      auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
+      auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
+
+      auto *stat_pos_data = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
+      auto *stat_neg_data = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
+      calcAuc(ctx, label, predict, stat_pos_data, stat_neg_data, num_thresholds,
+              auc);
+    }
   }
 
  private:

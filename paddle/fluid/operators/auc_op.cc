@@ -76,10 +76,12 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
 
-    AddAttr<int>("num_thresholds",
-                 "The number of thresholds to use when discretizing the"
-                 " roc curve.")
+    AddAttr<int>(
+        "num_thresholds",
+        "The number of thresholds to use when discretizing the roc curve.")
         .SetDefault((2 << 12) - 1);
+    AddAttr<bool>("is_distributed", "Use distributed auc calc.")
+        .SetDefault(false);
 
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.

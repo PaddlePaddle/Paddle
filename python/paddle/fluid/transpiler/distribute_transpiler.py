@@ -897,12 +897,15 @@ class DistributeTranspiler(object):
         all_ops = self.origin_program.global_block().ops
         auc_op_idx = list(all_ops).index(auc_op)
 
+        zero_dim = label.shape[0] * 2
+        table_shape = list(label.shape)
+        table_shape[0] = zero_dim
+
         prev_label_concat = self.origin_program.global_block().create_var(
             name="distributed_auc.trainer_%d.pserver_%d" % (self.trainer_id, 0),
             persistable=False,
             dtype=label.dtype,
-            type=label.type,
-            shape=label.shape)
+            shape=table_shape)
 
         self.origin_program.global_block()._insert_op(
             index=auc_op_idx + 1,
@@ -1265,6 +1268,10 @@ class DistributeTranspiler(object):
             curve = auc_op.attrs["curve"]
             is_distributed = auc_op.attrs["is_distributed"]
 
+            zero_dim = label.shape[0] * 2
+            table_shape = list(label.shape)
+            table_shape[0] = zero_dim
+
             stat_pos = distributed_metrics_block.create_var(
                 persistable=True, dtype='int64', shape=[num_thresholds + 1])
             stat_neg = distributed_metrics_block.create_var(
@@ -1273,14 +1280,14 @@ class DistributeTranspiler(object):
             for i in range(self.trainer_num):
                 var = distributed_metrics_block.create_var(
                     name="%s.trainer_%d.pserver_%d" % ("distributed_auc", i, 0),
-                    shape=[1],
+                    shape=table_shape,
                     dtype="float32")
                 metrics_var_name_to_block_id.append(var.name + ":" + str(
                     distributed_metrics_block.idx))
 
             distributed_auc = distributed_metrics_block.create_var(
                 name="%s.pserver_%d" % ("distributed_auc", 0),
-                shape=[1],
+                shape=table_shape,
                 dtype="float32")
             distributed_metrics_block.append_op(
                 type="split",
