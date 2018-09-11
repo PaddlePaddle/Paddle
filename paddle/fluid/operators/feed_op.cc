@@ -33,6 +33,7 @@ class FeedOp : public framework::OperatorBase {
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(place);
 
     auto feed_var_name = Input("X");
+    LOG(INFO) << "feed_var_name: " << feed_var_name;
     auto *feed_var = scope.FindVar(feed_var_name);
 
     PADDLE_ENFORCE(feed_var != nullptr,
@@ -51,6 +52,9 @@ class FeedOp : public framework::OperatorBase {
             << out_name;
 
     auto &feed_list = feed_var->Get<framework::FeedFetchList>();
+    LOG(INFO) << "feed_list.size " << feed_list.size();
+    if (feed_list.empty()) return;
+    PADDLE_ENFORCE_LT(col, feed_list.size());
     auto &feed_item = feed_list.at(static_cast<size_t>(col));
     auto *out_item = out_var->GetMutable<framework::FeedFetchType>();
 
