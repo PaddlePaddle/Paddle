@@ -393,6 +393,8 @@ class DistributeTranspiler(object):
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
 
+        wait_server_ready(self.pserver_endpoints)
+
         return self.origin_program
 
     def _get_trainer_startup_program(self, recv_vars, eplist):
