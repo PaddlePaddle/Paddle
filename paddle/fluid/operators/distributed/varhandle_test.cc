@@ -23,9 +23,9 @@ limitations under the License. */
 using paddle::operators::distributed::VarHandlePtr;
 using paddle::operators::distributed::VarHandle;
 
-void WaitTrue(VarHandlePtr s, int pos) { EXPECT_TRUE(s->Wait()); }
+void WaitTrue(VarHandlePtr s) { EXPECT_TRUE(s->Wait()); }
 
-void WaitFalse(VarHandlePtr s, int pos) { EXPECT_FALSE(s->Wait()); }
+void WaitFalse(VarHandlePtr s) { EXPECT_FALSE(s->Wait()); }
 
 TEST(VarHandle, Run) {
   std::vector<VarHandlePtr> a;
@@ -36,7 +36,7 @@ TEST(VarHandle, Run) {
 
   std::vector<std::unique_ptr<std::thread>> t;
   for (int i = 0; i < 6; i++) {
-    t.emplace_back(new std::thread(WaitFalse, a[i], i));
+    t.emplace_back(new std::thread(WaitFalse, a[i]));
   }
 
   for (int i = 0; i < 6; i++) {
@@ -45,7 +45,7 @@ TEST(VarHandle, Run) {
   }
 
   for (int i = 6; i < 12; i++) {
-    t.emplace_back(new std::thread(WaitTrue, a[i], i + 6));
+    t.emplace_back(new std::thread(WaitTrue, a[i]));
   }
 
   for (int i = 6; i < 12; i++) {
