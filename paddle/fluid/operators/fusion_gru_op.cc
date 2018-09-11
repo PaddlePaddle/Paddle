@@ -15,7 +15,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/fusion_gru_op.h"
 #include <cstring>  // for memcpy
 #include <string>
-#include "paddle/fluid/operators/fusion_infershape_define.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
@@ -26,14 +25,13 @@ namespace paddle {
 namespace operators {
 
 void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
-  FUSION_INFERSHAPE_INIT;
-  PADDLE_ENFORCE(fair_input("X"), "Assert only one Input(X) of GRU.");
-  PADDLE_ENFORCE(fair_input("WeightX"),
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Assert only one Input(X) of GRU.");
+  PADDLE_ENFORCE(ctx->HasInput("WeightX"),
                  "Assert only one Input(WeightX) of GRU.");
-  PADDLE_ENFORCE(fair_input("WeightH"),
+  PADDLE_ENFORCE(ctx->HasInput("WeightH"),
                  "Assert only one Input(WeightH) of GRU.");
-  PADDLE_ENFORCE(fair_output("XX"), "Assert only one Output(XX) of GRU.");
-  PADDLE_ENFORCE(fair_output("Hidden"),
+  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Assert only one Output(XX) of GRU.");
+  PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
                  "Assert only one Output(Hidden) of GRU.");
 
   auto x_dims = ctx->GetInputDim("X");
@@ -60,12 +58,12 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
                     "should be 3 * %d.",
                     frame_size);
 
-  if (fair_input("H0")) {
+  if (ctx->HasInput("H0")) {
     auto h0_dims = ctx->GetInputDim("H0");
     PADDLE_ENFORCE_EQ(h0_dims[1], frame_size,
                       "The width of H0 must be equal to frame_size.");
   }
-  if (fair_input("Bias")) {
+  if (ctx->HasInput("Bias")) {
     auto b_dims = ctx->GetInputDim("Bias");
     PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
     PADDLE_ENFORCE_EQ(b_dims[0], 1,
@@ -81,11 +79,11 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
-    PADDLE_ENFORCE(fair_output("ReorderedH0"),
+    PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
                    "Assert only one Output(ReorderedH0) of GRU.");
-    PADDLE_ENFORCE(fair_output("BatchedInput"),
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
                    "Assert only one Output(BatchedInput) of GRU.");
-    PADDLE_ENFORCE(fair_output("BatchedOut"),
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedOut"),
                    "Assert only one Output(BatchedOut) of GRU.");
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedOut", out_dims);
