@@ -126,7 +126,8 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
-        # Set 1 thread num under nccl2 distribute env to make sure all gpus run ops in same order.
+        # Set 1 thread num under nccl2 distribute 
+        #   env to make sure all gpus run ops in same order.
         if num_trainers > 1:
             assert (use_cuda)
             # FIXME(gongwb): avoid this set.
