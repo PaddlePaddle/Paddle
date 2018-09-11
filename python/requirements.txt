@@ -9,4 +9,3 @@ Pillow
 nltk>=3.2.2
 graphviz
 six
-ujson
