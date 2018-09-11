@@ -87,7 +87,8 @@ class VarHandle {
 
   std::string String() const {
     std::ostringstream s;
-    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "]";
+    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], ok:[" << ok_
+      << "]";
     return s.str();
   }
 
