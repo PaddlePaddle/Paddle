@@ -60,11 +60,10 @@ class InferenceTranspiler(object):
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
+        self._fuse_batch_norm(program, place, scope)
         if use_mkldnn:
             self._fuse_relu_mkldnn(program)
             self._fuse_conv_bias_mkldnn(program)
-        else:
-            self._fuse_batch_norm(program, place, scope)
 
     def _fuse_relu_mkldnn(self, program):
         '''

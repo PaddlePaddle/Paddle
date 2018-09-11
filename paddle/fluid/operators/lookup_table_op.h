@@ -57,7 +57,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
           memset(output + i * row_width, 0, row_width * sizeof(T));
         } else {
           PADDLE_ENFORCE_LT(ids[i], row_number);
-          PADDLE_ENFORCE_GE(ids[i], 0);
+          PADDLE_ENFORCE_GE(ids[i], 0, "ids %d", i);
           memcpy(output + i * row_width, table + ids[i] * row_width,
                  row_width * sizeof(T));
         }

@@ -968,7 +968,7 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     return out
 
 
-def cross_entropy(input, label, soft_label=False):
+def cross_entropy(input, label, soft_label=False, ignore_index=-100):
     """
     **Cross Entropy Layer**
 
@@ -1012,7 +1012,10 @@ def cross_entropy(input, label, soft_label=False):
                                tensor<float/double> with shape [N x D].
         soft_label (bool): a flag indicating whether to
                                            interpretate the given labels as soft
-                                           labels, default `False`.
+                                           labels. Default: `False`.
+        ignore_index (int): Specifies a target value that is ignored and does 
+                            not contribute to the input gradient. Only valid 
+                            if soft_label is set to False. Default: -100
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -1037,7 +1040,8 @@ def cross_entropy(input, label, soft_label=False):
         inputs={'X': [input],
                 'Label': [label]},
         outputs={'Y': [out]},
-        attrs={"soft_label": soft_label})
+        attrs={"soft_label": soft_label,
+               "ignore_index": ignore_index})
     return out
 
 
@@ -4025,10 +4029,12 @@ def transpose(x, perm, name=None):
 
     helper = LayerHelper('transpose', **locals())
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='transpose',
+        type='transpose2',
         inputs={'X': [x]},
-        outputs={'Out': [out]},
+        outputs={'Out': [out],
+                 'XShape': [x_shape]},
         attrs={'axis': perm})
     return out
 
@@ -4240,7 +4246,10 @@ def multiplex(inputs, index):
     return out
 
 
-def softmax_with_cross_entropy(logits, label, soft_label=False):
+def softmax_with_cross_entropy(logits,
+                               label,
+                               soft_label=False,
+                               ignore_index=-100):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4282,6 +4291,10 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
             soft_label is set to true, Label is a Tensor<float/double> with
         soft_label (bool): A flag to indicate whether to interpretate the given
             labels as soft labels. By default, `soft_label` is set to False.
+        ignore_index (int): Specifies a target value that is ignored and does 
+                            not contribute to the input gradient. Only valid 
+                            if soft_label is set to False. Default: -100
+
     Returns:
         Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
 
@@ -4303,7 +4316,8 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label})
+        attrs={'soft_label': soft_label,
+               'ignore_index': ignore_index})
     return loss
 
 
@@ -4498,7 +4512,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python lsit or tuple.")
+        raise ValueError("Input shape must be a python list or tuple.")
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -4520,13 +4534,15 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "Each dimension size given in shape must not be negtive "
                 "except one unknown dimension.")
 
-    helper = LayerHelper("reshape", **locals())
+    helper = LayerHelper("reshape2", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
+    x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type="reshape",
+        type="reshape2",
         inputs=inputs,
         attrs={"shape": shape},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return helper.append_activation(out)
 
@@ -4570,11 +4586,13 @@ def squeeze(input, axes, name=None):
     """
     helper = LayerHelper("squeeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="squeeze",
+        type="squeeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -4605,11 +4623,13 @@ def unsqueeze(input, axes, name=None):
     """
     helper = LayerHelper("unsqueeze", **locals())
     out = helper.create_tmp_variable(dtype=input.dtype)
+    x_shape = helper.create_tmp_variable(dtype=input.dtype)
     helper.append_op(
-        type="unsqueeze",
+        type="unsqueeze2",
         inputs={"X": input},
         attrs={"axes": axes},
-        outputs={"Out": out})
+        outputs={"Out": out,
+                 "XShape": x_shape})
 
     return out
 
@@ -5811,10 +5831,12 @@ def flatten(x, axis=1, name=None):
         raise ValueError("The axis should be a int, and in range [0, rank(x)]")
 
     out = helper.create_tmp_variable(x.dtype)
+    x_shape = helper.create_tmp_variable(x.dtype)
     helper.append_op(
-        type='flatten',
+        type='flatten2',
         inputs={"X": x},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'XShape': x_shape},
         attrs={"axis": axis})
     return out
 

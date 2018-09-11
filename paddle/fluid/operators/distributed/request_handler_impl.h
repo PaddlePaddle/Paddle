@@ -45,12 +45,9 @@ class RequestSendHandler final : public RequestHandler {
               framework::Variable* var, framework::Variable** outvar,
               const int trainer_id,
               const std::string& out_var_name = "") override;
-  void ResetSparseVarRecorder();
 
  private:
   bool enable_dc_asgd_;
-  std::mutex mutex_sparse_vars_;
-  std::vector<framework::Variable*> sparse_vars_;
 };
 
 class RequestGetHandler final : public RequestHandler {

@@ -101,12 +101,19 @@ void RPCServer::Complete() {
   {
     std::unique_lock<std::mutex> lock(mutex_);
     client_num_--;
+    need_reset_all_vars_ = true;
+
     VLOG(4) << "decrease client_num to: " << client_num_;
     if (cur_cond_.load() == rpc_cond_map_[kRequestGet]) {
       barrier_counter_[kRequestGet]--;
     }
   }
   barrier_cond_.notify_all();
+}
+
+bool RPCServer::NeedResetAllVars() {
+  std::unique_lock<std::mutex> lock(mutex_);
+  return need_reset_all_vars_;
 }
 
 int RPCServer::GetClientNum() {
@@ -120,6 +127,7 @@ void RPCServer::ResetBarrierCounter() {
   for (auto& t : barrier_counter_) {
     t.second = 0;
   }
+  need_reset_all_vars_ = false;
 }
 
 void RPCServer::RegisterRPC(const std::string& rpc_name,
