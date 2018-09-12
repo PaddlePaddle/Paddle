@@ -96,3 +96,4 @@ version.txt 中记录了该预测库的版本信息，包括Git Commit ID、使�
      WITH_GPU: ON
      CUDA version: 8.0
      CUDNN version: v5
+
