@@ -44,6 +44,11 @@ class AucKernel : public framework::OpKernel<T> {
     auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
 
+    VLOG(3) << "slide_steps: " << slide_steps;
+    VLOG(3) << "Length of origin_stat_pos =: " << stat_pos->numel();
+    VLOG(3) << "Length of stat_pos =: " << num_pred_buckets;
+    VLOG(3) << "*********";
+
     std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
     std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
 
@@ -56,6 +61,14 @@ class AucKernel : public framework::OpKernel<T> {
   }
 
  private:
+  inline static std::string to_string(int64_t *stat, int length) {
+    std::stringstream ss;
+    for (int i = 0; i < length; ++i) {
+      ss << stat[i] << " ";
+    }
+    return ss.str();
+  }
+
   inline static double trapezoidArea(double X1, double X2, double Y1,
                                      double Y2) {
     return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
@@ -87,28 +100,38 @@ class AucKernel : public framework::OpKernel<T> {
       for (int slide = 0; slide < num_pred_buckets; ++slide) {
         origin_stat_pos[slide] += stat_pos[slide];
         origin_stat_neg[slide] += stat_neg[slide];
-        stat_pos = origin_stat_pos;
-        stat_neg = origin_stat_neg;
       }
+      stat_pos = origin_stat_pos;
+      stat_neg = origin_stat_neg;
     } else {
-      for (int slide = 1 * num_pred_buckets;
-           slide < (slide_steps - 1) * num_pred_buckets; ++slide) {
-        int idx = slide - num_pred_buckets;
-        origin_stat_pos[idx] = origin_stat_pos[slide];
-        origin_stat_neg[idx] = origin_stat_neg[slide];
+      int bucket_length = num_pred_buckets * sizeof(int64_t);
+
+      for (int slide = 1; slide < slide_steps; ++slide) {
+        int dst_idx = (slide - 1) * num_pred_buckets;
+        int src_inx = slide * num_pred_buckets;
+        std::memcpy(origin_stat_pos + dst_idx, origin_stat_pos + src_inx,
+                    bucket_length);
+        std::memcpy(origin_stat_neg + dst_idx, origin_stat_neg + src_inx,
+                    bucket_length);
       }
 
-      for (int slide = 0; slide < num_pred_buckets; ++slide) {
-        int idx = slide + num_pred_buckets * (slide_steps - 1);
-        origin_stat_pos[idx] = stat_pos[slide];
-        origin_stat_neg[idx] = stat_neg[slide];
-      }
+      std::memcpy(origin_stat_pos + (slide_steps - 1) * num_pred_buckets,
+                  stat_pos, bucket_length);
+      std::memcpy(origin_stat_neg + (slide_steps - 1) * num_pred_buckets,
+                  stat_neg, bucket_length);
+
+      std::memset(stat_pos, 0, bucket_length);
+      std::memset(stat_neg, 0, bucket_length);
 
       for (int slide = 0; slide < num_pred_buckets; ++slide) {
+        int stat_pos_steps = 0;
+        int stat_neg_steps = 0;
         for (int step = 0; step < slide_steps; ++step) {
-          stat_pos[slide] += origin_stat_pos[slide + step * num_pred_buckets];
-          stat_neg[slide] += origin_stat_neg[slide + step * num_pred_buckets];
+          stat_pos_steps += origin_stat_pos[slide + step * num_pred_buckets];
+          stat_neg_steps += origin_stat_neg[slide + step * num_pred_buckets];
         }
+        stat_pos[slide] += stat_pos_steps;
+        stat_neg[slide] += stat_neg_steps;
       }
     }
   }
