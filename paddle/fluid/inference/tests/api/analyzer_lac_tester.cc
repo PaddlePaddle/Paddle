@@ -117,34 +117,6 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_slots->assign({input_tensor});
 }
 
-void BenchAllData(const std::string &model_path, const std::string &data_file,
-                  const int batch_size, const int repeat) {
-  NativeConfig config;
-  config.model_dir = model_path;
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-  std::vector<PaddleTensor> input_slots, outputs_slots;
-  DataRecord data(data_file, batch_size);
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  GetOneBatch(&input_slots, &data, batch_size);
-  for (int i = 0; i < FLAGS_burning; i++) {
-    predictor->Run(input_slots, &outputs_slots);
-  }
-  Timer timer;
-  double sum = 0;
-  for (int i = 0; i < repeat; i++) {
-    for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
-      GetOneBatch(&input_slots, &data, batch_size);
-      timer.tic();
-      predictor->Run(input_slots, &outputs_slots);
-      sum += timer.toc();
-    }
-  }
-  PrintTime(batch_size, repeat, 1, 0, sum / repeat);
-}
-
 const int64_t lac_ref_data[] = {24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25,
                                 25, 25, 25, 25, 44, 24, 25, 25, 25, 36, 42, 43,
                                 44, 14, 15, 44, 14, 15, 44, 14, 15, 44, 38, 39,
