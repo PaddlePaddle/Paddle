@@ -14,9 +14,11 @@ limitations under the License. */
 
 #pragma once
 #include <numeric>  // std::iota
-
+#include <sstream>
+#include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -87,10 +89,38 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     auto* x = context.Input<LoDTensor>("X");
     auto* y = context.Input<LoDTensor>("Y");
     auto* out = context.Output<LoDTensor>("Out");
-
     int ref_level = context.Attr<int>("ref_level");
+
     auto& x_lod = x->lod();
+    VLOG(1) << "X LoD.size() = " << x_lod.size();
+    if (VLOG_IS_ON(3)) {
+      for (size_t i = 0; i < x_lod.size(); ++i) {
+        std::ostringstream os;
+        auto& cur = x_lod[i];
+        os << "  level=" << i;
+        for (auto& elem : cur) {
+          os << " " << elem;
+        }
+        os << std::endl;
+        VLOG(3) << os.str();
+      }
+    }
+
     auto& y_lod = y->lod();
+    PADDLE_ENFORCE(!y_lod.empty(), "LoD of Y should not be empty.");
+    VLOG(1) << "Y LoD.size() = " << y_lod.size();
+    if (VLOG_IS_ON(3)) {
+      for (size_t i = 0; i < y_lod.size(); ++i) {
+        std::ostringstream os;
+        auto& cur = y_lod[i];
+        os << " level = " << i;
+        for (auto& elem : cur) {
+          os << " " << elem;
+        }
+        os << std::endl;
+        VLOG(3) << os.str();
+      }
+    }
 
     if (ref_level == -1) ref_level = y_lod.size() - 1;
 
@@ -99,6 +129,15 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     if (y_lod[ref_level].size() <= 1) {
       framework::TensorCopy(*x, context.GetPlace(), out);
       return;
+    }
+
+    {
+      auto& ref_lod = y_lod[ref_level];
+      PADDLE_ENFORCE_EQ(
+          ref_lod.size() - 1,
+          x_lod.empty() ? x->dims()[0] : x_lod[0].size() - 1,
+          "The reference lod size must be same as x->dims[0] + 1 or "
+          "x_lod[0].size()");
     }
 
     // x lod level is at most 1.
@@ -131,6 +170,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     SequenceExpandFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *x, ref_x_lod,
             y_lod[ref_level], out);
+    context.template device_context<DeviceContext>().Wait();
   }
 };
 
@@ -210,6 +250,7 @@ class SequenceExpandGradKernel : public framework::OpKernel<T> {
     SequenceExpandGradFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *g_out, ref_x_lod,
             ref_lod, g_x);
+    context.template device_context<DeviceContext>().Wait();
   }
 };
 

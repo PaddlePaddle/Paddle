@@ -29,8 +29,10 @@ class SequenceSoftmaxCUDNNKernel : public framework::OpKernel<T> {
     auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
 
-    auto lod = x->lod();
+    auto& lod = x->lod();
     auto dims = x->dims();
+
+    VLOG(3) << " X dim = " << dims;
 
     const size_t level = lod.size() - 1;
     PADDLE_ENFORCE_EQ(dims[0], static_cast<int64_t>(lod[level].back()),

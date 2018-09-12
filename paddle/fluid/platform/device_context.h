@@ -13,6 +13,7 @@ limitations under the License. */
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include <vector>
 
@@ -88,6 +89,8 @@ class CUDADeviceContext : public DeviceContext {
   /*! \brief  Return the max physical thread count in the device context */
   int GetMaxPhysicalThreadCount() const;
 
+  std::tuple<int, int, int> GetMaxGridDims() const;
+
   /*! \brief  Return eigen device in the device context. */
   Eigen::GpuDevice* eigen_device() const;
 
@@ -120,6 +123,8 @@ class CUDADeviceContext : public DeviceContext {
   std::unique_ptr<CudnnHolder> cudnn_holder_;
   cudaStream_t stream_;
   cublasHandle_t cublas_handle_;
+
+  std::tuple<int, int, int> gridMaxDims_;
 
   int compute_capability;
   int multi_process;

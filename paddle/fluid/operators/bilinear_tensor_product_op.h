@@ -61,9 +61,9 @@ class BilinearTensorProductKernel : public framework::OpKernel<T> {
       auto output_col_vec = output_mat.chip(i, 1);
       Tensor weight_mat =
           weight->Slice(i, i + 1).Resize(framework::make_ddim({x_dim, y_dim}));
-      math::GetBlas<DeviceContext, T>(dev_ctx).GEMM(
-          CblasNoTrans, CblasNoTrans, batch_size, y_dim, x_dim, 1, x->data<T>(),
-          weight_mat.data<T>(), 0, left_mul.data<T>());
+      auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
+      blas.GEMM(CblasNoTrans, CblasNoTrans, batch_size, y_dim, x_dim, 1,
+                x->data<T>(), weight_mat.data<T>(), 0, left_mul.data<T>());
       output_col_vec.device(place) =
           (left_mul_mat * y_mat).sum(Eigen::DSizes<int, 1>(1));
     }
@@ -125,7 +125,7 @@ class BilinearTensorProductGradKernel : public framework::OpKernel<T> {
       set_zero(dev_ctx, d_y, static_cast<T>(0));
     }
 
-    auto blas = math::GetBlas<DeviceContext, T>(ctx);
+    auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
 
     // Caculate the Output(X@Grad) and Output(Y@Grad).
     if (d_x || d_y) {

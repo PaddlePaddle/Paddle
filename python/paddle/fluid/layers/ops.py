@@ -63,13 +63,13 @@ __all__ = [
     'logical_xor',
     'logical_not',
     'uniform_random_batch_size_like',
-    'gaussian_random',
     'sampling_id',
     'gaussian_random_batch_size_like',
     'sum',
     'slice',
     'shape',
     'maxout',
+    'sequence_concat',
 ] + __activations__
 
 for _OP in set(__all__):
