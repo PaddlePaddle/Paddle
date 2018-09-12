@@ -44,11 +44,6 @@ class AucKernel : public framework::OpKernel<T> {
     auto *origin_stat_pos = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
     auto *origin_stat_neg = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
 
-    VLOG(3) << "slide_steps: " << slide_steps;
-    VLOG(3) << "Length of origin_stat_pos =: " << stat_pos->numel();
-    VLOG(3) << "Length of stat_pos =: " << num_pred_buckets;
-    VLOG(3) << "*********";
-
     std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
     std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
 
@@ -61,14 +56,6 @@ class AucKernel : public framework::OpKernel<T> {
   }
 
  private:
-  inline static std::string to_string(int64_t *stat, int length) {
-    std::stringstream ss;
-    for (int i = 0; i < length; ++i) {
-      ss << stat[i] << " ";
-    }
-    return ss.str();
-  }
-
   inline static double trapezoidArea(double X1, double X2, double Y1,
                                      double Y2) {
     return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
