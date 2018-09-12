@@ -86,7 +86,8 @@ class GRUUnitKernel : public framework::OpKernel<T> {
     const T* weight_data = weight->data<T>();
     T* gate_data = gate->data<T>();
     T* reset_hidden_prev_data = reset_hidden_prev->data<T>();
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = math::GetBlas<DeviceContext, T>(
+        context.template device_context<DeviceContext>());
     blas.GEMM(false, false, batch_size, 2 * frame_size, frame_size, 1,
               hidden_prev_data, frame_size, weight_data, frame_size * 2, 1,
               gate_data, frame_size * 3);
@@ -186,7 +187,8 @@ class GRUUnitGradKernel : public framework::OpKernel<T> {
     ActGradCompute(context.Attr<int>("activation"), place, c, c,
                    d_g.slice(c_offsets, extents), d_h * u);
     // backward for reset_hidden_prev
-    auto blas = math::GetBlas<DeviceContext, T>(context);
+    auto blas = math::GetBlas<DeviceContext, T>(
+        context.template device_context<DeviceContext>());
     blas.GEMM(false, true, batch_size, frame_size, frame_size, 1,
               gate_grad_data + frame_size * 2, frame_size * 3,
               weight_data + frame_size * frame_size * 2, frame_size, 0,
