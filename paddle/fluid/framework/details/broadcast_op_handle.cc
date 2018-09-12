@@ -15,12 +15,19 @@
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/container_cast.h"
 #include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
+  if (dev_ctxes_.size() > 0UL) {
+    platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
+  } else {
+    platform::RecordEvent record_event(Name(), nullptr);
+  }
+
   if (places_.size() == 1) return;
 
   // The input and output may have dummy vars.
