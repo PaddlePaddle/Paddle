@@ -25,6 +25,7 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 
@@ -33,7 +34,7 @@ enum PaddleDType {
   INT64,
 };
 
-class PaddleBuf {
+class PADDLE_DLL PaddleBuf {
  public:
   PaddleBuf() = default;
   PaddleBuf(PaddleBuf&& other);
@@ -45,7 +46,7 @@ class PaddleBuf {
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  PaddleBuf(size_t length)
+  explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -64,7 +65,7 @@ class PaddleBuf {
   bool memory_owned_{true};
 };
 
-struct PaddleTensor {
+struct PADDLE_DLL PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
   std::vector<int> shape;
@@ -87,7 +88,7 @@ enum class PaddleEngineKind {
  * A simple Inference API for Paddle. Currently this API can be used by
  * non-sequence scenerios.
  */
-class PaddlePredictor {
+class PADDLE_DLL PaddlePredictor {
  public:
   struct Config;
   PaddlePredictor() = default;
@@ -96,7 +97,6 @@ class PaddlePredictor {
 
   // Predict an record.
   // The caller should be responsible for allocating and releasing the memory of
-  // `inputs`. `inputs` should be available until Run returns. Caller should be
   // responsible for the output tensor's buffer, either allocated or passed from
   // outside.
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
@@ -111,12 +111,12 @@ class PaddlePredictor {
   virtual ~PaddlePredictor() = default;
 
   // The common configs for all the predictors.
-  struct Config {
+  struct PADDLE_DLL Config {
     std::string model_dir;  // path to the model directory.
   };
 };
 
-struct NativeConfig : public PaddlePredictor::Config {
+struct PADDLE_DLL NativeConfig : public PaddlePredictor::Config {
   // GPU related fields.
   bool use_gpu{false};
   int device{0};
@@ -129,7 +129,7 @@ struct NativeConfig : public PaddlePredictor::Config {
 };
 
 // Configurations for Anakin engine.
-struct AnakinConfig : public PaddlePredictor::Config {
+struct PADDLE_DLL AnakinConfig : public PaddlePredictor::Config {
   enum TargetType { NVGPU = 0, X86 };
   int device;
   std::string model_file;
@@ -137,7 +137,7 @@ struct AnakinConfig : public PaddlePredictor::Config {
   TargetType target_type;
 };
 
-struct TensorRTConfig : public NativeConfig {
+struct PADDLE_DLL TensorRTConfig : public NativeConfig {
   // Determine whether a subgraph will be executed by TRT.
   int min_subgraph_size{1};
   // While TensorRT allows an engine optimized for a given max batch size
@@ -159,8 +159,9 @@ struct TensorRTConfig : public NativeConfig {
 //
 // Similarly, each engine kind should map to a unique predictor implementation.
 template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+PADDLE_DLL std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(
+    const ConfigT& config);
 
-int PaddleDtypeSize(PaddleDType dtype);
+PADDLE_DLL int PaddleDtypeSize(PaddleDType dtype);
 
 }  // namespace paddle

@@ -21,6 +21,7 @@ limitations under the License. */
 #if defined(_WIN32)
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
 #endif
 
 #ifdef PADDLE_WITH_CUDA

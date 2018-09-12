@@ -46,14 +46,9 @@ ExternalProject_Add(
     ${BOOST_PROJECT}
     ${EXTERNAL_PROJECT_LOG_ARGS}
     DOWNLOAD_DIR          ${BOOST_DOWNLOAD_DIR}
-<<<<<<< HEAD
-    DOWNLOAD_COMMAND      "wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
-                          && tar zxf ${BOOST_TAR}.tar.gz"
-=======
     DOWNLOAD_COMMAND      wget --no-check-certificate ${BOOST_URL} -c -q -O ${BOOST_TAR}.tar.gz
     && tar zxf ${BOOST_TAR}.tar.gz
->>>>>>> origin/develop
-    DOWNLOAD_NO_PROGRESS  1
+DOWNLOAD_NO_PROGRESS  1
     PREFIX                ${BOOST_SOURCES_DIR}
     CONFIGURE_COMMAND     ""
     BUILD_COMMAND         ""

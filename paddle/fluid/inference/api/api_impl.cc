@@ -26,18 +26,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
-using Timer = paddle::inference::Timer;
 
 namespace paddle {
-namespace {
-
-template <class T>
-std::string num2str(T a) {
-  std::stringstream istr;
-  istr << a;
-  return istr.str();
-}
-}  // namespace
 
 void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {
@@ -130,6 +120,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
                                 std::vector<PaddleTensor> *output_data,
                                 int batch_size) {
   VLOG(3) << "Predictor::predict";
+  using Timer = paddle::inference::Timer;
   Timer timer;
   timer.tic();
   // set feed variable
@@ -307,7 +298,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
         config.fraction_of_gpu_memory <= 0.95f) {
       flags.push_back("dummpy");
       std::string flag = "--fraction_of_gpu_memory_to_use=" +
-                         num2str<float>(config.fraction_of_gpu_memory);
+                         std::to_string(config.fraction_of_gpu_memory);
       flags.push_back(flag);
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);

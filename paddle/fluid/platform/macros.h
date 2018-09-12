@@ -28,3 +28,13 @@ limitations under the License. */
 #if defined(__FLT_MAX__)
 #define FLT_MAX __FLT_MAX__
 #endif  // __FLT_MAX__
+
+#ifdef _WIN32
+#ifdef PADDLE_COMPILE
+#define PADDLE_DLL __declspec(dllexport)
+#else
+#define PADDLE_DLL __declspec(dllimport)
+#endif
+#else
+#define PADDLE_COMPILE
+#endif

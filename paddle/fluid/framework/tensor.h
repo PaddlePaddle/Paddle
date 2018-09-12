@@ -22,6 +22,7 @@ limitations under the License. */
 
 #if defined(_WIN32)
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
 #endif
 
 #include "paddle/fluid/framework/data_layout.h"
