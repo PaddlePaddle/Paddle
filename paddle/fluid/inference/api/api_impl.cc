@@ -275,7 +275,7 @@ bool NativePaddlePredictor::GetFetch(
     if (buffer.empty() || buffer.length() < sizeof(float) * data.size()) {
       buffer.Resize(sizeof(float) * data.size());
     }
-    std::memcpy(buffer.data(), data.data(), buffer.length());
+    std::memcpy(buffer.data(), data.data(), sizeof(float) * data.size());
     // copy LoD
     for (const auto &level : fetchs[i].lod()) {
       outputs->at(i).lod.emplace_back(level);
