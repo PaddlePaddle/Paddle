@@ -68,12 +68,14 @@ class VarHandle {
 
  public:
   bool Wait() {
+    int ret = kVarHandleDefaultState;
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
       wait_cond_.wait(lk, [this] { return ok_ != kVarHandleDefaultState; });
+      ret = ok_;
     }
-    VLOG(7) << "VarHandle wait:" << ok_;
-    return ok_ != 0;
+    VLOG(7) << "VarHandle wait:" << ret;
+    return ret != 0;
   }
 
   void Finish(bool ok) {
