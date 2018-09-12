@@ -40,7 +40,6 @@ WITH_MKL            ON/OFF
 
   .. code-block:: bash
 
-     pip install paddlepaddle-gpu
      PADDLE_ROOT=/path/of/capi
      git clone https://github.com/PaddlePaddle/Paddle.git
      cd Paddle
@@ -97,3 +96,4 @@ version.txt 中记录了该预测库的版本信息，包括Git Commit ID、使�
      WITH_GPU: ON
      CUDA version: 8.0
      CUDNN version: v5
+
