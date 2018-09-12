@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -261,15 +262,11 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class ConcatFunctor<platform::CUDADeviceContext, int>;
-template class ConcatFunctor<platform::CUDADeviceContext, int64_t>;
-template class ConcatFunctor<platform::CUDADeviceContext, float>;
-template class ConcatFunctor<platform::CUDADeviceContext, double>;
+#define DEFINE_FUNCTOR(type)                                       \
+  template class ConcatFunctor<platform::CUDADeviceContext, type>; \
+  template class ConcatGradFunctor<platform::CUDADeviceContext, type>
 
-template class ConcatGradFunctor<platform::CUDADeviceContext, int>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, int64_t>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, float>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, double>;
+FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 }  // namespace math
 }  // namespace operators

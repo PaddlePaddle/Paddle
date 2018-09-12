@@ -109,16 +109,11 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+#define DEFINE_FUNCTOR(type)                                      \
+  template class ConcatFunctor<platform::CPUDeviceContext, type>; \
+  template class ConcatGradFunctor<platform::CPUDeviceContext, type>;
 
-template class ConcatFunctor<platform::CPUDeviceContext, int>;
-template class ConcatFunctor<platform::CPUDeviceContext, int64_t>;
-template class ConcatFunctor<platform::CPUDeviceContext, float>;
-template class ConcatFunctor<platform::CPUDeviceContext, double>;
-
-template class ConcatGradFunctor<platform::CPUDeviceContext, int>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, int64_t>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, float>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, double>;
+FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 }  // namespace math
 }  // namespace operators
