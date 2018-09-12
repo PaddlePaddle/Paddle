@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#include <paddle/fluid/operators/math/concat.h>
 #include <numeric>
 
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -23,6 +24,50 @@ namespace paddle {
 namespace operators {
 
 using LoD = framework::LoD;
+
+class ArrayToLoDFunctor;
+template <typename DeviceContext>
+struct ArrayToLoDFunctorImpl {
+  const ArrayToLoDFunctor *prev_functor_;
+  DeviceContext *dev_ctx_;
+
+  template <typename T>
+  void apply();
+};
+
+struct ArrayToLoDFunctor : public boost::static_visitor<void> {
+  std::vector<framework::Tensor> in;
+  mutable framework::Tensor *out;
+
+  template <typename Place>
+  void operator()(Place place) const {
+    auto &pool = platform::DeviceContextPool::Instance();
+    if (std::is_same<Place, platform::CPUPlace>::value) {
+      Apply(static_cast<platform::CPUDeviceContext *>(pool.Get(place)));
+    } else {
+#ifdef PADDLE_WITH_CUDA
+      Apply(static_cast<platform::CUDADeviceContext *>(pool.Get(place)));
+#else
+      PADDLE_THROW("Fluid is not compiled with CUDA");
+#endif
+    }
+  }
+
+  template <typename DeviceContext>
+  void Apply(DeviceContext *dev_ctx) const {
+    ArrayToLoDFunctorImpl<DeviceContext> functor;
+    functor.dev_ctx_ = dev_ctx;
+    functor.prev_functor_ = this;
+    framework::VisitDataType(framework::ToDataType(out->type()), functor);
+  }
+};
+
+template <typename DeviceContext>
+template <typename T>
+void ArrayToLoDFunctorImpl<DeviceContext>::apply() {
+  math::ConcatFunctor<DeviceContext, T> func;
+  func(*dev_ctx_, prev_functor_->in, 0, prev_functor_->out);
+}
 
 class ArrayToLoDTensorOp : public framework::OperatorBase {
  public:
@@ -86,11 +131,11 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
     // Build LoDTensor `out`
     framework::LoD *out_lod = out->mutable_lod();
     out_lod->clear();
-    size_t out_offset = 0;
     auto prefix_lod = rank_table.coarse_lod();
     prefix_lod.emplace_back();
     auto &cur_level_lod = prefix_lod.back();
     cur_level_lod.push_back(0);
+    ArrayToLoDFunctor functor;
     for (size_t idx : table_item_idx) {
       cur_level_lod.push_back(cur_level_lod.back() + table_items[idx].length);
       PADDLE_ENFORCE_LE(table_items[idx].length, x.size());
@@ -111,17 +156,11 @@ class ArrayToLoDTensorOp : public framework::OperatorBase {
         if (len == 0) {
           continue;
         }
-        auto slice = out->Slice(out_offset, out_offset + len);
-
-        platform::DeviceContextPool &pool =
-            platform::DeviceContextPool::Instance();
-        auto &dev_ctx = *pool.Get(place);
-
-        framework::TensorCopy(x[x_idx].Slice(start_offset, end_offset), place,
-                              dev_ctx, &slice);
-        out_offset += len;
+        functor.in.emplace_back(x[x_idx].Slice(start_offset, end_offset));
       }
     }
+    functor.out = out;
+    platform::VisitPlace(place, functor);
     out_lod->insert(out_lod->begin(), prefix_lod.begin(), prefix_lod.end());
   }
 };
