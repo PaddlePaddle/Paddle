@@ -66,12 +66,13 @@ Record ProcessALine(const std::string &line) {
  * Use the native and analysis fluid engine to inference the demo.
  * ocr, mobilenet and se_resnext50
  */
-void TestVisualPrediction() {
+void TestVisualPrediction(bool use_mkldnn) {
   std::unique_ptr<PaddlePredictor> predictor;
   AnalysisConfig cfg;
   cfg.param_file = FLAGS_infer_model + "/__params__";
   cfg.prog_file = FLAGS_infer_model + "/__model__";
   cfg.use_gpu = false;
+  cfg.use_mkldnn = use_mkldnn;
   cfg.device = 0;
   cfg.enable_ir_optim = true;
   cfg.ir_passes.push_back("fc_gru_fuse_pass");
@@ -163,7 +164,10 @@ void TestVisualPrediction() {
   }
 }
 
-TEST(Analyzer_vis, analysis) { TestVisualPrediction(); }
+TEST(Analyzer_vis, analysis) { TestVisualPrediction(/*use_mkldnn*/ false); }
+TEST(Analyzer_vis, analysis_mkldnn) {
+  TestVisualPrediction(/*use_mkldnn*/ true);
+}
 
 }  // namespace analysis
 }  // namespace inference
