@@ -70,6 +70,20 @@ macro(safe_set_nvflag flag_name)
     endif()
 endmacro()
 
+macro(safe_set_static_flag) # set c_flags and cxx_flags to static or shared
+    if (BUILD_SHARED_LIBS) 
+        return() # if build shared libs, the flags keep same with '/MD'
+    endif(BUILD_SHARED_LIBS)
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+      if(${flag_var} MATCHES "/MD")
+        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+      endif(${flag_var} MATCHES "/MD")
+    endforeach(flag_var)
+endmacro()
 
 CHECK_CXX_SYMBOL_EXISTS(UINT64_MAX "stdint.h" UINT64_MAX_EXISTS)
 if(NOT UINT64_MAX_EXISTS)
@@ -133,7 +147,8 @@ set(GPU_COMMON_FLAGS
 
 else(NOT WIN32)
 set(COMMON_FLAGS
-    "/w") #disable all warnings
+    "/w") #disable all warnings.
+
 set(GPU_COMMON_FLAGS
     "") #disable all warnings
 
@@ -167,3 +182,7 @@ endforeach()
 foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
+
+if(MSVC)
+safe_set_static_flag()
+endif(MSVC)

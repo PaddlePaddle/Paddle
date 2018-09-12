@@ -20,6 +20,7 @@
 #include <string>
 
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
 #include "glog/logging.h"
 
 #if !defined(_WIN32)

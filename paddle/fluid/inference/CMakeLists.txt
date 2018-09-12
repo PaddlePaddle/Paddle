@@ -26,8 +26,9 @@ cc_library(paddle_fluid_origin DEPS ${fluid_modules} paddle_fluid_api)
 #endif()
 
 # Create static library
-
+if (WIN32)
 cc_library(paddle_fluid DEPS ${fluid_modules} ${fluid_third_partys} paddle_fluid_api paddle_inference_api)
+endif(WIN32)
 if(NOT APPLE)
   # TODO(liuyiqu: Temporarily disable the link flag because it is not support on Mac.
   set(LINK_FLAGS "-Wl,--retain-symbols-file ${CMAKE_CURRENT_SOURCE_DIR}/paddle_fluid.sym")

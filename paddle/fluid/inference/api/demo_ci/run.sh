@@ -29,13 +29,13 @@ function download() {
   fi
   cd ..
 }
-mkdir -p data
-cd data
-vis_demo_list='se_resnext50 ocr mobilenet'
-for vis_demo_name in $vis_demo_list; do
-  download $vis_demo_name
-done
-cd ..
+# mkdir -p data
+# cd data
+# vis_demo_list='se_resnext50 ocr mobilenet'
+# for vis_demo_name in $vis_demo_list; do
+#   download $vis_demo_name
+# done
+# cd ..
 
 # compile and test the demo
 mkdir -p build
@@ -63,25 +63,25 @@ for WITH_STATIC_LIB in ON OFF; do
     done
   fi
   # ---------vis_demo---------
-  rm -rf *
-  cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
-    -DWITH_MKL=$TURN_ON_MKL \
-    -DDEMO_NAME=vis_demo \
-    -DWITH_GPU=$TEST_GPU_CPU \
-    -DWITH_STATIC_LIB=$WITH_STATIC_LIB
-  make -j
-  for use_gpu in $use_gpu_list; do
-    for vis_demo_name in $vis_demo_list; do 
-      ./vis_demo \
-        --modeldir=../data/$vis_demo_name/model \
-        --data=../data/$vis_demo_name/data.txt \
-        --refer=../data/$vis_demo_name/result.txt \
-        --use_gpu=$use_gpu
-      if [ $? -ne 0 ]; then
-        echo "vis demo $vis_demo_name runs fail."
-        exit 1
-      fi
-    done
-  done
+  # rm -rf *
+  # cmake .. -DPADDLE_LIB=${PADDLE_ROOT}/build/fluid_install_dir/ \
+  #   -DWITH_MKL=$TURN_ON_MKL \
+  #   -DDEMO_NAME=vis_demo \
+  #   -DWITH_GPU=$TEST_GPU_CPU \
+  #   -DWITH_STATIC_LIB=$WITH_STATIC_LIB
+  # make -j
+  # for use_gpu in $use_gpu_list; do
+  #   for vis_demo_name in $vis_demo_list; do 
+  #     ./vis_demo \
+  #       --modeldir=../data/$vis_demo_name/model \
+  #       --data=../data/$vis_demo_name/data.txt \
+  #       --refer=../data/$vis_demo_name/result.txt \
+  #       --use_gpu=$use_gpu
+  #     if [ $? -ne 0 ]; then
+  #       echo "vis demo $vis_demo_name runs fail."
+  #       exit 1
+  #     fi
+  #   done
+  # done
 done
 set +x

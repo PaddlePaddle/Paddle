@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 
-#include <glog/logging.h>
 #include <algorithm>
 #include <iterator>
 #include <vector>
@@ -99,7 +98,7 @@ class MidWiseTransformIterator;
 template <typename T>
 class RowwiseTransformIterator<T, platform::CPUDeviceContext>
     : public std::iterator<std::random_access_iterator_tag, typename T,
-                           std::ptrdiff_t, typename T*, typename T&> {
+                           std::ptrdiff_t, typename T *, typename T &> {
  public:
   RowwiseTransformIterator(const T *ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
 
@@ -132,7 +131,7 @@ class RowwiseTransformIterator<T, platform::CPUDeviceContext>
 template <typename T>
 class MidWiseTransformIterator<T, platform::CPUDeviceContext>
     : public std::iterator<std::random_access_iterator_tag, T, std::ptrdiff_t,
-                           T*, T&> {
+                           T *, T &> {
  public:
   MidWiseTransformIterator(const T *ptr, int n, int post)
       : ptr_(ptr), i_(0), j_(0), n_(n), post_(post) {}
