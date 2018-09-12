@@ -179,6 +179,7 @@ for step in range(100):
 
 ### C++ SDK
 上面 Python SDK 中代码完全一致的C++ SDK用法如下
+
 ```c++
 #include <cstdlib>
 #include <string>
