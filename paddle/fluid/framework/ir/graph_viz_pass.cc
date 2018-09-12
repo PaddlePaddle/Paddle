@@ -50,20 +50,37 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
 
   Dot dot;
 
-  std::vector<Dot::Attr> op_attrs({Dot::Attr("style", "filled"),
-                                   Dot::Attr("shape", "box"),
-                                   Dot::Attr("fillcolor", "red")});
-  std::vector<Dot::Attr> var_attrs({Dot::Attr("style", "filled,rounded"),
-                                    // Dot::Attr("shape", "diamond"),
-                                    Dot::Attr("fillcolor", "yellow")});
+  const std::vector<Dot::Attr> op_attrs({
+      Dot::Attr("style", "rounded,filled,bold"),  //
+      Dot::Attr("shape", "box"),                  //
+      Dot::Attr("color", "#303A3A"),              //
+      Dot::Attr("fontcolor", "#ffffff"),          //
+      Dot::Attr("width", "1.3"),                  //
+      Dot::Attr("height", "0.84"),                //
+      Dot::Attr("fontname", "Arial"),             //
+  });
+  const std::vector<Dot::Attr> arg_attrs({
+      Dot::Attr("shape", "box"),                  //
+      Dot::Attr("style", "rounded,filled,bold"),  //
+      Dot::Attr("fontname", "Arial"),             //
+      Dot::Attr("fillcolor", "#999999"),          //
+      Dot::Attr("color", "#dddddd"),              //
+  });
 
-  std::vector<Dot::Attr> marked_op_attrs({Dot::Attr("style", "filled"),
-                                          Dot::Attr("shape", "box"),
-                                          Dot::Attr("fillcolor", "lightgray")});
-  std::vector<Dot::Attr> marked_var_attrs(
-      {Dot::Attr("style", "filled,rounded"),
-       // Dot::Attr("shape", "diamond"),
-       Dot::Attr("fillcolor", "lightgray")});
+  const std::vector<Dot::Attr> param_attrs({
+      Dot::Attr("shape", "box"),                  //
+      Dot::Attr("style", "rounded,filled,bold"),  //
+      Dot::Attr("fontname", "Arial"),             //
+      Dot::Attr("color", "#148b97"),              //
+      Dot::Attr("fontcolor", "#ffffff"),          //
+  });
+
+  const std::vector<Dot::Attr> marked_op_attrs(
+      {Dot::Attr("style", "rounded,filled,bold"), Dot::Attr("shape", "box"),
+       Dot::Attr("fillcolor", "yellow")});
+  const std::vector<Dot::Attr> marked_var_attrs(
+      {Dot::Attr("style", "filled,rounded"), Dot::Attr("shape", "box"),
+       Dot::Attr("fillcolor", "yellow")});
 
   auto marked_nodes = ConsumeMarkedNodes(graph.get());
   // Create nodes
@@ -74,9 +91,17 @@ std::unique_ptr<ir::Graph> GraphVizPass::ApplyImpl(
           marked_nodes.count(n) ? marked_op_attrs : op_attrs;
       dot.AddNode(node_id, attr, node_id);
     } else if (n->IsVar()) {
-      decltype(op_attrs) attr =
-          marked_nodes.count(n) ? marked_var_attrs : var_attrs;
-      dot.AddNode(node_id, attr, node_id);
+      decltype(op_attrs)* attr;
+      if (marked_nodes.count(n)) {
+        attr = &marked_var_attrs;
+      } else if (const_cast<Node*>(n)->Var() &&
+                 const_cast<Node*>(n)->Var()->Persistable()) {
+        attr = &param_attrs;
+      } else {
+        attr = &arg_attrs;
+      }
+
+      dot.AddNode(node_id, *attr, node_id);
     }
     node2dot[n] = node_id;
   }

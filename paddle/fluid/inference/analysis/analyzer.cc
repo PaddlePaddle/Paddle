@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include <string>
 #include <vector>
+
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
 #include "paddle/fluid/inference/analysis/fluid_to_data_flow_graph_pass.h"
@@ -58,7 +59,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
   std::string description() const override { return "DFG pass manager."; }
 
  private:
-  void AddPass(const std::string& name, Pass* pass) {
+  void AddPass(const std::string& name, AnalysisPass* pass) {
     VLOG(3) << "Adding pass " << name;
     Register(name, pass);
     AddGraphvizDebugerPass(pass);
@@ -87,7 +88,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
   }
 
   // Add the graphviz debuger pass if the parent pass has one.
-  void AddGraphvizDebugerPass(Pass* pass) {
+  void AddGraphvizDebugerPass(AnalysisPass* pass) {
     auto* debuger_pass = pass->CreateGraphvizDebugerPass();
     if (debuger_pass) {
       Register(debuger_pass->repr(), debuger_pass);
@@ -106,7 +107,6 @@ void Analyzer::Run(Argument* argument) {
     }
   }
   passes.push_back("graph_viz_pass");
-  // Ugly support fluid-to-ir-pass
   argument->Set(kFluidToIrPassesAttr, new std::vector<std::string>(passes));
 
   for (auto& x : data_) {

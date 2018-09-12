@@ -192,6 +192,8 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
   auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
   PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
 
+  int fuse_count{0};
+
   detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
                             Graph* graph) {
     VLOG(4) << "get one concat pattern";
@@ -239,7 +241,11 @@ std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     marked_nodes.erase(sequence_expand1_in);
     marked_nodes.erase(fc_out);
     GraphSafeRemoveNodes(graph, marked_nodes);
+
+    ++fuse_count;
   });
+
+  AddStatis(fuse_count);
 
   return graph;
 }
