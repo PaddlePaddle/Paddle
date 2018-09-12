@@ -38,7 +38,6 @@ class AucOp : public framework::OperatorWithKernel {
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
 
     ctx->SetOutputDim("AUC", {1});
-    ctx->SetOutputDim("BatchAUC", {1});
     ctx->SetOutputDim("StatPosOut", {num_pred_buckets});
     ctx->SetOutputDim("StatNegOut", {num_pred_buckets});
   }
@@ -62,6 +61,7 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
+
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
     AddInput("StatNeg", "Statistic value when label = 0");
@@ -69,7 +69,7 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
-    AddOutput("BatchAUC", "The AUC for current batch");
+
     AddOutput("StatPosOut", "Statistic value when label = 1");
     AddOutput("StatNegOut", "Statistic value when label = 0");
 
@@ -80,12 +80,10 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
         "num_thresholds",
         "The number of thresholds to use when discretizing the roc curve.")
         .SetDefault((2 << 12) - 1);
-    AddAttr<int>("steps", "Use slide steps to calc batch auc.").SetDefault(1);
+    AddAttr<int>("slide_steps", "Use slide steps to calc batch auc.")
+        .SetDefault(0);
 
     AddAttr<bool>("is_distributed", "Use distributed auc calc.")
-        .SetDefault(false);
-    AddAttr<bool>("is_trainer",
-                  "Use distributed auc and current role is trainer or pserver")
         .SetDefault(false);
 
     AddComment(R"DOC(
