@@ -129,6 +129,7 @@ def auc(input,
     batch_auc_out = helper.create_tmp_variable(dtype="float64")
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
+    # for batch auc
     batch_stat_pos = helper.create_global_variable(
         persistable=True,
         dtype='int64',
@@ -138,6 +139,7 @@ def auc(input,
         dtype='int64',
         shape=[slide_steps, num_thresholds + 1])
 
+    # for global auc
     stat_pos = helper.create_global_variable(
         persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
     stat_neg = helper.create_global_variable(
