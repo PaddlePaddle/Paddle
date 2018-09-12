@@ -45,17 +45,13 @@ struct Conv {
                               ->assert_is_op("conv2d");
 
         auto input_var = pattern->new_node(input_name())
-                                ->AsInput()
-                                ->assert_is_op_input(conv_name());
+                         ->assert_is_op_input(conv_name(), input_name());
                             
         auto filter_var = pattern->new_node(filter_name())
-                                 ->AsInput()
-                                 ->assert_is_persistable_var()
-                                 ->assert_is_op_input(conv_name());
+                                 ->assert_is_op_input(conv_name(), filter_name());
 
         auto output_var = pattern->new_node(output_name())
-                                 ->AsOutput()
-                                 ->assert_is_op_output(conv_name());
+                                 ->assert_is_op_output(conv_name(), output_name());
 
         conv_op->LinksFrom({input_var, filter_var});
         conv_op->LinksTo({output_var});
@@ -77,19 +73,13 @@ struct ElementwiseAdd {
                                        ->assert_is_op("elementwise_add");
 
       auto y_var = pattern->new_node(y_name())
-                          ->AsInput()
-                          ->assert_is_op_input(elementwise_add_name());
+                          ->assert_is_op_input(elementwise_add_name(), y_name());
   
-      conv_output->assert_is_op_input(pattern->node_name(elementwise_add_name()),
-                                      pattern->node_name(x_name()));
-//    auto y_var = pattern->NewNode(y_name())
-//                        ->AsInput()
-//                        ->assert_is_op_input(elementwise_add_name());
+      conv_output->assert_is_op_input(elementwise_add_name(), x_name());
 
       auto out_var = pattern->new_node(out_name())
                             ->AsOutput()
-                            ->assert_is_op_output(
-                                      pattern->node_name(elementwise_add_name()));
+                            ->assert_is_op_output(elementwise_add_name(), out_name());
 
       elementwise_add_op->LinksFrom({y_var, conv_output});
       elementwise_add_op->LinksTo({out_var});
@@ -118,15 +108,15 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
   GraphPatternDetector gpd;
   auto pattern = gpd.mutable_pattern();
-
   auto pattern_ptr = std::make_shared<patterns::Pattern>(pattern, name_scope_);
 
   patterns::Conv conv_pattern;
   auto conv_output = conv_pattern(pattern_ptr)();
-  conv_output->AsIntermediate();
 
   patterns::ElementwiseAdd elementwise_add_pattern;
   elementwise_add_pattern(pattern_ptr)(conv_output);
+
+  conv_output->AsIntermediate();
 
   auto link_nodes_to = [](Node* a, Node* b) {
     a->outputs.push_back(b);
@@ -139,7 +129,7 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
     op_desc.SetInput("Input", {conv_input->Name()});
     op_desc.SetInput("Filter", {conv_filter->Name()});
-    op_desc.SetOutput("Ouput", {y->Name()});
+    op_desc.SetOutput("Output", {y->Name()});
 
     op_desc.SetAttr("fuse_sum", true);
 
@@ -155,16 +145,17 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
   };
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
-    auto elementwise_add_x = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.x_name());
+    auto conv_op = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.conv_name());
+    auto conv_input = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.input_name());
+    auto conv_filter = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.filter_name());
+    auto conv_output = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.output_name());
+
+    auto elementwise_add_op = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.elementwise_add_name());
     auto elementwise_add_y = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.y_name());
     auto elementwise_add_out = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.out_name());
 
-    auto conv_filter = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.filter_name());
-    auto conv_input = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.input_name());
-    auto conv_output = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.output_name());
-
     fuse_conv(g, conv_input, conv_filter, elementwise_add_y);
-    remove_unused_nodes(g, {elementwise_add_x, conv_output, elementwise_add_out});
+    remove_unused_nodes(g, {conv_output, elementwise_add_out, conv_op, elementwise_add_op});
   };
 
   gpd(graph.get(), handler);
