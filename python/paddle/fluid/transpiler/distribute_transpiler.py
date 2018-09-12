@@ -1282,35 +1282,21 @@ class DistributeTranspiler(object):
 
             auc_out = self.origin_program.global_block().var(
                 auc_op.output("AUC")[0])
-            batch_auc_out = self.origin_program.global_block().var(
-                auc_op.output("BatchAUC")[0])
 
             num_thresholds = auc_op.attr("num_thresholds")
             curve = auc_op.attr("curve")
-            is_distributed = auc_op.attr("is_distributed")
 
             stat_pos = self.origin_program.global_block().create_var(
                 persistable=True, dtype='int64', shape=[num_thresholds + 1])
             stat_neg = self.origin_program.global_block().create_var(
                 persistable=True, dtype='int64', shape=[num_thresholds + 1])
 
-            for i in range(self.trainer_num):
-                var = self.origin_program.global_block().create_var(
-                    name="%s.trainer_%d.pserver_%d" % ("distributed_auc", i, 0),
-                    shape=(-1, 3),
-                    dtype="float32")
-                metrics_var_name_to_block_id.append(var.name + ":" + str(
-                    distributed_metrics_block.idx))
-
             distributed_auc = self.origin_program.global_block().create_var(
                 name="%s.pserver_%d" % ("distributed_auc", 0),
                 shape=(-1, 3),
                 dtype="float32")
-
-            # distributed_metrics_block.append_op(
-            #     type="scale",
-            #     inputs={"X": label},
-            #     outputs={"Out": label})
+            metrics_var_name_to_block_id.append(
+                distributed_auc.name + ":" + str(distributed_metrics_block.idx))
 
             distributed_metrics_block.append_op(
                 type="split",
@@ -1330,11 +1316,11 @@ class DistributeTranspiler(object):
                 attrs={
                     "curve": curve,
                     "num_thresholds": num_thresholds,
-                    "is_distributed": is_distributed
+                    "is_distributed": True,
+                    "slide_steps": 0
                 },
                 outputs={
                     "AUC": [auc_out],
-                    "BatchAUC": [batch_auc_out],
                     "StatPosOut": [stat_pos],
                     "StatNegOut": [stat_neg]
                 })
