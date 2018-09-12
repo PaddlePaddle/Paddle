@@ -471,10 +471,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return false;
     }
     const auto& in = it->second;
-
-    if (in.size() != 1 || in[0] == kEmptyVarName) {
+    if (in.size() == 0 || in[0] == kEmptyVarName) {
       return false;
     }
+    PADDLE_ENFORCE_EQ(in.size(), 1UL,
+                      "Input %s should not have more than one inputs", name);
     return scope_.FindVar(in[0]) != nullptr;
   }
 
@@ -486,9 +487,11 @@ class RuntimeInferShapeContext : public InferShapeContext {
       return false;
     }
     const auto& out = it->second;
-    if (out.size() != 1 || out[0] == kEmptyVarName) {
+    if (out.size() == 0 || out[0] == kEmptyVarName) {
       return false;
     }
+    PADDLE_ENFORCE_EQ(out.size(), 1UL,
+                      "Output %s should not have more than one outputs", name);
     return scope_.FindVar(out[0]) != nullptr;
   }
 
