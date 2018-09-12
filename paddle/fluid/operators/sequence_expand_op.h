@@ -15,10 +15,12 @@ limitations under the License. */
 #pragma once
 #include <numeric>  // std::iota
 #include <sstream>
+#include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -32,28 +34,28 @@ using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
 template <typename DeviceContext, typename T>
 struct SequenceExpandFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& x,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out);
+      const DeviceContext &ctx, const LoDTensor &x,
+      const framework::Vector<size_t> &x_lod,   /*expand source lod*/
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *out);
 };
 
 template <typename DeviceContext, typename T>
 struct SequenceExpandGradFunctor {
   void operator()(
-      const DeviceContext& ctx, const LoDTensor& dout,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx);
+      const DeviceContext &ctx, const LoDTensor &dout,
+      const framework::Vector<size_t> &x_lod,   /*expand source lod*/
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *dx);
 };
 
 template <typename T>
 struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& x,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* out) {
+      const platform::CPUDeviceContext &context, const LoDTensor &x,
+      const framework::Vector<size_t> &x_lod,   /*expand source lod*/
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *out) {
     int out_offset = 0;
     int x_item_length = x.numel() / x.dims()[0];
     auto out_data = out->data<T>();
@@ -85,36 +87,36 @@ struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
 template <typename DeviceContext, typename T>
 class SequenceExpandKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* out = context.Output<LoDTensor>("Out");
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *x = context.Input<LoDTensor>("X");
+    auto *y = context.Input<LoDTensor>("Y");
+    auto *out = context.Output<LoDTensor>("Out");
     int ref_level = context.Attr<int>("ref_level");
 
-    auto& x_lod = x->lod();
+    auto &x_lod = x->lod();
     VLOG(1) << "X LoD.size() = " << x_lod.size();
     if (VLOG_IS_ON(3)) {
       for (size_t i = 0; i < x_lod.size(); ++i) {
         std::ostringstream os;
-        auto& cur = x_lod[i];
+        auto &cur = x_lod[i];
         os << "  level=" << i;
-        for (auto& elem : cur) {
+        for (auto &elem : cur) {
           os << " " << elem;
         }
         os << std::endl;
         VLOG(3) << os.str();
       }
     }
-
-    auto& y_lod = y->lod();
+    VLOG(3) << "X :dim " << x->dims();
+    auto &y_lod = y->lod();
     PADDLE_ENFORCE(!y_lod.empty(), "LoD of Y should not be empty.");
     VLOG(1) << "Y LoD.size() = " << y_lod.size();
     if (VLOG_IS_ON(3)) {
       for (size_t i = 0; i < y_lod.size(); ++i) {
         std::ostringstream os;
-        auto& cur = y_lod[i];
+        auto &cur = y_lod[i];
         os << " level = " << i;
-        for (auto& elem : cur) {
+        for (auto &elem : cur) {
           os << " " << elem;
         }
         os << std::endl;
@@ -132,7 +134,7 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     }
 
     {
-      auto& ref_lod = y_lod[ref_level];
+      auto &ref_lod = y_lod[ref_level];
       PADDLE_ENFORCE_EQ(
           ref_lod.size() - 1,
           x_lod.empty() ? x->dims()[0] : x_lod[0].size() - 1,
@@ -141,10 +143,10 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
     }
 
     // x lod level is at most 1.
-    framework::Vector<size_t> out_lod;
+
     if (x_lod.size() == 1) {
+      framework::Vector<size_t> out_lod;
       out_lod.push_back(0);
-      int out_offset = 0;
       for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
         int repeat_num = y_lod[ref_level][i] - y_lod[ref_level][i - 1];
         int x_start = x_lod[0][i - 1];
@@ -152,25 +154,43 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
         int x_seq_len = x_end - x_start;
         for (int j = 0; j < repeat_num; ++j) {
           out_lod.push_back(out_lod.back() + x_seq_len);
-          out_offset++;
         }
       }
       // write lod to out if x has lod
-      auto& ref_lod = *out->mutable_lod();
+      auto &ref_lod = *out->mutable_lod();
       ref_lod[0] = out_lod;
     }
-    framework::Vector<size_t> ref_x_lod;
-    if (x->lod().size() == 1) {
-      ref_x_lod = x->lod()[0];
-    } else {
-      // x_lod doesn't has lod, use fake x lod, level = 0
-      ref_x_lod.resize(x->dims()[0] + 1);
-      std::iota(ref_x_lod.begin(), ref_x_lod.end(), 0);
+
+    // Prepare the inputs
+    int inputs_num = 0;
+    for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
+      int repeat_num = y_lod[ref_level][i] - y_lod[ref_level][i - 1];
+      inputs_num += repeat_num;
     }
-    SequenceExpandFunctor<DeviceContext, T> functor;
-    functor(context.template device_context<DeviceContext>(), *x, ref_x_lod,
-            y_lod[ref_level], out);
-    context.template device_context<DeviceContext>().Wait();
+
+    std::vector<framework::Tensor> inputs;
+    inputs.reserve(inputs_num);
+    int x_start = -1, x_end = 0;
+    for (size_t i = 1; i < y_lod[ref_level].size(); ++i) {
+      int repeat_num = y_lod[ref_level][i] - y_lod[ref_level][i - 1];
+
+      if (x_lod.size() == 1) {
+        x_start = x_lod[0][i - 1];
+        x_end = x_lod[0][i];
+      } else {
+        x_start = i - 1;
+        x_end = i;
+      }
+
+      framework::Tensor x_t = x->Slice(x_start, x_end);
+      for (int j = 0; j < repeat_num; ++j) {
+        inputs.push_back(x_t);
+      }
+    }
+
+    auto &dev_ctx = context.template device_context<DeviceContext>();
+    paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
+    concat_functor(dev_ctx, inputs, static_cast<int>(0), out);
   }
 };
 
@@ -189,10 +209,10 @@ class SequenceExpandKernel : public framework::OpKernel<T> {
 template <typename T>
 struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
   void operator()(
-      const platform::CPUDeviceContext& context, const LoDTensor& dout,
-      const framework::Vector<size_t>& x_lod,   /*expand source lod*/
-      const framework::Vector<size_t>& ref_lod, /*expand referenced lod*/
-      LoDTensor* dx) {
+      const platform::CPUDeviceContext &context, const LoDTensor &dout,
+      const framework::Vector<size_t> &x_lod,   /*expand source lod*/
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *dx) {
     int dout_offset = 0;
     for (size_t i = 1; i < ref_lod.size(); ++i) {
       int repeat_num = ref_lod[i] - ref_lod[i - 1];
@@ -216,21 +236,21 @@ struct SequenceExpandGradFunctor<platform::CPUDeviceContext, T> {
 template <typename DeviceContext, typename T>
 class SequenceExpandGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* g_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto* x = context.Input<LoDTensor>("X");
-    auto* y = context.Input<LoDTensor>("Y");
-    auto* g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
+  void Compute(const framework::ExecutionContext &context) const override {
+    auto *g_out = context.Input<LoDTensor>(framework::GradVarName("Out"));
+    auto *x = context.Input<LoDTensor>("X");
+    auto *y = context.Input<LoDTensor>("Y");
+    auto *g_x = context.Output<LoDTensor>(framework::GradVarName("X"));
     int ref_level = context.Attr<int>("ref_level");
 
     g_x->mutable_data<T>(context.GetPlace());
     g_x->set_lod(x->lod());
 
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto &dev_ctx = context.template device_context<DeviceContext>();
     math::SetConstant<DeviceContext, T> set_zero;
     set_zero(dev_ctx, g_x, static_cast<T>(0));
 
-    auto& y_lod = y->lod();
+    auto &y_lod = y->lod();
     if (ref_level == -1) ref_level = y_lod.size() - 1;
     // just copy the gradient
     if (y_lod[ref_level].size() <= 1) {

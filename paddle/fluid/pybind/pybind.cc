@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -529,6 +530,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+
+  m.def("_is_program_version_supported", IsProgramVersionSupported);
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);

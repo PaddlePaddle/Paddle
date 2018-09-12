@@ -84,7 +84,7 @@ class TestSequenceExpandCase1(TestSequenceExpand):
         x_lod = [[2, 3]]
         y_data = np.random.uniform(0.1, 1, [13, 1]).astype('float32')
         y_lod = [[2, 3], [2, 2, 3, 3, 3]]
-        self.inputs = {'X': x_data, 'Y': (y_data, y_lod)}
+        self.inputs = {'X': (x_data, x_lod), 'Y': (y_data, y_lod)}
         self.attrs = {'ref_level': 0}
 
 
