@@ -55,3 +55,14 @@ inference_analysis_test(test_text_classification SRCS analyzer_text_classificati
          --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt
          --topn=1 # Just run top 1 batch.
          )
+
+# ocr
+set(OCR_MODEL_URL "http://paddlemodels.cdn.bcebos.com/inference-vis-demos%2Focr.tar.gz")
+set(OCR_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/ocr")
+if (NOT EXISTS ${OCR_INSTALL_DIR} AND WITH_INFERENCE)
+    inference_download_and_uncompress(${OCR_INSTALL_DIR} ${OCR_MODEL_URL})
+endif()
+inference_analysis_test(test_analyzer_ocr SRCS analyzer_vis_tester.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
+    ARGS --infer_model=${OCR_INSTALL_DIR}/model
+        --infer_data=${OCR_INSTALL_DIR}/data.txt)
