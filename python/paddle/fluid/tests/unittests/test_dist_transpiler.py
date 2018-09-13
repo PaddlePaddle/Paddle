@@ -62,7 +62,7 @@ class TranspilerTest(unittest.TestCase):
 
         t = self._transpiler_instance(config)
 
-        trainer_main = t.get_trainer_program()
+        trainer_main = t.get_trainer_program(wait_port=False)
         trainer_startup = fluid.default_startup_program()
 
         assert (src.num_blocks == 1)
