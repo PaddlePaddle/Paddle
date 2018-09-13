@@ -42,6 +42,10 @@ class AucOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_GE(slide_steps, 0, "slide_steps must be natural number");
 
     ctx->SetOutputDim("AUC", {1});
+
+    slide_steps = slide_steps == 0 ? 1 : slide_steps;
+    ctx->SetOutputDim("StatPosOut", {slide_steps, num_pred_buckets});
+    ctx->SetOutputDim("StatNegOut", {slide_steps, num_pred_buckets});
   }
 
  protected:

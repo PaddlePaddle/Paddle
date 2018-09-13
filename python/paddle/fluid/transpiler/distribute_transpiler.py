@@ -909,7 +909,7 @@ class DistributeTranspiler(object):
             shape=label.shape)
 
         prev_label_concat = self.origin_program.global_block().create_var(
-            name="distributed_auc.trainer_%d.pserver_%d" % (self.trainer_id, 0),
+            name="distributed_auc.pserver_%d" % 0,
             persistable=False,
             dtype="float32",
             shape=(-1, 3))
@@ -918,8 +918,8 @@ class DistributeTranspiler(object):
             index=auc_op_idx + 1,
             type="cast",
             inputs={"X": label},
-            attrs={"in_dtype": 5,
-                   "out_dtype": 3},
+            attrs={"in_dtype": 3,
+                   "out_dtype": 5},
             outputs={"Out": label_cast})
 
         self.origin_program.global_block()._insert_op(
@@ -1268,33 +1268,39 @@ class DistributeTranspiler(object):
         return checkpoint_save_block.idx
 
     def _create_distributed_metrics_block(self, pserver_program):
-        def print_k(k_name, k):
-            print("{}: {}, SHAPE: {}".format(k_name, k, k.shape))
-
         metrics_var_name_to_block_id = []
         distributed_metrics_block = pserver_program.create_block()
 
         for auc_op in self.distributed_metric_ops:
-            predict = self.origin_program.global_block().var(
-                auc_op.input("Predict")[0])
-            label = self.origin_program.global_block().var(
-                auc_op.input("Label")[0])
-
-            auc_out = self.origin_program.global_block().var(
-                auc_op.output("AUC")[0])
+            predict = self._clone_var(pserver_program.global_block(),
+                                      self.origin_program.global_block().var(
+                                          auc_op.input("Predict")[0]))
+            label = self._clone_var(pserver_program.global_block(),
+                                    self.origin_program.global_block().var(
+                                        auc_op.input("Label")[0]))
+            auc_out = self._clone_var(pserver_program.global_block(),
+                                      self.origin_program.global_block().var(
+                                          auc_op.output("AUC")[0]))
 
             num_thresholds = auc_op.attr("num_thresholds")
             curve = auc_op.attr("curve")
 
-            stat_pos = self.origin_program.global_block().create_var(
-                persistable=True, dtype='int64', shape=[num_thresholds + 1])
-            stat_neg = self.origin_program.global_block().create_var(
-                persistable=True, dtype='int64', shape=[num_thresholds + 1])
+            stat_pos = pserver_program.global_block().create_var(
+                persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
+            stat_neg = pserver_program.global_block().create_var(
+                persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
 
-            distributed_auc = self.origin_program.global_block().create_var(
+            distributed_auc = pserver_program.global_block().create_var(
                 name="%s.pserver_%d" % ("distributed_auc", 0),
                 shape=(-1, 3),
                 dtype="float32")
+
+            label_cast = pserver_program.global_block().create_var(
+                name="label_cast_tmp.0",
+                persistable=False,
+                dtype="int64",
+                shape=label.shape)
+
             metrics_var_name_to_block_id.append(
                 distributed_auc.name + ":" + str(distributed_metrics_block.idx))
 
@@ -1306,10 +1312,17 @@ class DistributeTranspiler(object):
                 outputs={"Out": [predict, label]})
 
             distributed_metrics_block.append_op(
+                type="cast",
+                inputs={"X": label},
+                attrs={"in_dtype": 5,
+                       "out_dtype": 3},
+                outputs={"Out": label_cast})
+
+            distributed_metrics_block.append_op(
                 type="auc",
                 inputs={
                     "Predict": [predict],
-                    "Label": [label],
+                    "Label": [label_cast],
                     "StatPos": [stat_pos],
                     "StatNeg": [stat_neg]
                 },
