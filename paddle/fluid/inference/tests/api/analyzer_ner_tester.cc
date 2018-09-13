@@ -144,8 +144,9 @@ void TestChineseNERPrediction(bool use_analysis) {
     size_t num_samples;
     for (int i = 0; i < FLAGS_repeat; i++) {
       DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+      // Just one batch, the num_samples remains the same.
       num_samples = data.num_samples;
-      for (size_t bid = 0; bid < num_samples; ++bid) {
+      for (size_t bid = 0; bid < num_samples / FLAGS_batch_size; ++bid) {
         PrepareInputs(&input_slots, &data, FLAGS_batch_size);
         timer.tic();
         predictor->Run(input_slots, &outputs);

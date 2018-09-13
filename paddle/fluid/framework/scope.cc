@@ -72,6 +72,12 @@ void Scope::DropKids() {
   kids_.clear();
 }
 
+bool Scope::HasKid(const Scope* scope) const {
+  std::unique_lock<std::mutex> lock(mutex_);
+  auto it = std::find(this->kids_.begin(), this->kids_.end(), scope);
+  return it != this->kids_.end();
+}
+
 std::vector<std::string> Scope::LocalVarNames() const {
   std::unique_lock<std::mutex> lock(mutex_);
   std::vector<std::string> known_vars;
