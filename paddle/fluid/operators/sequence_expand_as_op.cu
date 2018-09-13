@@ -1,0 +1,87 @@
+/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
+
+#include <algorithm>
+#include "paddle/fluid/operators/sequence_expand_as_op.h"
+#include "paddle/fluid/platform/cuda_primitives.h"
+
+namespace paddle {
+namespace operators {
+
+using LoDTensor = framework::LoDTensor;
+
+template <typename T>
+__global__ void sequence_expand_as_grad_kernel(const T* dout_data,
+                                               const size_t* expand_offset,
+                                               const size_t dst_hight,
+                                               const size_t dst_widht,
+                                               T* dx_data) {
+  for (int h_id = blockIdx.x; h_id < dst_hight - 1; h_id += gridDim.x) {
+    T* dst = dx_data + h_id * dst_widht;
+    int span = expand_offset[h + 1] - expand_offset[h];
+    for (int k = 0; k < span; ++k) {
+      int offset = (expand_offset[h] + k) * dst_widht;
+      T* src = dout_data + offset;
+      for (int w_id = threadIdx.x; w_id < dst_widht; w_id += blockDim.x) {
+        dst[w_id] += src[w_id];
+      }
+    }
+  }
+}
+
+template <typename T>
+struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& context,
+                  const LoDTensor& dout,
+                  const framework::Vector<size_t>& ref_lod, /*expand based lod*/
+                  LoDTensor* dx) {
+    int hight = dx->dims()[0];
+    int width = framework::product(dx->dims()) / hight;
+
+    const int kThreadsPerBlock = 1024;
+    int thread_x = kThreadsPerBlock;
+    if (width < kThreadsPerBlock) {  // block_cols is aligned by 32.
+      thread_x = ((width + 31) >> 5) << 5;
+    }
+
+    int max_threads = context.GetMaxPhysicalThreadCount();
+    int block_x = std::max(max_threads / thread_x, 1);
+
+    dim3 block_size(thread_x);
+    dim3 grid_size(block_x);
+    sequence_expand_as_grad_kernel<<<grid_size, block_size, 0,
+                                     context.stream()>>>(
+        dout.data<T>(), ref_lod.CUDAData(context.GetPlace()), hight, width,
+        dx->mutable_data<T>(context.GetPlace()));
+  }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
+namespace ops = paddle::operators;
+REGISTER_OP_CUDA_KERNEL(
+    sequence_expand_as,
+    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SequenceExpandAsKernel<paddle::platform::CUDADeviceContext, int64_t>);
+REGISTER_OP_CUDA_KERNEL(
+    sequence_expand_as_grad,
+    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
+                                    double>,
+    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::SequenceExpandAsGradKernel<paddle::platform::CUDADeviceContext,
+                                    int64_t>);
