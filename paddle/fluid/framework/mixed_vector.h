@@ -263,7 +263,7 @@ class Vector {
     void *dst = cpu_vec_.data();
     memory::Copy(platform::CPUPlace(), dst,
                  boost::get<platform::CUDAPlace>(cuda_vec_.place()), src,
-                 cuda_vec_.memory_size());
+                 cuda_vec_.memory_size(), nullptr);
   }
 
   void MutableCPU() {
@@ -308,7 +308,7 @@ class Vector {
 
     memory::Copy(boost::get<platform::CUDAPlace>(place), dst,
                  boost::get<platform::CUDAPlace>(cuda_vec_.place()), src,
-                 cuda_vec_.memory_size());
+                 cuda_vec_.memory_size(), nullptr);
     cuda_vec_.ShareDataWith(tmp);
   }
   void CopyCPUDataToCUDA(const platform::Place &place) const {
@@ -317,7 +317,7 @@ class Vector {
         framework::make_ddim({static_cast<int64_t>(cpu_vec_.size())}));
     void *dst = cuda_vec_.mutable_data<T>(place);
     memory::Copy(boost::get<platform::CUDAPlace>(place), dst,
-                 platform::CPUPlace(), src, cuda_vec_.memory_size());
+                 platform::CPUPlace(), src, cuda_vec_.memory_size(), nullptr);
   }
 
   void ImmutableCPU() const {
