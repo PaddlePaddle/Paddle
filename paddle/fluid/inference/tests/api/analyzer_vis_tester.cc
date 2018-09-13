@@ -72,7 +72,7 @@ void TestVisualPrediction(bool use_mkldnn) {
   cfg.param_file = FLAGS_infer_model + "/__params__";
   cfg.prog_file = FLAGS_infer_model + "/__model__";
   cfg.use_gpu = false;
-  cfg.use_mkldnn = use_mkldnn;
+  cfg._use_mkldnn = use_mkldnn;
   cfg.device = 0;
   cfg.enable_ir_optim = true;
   cfg.ir_passes.push_back("fc_gru_fuse_pass");

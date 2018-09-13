@@ -121,8 +121,8 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
-  // MKLDNN related fields.
-  bool use_mkldnn{false};
+  // NOTE: NOT use it, just for the internal test, will discard later
+  bool _use_mkldnn{false};
   // Specify the variable's name of each input.
   bool specify_input_name{false};
 
