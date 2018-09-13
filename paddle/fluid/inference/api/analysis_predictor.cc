@@ -77,7 +77,7 @@ bool AnalysisPredictor::Init(
 
   OptimizeInferenceProgram();
   ctx_ = executor_->Prepare(*inference_program_, 0);
-  if (config_.use_mkldnn) {
+  if (config_._use_mkldnn) {
     executor_->EnableMKLDNN(*inference_program_);
   }
 
