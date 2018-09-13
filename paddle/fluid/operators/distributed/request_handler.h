@@ -56,7 +56,7 @@ class VarHandle {
             const std::string& name,
             const platform::DeviceContext* p_ctx = nullptr,
             const framework::Scope* p_scope = nullptr)
-      : ok_(kVarHandleDefaultState) {
+      : status_(kDefaultState) {
     ep_ = ep;
     ctx_ = p_ctx;
     scope_ = p_scope;
@@ -68,20 +68,20 @@ class VarHandle {
 
  public:
   bool Wait() {
-    int ret = kVarHandleDefaultState;
+    int ret = kDefaultState;
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      wait_cond_.wait(lk, [this] { return ok_ != kVarHandleDefaultState; });
-      ret = ok_;
+      wait_cond_.wait(lk, [this] { return status_ != kVarHandleDefaultState; });
+      ret = status_;
     }
     VLOG(7) << "VarHandle wait:" << ret;
-    return ret != 0;
+    return ret != kErrorState;
   }
 
   void Finish(bool ok) {
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      ok_ = ok;
+      status_ = ok ? kFinishState : kErrorState;
     }
     VLOG(7) << "VarHandle finish:" << ok;
     wait_cond_.notify_all();
@@ -89,8 +89,8 @@ class VarHandle {
 
   std::string String() const {
     std::ostringstream s;
-    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], ok:[" << ok_
-      << "]";
+    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], ok:["
+      << status_ << "]";
     return s.str();
   }
 
@@ -113,7 +113,13 @@ class VarHandle {
  protected:
   std::mutex sync_mutex_;
   std::condition_variable wait_cond_;
-  int ok_;
+
+  enum VarHandleStatus {
+    kDefaultState = -1,
+    kErrorState = 0,
+    kFinishState = 1,
+  };
+  VarHandleStatus status_;
 
   static const int kVarHandleDefaultState = -1;
 
