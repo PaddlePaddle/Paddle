@@ -40,7 +40,6 @@ def wait_server_ready(endpoints):
                                        socket.SOCK_STREAM)) as sock:
                 sock.settimeout(2)
                 result = sock.connect_ex((ip_port[0], int(ip_port[1])))
-                print(ip_port, result)
                 if result != 0:
                     all_ok = False
         if not all_ok:
