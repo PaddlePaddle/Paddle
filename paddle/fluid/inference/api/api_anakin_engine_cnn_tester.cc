@@ -16,7 +16,9 @@
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <gtest/gtest.h>
 #include <cmath>
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/timer.h"
 
 namespace paddle {
 
@@ -79,9 +81,13 @@ bool Main(int batch_size, int repeat) {
   std::vector<PaddleTensor> outputs(1, tensor_out);
 
   CHECK(predictor->Run(inputs, &outputs));
+
+  paddle::inference::Timer timer;
+  timer.tic();
   for (int i = 0; i < repeat; i++) {
     CHECK(predictor->Run(inputs, &outputs));
   }
+  paddle::inference::PrintTime(batch_size, repeat, 1, 0, timer.toc() / repeat);
 
   for (auto& tensor : outputs) {
     LOG(INFO) << "output.length: " << tensor.data.length();

@@ -21,7 +21,7 @@
 图像分类包括通用图像分类、细粒度图像分类等。图1展示了通用图像分类效果，即模型可以正确识别图像上的主要物体。
 
 <p align="center">
-<img src="image/dog_cat.png "  width="350" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/dog_cat.png?raw=true"  width="350" ><br/>
 图1. 通用图像分类展示
 </p>
 
@@ -30,7 +30,7 @@
 
 
 <p align="center">
-<img src="image/flowers.png" width="400" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/flowers.png?raw=true" width="400" ><br/>
 图2. 细粒度图像分类展示
 </p>
 
@@ -38,7 +38,7 @@
 一个好的模型既要对不同类别识别正确，同时也应该能够对不同视角、光照、背景、变形或部分遮挡的图像正确识别(这里我们统一称作图像扰动)。图3展示了一些图像的扰动，较好的模型会像聪明的人类一样能够正确识别。
 
 <p align="center">
-<img src="image/variations.png" width="550" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/variations.png?raw=true" width="550" ><br/>
 图3. 扰动图片展示[22]
 </p>
 
@@ -61,7 +61,7 @@
 Alex Krizhevsky在2012年ILSVRC提出的CNN模型 \[[9](#参考文献)\] 取得了历史性的突破，效果大幅度超越传统方法，获得了ILSVRC2012冠军，该模型被称作AlexNet。这也是首次将深度学习用于大规模图像分类中。从AlexNet之后，涌现了一系列CNN模型，不断地在ImageNet上刷新成绩，如图4展示。随着模型变得越来越深以及精妙的结构设计，Top-5的错误率也越来越低，降到了3.5%附近。而在同样的ImageNet数据集上，人眼的辨识错误率大概在5.1%，也就是目前的深度学习模型的识别能力已经超过了人眼。
 
 <p align="center">
-<img src="image/ilsvrc.png" width="500" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/ilsvrc.png?raw=true" width="500" ><br/>
 图4. ILSVRC图像分类Top-5错误率
 </p>
 
@@ -70,7 +70,7 @@ Alex Krizhevsky在2012年ILSVRC提出的CNN模型 \[[9](#参考文献)\] 取得�
 传统CNN包含卷积层、全连接层等组件，并采用softmax多类别分类器和多类交叉熵损失函数，一个典型的卷积神经网络如图5所示，我们先介绍用来构造CNN的常见组件。
 
 <p align="center">
-<img src="image/lenet.png"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/lenet.png?raw=true"><br/>
 图5. CNN网络示例[20]
 </p>
 
@@ -89,7 +89,7 @@ Alex Krizhevsky在2012年ILSVRC提出的CNN模型 \[[9](#参考文献)\] 取得�
 牛津大学VGG(Visual Geometry Group)组在2014年ILSVRC提出的模型被称作VGG模型 \[[11](#参考文献)\] 。该模型相比以往模型进一步加宽和加深了网络结构，它的核心是五组卷积操作，每两组之间做Max-Pooling空间降维。同一组内采用多次连续的3X3卷积，卷积核的数目由较浅组的64增多到最深组的512，同一组内的卷积核数目是一样的。卷积之后接两层全连接层，之后是分类层。由于每组内卷积层的不同，有11、13、16、19层这几种模型，下图展示一个16层的网络结构。VGG模型结构相对简洁，提出之后也有很多文章基于此模型进行研究，如在ImageNet上首次公开超过人眼识别的模型\[[19](#参考文献)\]就是借鉴VGG模型的结构。
 
 <p align="center">
-<img src="image/vgg16.png" width="750" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/vgg16.png?raw=true" width="750" ><br/>
 图6. 基于ImageNet的VGG16模型
 </p>
 
@@ -106,7 +106,7 @@ NIN模型主要有两个特点：
 Inception模块如下图7所示，图(a)是最简单的设计，输出是3个卷积层和一个池化层的特征拼接。这种设计的缺点是池化层不会改变特征通道数，拼接后会导致特征的通道数较大，经过几层这样的模块堆积后，通道数会越来越大，导致参数和计算量也随之增大。为了改善这个缺点，图(b)引入3个1x1卷积层进行降维，所谓的降维就是减少通道数，同时如NIN模型中提到的1x1卷积也可以修正线性特征。
 
 <p align="center">
-<img src="image/inception.png" width="800" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/inception.png?raw=ture" width="800" ><br/>
 图7. Inception模块
 </p>
 
@@ -115,7 +115,7 @@ GoogleNet由多组Inception模块堆积而成。另外，在网络最后也没�
 GoogleNet整体网络结构如图8所示，总共22层网络：开始由3层普通的卷积组成；接下来由三组子网络组成，第一组子网络包含2个Inception模块，第二组包含5个Inception模块，第三组包含2个Inception模块；然后接均值池化层、全连接层。
 
 <p align="center">
-<img src="image/googlenet.jpeg" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/googlenet.jpeg?raw=true" ><br/>
 图8. GoogleNet[12]
 </p>
 
@@ -130,14 +130,14 @@ ResNet(Residual Network) \[[15](#参考文献)\] 是2015年ImageNet图像分类�
 残差模块如图9所示，左边是基本模块连接方式，由两个输出通道数相同的3x3卷积组成。右边是瓶颈模块(Bottleneck)连接方式，之所以称为瓶颈，是因为上面的1x1卷积用来降维(图示例即256->64)，下面的1x1卷积用来升维(图示例即64->256)，这样中间3x3卷积的输入和输出通道数都较小(图示例即64->64)。
 
 <p align="center">
-<img src="image/resnet_block.jpg" width="400"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/resnet_block.jpg?raw=true" width="400"><br/>
 图9. 残差模块
 </p>
 
 图10展示了50、101、152层网络连接示意图，使用的是瓶颈模块。这三个模型的区别在于每组中残差模块的重复次数不同(见图右上角)。ResNet训练收敛较快，成功的训练了上百乃至近千层的卷积神经网络。
 
 <p align="center">
-<img src="image/resnet.png"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/resnet.png?raw=true"><br/>
 图10. 基于ImageNet的ResNet模型
 </p>
 
@@ -149,7 +149,7 @@ ResNet(Residual Network) \[[15](#参考文献)\] 是2015年ImageNet图像分类�
 由于ImageNet数据集较大，下载和训练较慢，为了方便大家学习，我们使用[CIFAR10](<https://www.cs.toronto.edu/~kriz/cifar.html>)数据集。CIFAR10数据集包含60,000张32x32的彩色图片，10个类别，每个类包含6,000张。其中50,000张图片作为训练集，10000张作为测试集。图11从每个类别中随机抽取了10张图片，展示了所有的类别。
 
 <p align="center">
-<img src="image/cifar.png" width="350"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/cifar.png?raw=true" width="350"><br/>
 图11. CIFAR10数据集[21]
 </p>
 
@@ -377,7 +377,7 @@ test_reader = paddle.batch(
 `event_handler_plot`可以用来利用回调数据来打点画图:
 
 <p align="center">
-<img src="image/train_and_test.png" width="350"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/train_and_test.png?raw=true" width="350"><br/>
 图12. 训练结果
 </p>
 
@@ -469,7 +469,7 @@ Test with Pass 0, Loss 1.1, Acc 0.6
 图13是训练的分类错误率曲线图，运行到第200个pass后基本收敛，最终得到测试集上分类错误率为8.54%。
 
 <p align="center">
-<img src="image/plot.png" width="400" ><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/03.image_classification/image/plot.png?raw=true" width="400" ><br/>
 图13. CIFAR10数据集上VGG模型的分类错误率
 </p>
 

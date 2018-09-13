@@ -17,7 +17,9 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <numeric>
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/timer.h"
 
 namespace paddle {
 DEFINE_string(dirname, "", "Directory of the inference model.");
@@ -92,9 +94,13 @@ bool test_map_cnn(int batch_size, int repeat) {
   std::vector<PaddleTensor> outputs;
   CHECK(predictor->Run(inputs, &outputs, batch_size));
 
+  paddle::inference::Timer timer;
+  timer.tic();
+
   for (int i = 0; i < repeat; i++) {
     CHECK(predictor->Run(inputs, &outputs, batch_size));
   }
+  paddle::inference::PrintTime(batch_size, repeat, 1, 0, timer.toc() / repeat);
 
   float* data_o = static_cast<float*>(outputs[0].data.data());
 
