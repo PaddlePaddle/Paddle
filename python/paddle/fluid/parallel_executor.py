@@ -142,11 +142,6 @@ class ParallelExecutor(object):
         main = main if main else framework.default_main_program()
         if scope == None:
             scope = executor.global_scope()
-        # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
-        # train program, call self.bcast_param() at the end of each mini-batch.
-        self.is_dist = True if "recv" in [
-            op.type for op in main.global_block().ops
-        ] else False
 
         if share_vars_from and not isinstance(share_vars_from,
                                               ParallelExecutor):
