@@ -30,9 +30,7 @@ class ConcatOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     // Declare inputs
     std::vector<nvinfer1::ITensor*> itensors;
-    std::cout << "Concat op: " << std::endl;
     for (auto& input_name : op_desc.Input("X")) {
-      std::cout << input_name << std::endl;
       itensors.push_back(engine_->GetITensor(input_name));
     }
     int axis = boost::get<int>(op_desc.GetAttr("axis"));
