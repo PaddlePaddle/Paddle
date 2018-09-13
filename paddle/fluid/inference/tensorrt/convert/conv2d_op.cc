@@ -26,9 +26,6 @@ class Conv2dOpConverter : public OpConverter {
         << "convert a fluid conv2d op to tensorrt conv layer without bias";
 
     framework::OpDesc op_desc(op, nullptr);
-    std::cout << "Conv op: " << std::endl;
-    std::cout << op_desc.Input("Input").front() << std::endl;
-    std::cout << op_desc.Output("Output").front() << std::endl;
     PADDLE_ENFORCE_EQ(op_desc.Input("Input").size(), 1);
     PADDLE_ENFORCE_EQ(op_desc.Input("Filter").size(), 1);  // Y is a weight
     PADDLE_ENFORCE_EQ(op_desc.Output("Output").size(), 1);
