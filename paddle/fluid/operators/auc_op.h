@@ -82,17 +82,19 @@ class AucKernel : public framework::OpKernel<T> {
       }
     }
 
+    int bucket_length = num_pred_buckets * sizeof(int64_t);
+
     // will stat auc unlimited.
     if (slide_steps == 0) {
       for (int slide = 0; slide < num_pred_buckets; ++slide) {
         origin_stat_pos[slide] += stat_pos[slide];
         origin_stat_neg[slide] += stat_neg[slide];
       }
-      stat_pos = origin_stat_pos;
-      stat_neg = origin_stat_neg;
-    } else {
-      int bucket_length = num_pred_buckets * sizeof(int64_t);
 
+      // todo(tangwei): need to be optimized.
+      std::memcpy(stat_pos, origin_stat_pos, bucket_length);
+      std::memcpy(stat_neg, origin_stat_neg, bucket_length);
+    } else {
       for (int slide = 1; slide < slide_steps; ++slide) {
         int dst_idx = (slide - 1) * num_pred_buckets;
         int src_inx = slide * num_pred_buckets;

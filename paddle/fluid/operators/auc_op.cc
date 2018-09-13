@@ -36,10 +36,12 @@ class AucOp : public framework::OperatorWithKernel {
                       "Out and Label should have same height.");
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
+    int slide_steps = ctx->Attrs().Get<int>("slide_steps");
+
+    PADDLE_ENFORCE_GE(num_pred_buckets, 1, "num_thresholds must larger than 1");
+    PADDLE_ENFORCE_GE(slide_steps, 0, "slide_steps must be natural number");
 
     ctx->SetOutputDim("AUC", {1});
-    ctx->SetOutputDim("StatPosOut", {num_pred_buckets});
-    ctx->SetOutputDim("StatNegOut", {num_pred_buckets});
   }
 
  protected:
