@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <glog/logging.h>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -67,7 +66,6 @@ void PaddleBuf::Resize(size_t length) {
   // Only the owned memory can be reset, the external memory can't be changed.
   if (length_ >= length) return;
   if (memory_owned_) {
-    VLOG(5) << "memory resized from " << length_ << " to " << length;
     Free();
     data_ = malloc(length);
     length_ = length;
@@ -86,12 +84,10 @@ void PaddleBuf::Reset(void* data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    VLOG(5) << "PaddleBuf to free";
     PADDLE_ENFORCE_GT(length_, 0);
     free(static_cast<char*>(data_));
     data_ = nullptr;
     length_ = 0;
-    VLOG(5) << "PaddleBuf Freed successfully.";
   }
 }
 
