@@ -85,6 +85,14 @@ struct BriefNode {
   std::vector<BriefNode *> outlinks;
 };
 
+// Union two adjacent BriefNode.
+// Suppose we have two adjacent nodes src and dst.
+// We will perform the following operations:
+// 1. add all inputs(except src) of dst to src inlinks.
+// 2. add all outputs of dst to src outlinks.
+// 3. change all the dst's inputs and outputs
+// corresponding inlinks and outlinks to src node.
+// 4. delete all dst's inlinks and outlinks.
 void UnionContractedNodes(const std::unordered_map<int, BriefNode *> &node_map,
                           int src_id, int dst_id) {
   // merge the two adjacent nodes into one node.
@@ -224,8 +232,8 @@ std::vector<std::vector<Node *>> SubGraphSplitter::ExtractSubGraphs() {
     //  Our algorithm must guarantee that:
     //  1. The graph is always directed acyclic graph（DAG）.
     //  2. If there is a path in the subgraph from X to Y (X and Y are both
-    //  nodes
-    //     in the subgraph), then all paths from X to Y are in the subgraph.
+    //  nodes in the subgraph), then all paths from X to Y are in the
+    //  subgraph.
     //
     //  In order to achieve the above guarantee.
     //  For adjacent nodes src -> dst.
