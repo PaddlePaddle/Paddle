@@ -60,7 +60,7 @@ static void ParallelExecuteBlocks(
   std::vector<std::future<void>> fs;
   for (size_t idx : parallel_blkids) {
     fs.push_back(
-        framework::Async([&executor, &prepared, &program, &scope, idx]() {
+        framework::Async([&executor, &prepared, &scope, idx]() {
           int run_block = idx;  // thread local
           try {
             VLOG(3) << "running server block: " << run_block
