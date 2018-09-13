@@ -30,12 +30,13 @@ class COWPtr {
 
   void detach() {
     T* tmp = m_sp.get();
-    if (!(tmp == 0 || m_sp.unique())) {
+    if (!(tmp == nullptr || m_sp.unique())) {
       m_sp = RefPtr(new T(*tmp));
     }
   }
 
  public:
+  COWPtr() : m_sp(nullptr) {}
   explicit COWPtr(T* t) : m_sp(t) {}
   explicit COWPtr(const RefPtr& refptr) : m_sp(refptr) {}
 
