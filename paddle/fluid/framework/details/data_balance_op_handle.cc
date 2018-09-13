@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/details/data_balance_op_handle.h"
 #include <algorithm>
 #include "paddle/fluid/framework/details/container_cast.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
