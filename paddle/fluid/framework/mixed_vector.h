@@ -38,9 +38,9 @@ struct CUDABuffer {
 
   CUDABuffer() {}
   CUDABuffer(platform::Place place, size_t size)
-      : data_(memory::Alloc(place, size)),
-        size_(size),
-        place_(boost::get<platform::CUDAPlace>(place)) {}
+      : size_(size), place_(boost::get<platform::CUDAPlace>(place)) {
+    data_ = memory::Alloc(place_, size);
+  }
 
   ~CUDABuffer() { ClearMemory(); }
 
@@ -49,8 +49,8 @@ struct CUDABuffer {
 
   void Resize(platform::Place place, size_t size) {
     ClearMemory();
-    data_ = memory::Alloc(place, size);
     place_ = boost::get<platform::CUDAPlace>(place);
+    data_ = memory::Alloc(place_, size);
     size_ = size;
   }
 
@@ -436,7 +436,7 @@ class Vector {
   }
 
   // implicit cast operator. Vector can be cast to std::vector implicitly.
-  operator std::vector<T>() const { return m_->operator std::vector<T>; }
+  operator std::vector<T>() const { return *m_; }
 
   bool operator==(const Vector<T> &other) const {
     if (size() != other.size()) return false;
