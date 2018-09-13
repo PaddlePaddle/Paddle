@@ -87,12 +87,6 @@ std::vector<std::array<int, 3>> DataBalanceOpHandle::GetBalancePlan(
 }
 
 void DataBalanceOpHandle::RunImpl() {
-  if (dev_ctxes_.size() > 0UL) {
-    platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
-  } else {
-    platform::RecordEvent record_event(Name(), nullptr);
-  }
-
   PADDLE_ENFORCE_GT(places_.size(), 1,
                     "Data balance can only be enabled when the number of "
                     "places to run larger than 1.");

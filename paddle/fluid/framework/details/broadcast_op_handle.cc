@@ -22,11 +22,7 @@ namespace framework {
 namespace details {
 
 void BroadcastOpHandle::RunImpl() {
-  if (dev_ctxes_.size() > 0UL) {
-    platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
-  } else {
-    platform::RecordEvent record_event(Name(), nullptr);
-  }
+  platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
 
   if (places_.size() == 1) return;
 
