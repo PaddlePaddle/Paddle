@@ -67,8 +67,9 @@ void PaddleBuf::Resize(size_t length) {
   // Only the owned memory can be reset, the external memory can't be changed.
   if (length_ >= length) return;
   if (memory_owned_) {
+    VLOG(5) << "memory resized from " << length_ << " to " << length;
     Free();
-    data_ = new char[length];
+    data_ = malloc(length);
     length_ = length;
     memory_owned_ = true;
   } else {
@@ -87,7 +88,7 @@ void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
     VLOG(5) << "PaddleBuf to free";
     PADDLE_ENFORCE_GT(length_, 0);
-    delete[] static_cast<char*>(data_);
+    free(static_cast<char*>(data_));
     data_ = nullptr;
     length_ = 0;
     VLOG(5) << "PaddleBuf Freed successfully.";
