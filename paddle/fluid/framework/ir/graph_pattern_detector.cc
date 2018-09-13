@@ -522,6 +522,39 @@ bool VarLinksFromOp(Node* node, const std::string& op_type) {
   return false;
 }
 
+PDNode* patterns::ConvReLU::operator()(
+    paddle::framework::ir::PDNode* conv_input) {
+  // Create Operators
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto* conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto* relu_op = pattern->NewNode(relu_repr())->assert_is_op("relu");
+  // Create variables
+  // Filter
+  auto* conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // Bias
+  auto* conv_bias_var = pattern->NewNode(conv_bias_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()
+                            ->assert_is_op_input("conv2d", "Bias");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto* conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("relu");
+  // output
+  auto* relu_out_var = pattern->NewNode(relu_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("relu");
+
+  conv_op->LinksFrom({conv_input, conv_weight_var, conv_bias_var})
+      .LinksTo({conv_out_var});
+  relu_op->LinksFrom({conv_out_var}).LinksTo({relu_out_var});
+  return relu_out_var;
+}
+
 PDNode* patterns::FC::operator()(paddle::framework::ir::PDNode* x,
                                  bool with_bias) {
   // Create shared nodes.
