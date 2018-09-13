@@ -1,4 +1,5 @@
 #include "paddle/fluid/framework/ir/conv_elementwise_add_mkldnn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/graph_traits.h"
 
 namespace paddle {
 namespace framework {
@@ -90,7 +91,7 @@ struct ElementwiseAdd {
 };
 }  // namespace patterns
 
-Node* node_from_subgraph(const GraphPatternDetector::subgraph_t& subgraph,
+Node* GetNodeFromSubgraph(const GraphPatternDetector::subgraph_t& subgraph,
                          std::shared_ptr<patterns::Pattern> pattern, const std::string& op_name)
 {
   PADDLE_ENFORCE(subgraph.count(pattern->retrieve_node(op_name)),
@@ -102,6 +103,20 @@ Node* node_from_subgraph(const GraphPatternDetector::subgraph_t& subgraph,
 }
 
 using graph_ptr = std::unique_ptr<ir::Graph>;
+
+void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
+  for (auto& node : GraphTraits::DFS(*graph)) {
+    std::vector<Node*> to_remove;
+    auto same = std::find_if(std::begin(node.inputs),
+                             std::end(node.inputs),
+                             [from](Node* n) { return n == from; });
+
+    if (same != std::end(node.inputs)) {
+      node.inputs.push_back(to);
+      to->outputs.push_back(&node);
+    }
+  }
+}
 
 graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
   FusePassBase::Init("conv_elementwise_add_mkldnn_fuse_pass", graph.get());
@@ -145,16 +160,18 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
   };
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* g) {
-    auto conv_op = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.conv_name());
-    auto conv_input = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.input_name());
-    auto conv_filter = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.filter_name());
-    auto conv_output = node_from_subgraph(subgraph, pattern_ptr, conv_pattern.output_name());
+    auto conv_op = GetNodeFromSubgraph(subgraph, pattern_ptr, conv_pattern.conv_name());
+    auto conv_input = GetNodeFromSubgraph(subgraph, pattern_ptr, conv_pattern.input_name());
+    auto conv_filter = GetNodeFromSubgraph(subgraph, pattern_ptr, conv_pattern.filter_name());
+    auto conv_output = GetNodeFromSubgraph(subgraph, pattern_ptr, conv_pattern.output_name());
 
-    auto elementwise_add_op = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.elementwise_add_name());
-    auto elementwise_add_y = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.y_name());
-    auto elementwise_add_out = node_from_subgraph(subgraph, pattern_ptr, elementwise_add_pattern.out_name());
+    auto elementwise_add_op = GetNodeFromSubgraph(subgraph, pattern_ptr, elementwise_add_pattern.elementwise_add_name());
+    auto elementwise_add_y = GetNodeFromSubgraph(subgraph, pattern_ptr, elementwise_add_pattern.y_name());
+    auto elementwise_add_out = GetNodeFromSubgraph(subgraph, pattern_ptr, elementwise_add_pattern.out_name());
 
     fuse_conv(g, conv_input, conv_filter, elementwise_add_y);
+    CorrectGraphEdges(g, elementwise_add_out, elementwise_add_y);
+
     remove_unused_nodes(g, {conv_output, elementwise_add_out, conv_op, elementwise_add_op});
   };
 
