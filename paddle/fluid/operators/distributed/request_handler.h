@@ -71,7 +71,7 @@ class VarHandle {
     int ret = kDefaultState;
     {
       std::unique_lock<std::mutex> lk(sync_mutex_);
-      wait_cond_.wait(lk, [this] { return status_ != kVarHandleDefaultState; });
+      wait_cond_.wait(lk, [this] { return status_ != kDefaultState; });
       ret = status_;
     }
     VLOG(7) << "VarHandle wait:" << ret;
@@ -89,7 +89,7 @@ class VarHandle {
 
   std::string String() const {
     std::ostringstream s;
-    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], ok:["
+    s << method_ << " name:[" << name_ << "], ep:[" << ep_ << "], status:["
       << status_ << "]";
     return s.str();
   }
@@ -120,8 +120,6 @@ class VarHandle {
     kFinishState = 1,
   };
   VarHandleStatus status_;
-
-  static const int kVarHandleDefaultState = -1;
 
  private:
   DISABLE_COPY_AND_ASSIGN(VarHandle);
