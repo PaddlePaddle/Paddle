@@ -12,23 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include <gflags/gflags.h>
-#include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
-#include <gtest/gtest.h>
-#include <fstream>
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/timer.h"
-
-DEFINE_string(infer_model, "", "Directory of the inference model.");
-DEFINE_string(infer_data, "", "Path of the dataset.");
-DEFINE_int32(batch_size, 1, "batch size.");
-DEFINE_int32(repeat, 1, "How many times to repeat run.");
-DEFINE_int32(topn, -1, "Run top n batches of data to save time");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -37,24 +21,25 @@ struct DataReader {
   explicit DataReader(const std::string &path)
       : file(new std::ifstream(path)) {}
 
-  bool NextBatch(PaddleTensor *tensor, int batch_size) {
+  bool NextBatch(std::vector<PaddleTensor> *input, int batch_size) {
     PADDLE_ENFORCE_EQ(batch_size, 1);
     std::string line;
-    tensor->lod.clear();
-    tensor->lod.emplace_back(std::vector<size_t>({0}));
+    PaddleTensor tensor;
+    tensor.dtype = PaddleDType::INT64;
+    tensor.lod.emplace_back(std::vector<size_t>({0}));
     std::vector<int64_t> data;
 
     for (int i = 0; i < batch_size; i++) {
       if (!std::getline(*file, line)) return false;
       inference::split_to_int64(line, ' ', &data);
     }
-    tensor->lod.front().push_back(data.size());
+    tensor.lod.front().push_back(data.size());
 
-    tensor->data.Resize(data.size() * sizeof(int64_t));
-    memcpy(tensor->data.data(), data.data(), data.size() * sizeof(int64_t));
-    tensor->shape.clear();
-    tensor->shape.push_back(data.size());
-    tensor->shape.push_back(1);
+    tensor.data.Resize(data.size() * sizeof(int64_t));
+    memcpy(tensor.data.data(), data.data(), data.size() * sizeof(int64_t));
+    tensor.shape.push_back(data.size());
+    tensor.shape.push_back(1);
+    input->assign({tensor});
     return true;
   }
 
@@ -68,32 +53,28 @@ void Main(int batch_size) {
   config.model_dir = FLAGS_infer_model;
   config.use_gpu = false;
   config.enable_ir_optim = true;
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
 
-  std::vector<PaddleTensor> input_slots(1);
-  // one batch starts
-  // data --
-  auto &input = input_slots[0];
-  input.dtype = PaddleDType::INT64;
+  std::vector<PaddleTensor> input_slots, output_slots;
+  DataReader reader(FLAGS_infer_data);
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
 
-  inference::Timer timer;
-  double sum = 0;
-  std::vector<PaddleTensor> output_slots;
-
-  int num_batches = 0;
-  for (int t = 0; t < FLAGS_repeat; t++) {
-    DataReader reader(FLAGS_infer_data);
-    while (reader.NextBatch(&input, FLAGS_batch_size)) {
-      if (FLAGS_topn > 0 && num_batches > FLAGS_topn) break;
-      timer.tic();
-      CHECK(predictor->Run(input_slots, &output_slots));
-      sum += timer.toc();
+  if (FLAGS_test_all_data) {
+    LOG(INFO) << "test all data";
+    int num_batches = 0;
+    while (reader.NextBatch(&input_slots, FLAGS_batch_size)) {
+      input_slots_all.emplace_back(input_slots);
       ++num_batches;
     }
+    LOG(INFO) << "total number of samples: " << num_batches * FLAGS_batch_size;
+    TestPrediction(config, input_slots_all, &output_slots, FLAGS_num_threads);
+    return;
   }
-  PrintTime(batch_size, FLAGS_repeat, 1, 0, sum / FLAGS_repeat);
+
+  // one batch starts
+  // data --
+  reader.NextBatch(&input_slots, FLAGS_batch_size);
+  input_slots_all.emplace_back(input_slots);
+  TestPrediction(config, input_slots_all, &output_slots, FLAGS_num_threads);
 
   // Get output
   LOG(INFO) << "get outputs " << output_slots.size();

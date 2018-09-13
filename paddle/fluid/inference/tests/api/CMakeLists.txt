@@ -49,9 +49,7 @@ set(TEXT_CLASSIFICATION_MODEL_URL "http://paddle-inference-dist.bj.bcebos.com/te
 set(TEXT_CLASSIFICATION_DATA_URL "http://paddle-inference-dist.bj.bcebos.com/text_classification_data.txt.tar.gz")
 set(TEXT_CLASSIFICATION_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/text_classification")
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} ${TEXT_CLASSIFICATION_MODEL_URL} ${TEXT_CLASSIFICATION_DATA_URL})
-inference_analysis_test(test_text_classification SRCS analyzer_text_classification_tester.cc
+inference_analysis_test(test_analyzer_text_classification SRCS analyzer_text_classification_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api analysis_predictor
     ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta
-         --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt
-         --topn=1 # Just run top 1 batch.
-         )
+         --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt)
