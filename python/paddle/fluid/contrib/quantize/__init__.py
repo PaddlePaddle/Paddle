@@ -14,11 +14,6 @@
 
 from __future__ import print_function
 
-from . import decoder
-from .decoder import *
-from . import memory_usage_calc
-from .memory_usage_calc import *
-from . import quantize
+from . import quantize_transpiler
 
-__all__ = decoder.__all__ + memory_usage_calc.__all__
-__all__ += quantize.__all__
+__all__ = quantize_transpiler.__all__

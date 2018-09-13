@@ -18,14 +18,16 @@ import numpy as np
 from paddle.fluid.framework import default_main_program, default_startup_program, program_guard
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid import unique_name
+from paddle.fluid import core
 from paddle.fluid.initializer import Constant
 from paddle.fluid.param_attr import ParamAttr
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.layers.nn import autoincreased_step_counter
-from .. import core
-from ..framework import Variable
-from ..executor import global_scope
-from inference_transpiler import InferenceTranspiler
+from paddle.fluid.framework import Variable
+from paddle.fluid.executor import global_scope
+from paddle.fluid.transpiler.inference_transpiler import InferenceTranspiler
+
+__all__ = ['QuantizeTranspiler']
 
 _QUANTIZABLE_OP_TYPES = ['conv2d', 'depthwise_conv2d', 'mul']
 
