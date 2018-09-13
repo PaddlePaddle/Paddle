@@ -71,10 +71,6 @@ class GenerateProposalLabelsOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(rpn_rois_dims.size(), 2,
                       "The rank of Input(RpnRois) must be 2.");
-    // PADDLE_ENFORCE_EQ(gt_classes_dims.size(), 2,
-    //                   "The rank of Input(GtClasses) must be 2.");
-    // PADDLE_ENFORCE_EQ(is_crowd_dims.size(), 2,
-    //                   "The rank of Input(IsCrowd) must be 2.");
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
                       "The rank of Input(GtBoxes) must be 2.");
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,

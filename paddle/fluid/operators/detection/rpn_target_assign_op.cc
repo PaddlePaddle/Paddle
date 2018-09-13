@@ -61,8 +61,6 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
                       "The rank of Input(Anchor) must be 2.");
     PADDLE_ENFORCE_EQ(gt_boxes_dims.size(), 2,
                       "The rank of Input(GtBoxes) must be 2.");
-    // PADDLE_ENFORCE_EQ(is_crowd_dims.size(), 2,
-    //                   "The rank of Input(IsCrowd) must be 2.");
     PADDLE_ENFORCE_EQ(im_info_dims.size(), 2,
                       "The rank of Input(ImInfo) must be 2.");
 
@@ -196,7 +194,6 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
     bool is_anchor_great_than_thresh =
         (anchor_to_gt_max_data[i] >= rpn_positive_overlap);
     if (is_anchors_with_max_overlap || is_anchor_great_than_thresh) {
-      // target_label[i] = 1;
       fg_inds_fake.push_back(i);
     }
   }
@@ -212,7 +209,6 @@ void ScoreAssign(const T* anchor_by_gt_overlap_data,
   int bg_num = rpn_batch_size_per_im - fg_num;
   for (int64_t i = 0; i < anchor_num; ++i) {
     if (anchor_to_gt_max_data[i] < rpn_negative_overlap) {
-      // target_label[i] = 0;
       bg_inds_fake.push_back(i);
     }
   }
