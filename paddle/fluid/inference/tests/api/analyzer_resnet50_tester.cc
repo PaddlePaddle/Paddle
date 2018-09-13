@@ -35,9 +35,8 @@ DEFINE_int32(channels, 3, "Width of the image.");
 namespace paddle {
 
 template <typename T>
-void fill_data(std::unique_ptr<T[]>& data, unsigned int count)
-{
-  for (unsigned int i = 0; i< count; ++i) {
+void fill_data(std::unique_ptr<T[]>& data, unsigned int count) {
+  for (unsigned int i = 0; i < count; ++i) {
     *(data.get() + i) = i;
   }
 }
@@ -46,20 +45,18 @@ void PrintResults(int bs, int iterations, double lat_avg, float acc_avg) {
   LOG(INFO) << "===========profile result===========";
   LOG(INFO) << "batch_size: " << bs << ", iterations: " << iterations
             << ", avg latency: " << lat_avg << "ms"
-	    << ", avg accuracy: " << acc_avg;
+            << ", avg accuracy: " << acc_avg;
   LOG(INFO) << "=====================================";
 }
 
 void Main(int batch_size) {
-  
-  auto count = [](std::vector<int>& shapevec)
-  {
+  auto count = [](std::vector<int>& shapevec) {
     auto sum = shapevec.size() > 0 ? 1 : 0;
-    for (unsigned int i=0; i < shapevec.size(); ++i) {
+    for (unsigned int i = 0; i < shapevec.size(); ++i) {
       sum *= shapevec[i];
     }
     return sum;
-  }; 
+  };
 
   // define input: data
   std::vector<int> shape;
@@ -75,14 +72,15 @@ void Main(int batch_size) {
   paddle::PaddleTensor input;
   input.name = "xx";
   input.shape = shape,
-  input.data = paddle::PaddleBuf(data.get(), count(shape)*sizeof(float)),
+  input.data = paddle::PaddleBuf(data.get(), count(shape) * sizeof(float)),
   input.dtype = paddle::PaddleDType::FLOAT32;
 
-  std::cout << std::endl << "Executing model: " << FLAGS_infer_model << std::endl <<
-  "Batch Size: " << FLAGS_batch_size << std::endl <<
-  "Channels: " << FLAGS_channels << std::endl <<
-  "Height: " << FLAGS_height << std::endl <<
-  "Width: " << FLAGS_width << std::endl;
+  std::cout << std::endl
+            << "Executing model: " << FLAGS_infer_model << std::endl
+            << "Batch Size: " << FLAGS_batch_size << std::endl
+            << "Channels: " << FLAGS_channels << std::endl
+            << "Height: " << FLAGS_height << std::endl
+            << "Width: " << FLAGS_width << std::endl;
 
   // define input: labels
   int label_size = FLAGS_batch_size;
@@ -92,7 +90,8 @@ void Main(int batch_size) {
   paddle::PaddleTensor input_label;
   input_label.name = "yy",
   input_label.shape = std::vector<int>({label_size, 1}),
-  input_label.data = paddle::PaddleBuf(label.get(), label_size*sizeof(int64_t)),
+  input_label.data =
+      paddle::PaddleBuf(label.get(), label_size * sizeof(int64_t)),
   input_label.dtype = paddle::PaddleDType::INT64;
 
   // create predictor
@@ -126,7 +125,7 @@ void Main(int batch_size) {
   PaddleTensor output = output_slots[0];
   CHECK_EQ(output.lod.size(), 0UL);
   CHECK_EQ(output.dtype, paddle::PaddleDType::FLOAT32);
-  float *odata = static_cast<float*>(output.data.data());
+  float* odata = static_cast<float*>(output.data.data());
   size_t olen = output.data.length() / sizeof(FLOAT32);
   float acc_avg = std::accumulate(odata, odata + olen, 0.0) / 10;
   double lat_avg = sum / FLAGS_iterations;
@@ -137,4 +136,3 @@ void Main(int batch_size) {
 TEST(resnet50, basic) { Main(FLAGS_batch_size); }
 
 }  // namespace paddle
-

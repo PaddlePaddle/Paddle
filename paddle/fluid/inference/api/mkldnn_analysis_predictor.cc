@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/api/mkldnn_analysis_predictor.h"
 #include <memory>
 #include <string>
 #include <vector>
@@ -21,7 +22,6 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
-#include "paddle/fluid/inference/api/mkldnn_analysis_predictor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(profile);
@@ -30,13 +30,13 @@ namespace paddle {
 
 // Check environment flag whether MKL-DNN should be used
 static bool IsMKLDNNSetOn() {
-  const char *flag = std::getenv("FLAGS_use_mkldnn");
+  const char* flag = std::getenv("FLAGS_use_mkldnn");
   if (flag) {
     std::string flag_str(flag);
-    std::transform(flag_str.begin(), flag_str.end(),
-			  flag_str.begin(), ::toupper);
+    std::transform(flag_str.begin(), flag_str.end(), flag_str.begin(),
+                   ::toupper);
     return !flag_str.compare("ON") || !flag_str.compare("TRUE") ||
-		    !flag_str.compare("1");
+           !flag_str.compare("1");
   }
   return false;
 }
@@ -113,7 +113,8 @@ void MKLDNNAnalysisPredictor::OptimizeInferenceProgram() {
   FLAGS_IA_output_storage_path = "";  // Don't output the model.
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
-    analysis_argument().fluid_model_dir.reset(new std::string(config_.model_dir));
+    analysis_argument().fluid_model_dir.reset(
+        new std::string(config_.model_dir));
   } else {
     PADDLE_ENFORCE(
         !config_.param_file.empty(),
@@ -121,36 +122,40 @@ void MKLDNNAnalysisPredictor::OptimizeInferenceProgram() {
     PADDLE_ENFORCE(!config_.prog_file.empty());
     analysis_argument().fluid_model_program_path.reset(
         new std::string(config_.prog_file));
-    analysis_argument().fluid_model_param_path.reset(new std::string(config_.param_file));
+    analysis_argument().fluid_model_param_path.reset(
+        new std::string(config_.param_file));
   }
   analysis_argument().origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
 
   PADDLE_ENFORCE(config_.ir_mode == AnalysisConfig::IrPassMode::kInclude,
-		 "Only kInclude is supported with MKLDNNAnalysisPredictor.");
+                 "Only kInclude is supported with MKLDNNAnalysisPredictor.");
   if (config_.use_mkldnn)
-    MKLDNNAnalyzer().SetIrPasses(config_.ir_mkldnn_passes).Run(&analysis_argument());
+    MKLDNNAnalyzer()
+        .SetIrPasses(config_.ir_mkldnn_passes)
+        .Run(&analysis_argument());
   else
     MKLDNNAnalyzer().SetIrPasses(config_.ir_passes).Run(&analysis_argument());
 
   CHECK(analysis_argument().transformed_program_desc);
   VLOG(5) << "to prepare executor";
-  inference_program_.reset(
-      new framework::ProgramDesc(*analysis_argument().transformed_program_desc));
+  inference_program_.reset(new framework::ProgramDesc(
+      *analysis_argument().transformed_program_desc));
   if (analysis_argument().Has(framework::ir::kParamScopeAttr)) {
     // Update scope.
-    scope_.reset(
-        analysis_argument().Release<framework::Scope>(framework::ir::kParamScopeAttr));
+    scope_.reset(analysis_argument().Release<framework::Scope>(
+        framework::ir::kParamScopeAttr));
   }
   LOG(INFO) << "== optimize end ==";
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    MKLDNNAnalysisConfig, PaddleEngineKind::kAnalysis>(
-		    const MKLDNNAnalysisConfig& config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<MKLDNNAnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const MKLDNNAnalysisConfig& config) {
   VLOG(3) << "create MKLDNNAnalysisConfig";
-  std::unique_ptr<PaddlePredictor> predictor(new MKLDNNAnalysisPredictor(config));
+  std::unique_ptr<PaddlePredictor> predictor(
+      new MKLDNNAnalysisPredictor(config));
   if (!dynamic_cast<MKLDNNAnalysisPredictor*>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }

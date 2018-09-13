@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/inference/analysis/mkldnn_analyzer.h"
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
-#include "paddle/fluid/inference/analysis/mkldnn_analyzer.h"
+#include "paddle/fluid/inference/analysis/fluid_to_ir_pass.h"
 
 namespace paddle {
 namespace inference {
@@ -40,7 +40,7 @@ void MKLDNNAnalyzer::Run(Argument* argument) {
 }
 
 MKLDNNAnalyzer& MKLDNNAnalyzer::SetIrPasses(
-		const std::vector<std::string>& passes) {
+    const std::vector<std::string>& passes) {
   ir_passes_ = passes;
   return *this;
 }
