@@ -326,7 +326,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   ir::Graph &result = *graph;
 
   for (auto &node : nodes) {
-    if (node->NodeType() == ir::Node::Type::kVariable && node->Var()) {
+    if (node->IsVar() && node->Var()) {
       all_vars_.emplace(node->Name(), node->Var());
     }
   }
@@ -442,8 +442,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
 
-  if (use_gpu ||
-      strategy_.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce) {
+  if (use_gpu && strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) {
     // Insert BCast Ops
     for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
       auto &to_bcast_set = bcast_var_name_set[dev_id];
@@ -583,18 +582,6 @@ void MultiDevSSAGraphBuilder::InsertDataBalanceOp(
   }
 }
 
-bool MultiDevSSAGraphBuilder::IsParameterGradientOnce(
-    const std::string &og,
-    std::unordered_set<std::string> *og_has_been_broadcast) const {
-  bool is_pg_once =
-      grad_names_.count(og) != 0 && og_has_been_broadcast->count(og) == 0;
-  if (is_pg_once) {
-    // Insert NCCL AllReduce Op
-    og_has_been_broadcast->insert(og);
-  }
-  return is_pg_once;
-}
-
 int MultiDevSSAGraphBuilder::GetOpDeviceID(const ir::Graph &graph,
                                            ir::Node *node) const {
   if (strategy_.reduce_ != BuildStrategy::ReduceStrategy::kReduce) {
@@ -625,19 +612,11 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     ir::Graph *result, const std::string &loss_grad_name) const {
   for (size_t i = 0; i < places_.size(); ++i) {
-// Insert ScaleCost OpHandle
-#ifdef PADDLE_WITH_CUDA
-    auto *communication_dev_ctx =
-        nccl_ctxs_ ? nccl_ctxs_->DevCtx(places_[i])
-                   : platform::DeviceContextPool::Instance().Get(places_[i]);
-#else
-    auto *communication_dev_ctx =
-        platform::DeviceContextPool::Instance().Get(platform::CPUPlace());
-#endif
+    // Insert ScaleCost OpHandle
+    auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
     auto *op_handle = new ScaleLossGradOpHandle(
         result->CreateEmptyNode("scale_loss_grad", ir::Node::Type::kOperation),
-        local_scopes_.size(), local_scopes_[i], places_[i],
-        communication_dev_ctx);
+        local_scopes_.size(), local_scopes_[i], places_[i], dev_ctx);
     result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
 
     // FIXME: Currently ScaleLossGradOp only use device_count as scale
@@ -696,20 +675,6 @@ VarHandle *MultiDevSSAGraphBuilder::CreateReduceOp(ir::Graph *result,
   return var;
 }
 
-// Find the first occurence of `prev_op_name` and make current `op` depend
-// on it.
-void MultiDevSSAGraphBuilder::ConnectOp(ir::Graph *result, OpHandleBase *op,
-                                        const std::string &prev_op_name) const {
-  for (auto &prev_op : result->Get<GraphOps>(kGraphOps)) {
-    if (prev_op->Name() == prev_op_name) {
-      auto *dep_var = new DummyVarHandle(result->CreateControlDepVar());
-      prev_op->AddOutput(dep_var);
-      result->Get<GraphDepVars>(kGraphDepVars).emplace(dep_var);
-      op->AddInput(dep_var);
-    }
-  }
-}
-
 void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
                                                 ir::Node *node) const {
   int op_dev_id = -1;
@@ -744,7 +709,7 @@ void MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
-    PADDLE_ENFORCE(
+    PADDLE_THROW(
         "the distribute training related op should be in [split_byref, "
         "concat].");
   }

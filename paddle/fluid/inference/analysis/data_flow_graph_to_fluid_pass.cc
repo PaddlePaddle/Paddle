@@ -15,6 +15,7 @@
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -34,7 +35,6 @@ std::vector<std::string> ExtractParameters(
 bool DataFlowGraphToFluidPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument)
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc)
-  PADDLE_ENFORCE(!argument->transformed_program_desc);
   // The transformed_program_desc should inherit all the VarDesc and BlockDesc
   // from the original program desc. The operators of the main block(the first
   // block) should rewritten by data flow graph.
@@ -66,7 +66,7 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
     }
   }
 
-  if (argument_->Has("param_scope")) {
+  if (argument_->Has(framework::ir::kParamScopeAttr)) {
     LOG(WARNING) << "parameter changes in the scope takes effect";
   }
 
@@ -263,7 +263,7 @@ class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
 };
 }  // namespace
 
-Pass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
+AnalysisPass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
   return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
       FLAGS_IA_graphviz_log_root,
       "data_flow_graph_to_fluid_graphviz_debugger"));

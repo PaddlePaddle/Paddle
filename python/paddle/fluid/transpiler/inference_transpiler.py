@@ -60,13 +60,46 @@ class InferenceTranspiler(object):
         if not isinstance(scope, core.Scope):
             raise TypeError("scope should be as Scope type or None")
         use_mkldnn = bool(os.getenv("FLAGS_use_mkldnn", False))
-        if use_mkldnn:
-            self._fuse_relu_mkldnn(program)
-            self._fuse_conv_bias_mkldnn(program)
-        else:
-            self._fuse_batch_norm(program, place, scope)
 
-    def _fuse_relu_mkldnn(self, program):
+        self._fuse_batch_norm(program, place, scope)
+        if use_mkldnn:
+            self._fuse_conv_bias_mkldnn(program)
+            self._fuse_conv_relu_mkldnn(program)
+            self._fuse_bn_relu_mkldnn(program)
+
+    def _fuse_conv_relu_mkldnn(self, program):
+        '''
+        Transpile the program by fused relu activation for MKLDNN program.
+        Relu activation following convolution OP can be fused by adding
+        'fuse_relu' attribute to convolution OP.
+        The result of fuse is:
+            - before:
+                - conv->relu->any_other_op
+            - after:
+                - conv->any_other_op
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type in ['conv2d']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'relu':
+                    # modify conv OP to include relu
+                    current_op.set_attr("fuse_relu", True)
+                    # remove conv OP
+                    self.block._remove_op(i + 1)
+            i = i + 1
+
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
+
+    def _fuse_bn_relu_mkldnn(self, program):
         '''
         Transpile the program by fused relu activation for MKLDNN program.
 
@@ -160,7 +193,6 @@ class InferenceTranspiler(object):
                 self._fuse_conv_bias(i, current_op, next_op)
                 self.block._remove_op(i + 1)  # Remove old conv
                 self.block._remove_op(i + 1)  # Remove elementwise_add
-                i = i + 1
             i = i + 1
 
         self._remove_unused_var()

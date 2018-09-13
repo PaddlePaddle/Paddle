@@ -14,35 +14,18 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <sys/time.h>
 #include <algorithm>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/inference/api/timer.h"
 
 namespace paddle {
 namespace inference {
-
-// Timer for timer
-class Timer {
- public:
-  double start;
-  double startu;
-  void tic() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    start = tp.tv_sec;
-    startu = tp.tv_usec;
-  }
-  double toc() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    double used_time_ms =
-        (tp.tv_sec - start) * 1000.0 + (tp.tv_usec - startu) / 1000.0;
-    return used_time_ms;
-  }
-};
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -68,6 +51,13 @@ static void split_to_float(const std::string &str, char sep,
   std::transform(pieces.begin(), pieces.end(), std::back_inserter(*fs),
                  [](const std::string &v) { return std::stof(v); });
 }
+static void split_to_int64(const std::string &str, char sep,
+                           std::vector<int64_t> *is) {
+  std::vector<std::string> pieces;
+  split(str, sep, &pieces);
+  std::transform(pieces.begin(), pieces.end(), std::back_inserter(*is),
+                 [](const std::string &v) { return std::stoi(v); });
+}
 template <typename T>
 std::string to_string(const std::vector<T> &vec) {
   std::stringstream ss;
@@ -84,15 +74,59 @@ template <>
 std::string to_string<std::vector<std::vector<float>>>(
     const std::vector<std::vector<std::vector<float>>> &vec);
 
-// clang-format off
-static void TensorAssignData(PaddleTensor *tensor, const std::vector<std::vector<float>> &data) {
+template <typename T>
+static void TensorAssignData(PaddleTensor *tensor,
+                             const std::vector<std::vector<T>> &data) {
   // Assign buffer
-  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1, [](int a, int b) { return a * b; });
-  tensor->data.Resize(sizeof(float) * dim);
+  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+  tensor->data.Resize(sizeof(T) * dim);
   int c = 0;
   for (const auto &f : data) {
-    for (float v : f) { static_cast<float *>(tensor->data.data())[c++] = v; }
+    for (T v : f) {
+      static_cast<T *>(tensor->data.data())[c++] = v;
+    }
   }
+}
+
+std::string DescribeTensor(const PaddleTensor &tensor) {
+  std::stringstream os;
+  os << "Tensor [" << tensor.name << "]\n";
+  os << " - type: ";
+  switch (tensor.dtype) {
+    case PaddleDType::FLOAT32:
+      os << "float32";
+      break;
+    case PaddleDType::INT64:
+      os << "int64";
+      break;
+    default:
+      os << "unset";
+  }
+  os << '\n';
+
+  os << " - shape: " << to_string(tensor.shape) << '\n';
+  os << " - lod: ";
+  for (auto &l : tensor.lod) {
+    os << to_string(l) << "; ";
+  }
+  os << "\n";
+  os << " - data: ";
+
+  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
+                            [](int a, int b) { return a * b; });
+  for (int i = 0; i < dim; i++) {
+    os << static_cast<float *>(tensor.data.data())[i] << " ";
+  }
+  os << '\n';
+  return os.str();
+}
+
+void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+               double latency) {
+  LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
+            << ", threads: " << num_threads << ", thread id: " << tid
+            << ", latency: " << latency << "ms ======";
 }
 
 }  // namespace inference
