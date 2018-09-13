@@ -27,11 +27,8 @@ namespace framework {
 namespace details {
 
 void ReduceOpHandle::RunImpl() {
-  if (dev_ctxes_.size() > 0UL) {
-    platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
-  } else {
-    platform::RecordEvent record_event(Name(), nullptr);
-  }
+  platform::RecordEvent record_event(Name(), dev_ctxes_.begin()->second);
+
   if (places_.size() == 1) return;
   // the input and output may have dummy var.
   auto in_var_handles = DynamicCast<VarHandle>(inputs_);

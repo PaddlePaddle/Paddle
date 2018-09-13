@@ -458,8 +458,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   use_gpu = nccl_ctxs_ != nullptr;
 #endif
 
-  if (use_gpu && strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce &&
-      !is_dist_train) {
+  if ((use_gpu &&
+       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) ||
+      is_dist_train) {
     // Insert BCast Ops
     for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
       auto &to_bcast_set = bcast_var_name_set[dev_id];
