@@ -290,12 +290,18 @@ void GRPCClient::Proceed() {
       c->Finish(false);
     }
 
-    delete c;
+    bool notify = false;
     {
       std::lock_guard<std::mutex> lk(sync_mutex_);
       req_count_--;
+      notify = (req_count_ <= 0 || !c->status_.ok());
     }
-    sync_cond_.notify_all();
+
+    delete c;
+
+    if (notify) {
+      sync_cond_.notify_all();
+    }
   }
   VLOG(3) << "GRPCClient Proceed end";
 }
