@@ -11,6 +11,7 @@ limitations under the License. */
 
 #include <glog/logging.h>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 
@@ -64,13 +65,15 @@ PaddleBuf& PaddleBuf::operator=(PaddleBuf&& other) {
 
 void PaddleBuf::Resize(size_t length) {
   // Only the owned memory can be reset, the external memory can't be changed.
-  if (length_ == length) return;
+  if (length_ >= length) return;
   if (memory_owned_) {
     Free();
+    data_ = new char[length];
+    length_ = length;
+    memory_owned_ = true;
+  } else {
+    PADDLE_THROW("The memory is allocated externally, can not Resized");
   }
-  data_ = new char[length];
-  length_ = length;
-  memory_owned_ = true;
 }
 
 void PaddleBuf::Reset(void* data, size_t length) {
@@ -82,10 +85,12 @@ void PaddleBuf::Reset(void* data, size_t length) {
 
 void PaddleBuf::Free() {
   if (memory_owned_ && data_) {
-    assert(length_ > 0);
+    VLOG(5) << "PaddleBuf to free";
+    PADDLE_ENFORCE_GT(length_, 0);
     delete[] static_cast<char*>(data_);
     data_ = nullptr;
     length_ = 0;
+    VLOG(5) << "PaddleBuf Freed successfully.";
   }
 }
 
