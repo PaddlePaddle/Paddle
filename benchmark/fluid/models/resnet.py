@@ -207,7 +207,7 @@ def get_model(args, is_train, main_prog, startup_prog):
 
                 total_images = 1281167 / trainer_count
 
-                step = int(total_images / args.batch_size + 1)
+                step = int(total_images / (args.batch_size * args.gpus) + 1)
                 epochs = [30, 60, 90]
                 bd = [step * e for e in epochs]
                 base_lr = args.learning_rate
