@@ -13,17 +13,20 @@
 # limitations under the license.
 
 import numpy as np
+import six
+
 import unittest
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.transpiler.quantize_transpiler import _original_var_name
+from paddle.fluid.contrib.quantize.quantize_transpiler import _original_var_name
+from paddle.fluid.contrib.quantize.quantize_transpiler import QuantizeTranspiler
 
 
 def linear_fc(num):
     data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = data
-    for _ in xrange(num):
+    for _ in six.moves.xrange(num):
         hidden = fluid.layers.fc(hidden, size=128, act='relu')
     loss = fluid.layers.cross_entropy(input=hidden, label=label)
     loss = fluid.layers.mean(loss)
@@ -51,7 +54,7 @@ def residual_block(num):
     data = fluid.layers.data(name='image', shape=[1, 32, 32], dtype='float32')
     label = fluid.layers.data(name='label', shape=[1], dtype='int64')
     hidden = data
-    for _ in xrange(num):
+    for _ in six.moves.xrange(num):
         conv = conv_bn_layer(hidden, 16, 3, 1, 1, act=None, bias_attr=True)
         short = conv_bn_layer(hidden, 16, 1, 1, 0, act=None)
         hidden = fluid.layers.elementwise_add(x=conv, y=short, act='relu')
@@ -142,7 +145,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
             loss = linear_fc(3)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
-            t = fluid.QuantizeTranspiler(activation_quantize_type=quant_type)
+            t = QuantizeTranspiler(activation_quantize_type=quant_type)
             t.training_transpile(main)
             self.check_program(main)
 
@@ -161,7 +164,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
             loss = residual_block(2)
             opt = fluid.optimizer.Adam(learning_rate=0.001)
             opt.minimize(loss)
-            t = fluid.QuantizeTranspiler(activation_quantize_type=quant_type)
+            t = QuantizeTranspiler(activation_quantize_type=quant_type)
             t.training_transpile(main)
             self.check_program(main)
 
@@ -176,7 +179,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
     def freeze_program(self, use_cuda):
         main = fluid.Program()
         startup = fluid.Program()
-        quant_transpiler = fluid.QuantizeTranspiler()
+        quant_transpiler = QuantizeTranspiler()
         with fluid.program_guard(main, startup):
             img = fluid.layers.data(
                 name='image', shape=[1, 28, 28], dtype='float32')
@@ -247,7 +250,11 @@ class TestQuantizeTranspiler(unittest.TestCase):
         self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
 
     def test_freeze_program_cuda(self):
-        self.freeze_program(True)
+        if fluid.core.is_compiled_with_cuda():
+            self.freeze_program(True)
+
+    def test_freeze_program_cpu(self):
+        self.freeze_program(False)
 
 
 if __name__ == '__main__':
