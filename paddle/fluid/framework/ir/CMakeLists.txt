@@ -34,6 +34,7 @@ endif()
 pass_library(attention_lstm_fuse_pass inference)
 pass_library(infer_clean_graph_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
+pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
 
