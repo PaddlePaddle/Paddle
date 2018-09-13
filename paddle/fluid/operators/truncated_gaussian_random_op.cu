@@ -22,26 +22,26 @@ namespace operators {
 
 template <typename T>
 struct TruncatedNormal {
-  T mean_, std_;
-  T a_normal_cdf_;
-  T b_normal_cdf_;
-  unsigned int seed_;
-  T numeric_min_;
+  T mean, std;
+  T a_normal_cdf;
+  T b_normal_cdf;
+  unsigned int seed;
+  T numeric_min;
 
   __host__ __device__ TruncatedNormal(T mean, T std, T numeric_min, int seed)
-      : mean_(mean), std_(std), seed_(seed), numeric_min_(numeric_min) {
-    a_normal_cdf_ = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
-    b_normal_cdf_ = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
+      : mean(mean), std(std), seed(seed), numeric_min(numeric_min) {
+    a_normal_cdf = (1.0 + erff(-2.0 / sqrtf(2.0))) / 2.0;
+    b_normal_cdf = (1.0 + erff(2.0 / sqrtf(2.0))) / 2.0;
   }
 
   __host__ __device__ T operator()(const unsigned int n) const {
-    thrust::minstd_rand rng;
-    rng.seed(seed_);
-    thrust::uniform_real_distribution<T> dist(numeric_min_, 1);
+    thrust::minstdrand rng;
+    rng.seed(seed);
+    thrust::uniform_real_distribution<T> dist(numeric_min, 1);
     rng.discard(n);
     T value = dist(rng);
-    auto p = a_normal_cdf_ + (b_normal_cdf_ - a_normal_cdf_) * value;
-    return (std::sqrt(2.0) * erfinvf(2 * p - 1) + mean_) / std_;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return (std::sqrt(2.0) * erfinvf(2 * p - 1) + mean) * std;
   }
 };
 

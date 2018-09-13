@@ -135,20 +135,20 @@ T erfinv(T x) {
 
 template <typename T>
 struct TruncatedNormal {
-  T mean_, std_;
-  T a_normal_cdf_;
-  T b_normal_cdf_;
-  TruncatedNormal(T mean, T std) : mean_(mean), std_(std) {
+  T mean, std;
+  T a_normal_cdf;
+  T b_normal_cdf;
+  TruncatedNormal(T mean, T std) : mean(mean), std(std) {
     auto normal_cdf = [](T x) {
       return (1.0 + std::erf(x / std::sqrt(2.0))) / 2.0;
     };
-    a_normal_cdf_ = normal_cdf(-2.0);
-    b_normal_cdf_ = normal_cdf(2.0);
+    a_normal_cdf = normal_cdf(-2.0);
+    b_normal_cdf = normal_cdf(2.0);
   }
 
   T operator()(T value) const {
-    auto p = a_normal_cdf_ + (b_normal_cdf_ - a_normal_cdf_) * value;
-    return (std::sqrt(2.0) * erfinv(2 * p - 1) + mean_) / std_;
+    auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
+    return (std::sqrt(2.0) * erfinv(2 * p - 1) + mean) * std;
   }
 };
 
@@ -162,7 +162,7 @@ class CPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstd_rand engine;
+    std::minstdrand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }
