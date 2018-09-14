@@ -91,7 +91,8 @@ def dist_transpile(trainer_id, args, train_prog, startup_prog):
         program=train_prog,
         pservers=pserver_endpoints,
         trainers=trainers,
-        sync_mode=not args.async_mode)
+        sync_mode=not args.async_mode,
+        startup_program=startup_prog)
     if training_role == "PSERVER":
         pserver_program = t.get_pserver_program(current_endpoint)
         pserver_startup_program = t.get_startup_program(
@@ -169,6 +170,14 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
     strategy = fluid.ExecutionStrategy()
     strategy.num_threads = args.cpus
     strategy.allow_op_delay = False
+    build_strategy = fluid.BuildStrategy()
+    if args.reduce_strategy == "reduce":
+        build_strategy.reduce_strategy = fluid.BuildStrategy(
+        ).ReduceStrategy.Reduce
+    else:
+        build_strategy.reduce_strategy = fluid.BuildStrategy(
+        ).ReduceStrategy.AllReduce
+
     avg_loss = train_args[0]
 
     if args.update_method == "pserver":
@@ -183,6 +192,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         avg_loss.name,
         main_program=train_prog,
         exec_strategy=strategy,
+        build_strategy=build_strategy,
         num_trainers=num_trainers,
         trainer_id=trainer_id)
 

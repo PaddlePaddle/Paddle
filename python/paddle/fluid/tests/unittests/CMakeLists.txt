@@ -28,6 +28,10 @@ list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/Paddl
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
+if(APPLE)
+    # this op is not support on mac
+    list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
+endif()
 
 function(py_test_modules TARGET_NAME)
   if(WITH_TESTING)
@@ -46,6 +50,7 @@ function(py_test_modules TARGET_NAME)
 endfunction()
 list(REMOVE_ITEM TEST_OPS test_warpctc_op)
 list(REMOVE_ITEM TEST_OPS test_dist_train)
+list(REMOVE_ITEM TEST_OPS test_dist_transpiler)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_crf)
 list(REMOVE_ITEM TEST_OPS test_parallel_executor_fetch_feed)
 list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
@@ -61,11 +66,12 @@ if(WITH_DISTRIBUTE)
     set_tests_properties(test_listen_and_serv_op PROPERTIES TIMEOUT 20)
     set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
     set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
+    py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
+    py_test_modules(test_dist_transformer MODULES test_dist_transformer SERIAL)
+    py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext SERIAL)
 endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)
 set_tests_properties(test_parallel_executor_fetch_feed PROPERTIES TIMEOUT 150)
-py_test_modules(test_dist_transformer MODULES test_dist_transformer SERIAL)
-py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext SERIAL)
 py_test_modules(test_parallel_executor_transformer MODULES test_parallel_executor_transformer SERIAL)
 py_test_modules(test_image_classification_resnet MODULES test_image_classification_resnet SERIAL)
