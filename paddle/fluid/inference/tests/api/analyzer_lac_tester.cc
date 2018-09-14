@@ -12,21 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-#include <gtest/gtest.h>
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/platform/profiler.h"
-
-DEFINE_string(infer_model, "", "model path for LAC");
-DEFINE_string(infer_data, "", "data file for LAC");
-DEFINE_int32(batch_size, 1, "batch size.");
-DEFINE_int32(burning, 0, "Burning before repeat.");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_bool(test_all_data, false, "Test the all dataset in data file.");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -126,46 +112,37 @@ void TestLACPrediction(const std::string &model_path,
                        const std::string &data_file, const int batch_size,
                        const int repeat, bool test_all_data,
                        bool use_analysis = false) {
-  NativeConfig config;
-  config.model_dir = model_path;
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
+  AnalysisConfig cfg;
+  cfg.model_dir = model_path;
+  cfg.use_gpu = false;
+  cfg.device = 0;
+  cfg.specify_input_name = true;
+  cfg.enable_ir_optim = true;
+
   std::vector<PaddleTensor> input_slots, outputs_slots;
   DataRecord data(data_file, batch_size);
   GetOneBatch(&input_slots, &data, batch_size);
   std::unique_ptr<PaddlePredictor> predictor;
   if (use_analysis) {
-    AnalysisConfig cfg;
-    cfg.model_dir = model_path;
-    cfg.use_gpu = false;
-    cfg.device = 0;
-    cfg.specify_input_name = true;
-    cfg.enable_ir_optim = true;
     predictor =
         CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
   } else {
     predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(cfg);
   }
   for (int i = 0; i < FLAGS_burning; i++) {
     predictor->Run(input_slots, &outputs_slots);
   }
   Timer timer;
-  if (test_all_data) {
-    double sum = 0;
-    LOG(INFO) << "Total number of samples: " << data.datasets.size();
-    for (int i = 0; i < repeat; i++) {
-      for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
-        GetOneBatch(&input_slots, &data, batch_size);
-        timer.tic();
-        predictor->Run(input_slots, &outputs_slots);
-        sum += timer.toc();
-      }
+  if (FLAGS_test_all_data) {
+    LOG(INFO) << "test all data";
+    std::vector<std::vector<PaddleTensor>> input_slots_all;
+    for (size_t bid = 0; bid < data.batched_datas.size(); ++bid) {
+      GetOneBatch(&input_slots, &data, batch_size);
+      input_slots_all.emplace_back(input_slots);
     }
-    PrintTime(batch_size, repeat, 1, 0, sum / repeat);
-    LOG(INFO) << "Average latency of each sample: "
-              << sum / repeat / data.datasets.size() << " ms";
+    LOG(INFO) << "total number of samples: " << data.datasets.size();
+    TestPrediction(cfg, input_slots_all, &outputs_slots, FLAGS_num_threads);
     return;
   }
   timer.tic();
@@ -190,19 +167,10 @@ void TestLACPrediction(const std::string &model_path,
   if (use_analysis) {
     // run once for comparion as reference
     auto ref_predictor =
-        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(cfg);
     std::vector<PaddleTensor> ref_outputs_slots;
     ref_predictor->Run(input_slots, &ref_outputs_slots);
-    EXPECT_EQ(ref_outputs_slots.size(), outputs_slots.size());
-    auto &ref_out = ref_outputs_slots[0];
-    size_t ref_size =
-        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
-                        [](int a, int b) { return a * b; });
-    EXPECT_EQ(size, ref_size);
-    int64_t *pdata_ref = static_cast<int64_t *>(ref_out.data.data());
-    for (size_t i = 0; i < size; ++i) {
-      EXPECT_EQ(pdata_ref[i], pdata[i]);
-    }
+    CompareResult(ref_outputs_slots, outputs_slots);
 
     AnalysisPredictor *analysis_predictor =
         dynamic_cast<AnalysisPredictor *>(predictor.get());
