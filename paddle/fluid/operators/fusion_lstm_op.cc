@@ -396,15 +396,15 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       }
     } else {
       // TODO(TJ): unly workaround, clean me
-      std::function<void(const T*, const T*, T*, T*)> compute_ctht;
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
       if (platform::jit::MayIUse(platform::jit::avx) &&
           act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
           act_cell_str == "tanh" && D == 8) {
         compute_ctht = math::lstm_compute_ctht<T>;
       } else {
-        compute_ctht = [&](const T* gates, const T* ct_1, T* ct, T* ht) {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
           COMPUTE_CtHt(gates, ct_1, ct, ht);
-        }
+        };
       }
       for (int i = 0; i < N; ++i) {
         PROCESS_H0C0

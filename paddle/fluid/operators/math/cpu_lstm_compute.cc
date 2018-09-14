@@ -25,12 +25,15 @@ namespace math {
 
 namespace detail {
 namespace forward {
-namespace avx {}  // namespace avx
+namespace avx {
+__m256 Sigmoid(const __m256 a);
+__m256 Tanh(const __m256 a);
+}  // namespace avx
 }  // namespace forward
 }  // namespace detail
 
 template <>
-void lstm_compute_ctht<float>(const float* gates, const float* ct_1, float* ct,
+void lstm_compute_ctht<float>(float* gates, const float* ct_1, float* ct,
                               float* ht) {
   namespace act = detail::forward::avx;
   // gates: W_ch, W_ih, W_fh, W_oh
@@ -52,6 +55,7 @@ void lstm_compute_ctht<float>(const float* gates, const float* ct_1, float* ct,
   _mm256_storeu_ps(ht, o);
 }
 #endif
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
