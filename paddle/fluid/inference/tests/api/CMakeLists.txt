@@ -56,6 +56,22 @@ inference_analysis_test(test_analyzer_text_classification SRCS analyzer_text_cla
     ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta
          --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt)
 
+# ocr
+set(OCR_MODEL_URL "http://paddlemodels.cdn.bcebos.com/inference-vis-demos%2Focr.tar.gz")
+set(OCR_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/ocr")
+if (NOT EXISTS ${OCR_INSTALL_DIR} AND WITH_INFERENCE)
+    get_filename_component(filename ${OCR_MODEL_URL} NAME)
+    message(STATUS "Download inference test stuff ${filename} from ${OCR_MODEL_URL}")
+    execute_process(COMMAND bash -c "mkdir -p ${OCR_INSTALL_DIR}")
+    execute_process(COMMAND bash -c "cd ${OCR_INSTALL_DIR} && wget -q ${OCR_MODEL_URL}")
+    execute_process(COMMAND bash -c "cd ${OCR_INSTALL_DIR} && tar xzf ${filename}")
+    message(STATUS "finish downloading ${filename}")
+endif()
+inference_analysis_test(test_analyzer_ocr SRCS analyzer_vis_tester.cc
+    EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
+    ARGS --infer_model=${OCR_INSTALL_DIR}/model
+        --infer_data=${OCR_INSTALL_DIR}/data.txt)
+
 # ResNet50
 set(RESNET50_MODEL "${THIRD_PARTY_PATH}/inference_demo/resnet50/resnet50-model")
 inference_analysis_test(test_resnet50 SRCS analyzer_resnet50_tester.cc

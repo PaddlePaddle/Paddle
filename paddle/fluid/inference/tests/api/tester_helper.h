@@ -37,22 +37,37 @@ namespace paddle {
 namespace inference {
 
 void CompareResult(const std::vector<PaddleTensor> &outputs,
-                   const std::vector<PaddleTensor> &base_outputs) {
-  PADDLE_ENFORCE_GT(outputs.size(), 0);
-  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
+                   const std::vector<PaddleTensor> &ref_outputs) {
+  EXPECT_GT(outputs.size(), 0);
+  EXPECT_EQ(outputs.size(), ref_outputs.size());
   for (size_t i = 0; i < outputs.size(); i++) {
     auto &out = outputs[i];
-    auto &base_out = base_outputs[i];
+    auto &ref_out = ref_outputs[i];
     size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
                                   [](int a, int b) { return a * b; });
-    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
-                                   1, [](int a, int b) { return a * b; });
-    PADDLE_ENFORCE_EQ(size, size1);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *data = static_cast<float *>(out.data.data());
-    float *base_data = static_cast<float *>(base_out.data.data());
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_data[i], 1e-3);
+    size_t ref_size =
+        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
+                        [](int a, int b) { return a * b; });
+    EXPECT_GT(size, 0);
+    EXPECT_EQ(size, ref_size);
+    EXPECT_EQ(out.dtype, ref_out.dtype);
+    switch (out.dtype) {
+      case PaddleDType::INT64: {
+        int64_t *pdata = static_cast<int64_t *>(out.data.data());
+        int64_t *pdata_ref = static_cast<int64_t *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_EQ(pdata_ref[j], pdata[j]);
+        }
+        break;
+      }
+      case PaddleDType::FLOAT32: {
+        float *pdata = static_cast<float *>(out.data.data());
+        float *pdata_ref = static_cast<float *>(ref_out.data.data());
+        for (size_t j = 0; j < size; ++j) {
+          EXPECT_NEAR(pdata_ref[j], pdata[j], 1e-3);
+        }
+        break;
+      }
     }
   }
 }
