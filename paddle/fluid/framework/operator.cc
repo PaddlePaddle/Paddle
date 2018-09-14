@@ -149,8 +149,10 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     platform::SetDeviceId(dev_id);
 #endif
   }
+  VLOG(3) << "start pool";
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
+  VLOG(3) << "start RunImpl";
   RunImpl(scope, place);
   VLOG(3) << place << " " << DebugStringEx(&scope);
 }
@@ -660,12 +662,16 @@ static void CheckTensorNANOrInf(const std::string& name,
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   RuntimeInferShapeContext infer_shape_ctx(*this, scope);
+  VLOG(3) << "start Infershape";
   this->InferShape(&infer_shape_ctx);
+  VLOG(3) << "Infershape Pass";
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
   // check if op[type] has kernel registered.
+  VLOG(3) << "Start Kernels";
   auto& all_op_kernels = AllOpKernels();
+  VLOG(3) << "Kernel map finish";
   auto kernels_iter = all_op_kernels.find(type_);
   if (kernels_iter == all_op_kernels.end()) {
     PADDLE_THROW(

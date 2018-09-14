@@ -186,7 +186,12 @@ void Main(bool use_gpu) {
   std::cout << "begin to process data" << std::endl;
   // Just a single batch of data.
   std::string line;
+  std::cout << "data : " << std::endl;
   std::ifstream file(DATA);
+  if(!file.is_open()) {
+    std::cout << "failed open data" << DATA << std::endl;
+    exit(0);
+  }
   std::getline(file, line);
   auto record = ProcessALine(line);
   file.close();
@@ -207,6 +212,7 @@ void Main(bool use_gpu) {
   std::cout << "output: " << SummaryTensor(tensor) << std::endl;
 
   // compare with reference result
+  std::cout << "refer result : " << REFER << std::endl;
   CheckOutput(REFER, tensor);
 }
 

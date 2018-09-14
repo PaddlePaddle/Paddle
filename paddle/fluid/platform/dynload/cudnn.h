@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
+#include <glog/logging.h>
 
 #include <cudnn.h>
 #include <mutex>  // NOLINT
@@ -51,7 +54,8 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   struct DynLoad__##__name {                         \
     template <typename... Args>                      \
     inline cudnnStatus_t operator()(Args... args) { \
-      return __name(args...);                        \
+      VLOG(3) << "cudnn call"; \
+      return ::__name(args...);                        \
     }                                                \
   };                                                 \
   extern DynLoad__##__name __name
