@@ -92,7 +92,7 @@ class TrainTaskConfig(object):
     src_vocab_fpath = data_path + "vocab.bpe.32000"
     trg_vocab_fpath = data_path + "vocab.bpe.32000"
     train_file_pattern = data_path + "train.tok.clean.bpe.32000.en-de"
-    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de"
+    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de.cut"
     pool_size = 2000
     sort_type = None
     local = True
@@ -482,9 +482,6 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
             reader=val_data.batch_generator,
             count=dev_count if TrainTaskConfig.use_token_batch else 1)
         for batch_id, data in enumerate(test_data()):
-            # test for 5 batch for speed
-            if batch_id > 5:
-                break
             feed_list = []
             for place_id, data_buffer in enumerate(
                     split_data(
@@ -627,11 +624,12 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             init = True
 
             # Validate and save the model for inference.
-            if TrainTaskConfig.val_file_pattern is not None:
-                val_avg_cost, val_ppl = test()
-                print("[%f]" % val_avg_cost)
-            else:
-                assert (False)
+            if batch_id == 0 or batch_id == 4:
+                if TrainTaskConfig.val_file_pattern is not None:
+                    val_avg_cost, val_ppl = test()
+                    print("[%f]" % val_avg_cost)
+                else:
+                    assert (False)
 
 
 #import transformer_reader as reader
