@@ -69,12 +69,12 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
-        if [ "$1" == "cp27-cp27m" || "$1" == "" ]; then
+        if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
             echo "using python abi: $1"
             if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
-                export PATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/:{PATH}
+                export PATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/:${PATH}
                 PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
             -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
             -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
