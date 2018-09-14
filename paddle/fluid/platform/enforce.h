@@ -308,6 +308,8 @@ inline void throw_on_error(T e) {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+
+#if !defined(_WIN32)
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
   do {                                                       \
     if (UNLIKELY(nullptr == (__VAL))) {                      \
@@ -327,6 +329,20 @@ inline void throw_on_error(T e) {
                    paddle::string::Sprintf("" __VA_ARGS__));            \
     }                                                                   \
   } while (0)
+#else
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
+  do {  \
+    if (!((__VAL0)__CMP(__VAL1))) { \
+      PADDLE_THROW("Windows disable the enforce. Enforce failed."); \
+    }  \
+  } while(0) 
+#define PADDLE_ENFORCE_NOT_NULL(__VAL1, ...) \
+    do {  \
+    if (nullptr == (__VAL1)) { \
+      PADDLE_THROW("Windows disable the enforce. Enforce failed"); \
+    }  \
+  } while(0) 
+#endif // !_WIN32
 
 }  // namespace platform
 }  // namespace paddle

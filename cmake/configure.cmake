@@ -82,7 +82,6 @@ if(WIN32)
   if (NOT MSVC)
     message(FATAL "Windows build only support msvc. Which was binded by the nvcc compiler of NVIDIA.")
   endif(NOT MSVC)
-  add_definitions(/DPADDLE_COMPILE)
 endif(WIN32)
 
 if(NOT WITH_GOLANG)

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cctype>
 
 #include <algorithm>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -27,8 +28,16 @@ limitations under the License. */
 #include <thread>  //NOLINT
 #include "paddle/fluid/inference/paddle_inference_api.h"
 
-std::string DIRNAME = ""; /* "Directory of the inference model." */ // NOLINT
+std::string MODELDIR = ""; /* "Directory of the inference model." */ // NOLINT
+std::string REFER = ""; /*"path to reference result for comparison."*/ //NOTLINT
+/*path of data; each line is a record, format:
+<space splitted floats as data>\t<space splitted ints as shape>
+
+Please check the demo data of data.txt for details.
+ */
+std::string DATA = "";  
 bool USE_GPU = false;     /*"Whether use gpu."*/
+
 
 auto message_err = []() {
   std::cout << "Copyright (c) 2018 PaddlePaddle Authors." << std::endl;
@@ -40,19 +49,52 @@ auto message_err = []() {
   std::cout << std::endl;
 };
 
-void ParseArgs() {
-  message_err();
-  std::cout << "DIRNAME:[D:/Paddle/xxx/path_to_model_dir]" << std::endl;
-  std::cin >> DIRNAME;
-  std::cout << "USE_GPU:[yes|no]";
-  std::string value;
-  std::cin >> value;
-  std::transform(value.begin(), value.end(), value.begin(), ::toupper);
-  USE_GPU = (value == "YES") ? true : false;
-}
 
 namespace paddle {
 namespace demo {
+
+void split(const std::string& str, char sep,
+                  std::vector<std::string>* pieces) {
+  pieces->clear();
+  if (str.empty()) {
+    return;
+  }
+  size_t pos = 0;
+  size_t next = str.find(sep, pos);
+  while (next != std::string::npos) {
+    pieces->push_back(str.substr(pos, next - pos));
+    pos = next + 1;
+    next = str.find(sep, pos);
+  }
+  if (!str.substr(pos).empty()) {
+    pieces->push_back(str.substr(pos));
+  }
+}
+
+/*
+ * Get a summary of a PaddleTensor content.
+ */
+std::string SummaryTensor(const PaddleTensor& tensor) {
+  std::stringstream ss;
+  int num_elems = tensor.data.length() / PaddleDtypeSize(tensor.dtype);
+
+  ss << "data[:10]\t";
+  switch (tensor.dtype) {
+    case PaddleDType::INT64: {
+      for (int i = 0; i < std::min(num_elems, 10); i++) {
+        ss << static_cast<int64_t*>(tensor.data.data())[i] << " ";
+      }
+      break;
+    }
+    case PaddleDType::FLOAT32:
+      for (int i = 0; i < std::min(num_elems, 10); i++) {
+        ss << static_cast<float*>(tensor.data.data())[i] << " ";
+      }
+      break;
+  }
+  return ss.str();
+}
+
 std::string ToString(const NativeConfig& config) {
   std::stringstream ss;
   ss << "Use GPU : " << (config.use_gpu ? "True" : "False") << "\n"
@@ -65,119 +107,122 @@ std::string ToString(const NativeConfig& config) {
   return ss.str();
 }
 
+struct Record {
+  std::vector<float> data;
+  std::vector<int32_t> shape;
+};
+
+
+Record ProcessALine(const std::string& line) {
+  std::cout << "process a line" << std::endl;;
+  std::vector<std::string> columns;
+  split(line, '\t', &columns);
+  assert(columns.size() == 2UL,
+        "data format error, should be <data>\t<shape>");
+
+  Record record;
+  std::vector<std::string> data_strs;
+  split(columns[0], ' ', &data_strs);
+  for (auto& d : data_strs) {
+    record.data.push_back(std::stof(d));
+  }
+
+  std::vector<std::string> shape_strs;
+  split(columns[1], ' ', &shape_strs);
+  for (auto& s : shape_strs) {
+    record.shape.push_back(std::stoi(s));
+  }
+  std::cout << "data size " << record.data.size() << std::endl;
+  std::cout << "data shape size " << record.shape.size() << std::endl;
+  return record;
+}
+
+void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
+  std::string line;
+  std::ifstream file(referfile);
+  std::getline(file, line);
+  auto refer = ProcessALine(line);
+  file.close();
+
+  size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
+  std::cout << "predictor output numel " << numel << std::endl;
+  std::cout << "reference output numel " << refer.data.size() << std::endl;
+  assert(numel == refer.data.size());
+  switch (output.dtype) {
+    case PaddleDType::INT64: {
+      for (size_t i = 0; i < numel; ++i) {
+        assert(static_cast<int64_t*>(output.data.data())[i] == 
+                          refer.data[i]);
+      }
+      break;
+    }
+    case PaddleDType::FLOAT32:
+      for (size_t i = 0; i < numel; ++i) {
+        assert(
+            fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]) <=
+            1e-5);
+      }
+      break;
+  }
+}
+
+/*
+ * Use the native fluid engine to inference the demo.
+ */
 void Main(bool use_gpu) {
-  //# 1. Create PaddlePredictor with a config.
   NativeConfig config;
-  config.model_dir = DIRNAME;
+  config.param_file = MODELDIR + "/__params__";
+  config.prog_file = MODELDIR + "/__model__";
   config.use_gpu = USE_GPU;
-  config.fraction_of_gpu_memory = 0.15;
   config.device = 0;
+  if (USE_GPU) {
+    config.fraction_of_gpu_memory = 0.1f;  // set by yourself
+  }
   std::cout << ToString(config) << std::endl;
+  std::cout << "init predictor" << std::endl;
   auto predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 
-  for (int batch_id = 0; batch_id < 3; batch_id++) {
-    //# 2. Prepare input.
-    int64_t data[4] = {1, 2, 3, 4};
+  std::cout << "begin to process data" << std::endl;
+  // Just a single batch of data.
+  std::string line;
+  std::ifstream file(DATA);
+  std::getline(file, line);
+  auto record = ProcessALine(line);
+  file.close();
 
-    PaddleTensor tensor;
-    tensor.shape = std::vector<int>({4, 1});
-    tensor.data = PaddleBuf(data, sizeof(data));
-    tensor.dtype = PaddleDType::INT64;
+  // Inference.
+  PaddleTensor input;
+  input.shape = record.shape;
+  input.data =
+      PaddleBuf(record.data.data(), record.data.size() * sizeof(float));
+  input.dtype = PaddleDType::FLOAT32;
 
-    // For simplicity, we set all the slots with the same data.
-    std::vector<PaddleTensor> slots(4, tensor);
+  std::cout << "run executor" << std::endl;
+  std::vector<PaddleTensor> output;
+  predictor->Run({input}, &output);
 
-    //# 3. Run
-    std::vector<PaddleTensor> outputs;
-    assert(predictor->Run(slots, &outputs) == true &&
-           "Predict run expect true");
+  std::cout << "output.size " << output.size() << std::endl;
+  auto& tensor = output.front();
+  std::cout << "output: " << SummaryTensor(tensor) << std::endl;
 
-    //# 4. Get output.
-    assert(outputs.size() == 1UL);
-    // Check the output buffer size and result of each tid.
-    assert(outputs.front().data.length() == 33168UL);
-    float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
-                       0.000932706};
-    const size_t num_elements = outputs.front().data.length() / sizeof(float);
-    // The outputs' buffers are in CPU memory.
-    for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
-         i++) {
-      assert(static_cast<float*>(outputs.front().data.data())[i] == result[i]);
-      std::cout << "expect the output "
-                << static_cast<float*>(outputs.front().data.data())[i]
-                << std::endl;
-    }
-  }
+  // compare with reference result
+  CheckOutput(REFER, tensor);
 }
 
-void MainThreads(int num_threads, bool USE_GPU) {
-  // Multi-threads only support on CPU
-  // 0. Create PaddlePredictor with a config.
-  NativeConfig config;
-  config.model_dir = DIRNAME;
-  config.use_gpu = USE_GPU;
-  config.fraction_of_gpu_memory = 0.15;
-  config.device = 0;
-  std::cout << ToString(config) << std::endl;
-  auto main_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-
-  std::vector<std::thread> threads;
-  for (int tid = 0; tid < num_threads; ++tid) {
-    threads.emplace_back([&, tid]() {
-      // 1. clone a predictor which shares the same parameters
-      auto predictor = main_predictor->Clone();
-      constexpr int num_batches = 3;
-      for (int batch_id = 0; batch_id < num_batches; ++batch_id) {
-        // 2. Dummy Input Data
-        int64_t data[4] = {1, 2, 3, 4};
-        PaddleTensor tensor;
-        tensor.shape = std::vector<int>({4, 1});
-        tensor.data = PaddleBuf(data, sizeof(data));
-        tensor.dtype = PaddleDType::INT64;
-
-        std::vector<PaddleTensor> inputs(4, tensor);
-        std::vector<PaddleTensor> outputs;
-        // 3. Run
-        assert(predictor->Run(inputs, &outputs) == true);
-
-        // 4. Get output.
-        assert(outputs.size() == 1UL);
-        // Check the output buffer size and result of each tid.
-        assert(outputs.front().data.length() == 33168UL);
-        float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
-                           0.000932706};
-        const size_t num_elements =
-            outputs.front().data.length() / sizeof(float);
-        // The outputs' buffers are in CPU memory.
-        for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
-             i++) {
-          assert(static_cast<float*>(outputs.front().data.data())[i] ==
-                 result[i]);
-        }
-      }
-    });
-  }
-  for (int i = 0; i < num_threads; ++i) {
-    threads[i].join();
-  }
-}
 
 }  // namespace demo
 }  // namespace paddle
 
 int main(int argc, char** argv) {
   // ParseArgs();
-  DIRNAME = "./icnet";
+  MODELDIR = "./mobilenet/model";
+  DATA = "./mobilenet/data.txt";
+  REFER = "./mobilenet/result.txt";
   USE_GPU = true;
   paddle::demo::Main(false /* USE_GPU*/);
-  paddle::demo::MainThreads(1, false /* USE_GPU*/);
-  paddle::demo::MainThreads(4, false /* USE_GPU*/);
   if (USE_GPU) {
     paddle::demo::Main(true /*USE_GPU*/);
-    paddle::demo::MainThreads(1, true /*USE_GPU*/);
-    paddle::demo::MainThreads(4, true /*USE_GPU*/);
   }
   system("pause");
   return 0;

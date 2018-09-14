@@ -30,11 +30,14 @@ limitations under the License. */
 #endif  // __FLT_MAX__
 
 #ifdef _WIN32
-#ifdef PADDLE_COMPILE
+#if defined(PADDLE_COMPILE)
+// by default, msvc has predefined macro _LIB for static library
+// only shared library need to export and import symbols
+// static library export all symbols by default. 
 #define PADDLE_DLL __declspec(dllexport)
 #else
 #define PADDLE_DLL __declspec(dllimport)
 #endif
 #else
-#define PADDLE_COMPILE
+#define PADDLE_DLL
 #endif
