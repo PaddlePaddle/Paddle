@@ -56,9 +56,9 @@ else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 if (NOT WIN32)
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
 else()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
+cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
 endif (NOT WIN32)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
@@ -116,7 +116,11 @@ cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope gl
 endif(NOT WIN32)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
+
+cc_library(version SRCS version.cc)
+cc_test(version_test SRCS version_test.cc DEPS version)
+
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)

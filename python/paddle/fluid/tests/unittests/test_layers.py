@@ -556,6 +556,15 @@ class TestBook(unittest.TestCase):
             out = layers.sequence_enumerate(input=x, win_size=2, pad_value=0)
         print(str(program))
 
+    def test_cross_entropy(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[30, 10], dtype="float32")
+            label = layers.data(name="label", shape=[30, 1], dtype="int32")
+            mode = 'channel'
+            out = layers.cross_entropy(x, label, False, 4)
+            self.assertIsNotNone(out)
+
 
 if __name__ == '__main__':
     unittest.main()
