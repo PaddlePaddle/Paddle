@@ -60,7 +60,12 @@ inference_analysis_test(test_analyzer_text_classification SRCS analyzer_text_cla
 set(OCR_MODEL_URL "http://paddlemodels.cdn.bcebos.com/inference-vis-demos%2Focr.tar.gz")
 set(OCR_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR} AND WITH_INFERENCE)
-    inference_download_and_uncompress(${OCR_INSTALL_DIR} ${OCR_MODEL_URL})
+    get_filename_component(filename ${OCR_MODEL_URL} NAME)
+    message(STATUS "Download inference test stuff ${filename} from ${OCR_MODEL_URL}")
+    execute_process(COMMAND bash -c "mkdir -p ${OCR_INSTALL_DIR}")
+    execute_process(COMMAND bash -c "cd ${OCR_INSTALL_DIR} && wget -q ${OCR_MODEL_URL}")
+    execute_process(COMMAND bash -c "cd ${OCR_INSTALL_DIR} && tar xzf ${filename}")
+    message(STATUS "finish downloading ${filename}")
 endif()
 inference_analysis_test(test_analyzer_ocr SRCS analyzer_vis_tester.cc
     EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor
