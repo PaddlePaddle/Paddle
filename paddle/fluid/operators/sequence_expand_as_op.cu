@@ -22,30 +22,33 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
-__global__ void sequence_expand_as_grad_kernel(const T* dout_data,
-                                               const size_t* expand_offset,
+__global__ void sequence_expand_as_grad_kernel(const T *dout_data,
+                                               const size_t *expand_offset,
                                                const size_t dst_hight,
-                                               const size_t dst_widht,
-                                               T* dx_data) {
+                                               const size_t dst_width,
+                                               T *dx_data) {
   for (int h_id = blockIdx.x; h_id < dst_hight; h_id += gridDim.x) {
-    T* dst = dx_data + h_id * dst_widht;
+    T *dst = dx_data + h_id * dst_width;
     int span = expand_offset[h_id + 1] - expand_offset[h_id];
-    for (int k = 0; k < span; ++k) {
-      int offset = (expand_offset[h_id] + k) * dst_widht;
-      const T* src = dout_data + offset;
-      for (int w_id = threadIdx.x; w_id < dst_widht; w_id += blockDim.x) {
-        dst[w_id] += src[w_id];
+
+    for (int w_id = threadIdx.x; w_id < dst_width; w_id += blockDim.x) {
+      T result = 0;
+      for (int k = 0; k < span; ++k) {
+        int offset = (expand_offset[h_id] + k) * dst_width;
+        const T *src = dout_data + offset;
+        result += src[w_id];
       }
+      dst[w_id] = result;
     }
   }
 }
 
 template <typename T>
 struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const platform::CUDADeviceContext& context,
-                  const LoDTensor& dout,
-                  const framework::Vector<size_t>& ref_lod, /*expand based lod*/
-                  LoDTensor* dx) {
+  void operator()(const platform::CUDADeviceContext &context,
+                  const LoDTensor &dout,
+                  const framework::Vector<size_t> &ref_lod, /*expand based lod*/
+                  LoDTensor *dx) {
     int hight = dx->dims()[0];
     int width = framework::product(dx->dims()) / hight;
 

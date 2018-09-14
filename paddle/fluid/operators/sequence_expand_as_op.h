@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <numeric>  // std::iota
 #include <sstream>
 #include <vector>
@@ -91,19 +92,22 @@ struct SequenceExpandAsGradFunctor<platform::CPUDeviceContext, T> {
       const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *dx) {
-    int dout_offset = 0;
-    for (size_t i = 1; i < ref_lod.size(); ++i) {
-      int repeat_num = ref_lod[i] - ref_lod[i - 1];
-      if (repeat_num > 0) {
-        int x_seq_len = 1;
-        auto dx_sub = dx->Slice(i - 1, i);
-        dx_sub.Resize(flatten_to_1d(dx_sub.dims()));
-        int dout_end = dout_offset + repeat_num * x_seq_len;
-        auto dout_sub = dout.Slice(dout_offset, dout_end);
-        dout_sub.Resize({repeat_num, dx_sub.dims()[0]});
-        math::ColwiseSum<platform::CPUDeviceContext, T> col_sum;
-        col_sum(context, dout_sub, &dx_sub);
-        dout_offset += repeat_num * x_seq_len;
+    int64_t hight = dx->dims()[0];
+    int64_t width = framework::product(dx->dims()) / hight;
+
+    const T *dout_data = dout.data<T>();
+    T *dx_data = dx->mutable_data<T>(context.GetPlace());
+
+    for (int64_t h_id = 0; h_id < hight; ++h_id) {
+      T *dst = dx_data + h_id * width;
+      size_t span = ref_lod[h_id + 1] - ref_lod[h_id];
+      for (int64_t w_id = 0; w_id < width; ++w_id) {
+        T result = 0;
+        for (size_t k = 0; k < span; ++k) {
+          size_t offset = (ref_lod[h_id] + k) * width;
+          result += dout_data[offset + w_id];
+        }
+        dst[w_id] = result;
       }
     }
   }
@@ -120,10 +124,6 @@ class SequenceExpandAsGradKernel : public framework::OpKernel<T> {
         context.Output<framework::LoDTensor>(framework::GradVarName("X"));
 
     g_x->mutable_data<T>(context.GetPlace());
-
-    auto &dev_ctx = context.template device_context<DeviceContext>();
-    math::SetConstant<DeviceContext, T> set_zero;
-    set_zero(dev_ctx, g_x, static_cast<T>(0));
 
     SequenceExpandAsGradFunctor<DeviceContext, T> functor;
     functor(context.template device_context<DeviceContext>(), *g_out,
