@@ -67,6 +67,7 @@ bool NativePaddlePredictor::Init(
   } else {
     place_ = paddle::platform::CPUPlace();
   }
+  VLOG(3) << "before scope";
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
@@ -75,26 +76,30 @@ bool NativePaddlePredictor::Init(
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
   }
-
+  VLOG(3) << "after scope"
   executor_.reset(new paddle::framework::Executor(place_));
-
+  VLOG(3) << "executor";
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
+    VLOG(3) << config_.model_dir;
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
+    VLOG(3) << "load model Finish";
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
+    VLOG(3) << "load program";
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
+    VLOG(3) << "load program finish";
   } else {
     LOG(ERROR) << "fail to load inference model.";
     return false;
   }
-
+  VLOG(3) << "prepare";
   ctx_ = executor_->Prepare(*inference_program_, 0);
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
@@ -289,10 +294,13 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
   VLOG(3) << "create NativePaddlePredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
-    PADDLE_ENFORCE_GT(
-        config.fraction_of_gpu_memory, 0.f,
-        "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+    VLOG(3) << "before check";
+   // PADDLE_ENFORCE_GT(
+    //    config.fraction_of_gpu_memory, 0.f,
+    //    "fraction_of_gpu_memory in the config should be set to range (0., 1.]");
+    VLOG(3) << "failed on first";
     PADDLE_ENFORCE_GE(config.device, 0, "Invalid device id %d", config.device);
+    VLOG(3) << "after flags";
     std::vector<std::string> flags;
     if (config.fraction_of_gpu_memory >= 0.0f ||
         config.fraction_of_gpu_memory <= 0.95f) {
@@ -302,9 +310,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
       flags.push_back(flag);
       VLOG(3) << "set flag: " << flag;
       framework::InitGflags(flags);
+      VLOG(3) << "flags setting";
     }
   }
-
+  VLOG(3) << "Init flags Done";
   std::unique_ptr<PaddlePredictor> predictor(new NativePaddlePredictor(config));
   if (!dynamic_cast<NativePaddlePredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
