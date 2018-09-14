@@ -215,15 +215,12 @@ class ControlFlowGraph(object):
         # update skip set to meet users' demand
         if skip_opt_set:
             self._skip_opt.update(skip_opt_set)
-        # self.pool = []
         for i in range(self.op_size):
             op = self._ops[i]
             if op.type() in SUB_BLOCK_OPS:
                 continue
             block_desc = op.block()
             is_forward = i < self._forward_num
-            self._fill_pool(i, is_forward)
-            # print(op.type(), i, self.pool)
             if self.pool:
                 defs_can_optimize = [
                     x for x in self._defs[i]
@@ -238,8 +235,6 @@ class ControlFlowGraph(object):
                         raise ValueError("x in pool")
                     # If x is both in uses and defs, it can not be optimized!
                     if x in self._uses[i]:
-                        # print(self.pool, op.type(), cpt.to_text(x))
-                        # raise ValueError("x in use!", cpt.to_text(x))
                         continue
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
@@ -273,17 +268,9 @@ class ControlFlowGraph(object):
                         _rename_arg_(self._ops, x, cache_var, begin_idx=i)
                         self._program.block(block_desc.id)._remove_var(cpt.to_text(
                             x))
-                        # if str(self._program) != str(self._dup_program):
-                            # with open("./program_middle", "w") as f:
-                            #     f.write(str(self._program))
-                            #     f.flush()
-                            # exit(0)
-                        # self._program.block(block_desc.id).var(cpt.to_text(
-                        #     x)).desc = self._find_var(block_desc, cache_var,
-                                                       # is_forward)
                         self._update_graph(x, cache_var, begin_idx=i)
                         break
-            # self._fill_pool(i, is_forward)
+            self._fill_pool(i, is_forward)
 
 
 
