@@ -28,11 +28,46 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
+struct SequenceExpandFunctor {
+  void operator()(
+      const DeviceContext &ctx, const framework::LoDTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      framework::LoDTensor *out);
+};
+
+template <typename DeviceContext, typename T>
 struct SequenceExpandAsGradFunctor {
   void operator()(
       const DeviceContext &ctx, const framework::LoDTensor &dout,
       const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
       framework::LoDTensor *dx);
+};
+
+template <typename T>
+struct SequenceExpandFunctor<platform::CPUDeviceContext, T> {
+  void operator()(
+      const platform::CPUDeviceContext &context, const framework::LoDTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      framework::LoDTensor *out) {
+    int64_t hight = x.dims()[0];
+    int64_t width = framework::product(x.dims()) / hight;
+
+    const T *in_data = x.data<T>();
+    T *out_data = out->mutable_data<T>(context.GetPlace());
+
+    for (int h_id = 0; h_id < hight; ++h_id) {
+      size_t span = ref_lod[h_id + 1] - ref_lod[h_id];
+      if (span == 0) continue;
+      const T *src = in_data + h_id * width;
+      for (int64_t w_id = 0; w_id < width; ++w_id) {
+        T ele = src[w_id];
+        size_t offset = ref_lod[h_id] * width;
+        for (size_t k = 0; k < span; ++k) {
+          out_data[offset + k * width + w_id] = ele;
+        }
+      }
+    }
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -49,28 +84,9 @@ class SequenceExpandAsKernel : public framework::OpKernel<T> {
 
     out->mutable_data<T>(context.GetPlace());
 
-    // Prepare the inputs
-    int inputs_num = 0;
-    for (size_t i = 1; i < y_lod[0].size(); ++i) {
-      int repeat_num = y_lod[0][i] - y_lod[0][i - 1];
-      if (repeat_num == 0) continue;
-      inputs_num += repeat_num;
-    }
-
-    std::vector<framework::Tensor> inputs;
-    inputs.reserve(inputs_num);
-    for (size_t i = 1; i < y_lod[0].size(); ++i) {
-      size_t repeat_num = y_lod[0][i] - y_lod[0][i - 1];
-      if (repeat_num == 0) continue;
-      framework::Tensor x_t = x->Slice(i - 1, i);
-      for (size_t j = 0; j < repeat_num; ++j) {
-        inputs.push_back(x_t);
-      }
-    }
-
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
-    concat_functor(dev_ctx, inputs, static_cast<int>(0), out);
+    SequenceExpandFunctor<DeviceContext, T> seq_espand_functor;
+    seq_espand_functor(dev_ctx, *x, y_lod[0], out);
   }
 };
 

@@ -22,6 +22,25 @@ namespace operators {
 using LoDTensor = framework::LoDTensor;
 
 template <typename T>
+__global__ void sequence_expand_as_kernel(const T *in_data,
+                                          const size_t *expand_offset,
+                                          const size_t src_hight,
+                                          const size_t src_widht, T *out_data) {
+  for (int h_id = blockIdx.x; h_id < src_hight; h_id += gridDim.x) {
+    int span = expand_offset[h_id + 1] - expand_offset[h_id];
+    if (span == 0) continue;
+    const T *src = in_data + h_id * src_widht;
+    for (int w_id = threadIdx.x; w_id < src_widht; w_id += blockDim.x) {
+      T ele = src[w_id];
+      int offset = expand_offset[h_id] * src_widht;
+      for (int k = 0; k < span; ++k) {
+        out_data[offset + k * src_widht + w_id] = ele;
+      }
+    }
+  }
+}
+
+template <typename T>
 __global__ void sequence_expand_as_grad_kernel(const T *dout_data,
                                                const size_t *expand_offset,
                                                const size_t dst_hight,
@@ -42,6 +61,32 @@ __global__ void sequence_expand_as_grad_kernel(const T *dout_data,
     }
   }
 }
+
+template <typename T>
+struct SequenceExpandFunctor<platform::CUDADeviceContext, T> {
+  void operator()(
+      const platform::CUDADeviceContext &context, const LoDTensor &x,
+      const framework::Vector<size_t> &ref_lod, /*expand referenced lod*/
+      LoDTensor *out) {
+    int hight = x.dims()[0];
+    int width = framework::product(x.dims()) / hight;
+
+    const int kThreadsPerBlock = 1024;
+    int thread_x = kThreadsPerBlock;
+    if (width < kThreadsPerBlock) {  // block_cols is aligned by 32.
+      thread_x = ((width + 31) >> 5) << 5;
+    }
+
+    int max_threads = context.GetMaxPhysicalThreadCount();
+    int block_x = std::max(max_threads / thread_x, 1);
+
+    dim3 block_size(thread_x);
+    dim3 grid_size(block_x);
+    sequence_expand_as_kernel<<<grid_size, block_size, 0, context.stream()>>>(
+        x.data<T>(), ref_lod.CUDAData(context.GetPlace()), hight, width,
+        out->mutable_data<T>(context.GetPlace()));
+  }
+};
 
 template <typename T>
 struct SequenceExpandAsGradFunctor<platform::CUDADeviceContext, T> {
