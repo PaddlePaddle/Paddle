@@ -62,7 +62,8 @@ class TestSequencePadOp(OpTest):
             start_idx = end_idx
 
         out_data = np.array(padded_sequences)
-        self.outputs = {'Out': out_data}
+        length = np.array(self.x_len_lod[0])
+        self.outputs = {'Out': out_data, 'Length': length}
 
     def setUp(self):
         self.op_type = 'sequence_pad'
