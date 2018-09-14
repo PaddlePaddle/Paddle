@@ -40,18 +40,20 @@ DeviceContextPool::DeviceContextPool(
   for (auto& p : places) {
     set.insert(p);
   }
-
+VLOG(3) << "pool start";
   for (auto& p : set) {
     if (platform::is_cpu_place(p)) {
 #ifdef PADDLE_WITH_MKLDNN
       device_contexts_.emplace(
           p, PtrType(new MKLDNNDeviceContext(boost::get<CPUPlace>(p))));
 #else
+VLOG(3) << "cpu context start";
       device_contexts_.emplace(
           p, PtrType(new CPUDeviceContext(boost::get<CPUPlace>(p))));
 #endif
     } else if (platform::is_gpu_place(p)) {
 #ifdef PADDLE_WITH_CUDA
+VLOG(3) << "gpu context start";
       device_contexts_.emplace(
           p, PtrType(new CUDADeviceContext(boost::get<CUDAPlace>(p))));
 #else
@@ -61,6 +63,7 @@ DeviceContextPool::DeviceContextPool(
 #endif
     } else if (platform::is_cuda_pinned_place(p)) {
 #ifdef PADDLE_WITH_CUDA
+VLOG(3) << "gpu pin start";
       device_contexts_.emplace(
           p,
           PtrType(new CUDAPinnedDeviceContext(boost::get<CUDAPinnedPlace>(p))));
@@ -70,6 +73,7 @@ DeviceContextPool::DeviceContextPool(
           "option");
 #endif
     }
+VLOG(3) << "pool finish";
   }
 }
 
@@ -147,18 +151,28 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   compute_capability = GetCUDAComputeCapability(place_.device);
   multi_process = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
+  VLOG(3) << "cuda info pass";
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
+  VLOG(3) << "cuda stream pass";
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
-  PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
-  PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
-  if (dynload::HasCUDNN()) {
+
+  VLOG(3) << "eigen pass";
+    if (dynload::HasCUDNN()) {
+  VLOG(3) << "cudnn start";
     PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
+    VLOG(3) << "cudnn create pass";
     PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, stream_));
   } else {
     cudnn_handle_ = nullptr;
   }
+  VLOG(3) << "cudnn pass";
+  PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
+  VLOG(3) << "cublas pass";
+  PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+  VLOG(3) << "cublas pass";
+
 }
 
 CUDADeviceContext::~CUDADeviceContext() {

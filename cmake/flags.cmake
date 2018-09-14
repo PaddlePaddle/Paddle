@@ -150,7 +150,7 @@ set(COMMON_FLAGS
     "/w") #disable all warnings.
 
 set(GPU_COMMON_FLAGS
-    "") #disable all warnings
+    "/w") #disable all warnings
 
 endif(NOT WIN32)
 
@@ -177,12 +177,22 @@ endif(UNIX AND NOT APPLE)
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
+
 endforeach()
 
 foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
 
-if(MSVC)
+if(WIN32)
 safe_set_static_flag()
-endif(MSVC)
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+      if(${flag_var} MATCHES "/W3")
+        string(REGEX REPLACE "/W3" "/w" ${flag_var} "${${flag_var}}")
+      endif(${flag_var} MATCHES "/W3")
+    endforeach(flag_var)
+endif(WIN32)

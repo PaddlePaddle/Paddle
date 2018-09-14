@@ -295,7 +295,7 @@ inline void throw_on_error(T e) {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-
+#if !defined(_WIN32)
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
 #define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
@@ -309,7 +309,7 @@ inline void throw_on_error(T e) {
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
 
-#if !defined(_WIN32)
+
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
   do {                                                       \
     if (UNLIKELY(nullptr == (__VAL))) {                      \
@@ -330,6 +330,13 @@ inline void throw_on_error(T e) {
     }                                                                   \
   } while (0)
 #else
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) ((__VAL0)==(__VAL1))
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) ((__VAL0)!=(__VAL1))
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) ((__VAL0)>(__VAL1))
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) ((__VAL0)>=(__VAL1))
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) ((__VAL0)<(__VAL1))
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) ((__VAL0)<=(__VAL1))
+
 #define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...)  \
   do {  \
     if (!((__VAL0)__CMP(__VAL1))) { \
