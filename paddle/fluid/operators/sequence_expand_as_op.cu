@@ -27,12 +27,12 @@ __global__ void sequence_expand_as_grad_kernel(const T* dout_data,
                                                const size_t dst_hight,
                                                const size_t dst_widht,
                                                T* dx_data) {
-  for (int h_id = blockIdx.x; h_id < dst_hight - 1; h_id += gridDim.x) {
+  for (int h_id = blockIdx.x; h_id < dst_hight; h_id += gridDim.x) {
     T* dst = dx_data + h_id * dst_widht;
-    int span = expand_offset[h + 1] - expand_offset[h];
+    int span = expand_offset[h_id + 1] - expand_offset[h_id];
     for (int k = 0; k < span; ++k) {
-      int offset = (expand_offset[h] + k) * dst_widht;
-      T* src = dout_data + offset;
+      int offset = (expand_offset[h_id] + k) * dst_widht;
+      const T* src = dout_data + offset;
       for (int w_id = threadIdx.x; w_id < dst_widht; w_id += blockDim.x) {
         dst[w_id] += src[w_id];
       }
