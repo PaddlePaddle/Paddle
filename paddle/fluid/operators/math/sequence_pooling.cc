@@ -107,7 +107,8 @@ template <typename T>
 class LastSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, framework::Tensor* output) {
+                  const framework::LoDTensor& input,
+                  framework::Tensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
@@ -124,7 +125,7 @@ class LastSeqPoolFunctor {
       // Copy the last item of sequence to output
       std::memcpy(out_data, (in_data - item_size), item_size * sizeof(T));
       out_data += item_size;
-     }
+    }
   }
 };
 
@@ -132,7 +133,8 @@ template <typename T>
 class FirstSeqPoolFunctor {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const framework::LoDTensor& input, framework::Tensor* output) {
+                  const framework::LoDTensor& input,
+                  framework::Tensor* output) {
     // Create pointers to input and output data
     auto* in_data = input.data<T>();
     auto* out_data = output->data<T>();
@@ -149,7 +151,7 @@ class FirstSeqPoolFunctor {
       // Point to the next sequence
       in_data += seq_len * item_size;
       out_data += item_size;
-      }
+    }
   }
 };
 
@@ -176,8 +178,6 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       first_pool(context, input, output);
       return;
     }
-
-
     auto lod = input.lod()[0];
     auto& place = *context.eigen_device();
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
