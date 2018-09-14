@@ -200,6 +200,19 @@ EOF
     make install -j `nproc`
 }
 
+function build_mac() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ============================================
+    Building in /paddle/build ...
+    ============================================
+EOF
+    make clean
+    sudo make -j 8
+    sudo make install -j 8
+}
+
 function build_android() {
     if [ $ANDROID_ABI == "arm64-v8a" ]; then
       ANDROID_ARCH=arm64
@@ -316,6 +329,34 @@ EOF
         ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
+        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
+    fi
+}
+
+function run_mac_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+        echo "These test has been skipped: "
+        echo "test_analyzer_rnn1"
+        echo "test_detection_map_op"
+        echo "test_desc_clone"
+        echo "test_debugger"
+        echo "test_program_code"
+        echo "test_dist_transformer"
+        echo "test_dist_se_resnext"
+        # TODO: jiabin need to refine this part when these tests fixed on mac
+        ctest --output-on-failure -E "test_analyzer_rnn1|test_detection_map_op|test_desc_clone|test_debugger|test_program_code|test_dist_transformer|test_dist_se_resnext" -j8     
+        # make install should also be test when unittest 
+        make install -j 8
         pip install /usr/local/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
@@ -636,6 +677,11 @@ function main() {
         gen_fluid_inference_lib
         test_fluid_inference_lib
         assert_api_spec_approvals
+        ;;
+      maccheck)
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        run_mac_test
         ;;
       *)
         print_usage
