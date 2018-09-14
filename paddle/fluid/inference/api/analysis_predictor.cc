@@ -77,6 +77,9 @@ bool AnalysisPredictor::Init(
 
   OptimizeInferenceProgram();
   ctx_ = executor_->Prepare(*inference_program_, 0);
+  if (config_._use_mkldnn) {
+    executor_->EnableMKLDNN(*inference_program_);
+  }
 
   VLOG(5) << "to create variables";
   PADDLE_ENFORCE(scope_.get());

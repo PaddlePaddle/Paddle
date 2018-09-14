@@ -110,8 +110,7 @@ const int64_t lac_ref_data[] = {24, 25, 25, 25, 38, 30, 31, 14, 15, 44, 24, 25,
 
 void TestLACPrediction(const std::string &model_path,
                        const std::string &data_file, const int batch_size,
-                       const int repeat, bool test_all_data,
-                       bool use_analysis = false) {
+                       const int repeat, bool use_analysis = false) {
   AnalysisConfig cfg;
   cfg.model_dir = model_path;
   cfg.use_gpu = false;
@@ -199,13 +198,13 @@ void TestLACPrediction(const std::string &model_path,
 TEST(Analyzer_LAC, native) {
   LOG(INFO) << "LAC with native";
   TestLACPrediction(FLAGS_infer_model, FLAGS_infer_data, FLAGS_batch_size,
-                    FLAGS_repeat, FLAGS_test_all_data);
+                    FLAGS_repeat);
 }
 
 TEST(Analyzer_LAC, analysis) {
   LOG(INFO) << "LAC with analysis";
   TestLACPrediction(FLAGS_infer_model, FLAGS_infer_data, FLAGS_batch_size,
-                    FLAGS_repeat, FLAGS_test_all_data, true);
+                    FLAGS_repeat, true);
 }
 
 }  // namespace analysis

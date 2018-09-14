@@ -65,7 +65,42 @@ class InferenceTranspiler(object):
         if use_mkldnn:
             self._fuse_conv_bias_mkldnn(program)
             self._fuse_conv_relu_mkldnn(program)
+            self._fuse_conv_eltwise_mkldnn(program)
+            self._fuse_conv_relu_mkldnn(
+                program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
+
+    def _fuse_conv_eltwise_mkldnn(self, program):
+        '''
+        Transpile the program fusing elementwise_add into conv for MKLDNN
+        program. Elementwise add following convolution OP can be fused by adding
+        'fuse_eltwise' attribute to convolution OP and replacing its output
+        Tensor with second parameter of elementwise_add.
+        The result of fuse is:
+            - before:
+                - conv->elementwise_add->any_other_op
+            - after:
+                - conv->any_other_op
+        :param program: program to transpile
+        :type program: Program
+        '''
+        self.block = program.block(0)
+
+        i = 0
+        while i < len(self.block.ops):
+            current_op = self.block.ops[i]
+            if current_op.type in ['conv2d']:
+                next_op = self.block.ops[i + 1]
+                if next_op.type == 'elementwise_add':
+                    self._fuse_conv_eltwise(current_op, next_op)
+                    self.block._remove_op(i + 1)  # Remove elementwise_add
+            i = i + 1
+        self._adjust_input()
+        self._remove_unused_var()
+        # TODO(luotao): use clone() method to flush the program.desc in force,
+        # since some large program.desc will not be flushed immediately.
+        # And a better solution will be considered later.
+        program = program.clone()
 
     def _fuse_conv_relu_mkldnn(self, program):
         '''
@@ -88,9 +123,9 @@ class InferenceTranspiler(object):
             if current_op.type in ['conv2d']:
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
-                    # modify conv OP to include relu
+                    # modify bnorm OP to include relu
                     current_op.set_attr("fuse_relu", True)
-                    # remove conv OP
+                    # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
 
@@ -408,6 +443,20 @@ class InferenceTranspiler(object):
                     "Bias": bias_var},
             outputs={"Output": out_var},
             attrs=attrs)
+
+    def _fuse_conv_eltwise(self, conv_op, eltwise_op):
+        '''
+        fuse the conv op with elementwise_add
+
+        :param conv_op: convolution operator
+        :type conv_op: Operator
+        :param eltwise_op: operator adding data from skip connection
+        :type eltwise_op: Operator
+        '''
+
+        conv_op.set_attr("fuse_eltwise", True)
+        self.input_map[conv_op.output("Output")[0]] = eltwise_op.input("Y")[0]
+        self.input_map[eltwise_op.output("Out")[0]] = eltwise_op.input("Y")[0]
 
     def _adjust_input(self):
         for i in range(len(self.block.ops)):

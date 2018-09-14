@@ -120,13 +120,20 @@ void UnionContractedNodes(const std::unordered_map<int, BriefNode *> &node_map,
     outputs.insert(node);
   }
 
-  // update the dst and src node's inlinks and outlinks.
+// update the dst and src node's inlinks and outlinks.
+#ifdef __clang__
+  src_node->inlinks = std::vector<BriefNode *>(inputs.begin(), inputs.end());
+  src_node->outlinks = std::vector<BriefNode *>(outputs.begin(), outputs.end());
+  dst_node->inlinks.clear();
+  dst_node->outlinks.clear();
+#else
   src_node->inlinks =
       std::move(std::vector<BriefNode *>(inputs.begin(), inputs.end()));
   src_node->outlinks =
       std::move(std::vector<BriefNode *>(outputs.begin(), outputs.end()));
   dst_node->inlinks.clear();
   dst_node->outlinks.clear();
+#endif
 
   auto inlink_or_outlink_cleaner = [&](std::vector<BriefNode *> &nodes) {
     for (auto *&n : nodes) {
