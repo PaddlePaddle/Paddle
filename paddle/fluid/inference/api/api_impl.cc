@@ -61,7 +61,7 @@ bool NativePaddlePredictor::Init(
     platform::EnableProfiler(tracking_device);
   }
 #endif
-
+  VLOG(3) << "before Place";
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
@@ -73,10 +73,12 @@ bool NativePaddlePredictor::Init(
     sub_scope_ = &(parent_scope->NewScope());
     PADDLE_ENFORCE_NOT_NULL(sub_scope_, "create sub scope fail");
   } else {
+    VLOG(3) << "Before InitDevices";
     paddle::framework::InitDevices(false);
+    VLOG(3) << "after InitDevices";
     scope_.reset(new paddle::framework::Scope());
   }
-  VLOG(3) << "after scope"
+  VLOG(3) << "after scope";
   executor_.reset(new paddle::framework::Executor(place_));
   VLOG(3) << "executor";
   // Initialize the inference program
