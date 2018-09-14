@@ -482,6 +482,9 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
             reader=val_data.batch_generator,
             count=dev_count if TrainTaskConfig.use_token_batch else 1)
         for batch_id, data in enumerate(test_data()):
+            # test for 5 batch for speed
+            if batch_id > 5:
+                break
             feed_list = []
             for place_id, data_buffer in enumerate(
                     split_data(
