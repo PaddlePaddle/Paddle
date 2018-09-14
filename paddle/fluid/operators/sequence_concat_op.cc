@@ -128,9 +128,15 @@ REGISTER_OPERATOR(sequence_concat, ops::SequenceConcatOp,
                   paddle::framework::DefaultGradOpDescMaker<
                       false> /* set false to disable empty grad */);
 REGISTER_OPERATOR(sequence_concat_grad, ops::SequenceConcatGradOp);
-REGISTER_OP_CPU_KERNEL(
-    sequence_concat,
-    ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, float>);
-REGISTER_OP_CPU_KERNEL(
-    sequence_concat_grad,
-    ops::SequenceConcatGradOpKernel<paddle::platform::CPUDeviceContext, float>);
+
+template <typename T>
+using Kernel =
+    ops::SequenceConcatOpKernel<paddle::platform::CPUDeviceContext, T>;
+
+template <typename T>
+using GradKernel =
+    ops::SequenceConcatGradOpKernel<paddle::platform::CPUDeviceContext, T>;
+
+REGISTER_OP_CPU_KERNEL(sequence_concat, Kernel<float>, Kernel<int64_t>);
+REGISTER_OP_CPU_KERNEL(sequence_concat_grad, GradKernel<float>,
+                       GradKernel<int64_t>);

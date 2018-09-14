@@ -29,89 +29,24 @@ from .. import unique_name
 from functools import reduce
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'sequence_pad',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'hsigmoid',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'squeeze',
-    'unsqueeze',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'scatter',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'log',
-    'crop',
-    'rank_loss',
-    'prelu',
-    'flatten',
-    'sequence_mask',
-    'stack',
-    'pad2d',
-    'unstack',
-    'sequence_enumerate',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'sequence_pad', 'lstm_unit', 'reduce_sum', 'reduce_mean',
+    'reduce_max', 'reduce_min', 'reduce_prod', 'sequence_first_step',
+    'sequence_last_step', 'dropout', 'split', 'ctc_greedy_decoder',
+    'edit_distance', 'l2_normalize', 'matmul', 'topk', 'warpctc',
+    'sequence_reshape', 'transpose', 'im2sequence', 'nce', 'hsigmoid',
+    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
+    'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth', 'roi_pool',
+    'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
+    'gather', 'scatter', 'random_crop', 'mean_iou', 'relu', 'log', 'crop',
+    'rank_loss', 'margin_rank_loss', 'prelu', 'flatten', 'sequence_mask',
+    'stack', 'pad2d', 'unstack', 'sequence_enumerate', 'sequence_concat', 'hash'
 ]
 
 
@@ -4585,7 +4520,7 @@ def squeeze(input, axes, name=None):
     return out
 
 
-def unsqueeze(input, axes, name=None):
+def unsqueeze(input, axes, name=None, stop_gradient=False):
     """
     Insert single-dimensional entries to the shape of a tensor. Takes one
     required argument axes, a list of dimensions that will be inserted.
@@ -4610,8 +4545,10 @@ def unsqueeze(input, axes, name=None):
             y = layers.unsequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
-    out = helper.create_tmp_variable(dtype=input.dtype)
-    x_shape = helper.create_tmp_variable(dtype=input.dtype)
+    out = helper.create_tmp_variable(
+        dtype=input.dtype, stop_gradient=stop_gradient)
+    x_shape = helper.create_tmp_variable(
+        dtype=input.dtype, stop_gradient=stop_gradient)
     helper.append_op(
         type="unsqueeze2",
         inputs={"X": input},
@@ -5619,6 +5556,60 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def margin_rank_loss(label, left, right, margin=0.1, name=None):
+    """
+    **Margin Rank loss layer for RankNet**
+
+    Args:
+        label (Variable): Indicats whether A ranked higher than B or not.
+        left (Variable): RankNet's output score for doc A.
+        right (Variable): RankNet's output score for doc B.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        list: The value of rank loss.
+
+    Raises:
+        ValueError: Any of label, left, and right is not a variable.
+
+    Examples:
+
+        .. code-block:: python
+
+            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            out = fluid.layers.margin_rank_loss(label, left, right)
+
+
+    """
+    helper = LayerHelper('margin_rank_loss', **locals())
+
+    if not (isinstance(label, Variable)):
+        raise ValueError("The label should be a Variable")
+
+    if not (isinstance(left, Variable)):
+        raise ValueError("The left should be a Variable")
+
+    if not (isinstance(right, Variable)):
+        raise ValueError("The right should be a Variable")
+
+    out = helper.create_tmp_variable("float32")
+    act = helper.create_tmp_variable("float32")
+
+    helper.append_op(
+        type='margin_rank_loss',
+        inputs={"Label": label,
+                "X1": left,
+                "X2": right},
+        outputs={'Out': out,
+                 'Activated': act},
+        attrs={'margin': margin})
+
+    return out
+
+
 def pad2d(input,
           paddings=[0, 0, 0, 0],
           mode='constant',
@@ -5873,6 +5864,8 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         attrs={'win_size': win_size,
                'pad_value': pad_value})
 
+    return out
+
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     """
@@ -5919,7 +5912,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
     return out
 
 
-def sequence_concat(x, axis=0, level=0, name=None):
+def sequence_concat(x, axis=0, level=0, name=None, stop_gradient=False):
     """
     **SequenceConcat Layer**
     """
@@ -5927,7 +5920,8 @@ def sequence_concat(x, axis=0, level=0, name=None):
         x = [x]
 
     helper = LayerHelper('sequence_concat', **locals())
-    out = helper.create_tmp_variable(helper.input_dtype())
+    out = helper.create_tmp_variable(
+        helper.input_dtype(), stop_gradient=stop_gradient)
     helper.append_op(
         type='sequence_concat',
         inputs={'X': x},

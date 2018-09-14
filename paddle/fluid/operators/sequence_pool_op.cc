@@ -28,6 +28,7 @@ class SequencePoolOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of SequencePoolOp should not be null.");
     ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+
     if (ctx->Attrs().Get<std::string>("pooltype") == "MAX") {
       PADDLE_ENFORCE(ctx->HasOutput("MaxIndex"),
                      "Output(MaxIndex) of SequencePoolOp should not be null.");

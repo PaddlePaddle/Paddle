@@ -32,6 +32,10 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
     auto table_dims = ctx->GetInputDim("W");
     auto ids_dims = ctx->GetInputDim("Ids");
+    // for (int i = 0; i != ids_dims.size(); ++i) {
+    // LOG(ERROR) << "emb Ids_arg " << ctx->Inputs("Ids")[0] << " ids_dims " <<
+    // ids_dims[i];
+    // }
     int ids_rank = ids_dims.size();
 
     PADDLE_ENFORCE_EQ(table_dims.size(), 2);
@@ -41,6 +45,10 @@ class LookupTableOp : public framework::OperatorWithKernel {
     auto output_dims =
         framework::vectorize(framework::slice_ddim(ids_dims, 0, ids_rank - 1));
     output_dims.push_back(table_dims[1]);
+    // for (int i = 0; i != output_dims.size(); ++i) {
+    // LOG(ERROR) << "emb Out_arg " << ctx->Outputs("Out")[0] << " output_dims "
+    // << output_dims[i];
+    // }
     ctx->SetOutputDim("Out", framework::make_ddim(output_dims));
 
     if (ctx->GetOutputsVarType("Out")[0] ==
