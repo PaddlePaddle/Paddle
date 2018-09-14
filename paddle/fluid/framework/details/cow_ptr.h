@@ -15,7 +15,7 @@
 #pragma once
 #include <memory>
 #include <thread>  // NOLINT
-
+#include "glog/logging.h"
 namespace paddle {
 namespace framework {
 namespace details {
@@ -31,6 +31,7 @@ class COWPtr {
   void detach() {
     T* tmp = m_sp.get();
     if (!(tmp == nullptr || m_sp.unique())) {
+      VLOG(3) << "Detach " << typeid(T).name();
       m_sp = RefPtr(new T(*tmp));
     }
   }

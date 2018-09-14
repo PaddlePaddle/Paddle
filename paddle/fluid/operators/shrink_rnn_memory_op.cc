@@ -52,22 +52,23 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     size_t height = dst_num_rows;
 
     // do shrink for the top level LoD
+
     if (x_tensor.lod().size() > 0 &&
         x_tensor.lod()[0].size() > static_cast<size_t>(dst_num_rows)) {
-      auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(x_tensor.lod(), 0,
-                                                              dst_num_rows, 0);
-      height = lod_offset.second.second;
-
-      if (height == 0) {
-        std::cerr << "dst_num_rows" << dst_num_rows << "\n";
-        for (auto &item : x_tensor.lod()[0]) {
-          std::cerr << item << " ";
-        }
-        std::cerr << "\n";
+      if (x_tensor.lod().size() > 1) {  // MultiLevel LoD
+        auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(
+            x_tensor.lod(), 0, dst_num_rows, 0);
+        height = lod_offset.second.second;
+        auto out_lod = out_tensor.mutable_lod();
+        framework::AppendLoD(out_lod, lod_offset.first);
+      } else {
+        // Shrink LoD
+        auto lod_item = x_tensor.lod()[0];
+        lod_item.resize(dst_num_rows + 1);
+        out_tensor.set_lod({lod_item});
+        const auto &const_lod_item = lod_item;
+        height = const_lod_item.back();
       }
-
-      auto out_lod = out_tensor.mutable_lod();
-      framework::AppendLoD(out_lod, lod_offset.first);
     }
 
     if (height != 0) {
