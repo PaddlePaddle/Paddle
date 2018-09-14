@@ -300,6 +300,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
     std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
     bool fuse_relu = ctx.Attr<bool>("fuse_relu");
+    bool fuse_eltwise = ctx.Attr<bool>("fuse_eltwise");
     int groups = ctx.Attr<int>("groups");
 
     // TODO: add support for dilation
@@ -366,12 +367,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
-      conv_pd =
-          ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md, strides,
-                               paddings, mkldnn_engine, fuse_relu);
+      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
+                                     strides, paddings, mkldnn_engine,
+                                     fuse_relu, fuse_eltwise);
     } else {
-      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides,
-                                     paddings, mkldnn_engine, fuse_relu);
+      conv_pd =
+          ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
+                               mkldnn_engine, fuse_relu, fuse_eltwise);
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -421,16 +423,26 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  mkldnn::primitive_attr AddRelu() const {
+  mkldnn::primitive_attr CreatePostOps(bool fuse_relu,
+                                       bool fuse_eltwise) const {
+    mkldnn::primitive_attr conv_attr;
+    mkldnn::post_ops post_operations;
+    // Fusion with Elementwise layer relies on adding a sum post-operation with
+    // the scale parameter. It is assumed that when fuse_eltwise is true, the
+    // Output tensor contains the data coming from residual connection. The
+    // result of this post_op is: Output = scale * Output + Conv_Out.
+    if (fuse_eltwise) {
+      post_operations.append_sum(1.0f);
+    }
     // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
-    mkldnn::primitive_attr conv_attr;
-    constexpr float scale = 1.0f;
-    constexpr float negative_slope = 0.0f;
-    constexpr float placeholder = 0.0f;
-    mkldnn::post_ops post_operations;
-    post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
-                                   negative_slope, placeholder);
+    if (fuse_relu) {
+      constexpr float scale = 1.0f;
+      constexpr float negative_slope = 0.0f;
+      constexpr float placeholder = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                     negative_slope, placeholder);
+    }
     conv_attr.set_post_ops(post_operations);
     return conv_attr;
   }
@@ -439,8 +451,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
                        const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine& engine,
-                       const bool fuse_relu) const {
+                       const mkldnn::engine& engine, const bool fuse_relu,
+                       const bool fuse_eltwise) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
@@ -449,10 +461,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
-    mkldnn::primitive_attr conv_attr;
-    if (fuse_relu) {
-      conv_attr = AddRelu();
-    }
+    mkldnn::primitive_attr conv_attr = CreatePostOps(fuse_relu, fuse_eltwise);
 
     auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
         conv_desc, conv_attr, engine);
@@ -466,8 +475,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const memory::desc& bias, const memory::desc& dst,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine& engine,
-                       const bool fuse_relu) const {
+                       const mkldnn::engine& engine, const bool fuse_relu,
+                       const bool fuse_eltwise) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
 
@@ -476,10 +485,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         bias, dst, stride_dims, padding_dims, padding_dims,
         mkldnn::padding_kind::zero);
 
-    mkldnn::primitive_attr conv_attr;
-    if (fuse_relu) {
-      conv_attr = AddRelu();
-    }
+    mkldnn::primitive_attr conv_attr = CreatePostOps(fuse_relu, fuse_eltwise);
 
     auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
         conv_desc, conv_attr, engine);
