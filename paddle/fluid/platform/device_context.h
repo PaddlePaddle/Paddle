@@ -36,8 +36,6 @@ limitations under the License. */
 #endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
-DECLARE_bool(clear_gpu_memory_when_unused);
-
 namespace paddle {
 namespace platform {
 

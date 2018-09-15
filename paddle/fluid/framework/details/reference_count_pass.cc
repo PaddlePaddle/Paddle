@@ -128,12 +128,10 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
   std::vector<std::unique_ptr<OpHandleBase>> new_all_ops;
   new_all_ops.reserve(compute_ref_cnt_map.size() + all_ops.size());
   for (auto &op : all_ops) {
-    auto it = compute_ref_cnt_map.find(op.get());
+    new_all_ops.emplace_back(std::move(op));
+    auto it = compute_ref_cnt_map.find(new_all_ops.back().get());
     if (it != compute_ref_cnt_map.end()) {
-      new_all_ops.emplace_back(std::move(op));
-      new_all_ops.emplace_back(std::unique_ptr<OpHandleBase>(it->second));
-    } else {
-      new_all_ops.emplace_back(std::move(op));
+      new_all_ops.emplace_back(it->second);
     }
   }
 

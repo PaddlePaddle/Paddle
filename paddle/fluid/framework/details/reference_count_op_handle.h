@@ -69,15 +69,15 @@ class ReferenceCountOpHandle : public OpHandleBase {
 
   std::string Name() const override { return "reference_count"; }
 
-  // protected:
+ protected:
   void RunImpl() override {
-    auto *exec_scope_ = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
+    auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
     std::vector<LoDTensor *> tensors;
     for (auto &name : var_names_) {
       auto it = ref_cnts_->find(name);
       if (it == ref_cnts_->end()) continue;
 
-      auto *var = exec_scope_->FindVar(name);
+      auto *var = exec_scope->FindVar(name);
       if (var == nullptr || !var->IsType<LoDTensor>()) continue;
 
       if (it->second.fetch_sub(1) <= 1) {
@@ -91,8 +91,8 @@ class ReferenceCountOpHandle : public OpHandleBase {
   }
 
  private:
-  void ClearTensors(const std::vector<LoDTensor *> &tensors) const {
-    auto *gc = dynamic_cast<const StreamGarbageCollector<Tensor> *>(gc_);
+  void ClearTensors(const std::vector<LoDTensor *> &tensors) {
+    auto *gc = dynamic_cast<StreamGarbageCollector<Tensor> *>(gc_);
     if (gc != nullptr) {
       auto compute_stream = dev_ctx_->stream();
       auto callback_stream = gc->stream();
