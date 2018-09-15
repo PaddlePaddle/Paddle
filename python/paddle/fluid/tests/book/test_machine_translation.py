@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 
 import numpy as np
@@ -199,7 +201,7 @@ def train_main(use_cuda, is_sparse, is_local=True):
         feeder = fluid.DataFeeder(feed_list, place)
 
         batch_id = 0
-        for pass_id in xrange(1):
+        for pass_id in range(1):
             for data in train_data():
                 outs = exe.run(main_program,
                                feed=feeder.feed(data),
@@ -273,7 +275,7 @@ def decode_main(use_cuda, is_sparse):
     feeder = fluid.DataFeeder(feed_list, place)
 
     for data in train_data():
-        feed_dict = feeder.feed(map(lambda x: [x[0]], data))
+        feed_dict = feeder.feed([[x[0]] for x in data])
         feed_dict['init_ids'] = init_ids
         feed_dict['init_scores'] = init_scores
 
@@ -282,7 +284,7 @@ def decode_main(use_cuda, is_sparse):
             feed=feed_dict,
             fetch_list=[translation_ids, translation_scores],
             return_numpy=False)
-        print result_ids.recursive_sequence_lengths()
+        print(result_ids.recursive_sequence_lengths())
         break
 
 

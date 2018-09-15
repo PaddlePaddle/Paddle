@@ -47,19 +47,13 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
-void Executor::BeginPass() {
   ::paddle::operators::distributed::RPCClient::GetInstance<
       ::paddle::operators::distributed::GRPCClient>()
-      ->SendBeginPass();
-}
-
-void Executor::EndPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
-      ->SendEndPass();
-}
+      ->SendComplete();
 #endif
+}
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -357,7 +351,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   }
 
   for (auto& op : ctx->ops_) {
-    VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
 
 #ifdef PADDLE_WITH_CUDA

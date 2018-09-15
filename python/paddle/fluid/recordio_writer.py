@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import os
-import core
 import contextlib
+from . import core
 __all__ = [
     'convert_reader_to_recordio_file', 'convert_reader_to_recordio_files'
 ]

@@ -125,6 +125,11 @@ class MKLDNNHandler {
     return this->AcquireMemory(md, ptr, "@user_weights_mem_p");
   }
 
+  std::shared_ptr<mkldnn::memory> AcquireBiasMemory(
+      const mkldnn::memory::desc& md, void* ptr) {
+    return this->AcquireMemory(md, ptr, "@user_bias_mem_p");
+  }
+
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       const mkldnn::memory::desc& md, void* ptr) {
     return this->AcquireMemory(md, ptr, "@user_dst_mem_p");
@@ -187,7 +192,8 @@ class MKLDNNHandler {
       mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       const std::string& suffix,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
+      bool is_persistent = false) {
     // create reorder primitive if the input format is not the preferred one
     auto local_key = key_ + suffix;
     auto key_reorder_p = key_ + suffix + "reorder_p";
@@ -208,7 +214,7 @@ class MKLDNNHandler {
         pipeline.push_back(*reorder_p);
       }
       dev_ctx_.SetBlob(local_key, target_memory_p);
-    } else {
+    } else if (!is_persistent) {
       // Make reorder if needed
       auto reorder_p = std::static_pointer_cast<mkldnn::reorder>(
           dev_ctx_.GetBlob(key_reorder_p));
@@ -222,15 +228,16 @@ class MKLDNNHandler {
 
   static std::string GetHash(mkldnn::memory::dims& operand_dims,  // NOLINT
                              const std::string& suffix) {
-    auto dims2str = [](const mkldnn::memory::dims& operand_dims) {
-      std::string dstr = "";
-      for (size_t i = 0; i < operand_dims.size(); ++i) {
-        dstr += std::to_string(operand_dims[i]) + "-";
-      }
-      return dstr;
-    };
-
     return dims2str(operand_dims) + suffix;
+  }
+
+ protected:
+  static std::string dims2str(const mkldnn::memory::dims& operand_dims) {
+    std::string dstr = "";
+    for (size_t i = 0; i < operand_dims.size(); ++i) {
+      dstr += std::to_string(operand_dims[i]) + "-";
+    }
+    return dstr;
   }
 
  protected:
@@ -248,6 +255,18 @@ inline mkldnn::memory::format MKLDNNFormatForSize(
     return mkldnn::memory::format::nc;
   }
   return data_format;
+}
+
+inline mkldnn::memory::format data_format_to_memory_format(
+    const std::string& data_format) {
+  switch (framework::StringToDataLayout(data_format)) {
+    case framework::DataLayout::kNHWC:
+      return mkldnn::memory::format::nhwc;
+    case framework::DataLayout::kNCHW:
+      return mkldnn::memory::format::nchw;
+    default:
+      return mkldnn::memory::format::any;
+  }
 }
 
 }  // namespace platform

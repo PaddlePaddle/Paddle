@@ -5,6 +5,7 @@ python/paddle/v2/fluid/tests/book/image_classification_resnet.inference.model/
 python/paddle/v2/fluid/tests/book/image_classification_vgg.inference.model/
 python/paddle/v2/fluid/tests/book/label_semantic_roles.inference.model/
 *.DS_Store
+*.vs
 build/
 build_doc/
 *.user
@@ -15,6 +16,7 @@ build_doc/
 .cproject
 .pydevproject
 .settings/
+CMakeSettings.json
 Makefile
 .test_env/
 third_party/

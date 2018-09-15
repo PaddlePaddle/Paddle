@@ -19,10 +19,14 @@
 namespace paddle {
 namespace framework {
 namespace details {
-ScaleLossGradOpHandle::ScaleLossGradOpHandle(size_t num_dev, Scope *scope,
+ScaleLossGradOpHandle::ScaleLossGradOpHandle(ir::Node *node, size_t num_dev,
+                                             Scope *scope,
                                              platform::Place place,
                                              platform::DeviceContext *dev_ctx)
-    : coeff_(static_cast<float>(1.0 / num_dev)), scope_(scope), place_(place) {
+    : OpHandleBase(node),
+      coeff_(static_cast<float>(1.0 / num_dev)),
+      scope_(scope),
+      place_(place) {
   dev_ctxes_[place_] = dev_ctx;
 }
 
@@ -47,7 +51,7 @@ void ScaleLossGradOpHandle::RunImpl() {
               ->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
-      VLOG(1) << place_ << "RUN Scale loss grad op";
+      VLOG(10) << place_ << "RUN Scale loss grad op";
     });
 #endif
   }

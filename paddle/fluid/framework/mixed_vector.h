@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <initializer_list>
+#include <memory>
 #include <vector>
 
 #include "paddle/fluid/framework/tensor.h"
@@ -26,6 +27,7 @@
 namespace paddle {
 namespace framework {
 
+#if defined(PADDLE_WITH_CUDA)
 // Vector<T> implements the std::vector interface, and can get Data or
 // MutableData from any place. The data will be synced implicitly inside.
 template <typename T>
@@ -37,11 +39,11 @@ class Vector {
   Vector() { InitEmpty(); }
 
   // Fill vector with value. The vector size is `count`.
-  explicit Vector(size_t count, const T& value = T()) {
+  explicit Vector(size_t count, const T &value = T()) {
     InitEmpty();
     if (count != 0) {
       resize(count);
-      T* ptr = begin();
+      T *ptr = begin();
       for (size_t i = 0; i < count; ++i) {
         ptr[i] = value;
       }
@@ -59,7 +61,7 @@ class Vector {
 
   // implicit cast from std::vector.
   template <typename U>
-  Vector(const std::vector<U>& dat) {  // NOLINT
+  Vector(const std::vector<U> &dat) {  // NOLINT
     if (dat.size() == 0) {
       InitEmpty();
     } else {
@@ -68,10 +70,10 @@ class Vector {
   }
 
   // Copy ctor
-  Vector(const Vector<T>& other) { this->operator=(other); }
+  Vector(const Vector<T> &other) { this->operator=(other); }
 
   // Copy operator
-  Vector<T>& operator=(const Vector<T>& other) {
+  Vector<T> &operator=(const Vector<T> &other) {
     if (other.size() != 0) {
       this->InitByIter(other.size(), other.begin(), other.end());
     } else {
@@ -81,7 +83,7 @@ class Vector {
   }
 
   // Move ctor
-  Vector(Vector<T>&& other) {
+  Vector(Vector<T> &&other) {
     this->size_ = other.size_;
     this->flag_ = other.flag_;
     if (other.cuda_vec_.memory_size()) {
@@ -93,13 +95,13 @@ class Vector {
   }
 
   // CPU data access method. Mutable.
-  T& operator[](size_t i) {
+  T &operator[](size_t i) {
     MutableCPU();
-    return const_cast<T*>(cpu_vec_.data<T>())[i];
+    return const_cast<T *>(cpu_vec_.data<T>())[i];
   }
 
   // CPU data access method. Immutable.
-  const T& operator[](size_t i) const {
+  const T &operator[](size_t i) const {
     ImmutableCPU();
     return cpu_vec_.data<T>()[i];
   }
@@ -107,43 +109,43 @@ class Vector {
   // std::vector iterator methods. Based on CPU data access method
   size_t size() const { return size_; }
 
-  T* begin() { return capacity() == 0 ? &EmptyDummy() : &this->operator[](0); }
+  T *begin() { return capacity() == 0 ? &EmptyDummy() : &this->operator[](0); }
 
-  T* end() {
+  T *end() {
     return capacity() == 0 ? &EmptyDummy() : &this->operator[](size());
   }
 
-  T& front() { return *begin(); }
+  T &front() { return *begin(); }
 
-  T& back() {
+  T &back() {
     auto it = end();
     --it;
     return *it;
   }
 
-  const T* begin() const {
+  const T *begin() const {
     return capacity() == 0 ? &EmptyDummy() : &this->operator[](0);
   }
 
-  const T* end() const {
+  const T *end() const {
     return capacity() == 0 ? &EmptyDummy() : &this->operator[](size());
   }
 
-  const T* cbegin() const { return begin(); }
+  const T *cbegin() const { return begin(); }
 
-  const T* cend() const { return end(); }
+  const T *cend() const { return end(); }
 
-  const T& back() const {
+  const T &back() const {
     auto it = end();
     --it;
     return *it;
   }
 
-  T* data() { return begin(); }
+  T *data() { return begin(); }
 
-  const T* data() const { return begin(); }
+  const T *data() const { return begin(); }
 
-  const T& front() const { return *begin(); }
+  const T &front() const { return *begin(); }
   // end of std::vector iterator methods
 
   // assign this from iterator.
@@ -169,7 +171,7 @@ class Vector {
   void Extend(It begin, It end) {
     size_t pre_size = size_;
     resize(pre_size + (end - begin));
-    T* ptr = this->begin() + pre_size;
+    T *ptr = this->begin() + pre_size;
     for (; begin < end; ++begin, ++ptr) {
       *ptr = *begin;
     }
@@ -183,9 +185,9 @@ class Vector {
       MutableCPU();
       Tensor cpu_tensor;
       platform::Place cpu = platform::CPUPlace();
-      T* ptr = cpu_tensor.mutable_data<T>(
+      T *ptr = cpu_tensor.mutable_data<T>(
           framework::make_ddim({static_cast<int64_t>(size)}), cpu);
-      const T* old_ptr =
+      const T *old_ptr =
           cpu_vec_.memory_size() == 0 ? nullptr : cpu_vec_.data<T>();
       if (old_ptr != nullptr) {
         std::copy(old_ptr, old_ptr + size_, ptr);
@@ -196,7 +198,7 @@ class Vector {
   }
 
   // get cuda ptr. immutable
-  const T* CUDAData(platform::Place place) const {
+  const T *CUDAData(platform::Place place) const {
     PADDLE_ENFORCE(platform::is_gpu_place(place),
                    "CUDA Data must on CUDA place");
     ImmutableCUDA(place);
@@ -204,10 +206,10 @@ class Vector {
   }
 
   // get cuda ptr. mutable
-  T* CUDAMutableData(platform::Place place) {
-    const T* ptr = CUDAData(place);
+  T *CUDAMutableData(platform::Place place) {
+    const T *ptr = CUDAData(place);
     flag_ = kDirty | kDataInCUDA;
-    return const_cast<T*>(ptr);
+    return const_cast<T *>(ptr);
   }
 
   // clear
@@ -228,7 +230,7 @@ class Vector {
   }
 
   // the unify method to access CPU or CUDA data. immutable.
-  const T* Data(platform::Place place) const {
+  const T *Data(platform::Place place) const {
     if (platform::is_gpu_place(place)) {
       return CUDAData(place);
     } else {
@@ -237,7 +239,7 @@ class Vector {
   }
 
   // the unify method to access CPU or CUDA data. mutable.
-  T* MutableData(platform::Place place) {
+  T *MutableData(platform::Place place) {
     if (platform::is_gpu_place(place)) {
       return CUDAMutableData(place);
     } else {
@@ -253,7 +255,7 @@ class Vector {
     return result;
   }
 
-  bool operator==(const Vector<T>& other) const {
+  bool operator==(const Vector<T> &other) const {
     if (size() != other.size()) return false;
     auto it1 = cbegin();
     auto it2 = other.cbegin();
@@ -274,7 +276,7 @@ class Vector {
   template <typename Iter>
   void InitByIter(size_t size, Iter begin, Iter end) {
     platform::Place cpu = platform::CPUPlace();
-    T* ptr = this->cpu_vec_.template mutable_data<T>(
+    T *ptr = this->cpu_vec_.template mutable_data<T>(
         framework::make_ddim({static_cast<int64_t>(size)}), cpu);
     for (size_t i = 0; i < size; ++i) {
       *ptr++ = *begin++;
@@ -368,7 +370,7 @@ class Vector {
     }
   }
 
-  static T& EmptyDummy() {
+  static T &EmptyDummy() {
     static T dummy = T();
     return dummy;
   }
@@ -379,5 +381,52 @@ class Vector {
   size_t size_;
 };
 
-}  // namespace framework
+#else  // PADDLE_WITH_CUDA
+
+template <typename T>
+class CPUVector : public std::vector<T, std::allocator<T>> {
+ public:
+  CPUVector() : std::vector<T>() {}
+  CPUVector(size_t count, const T &value = T())  // NOLINT
+      : std::vector<T>(count, value) {}
+  CPUVector(std::initializer_list<T> init) : std::vector<T>(init) {}
+  CPUVector(const std::vector<T> &other) : std::vector<T>(other) {}  // NOLINT
+  CPUVector(const CPUVector<T> &other) : std::vector<T>(other) {}
+  CPUVector(CPUVector<T> &&other) : std::vector<T>(std::move(other)) {}
+  CPUVector(std::vector<T> &&other)  // NOLINT
+      : std::vector<T>(std::move(other)) {}
+  CPUVector &operator=(const CPUVector &other) {
+    this->assign(other.begin(), other.end());
+    return *this;
+  }
+  CPUVector &operator=(const std::vector<T> &other) {
+    this->assign(other.begin(), other.end());
+    return *this;
+  }
+
+  friend std::ostream &operator<<(std::ostream &os, const CPUVector<T> &other) {
+    std::stringstream ss;
+    for (auto v : other) {
+      os << v << " ";
+    }
+    return os;
+  }
+
+  T &operator[](size_t id) { return this->at(id); }
+
+  const T &operator[](size_t id) const { return this->at(id); }
+
+  template <typename D>
+  void Extend(const D &begin, const D &end) {
+    this->reserve(this->size() + size_t(end - begin));
+    this->insert(this->end(), begin, end);
+  }
+};
+
+template <typename T>
+using Vector = CPUVector<T>;
+
+#endif  // PADDLE_WITH_CUDA
+
+};  // namespace framework
 }  // namespace paddle

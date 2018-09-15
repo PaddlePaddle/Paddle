@@ -28,7 +28,7 @@ from .default_decorators import *
 try:
     import cPickle as pickle
 except ImportError:
-    import pickle
+    import six.moves.cPickle as pickle
 import copy
 
 __all__ = [

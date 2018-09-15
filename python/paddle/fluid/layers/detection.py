@@ -15,12 +15,19 @@
 All layers just related to the detection neural network.
 """
 
-from layer_function_generator import generate_layer_fn
-from layer_function_generator import autodoc, templatedoc
+from __future__ import print_function
+
+from .layer_function_generator import generate_layer_fn
+from .layer_function_generator import autodoc, templatedoc
 from ..layer_helper import LayerHelper
-import tensor
-import nn
+from . import tensor
+from . import nn
+from . import ops
+from ... import compat as cpt
 import math
+import six
+import numpy
+from functools import reduce
 
 __all__ = [
     'prior_box',
@@ -30,18 +37,161 @@ __all__ = [
     'detection_output',
     'ssd_loss',
     'detection_map',
+    'rpn_target_assign',
     'anchor_generator',
+    'generate_proposal_labels',
+    'generate_proposals',
 ]
 
 __auto__ = [
     'iou_similarity',
     'box_coder',
+    'polygon_box_transform',
 ]
 
 __all__ += __auto__
 
 for _OP in set(__auto__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+
+def rpn_target_assign(bbox_pred,
+                      cls_logits,
+                      anchor_box,
+                      anchor_var,
+                      gt_boxes,
+                      is_crowd,
+                      im_info,
+                      rpn_batch_size_per_im=256,
+                      rpn_straddle_thresh=0.0,
+                      rpn_fg_fraction=0.5,
+                      rpn_positive_overlap=0.7,
+                      rpn_negative_overlap=0.3,
+                      use_random=True):
+    """
+    ** Target Assign Layer for region proposal network (RPN) in Faster-RCNN detection. **
+
+    This layer can be, for given the  Intersection-over-Union (IoU) overlap
+    between anchors and ground truth boxes, to assign classification and
+    regression targets to each each anchor, these target labels are used for
+    train RPN. The classification targets is a binary class label (of being
+    an object or not). Following the paper of Faster-RCNN, the positive labels
+    are two kinds of anchors: (i) the anchor/anchors with the highest IoU
+    overlap with a ground-truth box, or (ii) an anchor that has an IoU overlap
+    higher than rpn_positive_overlap(0.7) with any ground-truth box. Note
+    that a single ground-truth box may assign positive labels to multiple
+    anchors. A non-positive anchor is when its IoU ratio is lower than
+    rpn_negative_overlap (0.3) for all ground-truth boxes. Anchors that are
+    neither positive nor negative do not contribute to the training objective.
+    The regression targets are the encoded ground-truth boxes associated with
+    the positive anchors.
+
+    Args:
+        bbox_pred(Variable): A 3-D Tensor with shape [N, M, 4] represents the
+            predicted locations of M bounding bboxes. N is the batch size,
+            and each bounding box has four coordinate values and the layout
+            is [xmin, ymin, xmax, ymax].
+        cls_logits(Variable): A 3-D Tensor with shape [N, M, 1] represents the
+            predicted confidence predictions. N is the batch size, 1 is the
+            frontground and background sigmoid, M is number of bounding boxes.
+        anchor_box(Variable): A 2-D Tensor with shape [M, 4] holds M boxes,
+            each box is represented as [xmin, ymin, xmax, ymax],
+            [xmin, ymin] is the left top coordinate of the anchor box,
+            if the input is image feature map, they are close to the origin
+            of the coordinate system. [xmax, ymax] is the right bottom
+            coordinate of the anchor box.
+        anchor_var(Variable): A 2-D Tensor with shape [M,4] holds expanded 
+            variances of anchors.
+        gt_boxes (Variable): The ground-truth boudding boxes (bboxes) are a 2D
+            LoDTensor with shape [Ng, 4], Ng is the total number of ground-truth
+            bboxes of mini-batch input.
+        is_crowd (Variable): A 1-D LoDTensor which indicates groud-truth is crowd.
+        im_info (Variable): A 2-D LoDTensor with shape [N, 3]. N is the batch size,
+        3 is the height, width and scale.
+        rpn_batch_size_per_im(int): Total number of RPN examples per image.
+        rpn_straddle_thresh(float): Remove RPN anchors that go outside the image
+            by straddle_thresh pixels.
+        rpn_fg_fraction(float): Target fraction of RoI minibatch that is labeled
+            foreground (i.e. class > 0), 0-th class is background.
+        rpn_positive_overlap(float): Minimum overlap required between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a positive
+            example.
+        rpn_negative_overlap(float): Maximum overlap allowed between an anchor
+            and ground-truth box for the (anchor, gt box) pair to be a negative
+            examples.
+
+    Returns:
+        tuple:
+               A tuple(predicted_scores, predicted_location, target_label,
+               target_bbox) is returned. The predicted_scores and
+               predicted_location is the predicted result of the RPN.
+               The target_label and target_bbox is the ground truth,
+               respectively. The predicted_location is a 2D Tensor with shape
+               [F, 4], and the shape of target_bbox is same as the shape of
+               the predicted_location, F is the number of the foreground
+               anchors. The predicted_scores is a 2D Tensor with shape
+               [F + B, 1], and the shape of target_label is same as the shape
+               of the predicted_scores, B is the number of the background
+               anchors, the F and B is depends on the input of this operator.
+
+    Examples:
+        .. code-block:: python
+
+        bbox_pred = layers.data(name='bbox_pred', shape=[100, 4],
+                          append_batch_size=False, dtype='float32')
+        cls_logits = layers.data(name='cls_logits', shape=[100, 1],
+                          append_batch_size=False, dtype='float32')
+        anchor_box = layers.data(name='anchor_box', shape=[20, 4],
+                          append_batch_size=False, dtype='float32')
+        gt_boxes = layers.data(name='gt_boxes', shape=[10, 4],
+                         append_batch_size=False, dtype='float32')
+        loc_pred, score_pred, loc_target, score_target =
+            fluid.layers.rpn_target_assign(bbox_pred=bbox_pred,
+                                          cls_logits=cls_logits,
+                                          anchor_box=anchor_box,
+                                          gt_boxes=gt_boxes)
+    """
+
+    helper = LayerHelper('rpn_target_assign', **locals())
+    # Assign target label to anchors
+    loc_index = helper.create_tmp_variable(dtype='int32')
+    score_index = helper.create_tmp_variable(dtype='int32')
+    target_label = helper.create_tmp_variable(dtype='int32')
+    target_bbox = helper.create_tmp_variable(dtype=anchor_box.dtype)
+    helper.append_op(
+        type="rpn_target_assign",
+        inputs={
+            'Anchor': anchor_box,
+            'GtBoxes': gt_boxes,
+            'IsCrowd': is_crowd,
+            'ImInfo': im_info
+        },
+        outputs={
+            'LocationIndex': loc_index,
+            'ScoreIndex': score_index,
+            'TargetLabel': target_label,
+            'TargetBBox': target_bbox
+        },
+        attrs={
+            'rpn_batch_size_per_im': rpn_batch_size_per_im,
+            'rpn_straddle_thresh': rpn_straddle_thresh,
+            'rpn_positive_overlap': rpn_positive_overlap,
+            'rpn_negative_overlap': rpn_negative_overlap,
+            'rpn_fg_fraction': rpn_fg_fraction,
+            'use_random': use_random
+        })
+
+    loc_index.stop_gradient = True
+    score_index.stop_gradient = True
+    target_label.stop_gradient = True
+    target_bbox.stop_gradient = True
+
+    cls_logits = nn.reshape(x=cls_logits, shape=(-1, 1))
+    bbox_pred = nn.reshape(x=bbox_pred, shape=(-1, 4))
+    predicted_cls_logits = nn.gather(cls_logits, score_index)
+    predicted_bbox_pred = nn.gather(bbox_pred, loc_index)
+
+    return predicted_cls_logits, predicted_bbox_pred, target_label, target_bbox
 
 
 def detection_output(loc,
@@ -98,8 +248,8 @@ def detection_output(loc,
         nms_eta(float): The parameter for adaptive NMS.
 
     Returns:
-        Variable: 
-        
+        Variable:
+
             The detection outputs is a LoDTensor with shape [No, 6].
             Each row has six values: [label, confidence, xmin, ymin, xmax, ymax].
             `No` is the total number of detections in this mini-batch. For each
@@ -132,10 +282,11 @@ def detection_output(loc,
         prior_box_var=prior_box_var,
         target_box=loc,
         code_type='decode_center_size')
-    old_shape = scores.shape
-    scores = nn.reshape(x=scores, shape=(-1, old_shape[-1]))
+    compile_shape = scores.shape
+    run_shape = ops.shape(scores)
+    scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
-    scores = nn.reshape(x=scores, shape=old_shape)
+    scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
     scores = nn.transpose(scores, perm=[0, 2, 1])
     scores.stop_gradient = True
     nmsed_outs = helper.create_tmp_variable(dtype=decoded_box.dtype)
@@ -369,7 +520,7 @@ def target_assign(input,
 
     Assumed that the row offset for each instance in `neg_indices` is called neg_lod,
     for i-th instance and each `id` of neg_indices in this instance:
-    
+
     .. code-block:: text
 
         out[i][id][0 : K] = {mismatch_value, mismatch_value, ...}
@@ -387,12 +538,11 @@ def target_assign(input,
        mismatch_value (float32): Fill this value to the mismatched location.
 
     Returns:
-        tuple: 
-        
-               A tuple(out, out_weight) is returned. out is a 3D Tensor with 
-               shape [N, P, K], N and P is the same as they are in 
-               `neg_indices`, K is the same as it in input of X. If 
-               `match_indices[i][j]`. out_weight is the weight for output with 
+        tuple:
+               A tuple(out, out_weight) is returned. out is a 3D Tensor with
+               shape [N, P, K], N and P is the same as they are in
+               `neg_indices`, K is the same as it in input of X. If
+               `match_indices[i][j]`. out_weight is the weight for output with
                the shape of [N, P, 1].
 
     Examples:
@@ -546,9 +696,10 @@ def ssd_loss(location,
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
+    conf_shape = ops.shape(confidence)
 
     def __reshape_to_2d(var):
-        return nn.reshape(x=var, shape=[-1, var.shape[-1]])
+        return nn.flatten(x=var, axis=2)
 
     # 1. Find matched boundding box by prior box.
     #   1.1 Compute IOU similarity between ground-truth boxes and prior boxes.
@@ -559,7 +710,8 @@ def ssd_loss(location,
 
     # 2. Compute confidence for mining hard examples
     # 2.1. Get the target label based on matched indices
-    gt_label = nn.reshape(x=gt_label, shape=gt_label.shape + (1, ))
+    gt_label = nn.reshape(
+        x=gt_label, shape=(len(gt_label.shape) - 1) * (0, ) + (-1, 1))
     gt_label.stop_gradient = True
     target_label, _ = target_assign(
         gt_label, matched_indices, mismatch_value=background_label)
@@ -570,9 +722,12 @@ def ssd_loss(location,
     target_label = __reshape_to_2d(target_label)
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
-
     # 3. Mining hard examples
-    conf_loss = nn.reshape(x=conf_loss, shape=(num, num_prior))
+    conf_loss = nn.reshape(
+        x=conf_loss,
+        shape=(num, num_prior),
+        actual_shape=ops.slice(
+            conf_shape, axes=[0], starts=[0], ends=[2]))
     conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
@@ -591,7 +746,7 @@ def ssd_loss(location,
         },
         attrs={
             'neg_pos_ratio': neg_pos_ratio,
-            'neg_dist_threshold': neg_pos_ratio,
+            'neg_dist_threshold': neg_overlap,
             'mining_type': mining_type,
             'sample_size': sample_size,
         })
@@ -641,7 +796,11 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(x=loss, shape=[-1, num_prior])
+    loss = nn.reshape(
+        x=loss,
+        shape=(num, num_prior),
+        actual_shape=ops.slice(
+            conf_shape, axes=[0], starts=[0], ends=[2]))
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -660,7 +819,8 @@ def prior_box(input,
               clip=False,
               steps=[0.0, 0.0],
               offset=0.5,
-              name=None):
+              name=None,
+              min_max_aspect_ratios_order=False):
     """
     **Prior Box Operator**
 
@@ -689,6 +849,11 @@ def prior_box(input,
             Default: [0., 0.]
        offset(float): Prior boxes center offset. Default: 0.5
        name(str): Name of the prior box op. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the final
+            detection results. Default: False.
 
     Returns:
         tuple: A tuple with two Variable (boxes, variances)
@@ -742,7 +907,8 @@ def prior_box(input,
         'clip': clip,
         'step_w': steps[0],
         'step_h': steps[1],
-        'offset': offset
+        'offset': offset,
+        'min_max_aspect_ratios_order': min_max_aspect_ratios_order
     }
     if max_sizes is not None and len(max_sizes) > 0 and max_sizes[0] > 0:
         if not _is_list_or_tuple_(max_sizes):
@@ -782,7 +948,8 @@ def multi_box_head(inputs,
                    kernel_size=1,
                    pad=0,
                    stride=1,
-                   name=None):
+                   name=None,
+                   min_max_aspect_ratios_order=False):
     """
     Generate prior boxes for SSD(Single Shot MultiBox Detector)
     algorithm. The details of this algorithm, please refer the
@@ -825,6 +992,11 @@ def multi_box_head(inputs,
        pad(int|list|tuple): The padding of conv2d. Default:0.
        stride(int|list|tuple): The stride of conv2d. Default:1,
        name(str): Name of the prior box layer. Default: None.
+       min_max_aspect_ratios_order(bool): If set True, the output prior box is
+            in order of [min, max, aspect_ratios], which is consistent with
+            Caffe. Please note, this order affects the weights order of
+            convolution layer followed by and does not affect the fininal
+            detection results. Default: False.
 
     Returns:
         tuple: A tuple with four Variables. (mbox_loc, mbox_conf, boxes, variances)
@@ -861,13 +1033,7 @@ def multi_box_head(inputs,
     """
 
     def _reshape_with_axis_(input, axis=1):
-        if not (axis > 0 and axis < len(input.shape)):
-            raise ValueError("The axis should be smaller than "
-                             "the arity of input and bigger than 0.")
-        new_shape = [
-            -1, reduce(lambda x, y: x * y, input.shape[axis:len(input.shape)])
-        ]
-        out = nn.reshape(x=input, shape=new_shape)
+        out = nn.flatten(x=input, axis=axis)
         return out
 
     def _is_list_or_tuple_(data):
@@ -889,7 +1055,7 @@ def multi_box_head(inputs,
         min_sizes = []
         max_sizes = []
         step = int(math.floor(((max_ratio - min_ratio)) / (num_layer - 2)))
-        for ratio in xrange(min_ratio, max_ratio + 1, step):
+        for ratio in six.moves.range(min_ratio, max_ratio + 1, step):
             min_sizes.append(base_size * ratio / 100.)
             max_sizes.append(base_size * (ratio + step) / 100.)
         min_sizes = [base_size * .10] + min_sizes
@@ -939,7 +1105,8 @@ def multi_box_head(inputs,
         step = [step_w[i] if step_w else 0.0, step_h[i] if step_w else 0.0]
 
         box, var = prior_box(input, image, min_size, max_size, aspect_ratio,
-                             variance, flip, clip, step, offset)
+                             variance, flip, clip, step, offset, None,
+                             min_max_aspect_ratios_order)
 
         box_results.append(box)
         var_results.append(var)
@@ -956,11 +1123,13 @@ def multi_box_head(inputs,
             stride=stride)
 
         mbox_loc = nn.transpose(mbox_loc, perm=[0, 2, 3, 1])
-        new_shape = [
-            mbox_loc.shape[0],
-            mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3] / 4, 4
+        compile_shape = [
+            mbox_loc.shape[0], cpt.floor_division(
+                mbox_loc.shape[1] * mbox_loc.shape[2] * mbox_loc.shape[3], 4), 4
         ]
-        mbox_loc_flatten = nn.reshape(mbox_loc, shape=new_shape)
+        run_shape = tensor.assign(numpy.array([0, -1, 4]).astype("int32"))
+        mbox_loc_flatten = nn.reshape(
+            mbox_loc, shape=compile_shape, actual_shape=run_shape)
         mbox_locs.append(mbox_loc_flatten)
 
         # get conf
@@ -972,11 +1141,16 @@ def multi_box_head(inputs,
             padding=pad,
             stride=stride)
         conf_loc = nn.transpose(conf_loc, perm=[0, 2, 3, 1])
-        new_shape = [
-            conf_loc.shape[0], conf_loc.shape[1] * conf_loc.shape[2] *
-            conf_loc.shape[3] / num_classes, num_classes
+        new_shape = [0, -1, num_classes]
+        compile_shape = [
+            conf_loc.shape[0],
+            cpt.floor_division(conf_loc.shape[1] * conf_loc.shape[2] *
+                               conf_loc.shape[3], num_classes), num_classes
         ]
-        conf_loc_flatten = nn.reshape(conf_loc, shape=new_shape)
+        run_shape = tensor.assign(
+            numpy.array([0, -1, num_classes]).astype("int32"))
+        conf_loc_flatten = nn.reshape(
+            conf_loc, shape=compile_shape, actual_shape=run_shape)
         mbox_confs.append(conf_loc_flatten)
 
     if len(box_results) == 1:
@@ -1091,3 +1265,135 @@ def anchor_generator(input,
     anchor.stop_gradient = True
     var.stop_gradient = True
     return anchor, var
+
+
+def generate_proposal_labels(rpn_rois,
+                             gt_classes,
+                             is_crowd,
+                             gt_boxes,
+                             im_info,
+                             batch_size_per_im=256,
+                             fg_fraction=0.25,
+                             fg_thresh=0.25,
+                             bg_thresh_hi=0.5,
+                             bg_thresh_lo=0.0,
+                             bbox_reg_weights=[0.1, 0.1, 0.2, 0.2],
+                             class_nums=None,
+                             use_random=True):
+    """
+    ** Generate proposal labels Faster-RCNN **
+    TODO(buxingyuan): Add Document
+    """
+
+    helper = LayerHelper('generate_proposal_labels', **locals())
+
+    rois = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    labels_int32 = helper.create_tmp_variable(dtype=gt_classes.dtype)
+    bbox_targets = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    bbox_inside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+    bbox_outside_weights = helper.create_tmp_variable(dtype=rpn_rois.dtype)
+
+    helper.append_op(
+        type="generate_proposal_labels",
+        inputs={
+            'RpnRois': rpn_rois,
+            'GtClasses': gt_classes,
+            'IsCrowd': is_crowd,
+            'GtBoxes': gt_boxes,
+            'ImInfo': im_info
+        },
+        outputs={
+            'Rois': rois,
+            'LabelsInt32': labels_int32,
+            'BboxTargets': bbox_targets,
+            'BboxInsideWeights': bbox_inside_weights,
+            'BboxOutsideWeights': bbox_outside_weights
+        },
+        attrs={
+            'batch_size_per_im': batch_size_per_im,
+            'fg_fraction': fg_fraction,
+            'fg_thresh': fg_thresh,
+            'bg_thresh_hi': bg_thresh_hi,
+            'bg_thresh_lo': bg_thresh_lo,
+            'bbox_reg_weights': bbox_reg_weights,
+            'class_nums': class_nums,
+            'use_random': use_random
+        })
+
+    rois.stop_gradient = True
+    labels_int32.stop_gradient = True
+    bbox_targets.stop_gradient = True
+    bbox_inside_weights.stop_gradient = True
+    bbox_outside_weights.stop_gradient = True
+
+    return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights
+
+
+def generate_proposals(scores,
+                       bbox_deltas,
+                       im_info,
+                       anchors,
+                       variances,
+                       pre_nms_top_n=6000,
+                       post_nms_top_n=1000,
+                       nms_thresh=0.5,
+                       min_size=0.1,
+                       eta=1.0,
+                       name=None):
+    """
+    ** Generate proposal labels Faster-RCNN **
+	
+	This operation proposes RoIs according to each box with their probability to be a foreground object and 
+	the box can be calculated by anchors. Bbox_deltais and scores to be an object are the output of RPN. Final proposals
+	could be used to train detection net.
+
+	For generating proposals, this operation performs following steps:
+
+	1. Transposes and resizes scores and bbox_deltas in size of (H*W*A, 1) and (H*W*A, 4)
+ 	2. Calculate box locations as proposals candidates. 
+	3. Clip boxes to image
+	4. Remove predicted boxes with small area. 
+	5. Apply NMS to get final proposals as output.
+	
+      
+	Args:
+		scores(Variable): A 4-D Tensor with shape [N, A, H, W] represents the probability for each box to be an object.
+			N is batch size, A is number of anchors, H and W are height and width of the feature map.
+		bbox_deltas(Variable): A 4-D Tensor with shape [N, 4*A, H, W] represents the differece between predicted box locatoin and anchor location. 
+		im_info(Variable): A 2-D Tensor with shape [N, 3] represents origin image information for N batch. Info contains height, width and scale
+			between origin image size and the size of feature map.
+		anchors(Variable):   A 4-D Tensor represents the anchors with a layout of [H, W, A, 4]. H and W are height and width of the feature map,
+              		num_anchors is the box count of each position. Each anchor is in (xmin, ymin, xmax, ymax) format an unnormalized.
+		variances(Variable): The expanded variances of anchors with a layout of [H, W, num_priors, 4]. Each variance is in (xcenter, ycenter, w, h) format.
+		pre_nms_top_n(float): Number of total bboxes to be kept per image before NMS. 6000 by default.
+		post_nms_top_n(float): Number of total bboxes to be kept per image after NMS. 1000 by default.
+		nms_thresh(float): Threshold in NMS, 0.5 by default.
+		min_size(float): Remove predicted boxes with either height or width < min_size. 0.1 by default.
+		eta(float): Apply in adaptive NMS, if adaptive threshold > 0.5, adaptive_threshold = adaptive_threshold * eta in each iteration.
+    """
+    helper = LayerHelper('generate_proposals', **locals())
+
+    rpn_rois = helper.create_tmp_variable(dtype=bbox_deltas.dtype)
+    rpn_roi_probs = helper.create_tmp_variable(dtype=scores.dtype)
+    helper.append_op(
+        type="generate_proposals",
+        inputs={
+            'Scores': scores,
+            'BboxDeltas': bbox_deltas,
+            'ImInfo': im_info,
+            'Anchors': anchors,
+            'Variances': variances
+        },
+        attrs={
+            'pre_nms_topN': pre_nms_top_n,
+            'post_nms_topN': post_nms_top_n,
+            'nms_thresh': nms_thresh,
+            'min_size': min_size,
+            'eta': eta
+        },
+        outputs={'RpnRois': rpn_rois,
+                 'RpnRoiProbs': rpn_roi_probs})
+    rpn_rois.stop_gradient = True
+    rpn_roi_probs.stop_gradient = True
+
+    return rpn_rois, rpn_roi_probs

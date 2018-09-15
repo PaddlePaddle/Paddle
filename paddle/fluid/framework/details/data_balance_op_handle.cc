@@ -22,10 +22,10 @@ namespace details {
 
 #ifdef PADDLE_WITH_CUDA
 DataBalanceOpHandle::DataBalanceOpHandle(
-    const std::vector<Scope *> &local_scopes,
+    ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places,
     const platform::NCCLContextMap *ctxs)
-    : local_scopes_(local_scopes), places_(places) {
+    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {
   if (ctxs) {
     for (auto &p : places_) {
       this->dev_ctxes_[p] = ctxs->DevCtx(p);
@@ -34,9 +34,9 @@ DataBalanceOpHandle::DataBalanceOpHandle(
 }
 #else
 DataBalanceOpHandle::DataBalanceOpHandle(
-    const std::vector<Scope *> &local_scopes,
+    ir::Node *node, const std::vector<Scope *> &local_scopes,
     const std::vector<platform::Place> &places)
-    : local_scopes_(local_scopes), places_(places) {}
+    : OpHandleBase(node), local_scopes_(local_scopes), places_(places) {}
 #endif
 
 std::string DataBalanceOpHandle::Name() const { return "data balance"; }

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle.fluid.core as core
 import unittest
 import numpy
@@ -25,8 +27,8 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
-        tensor.alloc_int(place)
+        tensor._set_dims([1000, 784])
+        tensor._alloc_int(place)
         tensor_array = numpy.array(tensor)
         self.assertEqual((1000, 784), tensor_array.shape)
         tensor_array[3, 9] = 1
@@ -44,8 +46,8 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([1000, 784])
-        tensor.alloc_float(place)
+        tensor._set_dims([1000, 784])
+        tensor._alloc_float(place)
 
         tensor_array = numpy.array(tensor)
         self.assertEqual((1000, 784), tensor_array.shape)
@@ -57,14 +59,35 @@ class TestTensor(unittest.TestCase):
         self.assertAlmostEqual(1.0, tensor_array_2[3, 9])
         self.assertAlmostEqual(2.0, tensor_array_2[19, 11])
 
+    def test_int8_tensor(self):
+        scope = core.Scope()
+        var = scope.var("int8_tensor")
+        cpu_tensor = var.get_tensor()
+        tensor_array = numpy.random.randint(
+            -127, high=128, size=[100, 200], dtype=numpy.int8)
+        place = core.CPUPlace()
+        cpu_tensor.set(tensor_array, place)
+        cpu_tensor_array_2 = numpy.array(cpu_tensor)
+        self.assertAlmostEqual(cpu_tensor_array_2.all(), tensor_array.all())
+
+        if core.is_compiled_with_cuda():
+            cuda_tensor = var.get_tensor()
+            tensor_array = numpy.random.randint(
+                -127, high=128, size=[100, 200], dtype=numpy.int8)
+            place = core.CUDAPlace(0)
+            cuda_tensor.set(tensor_array, place)
+            cuda_tensor_array_2 = numpy.array(cuda_tensor)
+            self.assertAlmostEqual(cuda_tensor_array_2.all(),
+                                   tensor_array.all())
+
     def test_int_lod_tensor(self):
         place = core.CPUPlace()
         scope = core.Scope()
         var_lod = scope.var("test_lod_tensor")
         lod_tensor = var_lod.get_tensor()
 
-        lod_tensor.set_dims([4, 4, 6])
-        lod_tensor.alloc_int(place)
+        lod_tensor._set_dims([4, 4, 6])
+        lod_tensor._alloc_int(place)
         array = numpy.array(lod_tensor)
         array[0, 0, 0] = 3
         array[3, 3, 5] = 10
@@ -84,8 +107,8 @@ class TestTensor(unittest.TestCase):
         var_lod = scope.var("test_lod_tensor")
 
         lod_tensor = var_lod.get_tensor()
-        lod_tensor.set_dims([5, 2, 3, 4])
-        lod_tensor.alloc_float(place)
+        lod_tensor._set_dims([5, 2, 3, 4])
+        lod_tensor._alloc_float(place)
 
         tensor_array = numpy.array(lod_tensor)
         self.assertEqual((5, 2, 3, 4), tensor_array.shape)
@@ -104,14 +127,13 @@ class TestTensor(unittest.TestCase):
         self.assertListEqual(lod_py, lod)
 
     def test_lod_tensor_init(self):
-        scope = core.Scope()
         place = core.CPUPlace()
         lod_py = [[2, 1], [1, 2, 2]]
         lod_tensor = core.LoDTensor()
 
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
-        lod_tensor.alloc_float(place)
+        lod_tensor._alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
         tensor_array[0, 0, 0, 1] = 2.0
@@ -129,9 +151,9 @@ class TestTensor(unittest.TestCase):
         lod_py = [[2, 1], [1, 2, 2]]
         lod_tensor = core.LoDTensor()
 
-        lod_tensor.set_dims([5, 2, 3, 4])
+        lod_tensor._set_dims([5, 2, 3, 4])
         lod_tensor.set_recursive_sequence_lengths(lod_py)
-        lod_tensor.alloc_float(place)
+        lod_tensor._alloc_float(place)
         tensor_array = numpy.array(lod_tensor)
         tensor_array[0, 0, 0, 0] = 1.0
         tensor_array[0, 0, 0, 1] = 2.0
@@ -149,15 +171,15 @@ class TestTensor(unittest.TestCase):
 
         tensor = var.get_tensor()
 
-        tensor.set_dims([0, 1])
-        tensor.alloc_float(place)
+        tensor._set_dims([0, 1])
+        tensor._alloc_float(place)
 
         tensor_array = numpy.array(tensor)
         self.assertEqual((0, 1), tensor_array.shape)
 
         if core.is_compiled_with_cuda():
             gpu_place = core.CUDAPlace(0)
-            tensor.alloc_float(gpu_place)
+            tensor._alloc_float(gpu_place)
             tensor_array = numpy.array(tensor)
             self.assertEqual((0, 1), tensor_array.shape)
 
