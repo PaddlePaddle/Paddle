@@ -140,5 +140,11 @@ def parse_args():
         '--use_lars',
         action='store_true',
         help='If set, use lars for optimizers, ONLY support resnet module.')
+    parser.add_argument(
+        '--reduce_strategy',
+        type=str,
+        choices=['reduce', 'all_reduce'],
+        default='all_reduce',
+        help='Specify the reduce strategy, can be reduce, all_reduce')
     args = parser.parse_args()
     return args

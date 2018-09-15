@@ -160,11 +160,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
           fluid_t->mutable_data<float>(platform::CUDAPlace(
               boost::get<platform::CUDAPlace>(context.GetPlace()).device)),
           size * sizeof(float));
-      //} else {
-      // engine->GetOutputInGPU(
-      // y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
-      // size * sizeof(float));
-      //}
+
       output_index += 1;
     }
 

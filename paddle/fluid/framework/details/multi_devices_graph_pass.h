@@ -54,8 +54,8 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   bool IsScaleLossOp(ir::Node *node) const;
 
-  void CreateRPCOp(ir::Graph *result, ir::Node *node) const;
-  void CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
+  int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
+  int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
