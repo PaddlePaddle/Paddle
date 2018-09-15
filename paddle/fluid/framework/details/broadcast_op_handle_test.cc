@@ -96,48 +96,61 @@ struct TestBroadcastOpHandle {
     }
     param_scopes_[input_scope_idx]->Var("input");
 
+    std::unique_ptr<ir::Node> n(
+        new ir::Node("node0", ir::Node::Type::kOperation));
     if (use_gpu_) {
 #ifdef PADDLE_WITH_CUDA
-      op_handle_.reset(
-          new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+      op_handle_.reset(new BroadcastOpHandle(n.get(), local_scopes_, gpu_list_,
+                                             nccl_ctxs_.get()));
 #else
       PADDLE_THROW("CUDA is not support.");
 #endif
     } else {
 #ifdef PADDLE_WITH_CUDA
-      op_handle_.reset(
-          new BroadcastOpHandle(local_scopes_, gpu_list_, nccl_ctxs_.get()));
+      op_handle_.reset(new BroadcastOpHandle(n.get(), local_scopes_, gpu_list_,
+                                             nccl_ctxs_.get()));
 #else
-      op_handle_.reset(new BroadcastOpHandle(local_scopes_, gpu_list_));
+      op_handle_.reset(
+          new BroadcastOpHandle(n.get(), local_scopes_, gpu_list_));
 #endif
     }
 
-    auto* in_var_handle =
-        new VarHandle(1, input_scope_idx, "input", gpu_list_[input_scope_idx]);
+    std::unique_ptr<ir::Node> v(
+        new ir::Node("node1", ir::Node::Type::kVariable));
+    auto* in_var_handle = new VarHandle(v.get(), 1, input_scope_idx, "input",
+                                        gpu_list_[input_scope_idx]);
     vars_.emplace_back(in_var_handle);
     op_handle_->AddInput(in_var_handle);
 
     // add dummy var
-    vars_.emplace_back(new DummyVarHandle());
+
+    std::unique_ptr<ir::Node> v2(
+        new ir::Node("node2", ir::Node::Type::kVariable));
+    vars_.emplace_back(new DummyVarHandle(v2.get()));
     DummyVarHandle* dummy_var_handle =
         static_cast<DummyVarHandle*>(vars_.back().get());
-    dummy_var_handle->generated_op_ = nullptr;
+    dummy_var_handle->ClearGeneratedOp();
     op_handle_->AddInput(dummy_var_handle);
 
     for (size_t j = 0; j < gpu_list_.size(); ++j) {
       if (!use_gpu_) {
         op_handle_->SetDeviceContext(gpu_list_[j], ctxs_[j].get());
       }
-      VarHandle* out_var_handle = new VarHandle(2, j, "out", gpu_list_[j]);
+      std::unique_ptr<ir::Node> v3(
+          new ir::Node("node3", ir::Node::Type::kVariable));
+      VarHandle* out_var_handle =
+          new VarHandle(v3.get(), 2, j, "out", gpu_list_[j]);
       vars_.emplace_back(out_var_handle);
       op_handle_->AddOutput(out_var_handle);
     }
 
     // add dummy var
-    vars_.emplace_back(new DummyVarHandle());
+    std::unique_ptr<ir::Node> v4(
+        new ir::Node("node4", ir::Node::Type::kVariable));
+    vars_.emplace_back(new DummyVarHandle(v4.get()));
     DummyVarHandle* out_dummy_var_handle =
         static_cast<DummyVarHandle*>(vars_.back().get());
-    out_dummy_var_handle->generated_op_ = nullptr;
+    out_dummy_var_handle->ClearGeneratedOp();
     op_handle_->AddOutput(out_dummy_var_handle);
   }
 

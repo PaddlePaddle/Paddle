@@ -24,23 +24,22 @@ class MultiPassReader : public framework::DecoratedReader {
   MultiPassReader(const std::shared_ptr<ReaderBase>& reader, int pass_num)
       : DecoratedReader(reader), pass_num_(pass_num), pass_count_(0) {}
 
-  void ReadNext(std::vector<framework::LoDTensor>* out) override {
+  void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
     reader_->ReadNext(out);
-    if (out->empty()) {
+    if (out->empty() && pass_count_ < pass_num_ - 1) {
+      reader_->Shutdown();
+      reader_->Start();
+      reader_->ReadNext(out);
       ++pass_count_;
-      if (pass_count_ < pass_num_) {
-        reader_->ReInit();
-        reader_->ReadNext(out);
-      }
     }
   }
 
-  void ReInit() override {
+ private:
+  void StartImpl() override {
     pass_count_ = 0;
-    reader_->ReInit();
+    reader_->Start();
   }
 
- private:
   int pass_num_;
   mutable int pass_count_;
 };
@@ -60,7 +59,8 @@ class CreateMultiPassReaderOp : public framework::OperatorBase {
     const auto& underlying_reader = scope.FindVar(Input("UnderlyingReader"))
                                         ->Get<framework::ReaderHolder>();
     int pass_num = Attr<int>("pass_num");
-    out->Reset(new MultiPassReader(underlying_reader.Get(), pass_num));
+    out->Reset(framework::MakeDecoratedReader<MultiPassReader>(
+        underlying_reader, pass_num));
   }
 };
 

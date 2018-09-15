@@ -21,12 +21,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/version.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
 
+#if !defined(_WIN32)
 #include "paddle/fluid/recordio/scanner.h"
 #include "paddle/fluid/recordio/writer.h"
+#endif  // _WIN32
 
 namespace paddle {
 namespace framework {
@@ -249,8 +252,8 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
   {  // the 1st field, uint32_t version for LoDTensor
-    constexpr uint32_t version = 0;
-    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+    os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
+             sizeof(kCurTensorVersion));
   }
   {
     // the 2st field, LoD information
@@ -279,6 +282,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE(framework::IsTensorVersionSupported(version),
+                   "tensor version %u is not supported.", version);
     PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
   }
   {
@@ -300,6 +305,7 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
   TensorFromStream(is, static_cast<Tensor *>(tensor), dev_ctx);
 }
 
+#if !defined(_WIN32)
 void WriteToRecordIO(recordio::Writer *writer,
                      const std::vector<LoDTensor> &tensor,
                      const platform::DeviceContext &dev_ctx) {
@@ -312,21 +318,36 @@ void WriteToRecordIO(recordio::Writer *writer,
   writer->Write(buffer.str());
 }
 
-std::vector<LoDTensor> ReadFromRecordIO(
-    recordio::Scanner *scanner, const platform::DeviceContext &dev_ctx) {
-  std::vector<LoDTensor> result;
-  if (scanner->HasNext()) {
-    std::istringstream sin(scanner->Next());
-    uint32_t sz;
-    sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
-    result.resize(sz);
-    for (uint32_t i = 0; i < sz; ++i) {
-      DeserializeFromStream(sin, &result[i], dev_ctx);
-    }
+bool ReadFromRecordIO(recordio::Scanner *scanner,
+                      const platform::DeviceContext &dev_ctx,
+                      std::vector<LoDTensor> *result_ptr) {
+  if (!scanner->HasNext()) {
+    return false;
   }
-  return result;
-}
+  std::istringstream sin(scanner->Next());
+  uint32_t sz;
+  sin.read(reinterpret_cast<char *>(&sz), sizeof(uint32_t));
+  auto &result = *result_ptr;
+  result.resize(sz);
+  for (uint32_t i = 0; i < sz; ++i) {
+    DeserializeFromStream(sin, &result[i], dev_ctx);
+  }
 
+  return true;
+}
+#else
+class Writer {};
+class Scanner {};
+void WriteToRecordIO(recordio::Writer *writer,
+                     const std::vector<LoDTensor> &tensor,
+                     const platform::DeviceContext &dev_ctx) {}
+bool ReadFromRecordIO(recordio::Scanner *scanner,
+                      const platform::DeviceContext &dev_ctx,
+                      std::vector<LoDTensor> *result_ptr) {
+  PADDLE_ENFORCE("windows didn't supported recordio!.");
+  return true;
+}
+#endif  // _WIN32
 std::vector<LoDTensor> LoDTensor::SplitLoDTensor(
     const std::vector<platform::Place> places) const {
   check_memory_size();

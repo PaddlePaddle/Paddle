@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
@@ -57,8 +58,15 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       }
     }
   }
+  std::vector<framework::LoDTensor> fetch_data;
+  std::exception_ptr eptr;
+  try {
+    fetch_data = underlying_executor_->Run(fetch_tensors);
+  } catch (...) {
+    eptr = std::current_exception();
+  }
 
-  auto fetch_data = underlying_executor_->Run(fetch_tensors);
+  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
   drop_scope_counter_ += 1;
 
 #ifdef PADDLE_WITH_CUDA
@@ -89,7 +97,11 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       scope->DeleteScope(local_scope);
     }
   }
-  return fetch_data;
+  if (eptr) {
+    std::rethrow_exception(eptr);
+  } else {
+    return fetch_data;
+  }
 }
 }  // namespace details
 }  // namespace framework

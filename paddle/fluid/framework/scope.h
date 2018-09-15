@@ -73,6 +73,9 @@ class Scope {
   /// Drop all kids scopes belonged to this scope.
   void DropKids();
 
+  /// Find if a scope exists in the kid scopes
+  bool HasKid(const Scope* scope) const;
+
   // enumerate all the variables current contains.
   std::vector<std::string> LocalVarNames() const;
 

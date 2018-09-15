@@ -37,5 +37,23 @@ size_t CUDAPinnedMinChunkSize();
 //! Get the maximum chunk size for buddy allocator.
 size_t CUDAPinnedMaxChunkSize();
 
+namespace jit {
+typedef enum {
+  isa_any,
+  sse42,
+  avx,
+  avx2,
+  avx512_common,
+  avx512_core,
+  avx512_core_vnni,
+  avx512_mic,
+  avx512_mic_4ops,
+} cpu_isa_t;  // Instruction set architecture
+
+// May I use some instruction
+bool MayIUse(const cpu_isa_t cpu_isa);
+
+}  // namespace jit
+
 }  // namespace platform
 }  // namespace paddle

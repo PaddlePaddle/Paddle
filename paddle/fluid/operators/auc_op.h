@@ -13,9 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
 #include <string>
 #include <vector>
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
@@ -23,110 +23,85 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename T>
 class AucKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* inference = ctx.Input<Tensor>("Out");
-    auto* label = ctx.Input<Tensor>("Label");
-    auto* auc = ctx.Output<Tensor>("AUC");
-
-    float* auc_data = auc->mutable_data<float>(ctx.GetPlace());
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *predict = ctx.Input<Tensor>("Predict");
+    auto *label = ctx.Input<Tensor>("Label");
 
     std::string curve = ctx.Attr<std::string>("curve");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
-    std::vector<float> thresholds_list;
-    thresholds_list.reserve(num_thresholds);
-    for (int i = 1; i < num_thresholds - 1; i++) {
-      thresholds_list[i] = static_cast<float>(i) / (num_thresholds - 1);
-    }
-    const float kEpsilon = 1e-7;
-    thresholds_list[0] = 0.0f - kEpsilon;
-    thresholds_list[num_thresholds - 1] = 1.0f + kEpsilon;
+    int num_pred_buckets = num_thresholds + 1;
 
-    size_t batch_size = inference->dims()[0];
-    size_t inference_width = inference->dims()[1];
+    // Only use output var for now, make sure it's persistable and
+    // not cleaned up for each batch.
+    auto *auc = ctx.Output<Tensor>("AUC");
+    auto *stat_pos = ctx.Output<Tensor>("StatPosOut");
+    auto *stat_neg = ctx.Output<Tensor>("StatNegOut");
 
-    const T* inference_data = inference->data<T>();
-    const int64_t* label_data = label->data<int64_t>();
+    auto *stat_pos_data = stat_pos->mutable_data<int64_t>(ctx.GetPlace());
+    auto *stat_neg_data = stat_neg->mutable_data<int64_t>(ctx.GetPlace());
+    calcAuc(ctx, label, predict, stat_pos_data, stat_neg_data, num_thresholds,
+            auc);
 
-    // Create local tensor for storing the curve: TP, FN, TN, FP
-    // TODO(typhoonzero): use eigen op to caculate these values.
-    Tensor true_positive, false_positive, true_negative, false_negative;
+    auto *batch_auc = ctx.Output<Tensor>("BatchAUC");
+    std::vector<int64_t> stat_pos_batch(num_pred_buckets, 0);
+    std::vector<int64_t> stat_neg_batch(num_pred_buckets, 0);
+    calcAuc(ctx, label, predict, stat_pos_batch.data(), stat_neg_batch.data(),
+            num_thresholds, batch_auc);
+  }
 
-    true_positive.Resize({num_thresholds});
-    false_negative.Resize({num_thresholds});
-    true_negative.Resize({num_thresholds});
-    false_positive.Resize({num_thresholds});
+ private:
+  inline static double trapezoidArea(double X1, double X2, double Y1,
+                                     double Y2) {
+    return (X1 > X2 ? (X1 - X2) : (X2 - X1)) * (Y1 + Y2) / 2.0;
+  }
 
-    int64_t* tp_data = true_positive.mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* fn_data = false_negative.mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* tn_data = true_negative.mutable_data<int64_t>(ctx.GetPlace());
-    int64_t* fp_data = false_positive.mutable_data<int64_t>(ctx.GetPlace());
+  inline static void calcAuc(const framework::ExecutionContext &ctx,
+                             const framework::Tensor *label,
+                             const framework::Tensor *predict,
+                             int64_t *stat_pos, int64_t *stat_neg,
+                             int num_thresholds,
+                             framework::Tensor *auc_tensor) {
+    size_t batch_size = predict->dims()[0];
+    size_t inference_width = predict->dims()[1];
+    const T *inference_data = predict->data<T>();
+    const auto *label_data = label->data<int64_t>();
 
-    for (int idx_thresh = 0; idx_thresh < num_thresholds; idx_thresh++) {
-      // caculate TP, FN, TN, FP for current thresh
-      int64_t tp = 0, fn = 0, tn = 0, fp = 0;
-      for (size_t i = 0; i < batch_size; i++) {
-        // NOTE: label_data used as bool, labels >0 will be treated as true.
-        if (label_data[i]) {
-          // use first(max) data in each row
-          if (inference_data[i * inference_width] >=
-              (thresholds_list[idx_thresh])) {
-            tp++;
-          } else {
-            fn++;
-          }
-        } else {
-          if (inference_data[i * inference_width] >=
-              (thresholds_list[idx_thresh])) {
-            fp++;
-          } else {
-            tn++;
-          }
-        }
+    auto *auc = auc_tensor->mutable_data<double>(ctx.GetPlace());
+
+    for (size_t i = 0; i < batch_size; i++) {
+      uint32_t binIdx = static_cast<uint32_t>(
+          inference_data[i * inference_width + 1] * num_thresholds);
+      if (label_data[i]) {
+        stat_pos[binIdx] += 1.0;
+      } else {
+        stat_neg[binIdx] += 1.0;
       }
-      // store rates
-      tp_data[idx_thresh] = tp;
-      fn_data[idx_thresh] = fn;
-      tn_data[idx_thresh] = tn;
-      fp_data[idx_thresh] = fp;
     }
-    // epsilon to avoid divide by zero.
-    float epsilon = 1e-6;
-    // Riemann sum to caculate auc.
-    Tensor tp_rate, fp_rate, rec_rate;
-    tp_rate.Resize({num_thresholds});
-    fp_rate.Resize({num_thresholds});
-    rec_rate.Resize({num_thresholds});
-    float* tp_rate_data = tp_rate.mutable_data<float>(ctx.GetPlace());
-    float* fp_rate_data = fp_rate.mutable_data<float>(ctx.GetPlace());
-    float* rec_rate_data = rec_rate.mutable_data<float>(ctx.GetPlace());
-    for (int i = 0; i < num_thresholds; i++) {
-      tp_rate_data[i] = (static_cast<float>(tp_data[i]) + epsilon) /
-                        (tp_data[i] + fn_data[i] + epsilon);
-      fp_rate_data[i] =
-          static_cast<float>(fp_data[i]) / (fp_data[i] + tn_data[i] + epsilon);
-      rec_rate_data[i] = (static_cast<float>(tp_data[i]) + epsilon) /
-                         (tp_data[i] + fp_data[i] + epsilon);
+
+    *auc = 0.0f;
+
+    double totPos = 0.0;
+    double totNeg = 0.0;
+    double totPosPrev = 0.0;
+    double totNegPrev = 0.0;
+
+    int idx = num_thresholds;
+
+    while (idx >= 0) {
+      totPosPrev = totPos;
+      totNegPrev = totNeg;
+      totPos += stat_pos[idx];
+      totNeg += stat_neg[idx];
+      *auc += trapezoidArea(totNeg, totNegPrev, totPos, totPosPrev);
+
+      --idx;
     }
-    *auc_data = 0.0f;
-    if (curve == "ROC") {
-      for (int i = 0; i < num_thresholds - 1; i++) {
-        auto dx = fp_rate_data[i] - fp_rate_data[i + 1];
-        auto y = (tp_rate_data[i] + tp_rate_data[i + 1]) / 2.0f;
-        *auc_data = *auc_data + dx * y;
-      }
-    } else if (curve == "PR") {
-      for (int i = 1; i < num_thresholds; i++) {
-        auto dx = tp_rate_data[i] - tp_rate_data[i - 1];
-        auto y = (rec_rate_data[i] + rec_rate_data[i - 1]) / 2.0f;
-        *auc_data = *auc_data + dx * y;
-      }
+
+    if (totPos > 0.0 && totNeg > 0.0) {
+      *auc = *auc / totPos / totNeg;
     }
   }
 };
