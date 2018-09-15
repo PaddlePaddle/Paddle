@@ -159,11 +159,14 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place) : place_(place) {
   } else {
     cudnn_handle_ = nullptr;
   }
+
+  callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  WaitStreamCallback();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   if (cudnn_handle_ != nullptr) {
     PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));

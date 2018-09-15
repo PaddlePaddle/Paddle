@@ -37,7 +37,9 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog),
+      block_id_(block_id),
+      ref_cnts_(GetNonPersistableReferenceCount<int>(prog, block_id)) {}
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
@@ -335,20 +337,84 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
+  std::shared_ptr<std::vector<framework::LoDTensor*>> erase_tensors(
+      new std::vector<framework::LoDTensor*>());
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+
+  std::unique_ptr<GarbageCollector<Tensor>> gc;
+  if (max_memory_size >= 0) {
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(place_)) {
+      gc.reset(new DefaultStreamGarbageCollector<Tensor>(
+          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+    } else {
+#endif
+      gc.reset(new CPUGarbageCollector<Tensor>(
+          boost::get<platform::CPUPlace>(place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
+    }
+#endif
+  }
+
   for (auto& op : ctx->ops_) {
     VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
-    // NOTE! Please do not delete this line, it's usefull because the debug
-    // string before and after op.run are different, after run the output
-    // will have right shape which is usefull for debug.
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
+
+#ifdef PADDLE_WITH_CUDA
+    if (gc != nullptr) {
+      std::vector<std::string> erase_vars;
+      for (auto& input : op->Inputs()) {
+        for (auto& input_name : input.second) {
+          auto it = ctx->ref_cnts_.find(input_name);
+          if (it == ctx->ref_cnts_.end()) continue;
+          if (it->second == 1) {  // should delete it
+            erase_vars.emplace_back(input_name);
+            ctx->ref_cnts_.erase(input_name);
+          } else {
+            --(it->second);
+          }
+        }
+      }
+
+      for (auto& output : op->Outputs()) {
+        for (auto& output_name : output.second) {
+          auto it = ctx->ref_cnts_.find(output_name);
+          if (it == ctx->ref_cnts_.end()) continue;
+          if (it->second == 1) {
+            erase_vars.emplace_back(output_name);
+            ctx->ref_cnts_.erase(output_name);
+          } else {
+            --(it->second);
+          }
+        }
+      }
+
+      if (!erase_vars.empty()) {
+        std::vector<framework::LoDTensor*> erase_tensors;
+        for (auto& name : erase_vars) {
+          auto* var = local_scope->FindVar(name);
+          if (var == nullptr) continue;
+          if (var->IsType<framework::LoDTensor>()) {
+            auto* tensor = var->GetMutable<framework::LoDTensor>();
+            erase_tensors.push_back(tensor);
+          }
+        }
+        if (!erase_tensors.empty()) gc->Add(erase_tensors);
+      }
+    }
+#endif
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
     }
   }
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+  if (gc != nullptr)
+    gc->Wait();
+  else
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);
   } else {

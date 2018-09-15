@@ -82,6 +82,13 @@ class OpHandleBase {
 
   size_t NoDummyInputSize() const;
 
+  ir::Node *Node() { return node_; }
+
+  const std::map<platform::Place, platform::DeviceContext *>
+      &GetDeviceContexts() const {
+    return dev_ctxes_;
+  }
+
  protected:
   void RunAndRecordEvent(const std::function<void()> &callback);
 
