@@ -23,8 +23,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_context.h"
 
-#include "paddle/fluid/framework/details/reference_count_op_handle.h"
-
 namespace paddle {
 namespace framework {
 namespace details {

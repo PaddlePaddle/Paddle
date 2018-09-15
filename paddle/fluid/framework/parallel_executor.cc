@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 #ifdef PADDLE_WITH_CUDA
-#include "paddle/fluid/framework/details/reference_count_pass.h"
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 

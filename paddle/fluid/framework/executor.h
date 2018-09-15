@@ -28,8 +28,6 @@ namespace paddle {
 namespace framework {
 extern void InitializeVariable(Variable* var, proto::VarType::Type var_type);
 
-int64_t GetEagerDeletionThreshold();
-
 template <typename T>
 std::unordered_map<std::string, T> GetNonPersistableReferenceCount(
     const ProgramDesc& prog, size_t block_id) {

@@ -29,6 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
 
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/details/reference_count_pass.h"
+#endif
+
 namespace paddle {
 namespace framework {
 

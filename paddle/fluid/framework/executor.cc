@@ -37,9 +37,11 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog),
-      block_id_(block_id),
-      ref_cnts_(GetNonPersistableReferenceCount<int>(prog, block_id)) {}
+    : prog_(prog), block_id_(block_id) {
+  if (GetEagerDeletionThreshold() >= 0) {
+    ref_cnts_ = GetNonPersistableReferenceCount<int>(prog_, block_id_);
+  }
+}
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
@@ -331,8 +333,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
-  std::shared_ptr<std::vector<framework::LoDTensor*>> erase_tensors(
-      new std::vector<framework::LoDTensor*>());
   int64_t max_memory_size = GetEagerDeletionThreshold();
 
   std::unique_ptr<GarbageCollector<Tensor>> gc;
@@ -353,7 +353,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
   for (auto& op : ctx->ops_) {
     op->Run(*local_scope, place_);
 
-#ifdef PADDLE_WITH_CUDA
     if (gc != nullptr) {
       std::vector<std::string> erase_vars;
       for (auto& input : op->Inputs()) {
@@ -395,7 +394,6 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
         if (!erase_tensors.empty()) gc->Add(erase_tensors);
       }
     }
-#endif
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
@@ -403,10 +401,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     }
   }
 
-  if (gc != nullptr)
+  if (gc != nullptr) {
     gc->Wait();
-  else
+  } else {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
 
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);
