@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <algorithm>
+#include <utility>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 
@@ -89,8 +90,9 @@ template <typename DeviceContext, typename T>
 class SliceGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    size_t rank =
-        ctx.Input<framework::Tensor>(framework::GradVarName("Out"))->dims().size();
+    size_t rank = ctx.Input<framework::Tensor>(framework::GradVarName("Out"))
+                      ->dims()
+                      .size();
     switch (rank) {
       case 1:
         SliceCompute<1>(ctx);
@@ -118,8 +120,10 @@ class SliceGradKernel : public framework::OpKernel<T> {
   void SliceCompute(const framework::ExecutionContext& context) const {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    auto* d_out = context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto* d_input = context.Output<framework::Tensor>(framework::GradVarName("Input"));
+    auto* d_out =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* d_input =
+        context.Output<framework::Tensor>(framework::GradVarName("Input"));
     d_input->mutable_data<T>(context.GetPlace());
     auto out_dims = d_out->dims();
     auto in_dims = d_input->dims();

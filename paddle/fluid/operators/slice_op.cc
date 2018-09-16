@@ -25,7 +25,7 @@ class SliceOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Input"),
                    "Input (Input) of slice op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
@@ -58,7 +58,7 @@ class SliceOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Input")->type()),
         ctx.GetPlace());
