@@ -18,7 +18,6 @@ import collections
 import contextlib
 import re
 import six
-import traceback
 
 import numpy as np
 
@@ -572,10 +571,6 @@ class Operator(object):
 
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
-
-        callstack_var_name = op_maker.kOpCreationCallstackAttrName()
-        op_attrs[callstack_var_name] = list(
-            reversed(traceback.format_stack()))[1:]
 
         if len(self.desc.type()) != 0:
             return
