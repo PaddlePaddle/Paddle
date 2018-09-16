@@ -29,7 +29,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
-  std::vector<int> output_size = ctx->Attrs().Get<std::vector<int>>("output_size");
+  std::vector<int> output_size =
+      ctx->Attrs().Get<std::vector<int>>("output_size");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
@@ -44,9 +45,9 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                  "ConvTransposeOp input dimension and strides dimension should "
                  "be consistent.");
   if (output_size.size())
-      PADDLE_ENFORCE_EQ(output_size.size(), strides.size(),
-                        "ConvTransposeOp output_size dimension and strides "
-                        "dimension should be the same.");
+    PADDLE_ENFORCE_EQ(output_size.size(), strides.size(),
+                      "ConvTransposeOp output_size dimension and strides "
+                      "dimension should be the same.");
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                     "ConvTransposeOp paddings dimension and strides "
                     "dimension should be the same.");
@@ -60,13 +61,13 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1] * groups});
   for (size_t i = 0; i < strides.size(); ++i) {
     auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
-    auto infer_shape = (in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
-        filter_extent;
+    auto infer_shape =
+        (in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] + filter_extent;
     if (output_size.size()) {
-    PADDLE_ENFORCE((output_size[i] >= infer_shape &&
-                    output_size[i] < infer_shape + strides[i]),
-                    "ConvTransposeOp output_size should be "
-                    "in appropriate range.");
+      PADDLE_ENFORCE((output_size[i] >= infer_shape &&
+                      output_size[i] < infer_shape + strides[i]),
+                     "ConvTransposeOp output_size should be "
+                     "in appropriate range.");
       output_shape.push_back(output_size[i]);
     } else {
       output_shape.push_back(infer_shape);

@@ -208,6 +208,7 @@ class TestWithEvenUpsample(TestConv2dTransposeOp):
         f_c = self.input_size[1]
         self.filter_size = [f_c, 6, 5, 5]
 
+
 # ------------ test_cudnn ------------
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
@@ -288,6 +289,7 @@ class TestCUDNNWithEvenUpsample(TestWithEvenUpsample):
     def init_op_type(self):
         self.use_cudnn = True
         self.op_type = "conv2d_transpose"
+
 
 # Please Don't remove the following code.
 # Currently, CI use cudnn V5.0 which not support dilation conv.
