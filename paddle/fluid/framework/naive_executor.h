@@ -20,7 +20,11 @@ class NaiveExecutor {
   // Create variables.
   void Prepare(Scope *parent_scope, const ProgramDesc &program_desc, int block_id);
 
+  // Run all the operators.
   void Run();
+
+  // Get an tensor to operating directly, without the need for feed_ops.
+  LoDTensor* FindTensor(const std::string& name);
 
  protected:
   void CreateVariables(const ProgramDesc& desc, Scope* scope, int block_id);

@@ -9,6 +9,7 @@
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "naive_executor.h"
 
 namespace paddle {
 namespace framework {
@@ -104,6 +105,14 @@ void NaiveExecutor::CreateOps(const ProgramDesc& desc, int block_id) {
   for (const auto& op_desc : desc.Block(block_id).AllOps()) {
     ops_.emplace_back(OpRegistry::CreateOp(*op_desc));
   }
+}
+
+LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
+  PADDLE_ENFORCE(scope_.get(), "Need to init scope first");
+  auto* var = scope_->FindVar(name);
+  PADDLE_ENFORCE(var, "No variable [%s] in the scope");
+  auto* tensor = const_cast<LoDTensor*>(&var->Get<LoDTensor>());
+  return tensor;
 }
 
 }  // namespace framework
