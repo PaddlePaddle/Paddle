@@ -53,7 +53,7 @@ set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classifi
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
 inference_analysis_test(test_analyzer_text_classification SRCS analyzer_text_classification_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
-    ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/text-classification-Senta
+    ARGS --infer_model=${TEXT_CLASSIFICATION_INSTALL_DIR}/model
          --infer_data=${TEXT_CLASSIFICATION_INSTALL_DIR}/data.txt)
 
 # ocr
