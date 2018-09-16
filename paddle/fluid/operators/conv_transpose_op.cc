@@ -212,6 +212,9 @@ void Conv3DTransposeOpMaker::Make() {
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
 
+  AddAttr<std::vector<int>>("output_size",
+                            "(vector<int> default: []), the "
+                            "size of the output tensor");
   AddAttr<std::vector<int>>(
       "dilations",
       "(vector<int> default:{1, 1, 1}), the "
