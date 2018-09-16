@@ -109,6 +109,15 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
     auto &dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
     bool is_sparse = context.Attr<bool>("is_sparse");
+
+    auto d_ids = context.Output<LoDTensor>(framework::GradVarName("Ids"));
+    if (d_ids) {
+      auto ids_t = context.Input<LoDTensor>("Ids");
+      auto gpu_place = boost::get<platform::CUDAPlace>(context.GetPlace());
+      d_ids->mutable_data<T>(context.GetPlace());
+      framework::TensorCopy(*ids_t, context.GetPlace(), dev_ctx, d_ids);
+    }
+
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {

@@ -22,7 +22,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("W"),
                    "Input(W) of LookupTableOp should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Ids"),
@@ -51,7 +51,7 @@ class LookupTableOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
@@ -107,14 +107,25 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("W"),
+                   "Input(W) of LookupTableGradOp should not be null.");
+
     auto table_dims = ctx->GetInputDim("W");
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+
+    if (ctx->HasOutput(framework::GradVarName("Ids"))) {
+      PADDLE_ENFORCE(ctx->HasInput("Ids"),
+                     "Input(Ids) of LookupTableGradOp should not be null.");
+      auto ids = ctx->GetInputDim("Ids");
+      ctx->SetOutputDim(framework::GradVarName("Ids"), ids);
+      ctx->ShareLoD("Ids", /*->*/ framework::GradVarName("Ids"));
+    }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     auto data_type = framework::GetDataTypeOfVar(ctx.InputVar("W"));
     return framework::OpKernelType(data_type, ctx.device_context());
   }
@@ -122,8 +133,8 @@ class LookupTableOpGrad : public framework::OperatorWithKernel {
 
 class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
  public:
-  void operator()(const framework::OpDesc& op_desc,
-                  framework::BlockDesc* block) const override {
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
     auto out_var_name = op_desc.Output(framework::GradVarName("W")).front();
     auto attr = op_desc.GetAttr("is_sparse");
     bool is_sparse = boost::get<bool>(attr);
