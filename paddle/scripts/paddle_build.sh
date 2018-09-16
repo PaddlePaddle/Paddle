@@ -33,6 +33,7 @@ function print_usage() {
     ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
     ${BLUE}doc${NONE}: generate paddle documents
+    ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}capi${NONE}: generate paddle CAPI package
@@ -431,24 +432,60 @@ EOF
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
 
-    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+#    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+#
+#    # Deploy to the the content server if its a "develop" or "release/version" branch
+#    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
+#    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
+#        PPO_SCRIPT_BRANCH=develop
+#    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
+#        PPO_SCRIPT_BRANCH=master
+#    else
+#        # Early exit, this branch doesn't require documentation build
+#        return 0;
+#    fi
+#     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
+#    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
+#    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
+#    cd ..
+#    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
+#    cd -
+}
 
-    # Deploy to the the content server if its a "develop" or "release/version" branch
-    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
-    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
-        PPO_SCRIPT_BRANCH=develop
-    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
-        PPO_SCRIPT_BRANCH=master
-    else
-        # Early exit, this branch doesn't require documentation build
-        return 0;
-    fi
-     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
-    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
-    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
-    cd ..
-    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
-    cd -
+function gen_doc_lib() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ========================================
+    Building documentation library ...
+    In /paddle/build
+    ========================================
+EOF
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_DOC=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_FLUID_ONLY=ON
+
+    local LIB_TYPE=$1
+    case $LIB_TYPE in
+      full)
+        # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
+        make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+        ;;
+      pybind)
+        # Build paddle pybind library. Takes 49 minutes to build. Might timeout
+        make -j `nproc` copy_paddle_pybind
+        ;;
+      proto)
+        # Even smaller library.
+        make -j `nproc` framework_py_proto
+        ;;
+      *)
+        exit 0
+        ;;
+      esac
 }
 
 function gen_html() {
@@ -607,6 +644,9 @@ function main() {
         ;;
       doc)
         gen_docs
+        ;;
+      gen_doc_lib)
+        gen_doc_lib $2
         ;;
       html)
         gen_html
