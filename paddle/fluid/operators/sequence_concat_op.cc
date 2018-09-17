@@ -37,42 +37,38 @@ class SeqConcatOpMaker : public framework::OpProtoAndCheckerMaker {
 class SeqConcatShapeInferer : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
-    try {
-      PADDLE_ENFORCE(context->HasInputs("X"),
-                     "Input(X) of Sequence Concat Op should not be null.");
-      PADDLE_ENFORCE(context->HasOutput("Out"),
-                     "Output(Out) of Sequence Concat Op should not be null.");
+    PADDLE_ENFORCE(context->HasInputs("X"),
+                   "Input(X) of Sequence Concat Op should not be null.");
+    PADDLE_ENFORCE(context->HasOutput("Out"),
+                   "Output(Out) of Sequence Concat Op should not be null.");
 
-      PADDLE_ENFORCE_GT(context->HasInputs("X"), 1,
-                        "The number of input sequences is at least two.");
-      auto x_dims = context->GetInputsDim("X");
-      int64_t batch_size = 0;
-      int64_t feature_size = 0;
-      std::vector<int64_t> out_dims;
-      for (auto &x_dim : x_dims) {
-        if (out_dims.empty()) {
-          out_dims = framework::vectorize(x_dim);
-        }
-        batch_size += x_dim[0];
-        if (feature_size == 0) {
-          feature_size = framework::product(x_dim) / x_dim[0];
-        } else {
-          PADDLE_ENFORCE_EQ(
-              feature_size, framework::product(x_dim) / x_dim[0],
-              "Inputs of sequence concat must have same feature size");
-        }
+    PADDLE_ENFORCE_GT(context->Inputs("X").size(), 1,
+                      "The number of input sequences is at least two.");
+    auto x_dims = context->GetInputsDim("X");
+    int64_t batch_size = 0;
+    int64_t feature_size = 0;
+    std::vector<int64_t> out_dims;
+    for (auto &x_dim : x_dims) {
+      if (out_dims.empty()) {
+        out_dims = framework::vectorize(x_dim);
       }
-      if (batch_size < 0) {
-        batch_size = -1;  // Normalize batch size for compile time.
+      batch_size += x_dim[0];
+      if (feature_size == 0) {
+        feature_size = framework::product(x_dim) / x_dim[0];
+      } else {
+        PADDLE_ENFORCE_EQ(
+            feature_size, framework::product(x_dim) / x_dim[0],
+            "Inputs of sequence concat must have same feature size");
       }
-      out_dims[0] = batch_size;
-      context->SetOutputDim("Out", framework::make_ddim(out_dims));
-      if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
-                                    // in Kernel.
-        context->ShareLoD("X", "Out");
-      }
-    } catch (...) {
-      PADDLE_THROW("Unknown error");
+    }
+    if (batch_size < 0) {
+      batch_size = -1;  // Normalize batch size for compile time.
+    }
+    out_dims[0] = batch_size;
+    context->SetOutputDim("Out", framework::make_ddim(out_dims));
+    if (!context->IsRuntime()) {  // Runtime LoD infershape will be computed
+      // in Kernel.
+      context->ShareLoD("X", "Out");
     }
   }
 };
