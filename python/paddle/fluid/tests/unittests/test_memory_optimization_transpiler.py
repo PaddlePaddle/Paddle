@@ -15,6 +15,7 @@
 from __future__ import print_function
 import unittest
 
+import paddle.fluid as fluid
 import paddle.fluid.layers as layers
 import paddle.fluid.optimizer as optimizer
 from paddle.fluid.framework import Program, program_guard
@@ -66,13 +67,16 @@ class TestMemoryTranspiler2(unittest.TestCase):
         print("after optimization")
         print(str(result_program))
 
+
 class TestMemoryTranspiler3(unittest.TestCase):
     def setUp(self):
         program = Program()
         with program_guard(program, startup_program=Program()):
             word = fluid.layers.data(name='word', shape=[1], dtype='int64')
-            emb = [fluid.layers.embedding(word, size=[65536, 256], param_attr='emb')
-            for _ in range(6)]
+            emb = [
+                fluid.layers.embedding(
+                    word, size=[65536, 256], param_attr='emb') for _ in range(6)
+            ]
 
             left = emb.pop(0)
             while len(emb) != 0:

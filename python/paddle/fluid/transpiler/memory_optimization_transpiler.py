@@ -96,7 +96,6 @@ class ControlFlowGraph(object):
                 self._live_out[i].remove(old_name)
                 self._live_out[i].add(new_name)
 
-
     def _dataflow_analyze(self):
         self._build_graph()
         live_in = defaultdict(set)
@@ -121,8 +120,8 @@ class ControlFlowGraph(object):
         ]
         if can_optimize:
             for var_name in can_optimize:
-                cache = (var_name, self._find_var(
-                    block_desc, var_name, is_forward).shape())
+                cache = (var_name, self._find_var(block_desc, var_name,
+                                                  is_forward).shape())
                 if cache not in self.pool:
                     self.pool.append(cache)
 
@@ -232,7 +231,7 @@ class ControlFlowGraph(object):
                 ]
                 for x, x_shape in out_pair:
                     if (x, x_shape) in self.pool:
-                        raise ValueError("x in pool")
+                        raise ValueError("x in pool, %s, %s" % (x, x_shape))
                     # If x is both in uses and defs, it can not be optimized!
                     if x in self._uses[i]:
                         continue
@@ -240,9 +239,14 @@ class ControlFlowGraph(object):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
                         if not self._has_var(block_desc, cache_var, is_forward):
-                            raise ValueError("cache", cpt.to_text(cache_var), " Not exists!")
+                            raise ValueError("cache",
+                                             cpt.to_text(cache_var),
+                                             " Not exists!")
                         if x == cache_var:
-                            raise ValueError("x : ", cpt.to_text(x), " cache : ", cpt.to_text(cache_var), " is same var!")
+                            raise ValueError("x : ",
+                                             cpt.to_text(x), " cache : ",
+                                             cpt.to_text(cache_var),
+                                             " is same var!")
 
                         x_dtype = self._find_var(block_desc, x,
                                                  is_forward).dtype()
@@ -266,12 +270,12 @@ class ControlFlowGraph(object):
                         # Rename the var to the cache var already with
                         # memory allocated in order to reuse the memory.
                         _rename_arg_(self._ops, x, cache_var, begin_idx=i)
-                        self._program.block(block_desc.id)._remove_var(cpt.to_text(
-                            x))
+                        self._program.block(block_desc.id).var(cpt.to_text(
+                            x)).desc = self._find_var(block_desc, cache_var,
+                                                      is_forward)
                         self._update_graph(x, cache_var, begin_idx=i)
                         break
             self._fill_pool(i, is_forward)
-
 
 
 def _process_sub_block_pair(pdesc, sub_block_pair):
@@ -379,7 +383,7 @@ def memory_optimize(input_program, skip_opt_set=None, print_log=False, level=0):
 
       Note: it doesn't not support subblock nested in subblock.
 
-    :param input_program: Input Program
+    :param input_program(str): Input Program
     :param print_log: whether to print debug log.
     :param level: If level=0, reuse if the shape is completely equal, o
     :return:
