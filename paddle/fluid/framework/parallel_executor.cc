@@ -368,7 +368,10 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 ParallelExecutor::~ParallelExecutor() {
   if (member_->own_local_scope_) {
     for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-      member_->global_scope_->DeleteScope(member_->local_scopes_[i]);
+      Scope *local_scope = member_->local_scopes_[i];
+      if (member_->global_scope_->HasKid(local_scope)) {
+        member_->global_scope_->DeleteScope(local_scope);
+      }
     }
   }
 }

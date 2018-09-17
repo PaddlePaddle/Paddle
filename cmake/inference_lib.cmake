@@ -145,12 +145,12 @@ copy(memory_lib
 set(inference_deps paddle_fluid_shared paddle_fluid)
 
 set(module "inference/api")
-if (WITH_ANAKIN AND WITH_GPU)
+if (WITH_ANAKIN AND WITH_MKL)
     copy(anakin_inference_lib DEPS paddle_inference_api inference_anakin_api
         SRCS
         ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
         ${ANAKIN_INSTALL_DIR} # anakin release
-        DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
+        DSTS ${dst_dir}/inference/anakin ${FLUID_INSTALL_DIR}/third_party/install/anakin)
      list(APPEND inference_deps anakin_inference_lib)
 endif()
 

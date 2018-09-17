@@ -21,10 +21,16 @@
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
+
+using string::PrettyLogEndl;
+using string::PrettyLog;
+using string::Style;
 
 size_t PDPattern::id_ = 0UL;
 
@@ -73,7 +79,6 @@ void PDPattern::AddEdge(PDNode* a, PDNode* b) {
 void GraphPatternDetector::operator()(Graph* graph,
                                       GraphPatternDetector::handle_t handler) {
   if (!MarkPDNodesInGraph(*graph)) {
-    LOG(INFO) << "Mark failed";
     return;
   }
 
@@ -83,10 +88,10 @@ void GraphPatternDetector::operator()(Graph* graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  LOG(INFO) << "detect " << subgraphs.size() << " subgraph matches the pattern";
+  PrettyLogEndl(Style::detail(), "---  detect %d subgraphs", subgraphs.size());
   int id = 0;
   for (auto& g : subgraphs) {
-    LOG(INFO) << "optimizing #" << id++ << " subgraph";
+    VLOG(3) << "optimizing #" << id++ << " subgraph";
     handler(g, graph);
   }
 }
@@ -107,8 +112,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph& graph) {
   for (auto& pdnode : pattern_.nodes()) {
     if (!pdnodes2nodes_.count(pdnode.get())) {
       VLOG(4) << pdnode->name() << " can't find matched Node, early stop";
-
-      return false;
+      // return false;
     }
   }
   for (auto& item : pdnodes2nodes_) {
@@ -518,61 +522,84 @@ bool VarLinksFromOp(Node* node, const std::string& op_type) {
   return false;
 }
 
-PDNode* patterns::FC(PDPattern* pattern, const std::string& name_scope,
-                     PDNode* x, bool with_bias) {
+PDNode* patterns::ConvReLU::operator()(
+    paddle::framework::ir::PDNode* conv_input) {
   // Create Operators
-  PDNode* elementwise_add_op{nullptr};
-  auto* mul_op = pattern->NewNode(name_scope, "mul")->assert_is_op("mul");
-  if (with_bias) {
-    elementwise_add_op = pattern->NewNode(name_scope, "elementwise_add")
-                             ->assert_is_op("elementwise_add");
-  }
+  conv_input->assert_is_op_input("conv2d", "Input");
+  auto* conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
+  auto* relu_op = pattern->NewNode(relu_repr())->assert_is_op("relu");
   // Create variables
-  // w
-  auto* mul_weight_var = pattern->NewNode(name_scope, "w")
-                             ->AsInput()
-                             ->assert_is_persistable_var()
-                             ->assert_is_op_nth_input("mul", "Y", 0);
-  PDNode* mul_out_var{nullptr};
-  if (with_bias) {
-    // intermediate variable, will be removed in the IR after fuse.
-    mul_out_var = pattern->NewNode(name_scope, "mul_out")
-                      ->AsIntermediate()
-                      ->assert_is_only_output_of_op("mul")
-                      ->assert_is_op_input("elementwise_add");
-  }
-  PDNode *bias{nullptr}, *fc_out{nullptr};
-  if (with_bias) {
-    // bias
-    bias = pattern->NewNode(name_scope, "fc_bias")
-               ->assert_is_op_input("elementwise_add")
-               ->AsInput();
-    // output
-    fc_out = pattern->NewNode(name_scope, "fc_out")
-                 ->AsOutput()
-                 ->assert_is_op_output("elementwise_add");
-  } else {
-    fc_out = pattern->NewNode(name_scope, "fc_out")
-                 ->AsOutput()
-                 ->assert_is_op_output("mul");
-  }
+  // Filter
+  auto* conv_weight_var = pattern->NewNode(conv_weight_repr())
+                              ->AsInput()
+                              ->assert_is_persistable_var()
+                              ->assert_is_op_input("conv2d", "Filter");
+  // Bias
+  auto* conv_bias_var = pattern->NewNode(conv_bias_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()
+                            ->assert_is_op_input("conv2d", "Bias");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto* conv_out_var = pattern->NewNode(conv_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("conv2d")
+                           ->assert_is_op_input("relu");
+  // output
+  auto* relu_out_var = pattern->NewNode(relu_out_repr())
+                           ->AsOutput()
+                           ->assert_is_op_output("relu");
 
-  if (with_bias) {
-    mul_op->LinksFrom({mul_weight_var, x}).LinksTo({mul_out_var});
-    elementwise_add_op->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
-  } else {
-    mul_op->LinksFrom({mul_weight_var, x}).LinksTo({fc_out});
-  }
-
-  return fc_out;
+  conv_op->LinksFrom({conv_input, conv_weight_var, conv_bias_var})
+      .LinksTo({conv_out_var});
+  relu_op->LinksFrom({conv_out_var}).LinksTo({relu_out_var});
+  return relu_out_var;
 }
-PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
-                       PDNode* x) {
+
+PDNode* patterns::FC::operator()(paddle::framework::ir::PDNode* x,
+                                 bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("mul", "X");
+  auto* mul = pattern->NewNode(mul_repr())->assert_is_op("mul");
+
+  auto* mul_w_var = pattern->NewNode(w_repr())
+                        ->AsInput()
+                        ->assert_is_persistable_var()
+                        ->assert_is_op_input("mul", "Y");
+
+  auto* mul_out_var =
+      pattern->NewNode(mul_out_repr())->assert_is_op_output("mul");
+
+  if (!with_bias) {  // not with bias
+    // Add links.
+    mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
+    return mul_out_var;
+
+  } else {  // with bias
+    mul_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+    // Create operators.
+    auto* elementwise_add = pattern->NewNode(elementwise_add_repr())
+                                ->assert_is_op("elementwise_add");
+    // Create variables.
+    auto* bias = pattern->NewNode(bias_repr())
+                     ->assert_is_op_input("elementwise_add")
+                     ->AsInput();
+
+    auto* fc_out = pattern->NewNode(Out_repr())
+                       ->AsOutput()
+                       ->assert_is_op_output("elementwise_add");
+
+    mul->LinksFrom({mul_w_var, x}).LinksTo({mul_out_var});
+    elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
+    return fc_out;
+  }
+}
+
+PDNode* patterns::LSTM::operator()(PDNode* x) {
   x->assert_is_op_input("lstm", "Input");
-  auto* lstm_op = pattern->NewNode(name_scope, "lstm")->assert_is_op("lstm");
-#define NEW_NODE(arg__, io__)                        \
-  auto* arg__ = pattern->NewNode(name_scope, #arg__) \
-                    ->assert_is_op_##io__("lstm", #arg__);
+  auto* lstm_op = pattern->NewNode(lstm_repr())->assert_is_op("lstm");
+#define NEW_NODE(arg__, io__) \
+  auto* arg__ =               \
+      pattern->NewNode(arg__##_repr())->assert_is_op_##io__("lstm", #arg__);
 
   // Currently, the H0 and C0 are optional
   // TODO(Superjomn) upgrade the fuse framework to support optional.
@@ -585,11 +612,42 @@ PDNode* patterns::LSTM(PDPattern* pattern, const std::string& name_scope,
   NEW_NODE(Cell, output);
   NEW_NODE(BatchGate, output);
   NEW_NODE(BatchCellPreAct, output);
+#undef NEW_NODE
 
   lstm_op->LinksFrom({x, Weight, Bias});
   lstm_op->LinksTo({Hidden, Cell, BatchGate, BatchCellPreAct});
   return Hidden;
 }
+
+PDNode* patterns::GRU::operator()(PDNode* x) {
+  x->assert_is_op_input("gru", "Input");
+  auto* gru_op = pattern->NewNode(gru_repr())->assert_is_op("gru");
+#define NEW_NODE(arg__, io__) \
+  auto* arg__ =               \
+      pattern->NewNode(arg__##_repr())->assert_is_op_##io__("gru", #arg__);
+
+  NEW_NODE(Weight, input);
+  // TODO(Superjomn): upgrade the fuse framework to support optional.
+  // H0 and bias are optional
+  NEW_NODE(Bias, input);  // also optional
+  // NEW_NODE(H0, input);
+
+  NEW_NODE(Hidden, output);
+  // below are intermediate
+  NEW_NODE(BatchGate, output);
+  NEW_NODE(BatchResetHiddenPrev, output);
+  NEW_NODE(BatchHidden, output);
+#undef NEW_NODE
+
+  BatchGate->AsIntermediate();
+  BatchResetHiddenPrev->AsIntermediate();
+  BatchHidden->AsIntermediate();
+
+  gru_op->LinksFrom({x, Weight, Bias});
+  gru_op->LinksTo({Hidden, BatchGate, BatchResetHiddenPrev, BatchHidden});
+  return Hidden;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
