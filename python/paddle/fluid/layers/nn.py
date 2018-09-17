@@ -112,6 +112,7 @@ __all__ = [
     'pad2d',
     'unstack',
     'sequence_enumerate',
+    'sequence_concat',
 ]
 
 
