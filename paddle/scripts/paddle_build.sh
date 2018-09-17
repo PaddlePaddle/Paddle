@@ -68,26 +68,44 @@ function cmake_gen() {
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
-    if [ "$1" != "" ]; then
-        echo "using python abi: $1"
-        if [ "$1" == "cp27-cp27m" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
-            export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
-            PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
-        elif [ "$1" == "cp27-cp27mu" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
-            export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
-            PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
-        elif [ "$1" == "cp35-cp35m" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
-            export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
-            export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
+            echo "using python abi: $1"
+            if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
+                export PATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
+            else
+                exit 1
+            fi
+        # TODO: qiyang add python3 part here 
+        fi
+    else 
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"     
+            if [ "$1" == "cp27-cp27m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+            elif [ "$1" == "cp27-cp27mu" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+            elif [ "$1" == "cp35-cp35m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
+           fi
         fi
     fi
 
@@ -199,6 +217,19 @@ EOF
     make clean
     make -j `nproc`
     make install -j `nproc`
+}
+
+function build_mac() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ============================================
+    Building in /paddle/build ...
+    ============================================
+EOF
+    make clean
+    sudo make -j 8
+    sudo make install -j 8
 }
 
 function build_android() {
@@ -317,6 +348,27 @@ EOF
         ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
+        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
+    fi
+}
+
+function run_mac_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+
+        # TODO: jiabin need to refine this part when these tests fixed on mac
+        ctest --output-on-failure -j8     
+        # make install should also be test when unittest 
+        make install -j 8
         pip install /usr/local/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
@@ -676,6 +728,11 @@ function main() {
         gen_fluid_inference_lib
         test_fluid_inference_lib
         assert_api_spec_approvals
+        ;;
+      maccheck)
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        run_mac_test
         ;;
       *)
         print_usage
