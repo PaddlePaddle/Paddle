@@ -365,7 +365,7 @@ paddle.fluid.nets.glu ArgSpec(args=['input', 'dim'], varargs=None, keywords=None
 paddle.fluid.nets.scaled_dot_product_attention ArgSpec(args=['queries', 'keys', 'values', 'num_heads', 'dropout_rate'], varargs=None, keywords=None, defaults=(1, 0.0))
 paddle.fluid.optimizer.SGDOptimizer.__init__ ArgSpec(args=['self', 'learning_rate'], varargs=None, keywords='kwargs', defaults=None)
 paddle.fluid.optimizer.SGDOptimizer.minimize ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None))
-paddle.fluid.optimizer.MomentumOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'momentum', 'use_nesterov'], varargs=None, keywords='kwargs', defaults=(False,))
+paddle.fluid.optimizer.MomentumOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'momentum', 'use_nesterov', 'use_lars', 'lars_coeff', 'lars_weight_decay'], varargs=None, keywords='kwargs', defaults=(False, False, 0.001, 0.0005))
 paddle.fluid.optimizer.MomentumOptimizer.minimize ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None))
 paddle.fluid.optimizer.AdagradOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'epsilon'], varargs=None, keywords='kwargs', defaults=(1e-06,))
 paddle.fluid.optimizer.AdagradOptimizer.minimize ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None))

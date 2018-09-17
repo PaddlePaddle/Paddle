@@ -89,6 +89,15 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Use Nesterov Momentum")
         .SetDefault(false);
+    AddAttr<bool>("use_lars", "(bool, default false)",
+                  "whether to use LARS local lr for each parameter.")
+        .SetDefault(false);
+    AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
+        .SetDefault(0.001);
+    AddAttr<float>("lars_weight_decay",
+                   "(float, default 0.0005) LARS weight decay")
+        .SetDefault(0.0005);
+
     AddComment(R"DOC(
 Momentum Optimizer.
 
@@ -102,6 +111,22 @@ if (use\_nesterov):   \\
 else:   \\
   param = param - learning\_rate * velocity. \\
 $$
+
+You may set "use_lars" to true to use LARS (https://arxiv.org/abs/1708.03888) 
+for some cases to speed up large batch size training. If LARS is enabled, this
+op will run:
+
+$$
+learning\_rate *= lars_coeff * sqrt(sumsq(param)) 
+    / (sqrt(sumsq(gradient))+ lars\_weight\_decay * sqrt(sumsq(param))) \\
+velocity = mu * velocity + 
+    (gradient + lars\_weight\_decay * param) \\
+param = param - learning\_rate * velocity. \\
+$$
+
+Note that we use lars_weight_decay here to decay weights, because if we use
+L2 regularization, weight will be decayed before momentum op, the lars local
+learning rate will be calculated by updated gradient.
 
 )DOC");
   }

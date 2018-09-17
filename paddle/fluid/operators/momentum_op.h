@@ -35,6 +35,9 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
+    bool use_lars = ctx.Attr<bool>("use_lars");
+    T lars_coeff = ctx.Attr<float>("lars_coeff");
+    T lars_weight_decay = ctx.Attr<float>("lars_weight_decay");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
@@ -44,11 +47,24 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     auto g = framework::EigenVector<T>::Flatten(*grad);
     auto* lr = learning_rate->data<T>();
 
-    v_out = v * mu + g;
-    if (use_nesterov) {
-      p_out = p - (g + v_out * mu) * lr[0];
+    if (!use_lars) {
+      v_out = v * mu + g;
+      if (use_nesterov) {
+        p_out = p - (g + v_out * mu) * lr[0];
+      } else {
+        p_out = p - lr[0] * v_out;
+      }
     } else {
-      p_out = p - lr[0] * v_out;
+      // T local_lr = lr[0];
+      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor,
+                             Eigen::DenseIndex>
+          local_lr;
+      auto p_norm = p.square().sum().sqrt();
+      auto g_norm = g.square().sum().sqrt();
+      local_lr =
+          lr[0] * lars_coeff * p_norm / (g_norm + lars_weight_decay * p_norm);
+      v_out = v * mu + (g + lars_weight_decay * p);
+      p_out = p - local_lr + v_out;
     }
   }
 };

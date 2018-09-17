@@ -69,6 +69,10 @@ class Optimizer(object):
         self._accumulators = defaultdict(lambda: dict())
         self.helper = None
         self._LARS_weight_decay = LARS_weight_decay
+        if LARS_weight_decay > 0.0:
+            raise DeprecationWarning(
+                "Argument LARS_weight_decay is deprecated, pass \
+use_lars to momentum layer to enable lars, see documents of momentum layer.")
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
@@ -336,12 +340,27 @@ class MomentumOptimizer(Optimizer):
         & else:
 
         &\quad   param = param - learning\_rate * velocity
+    
+    If use_lars is set to True, the update will use:
+
+    .. math::
+
+        & learning\_rate = learning\_rate * lars\_coeff * \\
+          \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
+
+        & velocity = mu * velocity + (gradient + lars\_weight\_decay * param)
+
+        & param = param - learning\_rate * velocity
 
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
         Can be a float value or a Variable with one float value as data element.
         momentum (float): momentum factor
         use_nesterov (bool): enables Nesterov momentum
+        use_lars (bool): enables LARS for each layer, lars_coeff and \
+                         lars_weight_decay is not used when this is false.
+        lars_coeff (float): defines how much we trust the layer to change its weights.
+        lars_weight_decay (float): weight decay coefficient for decaying using LARS.
 
     Examples:
         .. code-block:: python
@@ -351,7 +370,14 @@ class MomentumOptimizer(Optimizer):
     """
     _velocity_acc_str = "velocity"
 
-    def __init__(self, learning_rate, momentum, use_nesterov=False, **kwargs):
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 use_nesterov=False,
+                 use_lars=False,
+                 lars_coeff=0.001,
+                 lars_weight_decay=0.0005,
+                 **kwargs):
         assert learning_rate is not None
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(
@@ -359,6 +385,9 @@ class MomentumOptimizer(Optimizer):
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
+        self._use_lars = bool(use_lars)
+        self._lars_coeff = float(lars_coeff)
+        self._lars_weight_decay = float(lars_weight_decay)
 
     def _create_accumulators(self, block, parameters):
         assert isinstance(block, framework.Block)
@@ -384,8 +413,13 @@ class MomentumOptimizer(Optimizer):
                 "ParamOut": param_and_grad[0],
                 "VelocityOut": velocity_acc
             },
-            attrs={"mu": self._momentum,
-                   "use_nesterov": self._use_nesterov})
+            attrs={
+                "mu": self._momentum,
+                "use_nesterov": self._use_nesterov,
+                "use_lars": self._use_lars,
+                "lars_coeff": self._lars_coeff,
+                "lars_weight_decay": self._lars_weight_decay
+            })
 
         return momentum_op
 
