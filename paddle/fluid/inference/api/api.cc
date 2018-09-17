@@ -137,8 +137,15 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
   } else {
     *place = kUnknown;
   }
+
+  *size = tensor->numel();
   return res;
 }
+
+template float *ZeroCopyTensor::data<float>(PaddlePlace *place, int *size);
+template int64_t *ZeroCopyTensor::data<int64_t>(PaddlePlace *place, int *size);
+template float *ZeroCopyTensor::mutable_data(PaddlePlace place);
+template int64_t *ZeroCopyTensor::mutable_data(PaddlePlace place);
 
 void *ZeroCopyTensor::FindTensor() {
   PADDLE_ENFORCE(!name_.empty(),

@@ -33,11 +33,7 @@ enum PaddleDType {
   INT64,
 };
 
-enum PaddlePlace {
-  kUnknown = -1,
-  kCPU = 0,
-  kGPU = 1
-};
+enum PaddlePlace { kUnknown = -1, kCPU = 0, kGPU = 1 };
 
 class PaddleBuf {
  public:
@@ -82,30 +78,31 @@ struct PaddleTensor {
 // Tensor without copy, currently only supports AnalysisPredictor.
 class ZeroCopyTensor {
  public:
-  void Reshape(const std::vector<int> &shape);
+  void Reshape(const std::vector<int>& shape);
 
-  // Get the memory in CPU or GPU with specific data type, should Reshape first to tell the data size.
+  // Get the memory in CPU or GPU with specific data type, should Reshape first
+  // to tell the data size.
   // Once can directly call this data to feed the data.
   // This is for write the input tensor.
-  template<typename T>
-  T *mutable_data(PaddlePlace place);
+  template <typename T>
+  T* mutable_data(PaddlePlace place);
   // Get the memory directly, will return the place and memory size by pointer.
   // This is for reading the output tensor.
-  template<typename T>
-  T *data(PaddlePlace *place, int *size);
+  template <typename T>
+  T* data(PaddlePlace* place, int* size);
 
   std::vector<int64_t> shape();
 
  protected:
-  ZeroCopyTensor(void *scope) : scope_{scope} {}
-  void SetName(const std::string &name) { name_ = name; }
-  void *FindTensor();
+  ZeroCopyTensor(void* scope) : scope_{scope} {}
+  void SetName(const std::string& name) { name_ = name; }
+  void* FindTensor();
 
  private:
   std::string name_;
   bool input_or_output_;
   friend class AnalysisPredictor;
-  void *scope_{nullptr};
+  void* scope_{nullptr};
 };
 
 enum class PaddleEngineKind {
@@ -139,9 +136,16 @@ class PaddlePredictor {
                    int batch_size = -1) = 0;
 
   // Zero copy input and output optimization.
-  // Get the input or output tensors, and operate on their memory directly, without copy.
-  virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(const std::string &name) { return nullptr; }
-  virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(const std::string &name) { return nullptr; }
+  // Get the input or output tensors, and operate on their memory directly,
+  // without copy.
+  virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
+      const std::string& name) {
+    return nullptr;
+  }
+  virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
+      const std::string& name) {
+    return nullptr;
+  }
   virtual bool ZeroCopyRun() { return false; }
 
   // Clone a predictor that share the model weights, the Cloned predictor should

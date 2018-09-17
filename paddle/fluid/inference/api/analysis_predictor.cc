@@ -313,9 +313,7 @@ void AnalysisPredictor::PrepareFeedFetch() {
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
     const std::string &name) {
-  if (executor_->scope()->FindVar(name) == nullptr) {
-    return nullptr;
-  }
+  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = true;
@@ -325,9 +323,7 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
 
 std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
     const std::string &name) {
-  if (executor_->scope()->FindVar(name) != 0) {
-    return nullptr;
-  }
+  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
   std::unique_ptr<ZeroCopyTensor> res(
       new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = false;

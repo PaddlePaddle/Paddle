@@ -41,8 +41,10 @@ class AnalysisPredictor : public PaddlePredictor {
            std::vector<PaddleTensor> *output_data,
            int batch_size = -1) override;
 
-  std::unique_ptr<ZeroCopyTensor> GetInputTensor(const std::string &name) override;
-  std::unique_ptr<ZeroCopyTensor> GetOutputTensor(const std::string &name) override;
+  std::unique_ptr<ZeroCopyTensor> GetInputTensor(
+      const std::string &name) override;
+  std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
+      const std::string &name) override;
   bool ZeroCopyRun() override;
 
   void PrepareFeedFetch();
@@ -74,8 +76,9 @@ class AnalysisPredictor : public PaddlePredictor {
           static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
           config_.prog_file, config_.param_file);
     } else {
-      LOG(ERROR)
-          << string::Sprintf("not valid model path '%s' for program path '%s'.", config_.model_dir, config_.param_file);
+      LOG(ERROR) << string::Sprintf(
+          "not valid model path '%s' for program path '%s'.", config_.model_dir,
+          config_.param_file);
       return false;
     }
     return true;
