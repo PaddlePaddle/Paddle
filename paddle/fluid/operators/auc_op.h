@@ -47,14 +47,13 @@ class AucKernel : public framework::OpKernel<T> {
     std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
     std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
 
-    auto *stat_pos_calc = stat_pos_data.data();
-    auto *stat_neg_calc = stat_neg_data.data();
+    auto stat_pos_calc = stat_pos_data.data();
+    auto stat_neg_calc = stat_neg_data.data();
 
     statAuc(label, predict, num_pred_buckets, num_thresholds, slide_steps,
             origin_stat_pos, origin_stat_neg, &stat_pos_calc, &stat_neg_calc);
 
-    calcAuc(ctx, stat_pos_data.data(), stat_neg_data.data(), num_thresholds,
-            auc);
+    calcAuc(ctx, stat_pos_calc, stat_neg_calc, num_thresholds, auc);
   }
 
  private:
@@ -78,9 +77,9 @@ class AucKernel : public framework::OpKernel<T> {
       uint32_t binIdx = static_cast<uint32_t>(
           inference_data[i * inference_width + 1] * num_thresholds);
       if (label_data[i]) {
-        *stat_pos[binIdx] += 1.0;
+        (*stat_pos)[binIdx] += 1.0;
       } else {
-        *stat_neg[binIdx] += 1.0;
+        (*stat_neg)[binIdx] += 1.0;
       }
     }
 
@@ -89,8 +88,8 @@ class AucKernel : public framework::OpKernel<T> {
     // will stat auc unlimited.
     if (slide_steps == 0) {
       for (int slide = 0; slide < num_pred_buckets; ++slide) {
-        origin_stat_pos[slide] += *stat_pos[slide];
-        origin_stat_neg[slide] += *stat_neg[slide];
+        origin_stat_pos[slide] += (*stat_pos)[slide];
+        origin_stat_neg[slide] += (*stat_neg)[slide];
       }
 
       *stat_pos = origin_stat_pos;
@@ -121,8 +120,8 @@ class AucKernel : public framework::OpKernel<T> {
           stat_pos_steps += origin_stat_pos[slide + step * num_pred_buckets];
           stat_neg_steps += origin_stat_neg[slide + step * num_pred_buckets];
         }
-        *stat_pos[slide] += stat_pos_steps;
-        *stat_neg[slide] += stat_neg_steps;
+        (*stat_pos)[slide] += stat_pos_steps;
+        (*stat_neg)[slide] += stat_neg_steps;
       }
     }
   }
