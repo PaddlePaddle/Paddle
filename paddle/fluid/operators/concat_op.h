@@ -109,8 +109,9 @@ class ConcatGradKernel : public framework::OpKernel<T> {
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
           concat_grad_functor;
-      concat_grad_functor(dev_ctx, *out_grad, ins, static_cast<int>(axis),
-                          &outputs);
+      concat_grad_functor(dev_ctx, *out_grad,
+                          ctx.MultiInput<framework::Tensor>("X"),
+                          static_cast<int>(axis), &outputs);
     }
   }
 };
