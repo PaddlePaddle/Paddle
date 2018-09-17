@@ -14,10 +14,9 @@ limitations under the License. */
 
 #pragma once
 #include <functional>
-#include <map>
 #include <memory>  // for shared_ptr
 #include <string>
-#include <vector>
+#include <unordered_map>
 #include "paddle/fluid/platform/macros.h"
 
 // Note: Only support on CPU yet.
@@ -27,21 +26,41 @@ namespace math {
 namespace jitkernel {
 
 class Kernel {
+ public:
+  Kernel() {}
+  virtual ~Kernel() = default;
+
+ private:
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
 class KernelPool {
  public:
-  static KernelPool &Instance();
+  static KernelPool& Instance();
 
   template <typename Ker, typename... ARGS>
   const std::shared_ptr<Ker> Get(ARGS... args);
 
  private:
   KernelPool() = default;
-  // std::unordered_map<std::string, Kernel> kers_;
+  std::unordered_map<std::string, std::shared_ptr<Kernel>> kers_;
 
   DISABLE_COPY_AND_ASSIGN(KernelPool);
+};
+
+template <typename T>
+class LSTMKernel : public Kernel {
+ public:
+  explicit LSTMKernel(int d, const std::string& act_gate,
+                      const std::string& act_cand, const std::string& act_cell);
+
+  void ComputeCtHt(T* gates, const T* ct_1, T* ct);
+  void ComputeCtHt_NoC0H0(T* gates, const T* ct_1, T* ct);
+
+ private:
+  int d_;
+  std::function<void(const int, const T *, T *)> act_gate_, act_cell_,
+      act_cand_;
 };
 
 }  // namespace jitkernel

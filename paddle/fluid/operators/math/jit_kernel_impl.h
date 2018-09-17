@@ -21,12 +21,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 namespace math {
-namespace jitkernel {
-
-template <typename T>
-class LSTMKernel : public Kernel {};
-
-}  // namespace jitkernel
+namespace jitkernel {}  // namespace jitkernel
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
