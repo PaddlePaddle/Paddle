@@ -386,8 +386,22 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_weights_memory_p = handler.AcquireWeightsMemory(
         user_weights_md, to_void_cast<T>(filter_data));
 
-    T* output_data =
+
+    T* output_data = nullptr;
+
+    if (fuse_eltwise) {
+      auto eltwise_param = ctx.Input<Tensor>("EltwiseParameter");
+      auto eltwise_param_data = eltwise_param->data<T>();
+
+      PADDLE_ENFORCE(eltwise_param_data != nullptr, "Provide data if you want MKLDNN conv+elementwise_add fusion");
+      PADDLE_ENFORCE_EQ(output->dims(), eltwise_param->dims(), "Output and elementwise parameter need to have the same dimension sizes");
+
+      output_data = const_cast<T*>(eltwise_param_data);
+    } else {
+      output_data =
         output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+    }
+
     // create reorder primitive if the input format is not the preferred one
     auto src_memory_p =
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
