@@ -181,8 +181,8 @@ class Vector {
     template <typename It>
     void Extend(It begin, It end) {
       MutableCPU();
-      cpu_.reserve((end - begin) + cpu_.size());
-      std::copy(begin, end, cpu_.begin());
+      auto out_it = std::back_inserter<std::vector<T>>(this->cpu_);
+      std::copy(begin, end, out_it);
     }
 
     // resize the vector
