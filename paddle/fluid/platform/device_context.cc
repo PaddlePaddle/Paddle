@@ -207,6 +207,12 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   eigen_device_.reset(new Eigen::GpuDevice(eigen_stream_.get()));
   PADDLE_ENFORCE(dynload::cublasCreate(&cublas_handle_));
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
+
+#if CUDA_VERSION >= 9000
+  PADDLE_ENFORCE(
+      dynload::cublasSetMathMode(cublas_handle_, CUBLAS_TENSOR_OP_MATH));
+#endif
+
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
