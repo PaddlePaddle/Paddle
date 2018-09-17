@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -29,14 +31,14 @@ def max_pool3D_forward_naive(x,
     if global_pool == 1:
         ksize = [D, H, W]
     D_out = (D - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     H_out = (H - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     W_out = (W - ksize[2] + 2 * paddings[2] + strides[2] - 1
-             ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
-                                                   paddings[2]) / strides[2] + 1
+             ) // strides[2] + 1 if ceil_mode else (
+                 W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
     for k in range(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))
@@ -63,14 +65,14 @@ def avg_pool3D_forward_naive(x,
     if global_pool == 1:
         ksize = [D, H, W]
     D_out = (D - ksize[0] + 2 * paddings[0] + strides[0] - 1
-             ) / strides[0] + 1 if ceil_mode else (H - ksize[0] + 2 *
-                                                   paddings[0]) / strides[0] + 1
+             ) // strides[0] + 1 if ceil_mode else (
+                 H - ksize[0] + 2 * paddings[0]) // strides[0] + 1
     H_out = (H - ksize[1] + 2 * paddings[1] + strides[1] - 1
-             ) / strides[1] + 1 if ceil_mode else (W - ksize[1] + 2 *
-                                                   paddings[1]) / strides[1] + 1
+             ) // strides[1] + 1 if ceil_mode else (
+                 W - ksize[1] + 2 * paddings[1]) // strides[1] + 1
     W_out = (W - ksize[2] + 2 * paddings[2] + strides[2] - 1
-             ) / strides[2] + 1 if ceil_mode else (W - ksize[2] + 2 *
-                                                   paddings[2]) / strides[2] + 1
+             ) // strides[2] + 1 if ceil_mode else (
+                 W - ksize[2] + 2 * paddings[2]) // strides[2] + 1
     out = np.zeros((N, C, D_out, H_out, W_out))
     for k in range(D_out):
         d_start = np.max((k * strides[0] - paddings[0], 0))

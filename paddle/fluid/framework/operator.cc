@@ -74,6 +74,12 @@ static DDim GetDims(const Scope& scope, const std::string& name,
   }
 }
 
+static bool VarInited(const Scope& scope, const std::string& name) {
+  Variable* var = scope.FindVar(name);
+  if (var == nullptr) return false;
+  return var->IsInitialized();
+}
+
 static std::string GetDtype(const Scope& scope, const std::string& name) {
   Variable* var = scope.FindVar(name);
   if (var == nullptr) {
@@ -87,8 +93,12 @@ static std::string GetDtype(const Scope& scope, const std::string& name) {
     }
     return DataTypeToString(ToDataType(tensor.type()));
   } else if (var->IsType<SelectedRows>()) {
-    return DataTypeToString(
-        ToDataType(var->Get<SelectedRows>().value().type()));
+    auto tensor = var->Get<SelectedRows>().value();
+    if (UNLIKELY(!tensor.IsInitialized())) {
+      return "uninited";
+    } else {
+      return DataTypeToString(ToDataType(tensor.type()));
+    }
   } else {
     return "";
   }
@@ -197,16 +207,21 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     auto& input = *it;
     ss << input.first << "[";
     for (size_t i = 0; i < input.second.size(); ++i) {
-      ss << input.second[i];
+      auto var_name = input.second[i];
+      ss << var_name;
       if (scope) {
-        int row_size = GetRowSize(*scope, input.second[i]);
-        if (row_size >= 0) {
-          ss << "[row_size=" << row_size << "]";
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          int row_size = GetRowSize(*scope, var_name);
+          if (row_size >= 0) {
+            ss << "[row_size=" << row_size << "]";
+          }
+          std::string dtype = GetDtype(*scope, var_name);
+          ss << ":" << dtype;
+          ss << "[" << GetDims(*scope, var_name, true) << "]";
+          ss << "(" << GetLoD(*scope, var_name) << ")";
         }
-        std::string dtype = GetDtype(*scope, input.second[i]);
-        ss << ":" << dtype;
-        ss << "[" << GetDims(*scope, input.second[i], true) << "]";
-        ss << "(" << GetLoD(*scope, input.second[i]) << ")";
       }
       if (i != input.second.size() - 1) {
         ss << ", ";
@@ -223,14 +238,19 @@ std::string OperatorBase::DebugStringEx(const Scope* scope) const {
     auto& output = *it;
     ss << output.first << "[";
     for (size_t i = 0; i < output.second.size(); ++i) {
-      ss << output.second[i];
+      auto var_name = output.second[i];
+      ss << var_name;
       if (scope) {
-        int row_size = GetRowSize(*scope, output.second[i]);
-        if (row_size >= 0) {
-          ss << "[row_size=" << row_size << "]";
+        if (!VarInited(*scope, var_name)) {
+          ss << "[uninited]";
+        } else {
+          int row_size = GetRowSize(*scope, output.second[i]);
+          if (row_size >= 0) {
+            ss << "[row_size=" << row_size << "]";
+          }
+          ss << "[" << GetDims(*scope, var_name, true) << "]";
+          ss << "(" << GetLoD(*scope, var_name) << ")";
         }
-        ss << "[" << GetDims(*scope, output.second[i], true) << "]";
-        ss << "(" << GetLoD(*scope, output.second[i]) << ")";
       }
       if (i != output.second.size() - 1) {
         ss << ", ";
@@ -444,35 +464,35 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
-    if (!op_.HasInputs(name)) {
+    // has only one input
+    const auto& ins = op_.Inputs();
+    auto it = ins.find(name);
+    if (it == ins.end()) {
       return false;
     }
-    auto& ins = Inputs(name);
-    size_t length = ins.size();
-    if (length == 0) {
+    const auto& in = it->second;
+    if (in.size() == 0 || in[0] == kEmptyVarName) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
+    PADDLE_ENFORCE_EQ(in.size(), 1UL,
                       "Input %s should not have more than one inputs", name);
-    auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    return scope_.FindVar(in[0]) != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
-    if (!op_.HasOutputs(name)) {
+    // has only one output
+    const auto& outs = op_.Outputs();
+    auto it = outs.find(name);
+    if (it == outs.end()) {
       return false;
     }
-    auto& outs = Outputs(name);
-    size_t length = outs.size();
-    if (length == 0) {
+    const auto& out = it->second;
+    if (out.size() == 0 || out[0] == kEmptyVarName) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output %s should not have more than one inputs", name);
-    auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    PADDLE_ENFORCE_EQ(out.size(), 1UL,
+                      "Output %s should not have more than one outputs", name);
+    return scope_.FindVar(out[0]) != nullptr;
   }
 
   bool HasInputs(const std::string& name) const override {

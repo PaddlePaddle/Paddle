@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 
@@ -21,14 +23,17 @@ from op_test import OpTest
 # Correct: General.
 class TestSqueezeOp(OpTest):
     def setUp(self):
-        self.op_type = "squeeze"
+        self.op_type = "squeeze2"
         self.init_test_case()
         self.inputs = {"X": np.random.random(self.ori_shape).astype("float32")}
         self.init_attrs()
-        self.outputs = {"Out": self.inputs["X"].reshape(self.new_shape)}
+        self.outputs = {
+            "Out": self.inputs["X"].reshape(self.new_shape),
+            "XShape": np.random.random(self.ori_shape).astype("float32")
+        }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
         self.check_grad(["X"], "Out")
@@ -39,7 +44,7 @@ class TestSqueezeOp(OpTest):
         self.new_shape = (3, 5)
 
     def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": False}
+        self.attrs = {"axes": self.axes}
 
 
 # Correct: There is mins axis.
@@ -64,50 +69,6 @@ class TestSqueezeOp3(TestSqueezeOp):
         self.ori_shape = (3, 1, 5, 1, 4, 1)
         self.axes = (1, -1)
         self.new_shape = (3, 5, 1, 4)
-
-
-# Correct: Inplace.
-class TestSqueezeOpInplace1(TestSqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (1, 3, 1, 5)
-        self.axes = (0, 2)
-        self.new_shape = (3, 5)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
-
-
-# Correct: Inplace. There is mins axis.
-class TestSqueezeOpInplace2(TestSqueezeOp):
-    def inti_test_case(self):
-        self.ori_shape = (1, 3, 1, 5)
-        self.axes = (0, -2)
-        self.new_shape = (3, 5)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
-
-
-# Correct: Inplace. No axes input.
-class TestSqueezeOpInplace3(TestSqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (1, 3, 1, 5)
-        self.axes = ()
-        self.new_shape = (3, 5)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
-
-
-# Correct: Inpalce. Just part of axes be squeezed. 
-class TestSqueezeOpInplace4(TestSqueezeOp):
-    def init_test_case(self):
-        self.ori_shape = (3, 1, 5, 1, 4, 1)
-        self.axes = (1, -1)
-        self.new_shape = (3, 5, 1, 4)
-
-    def init_attrs(self):
-        self.attrs = {"axes": self.axes, "inplace": True}
 
 
 if __name__ == "__main__":

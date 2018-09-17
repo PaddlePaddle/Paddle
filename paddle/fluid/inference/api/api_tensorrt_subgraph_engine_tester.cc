@@ -23,7 +23,7 @@ namespace paddle {
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 void CompareTensorRTWithFluid(bool enable_tensorrt) {
-  FLAGS_inference_analysis_enable_tensorrt_subgraph_engine = enable_tensorrt;
+  FLAGS_IA_enable_tensorrt_subgraph_engine = enable_tensorrt;
 
   //# 1. Create PaddlePredictor with a config.
   NativeConfig config0;
@@ -37,6 +37,7 @@ void CompareTensorRTWithFluid(bool enable_tensorrt) {
   config1.use_gpu = true;
   config1.fraction_of_gpu_memory = 0.3;
   config1.device = 0;
+  config1.max_batch_size = 10;
 
   auto predictor0 =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);

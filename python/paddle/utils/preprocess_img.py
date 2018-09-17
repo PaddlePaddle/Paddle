@@ -17,9 +17,9 @@ import os
 import random
 import numpy as np
 import PIL.Image as Image
-import StringIO
-import preprocess_util
-from image_util import crop_img
+from six.moves import cStringIO as StringIO
+from . import preprocess_util
+from .image_util import crop_img
 
 
 def resize_image(img, target_size):
@@ -52,7 +52,7 @@ class DiskImage:
 
     def read_image(self):
         if self.img is None:
-            print "reading: " + self.path
+            print("reading: " + self.path)
             image = resize_image(Image.open(self.path), self.target_size)
             self.img = image
 
@@ -69,7 +69,7 @@ class DiskImage:
         convert the image into the paddle batch format.
         """
         self.read_image()
-        output = StringIO.StringIO()
+        output = StringIO()
         self.img.save(output, "jpeg")
         contents = output.getvalue()
         return contents
@@ -127,7 +127,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
             image_path = items[0]
             label_name = items[1]
             if not label_name in label_set:
-                label_set[label_name] = len(label_set.keys())
+                label_set[label_name] = len(list(label_set.keys()))
             img = DiskImage(path=image_path, target_size=self.target_size)
             label = preprocess_util.Lablel(
                 label=label_set[label_name], name=label_name)
@@ -144,7 +144,7 @@ class ImageClassificationDatasetCreater(preprocess_util.DatasetCreater):
             return create_dataset_from_list(path)
         label_set = preprocess_util.get_label_set_from_dir(path)
         data = []
-        for l_name in label_set.keys():
+        for l_name in list(label_set.keys()):
             image_paths = preprocess_util.list_images(
                 os.path.join(path, l_name))
             for p in image_paths:

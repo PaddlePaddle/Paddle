@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/threadpool.h"
 #include "paddle/fluid/operators/distributed/request_handler.h"
 #include "paddle/fluid/operators/distributed/rpc_server.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -48,6 +49,7 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunSyncLoop(framework::Executor* executor,
                    framework::ProgramDesc* program,
                    framework::Scope* recv_scope,
+                   platform::DeviceContext* dev_ctx,
                    const std::vector<int>& prefetch_block_id_list,
                    const int checkpoint_point_block_id) const;
 
@@ -64,6 +66,13 @@ class ListenAndServOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override;
 
+  void ResetReceivedVars(framework::Scope* recv_scope,
+                         platform::DeviceContext* dev_ctx,
+                         bool reset_all = false) const;
+
+  void CacheVarsType(const std::vector<std::string>& varnames,
+                     const framework::Scope& scope) const;
+
  protected:
   mutable std::shared_ptr<distributed::RPCServer> rpc_service_;
   mutable std::shared_ptr<distributed::RequestHandler> request_send_handler_;
@@ -74,6 +83,8 @@ class ListenAndServOp : public framework::OperatorBase {
       request_checkpoint_handler_;
 
   mutable std::shared_ptr<std::thread> server_thread_;
+  mutable std::vector<std::string> sparse_vars_;
+  mutable std::vector<std::string> dense_vars_;
 };
 
 class SignalHandler {

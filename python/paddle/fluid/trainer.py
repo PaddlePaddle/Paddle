@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import contextlib
 import os
 import errno
 import shutil
+import six
 import time
 
 from . import core
@@ -282,11 +285,12 @@ class Trainer(object):
             self._load_checkpoint()
 
         if param_path and os.path.isdir(param_path):
-            # load params from param_path into scope
-            io.load_persistables(
-                executor=exe,
-                dirname=param_path,
-                main_program=self.startup_program)
+            with self._prog_and_scope_guard():
+                # load params from param_path into scope
+                io.load_persistables(
+                    executor=exe,
+                    dirname=param_path,
+                    main_program=self.startup_program)
 
     def _transpile_nccl2_dist(self):
         # PADDLE_TRAINER_IPS
@@ -426,6 +430,28 @@ class Trainer(object):
         with self._prog_and_scope_guard():
             exe = executor.Executor(self.place)
             io.save_persistables(exe, dirname=param_path)
+
+    def save_inference_model(self, param_path, feeded_var_names,
+                             target_var_indexes):
+        """
+        Save model for cpp inference into :code:`param_path`.
+
+        Args:
+            param_path(str): The path to save parameters.
+            feeded_var_names(list(str)): The name of the vars that you
+                need to feed in before run program.
+            target_var_indexes(list(int)): the index of target var that
+                you need to return in trainer.train_func.
+        Returns:
+            None
+        """
+        with self._prog_and_scope_guard():
+            exe = executor.Executor(self.place)
+            target_vars = [
+                self.train_func_outputs[index] for index in target_var_indexes
+            ]
+            io.save_inference_model(param_path, feeded_var_names, target_vars,
+                                    exe)
 
     @contextlib.contextmanager
     def _prog_and_scope_guard(self):
@@ -618,7 +644,7 @@ def build_feed_var_list(program, feed_order):
                 "The values of 'feed_order' should be a permutation of [0, len(feed_order))"
             )
         sorted_pair_list = sorted(
-            list(feed_order.items()), key=lambda item: item[1])
+            six.iteritems(feed_order), key=lambda item: item[1])
         feed_var_list = [
             program.global_block().var(pair[0]) for pair in sorted_pair_list
         ]
@@ -1036,7 +1062,7 @@ def _save_trainer_args(dirname, trainer_id, trainer_args):
 
     cur_dir = _get_trainer_dir(dirname, trainer_id)
 
-    for name, value in list(trainer_args.items()):
+    for name, value in six.iteritems(trainer_args):
         args_file = os.path.join(cur_dir, name)
         with open(args_file, 'w') as f:
             f.write(str(value))
