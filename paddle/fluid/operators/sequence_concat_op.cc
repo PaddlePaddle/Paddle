@@ -38,9 +38,13 @@ class SeqConcatShapeInferer : public framework::InferShapeBase {
  public:
   void operator()(framework::InferShapeContext *context) const override {
     try {
-      PADDLE_ENFORCE(context->HasInputs("X"));
-      PADDLE_ENFORCE(context->HasOutput("Out"));
+      PADDLE_ENFORCE(context->HasInputs("X"),
+                     "Input(X) of Sequence Concat Op should not be null.");
+      PADDLE_ENFORCE(context->HasOutput("Out"),
+                     "Output(Out) of Sequence Concat Op should not be null.");
 
+      PADDLE_ENFORCE_GT(context->HasInputs("X"), 1,
+                        "The number of input sequences is at least two.");
       auto x_dims = context->GetInputsDim("X");
       int64_t batch_size = 0;
       int64_t feature_size = 0;
