@@ -2,135 +2,117 @@
 如何贡献文档
 #############
 
-PaddlePaddle的文档包括中英文两个部分。文档都是通过 ``cmake`` 驱动 ``sphinx`` 编译生成的，PaddlePaddle.org工具可以帮助我们实现这一编译过程，并提供更好的预览效果。
+PaddlePaddle非常欢迎您贡献文档。如果您撰写/翻译的文档满足我们的要求，您的文档将会呈现在paddlapaddle.org网站和Github上供PaddlePaddle的用户阅读。
 
-如何构建文档
-============
+Paddle的文档主要分为以下几个模块：
 
-PaddlePaddle的文档构建有两种方式，分别为使用paddlepaddle.org工具和不使用paddlepaddle.org工具，两种方式都有各自的优点，前者方便预览，后者方便开发者进行调试。这两种方式中又分别有使用docker和不使用docker的两种构建方法。
+- 新手入门：包括安装说明、深度学习基础知识、学习资料等，旨在帮助用户快速安装和入门；
 
-我们建议使用PaddlePaddle.org工具来构建文档。
+- 使用指南：包括数据准备、网络配置、训练、Debug、预测部署和模型库文档，旨在为用户提供PaddlePaddle基本用法讲解；
 
-使用PaddlePaddle.org工具
-------------------------
-这个是目前推荐的使用方法。除了可以自动编译文档，还可以直接在网页中预览文档，需要注意的是，采用后续说明的其它方式虽然也可以预览文档，但是文档的样式与官网文档是不一致的，使用PaddlePaddle.org工具进行编译才能产生与官网文档样式一致的预览效果。
+- 进阶使用：包括服务器端和移动端部署、如何贡献代码/文档、如何性能调优等，旨在满足开发者的需求；
 
-PaddlePaddle.org工具可以配合Docker使用，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。安装好Docker之后即可用以下命令启动工具
+我们的文档支持 `reStructured Text <http://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html>`_ 和 `Markdown <https://guides.github.com/features/mastering-markdown/>`_ (GitHub风格)格式的内容贡献。
+
+撰写文档完成后，您可以使用预览工具查看文档在官网显示的效果，以验证您的文档是否能够在官网正确显示。
+
+
+如何使用预览工具
+=================
+
+1. Clone你希望更新或测试的相关仓库：
+-------------------------------------
+
+*如果您已经拥有了这些存储库的本地副本，请跳过此步骤*
+
+可拉取的存储库有：
 
 ..  code-block:: bash
 
-    mkdir paddlepaddle # Create paddlepaddle working directory
-    cd paddlepaddle
-
-    # Clone the content repositories
     git clone https://github.com/PaddlePaddle/Paddle.git
     git clone https://github.com/PaddlePaddle/book.git
     git clone https://github.com/PaddlePaddle/models.git
     git clone https://github.com/PaddlePaddle/Mobile.git
 
-    # Please specify the working directory through -v
-    docker run -it -p 8000:8000 -v `pwd`:/var/content paddlepaddle/paddlepaddle.org:latest
+您可以将这些本地副本放在电脑的任意目录下，稍后我们会在启动 PaddlePaddle.org时指定这些仓库的位置。
 
-注意: PaddlePaddle.org 会在 -v (volume) 指定的内容存储库运行命令
-之后再用网页连到 http://localhost:8000 就可以在网页上生成需要的文档
-编译后的文件将被存储在工作目录 <paddlepaddle working directory>/.ppo_workspace/content。
+2. 在新目录下拉取 PaddlePaddle.org 并安装其依赖项
+--------------------------------------------------
 
-如果不想使用Docker，你还可以通过运行Django框架直接激活工具的服务器。使用下面的命令来运行它。
+在此之前，请确认您的操作系统安装了python的依赖项
+
+以ubuntu系统为例，运行：
 
 ..  code-block:: bash
 
-    mkdir paddlepaddle # Create paddlepaddle working directory
-    cd paddlepaddle
+    sudo apt-get update && apt-get install -y python-dev build-essential
 
-    # Clone the content repositories and PaddlePaddle.org
-    git clone https://github.com/PaddlePaddle/Paddle.git
-    git clone https://github.com/PaddlePaddle/book.git
-    git clone https://github.com/PaddlePaddle/models.git
-    git clone https://github.com/PaddlePaddle/Mobile.git
+
+然后：
+
+..  code-block:: bash
+
     git clone https://github.com/PaddlePaddle/PaddlePaddle.org.git
-
-    # Please specify the PaddlePaddle working directory. In the current setting, it should be pwd
-    export CONTENT_DIR=<path_to_paddlepaddle_working_directory>
-    export ENV=''
-    cd PaddlePaddle.org/portal/
+    cd PaddlePaddle.org/portal
+    # To install in a virtual environment.
+    # virtualenv venv; source venv/bin/activate
     pip install -r requirements.txt
-    python manage.py runserver
 
-工具服务器将读取环境变量 CONTENT_DIR 搜索代码库。请指定的PaddlePaddle工作目录给环境变量 CONTENT_DIR。
-之后再用网页连到 http://localhost:8000 就可以在网页上生成需要的文档。
-编译后的文件将被存储在工作目录 <paddlepaddle working directory>/.ppo_workspace/content。
 
-想了解更多PaddlePaddle.org工具的详细信息，可以 `点击这里 <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/README.cn.md>`_ 。
+**可选项**：如果你希望实现中英网站转换，以改善PaddlePaddle.org，请安装 `GNU gettext <https://www.gnu.org/software/gettext/>`_
 
-不使用PaddlePaddle.org工具
---------------------------
+3. 在本地运行 PaddlePaddle.org
+--------------------------------------------------
 
-使用Docker构建PaddlePaddle的文档，需要在系统里先安装好Docker工具包。Docker安装请参考 `Docker的官网 <https://docs.docker.com/>`_ 。该方法与 `从源码编译PaddlePaddle <http://paddlepaddle.org/docs/develop/documentation/zh/build_and_install/build_from_source_cn.html>`_ 相似，通过从源码中构建可用于编译PaddlePaddle文档的Docker镜像并运行，在进入Docker容器后使用源码中的脚本构建PaddlePaddle文档，具体步骤如下：
+添加您希望加载和构建内容的目录列表(选项包括： ``--paddle``， ``--book``， ``--models``， ``--mobile``)
 
-.. code-block:: bash
+运行：
 
-   git clone https://github.com/PaddlePaddle/Paddle.git
-   cd Paddle
+..  code-block:: bash
 
-   # 从源码中构建可用于编译PaddlePaddle文档的Docker镜像
-   docker build -t paddle:dev .
-   docker run -it -v $PWD:/paddle -e "WITH_GPU=OFF" -e "WITH_TESTING=OFF" -e "WITH_DOC=ON" paddle:dev /bin/bash
+    ./runserver --paddle <path_to_paddle_dir> --book <path_to_book_dir>
 
-   # 进入Docker容器后使用build.sh脚本构建PaddlePaddle文档
-   bash -x /paddle/paddle/scripts/docker/build.sh
 
-注：上述命令把当前目录（源码根目录）映射为 container 里的 :code:`/paddle` 目录。
+**注意：**  `<pathe_to_paddle_dir>` 为第一步中paddle副本在您本机的存储地址，并且对于 --paddle目录，您可以指向特定的API版本目录（例如： `<path to Paddle>/doc/fluid` or `<path to Paddle>v2` )
 
-编译完成后，会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 、 ``api/en/html`` 共三个子目录，分别进入这些目录下，执行以下命令：
+然后：
 
-.. code-block:: bash
+打开浏览器并导航到 `http://localhost:8000 <http://localhost:8000>`_ 。
 
-   python -m SimpleHTTPServer 8088
-
-在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面。
-
-如果不想使用Docker，也可以使用以下命令直接构建PaddlePaddle文档，即
-
-.. code-block:: bash
-
-   git clone https://github.com/PaddlePaddle/Paddle.git
-   cd Paddle
-   mkdir -p build
-   cd build
-   cmake .. -DCMAKE_BUILD_TYPE=Release -DWITH_GPU=OFF -DWITH_MKL=OFF -DWITH_DOC=ON
-
-   # 如果只需要构建使用文档，则执行以下命令
-   make -j $processors paddle_docs
-
-   # 如果只需要构建API，则执行以下命令
-   make -j $processors paddle_apis
-
-其中$processors代表启动和CPU核一样多的进程来并行编译，可以根据本机的CPU核数设置相应的值。
-
-编译完成后，同样会产生 ``doc/v2`` 和 ``doc/fluid`` 两个目录，如果选择构建文档则会在这两个目录下分别都生成 ``cn/html/`` 、 ``en/html`` 两个子目录，选择构建API则会在这两个目录下分别生成 ``api/en/html`` 目录，分别进入这些子目录下，执行以下命令：
-
-.. code-block:: bash
-
-   python -m SimpleHTTPServer 8088
-
-在浏览器中输入 http://localhost:8088 就可以看到编译生成的 ``v2`` 和 ``fluid`` 两种版本的中/英文的文档页面和英文的API页面。下图为生成的 ``v2`` 英文文档首页示例。注意，示例中由于使用了sphinx的原始主题，所以页面的风格与官网并不一致，但这并不影响开发者进行调试。
-
-..  image:: src/doc_en.png
-    :align: center
-    :scale: 60 %
+*网站可能需要几秒钟才能成功加载，因为构建需要一定的时间。*
 
 如何书写文档
 ============
 
-PaddlePaddle文档使用 `sphinx`_ 自动生成，用户可以参考sphinx教程进行书写。
+PaddlePaddle文档使用 `sphinx <http://www.sphinx-doc.org/en/1.4.8/>`_ 自动生成，用户可以参考sphinx教程进行书写。
 
-如何更新www.paddlepaddle.org
-============================
+贡献新的内容
+============
 
-更新的文档以PR的形式提交到github中，提交方式参见 `如何贡献文档 <http://www.paddlepaddle.org/docs/develop/documentation/zh/dev/write_docs_cn.html>`_ 。
-目前PaddlePaddle的develop分支的文档是自动触发更新的，用户可以分别查看最新的 `中文文档 <http://www.paddlepaddle.org/docs/develop/documentation/zh/getstarted/index_cn.html>`_ 和
-`英文文档 <http://www.paddlepaddle.org/docs/develop/documentation/en/getstarted/index_en.html>`_ 。
+所有存储库都支持 `Markdown <https://guides.github.com/features/mastering-markdown/>`_ (GitHub风格)格式的内容贡献，同时也支持 `reStructured Text <http://www.sphinx-doc.org/en/master/usage/restructuredtext/basics.html>`_ 格式。
 
+在完成安装步骤后，您还需要完成下列操作：
 
-..  _cmake: https://cmake.org/
-..  _sphinx: http://www.sphinx-doc.org/en/1.4.8/
+- 在你开始写作之前，我们建议你回顾一下这些关于贡献内容的指南。
+- 创建一个新的 `.md` 文件（在 paddle repo 中可以创建 `.rst` 文件）或者在您当前操作的仓库中修改已存在的文章。
+- 查看浏览器中的更改，请单击右上角的Refresh Content。
+- 将修改的文档添加到菜单或更改其在菜单上的位置，请单击页面左侧菜单顶部的Edit menu按钮，打开菜单编辑器。
+
+贡献或修改Python API
+=======================
+
+在build了新的pybind目标并测试了新的Python API之后，您可以继续测试文档字符串和注释的显示方式:
+
+- 我们建议回顾这些API文档贡献指南。
+- 确保构建的Python目录(包含 Paddle )在您运行 ``./runserver`` 的Python路径中可用。
+- 在要更新的特定“API”页面上，单击右上角的Refresh Content。
+- 将修改的API添加到菜单或更改其在菜单上的位置，请单击页面左侧菜单顶部的Edit menu按钮，打开菜单编辑器。
+
+帮助改进预览工具
+=======================
+
+我们非常欢迎您对平台和支持内容的各个方面做出贡献，以便更好地呈现这些内容。您可以Fork或Clone这个存储库，或者提出问题并提供反馈，以及在issues上提交bug信息。详细内容请参考 `开发指南 <https://github.com/PaddlePaddle/PaddlePaddle.org/blob/develop/DEVELOPING.md>`_ 。
+
+版权和许可
+=======================
+PaddlePaddle.org在Apache-2.0的许可下提供
