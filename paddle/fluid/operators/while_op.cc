@@ -60,10 +60,7 @@ class WhileOp : public framework::OperatorBase {
 
     bool is_test = Attr<bool>("is_test");
     auto ctx = executor.Prepare(*program, block->ID());
-    int i = 0;
     while (cond.data<bool>()[0]) {
-      VLOG(3) << "Start forward at time_step " << i;
-      i++;
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
       executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
@@ -141,6 +138,10 @@ class WhileGradOp : public framework::OperatorBase {
         auto inside_og_name = inside_og_names[i];
         VLOG(8) << "Linking outside " << outside_og_name << " --> inside "
                 << inside_og_name;
+        if (scope.FindVar(outside_og_name) == nullptr) {
+          continue;
+        }
+
         auto &og_outside =
             detail::Ref(scope.FindVar(outside_og_name),
                         "Cannot find Outside Gradient %s", outside_og_name);
@@ -199,6 +200,11 @@ class WhileGradOp : public framework::OperatorBase {
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
           PADDLE_ENFORCE_NOT_NULL(var, "Can not find var %s", inside_grad_name);
+          PADDLE_ENFORCE(var->IsType<framework::LoDTensorArray>() ||
+                             var->IsType<LoDTensor>(),
+                         "Currently the type of var only can be LoDTensorArray "
+                         "or LoDTensor.");
+
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
@@ -214,19 +220,6 @@ class WhileGradOp : public framework::OperatorBase {
             scope.FindVar(var_name)
                 ->GetMutable<framework::LoDTensor>()
                 ->set_lod(inside_tensor.lod());
-          } else if (var->IsType<framework::LoDTensorArray>()) {
-            auto new_inside_name = cur_scope.Rename(inside_grad_name);
-            auto sum_op = framework::OpRegistry::CreateOp(
-                "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-                {{"Out", {pg_names[param_id]}}},
-                framework::AttributeMap{{"use_mkldnn", {false}}});
-            VLOG(5) << "Sum " << pg_names[param_id] << ", " << new_inside_name;
-            sum_op->Run(cur_scope, dev_place);
-            cur_scope.Rename(new_inside_name, inside_grad_name);
-            continue;
-          } else {
-            PADDLE_THROW(
-                "Currently only support LoDTensor and LoDTensorArray.");
           }
         }
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
@@ -234,7 +227,6 @@ class WhileGradOp : public framework::OperatorBase {
             "sum", {{"X", {pg_names[param_id], new_inside_name}}},
             {{"Out", {pg_names[param_id]}}},
             framework::AttributeMap{{"use_mkldnn", {false}}});
-        VLOG(5) << "Sum " << pg_names[param_id] << ", " << new_inside_name;
         sum_op->Run(cur_scope, dev_place);
         cur_scope.Rename(new_inside_name, inside_grad_name);
       }
@@ -266,7 +258,6 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     for (const auto *op : grad_block->AllOps()) {
       for (auto &oname : op->OutputArgumentNames()) {
         inner_op_outputs.insert(oname);
-        VLOG(5) << "WhileGrad Op: inner_op_output: " << oname;
       }
     }
     auto igs = InputGrad(kX, /*do not drop empty gradient*/ false);
@@ -284,11 +275,9 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
     block_ins.reserve(Input(kX).size() + Output(kOutputs).size());
     for (auto &p : Input(kX)) {
       block_ins.insert(p);
-      VLOG(5) << "WhileGrad Op: input: " << p;
     }
     for (auto &o : Output(kOutputs)) {
       block_ins.insert(o);
-      VLOG(5) << "WhileGrad Op: output: " << o;
     }
     std::unordered_set<std::string> output_grads;
     for (const auto *op : grad_block->AllOps()) {
@@ -303,7 +292,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
              parent_block->FindVarRecursive(input_name) != nullptr)) {
           continue;
         }
-        VLOG(6) << "original_output_grad" << input_name;
+
         output_grads.insert(input_name);
       }
       for (auto &output_name : op->OutputArgumentNames()) {
