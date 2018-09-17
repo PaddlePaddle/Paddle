@@ -20,7 +20,7 @@
 #pragma once
 
 #include <string>
-#include "paddle/fluid/inference/analysis/pass.h"
+#include "paddle/fluid/inference/analysis/analysis_pass.h"
 #include "paddle/fluid/inference/analysis/subgraph_splitter.h"
 
 namespace paddle {
@@ -48,7 +48,7 @@ class TensorRTSubgraphNodeMarkPass : public DataFlowGraphPass {
     return "tensorrt sub-graph mark pass";
   }
 
-  Pass* CreateGraphvizDebugerPass() const override;
+  AnalysisPass* CreateGraphvizDebugerPass() const override;
   bool Finalize() override;
 
  private:

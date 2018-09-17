@@ -1588,6 +1588,9 @@ class Program(object):
         """
         return self.desc
 
+    def _version(self):
+        return self.desc._version()
+
     def clone(self, for_test=False):
         """
         Create a new, duplicated program.

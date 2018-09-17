@@ -16,6 +16,13 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 package paddle.framework.proto;
 
+// Any incompatible changes to ProgramDesc and its dependencies should
+// raise the version defined version.h.
+//
+// Serailization and Deserialization codes should be modified in a way
+// that supports old versions following the version and compatibility policy.
+message Version { optional int64 version = 1 [ default = 0 ]; }
+
 enum AttrType {
   INT = 0;
   FLOAT = 1;
@@ -180,4 +187,8 @@ message BlockDesc {
 // for more details.
 // TODO(panyx0718): A model can have multiple programs. Need a
 // way to distinguish them. Maybe ID or name?
-message ProgramDesc { repeated BlockDesc blocks = 1; }
+message ProgramDesc {
+  repeated BlockDesc blocks = 1;
+
+  optional Version version = 2;
+}

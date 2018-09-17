@@ -313,7 +313,7 @@ class DistributeTranspiler(object):
             input_deps = list(grad_name_to_send_dummy_out.values())
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={"X": input_deps},
+                inputs={"X": list(input_deps)},
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -397,7 +397,7 @@ class DistributeTranspiler(object):
                                                         pserver_endpoints)
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
-    def get_trainer_program(self):
+    def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program.
 
@@ -409,6 +409,9 @@ class DistributeTranspiler(object):
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
 
+        if wait_port:
+            wait_server_ready(self.pserver_endpoints)
+
         return self.origin_program
 
     def _get_trainer_startup_program(self, recv_vars, eplist):
@@ -417,7 +420,7 @@ class DistributeTranspiler(object):
 
         Args:
             recv_vars (list): Variable list to recv for current trainer_id
-            eplist (list): A list of strings indicating 
+            eplist (list): A list of strings indicating
 
         Returns:
             Program: trainer side startup program.
@@ -715,7 +718,7 @@ in a single call.")
 
         Args:
             endpoint (str): current pserver endpoint.
-        
+
         Returns:
             tuple: (main_program, startup_program), of type "Program"
         """
@@ -738,7 +741,7 @@ in a single call.")
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing 
+                when initalizing
 
         Returns:
             Program: parameter server side startup program.

@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -530,6 +531,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
+  m.def("_is_program_version_supported", IsProgramVersionSupported);
+
   BindProgramDesc(&m);
   BindBlockDesc(&m);
   BindVarDsec(&m);
@@ -680,7 +683,6 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("_bcast_params", &ParallelExecutor::BCastParamsToDevices)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

@@ -114,10 +114,10 @@ def box_coder(all_anchors, bbox_deltas, variances):
     #anchor_loc: width, height, center_x, center_y
     anchor_loc = np.zeros_like(bbox_deltas, dtype=np.float32)
 
-    anchor_loc[:, 0] = all_anchors[:, 2] - all_anchors[:, 0]
-    anchor_loc[:, 1] = all_anchors[:, 3] - all_anchors[:, 1]
-    anchor_loc[:, 2] = (all_anchors[:, 2] + all_anchors[:, 0]) / 2
-    anchor_loc[:, 3] = (all_anchors[:, 3] + all_anchors[:, 1]) / 2
+    anchor_loc[:, 0] = all_anchors[:, 2] - all_anchors[:, 0] + 1
+    anchor_loc[:, 1] = all_anchors[:, 3] - all_anchors[:, 1] + 1
+    anchor_loc[:, 2] = all_anchors[:, 0] + 0.5 * anchor_loc[:, 0]
+    anchor_loc[:, 3] = all_anchors[:, 1] + 0.5 * anchor_loc[:, 1]
 
     #predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height 
     pred_bbox = np.zeros_like(bbox_deltas, dtype=np.float32)
@@ -127,23 +127,29 @@ def box_coder(all_anchors, bbox_deltas, variances):
                 i, 0] + anchor_loc[i, 2]
             pred_bbox[i, 1] = variances[i, 1] * bbox_deltas[i, 1] * anchor_loc[
                 i, 1] + anchor_loc[i, 3]
-            pred_bbox[i, 2] = math.exp(variances[i, 2] *
-                                       bbox_deltas[i, 2]) * anchor_loc[i, 0]
-            pred_bbox[i, 3] = math.exp(variances[i, 3] *
-                                       bbox_deltas[i, 3]) * anchor_loc[i, 1]
+            pred_bbox[i, 2] = math.exp(
+                min(variances[i, 2] * bbox_deltas[i, 2], math.log(
+                    1000 / 16.0))) * anchor_loc[i, 0]
+            pred_bbox[i, 3] = math.exp(
+                min(variances[i, 3] * bbox_deltas[i, 3], math.log(
+                    1000 / 16.0))) * anchor_loc[i, 1]
     else:
         for i in range(bbox_deltas.shape[0]):
             pred_bbox[i, 0] = bbox_deltas[i, 0] * anchor_loc[i, 0] + anchor_loc[
                 i, 2]
             pred_bbox[i, 1] = bbox_deltas[i, 1] * anchor_loc[i, 1] + anchor_loc[
                 i, 3]
-            pred_bbox[i, 2] = math.exp(bbox_deltas[i, 2]) * anchor_loc[i, 0]
-            pred_bbox[i, 3] = math.exp(bbox_deltas[i, 3]) * anchor_loc[i, 1]
+            pred_bbox[i, 2] = math.exp(
+                min(bbox_deltas[i, 2], math.log(1000 / 16.0))) * anchor_loc[i,
+                                                                            0]
+            pred_bbox[i, 3] = math.exp(
+                min(bbox_deltas[i, 3], math.log(1000 / 16.0))) * anchor_loc[i,
+                                                                            1]
 
     proposals[:, 0] = pred_bbox[:, 0] - pred_bbox[:, 2] / 2
     proposals[:, 1] = pred_bbox[:, 1] - pred_bbox[:, 3] / 2
-    proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2
-    proposals[:, 3] = pred_bbox[:, 1] + pred_bbox[:, 3] / 2
+    proposals[:, 2] = pred_bbox[:, 0] + pred_bbox[:, 2] / 2 - 1
+    proposals[:, 3] = pred_bbox[:, 1] + pred_bbox[:, 3] / 2 - 1
 
     return proposals
 
@@ -170,13 +176,16 @@ def filter_boxes(boxes, min_size, im_info):
     """Only keep boxes with both sides >= min_size and center within the image.
     """
     # Scale min_size to match image scale
-    min_size *= im_info[2]
+    im_scale = im_info[2]
+    min_size = max(min_size, 1.0)
     ws = boxes[:, 2] - boxes[:, 0] + 1
     hs = boxes[:, 3] - boxes[:, 1] + 1
+    ws_orig_scale = (boxes[:, 2] - boxes[:, 0]) / im_scale + 1
+    hs_orig_scale = (boxes[:, 3] - boxes[:, 1]) / im_scale + 1
     x_ctr = boxes[:, 0] + ws / 2.
     y_ctr = boxes[:, 1] + hs / 2.
-    keep = np.where((ws >= min_size) & (hs >= min_size) & (x_ctr < im_info[1]) &
-                    (y_ctr < im_info[0]))[0]
+    keep = np.where((ws_orig_scale >= min_size) & (hs_orig_scale >= min_size) &
+                    (x_ctr < im_info[1]) & (y_ctr < im_info[0]))[0]
     return keep
 
 
@@ -204,7 +213,7 @@ def iou(box_a, box_b):
     xb = min(xmax_a, xmax_b)
     yb = min(ymax_a, ymax_b)
 
-    inter_area = max(xb - xa, 0.0) * max(yb - ya, 0.0)
+    inter_area = max(xb - xa + 1, 0.0) * max(yb - ya + 1, 0.0)
 
     iou_ratio = inter_area / (area_a + area_b - inter_area)
 

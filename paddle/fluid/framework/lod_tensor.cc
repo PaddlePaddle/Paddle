@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/version.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/memory/memory.h"
@@ -251,8 +252,8 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
 void SerializeToStream(std::ostream &os, const LoDTensor &tensor,
                        const platform::DeviceContext &dev_ctx) {
   {  // the 1st field, uint32_t version for LoDTensor
-    constexpr uint32_t version = 0;
-    os.write(reinterpret_cast<const char *>(&version), sizeof(version));
+    os.write(reinterpret_cast<const char *>(&kCurTensorVersion),
+             sizeof(kCurTensorVersion));
   }
   {
     // the 2st field, LoD information
@@ -281,6 +282,8 @@ void DeserializeFromStream(std::istream &is, LoDTensor *tensor,
     // the 1st field, unit32_t version for LoDTensor
     uint32_t version;
     is.read(reinterpret_cast<char *>(&version), sizeof(version));
+    PADDLE_ENFORCE(framework::IsTensorVersionSupported(version),
+                   "tensor version %u is not supported.", version);
     PADDLE_ENFORCE_EQ(version, 0U, "Only version 0 is supported");
   }
   {

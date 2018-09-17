@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import paddle
 from test_dist_base import TestDistBase
@@ -44,6 +45,14 @@ def download_files():
     test_url = url_prefix + 'newstest2013.tok.bpe.32000.en-de'
     test_md5 = '9dd74a266dbdb25314183899f269b4a2'
     paddle.dataset.common.download(test_url, 'test_dist_transformer', test_md5)
+    # cut test data for faster CI
+    orig_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                             "test_dist_transformer",
+                             "newstest2013.tok.bpe.32000.en-de")
+    head_path = os.path.join(paddle.dataset.common.DATA_HOME,
+                             "test_dist_transformer",
+                             "newstest2013.tok.bpe.32000.en-de.cut")
+    os.system("head -n10 %s > %s" % (orig_path, head_path))
 
 
 class TestDistTransformer2x2Sync(TestDistBase):
