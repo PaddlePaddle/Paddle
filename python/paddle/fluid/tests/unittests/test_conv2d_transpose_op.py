@@ -33,7 +33,7 @@ def conv2dtranspose_forward_naive(input_, filter_, attrs):
     d_bolck_w = dilations[1] * (f_w - 1) + 1
     out_h = (in_h - 1) * stride[0] + d_bolck_h
     out_w = (in_w - 1) * stride[1] + d_bolck_w
-    if attrs.has_key('output_size'):
+    if 'output_size' in attrs:
         output_size = attrs['output_size']
         out_h = output_size[0] + 2 * pad[0]
         out_w = output_size[1] + 2 * pad[1]
