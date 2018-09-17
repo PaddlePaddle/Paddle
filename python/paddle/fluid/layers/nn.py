@@ -1273,7 +1273,7 @@ def sequence_conv(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
     """
     This function computes the softmax activation among all time-steps for each
     sequence. The dimension of each time-step should be 1. Thus, the shape of
@@ -1296,7 +1296,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
         bias_attr (ParamAttr|None): attributes for bias
         param_attr (ParamAttr|None): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-        library is installed. Default: True
+        library is installed. Default: False
 
     Returns:
         Variable: output of sequence_softmax
