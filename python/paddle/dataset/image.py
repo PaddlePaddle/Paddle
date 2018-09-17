@@ -36,11 +36,6 @@ import numpy as np
 try:
     import cv2
 except ImportError:
-    import sys
-    sys.stderr.write(
-        '''Warning with paddle image module: opencv-python should be imported,
-    or paddle image module could NOT work; please install opencv-python first.'''
-    )
     cv2 = None
 import os
 import tarfile
@@ -51,6 +46,18 @@ __all__ = [
     "random_crop", "left_right_flip", "simple_transform", "load_and_transform",
     "batch_images_from_tar"
 ]
+
+
+def _check_cv2():
+    if cv2 is None:
+        import sys
+        sys.stderr.write(
+            '''Warning with paddle image module: opencv-python should be imported,
+         or paddle image module could NOT work; please install opencv-python first.'''
+        )
+        return False
+    else:
+        return True
 
 
 def batch_images_from_tar(data_file,
@@ -97,7 +104,7 @@ def batch_images_from_tar(data_file,
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
-                    protocol=pickle.HIGHEST_PROTOCOL)
+                    protocol=2)
                 file_id += 1
                 data = []
                 labels = []
@@ -106,9 +113,7 @@ def batch_images_from_tar(data_file,
         output['label'] = labels
         output['data'] = data
         pickle.dump(
-            output,
-            open('%s/batch_%d' % (out_path, file_id), 'wb'),
-            protocol=pickle.HIGHEST_PROTOCOL)
+            output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2)
 
     with open(meta_file, 'a') as meta:
         for file in os.listdir(out_path):
@@ -134,7 +139,7 @@ def load_image_bytes(bytes, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert cv2 is not None
+    assert _check_cv2() is True
 
     flag = 1 if is_color else 0
     file_bytes = np.asarray(bytearray(bytes), dtype=np.uint8)
@@ -159,7 +164,7 @@ def load_image(file, is_color=True):
                      load and return a gray image.
     :type is_color: bool
     """
-    assert cv2 is not None
+    assert _check_cv2() is True
 
     # cv2.IMAGE_COLOR for OpenCV3
     # cv2.CV_LOAD_IMAGE_COLOR for older OpenCV Version
@@ -188,7 +193,7 @@ def resize_short(im, size):
     :param size: the shorter edge size of image after resizing.
     :type size: int
     """
-    assert cv2 is not None
+    assert _check_cv2() is True
 
     h, w = im.shape[:2]
     h_new, w_new = size, size
@@ -196,7 +201,7 @@ def resize_short(im, size):
         h_new = size * h // w
     else:
         w_new = size * w // h
-    im = cv2.resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
+    im = cv2.resize(im, (w_new, h_new), interpolation=cv2.INTER_CUBIC)
     return im
 
 
@@ -338,7 +343,6 @@ def simple_transform(im,
         if np.random.randint(2) == 0:
             im = left_right_flip(im, is_color)
     else:
-        im = center_crop(im, crop_size, is_color)
         im = center_crop(im, crop_size, is_color=is_color)
     if len(im.shape) == 3:
         im = to_chw(im)

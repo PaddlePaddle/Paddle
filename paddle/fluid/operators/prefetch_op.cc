@@ -44,16 +44,20 @@ class PrefetchOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
+    std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i] << " to get "
                 << outs[i] << " back";
-        rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope, ins[i], outs[i]);
+        rets.push_back(rpc_client->AsyncPrefetchVar(epmap[i], ctx, scope,
+                                                    ins[i], outs[i]));
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
-    PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+    for (size_t i = 0; i < rets.size(); i++) {
+      PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+    }
   }
 };
 

@@ -406,6 +406,9 @@ def load_vars(executor,
                 attrs={'file_path': os.path.join(dirname, filename)})
         executor.run(load_prog)
 
+        if main_program is None:
+            main_program = default_main_program()
+
         # load slice vars on pserver, if have it.
         _load_slice_up_vars(executor, dirname,
                             main_program._slice_vars_and_attrs)
@@ -747,6 +750,10 @@ def load_inference_model(dirname,
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
+    if not core._is_program_version_supported(program._version()):
+        raise ValueError("Unsupported program version: %d\n" %
+                         program._version())
+    # Binary data also need versioning.
     load_persistables(executor, dirname, program, params_filename)
 
     if pserver_endpoints:

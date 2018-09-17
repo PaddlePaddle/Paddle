@@ -43,8 +43,9 @@ class ParallelExecutor(object):
         num_trainers(int): If greater than 1, NCCL will be initialized with
             multiple rank of nodes, each node should have same number of GPUs.
             Distributed training will be enabled then. Default 1.
-        trainer_id(int: Must use together with num_trainers. trainer_id is the
+        trainer_id(int): Must use together with num_trainers. trainer_id is the
             "rank" of current node starts from 0. Default 0.
+        scope(Scope): scope to run with, default use fluid.global_scope().
 
     Returns:
         ParallelExecutor: The initialized ParallelExecutor object.
@@ -73,6 +74,7 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
+                 scope=None,
                  **kwargs):
         if len(kwargs) != 0:
             err_msg = ""
@@ -126,17 +128,20 @@ class ParallelExecutor(object):
                     os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
                 exec_strategy.num_threads = cpu_num * 2
 
+        # Set 1 thread num under nccl2 distribute 
+        #   env to make sure all gpus run ops in same order.
+        if num_trainers > 1:
+            assert (use_cuda)
+            # FIXME(gongwb): avoid this set.
+            exec_strategy.num_threads = 1
+
         if build_strategy is None:
             build_strategy = BuildStrategy()
 
         main = main_program
         main = main if main else framework.default_main_program()
-        scope = executor.global_scope()
-        # FIXME(Yancey1989): it's a temporary approach to determinate the distribute
-        # train program, call self.bcast_param() at the end of each mini-batch.
-        self.is_dist = True if "recv" in [
-            op.type for op in main.global_block().ops
-        ] else False
+        if scope == None:
+            scope = executor.global_scope()
 
         if share_vars_from and not isinstance(share_vars_from,
                                               ParallelExecutor):
@@ -276,20 +281,10 @@ class ParallelExecutor(object):
         self.executor.run(fetch_list, fetch_var_name)
         arr = self.scope.find_var(fetch_var_name).get_lod_tensor_array()
 
-        if self.is_dist:
-            self._bcast_params()
-
         if return_numpy:
             return executor.as_numpy(arr)
 
         return [arr[i] for i in range(len(arr))]
-
-    def _bcast_params(self):
-        """
-        Broadcast the parameters to other devices. It is used during
-        distributed training.
-        """
-        self.executor._bcast_params(set(self.persistable_vars))
 
     @property
     def device_count(self):
