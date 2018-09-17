@@ -210,11 +210,14 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
+
+  callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  WaitStreamCallback();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   eigen_stream_.reset();
   eigen_device_.reset();
