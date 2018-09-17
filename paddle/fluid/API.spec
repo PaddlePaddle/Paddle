@@ -63,6 +63,7 @@ paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core.Executi
 paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core.GradientScaleStrategy, arg0: int) -> None
 paddle.fluid.BuildStrategy.ReduceStrategy.__init__ __init__(self: paddle.fluid.core.ReduceStrategy, arg0: int) -> None
 paddle.fluid.BuildStrategy.__init__ __init__(self: paddle.fluid.core.BuildStrategy) -> None
+paddle.fluid.BuildStrategy.create_pass_builder create_pass_builder(self: paddle.fluid.core.BuildStrategy) -> paddle.fluid.core.PassBuilder
 paddle.fluid.create_lod_tensor ArgSpec(args=['data', 'recursive_seq_lens', 'place'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.create_random_int_lodtensor ArgSpec(args=['recursive_seq_lens', 'base_shape', 'place', 'low', 'high'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.io.save_vars ArgSpec(args=['executor', 'dirname', 'main_program', 'vars', 'predicate', 'filename'], varargs=None, keywords=None, defaults=(None, None, None, None))
