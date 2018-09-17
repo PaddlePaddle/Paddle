@@ -695,22 +695,3 @@ function(brpc_library TARGET_NAME)
   cc_library("${TARGET_NAME}_proto" SRCS "${brpc_proto_srcs}")
   cc_library("${TARGET_NAME}" SRCS "${brpc_library_SRCS}" DEPS "${TARGET_NAME}_proto" "${brpc_library_DEPS}")
 endfunction()
-
-function(download_inference_file)
-   set(options "")
-   set(oneValueArgs FILE_NAME COMPRESSED FILE_SAVE_DIR)
-   set(multiValueArgs "")
-   cmake_parse_arguments(inference "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-   set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
-   set(MODEL_URL ${INFERENCE_URL}/${inference_FILE_NAME})
-   execute_process(COMMAND bash -c "mkdir -p ${inference_FILE_SAVE_DIR}")
-   if(inference_COMPRESSED)
-       execute_process(COMMAND bash -c "cd ${inference_FILE_SAVE_DIR}; wget \
-             -q --no-check-certificate ${MODEL_URL} -N; tar --warning=no-unknown-keyword \
-             -xf ${inference_FILE_NAME}")
-   else()
-       execute_process(COMMAND bash -c "cd ${inference_FILE_SAVE_DIR}; wget \
-             -q --no-check-certificate ${MODEL_URL} -N") 
-   endif()
-   
-endfunction(download_inference_file)
