@@ -26,9 +26,14 @@ __global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
     size_t span = ref_lod[i + 1] - ref_lod[i];
 
     T result = 0;
+    T max = in_data[ref_lod[i]];
+    for (size_t j = 1; j < span; ++j) {
+      T ele = in_data[ref_lod[i] + j];
+      max = max > in_d ? max : ele;
+    }
     for (size_t j = 0; j < span; ++j) {
       T ele = in_data[ref_lod[i] + j];
-      ele = exp(ele);
+      ele = exp(ele - max);
       result += ele;
       out_data[ref_lod[i] + j] = ele;
     }
