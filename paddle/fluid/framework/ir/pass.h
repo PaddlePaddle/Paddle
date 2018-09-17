@@ -54,6 +54,21 @@ class Pass {
     return *boost::any_cast<AttrType *>(attrs_.at(attr_name));
   }
 
+  bool Has(const std::string &attr_name) const {
+    return attrs_.find(attr_name) != attrs_.end();
+  }
+
+  void Erase(const std::string &attr_name) {
+    if (!Has(attr_name)) {
+      return;
+    }
+    if (attr_dels_.find(attr_name) != attr_dels_.end()) {
+      attr_dels_[attr_name]();
+      attr_dels_.erase(attr_name);
+    }
+    attrs_.erase(attr_name);
+  }
+
   // Set a pointer to the attribute. Pass takes ownership of the attribute.
   template <typename AttrType>
   void Set(const std::string &attr_name, AttrType *attr) {
@@ -70,6 +85,8 @@ class Pass {
   // should delete the attribute.
   template <typename AttrType>
   void SetNotOwned(const std::string &attr_name, AttrType *attr) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the pass",
+                   attr_name);
     attrs_[attr_name] = attr;
   }
 

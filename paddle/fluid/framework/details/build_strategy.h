@@ -31,9 +31,6 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class ParallelExecutorPassBuilder;
-struct BuildStrategy;
-
 struct BuildStrategy {
   // ParallelExecutor supports two modes of ReduceStrategy, kAllReduce and
   // kReduce, for CPU and GPU. If you use kAllReduce, different threads
@@ -72,7 +69,7 @@ struct BuildStrategy {
 
   bool enable_data_balance_{false};
 
-  ir::PassBuilder *CreatePassBuilder() const;
+  std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy() const;
 
   std::unique_ptr<ir::Graph> Apply(
       const ProgramDesc &main_program,
@@ -87,7 +84,6 @@ struct BuildStrategy {
 #endif
 
  private:
-  // TODO(panyx0718): This should probably be unique_ptr.
   mutable std::shared_ptr<ir::PassBuilder> pass_builder_;
 };
 
