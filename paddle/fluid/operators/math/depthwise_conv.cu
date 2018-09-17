@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include <vector>
 #include "paddle/fluid/operators/math/depthwise_conv.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
@@ -21,25 +22,22 @@ namespace operators {
 namespace math {
 
 template <typename T>
-__inline__ __device__
-T warpReduceSum(T val) {
-    #define FULL_MASK 0xffffffff
-    for (int offset = 16; offset > 0; offset /= 2)
-        val += __shfl_down_sync(FULL_MASK, val, offset);
-    return val;
+__inline__ __device__ T warpReduceSum(T val) {
+#define FULL_MASK 0xffffffff
+  for (int offset = 16; offset > 0; offset /= 2)
+    val += __shfl_down_sync(FULL_MASK, val, offset);
+  return val;
 }
-__forceinline__ __device__ unsigned lane_id()
-{
-    unsigned ret;
-    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
-    return ret;
+__forceinline__ __device__ unsigned lane_id() {
+  unsigned ret;
+  asm volatile("mov.u32 %0, %laneid;" : "=r"(ret));
+  return ret;
 }
 
-__forceinline__ __device__ unsigned warp_id()
-{
-    unsigned ret;
-    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
-    return ret;
+__forceinline__ __device__ unsigned warp_id() {
+  unsigned ret;
+  asm volatile("mov.u32 %0, %warpid;" : "=r"(ret));
+  return ret;
 }
 
 // A Cuda kernel to compute the depthwise convolution forward pass
@@ -147,44 +145,46 @@ __global__ void KernelDepthwiseConvInputGrad(
 // Cuda kernel to compute the depthwise convolution backprop w.r.t. filter.
 template <typename T>
 __global__ void KernelDepthwiseConvFilterGrad(
-    const T* output_grad_data, const T* input_data, const int num, const int output_channels,
-    const int output_height, const int output_width, const int input_channels,
-    const int input_height, const int input_width, const int filter_multiplier,
-    const int filter_height, const int filter_width, const int stride_height,
-    const int stride_width, const int padding_height, const int padding_width,
-    T* filter_grad_data)
-{
-    T s=0;
+    const T* output_grad_data, const T* input_data, const int num,
+    const int output_channels, const int output_height, const int output_width,
+    const int input_channels, const int input_height, const int input_width,
+    const int filter_multiplier, const int filter_height,
+    const int filter_width, const int stride_height, const int stride_width,
+    const int padding_height, const int padding_width, T* filter_grad_data) {
+  T s = 0;
 
-    int gbid = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
-    // int gtid = threadIdx.y * blockDim.x + threadIdx.x;
-    int lid = lane_id();
+  int gbid = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
+  // int gtid = threadIdx.y * blockDim.x + threadIdx.x;
+  int lid = lane_id();
 
-    for (int bid=0; bid<num; bid++) {
-        for (int image_h=threadIdx.y; image_h<output_height; image_h+=blockDim.y) {
-            int kernel_id = blockIdx.z;
-            int kernel_h = blockIdx.y - padding_height;
-            int kernel_w = blockIdx.x - padding_width;
+  for (int bid = 0; bid < num; bid++) {
+    for (int image_h = threadIdx.y; image_h < output_height;
+         image_h += blockDim.y) {
+      int kernel_id = blockIdx.z;
+      int kernel_h = blockIdx.y - padding_height;
+      int kernel_w = blockIdx.x - padding_width;
 
-            int image_w = threadIdx.x;
-            #define dilation 1
-            int image_hk = image_h * stride_height + kernel_h * dilation;
-            int image_wk = image_w * stride_width + kernel_w * dilation;
-            if (image_hk<0 || image_hk>=input_height) continue;
-            if (image_wk<0 || image_wk>=input_width) continue;
-            #define gaid(N,C,H,W) ((((N)*gridDim.z+(C))*output_height+(H))*blockDim.x+(W))
-            #define gaid2(N,C,H,W) ((((N)*gridDim.z+(C)/filter_multiplier)*input_height+(H))*input_width+(W))
+      int image_w = threadIdx.x;
+#define dilation 1
+      int image_hk = image_h * stride_height + kernel_h * dilation;
+      int image_wk = image_w * stride_width + kernel_w * dilation;
+      if (image_hk < 0 || image_hk >= input_height) continue;
+      if (image_wk < 0 || image_wk >= input_width) continue;
+#define gaid(N, C, H, W) \
+  ((((N)*gridDim.z + (C)) * output_height + (H)) * blockDim.x + (W))
+#define gaid2(N, C, H, W) \
+  ((N * gridDim.z + C / filter_multiplier) * input_height + H) * input_width + W
 
-            s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
-                 input_data[gaid2(bid, kernel_id, image_hk, image_wk)];
+      s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
+           input_data[gaid2(bid, kernel_id, image_hk, image_wk)];
 
-            #undef gaid
-            #undef gaid2
-            #undef dilation
-        }
+#undef gaid
+#undef gaid2
+#undef dilation
     }
-    s = warpReduceSum<T>(s);
-    if (lid == 0) paddle::platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
+  }
+  s = warpReduceSum<T>(s);
+  if (lid == 0) paddle::platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
 }
 
 /*
@@ -304,9 +304,10 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T> {
     int nthreads = batch_size * output_channels * output_height * output_width;
 
     int block_size = 512;
-    int crop_output_height = min(max(block_size / output_height, 1), output_height);
-    dim3 threads(ksize_width, ksize_height, output_channels);
-    dim3 grid(output_width, crop_output_height, 1);
+    int crop_output_height =
+        std::min(std::max(block_size / output_width, 1), output_height);
+    dim3 grid(ksize_width, ksize_height, output_channels);
+    dim3 threads(output_width, crop_output_height, 1);
 
     KernelDepthwiseConvFilterGrad<T><<<grid, threads, 0, context.stream()>>>(
         output_grad_data, input_data, batch_size, output_channels,
