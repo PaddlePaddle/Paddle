@@ -25,24 +25,21 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/framework/var_type.h"
 
-#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
 #include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
 
-typedef void (*DestroyCallback)(void*);
+using VarMsg = sendrecv::VariableMessage;
 
-void SerializeToByteBuffer(const std::string& name, framework::Variable* var,
-                           const platform::DeviceContext& ctx,
-                           ::grpc::ByteBuffer* msg,
-                           const std::string& out_varname = std::string());
+void GetTensorPayload(framework::Variable* var,
+                      const platform::DeviceContext& ctx, VarMsg* request,
+                      void** payload, size_t* payload_size);
 
-void DeserializeFromByteBuffer(const ::grpc::ByteBuffer& msg,
-                               const platform::DeviceContext& ctx,
-                               const framework::Scope* scope,
-                               framework::Variable** var);
+void GetSelectedRowsPayload(framework::Variable* var,
+                            const platform::DeviceContext& ctx, VarMsg* request,
+                            void** payload, size_t* payload_size);
 
 inline std::type_index ToTypeIndex(sendrecv::VariableMessage::Type type) {
   switch (type) {

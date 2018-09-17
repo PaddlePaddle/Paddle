@@ -49,5 +49,4 @@ class MulOpConverter : public OpConverter {
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(mul);
 REGISTER_TRT_OP_CONVERTER(mul, MulOpConverter);

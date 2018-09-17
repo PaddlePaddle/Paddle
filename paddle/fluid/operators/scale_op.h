@@ -22,12 +22,13 @@ namespace operators {
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:
-  virtual void Compute(const framework::ExecutionContext& context) const {
-    auto* tensor = context.Output<framework::Tensor>("Out");
-    auto* in = context.Input<framework::Tensor>("X");
-    tensor->mutable_data<T>(in->place());
+  virtual void Compute(const framework::ExecutionContext& ctx) const {
+    auto* in_var = ctx.InputVar("X");
+    auto* in = ctx.Input<framework::Tensor>("X");
 
-    auto scale = static_cast<T>(context.Attr<float>("scale"));
+    auto* out_var = ctx.OutputVar("Out");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(in->place());
 
     PADDLE_ENFORCE_EQ(in->dims(), out->dims(),
                       "in and out should have the same dim");

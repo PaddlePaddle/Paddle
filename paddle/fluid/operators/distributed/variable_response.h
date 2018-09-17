@@ -22,17 +22,34 @@
 #include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/var_type.h"
 
-#include "paddle/fluid/operators/distributed/send_recv.grpc.pb.h"
-#include "paddle/fluid/operators/distributed/send_recv.pb.h"
-
 #include "google/protobuf/io/coded_stream.h"
 #include "google/protobuf/io/zero_copy_stream.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/distributed/bytebuffer_stream.h"
+#include "paddle/fluid/operators/distributed/send_recv.pb.h"
 
 namespace paddle {
 namespace operators {
 namespace distributed {
+
+// Source provides a way for a particular RPC implementation to provide
+// received data to ParseFrom.
+class Source {
+ public:
+  virtual ~Source() {}
+
+  // Return the stream that contains the data to be parsed.
+  // Note that this method might be invoked more than once if
+  // ParseFrom needs to fall back to a more expensive parsing method.
+  // Every call must return a stream pointing at the beginning of
+  // the serialized RecvTensorResponse.
+  //
+  // Note that a subsequent call to contents() invalidates previous
+  // results of contents().
+  //
+  // Ownership of the returned stream is retained by the Source and
+  // should not be deleted by the caller.
+  virtual ::google::protobuf::io::ZeroCopyInputStream* contents() = 0;
+};
 
 class VariableResponse {
  public:
@@ -51,22 +68,19 @@ class VariableResponse {
     }
   }
 
-  // return:
-  // 0:ok.
-  // -1: unkown error.
-  // other: number of error field.
-  int Parse(Source* source);
+  int Parse(Source* source, const sendrecv::VariableMessage& meta) {
+    meta_ = meta;
+    return Parse(source);
+  }
 
   // return:
   // 0:ok.
   // -1: unkown error.
   // other: number of error field.
-  int Parse(const ::grpc::ByteBuffer& byte_buffer);
+  virtual int Parse(Source* source) = 0;
 
-  const framework::Scope& GetLocalScope() const { return *local_scope_; }
-
-  framework::Scope* GetMutableLocalScope() const { return local_scope_; }
-
+  inline const framework::Scope& GetLocalScope() const { return *local_scope_; }
+  inline framework::Scope* GetMutableLocalScope() const { return local_scope_; }
   inline std::string Varname() const { return meta_.varname(); }
   inline std::string OutVarname() const { return meta_.out_varname(); }
 
@@ -78,7 +92,11 @@ class VariableResponse {
     return scope_->FindVar(meta_.varname());
   }
 
- private:
+ protected:
+  bool ReadRaw(::google::protobuf::io::CodedInputStream* input,
+               const platform::DeviceContext& dev_ctx, platform::Place place,
+               void* dest, int64_t size);
+
   bool CopySelectRowsTensorData(::google::protobuf::io::CodedInputStream* input,
                                 const platform::DeviceContext& ctx,
                                 const framework::DDim& dims, int length);
@@ -90,12 +108,16 @@ class VariableResponse {
                          const platform::DeviceContext& ctx,
                          const framework::DDim& dims, int length);
 
- private:
+  bool ProcSerializedField(int tag,
+                           ::google::protobuf::io::CodedInputStream* input,
+                           int64_t num_bytes);
+
+ protected:
   const framework::Scope* scope_;
   const platform::DeviceContext* dev_ctx_;
   bool create_scope_ = false;
   framework::Scope* local_scope_ = nullptr;
-  // only Skeleton
+
   sendrecv::VariableMessage meta_;
 };
 

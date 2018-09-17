@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import sys
 import re
 
@@ -46,7 +48,7 @@ Diff:  set(['test_parallel_executor_crf'])
                 start_parts = escape(l).split(" ")
                 m = re.search("Start\s+[0-9]+\:\s([a-z0-9_]+)", escape(l))
                 started.add(m.group(1))
-    print "Diff: ", started - passed
+    print("Diff: ", started - passed)
 
 
 if __name__ == "__main__":

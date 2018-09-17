@@ -15,6 +15,7 @@ limitations under the License. */
 #include <future>  // NOLINT
 #include <ostream>
 
+#include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -42,24 +43,22 @@ class SendOp : public framework::OperatorBase {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     auto& ctx = *pool.Get(place);
 
-    // For profiling
-    platform::RecordEvent record_event(Type(), &ctx);
-
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
+    std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < ins.size(); i++) {
       if (NeedSend(scope, ins[i])) {
         VLOG(3) << "sending " << ins[i] << " to " << epmap[i];
-        // TODO(Yancey1989): we need to use an IO threadpool which has
-        // a larger number of threads than the computing threadpool.
-        rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]);
+        rets.push_back(rpc_client->AsyncSendVar(epmap[i], ctx, scope, ins[i]));
       } else {
         VLOG(3) << "don't send no-initialied variable: " << ins[i];
       }
     }
     if (sync_send) {
-      rpc_client->Wait();
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      }
     }
   }
 };
@@ -68,6 +67,8 @@ class SendOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "(Tensor, SelectedRows) Input variables to be sent")
+        .AsDuplicable();
+    AddOutput("Out", "(Any) Dummy outputs, used for control dependency")
         .AsDuplicable();
     AddComment(R"DOC(
 Send operator

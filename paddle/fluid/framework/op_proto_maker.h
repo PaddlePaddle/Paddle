@@ -39,6 +39,7 @@ class OpProtoAndCheckerMaker {
  public:
   static const char *OpRoleAttrName() { return "op_role"; }
   static const char *OpRoleVarAttrName() { return "op_role_var"; }
+  static const char *OpNamescopeAttrName() { return "op_namescope"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
@@ -77,6 +78,8 @@ class OpProtoAndCheckerMaker {
 
   VariableBuilder AddOutput(const std::string &name,
                             const std::string &comment);
+
+  void Reuse(const std::string &name, const std::string &reused_name);
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,

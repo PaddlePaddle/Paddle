@@ -822,6 +822,14 @@ pad
 ..  autofunction:: paddle.fluid.layers.pad
     :noindex:
 
+.. _api_fluid_layers_pad_constant_like:
+
+pad_constant_like
+---
+
+..  autofunction:: paddle.fluid.layers.pad_constant_like
+    :noindex:
+
 .. _api_fluid_layers_label_smooth:
 
 label_smooth
@@ -1143,6 +1151,14 @@ sigmoid
 -------
 
 ..  autofunction:: paddle.fluid.layers.sigmoid
+    :noindex:
+
+.. _api_fluid_layers_hsigmoid:
+
+hsigmoid
+-------
+
+..  autofunction:: paddle.fluid.layers.hsigmoid
     :noindex:
 
 .. _api_fluid_layers_logsigmoid:
@@ -1766,5 +1782,13 @@ reverse
 -------
 
 ..  autofunction:: paddle.fluid.layers.reverse
+    :noindex:
+
+.. _api_fluid_layers_rank_loss:
+
+rank_loss
+-------
+
+..  autofunction:: paddle.fluid.layers.rank_loss
     :noindex:
 
