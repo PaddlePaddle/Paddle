@@ -181,8 +181,8 @@ class Vector {
     template <typename It>
     void Extend(It begin, It end) {
       MutableCPU();
-      cpu_.reserve((end - begin) + cpu_.size());
-      std::copy(begin, end, std::back_inserter<std::vector<T>>(cpu_));
+      auto out_it = std::back_inserter<std::vector<T>>(this->cpu_);
+      std::copy(begin, end, out_it);
     }
 
     // resize the vector
@@ -291,8 +291,11 @@ class Vector {
       void *src = cpu_.data();
       gpu_.Resize(place, cpu_.size() * sizeof(T));
       void *dst = gpu_.data_;
-      memory::Copy(boost::get<platform::CUDAPlace>(place), dst,
-                   platform::CPUPlace(), src, gpu_.size_, nullptr);
+      auto stream = static_cast<platform::CUDADeviceContext *>(
+                        platform::DeviceContextPool::Instance().Get(place))
+                        ->stream();
+      memory::Copy(gpu_.place_, dst, platform::CPUPlace(), src, gpu_.size_,
+                   stream);
     }
 
     void ImmutableCPU() const {
@@ -399,10 +402,16 @@ class Vector {
   }
 
   // resize the vector
-  void resize(size_t size) { m_->resize(size); }
+  void resize(size_t size) {
+    if (m_.Data().size() != size) {
+      m_->resize(size);
+    }
+  }
 
   // get cuda ptr. immutable
-  const T *CUDAData(platform::Place place) const { return m_->CUDAData(place); }
+  const T *CUDAData(platform::Place place) const {
+    return m_.Data().CUDAData(place);
+  }
 
   // get cuda ptr. mutable
   T *CUDAMutableData(platform::Place place) {
@@ -449,6 +458,8 @@ class Vector {
     }
     return true;
   }
+
+  const void *Handle() const { return &m_.Data(); }
 
  private:
   // Vector is an COW object.
