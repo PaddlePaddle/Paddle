@@ -150,7 +150,7 @@ struct AdamFunctor<T, CPUAdam> {
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
     moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
-    moment2_out = beta2_ * mom2 + (1 - beta2_) * g * g;
+    moment2_out = beta2_ * mom2 + g * g * (1 - beta2_);
     param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
   }
 };
@@ -197,25 +197,43 @@ struct SparseAdamFunctor {
         row_numel_(row_numel) {}
 
   inline HOSTDEVICE void operator()(size_t i) const {
+    int64_t idx = rows_[i] * row_numel_;
+
+    const T* grad_p = grad_ + i * row_numel_;
+    const T* moment1_p = moment1_ + idx;
+    const T* moment2_p = moment2_ + idx;
+    const T* param_p = param_ + idx;
+
+    T* param_out_p = param_out_ + idx;
+    T* moment1_out_p = moment1_out_ + idx;
+    T* moment2_out_p = moment2_out_ + idx;
+
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> g{
+        grad_p, static_cast<Eigen::Index>(row_numel_)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom1{
+        moment1_p, static_cast<Eigen::Index>(row_numel_)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> mom2{
+        moment2_p, static_cast<Eigen::Index>(row_numel_)};
+    Eigen::Map<const Eigen::Array<T, 1, Eigen::Dynamic>> param{
+        param_p, static_cast<Eigen::Index>(row_numel_)};
+
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> param_out{
+        param_out_p, static_cast<Eigen::Index>(row_numel_)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment1_out{
+        moment1_out_p, static_cast<Eigen::Index>(row_numel_)};
+    Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_out{
+        moment2_out_p, static_cast<Eigen::Index>(row_numel_)};
+
+    T lr = *lr_;
     T beta1_pow = *beta1_pow_;
     T beta2_pow = *beta2_pow_;
-    for (int64_t j = 0; j < row_numel_; ++j) {
-      T g = grad_[i * row_numel_ + j];
-      T mom1 = moment1_[rows_[i] * row_numel_ + j];
-      T mom2 = moment2_[rows_[i] * row_numel_ + j];
-      T lr = *lr_;
-      T p = param_[rows_[i] * row_numel_ + j];
 
-      lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
+    // Calculation
+    lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
-      mom1 = beta1_ * mom1 + (1 - beta1_) * g;
-      mom2 = beta2_ * mom2 + (1 - beta2_) * g * g;
-      p -= lr * (mom1 / (sqrt(mom2) + epsilon_));
-
-      moment1_out_[rows_[i] * row_numel_ + j] = mom1;
-      moment2_out_[rows_[i] * row_numel_ + j] = mom2;
-      param_out_[rows_[i] * row_numel_ + j] = p;
-    }  // for col id
+    moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
+    moment2_out = beta2_ * mom2 + g * g * (1 - beta2_);
+    param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
   }
 };
 
@@ -253,6 +271,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
       if (platform::is_cpu_place(ctx.GetPlace())) {
+        auto start = std::chrono::system_clock::now();
         AdamFunctor<T, CPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta2_pow.template data<T>(), mom1.template data<T>(),
@@ -263,6 +282,11 @@ class AdamOpKernel : public framework::OpKernel<T> {
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()));
         functor(param.numel());
+        auto end = std::chrono::system_clock::now();
+        std::chrono::duration<double> diff = end - start;
+        LOG(ERROR) << "lod_tensor adam end, cost: " << diff.count()
+                   << " param numel: " << param.numel()
+                   << " grad numel: " << grad.numel();
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
@@ -280,6 +304,7 @@ class AdamOpKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
+      auto start = std::chrono::system_clock::now();
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
       if (grad.rows().size() == 0) {
@@ -307,6 +332,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
 #endif
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
+      auto end = std::chrono::system_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      LOG(ERROR) << "SelectedRows adam prepare end, cost: " << diff.count()
+                 << " param numel: " << param.numel();
+
+      start = std::chrono::system_clock::now();
       SparseAdamFunctor<T> functor(
           beta1, beta2, epsilon, beta1_pow.template data<T>(),
           beta2_pow.template data<T>(), mom1.template data<T>(),
@@ -319,6 +350,12 @@ class AdamOpKernel : public framework::OpKernel<T> {
           static_cast<const DeviceContext&>(ctx.device_context()),
           grad_merge.rows().size());
       for_range(functor);
+      end = std::chrono::system_clock::now();
+      diff = end - start;
+      LOG(ERROR) << "SelectedRows adam for_range end, cost: " << diff.count()
+                 << " param numel: " << param.numel()
+                 << " each row_numel: " << row_numel
+                 << " rows size: " << grad_merge.rows().size();
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");
     }

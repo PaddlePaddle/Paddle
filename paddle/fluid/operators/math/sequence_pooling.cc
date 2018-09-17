@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/sequence_pooling.h"
 #include <string>
+#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
@@ -116,8 +117,10 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       max_pool(context, input, output, index);
       return;
     }
+
     auto lod = input.lod()[0];
     auto& place = *context.eigen_device();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       Tensor in_t =
           input.Slice(static_cast<int>(lod[i]), static_cast<int>(lod[i + 1]));
@@ -129,7 +132,13 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       if (pooltype == "AVERAGE") {
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
       } else if (pooltype == "SUM") {
-        out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}}));
+        const T* in_data = in_t.data<T>();
+        T* out_data = out_t.mutable_data<T>(context.GetPlace());
+        blas.VCOPY(w, in_data, out_data);
+        for (int r = 1; r != h; ++r) {
+          blas.VADD(w, in_data + r * w, const_cast<const T*>(out_data),
+                    out_data);
+        }
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
@@ -165,6 +174,7 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
     }
     auto lod = in_grad->lod()[0];
     auto& place = *context.eigen_device();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (int i = 0; i < static_cast<int>(lod.size()) - 1; ++i) {
       auto in_g_t = in_grad->Slice(static_cast<int>(lod[i]),
                                    static_cast<int>(lod[i + 1]));
@@ -179,7 +189,11 @@ class SequencePoolGradFunctor<platform::CPUDeviceContext, T> {
       if (pooltype == "AVERAGE") {
         in_g_e.device(place) = (out_g_e / static_cast<T>(h)).broadcast(bcast);
       } else if (pooltype == "SUM") {
-        in_g_e.device(place) = (out_g_e).broadcast(bcast);
+        const T* out_g_data = out_g_t.data<T>();
+        T* in_g_data = in_g_t.mutable_data<T>(context.GetPlace());
+        for (int r = 0; r != h; ++r) {
+          blas.VCOPY(w, out_g_data, in_g_data + r * w);
+        }
       } else if (pooltype == "SQRT") {
         in_g_e.device(place) =
             (out_g_e / std::sqrt(static_cast<T>(h))).broadcast(bcast);

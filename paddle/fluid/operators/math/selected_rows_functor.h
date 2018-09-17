@@ -12,8 +12,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
+#include <set>
+#include <vector>
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 
 #define INLINE_FOR2(sizei, sizej)     \
@@ -65,6 +70,125 @@ struct MergeAdd {
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
                                      const framework::SelectedRows& input);
+};
+
+template <>
+struct MergeAdd<platform::CPUDeviceContext, double> {
+  framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
+                                     const framework::SelectedRows& input) {
+    framework::SelectedRows out;
+
+    auto input_rows = input.rows();
+    std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+    std::unordered_map<int64_t, size_t> rows_pos_map;
+    rows_pos_map.reserve(merge_rows.size());
+    for (std::vector<int64_t>::iterator iter = merge_rows.begin();
+         iter != merge_rows.end(); ++iter) {
+      rows_pos_map[*iter] = iter - merge_rows.begin();
+    }
+
+    auto input_width = input.value().dims()[1];
+    out.set_rows(merge_rows);
+    out.set_height(input.height());
+    out.mutable_value()->mutable_data<double>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CPUDeviceContext, double> constant_functor;
+    constant_functor(context, out.mutable_value(), 0.0);
+
+    auto* out_data = out.mutable_value()->data<double>();
+    auto* input_data = input.value().data<double>();
+
+    auto blas = GetBlas<platform::CPUDeviceContext, double>(context);
+    for (size_t i = 0; i < input_rows.size(); i++) {
+      size_t out_i = rows_pos_map[input_rows[i]];
+
+      double* y = out_data + out_i * input_width;
+      const double* x = input_data + i * input_width;
+      blas.VADD(input_width, x, const_cast<const double*>(y), y);
+    }
+
+    return out;
+  }
+};
+
+template <>
+struct MergeAdd<platform::CPUDeviceContext, float> {
+  framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
+                                     const framework::SelectedRows& input) {
+    // framework::SelectedRows out;
+
+    // auto input_rows = input.rows();
+
+    // size_t idx_count = 0;
+    // std::unordered_map<int64_t, int64_t> row_map;
+    // for (auto iter = input_rows.begin(); iter != input_rows.end(); ++iter) {
+    // const int64_t row = *iter;
+    // if (row_map.find(row) == row_map.end()) {
+    // row_map[row] = idx_count++;
+    // }
+    // }
+
+    // std::vector<int64_t> merge_rows;
+    // merge_rows.reserve(row_map.size());
+    // for (std::unordered_map<int64_t, int64_t>::iterator iter =
+    // row_map.begin(); iter != row_map.end(); ++iter) {
+    // merge_rows.emplace_back(iter->first);
+    // }
+
+    // auto input_width = input.value().dims()[1];
+    // out.set_rows(merge_rows);
+    // out.set_height(input.height());
+    // out.mutable_value()->mutable_data<float>(
+    // framework::make_ddim(
+    // {static_cast<int64_t>(merge_rows.size()), input_width}),
+    // context.GetPlace());
+
+    // math::SetConstant<platform::CPUDeviceContext, float> constant_functor;
+    // constant_functor(context, out.mutable_value(), 0.0);
+
+    // auto* out_data = out.mutable_value()->data<float>();
+    // auto* input_data = input.value().data<float>();
+    framework::SelectedRows out;
+
+    auto input_rows = input.rows();
+    std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
+    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+    std::unordered_map<int64_t, size_t> rows_pos_map;
+    rows_pos_map.reserve(merge_rows.size());
+    for (std::vector<int64_t>::iterator iter = merge_rows.begin();
+         iter != merge_rows.end(); ++iter) {
+      rows_pos_map[*iter] = iter - merge_rows.begin();
+    }
+
+    auto input_width = input.value().dims()[1];
+    out.set_rows(merge_rows);
+    out.set_height(input.height());
+    out.mutable_value()->mutable_data<float>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CPUDeviceContext, float> constant_functor;
+    constant_functor(context, out.mutable_value(), 0.0);
+
+    auto* out_data = out.mutable_value()->data<float>();
+    auto* input_data = input.value().data<float>();
+
+    auto blas = GetBlas<platform::CPUDeviceContext, float>(context);
+    for (size_t i = 0; i < input_rows.size(); i++) {
+      size_t out_i = rows_pos_map[input_rows[i]];
+
+      float* y = out_data + out_i * input_width;
+      const float* x = input_data + i * input_width;
+      blas.VADD(input_width, x, const_cast<const float*>(y), y);
+    }
+
+    return out;
+  }
 };
 
 template <typename DeviceContext, typename T>

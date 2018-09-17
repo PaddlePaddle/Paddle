@@ -14,15 +14,16 @@ limitations under the License. */
 
 #pragma once
 
+extern "C" {
+#include <xxhash.h>
+}
+
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
-extern "C" {
-    #include <xxhash.h>
-}
 
 namespace paddle {
 namespace operators {
-//template <typename DeviceContext, typename T>
+// template <typename DeviceContext, typename T>
 template <typename T>
 class HashKerel : public framework::OpKernel<T> {
  public:
@@ -35,17 +36,19 @@ class HashKerel : public framework::OpKernel<T> {
 
     auto in_dims = in_t->dims();
     auto in_lod = in_t->lod();
-    PADDLE_ENFORCE_EQ(static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
-					  "The actual input data's size mismatched with LoD information.");
+    PADDLE_ENFORCE_EQ(
+        static_cast<uint64_t>(in_dims[0]), in_lod[0].back(),
+        "The actual input data's size mismatched with LoD information.");
 
-	auto seq_length = in_dims[0];
+    auto seq_length = in_dims[0];
     auto last_dim = in_dims[in_dims.size() - 1];
-	auto* input = in_t->data<T>();
+    auto* input = in_t->data<T>();
     for (int idx = 0; idx < seq_length; ++idx) {
-        for (int ihash = 0; ihash != num_hash; ++ihash) {
-            output[idx * num_hash + ihash] = XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
-        }
-        input += last_dim;
+      for (int ihash = 0; ihash != num_hash; ++ihash) {
+        output[idx * num_hash + ihash] =
+            XXH64(input, sizeof(int) * last_dim, ihash) % mod_by;
+      }
+      input += last_dim;
     }
   }
 };
