@@ -337,6 +337,7 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
   std::unique_ptr<GarbageCollector<Tensor>> gc;
   if (max_memory_size >= 0) {
+    ctx->ResetReferenceCount();
 #ifdef PADDLE_WITH_CUDA
     if (platform::is_gpu_place(place_)) {
       gc.reset(new DefaultStreamGarbageCollector<Tensor>(
@@ -357,11 +358,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
       std::vector<std::string> erase_vars;
       for (auto& input : op->Inputs()) {
         for (auto& input_name : input.second) {
-          auto it = ctx->ref_cnts_.find(input_name);
-          if (it == ctx->ref_cnts_.end()) continue;
+          auto it = ctx->cur_ref_cnts_.find(input_name);
+          if (it == ctx->cur_ref_cnts_.end()) continue;
           if (it->second == 1) {  // should delete it
             erase_vars.emplace_back(input_name);
-            ctx->ref_cnts_.erase(input_name);
+            ctx->cur_ref_cnts_.erase(input_name);
           } else {
             --(it->second);
           }
@@ -370,11 +371,11 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
 
       for (auto& output : op->Outputs()) {
         for (auto& output_name : output.second) {
-          auto it = ctx->ref_cnts_.find(output_name);
-          if (it == ctx->ref_cnts_.end()) continue;
+          auto it = ctx->cur_ref_cnts_.find(output_name);
+          if (it == ctx->cur_ref_cnts_.end()) continue;
           if (it->second == 1) {
             erase_vars.emplace_back(output_name);
-            ctx->ref_cnts_.erase(output_name);
+            ctx->cur_ref_cnts_.erase(output_name);
           } else {
             --(it->second);
           }
