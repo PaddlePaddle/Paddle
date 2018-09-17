@@ -94,16 +94,27 @@ class TestPassBuilder(unittest.TestCase):
 
     def test_parallel_testing_with_new_strategy(self):
         build_strategy = fluid.BuildStrategy()
-        pass_builder = build_strategy.create_pass_builder()
+        pass_builder = build_strategy.create_passes_from_srategy()
+        origin_len = len(pass_builder.all_passes())
+
         viz_pass = pass_builder.append_pass("graph_viz_pass")
-        all_passes = pass_builder.all_passes()
-        pass_builder.insert_pass(len(all_passes), "graph_viz_pass")
+        self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
+
+        pass_builder.insert_pass(
+            len(pass_builder.all_passes()), "graph_viz_pass")
+        self.assertEqual(origin_len + 2, len(pass_builder.all_passes()))
+
         pass_builder.remove_pass(len(pass_builder.all_passes()) - 1)
-        viz_pass.set_str("graph_viz_path", "/tmp/viz_pass")
+        self.assertEqual(origin_len + 1, len(pass_builder.all_passes()))
+        viz_pass.set_str("graph_viz_path", "/tmp/test_viz_pass")
 
         self.check_network_convergence(
             use_cuda=core.is_compiled_with_cuda(),
             build_strategy=build_strategy)
+        try:
+            os.stat("/tmp/test_viz_pass")
+        except os.error:
+            self.assertFalse(True)
 
 
 if __name__ == '__main__':

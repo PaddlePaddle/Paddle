@@ -603,7 +603,8 @@ All parameter, weight, gradient are variables in Paddle.
         self.Set<std::string>(name, new std::string(attr));
       });
 
-  py::class_<ir::PassBuilder> pb(m, "PassBuilder");
+  py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
+      m, "PassBuilder");
   pb.def(py::init())
       .def("append_pass",
            [](ir::PassBuilder &self,
@@ -701,9 +702,10 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, bool b) {
                       self.fuse_elewise_add_act_ops_ = b;
                     })
-      .def("create_pass_builder",
-           [](BuildStrategy &self) { return *self.CreatePassBuilder(); },
-           py::return_value_policy::reference);
+      .def("create_passes_from_srategy",
+           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
+             return self.CreatePassesFromStrategy();
+           });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
