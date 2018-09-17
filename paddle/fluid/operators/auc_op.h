@@ -47,9 +47,11 @@ class AucKernel : public framework::OpKernel<T> {
     std::vector<int64_t> stat_pos_data(num_pred_buckets, 0);
     std::vector<int64_t> stat_neg_data(num_pred_buckets, 0);
 
+    auto *stat_pos_calc = stat_pos_data.data();
+    auto *stat_neg_calc = stat_neg_data.data();
+
     statAuc(label, predict, num_pred_buckets, num_thresholds, slide_steps,
-            origin_stat_pos, origin_stat_neg, stat_pos_data.data(),
-            stat_neg_data.data());
+            origin_stat_pos, origin_stat_neg, &stat_pos_calc, &stat_neg_calc);
 
     calcAuc(ctx, stat_pos_data.data(), stat_neg_data.data(), num_thresholds,
             auc);
@@ -66,7 +68,7 @@ class AucKernel : public framework::OpKernel<T> {
                              const int num_pred_buckets,
                              const int num_thresholds, const int slide_steps,
                              int64_t *origin_stat_pos, int64_t *origin_stat_neg,
-                             int64_t *stat_pos, int64_t *stat_neg) {
+                             int64_t **stat_pos, int64_t **stat_neg) {
     size_t batch_size = predict->dims()[0];
     size_t inference_width = predict->dims()[1];
     const T *inference_data = predict->data<T>();
@@ -76,9 +78,9 @@ class AucKernel : public framework::OpKernel<T> {
       uint32_t binIdx = static_cast<uint32_t>(
           inference_data[i * inference_width + 1] * num_thresholds);
       if (label_data[i]) {
-        stat_pos[binIdx] += 1.0;
+        *stat_pos[binIdx] += 1.0;
       } else {
-        stat_neg[binIdx] += 1.0;
+        *stat_neg[binIdx] += 1.0;
       }
     }
 
@@ -87,13 +89,13 @@ class AucKernel : public framework::OpKernel<T> {
     // will stat auc unlimited.
     if (slide_steps == 0) {
       for (int slide = 0; slide < num_pred_buckets; ++slide) {
-        origin_stat_pos[slide] += stat_pos[slide];
-        origin_stat_neg[slide] += stat_neg[slide];
+        origin_stat_pos[slide] += *stat_pos[slide];
+        origin_stat_neg[slide] += *stat_neg[slide];
       }
 
-      // todo(tangwei): need to be optimized.
-      std::memcpy(stat_pos, origin_stat_pos, bucket_length);
-      std::memcpy(stat_neg, origin_stat_neg, bucket_length);
+      *stat_pos = origin_stat_pos;
+      *stat_neg = origin_stat_neg;
+
     } else {
       for (int slide = 1; slide < slide_steps; ++slide) {
         int dst_idx = (slide - 1) * num_pred_buckets;
@@ -105,12 +107,12 @@ class AucKernel : public framework::OpKernel<T> {
       }
 
       std::memcpy(origin_stat_pos + (slide_steps - 1) * num_pred_buckets,
-                  stat_pos, bucket_length);
+                  *stat_pos, bucket_length);
       std::memcpy(origin_stat_neg + (slide_steps - 1) * num_pred_buckets,
-                  stat_neg, bucket_length);
+                  *stat_neg, bucket_length);
 
-      std::memset(stat_pos, 0, bucket_length);
-      std::memset(stat_neg, 0, bucket_length);
+      std::memset(*stat_pos, 0, bucket_length);
+      std::memset(*stat_neg, 0, bucket_length);
 
       for (int slide = 0; slide < num_pred_buckets; ++slide) {
         int stat_pos_steps = 0;
@@ -119,8 +121,8 @@ class AucKernel : public framework::OpKernel<T> {
           stat_pos_steps += origin_stat_pos[slide + step * num_pred_buckets];
           stat_neg_steps += origin_stat_neg[slide + step * num_pred_buckets];
         }
-        stat_pos[slide] += stat_pos_steps;
-        stat_neg[slide] += stat_neg_steps;
+        *stat_pos[slide] += stat_pos_steps;
+        *stat_neg[slide] += stat_neg_steps;
       }
     }
   }
