@@ -29,9 +29,8 @@ from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 __all__ = [
-    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
-    'load'
+    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
+    'random_data_generator', 'py_reader', 'Preprocessor', 'load'
 ]
 
 
