@@ -68,6 +68,10 @@ class Node {
 
   bool IsOp() const { return type_ == Type::kOperation; }
   bool IsVar() const { return type_ == Type::kVariable; }
+  bool IsCtrlVar() const {
+    return type_ == Type::kVariable &&
+           Name().find(ir::Node::kControlDepVarName) != std::string::npos;
+  }
 
   std::vector<Node*> inputs;
   std::vector<Node*> outputs;
