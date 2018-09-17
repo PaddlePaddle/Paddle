@@ -31,8 +31,8 @@ class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
     op->SetInput("Y", Input("Y"));
     op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
     op->SetAttrMap(Attrs());
-    op->SetOutput(::paddle::framework::GradVarName("X"), InputGrad("X"));
-    op->SetOutput(::paddle::framework::GradVarName("Y"), InputGrad("Y"));
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
     return op;
   }
 };
@@ -47,7 +47,6 @@ class ElementwiseMulOpMaker : public ElementwiseOpMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-// REGISTER_ELEMWISE_OP(elementwise_mul, "Mul", "Out = X \\\\odot Y");
 REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
                   ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
                   ops::ElementwiseMulOpGradDescMaker);
