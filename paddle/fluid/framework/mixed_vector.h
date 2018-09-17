@@ -182,7 +182,7 @@ class Vector {
     void Extend(It begin, It end) {
       MutableCPU();
       cpu_.reserve((end - begin) + cpu_.size());
-      std::copy(begin, end, cpu_.begin());
+      std::copy(begin, end, std::back_inserter<std::vector<T>>(cpu_));
     }
 
     // resize the vector
