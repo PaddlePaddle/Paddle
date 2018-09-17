@@ -115,7 +115,8 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   op_checker_ = attr_checker;
   Make();
 
-  AddAttr<int>(OpRoleAttrName(), "The role of this operator")
+  AddAttr<int>(OpRoleAttrName(), "The role of this operator",
+               /*generated=*/true)
       .InEnum(
           {static_cast<int>(OpRole::kForward),
            static_cast<int>(OpRole::kBackward),
@@ -126,10 +127,12 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
            static_cast<int>(OpRole::kNotSpecified)})
       .SetDefault(static_cast<int>(OpRole::kNotSpecified));
   AddAttr<std::vector<std::string>>(OpRoleVarAttrName(),
-                                    "Optimized for variable")
+                                    "Optimized for variable",
+                                    /*generated=*/true)
       .SetDefault({});
 
-  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
+  AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.",
+                       /*generated=*/true)
       .SetDefault("");
 
   Validate();

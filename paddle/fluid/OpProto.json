@@ -1,0 +1,5181 @@
+{
+    "abs": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "accuracy": {
+        "attrs": [], 
+        "inputs": [
+            "Out", 
+            "Indices", 
+            "Label"
+        ], 
+        "outputs": [
+            "Accuracy", 
+            "Correct", 
+            "Total"
+        ]
+    }, 
+    "adadelta": {
+        "attrs": [
+            {
+                "name": "rho", 
+                "type": 1
+            }, 
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "AvgSquaredGrad", 
+            "AvgSquaredUpdate"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "AvgSquaredGradOut", 
+            "AvgSquaredUpdateOut"
+        ]
+    }, 
+    "adagrad": {
+        "attrs": [
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "Moment", 
+            "LearningRate"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "MomentOut"
+        ]
+    }, 
+    "adam": {
+        "attrs": [
+            {
+                "name": "beta1", 
+                "type": 1
+            }, 
+            {
+                "name": "beta2", 
+                "type": 1
+            }, 
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "LearningRate", 
+            "Moment1", 
+            "Moment2", 
+            "Beta1Pow", 
+            "Beta2Pow"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "Moment1Out", 
+            "Moment2Out"
+        ]
+    }, 
+    "adamax": {
+        "attrs": [
+            {
+                "name": "beta1", 
+                "type": 1
+            }, 
+            {
+                "name": "beta2", 
+                "type": 1
+            }, 
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "LearningRate", 
+            "Moment", 
+            "InfNorm", 
+            "Beta1Pow"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "MomentOut", 
+            "InfNormOut"
+        ]
+    }, 
+    "anchor_generator": {
+        "attrs": [
+            {
+                "name": "anchor_sizes", 
+                "type": 4
+            }, 
+            {
+                "name": "aspect_ratios", 
+                "type": 4
+            }, 
+            {
+                "name": "variances", 
+                "type": 4
+            }, 
+            {
+                "name": "stride", 
+                "type": 4
+            }, 
+            {
+                "name": "offset", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Anchors", 
+            "Variances"
+        ]
+    }, 
+    "arg_max": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 9
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "arg_min": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 9
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "argsort": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "Indices"
+        ]
+    }, 
+    "array_to_lod_tensor": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "RankTable"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "assign": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "assign_value": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }, 
+            {
+                "name": "fp32_values", 
+                "type": 4
+            }, 
+            {
+                "name": "int32_values", 
+                "type": 3
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "attention_lstm": {
+        "attrs": [
+            {
+                "name": "gate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "cell_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "candidate_activation", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "C0", 
+            "H0", 
+            "AttentionWeight", 
+            "AttentionBias", 
+            "AttentionScalar", 
+            "AttentionScalarBias", 
+            "LSTMWeight", 
+            "LSTMBias"
+        ], 
+        "outputs": [
+            "Hidden", 
+            "Cell", 
+            "AttentionedX", 
+            "AttentionFCOut", 
+            "LSTMX", 
+            "LSTMOUT"
+        ]
+    }, 
+    "auc": {
+        "attrs": [
+            {
+                "name": "curve", 
+                "type": 2
+            }, 
+            {
+                "name": "num_thresholds", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Predict", 
+            "Label", 
+            "StatPos", 
+            "StatNeg"
+        ], 
+        "outputs": [
+            "AUC", 
+            "BatchAUC", 
+            "StatPosOut", 
+            "StatNegOut"
+        ]
+    }, 
+    "average_accumulates": {
+        "attrs": [
+            {
+                "name": "average_window", 
+                "type": 1
+            }, 
+            {
+                "name": "max_average_window", 
+                "type": 9
+            }, 
+            {
+                "name": "min_average_window", 
+                "type": 9
+            }
+        ], 
+        "inputs": [
+            "param", 
+            "in_sum_1", 
+            "in_sum_2", 
+            "in_sum_3", 
+            "in_num_accumulates", 
+            "in_old_num_accumulates", 
+            "in_num_updates"
+        ], 
+        "outputs": [
+            "out_sum_1", 
+            "out_sum_2", 
+            "out_sum_3", 
+            "out_num_accumulates", 
+            "out_old_num_accumulates", 
+            "out_num_updates"
+        ]
+    }, 
+    "batch_norm": {
+        "attrs": [
+            {
+                "name": "is_test", 
+                "type": 6
+            }, 
+            {
+                "name": "momentum", 
+                "type": 1
+            }, 
+            {
+                "name": "epsilon", 
+                "type": 1
+            }, 
+            {
+                "name": "data_layout", 
+                "type": 2
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "fuse_with_relu", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Scale", 
+            "Bias", 
+            "Mean", 
+            "Variance"
+        ], 
+        "outputs": [
+            "Y", 
+            "MeanOut", 
+            "VarianceOut", 
+            "SavedMean", 
+            "SavedVariance"
+        ]
+    }, 
+    "beam_search": {
+        "attrs": [
+            {
+                "name": "level", 
+                "type": 0
+            }, 
+            {
+                "name": "beam_size", 
+                "type": 0
+            }, 
+            {
+                "name": "end_id", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "pre_ids", 
+            "pre_scores", 
+            "ids", 
+            "scores"
+        ], 
+        "outputs": [
+            "selected_ids", 
+            "selected_scores"
+        ]
+    }, 
+    "beam_search_decode": {
+        "attrs": [
+            {
+                "name": "beam_size", 
+                "type": 0
+            }, 
+            {
+                "name": "end_id", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Ids", 
+            "Scores"
+        ], 
+        "outputs": [
+            "SentenceIds", 
+            "SentenceScores"
+        ]
+    }, 
+    "bilinear_interp": {
+        "attrs": [
+            {
+                "name": "out_h", 
+                "type": 0
+            }, 
+            {
+                "name": "out_w", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "OutSize"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "bilinear_tensor_product": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y", 
+            "Weight", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "bipartite_match": {
+        "attrs": [
+            {
+                "name": "match_type", 
+                "type": 2
+            }, 
+            {
+                "name": "dist_threshold", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "DistMat"
+        ], 
+        "outputs": [
+            "ColToRowMatchIndices", 
+            "ColToRowMatchDist"
+        ]
+    }, 
+    "box_coder": {
+        "attrs": [
+            {
+                "name": "code_type", 
+                "type": 2
+            }, 
+            {
+                "name": "box_normalized", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "PriorBox", 
+            "PriorBoxVar", 
+            "TargetBox"
+        ], 
+        "outputs": [
+            "OutputBox"
+        ]
+    }, 
+    "brelu": {
+        "attrs": [
+            {
+                "name": "t_min", 
+                "type": 1
+            }, 
+            {
+                "name": "t_max", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "cast": {
+        "attrs": [
+            {
+                "name": "out_dtype", 
+                "type": 0
+            }, 
+            {
+                "name": "in_dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "ceil": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "channel_close": {
+        "attrs": [], 
+        "inputs": [
+            "Channel"
+        ], 
+        "outputs": []
+    }, 
+    "channel_create": {
+        "attrs": [
+            {
+                "name": "capacity", 
+                "type": 0
+            }, 
+            {
+                "name": "data_type", 
+                "type": 0
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "channel_recv": {
+        "attrs": [], 
+        "inputs": [
+            "Channel"
+        ], 
+        "outputs": [
+            "Out", 
+            "Status"
+        ]
+    }, 
+    "channel_send": {
+        "attrs": [], 
+        "inputs": [
+            "Channel", 
+            "X"
+        ], 
+        "outputs": []
+    }, 
+    "chunk_eval": {
+        "attrs": [
+            {
+                "name": "num_chunk_types", 
+                "type": 0
+            }, 
+            {
+                "name": "chunk_scheme", 
+                "type": 2
+            }, 
+            {
+                "name": "excluded_chunk_types", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "Inference", 
+            "Label"
+        ], 
+        "outputs": [
+            "Precision", 
+            "Recall", 
+            "F1-Score", 
+            "NumInferChunks", 
+            "NumLabelChunks", 
+            "NumCorrectChunks"
+        ]
+    }, 
+    "clip": {
+        "attrs": [
+            {
+                "name": "min", 
+                "type": 1
+            }, 
+            {
+                "name": "max", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "clip_by_norm": {
+        "attrs": [
+            {
+                "name": "max_norm", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "concat": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "conditional_block": {
+        "attrs": [
+            {
+                "name": "sub_block", 
+                "type": 8
+            }, 
+            {
+                "name": "is_scalar_condition", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Cond", 
+            "Input"
+        ], 
+        "outputs": [
+            "Out", 
+            "Scope"
+        ]
+    }, 
+    "conv2d": {
+        "attrs": [
+            {
+                "name": "is_test", 
+                "type": 6
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "groups", 
+                "type": 0
+            }, 
+            {
+                "name": "dilations", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "fuse_relu", 
+                "type": 6
+            }, 
+            {
+                "name": "fuse_eltwise", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "workspace_size_MB", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Filter", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "conv2d_transpose": {
+        "attrs": [
+            {
+                "name": "groups", 
+                "type": 0
+            }, 
+            {
+                "name": "dilations", 
+                "type": 3
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "workspace_size_MB", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Filter"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "conv3d": {
+        "attrs": [
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "groups", 
+                "type": 0
+            }, 
+            {
+                "name": "dilations", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "workspace_size_MB", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Filter"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "conv3d_transpose": {
+        "attrs": [
+            {
+                "name": "dilations", 
+                "type": 3
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "groups", 
+                "type": 0
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "workspace_size_MB", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Filter"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "conv_shift": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "cos": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "cos_sim": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out", 
+            "XNorm", 
+            "YNorm"
+        ]
+    }, 
+    "create_batch_reader": {
+        "attrs": [
+            {
+                "name": "batch_size", 
+                "type": 0
+            }, 
+            {
+                "name": "discard_leftover", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "UnderlyingReader"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_custom_reader": {
+        "attrs": [
+            {
+                "name": "sub_block", 
+                "type": 8
+            }, 
+            {
+                "name": "source_var_names", 
+                "type": 5
+            }, 
+            {
+                "name": "sink_var_names", 
+                "type": 5
+            }
+        ], 
+        "inputs": [
+            "UnderlyingReader"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_double_buffer_reader": {
+        "attrs": [
+            {
+                "name": "place", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "UnderlyingReader"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_multi_pass_reader": {
+        "attrs": [
+            {
+                "name": "pass_num", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "UnderlyingReader"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_py_reader": {
+        "attrs": [
+            {
+                "name": "shape_concat", 
+                "type": 3
+            }, 
+            {
+                "name": "ranks", 
+                "type": 3
+            }, 
+            {
+                "name": "lod_levels", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "blocking_queue"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_random_data_generator": {
+        "attrs": [
+            {
+                "name": "shape_concat", 
+                "type": 3
+            }, 
+            {
+                "name": "ranks", 
+                "type": 3
+            }, 
+            {
+                "name": "lod_levels", 
+                "type": 3
+            }, 
+            {
+                "name": "low", 
+                "type": 1
+            }, 
+            {
+                "name": "high", 
+                "type": 1
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_recordio_file_reader": {
+        "attrs": [
+            {
+                "name": "shape_concat", 
+                "type": 3
+            }, 
+            {
+                "name": "ranks", 
+                "type": 3
+            }, 
+            {
+                "name": "lod_levels", 
+                "type": 3
+            }, 
+            {
+                "name": "filename", 
+                "type": 2
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "create_shuffle_reader": {
+        "attrs": [
+            {
+                "name": "buffer_size", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "UnderlyingReader"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "crf_decoding": {
+        "attrs": [], 
+        "inputs": [
+            "Emission", 
+            "Transition", 
+            "Label"
+        ], 
+        "outputs": [
+            "ViterbiPath"
+        ]
+    }, 
+    "crop": {
+        "attrs": [
+            {
+                "name": "offsets", 
+                "type": 3
+            }, 
+            {
+                "name": "shape", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y", 
+            "Offsets"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "cross_entropy": {
+        "attrs": [
+            {
+                "name": "soft_label", 
+                "type": 6
+            }, 
+            {
+                "name": "ignore_index", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Label"
+        ], 
+        "outputs": [
+            "Y"
+        ]
+    }, 
+    "ctc_align": {
+        "attrs": [
+            {
+                "name": "blank", 
+                "type": 0
+            }, 
+            {
+                "name": "merge_repeated", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "cumsum": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "exclusive", 
+                "type": 6
+            }, 
+            {
+                "name": "reverse", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "decayed_adagrad": {
+        "attrs": [
+            {
+                "name": "decay", 
+                "type": 1
+            }, 
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "Moment", 
+            "LearningRate"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "MomentOut"
+        ]
+    }, 
+    "delete_var": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": []
+    }, 
+    "depthwise_conv2d": {
+        "attrs": [
+            {
+                "name": "is_test", 
+                "type": 6
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "groups", 
+                "type": 0
+            }, 
+            {
+                "name": "dilations", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "fuse_relu", 
+                "type": 6
+            }, 
+            {
+                "name": "fuse_eltwise", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "workspace_size_MB", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Filter", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "depthwise_conv2d_transpose": {
+        "attrs": [
+            {
+                "name": "groups", 
+                "type": 0
+            }, 
+            {
+                "name": "dilations", 
+                "type": 3
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "workspace_size_MB", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Filter"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "detection_map": {
+        "attrs": [
+            {
+                "name": "class_num", 
+                "type": 0
+            }, 
+            {
+                "name": "background_label", 
+                "type": 0
+            }, 
+            {
+                "name": "overlap_threshold", 
+                "type": 1
+            }, 
+            {
+                "name": "evaluate_difficult", 
+                "type": 6
+            }, 
+            {
+                "name": "ap_type", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "DetectRes", 
+            "Label", 
+            "HasState", 
+            "PosCount", 
+            "TruePos", 
+            "FalsePos"
+        ], 
+        "outputs": [
+            "AccumPosCount", 
+            "AccumTruePos", 
+            "AccumFalsePos", 
+            "MAP"
+        ]
+    }, 
+    "dropout": {
+        "attrs": [
+            {
+                "name": "dropout_prob", 
+                "type": 1
+            }, 
+            {
+                "name": "is_test", 
+                "type": 6
+            }, 
+            {
+                "name": "fix_seed", 
+                "type": 6
+            }, 
+            {
+                "name": "seed", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "Mask"
+        ]
+    }, 
+    "edit_distance": {
+        "attrs": [
+            {
+                "name": "normalized", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Hyps", 
+            "Refs"
+        ], 
+        "outputs": [
+            "SequenceNum", 
+            "Out"
+        ]
+    }, 
+    "elementwise_add": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elementwise_div": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elementwise_max": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elementwise_min": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elementwise_mul": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elementwise_pow": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elementwise_sub": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "elu": {
+        "attrs": [
+            {
+                "name": "alpha", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "equal": {
+        "attrs": [
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "exp": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "expand": {
+        "attrs": [
+            {
+                "name": "expand_times", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "extract_rows": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fake_dequantize_max_abs": {
+        "attrs": [
+            {
+                "name": "max_range", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Scale"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fake_quantize_abs_max": {
+        "attrs": [
+            {
+                "name": "bit_length", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "OutScale"
+        ]
+    }, 
+    "fake_quantize_range_abs_max": {
+        "attrs": [
+            {
+                "name": "window_size", 
+                "type": 0
+            }, 
+            {
+                "name": "bit_length", 
+                "type": 0
+            }, 
+            {
+                "name": "is_test", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "InScale", 
+            "Iter"
+        ], 
+        "outputs": [
+            "Out", 
+            "OutScale", 
+            "OutScales"
+        ]
+    }, 
+    "fc": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "W", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "feed": {
+        "attrs": [
+            {
+                "name": "col", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fetch": {
+        "attrs": [
+            {
+                "name": "col", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fill": {
+        "attrs": [
+            {
+                "name": "value", 
+                "type": 4
+            }, 
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }, 
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fill_constant": {
+        "attrs": [
+            {
+                "name": "dtype", 
+                "type": 0
+            }, 
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "value", 
+                "type": 1
+            }, 
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fill_constant_batch_size_like": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "input_dim_idx", 
+                "type": 0
+            }, 
+            {
+                "name": "output_dim_idx", 
+                "type": 0
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }, 
+            {
+                "name": "value", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "fill_zeros_like": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "flatten": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "flatten2": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "XShape"
+        ]
+    }, 
+    "floor": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "ftrl": {
+        "attrs": [
+            {
+                "name": "l1", 
+                "type": 1
+            }, 
+            {
+                "name": "l2", 
+                "type": 1
+            }, 
+            {
+                "name": "lr_power", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "SquaredAccumulator", 
+            "LinearAccumulator", 
+            "Grad", 
+            "LearningRate"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "SquaredAccumOut", 
+            "LinearAccumOut"
+        ]
+    }, 
+    "fused_elemwise_activation": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "scale", 
+                "type": 1
+            }, 
+            {
+                "name": "recomputation", 
+                "type": 6
+            }, 
+            {
+                "name": "keep_intermediate_value", 
+                "type": 6
+            }, 
+            {
+                "name": "functor_list", 
+                "type": 5
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out", 
+            "IntermediateOut"
+        ]
+    }, 
+    "fusion_gru": {
+        "attrs": [
+            {
+                "name": "activation", 
+                "type": 2
+            }, 
+            {
+                "name": "gate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "is_reverse", 
+                "type": 6
+            }, 
+            {
+                "name": "use_seq", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "H0", 
+            "WeightX", 
+            "WeightH", 
+            "Bias"
+        ], 
+        "outputs": [
+            "ReorderedH0", 
+            "XX", 
+            "BatchedInput", 
+            "BatchedOut", 
+            "Hidden"
+        ]
+    }, 
+    "fusion_lstm": {
+        "attrs": [
+            {
+                "name": "use_peepholes", 
+                "type": 6
+            }, 
+            {
+                "name": "is_reverse", 
+                "type": 6
+            }, 
+            {
+                "name": "use_seq", 
+                "type": 6
+            }, 
+            {
+                "name": "gate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "cell_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "candidate_activation", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "WeightX", 
+            "WeightH", 
+            "Bias", 
+            "H0", 
+            "C0"
+        ], 
+        "outputs": [
+            "Hidden", 
+            "Cell", 
+            "XX", 
+            "BatchedInput", 
+            "BatchedHidden", 
+            "BatchedCell", 
+            "ReorderedH0", 
+            "ReorderedC0"
+        ]
+    }, 
+    "fusion_seqexpand_concat_fc": {
+        "attrs": [
+            {
+                "name": "fc_activation", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "FCWeight", 
+            "FCBias"
+        ], 
+        "outputs": [
+            "Out", 
+            "FCOut"
+        ]
+    }, 
+    "gather": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Index"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "gaussian_random": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "mean", 
+                "type": 1
+            }, 
+            {
+                "name": "std", 
+                "type": 1
+            }, 
+            {
+                "name": "seed", 
+                "type": 0
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "gaussian_random_batch_size_like": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "input_dim_idx", 
+                "type": 0
+            }, 
+            {
+                "name": "output_dim_idx", 
+                "type": 0
+            }, 
+            {
+                "name": "mean", 
+                "type": 1
+            }, 
+            {
+                "name": "std", 
+                "type": 1
+            }, 
+            {
+                "name": "seed", 
+                "type": 0
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "generate_proposal_labels": {
+        "attrs": [
+            {
+                "name": "batch_size_per_im", 
+                "type": 0
+            }, 
+            {
+                "name": "fg_fraction", 
+                "type": 1
+            }, 
+            {
+                "name": "fg_thresh", 
+                "type": 1
+            }, 
+            {
+                "name": "bg_thresh_hi", 
+                "type": 1
+            }, 
+            {
+                "name": "bg_thresh_lo", 
+                "type": 1
+            }, 
+            {
+                "name": "bbox_reg_weights", 
+                "type": 4
+            }, 
+            {
+                "name": "class_nums", 
+                "type": 0
+            }, 
+            {
+                "name": "use_random", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "RpnRois", 
+            "GtClasses", 
+            "IsCrowd", 
+            "GtBoxes", 
+            "ImInfo"
+        ], 
+        "outputs": [
+            "Rois", 
+            "LabelsInt32", 
+            "BboxTargets", 
+            "BboxInsideWeights", 
+            "BboxOutsideWeights"
+        ]
+    }, 
+    "generate_proposals": {
+        "attrs": [
+            {
+                "name": "pre_nms_topN", 
+                "type": 0
+            }, 
+            {
+                "name": "post_nms_topN", 
+                "type": 0
+            }, 
+            {
+                "name": "nms_thresh", 
+                "type": 1
+            }, 
+            {
+                "name": "min_size", 
+                "type": 1
+            }, 
+            {
+                "name": "eta", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Scores", 
+            "BboxDeltas", 
+            "ImInfo", 
+            "Anchors", 
+            "Variances"
+        ], 
+        "outputs": [
+            "RpnRois", 
+            "RpnRoiProbs"
+        ]
+    }, 
+    "get_places": {
+        "attrs": [
+            {
+                "name": "device_count", 
+                "type": 0
+            }, 
+            {
+                "name": "device_type", 
+                "type": 2
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "go": {
+        "attrs": [
+            {
+                "name": "sub_block", 
+                "type": 8
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": []
+    }, 
+    "greater_equal": {
+        "attrs": [
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "greater_than": {
+        "attrs": [
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "gru": {
+        "attrs": [
+            {
+                "name": "activation", 
+                "type": 2
+            }, 
+            {
+                "name": "gate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "is_reverse", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "H0", 
+            "Weight", 
+            "Bias"
+        ], 
+        "outputs": [
+            "BatchGate", 
+            "BatchResetHiddenPrev", 
+            "BatchHidden", 
+            "Hidden"
+        ]
+    }, 
+    "gru_unit": {
+        "attrs": [
+            {
+                "name": "activation", 
+                "type": 0
+            }, 
+            {
+                "name": "gate_activation", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "HiddenPrev", 
+            "Weight", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Gate", 
+            "ResetHiddenPrev", 
+            "Hidden"
+        ]
+    }, 
+    "hard_shrink": {
+        "attrs": [
+            {
+                "name": "threshold", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "hard_sigmoid": {
+        "attrs": [
+            {
+                "name": "slope", 
+                "type": 1
+            }, 
+            {
+                "name": "offset", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "hierarchical_sigmoid": {
+        "attrs": [
+            {
+                "name": "num_classes", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "W", 
+            "Label", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Out", 
+            "PreOut"
+        ]
+    }, 
+    "hinge_loss": {
+        "attrs": [], 
+        "inputs": [
+            "Logits", 
+            "Labels"
+        ], 
+        "outputs": [
+            "Loss"
+        ]
+    }, 
+    "huber_loss": {
+        "attrs": [
+            {
+                "name": "delta", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Residual", 
+            "Out"
+        ]
+    }, 
+    "im2sequence": {
+        "attrs": [
+            {
+                "name": "kernels", 
+                "type": 3
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "out_stride", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "increment": {
+        "attrs": [
+            {
+                "name": "step", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "iou_similarity": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "is_empty": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "l1_norm": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "label_smooth": {
+        "attrs": [
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "PriorDist"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "layer_norm": {
+        "attrs": [
+            {
+                "name": "epsilon", 
+                "type": 1
+            }, 
+            {
+                "name": "begin_norm_axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Scale", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Y", 
+            "Mean", 
+            "Variance"
+        ]
+    }, 
+    "leaky_relu": {
+        "attrs": [
+            {
+                "name": "alpha", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "less_equal": {
+        "attrs": [
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "less_than": {
+        "attrs": [
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "linear_chain_crf": {
+        "attrs": [], 
+        "inputs": [
+            "Emission", 
+            "Transition", 
+            "Label"
+        ], 
+        "outputs": [
+            "Alpha", 
+            "EmissionExps", 
+            "TransitionExps", 
+            "LogLikelihood"
+        ]
+    }, 
+    "load": {
+        "attrs": [
+            {
+                "name": "load_as_fp16", 
+                "type": 6
+            }, 
+            {
+                "name": "file_path", 
+                "type": 2
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "load_combine": {
+        "attrs": [
+            {
+                "name": "load_as_fp16", 
+                "type": 6
+            }, 
+            {
+                "name": "file_path", 
+                "type": 2
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lod_array_length": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lod_rank_table": {
+        "attrs": [
+            {
+                "name": "level", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lod_reset": {
+        "attrs": [
+            {
+                "name": "target_lod", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lod_tensor_to_array": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "RankTable"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "log": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "log_loss": {
+        "attrs": [
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Predicted", 
+            "Labels"
+        ], 
+        "outputs": [
+            "Loss"
+        ]
+    }, 
+    "logical_and": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "logical_not": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "logical_or": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "logical_xor": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "logsigmoid": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lookup_sparse_table": {
+        "attrs": [
+            {
+                "name": "padding_idx", 
+                "type": 9
+            }, 
+            {
+                "name": "auto_grown_table", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "W", 
+            "Ids"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lookup_table": {
+        "attrs": [
+            {
+                "name": "is_sparse", 
+                "type": 6
+            }, 
+            {
+                "name": "is_distributed", 
+                "type": 6
+            }, 
+            {
+                "name": "padding_idx", 
+                "type": 9
+            }
+        ], 
+        "inputs": [
+            "W", 
+            "Ids"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "lrn": {
+        "attrs": [
+            {
+                "name": "n", 
+                "type": 0
+            }, 
+            {
+                "name": "k", 
+                "type": 1
+            }, 
+            {
+                "name": "alpha", 
+                "type": 1
+            }, 
+            {
+                "name": "beta", 
+                "type": 1
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "is_test", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "MidOut"
+        ]
+    }, 
+    "lstm": {
+        "attrs": [
+            {
+                "name": "use_peepholes", 
+                "type": 6
+            }, 
+            {
+                "name": "is_reverse", 
+                "type": 6
+            }, 
+            {
+                "name": "gate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "cell_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "candidate_activation", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "H0", 
+            "C0", 
+            "Weight", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Hidden", 
+            "Cell", 
+            "BatchGate", 
+            "BatchCellPreAct"
+        ]
+    }, 
+    "lstm_unit": {
+        "attrs": [
+            {
+                "name": "forget_bias", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "C_prev"
+        ], 
+        "outputs": [
+            "C", 
+            "H"
+        ]
+    }, 
+    "lstmp": {
+        "attrs": [
+            {
+                "name": "use_peepholes", 
+                "type": 6
+            }, 
+            {
+                "name": "is_reverse", 
+                "type": 6
+            }, 
+            {
+                "name": "gate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "cell_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "candidate_activation", 
+                "type": 2
+            }, 
+            {
+                "name": "proj_activation", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "H0", 
+            "C0", 
+            "Weight", 
+            "ProjWeight", 
+            "Bias"
+        ], 
+        "outputs": [
+            "Projection", 
+            "Cell", 
+            "BatchGate", 
+            "BatchCellPreAct", 
+            "BatchHidden", 
+            "OrderedP0"
+        ]
+    }, 
+    "margin_rank_loss": {
+        "attrs": [
+            {
+                "name": "margin", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X1", 
+            "X2", 
+            "Label"
+        ], 
+        "outputs": [
+            "Activated", 
+            "Out"
+        ]
+    }, 
+    "matmul": {
+        "attrs": [
+            {
+                "name": "transpose_X", 
+                "type": 6
+            }, 
+            {
+                "name": "transpose_Y", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "max_pool2d_with_index": {
+        "attrs": [
+            {
+                "name": "ksize", 
+                "type": 3
+            }, 
+            {
+                "name": "global_pooling", 
+                "type": 6
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "Mask"
+        ]
+    }, 
+    "max_pool3d_with_index": {
+        "attrs": [
+            {
+                "name": "ksize", 
+                "type": 3
+            }, 
+            {
+                "name": "global_pooling", 
+                "type": 6
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "Mask"
+        ]
+    }, 
+    "max_sequence_len": {
+        "attrs": [], 
+        "inputs": [
+            "RankTable"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "maxout": {
+        "attrs": [
+            {
+                "name": "groups", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "mean": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "mean_iou": {
+        "attrs": [
+            {
+                "name": "num_classes", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Predictions", 
+            "Labels", 
+            "InWrongs", 
+            "InCorrects", 
+            "InMeanIou"
+        ], 
+        "outputs": [
+            "OutMeanIou", 
+            "OutWrong", 
+            "OutCorrect"
+        ]
+    }, 
+    "merge_ids": {
+        "attrs": [], 
+        "inputs": [
+            "Ids", 
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "merge_lod_tensor": {
+        "attrs": [
+            {
+                "name": "level", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Mask", 
+            "InTrue", 
+            "InFalse"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "mine_hard_examples": {
+        "attrs": [
+            {
+                "name": "neg_pos_ratio", 
+                "type": 1
+            }, 
+            {
+                "name": "neg_dist_threshold", 
+                "type": 1
+            }, 
+            {
+                "name": "sample_size", 
+                "type": 0
+            }, 
+            {
+                "name": "mining_type", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "ClsLoss", 
+            "LocLoss", 
+            "MatchIndices", 
+            "MatchDist"
+        ], 
+        "outputs": [
+            "NegIndices", 
+            "UpdatedMatchIndices"
+        ]
+    }, 
+    "minus": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "modified_huber_loss": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "IntermediateVal", 
+            "Out"
+        ]
+    }, 
+    "momentum": {
+        "attrs": [
+            {
+                "name": "mu", 
+                "type": 1
+            }, 
+            {
+                "name": "use_nesterov", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "Velocity", 
+            "LearningRate"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "VelocityOut"
+        ]
+    }, 
+    "mul": {
+        "attrs": [
+            {
+                "name": "x_num_col_dims", 
+                "type": 0
+            }, 
+            {
+                "name": "y_num_col_dims", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "multiclass_nms": {
+        "attrs": [
+            {
+                "name": "background_label", 
+                "type": 0
+            }, 
+            {
+                "name": "score_threshold", 
+                "type": 1
+            }, 
+            {
+                "name": "nms_top_k", 
+                "type": 0
+            }, 
+            {
+                "name": "nms_threshold", 
+                "type": 1
+            }, 
+            {
+                "name": "nms_eta", 
+                "type": 1
+            }, 
+            {
+                "name": "keep_top_k", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "BBoxes", 
+            "Scores"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "multiplex": {
+        "attrs": [], 
+        "inputs": [
+            "Ids", 
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "ncclAllReduce": {
+        "attrs": [
+            {
+                "name": "reduction", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Communicator"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "ncclBcast": {
+        "attrs": [
+            {
+                "name": "root", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Communicator"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "ncclInit": {
+        "attrs": [], 
+        "inputs": [
+            "parallel_scopes"
+        ], 
+        "outputs": [
+            "Communicator"
+        ]
+    }, 
+    "ncclReduce": {
+        "attrs": [
+            {
+                "name": "reduction", 
+                "type": 2
+            }, 
+            {
+                "name": "root", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Communicator"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "nce": {
+        "attrs": [
+            {
+                "name": "num_total_classes", 
+                "type": 0
+            }, 
+            {
+                "name": "num_neg_samples", 
+                "type": 0
+            }, 
+            {
+                "name": "custom_neg_classes", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Label", 
+            "Weight", 
+            "Bias", 
+            "SampleWeight"
+        ], 
+        "outputs": [
+            "Cost", 
+            "SampleLogits", 
+            "SampleLabels"
+        ]
+    }, 
+    "norm": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "epsilon", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Norm", 
+            "Out"
+        ]
+    }, 
+    "not_equal": {
+        "attrs": [
+            {
+                "name": "force_cpu", 
+                "type": 6
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "one_hot": {
+        "attrs": [
+            {
+                "name": "depth", 
+                "type": 0
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "open_files": {
+        "attrs": [
+            {
+                "name": "shape_concat", 
+                "type": 3
+            }, 
+            {
+                "name": "ranks", 
+                "type": 3
+            }, 
+            {
+                "name": "lod_levels", 
+                "type": 3
+            }, 
+            {
+                "name": "file_names", 
+                "type": 5
+            }, 
+            {
+                "name": "is_test", 
+                "type": 6
+            }, 
+            {
+                "name": "thread_num", 
+                "type": 0
+            }, 
+            {
+                "name": "buffer_size", 
+                "type": 0
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "pad": {
+        "attrs": [
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "pad_value", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "pad2d": {
+        "attrs": [
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "pad_value", 
+                "type": 1
+            }, 
+            {
+                "name": "mode", 
+                "type": 2
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "pad_constant_like": {
+        "attrs": [
+            {
+                "name": "pad_value", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "parallel_do": {
+        "attrs": [
+            {
+                "name": "sub_block", 
+                "type": 8
+            }, 
+            {
+                "name": "use_nccl", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "inputs", 
+            "parameters", 
+            "places"
+        ], 
+        "outputs": [
+            "outputs", 
+            "parallel_scopes"
+        ]
+    }, 
+    "polygon_box_transform": {
+        "attrs": [], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Output"
+        ]
+    }, 
+    "pool2d": {
+        "attrs": [
+            {
+                "name": "pooling_type", 
+                "type": 2
+            }, 
+            {
+                "name": "ksize", 
+                "type": 3
+            }, 
+            {
+                "name": "global_pooling", 
+                "type": 6
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "ceil_mode", 
+                "type": 6
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "pool3d": {
+        "attrs": [
+            {
+                "name": "pooling_type", 
+                "type": 2
+            }, 
+            {
+                "name": "ksize", 
+                "type": 3
+            }, 
+            {
+                "name": "global_pooling", 
+                "type": 6
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "ceil_mode", 
+                "type": 6
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "positive_negative_pair": {
+        "attrs": [
+            {
+                "name": "column", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Score", 
+            "Label", 
+            "QueryID", 
+            "AccumulatePositivePair", 
+            "AccumulateNegativePair", 
+            "AccumulateNeutralPair", 
+            "Weight"
+        ], 
+        "outputs": [
+            "PositivePair", 
+            "NegativePair", 
+            "NeutralPair"
+        ]
+    }, 
+    "pow": {
+        "attrs": [
+            {
+                "name": "factor", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "precision_recall": {
+        "attrs": [
+            {
+                "name": "class_number", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "MaxProbs", 
+            "Indices", 
+            "Labels", 
+            "Weights", 
+            "StatesInfo"
+        ], 
+        "outputs": [
+            "BatchMetrics", 
+            "AccumMetrics", 
+            "AccumStatesInfo"
+        ]
+    }, 
+    "prelu": {
+        "attrs": [
+            {
+                "name": "mode", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Alpha"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "print": {
+        "attrs": [
+            {
+                "name": "first_n", 
+                "type": 0
+            }, 
+            {
+                "name": "message", 
+                "type": 2
+            }, 
+            {
+                "name": "summarize", 
+                "type": 0
+            }, 
+            {
+                "name": "print_tensor_name", 
+                "type": 6
+            }, 
+            {
+                "name": "print_tensor_type", 
+                "type": 6
+            }, 
+            {
+                "name": "print_tensor_shape", 
+                "type": 6
+            }, 
+            {
+                "name": "print_tensor_lod", 
+                "type": 6
+            }, 
+            {
+                "name": "print_phase", 
+                "type": 2
+            }, 
+            {
+                "name": "is_forward", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "In"
+        ], 
+        "outputs": []
+    }, 
+    "prior_box": {
+        "attrs": [
+            {
+                "name": "min_sizes", 
+                "type": 4
+            }, 
+            {
+                "name": "max_sizes", 
+                "type": 4
+            }, 
+            {
+                "name": "aspect_ratios", 
+                "type": 4
+            }, 
+            {
+                "name": "variances", 
+                "type": 4
+            }, 
+            {
+                "name": "flip", 
+                "type": 6
+            }, 
+            {
+                "name": "clip", 
+                "type": 6
+            }, 
+            {
+                "name": "step_w", 
+                "type": 1
+            }, 
+            {
+                "name": "step_h", 
+                "type": 1
+            }, 
+            {
+                "name": "offset", 
+                "type": 1
+            }, 
+            {
+                "name": "min_max_aspect_ratios_order", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Input", 
+            "Image"
+        ], 
+        "outputs": [
+            "Boxes", 
+            "Variances"
+        ]
+    }, 
+    "proximal_adagrad": {
+        "attrs": [
+            {
+                "name": "l1", 
+                "type": 1
+            }, 
+            {
+                "name": "l2", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Moment", 
+            "Grad", 
+            "LearningRate"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "MomentOut"
+        ]
+    }, 
+    "proximal_gd": {
+        "attrs": [
+            {
+                "name": "l1", 
+                "type": 1
+            }, 
+            {
+                "name": "l2", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "Grad", 
+            "LearningRate"
+        ], 
+        "outputs": [
+            "ParamOut"
+        ]
+    }, 
+    "random_crop": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "startup_seed", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Seed"
+        ], 
+        "outputs": [
+            "Out", 
+            "SeedOut"
+        ]
+    }, 
+    "rank_loss": {
+        "attrs": [], 
+        "inputs": [
+            "Label", 
+            "Left", 
+            "Right"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "read": {
+        "attrs": [
+            {
+                "name": "throw_eof_exp", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Reader"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "read_from_array": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "I"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reciprocal": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "recurrent": {
+        "attrs": [
+            {
+                "name": "ex_states", 
+                "type": 5
+            }, 
+            {
+                "name": "states", 
+                "type": 5
+            }, 
+            {
+                "name": "sub_block", 
+                "type": 8
+            }, 
+            {
+                "name": "reverse", 
+                "type": 6
+            }, 
+            {
+                "name": "is_train", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "inputs", 
+            "initial_states", 
+            "parameters"
+        ], 
+        "outputs": [
+            "outputs", 
+            "step_scopes"
+        ]
+    }, 
+    "reduce_max": {
+        "attrs": [
+            {
+                "name": "dim", 
+                "type": 3
+            }, 
+            {
+                "name": "keep_dim", 
+                "type": 6
+            }, 
+            {
+                "name": "reduce_all", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reduce_mean": {
+        "attrs": [
+            {
+                "name": "dim", 
+                "type": 3
+            }, 
+            {
+                "name": "keep_dim", 
+                "type": 6
+            }, 
+            {
+                "name": "reduce_all", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reduce_min": {
+        "attrs": [
+            {
+                "name": "dim", 
+                "type": 3
+            }, 
+            {
+                "name": "keep_dim", 
+                "type": 6
+            }, 
+            {
+                "name": "reduce_all", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reduce_prod": {
+        "attrs": [
+            {
+                "name": "dim", 
+                "type": 3
+            }, 
+            {
+                "name": "keep_dim", 
+                "type": 6
+            }, 
+            {
+                "name": "reduce_all", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reduce_sum": {
+        "attrs": [
+            {
+                "name": "dim", 
+                "type": 3
+            }, 
+            {
+                "name": "keep_dim", 
+                "type": 6
+            }, 
+            {
+                "name": "reduce_all", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "relu": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "relu6": {
+        "attrs": [
+            {
+                "name": "threshold", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reorder_lod_tensor_by_rank": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "RankTable"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reshape": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Shape"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "reshape2": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Shape"
+        ], 
+        "outputs": [
+            "Out", 
+            "XShape"
+        ]
+    }, 
+    "reverse": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "rmsprop": {
+        "attrs": [
+            {
+                "name": "epsilon", 
+                "type": 1
+            }, 
+            {
+                "name": "decay", 
+                "type": 1
+            }, 
+            {
+                "name": "momentum", 
+                "type": 1
+            }, 
+            {
+                "name": "centered", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Param", 
+            "MeanSquare", 
+            "MeanGrad", 
+            "LearningRate", 
+            "Grad", 
+            "Moment"
+        ], 
+        "outputs": [
+            "ParamOut", 
+            "MomentOut", 
+            "MeanSquareOut", 
+            "MeanGradOut"
+        ]
+    }, 
+    "rnn_memory_helper": {
+        "attrs": [
+            {
+                "name": "dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "rnn_memory_helper_grad": {
+        "attrs": [
+            {
+                "name": "dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Out@GRAD", 
+            "X", 
+            "Out"
+        ], 
+        "outputs": [
+            "X@GRAD"
+        ]
+    }, 
+    "roi_pool": {
+        "attrs": [
+            {
+                "name": "spatial_scale", 
+                "type": 1
+            }, 
+            {
+                "name": "pooled_height", 
+                "type": 0
+            }, 
+            {
+                "name": "pooled_width", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "ROIs"
+        ], 
+        "outputs": [
+            "Out", 
+            "Argmax"
+        ]
+    }, 
+    "round": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "row_conv": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Filter"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "rpn_target_assign": {
+        "attrs": [
+            {
+                "name": "rpn_batch_size_per_im", 
+                "type": 0
+            }, 
+            {
+                "name": "rpn_straddle_thresh", 
+                "type": 1
+            }, 
+            {
+                "name": "rpn_positive_overlap", 
+                "type": 1
+            }, 
+            {
+                "name": "rpn_negative_overlap", 
+                "type": 1
+            }, 
+            {
+                "name": "rpn_fg_fraction", 
+                "type": 1
+            }, 
+            {
+                "name": "use_random", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Anchor", 
+            "GtBoxes", 
+            "IsCrowd", 
+            "ImInfo"
+        ], 
+        "outputs": [
+            "LocationIndex", 
+            "ScoreIndex", 
+            "TargetBBox", 
+            "TargetLabel"
+        ]
+    }, 
+    "sampling_id": {
+        "attrs": [
+            {
+                "name": "min", 
+                "type": 1
+            }, 
+            {
+                "name": "max", 
+                "type": 1
+            }, 
+            {
+                "name": "seed", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "save": {
+        "attrs": [
+            {
+                "name": "overwrite", 
+                "type": 6
+            }, 
+            {
+                "name": "save_as_fp16", 
+                "type": 6
+            }, 
+            {
+                "name": "file_path", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": []
+    }, 
+    "save_combine": {
+        "attrs": [
+            {
+                "name": "overwrite", 
+                "type": 6
+            }, 
+            {
+                "name": "save_as_fp16", 
+                "type": 6
+            }, 
+            {
+                "name": "file_path", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": []
+    }, 
+    "scale": {
+        "attrs": [
+            {
+                "name": "scale", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "scatter": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Ids", 
+            "Updates"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "select": {
+        "attrs": [
+            {
+                "name": "cases", 
+                "type": 5
+            }, 
+            {
+                "name": "sub_block", 
+                "type": 8
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "case_to_execute"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_concat": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "level", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_conv": {
+        "attrs": [
+            {
+                "name": "paddingTrainable", 
+                "type": 6
+            }, 
+            {
+                "name": "contextLength", 
+                "type": 0
+            }, 
+            {
+                "name": "contextStart", 
+                "type": 0
+            }, 
+            {
+                "name": "contextStride", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "PaddingData", 
+            "Filter"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_enumerate": {
+        "attrs": [
+            {
+                "name": "win_size", 
+                "type": 0
+            }, 
+            {
+                "name": "pad_value", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_erase": {
+        "attrs": [
+            {
+                "name": "tokens", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_expand": {
+        "attrs": [
+            {
+                "name": "ref_level", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_mask": {
+        "attrs": [
+            {
+                "name": "maxlen", 
+                "type": 0
+            }, 
+            {
+                "name": "out_dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Y"
+        ]
+    }, 
+    "sequence_pad": {
+        "attrs": [
+            {
+                "name": "padded_length", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "PadValue"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_pool": {
+        "attrs": [
+            {
+                "name": "pooltype", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "MaxIndex"
+        ]
+    }, 
+    "sequence_reshape": {
+        "attrs": [
+            {
+                "name": "new_dim", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_slice": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Offset", 
+            "Length"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sequence_softmax": {
+        "attrs": [
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sgd": {
+        "attrs": [], 
+        "inputs": [
+            "Param", 
+            "LearningRate", 
+            "Grad"
+        ], 
+        "outputs": [
+            "ParamOut"
+        ]
+    }, 
+    "shape": {
+        "attrs": [], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "shrink_rnn_memory": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "RankTable", 
+            "I"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sigmoid": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sigmoid_cross_entropy_with_logits": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Label"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sign": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sin": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "slice": {
+        "attrs": [
+            {
+                "name": "axes", 
+                "type": 3
+            }, 
+            {
+                "name": "starts", 
+                "type": 3
+            }, 
+            {
+                "name": "ends", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "smooth_l1_loss": {
+        "attrs": [
+            {
+                "name": "sigma", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Y", 
+            "InsideWeight", 
+            "OutsideWeight"
+        ], 
+        "outputs": [
+            "Diff", 
+            "Out"
+        ]
+    }, 
+    "soft_relu": {
+        "attrs": [
+            {
+                "name": "threshold", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "softmax": {
+        "attrs": [
+            {
+                "name": "use_cudnn", 
+                "type": 6
+            }, 
+            {
+                "name": "data_format", 
+                "type": 2
+            }, 
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }, 
+            {
+                "name": "is_test", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "softmax_with_cross_entropy": {
+        "attrs": [
+            {
+                "name": "soft_label", 
+                "type": 6
+            }, 
+            {
+                "name": "ignore_index", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Logits", 
+            "Label"
+        ], 
+        "outputs": [
+            "Softmax", 
+            "Loss"
+        ]
+    }, 
+    "softplus": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "softshrink": {
+        "attrs": [
+            {
+                "name": "lambda", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "softsign": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "split": {
+        "attrs": [
+            {
+                "name": "sections", 
+                "type": 3
+            }, 
+            {
+                "name": "num", 
+                "type": 0
+            }, 
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "split_byref": {
+        "attrs": [
+            {
+                "name": "sections", 
+                "type": 3
+            }, 
+            {
+                "name": "num", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "split_ids": {
+        "attrs": [], 
+        "inputs": [
+            "Ids"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "split_lod_tensor": {
+        "attrs": [
+            {
+                "name": "level", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Mask"
+        ], 
+        "outputs": [
+            "OutTrue", 
+            "OutFalse"
+        ]
+    }, 
+    "split_selected_rows": {
+        "attrs": [
+            {
+                "name": "height_sections", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "spp": {
+        "attrs": [
+            {
+                "name": "pyramid_height", 
+                "type": 0
+            }, 
+            {
+                "name": "pooling_type", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sqrt": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "square": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "squared_l2_distance": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "Y"
+        ], 
+        "outputs": [
+            "sub_result", 
+            "Out"
+        ]
+    }, 
+    "squared_l2_norm": {
+        "attrs": [], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "squeeze": {
+        "attrs": [
+            {
+                "name": "axes", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "squeeze2": {
+        "attrs": [
+            {
+                "name": "axes", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "XShape"
+        ]
+    }, 
+    "stack": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Y"
+        ]
+    }, 
+    "stanh": {
+        "attrs": [
+            {
+                "name": "scale_a", 
+                "type": 1
+            }, 
+            {
+                "name": "scale_b", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "sum": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "swish": {
+        "attrs": [
+            {
+                "name": "beta", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "tanh": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "tanh_shrink": {
+        "attrs": [
+            {
+                "name": "use_mkldnn", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "target_assign": {
+        "attrs": [
+            {
+                "name": "mismatch_value", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "MatchIndices", 
+            "NegIndices"
+        ], 
+        "outputs": [
+            "Out", 
+            "OutWeight"
+        ]
+    }, 
+    "tensorrt_engine": {
+        "attrs": [
+            {
+                "name": "subgraph", 
+                "type": 2
+            }, 
+            {
+                "name": "engine_uniq_key", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "Xs"
+        ], 
+        "outputs": [
+            "Ys"
+        ]
+    }, 
+    "thresholded_relu": {
+        "attrs": [
+            {
+                "name": "threshold", 
+                "type": 1
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "top_k": {
+        "attrs": [
+            {
+                "name": "k", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "Indices"
+        ]
+    }, 
+    "transpose": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "transpose2": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "XShape"
+        ]
+    }, 
+    "uniform_random": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "min", 
+                "type": 1
+            }, 
+            {
+                "name": "max", 
+                "type": 1
+            }, 
+            {
+                "name": "seed", 
+                "type": 0
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "uniform_random_batch_size_like": {
+        "attrs": [
+            {
+                "name": "shape", 
+                "type": 3
+            }, 
+            {
+                "name": "input_dim_idx", 
+                "type": 0
+            }, 
+            {
+                "name": "output_dim_idx", 
+                "type": 0
+            }, 
+            {
+                "name": "min", 
+                "type": 1
+            }, 
+            {
+                "name": "max", 
+                "type": 1
+            }, 
+            {
+                "name": "seed", 
+                "type": 0
+            }, 
+            {
+                "name": "dtype", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "Input"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "unpool": {
+        "attrs": [
+            {
+                "name": "ksize", 
+                "type": 3
+            }, 
+            {
+                "name": "strides", 
+                "type": 3
+            }, 
+            {
+                "name": "paddings", 
+                "type": 3
+            }, 
+            {
+                "name": "unpooling_type", 
+                "type": 2
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Indices"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "unsqueeze": {
+        "attrs": [
+            {
+                "name": "axes", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }, 
+    "unsqueeze2": {
+        "attrs": [
+            {
+                "name": "axes", 
+                "type": 3
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Out", 
+            "XShape"
+        ]
+    }, 
+    "unstack": {
+        "attrs": [
+            {
+                "name": "axis", 
+                "type": 0
+            }, 
+            {
+                "name": "num", 
+                "type": 0
+            }
+        ], 
+        "inputs": [
+            "X"
+        ], 
+        "outputs": [
+            "Y"
+        ]
+    }, 
+    "warpctc": {
+        "attrs": [
+            {
+                "name": "blank", 
+                "type": 0
+            }, 
+            {
+                "name": "norm_by_times", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "Logits", 
+            "Label"
+        ], 
+        "outputs": [
+            "WarpCTCGrad", 
+            "Loss"
+        ]
+    }, 
+    "while": {
+        "attrs": [
+            {
+                "name": "sub_block", 
+                "type": 8
+            }, 
+            {
+                "name": "is_test", 
+                "type": 6
+            }
+        ], 
+        "inputs": [
+            "X", 
+            "Condition"
+        ], 
+        "outputs": [
+            "Out", 
+            "StepScopes"
+        ]
+    }, 
+    "write_to_array": {
+        "attrs": [], 
+        "inputs": [
+            "X", 
+            "I"
+        ], 
+        "outputs": [
+            "Out"
+        ]
+    }
+}

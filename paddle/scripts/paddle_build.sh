@@ -389,6 +389,8 @@ function assert_api_not_changed() {
         sed -i "s/\(.*Transpiler.*\).__init__ ArgSpec(args=\['self'].*/\1.__init__ /g" new.spec
     fi
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API.spec new.spec
+    python ${PADDLE_ROOT}/tools/print_op_protos.py > new.op_protos.json
+    python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/OpProto.json new.op_protos.json
     deactivate
 }
 

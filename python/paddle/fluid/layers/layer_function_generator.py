@@ -85,10 +85,8 @@ def _generate_doc_string_(op_proto):
             buf.write("  Optional.")
         buf.write('\n')
 
-    skip_attrs = OpProtoHolder.generated_op_attr_names()
-
     for each_attr in op_proto.attrs:
-        if each_attr.name in skip_attrs:
+        if each_attr.generated:
             continue
         buf.write('    ')
         buf.write(each_attr.name)
