@@ -21,7 +21,7 @@ namespace operators {
 
 // reference: https://gist.github.com/lakshayg/d80172fe5ae3c5d2c2aedb53c250320e
 template <typename T>
-T erfinv(T x) {
+T Erfinv(T x) {
   if (x < -1 || x > 1) {
     return std::numeric_limits<T>::quiet_NaN();
   } else if (x == 1.0) {
@@ -148,7 +148,7 @@ struct TruncatedNormal {
 
   T operator()(T value) const {
     auto p = a_normal_cdf + (b_normal_cdf - a_normal_cdf) * value;
-    return (std::sqrt(2.0) * erfinv(2 * p - 1) + mean) * std;
+    return (std::sqrt(2.0) * Erfinv(2 * p - 1) + mean) * std;
   }
 };
 
@@ -186,14 +186,14 @@ class TruncatedGaussianRandomOp : public framework::OperatorWithKernel {
         ctx->HasOutput("Out"),
         "Output(Out) of TruncatedGaussianRandomOp should not be null.");
     auto shape = ctx->Attrs().Get<std::vector<int>>("shape");
-    std::vector<int64_t> temp;
-    temp.reserve(shape.size());
+    std::vector<int64_t> out_dim;
+    out_dim.reserve(shape.size());
     for (auto dim : shape) {
-      temp.push_back(static_cast<int64_t>(dim));
+      out_dim.push_back(static_cast<int64_t>(dim));
     }
     PADDLE_ENFORCE(shape.size() > 0UL,
                    "shape can be one int or array. shape must be set.");
-    ctx->SetOutputDim("Out", framework::make_ddim(temp));
+    ctx->SetOutputDim("Out", framework::make_ddim(out_dim));
   }
 
  protected:
