@@ -20,6 +20,28 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+template <typename T>
+__inline__ __device__
+T warpReduceSum(T val) {
+    #define FULL_MASK 0xffffffff
+    for (int offset = 16; offset > 0; offset /= 2)
+        val += __shfl_down_sync(FULL_MASK, val, offset);
+    return val;
+}
+__forceinline__ __device__ unsigned lane_id()
+{
+    unsigned ret;
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(ret));
+    return ret;
+}
+
+__forceinline__ __device__ unsigned warp_id()
+{
+    unsigned ret;
+    asm volatile ("mov.u32 %0, %warpid;" : "=r"(ret));
+    return ret;
+}
+
 // A Cuda kernel to compute the depthwise convolution forward pass
 // in NCHW format.
 template <typename T>
@@ -125,44 +147,44 @@ __global__ void KernelDepthwiseConvInputGrad(
 // Cuda kernel to compute the depthwise convolution backprop w.r.t. filter.
 template <typename T>
 __global__ void KernelDepthwiseConvFilterGrad(
-    const int nthreads, const T* const output_grad_data,
-    const T* const input_data, const int num, const int output_channels,
+    const T* output_grad_data, const T* input_data, const int num, const int output_channels,
     const int output_height, const int output_width, const int input_channels,
     const int input_height, const int input_width, const int filter_multiplier,
     const int filter_height, const int filter_width, const int stride_height,
     const int stride_width, const int padding_height, const int padding_width,
-    T* const filter_grad_data) {
-  int index = (blockIdx.x * gridDim.y + blockIdx.y) * blockDim.x + threadIdx.x;
-  if (index < nthreads) {
-    const int w_out = index % output_width;
-    const int h_out = (index / output_width) % output_height;
-    const int c_out = (index / output_width / output_height) % output_channels;
-    const int batch = (index / output_width / output_height / output_channels);
-    const int c_in = c_out / filter_multiplier;
-    const int h_in_start = -padding_height + h_out * stride_height;
-    const int w_in_start = -padding_width + w_out * stride_width;
-    const int h_in_end =
-        -padding_height + h_out * stride_height + filter_height;
-    const int w_in_end = -padding_width + w_out * stride_width + filter_width;
-    const int in_offset =
-        (batch * input_channels + c_in) * input_height * input_width;
+    T* filter_grad_data)
+{
+    T s=0;
 
-    T* addr_offset = filter_grad_data + c_out * filter_height * filter_width;
-    const int h_end = h_in_end < input_height ? h_in_end : input_height;
-    const int w_end = w_in_end < input_width ? w_in_end : input_width;
-    const int h_start = h_in_start > 0 ? h_in_start : 0;
-    const int w_start = w_in_start > 0 ? w_in_start : 0;
+    int gbid = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
+    // int gtid = threadIdx.y * blockDim.x + threadIdx.x;
+    int lid = lane_id();
 
-    for (int h_in = h_start; h_in < h_end; h_in++) {
-      for (int w_in = w_start; w_in < w_end; w_in++) {
-        const int offset = in_offset + h_in * input_width + w_in;
-        const T diff_temp = output_grad_data[index] * input_data[offset];
-        T* addr = addr_offset + (h_in - h_in_start) * filter_width +
-                  (w_in - w_in_start);
-        paddle::platform::CudaAtomicAdd(addr, diff_temp);
-      }
+    for (int bid=0; bid<num; bid++) {
+        for (int image_h=threadIdx.y; image_h<output_height; image_h+=blockDim.y) {
+            int kernel_id = blockIdx.z;
+            int kernel_h = blockIdx.y - padding_height;
+            int kernel_w = blockIdx.x - padding_width;
+
+            int image_w = threadIdx.x;
+            #define dilation 1
+            int image_hk = image_h * stride_height + kernel_h * dilation;
+            int image_wk = image_w * stride_width + kernel_w * dilation;
+            if (image_hk<0 || image_hk>=input_height) continue;
+            if (image_wk<0 || image_wk>=input_width) continue;
+            #define gaid(N,C,H,W) ((((N)*gridDim.z+(C))*output_height+(H))*blockDim.x+(W))
+            #define gaid2(N,C,H,W) ((((N)*gridDim.z+(C)/filter_multiplier)*input_height+(H))*input_width+(W))
+
+            s += output_grad_data[gaid(bid, kernel_id, image_h, image_w)] *
+                 input_data[gaid2(bid, kernel_id, image_hk, image_wk)];
+
+            #undef gaid
+            #undef gaid2
+            #undef dilation
+        }
     }
-  }
+    s = warpReduceSum<T>(s);
+    if (lid == 0) paddle::platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
 }
 
 /*
@@ -281,12 +303,13 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T> {
 
     int nthreads = batch_size * output_channels * output_height * output_width;
 
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
+    int block_size = 512;
+    int crop_output_height = min(max(block_size / output_height, 1), output_height);
+    dim3 threads(ksize_width, ksize_height, output_channels);
+    dim3 grid(output_width, crop_output_height, 1);
 
     KernelDepthwiseConvFilterGrad<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, output_grad_data, input_data, batch_size, output_channels,
+        output_grad_data, input_data, batch_size, output_channels,
         output_height, output_width, input_channels, input_height, input_width,
         output_channels / input_channels, ksize_height, ksize_width,
         stride_height, stride_width, padding_height, padding_width,
