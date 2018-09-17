@@ -104,7 +104,7 @@ def batch_images_from_tar(data_file,
                 pickle.dump(
                     output,
                     open('%s/batch_%d' % (out_path, file_id), 'wb'),
-                    protocol=pickle.HIGHEST_PROTOCOL)
+                    protocol=2)
                 file_id += 1
                 data = []
                 labels = []
@@ -113,9 +113,7 @@ def batch_images_from_tar(data_file,
         output['label'] = labels
         output['data'] = data
         pickle.dump(
-            output,
-            open('%s/batch_%d' % (out_path, file_id), 'wb'),
-            protocol=pickle.HIGHEST_PROTOCOL)
+            output, open('%s/batch_%d' % (out_path, file_id), 'wb'), protocol=2)
 
     with open(meta_file, 'a') as meta:
         for file in os.listdir(out_path):
@@ -203,7 +201,7 @@ def resize_short(im, size):
         h_new = size * h // w
     else:
         w_new = size * w // h
-    im = cv2.resize(im, (h_new, w_new), interpolation=cv2.INTER_CUBIC)
+    im = cv2.resize(im, (w_new, h_new), interpolation=cv2.INTER_CUBIC)
     return im
 
 
@@ -345,7 +343,6 @@ def simple_transform(im,
         if np.random.randint(2) == 0:
             im = left_right_flip(im, is_color)
     else:
-        im = center_crop(im, crop_size, is_color)
         im = center_crop(im, crop_size, is_color=is_color)
     if len(im.shape) == 3:
         im = to_chw(im)

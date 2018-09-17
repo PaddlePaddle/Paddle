@@ -15,10 +15,12 @@
 #include "paddle/fluid/inference/analysis/data_flow_graph_to_fluid_pass.h"
 #include <vector>
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/proto_desc.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/dfg_graphviz_draw_pass.h"
+#include "paddle/fluid/inference/io.h"
 
 namespace paddle {
 namespace inference {
@@ -33,7 +35,6 @@ std::vector<std::string> ExtractParameters(
 bool DataFlowGraphToFluidPass::Initialize(Argument *argument) {
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument)
   ANALYSIS_ARGUMENT_CHECK_FIELD(argument->origin_program_desc)
-  PADDLE_ENFORCE(!argument->transformed_program_desc);
   // The transformed_program_desc should inherit all the VarDesc and BlockDesc
   // from the original program desc. The operators of the main block(the first
   // block) should rewritten by data flow graph.
@@ -63,6 +64,10 @@ void DataFlowGraphToFluidPass::Run(DataFlowGraph *graph) {
       default:
         continue;
     }
+  }
+
+  if (argument_->Has(framework::ir::kParamScopeAttr)) {
+    LOG(WARNING) << "parameter changes in the scope takes effect";
   }
 
   PADDLE_ENFORCE(argument_->transformed_program_desc.get());
@@ -101,20 +106,23 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
 
   // collect inputs
   std::unordered_set<std::string> input_names;
+  std::unordered_set<std::string> input_names_with_id;
   for (auto *x : func->inlinks) {
     input_names.insert(x->name());
+    input_names_with_id.insert(x->name() + std::to_string(x->id()));
   }
   desc.SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
   std::unordered_set<std::string> output_names;
+  std::unordered_set<std::string> output_names_with_id;
   for (auto *x : func->outlinks) {
     output_names.insert(x->name());
+    output_names_with_id.insert(x->name() + std::to_string(x->id()));
   }
 
-  std::vector<std::string> output_temp(output_names.begin(),
-                                       output_names.end());
-  desc.SetOutput("Ys", output_temp);
+  desc.SetOutput(
+      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   desc.SetType("tensorrt_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -148,11 +156,12 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
       std::vector<std::string> replaced_names;
       for (int k = 0; k < in_var->arguments_size(); k++) {
         std::string arg_value = in_var->arguments(k);
-        if (input_names.count(arg_value)) {
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
         } else {
-          replaced_names.push_back(arg_value +
-                                   std::to_string(var2id[arg_value]));
+          replaced_names.push_back(arg_value_with_id);
         }
       }
       in_var->clear_arguments();
@@ -171,11 +180,12 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
       std::vector<std::string> replaced_names;
       for (int k = 0; k < out_var->arguments_size(); k++) {
         std::string arg_value = out_var->arguments(k);
-        if (output_names.count(arg_value)) {
-          output_name_map[arg_value] =
-              arg_value + std::to_string(var2id[arg_value]);
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (output_names_with_id.count(arg_value_with_id)) {
+          output_name_map[arg_value] = arg_value_with_id;
         }
-        replaced_names.push_back(arg_value + std::to_string(var2id[arg_value]));
+        replaced_names.push_back(arg_value_with_id);
       }
       out_var->clear_arguments();
       for (size_t k = 0; k < replaced_names.size(); k++) {
@@ -258,7 +268,7 @@ class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
 };
 }  // namespace
 
-Pass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
+AnalysisPass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
   return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
       FLAGS_IA_graphviz_log_root,
       "data_flow_graph_to_fluid_graphviz_debugger"));

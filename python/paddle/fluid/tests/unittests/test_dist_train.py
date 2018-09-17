@@ -100,7 +100,7 @@ class TestSendOp(unittest.TestCase):
             main.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
-                outputs={},
+                outputs={"Out": []},
                 attrs={
                     "endpoints": ["127.0.0.1:{0}".format(port)],
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE

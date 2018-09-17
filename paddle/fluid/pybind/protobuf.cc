@@ -137,7 +137,10 @@ void BindProgramDesc(pybind11::module *m) {
              PADDLE_ENFORCE(desc->ParseFromString(data),
                             "Fail to parse ProgramDesc from string. This could "
                             "be a bug of Paddle.");
-           });
+           })
+      .def("_version", [](pd::ProgramDesc &self) -> int64_t {
+        return self.Proto()->version().version();
+      });
 }
 
 void BindBlockDesc(pybind11::module *m) {
@@ -234,6 +237,7 @@ void BindVarDsec(pybind11::module *m) {
   pybind11::enum_<pd::proto::VarType::Type>(var_desc, "VarType", "")
       .value("BOOL", pd::proto::VarType::BOOL)
       .value("UINT8", pd::proto::VarType::UINT8)
+      .value("INT8", pd::proto::VarType::INT8)
       .value("INT16", pd::proto::VarType::INT16)
       .value("INT32", pd::proto::VarType::INT32)
       .value("INT64", pd::proto::VarType::INT64)
