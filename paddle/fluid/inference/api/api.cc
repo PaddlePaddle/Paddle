@@ -9,8 +9,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <paddle/fluid/framework/scope.h>
 #include <paddle/fluid/framework/lod_tensor.h>
+#include <paddle/fluid/framework/scope.h>
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle_inference_api.h"
@@ -19,9 +19,12 @@ namespace paddle {
 
 int PaddleDtypeSize(PaddleDType dtype) {
   switch (dtype) {
-    case PaddleDType::FLOAT32:return sizeof(float);
-    case PaddleDType::INT64:return sizeof(int64_t);
-    default:assert(false);
+    case PaddleDType::FLOAT32:
+      return sizeof(float);
+    case PaddleDType::INT64:
+      return sizeof(int64_t);
+    default:
+      assert(false);
       return -1;
   }
 }
@@ -92,8 +95,11 @@ void PaddleBuf::Free() {
 }
 
 void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {
-  PADDLE_ENFORCE(!name_.empty(), "Need to SetName first, so that the corresponding tensor can be retrieved.");
-  PADDLE_ENFORCE(input_or_output_, "Can't reshape the output tensor, it is readonly");
+  PADDLE_ENFORCE(!name_.empty(),
+                 "Need to SetName first, so that the corresponding tensor can "
+                 "be retrieved.");
+  PADDLE_ENFORCE(input_or_output_,
+                 "Can't reshape the output tensor, it is readonly");
   PADDLE_ENFORCE(scope_);
   auto *scope = static_cast<framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);
@@ -102,24 +108,24 @@ void ZeroCopyTensor::Reshape(const std::vector<int> &shape) {
   tensor->Resize(framework::make_ddim(shape));
 }
 
-template<typename T>
+template <typename T>
 T *ZeroCopyTensor::mutable_data(PaddlePlace place) {
   auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
   switch (static_cast<int>(place)) {
     case static_cast<int>(kCPU): {
       return tensor->mutable_data<T>(platform::CPUPlace());
     }
-      break;
     case static_cast<int>(kGPU): {
       return tensor->mutable_data<T>(platform::CUDAPlace());
     }
+    default:
+      PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));
       break;
-    default:PADDLE_THROW("Unsupported place: %d", static_cast<int>(place));
   }
   return nullptr;
 }
 
-template<typename T>
+template <typename T>
 T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
   auto *tensor = static_cast<framework::LoDTensor *>(FindTensor());
   auto *res = tensor->data<T>();
@@ -135,7 +141,9 @@ T *ZeroCopyTensor::data(PaddlePlace *place, int *size) {
 }
 
 void *ZeroCopyTensor::FindTensor() {
-  PADDLE_ENFORCE(!name_.empty(), "Need to SetName first, so that the corresponding tensor can be retrieved.");
+  PADDLE_ENFORCE(!name_.empty(),
+                 "Need to SetName first, so that the corresponding tensor can "
+                 "be retrieved.");
   PADDLE_ENFORCE(scope_);
   auto *scope = static_cast<framework::Scope *>(scope_);
   auto *var = scope->FindVar(name_);

@@ -21,7 +21,7 @@ endif(APPLE)
 set(inference_deps paddle_inference_api paddle_fluid_api analysis pass ir_pass_manager naive_executor ${GLOB_PASS_LIB})
 
 if(WITH_GPU AND TENSORRT_FOUND)
-    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine)
+    set(inference_deps ${inference_deps} paddle_inference_tensorrt_subgraph_engine analysis_predictor)
 endif()
 
 function(inference_api_test TARGET_NAME)
@@ -51,6 +51,9 @@ cc_test(test_paddle_inference_api
 
 inference_api_test(test_api_impl SRC api_impl_tester.cc
                     ARGS test_word2vec test_image_classification)
+#inference_api_test(test_analysis_predictor SRC analysis_predictor_tester.cc ARGS test_image_classification)
+cc_test(test_analysis_predictor SRCS analysis_predictor_tester.cc DEPS analysis_predictor ${inference_deps}
+        ARGS --dirname=${PYTHON_TESTS_DIR}/book)
 
 if(WITH_GPU AND TENSORRT_FOUND)
 cc_library(paddle_inference_tensorrt_subgraph_engine

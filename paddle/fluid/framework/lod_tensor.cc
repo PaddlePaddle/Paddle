@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/framework/version.h"
 
 #if !defined(_WIN32)
 #include "paddle/fluid/recordio/scanner.h"

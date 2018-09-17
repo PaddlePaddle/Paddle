@@ -1,8 +1,8 @@
 #pragma once
 
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -18,7 +18,9 @@ class NaiveExecutor {
 
   // Create child scope.
   // Create variables.
-  void Prepare(Scope *parent_scope, const ProgramDesc &program_desc, int block_id);
+  // @with_feed_fetch_ops: whether to work with the feed and fetch operators.
+  void Prepare(Scope* parent_scope, const ProgramDesc& program_desc,
+               int block_id, bool with_feed_fetch_ops);
 
   // Run all the operators.
   void Run();
@@ -26,18 +28,20 @@ class NaiveExecutor {
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);
 
-  Scope *scope() { return scope_; }
+  Scope* scope() { return scope_; }
+
+  void CleanFeedFetchOps();
 
  protected:
   void CreateVariables(const ProgramDesc& desc, Scope* scope, int block_id);
 
-  void CreateOps(const ProgramDesc &desc, int block_id);
+  void CreateOps(const ProgramDesc &desc, int block_id, bool with_feed_fetch_ops);
 
  private:
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  Scope *scope_;
+  Scope* scope_;
 };
 
 }  // namespace framework

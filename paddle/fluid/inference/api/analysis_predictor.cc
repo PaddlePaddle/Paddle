@@ -64,7 +64,8 @@ bool AnalysisPredictor::Init(
   if (!LoadProgramDesc()) return false;
 
   OptimizeInferenceProgram();
-  executor_->Prepare(scope_.get(), *inference_program_, 0);
+  executor_->Prepare(scope_.get(), *inference_program_, 0,
+                     config_.use_feed_fetch_ops);
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
@@ -107,7 +108,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   }
 
   LOG(INFO) << "feeds";
-  for (auto& item : feed_names_) {
+  for (auto &item : feed_names_) {
     LOG(INFO) << "name: " << item.first << " " << item.second;
   }
 
@@ -147,7 +148,7 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 
 template <typename T>
 void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
-                                        PaddleTensor *output) {
+                                    PaddleTensor *output) {
   std::vector<int> shape;
   auto dims_i = fetch.dims();
   auto lod = fetch.lod();
@@ -203,7 +204,7 @@ void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
 }
 
 bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
-                                     framework::Scope *scope) {
+                                 framework::Scope *scope) {
   VLOG(3) << "Predictor::get_fetch";
   outputs->resize(fetchs_.size());
   for (size_t i = 0; i < fetchs_.size(); ++i) {
@@ -310,25 +311,30 @@ void AnalysisPredictor::PrepareFeedFetch() {
   }
 }
 
-std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(const std::string &name) {
+std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
+    const std::string &name) {
   if (executor_->scope()->FindVar(name) == nullptr) {
     return nullptr;
   }
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+  std::unique_ptr<ZeroCopyTensor> res(
+      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = true;
   res->SetName(name);
   return res;
 }
 
-std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(const std::string &name) {
+std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
+    const std::string &name) {
   if (executor_->scope()->FindVar(name) != 0) {
     return nullptr;
   }
-  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+  std::unique_ptr<ZeroCopyTensor> res(
+      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
   res->input_or_output_ = false;
   res->SetName(name);
   return res;
 }
+
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
 

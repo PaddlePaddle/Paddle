@@ -206,6 +206,9 @@ struct AnalysisConfig : public NativeConfig {
   IrPassMode ir_mode{IrPassMode::kExclude};
   // attention lstm fuse works only on some specific models, disable as default.
   std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
+
+  // NOT stable yet.
+  bool use_feed_fetch_ops{true};
 };
 
 // A factory to help create different predictors.
