@@ -64,7 +64,7 @@ bool AnalysisPredictor::Init(
   if (!LoadProgramDesc()) return false;
 
   OptimizeInferenceProgram();
-  executor_->Prepare(parent_scope.get(), *inference_program_, 0);
+  executor_->Prepare(scope_.get(), *inference_program_, 0);
 
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
@@ -308,6 +308,31 @@ void AnalysisPredictor::PrepareFeedFetch() {
       fetchs_[idx] = op;
     }
   }
+}
+
+std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(const std::string &name) {
+  if (executor_->scope()->FindVar(name) == nullptr) {
+    return nullptr;
+  }
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+  res->input_or_output_ = true;
+  res->SetName(name);
+  return res;
+}
+
+std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(const std::string &name) {
+  if (executor_->scope()->FindVar(name) != 0) {
+    return nullptr;
+  }
+  std::unique_ptr<ZeroCopyTensor> res(new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+  res->input_or_output_ = false;
+  res->SetName(name);
+  return res;
+}
+bool AnalysisPredictor::ZeroCopyRun() {
+  executor_->Run();
+
+  return true;
 }
 
 }  // namespace paddle

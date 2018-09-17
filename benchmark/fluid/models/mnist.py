@@ -16,15 +16,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import numpy as np
-import argparse
-import time
-import cProfile
 import os
-
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
 
 SEED = 1
 DTYPE = "float32"
@@ -67,11 +61,14 @@ def cnn_model(data):
 
 def get_model(args, is_train, main_prog, startup_prog):
     # NOTE: mnist is small, we don't implement data sharding yet.
-    filelist = [
-        os.path.join(args.data_path, f) for f in os.listdir(args.data_path)
-    ]
+    opt = None
+    data_file_handle = None
     with fluid.program_guard(main_prog, startup_prog):
         if args.use_reader_op:
+            filelist = [
+                os.path.join(args.data_path, f)
+                for f in os.listdir(args.data_path)
+            ]
             data_file_handle = fluid.layers.open_files(
                 filenames=filelist,
                 shapes=[[-1, 1, 28, 28], (-1, 1)],
@@ -100,7 +97,7 @@ def get_model(args, is_train, main_prog, startup_prog):
             if is_train:
                 opt = fluid.optimizer.AdamOptimizer(
                     learning_rate=0.001, beta1=0.9, beta2=0.999)
-                opt.minimize()
+                opt.minimize(avg_cost)
                 if args.memory_optimize:
                     fluid.memory_optimize(main_prog)
 

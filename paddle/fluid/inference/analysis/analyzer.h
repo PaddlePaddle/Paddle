@@ -72,6 +72,9 @@ class Analyzer : public OrderedRegistry<PassManager> {
       "mul_gru_fuse_pass",         //
       "seq_concat_fc_fuse_pass",   //
       "fc_fuse_pass",              //
+#ifdef PADDLE_WITH_MKLDNN
+                                                    "conv_relu_mkldnn_fuse_pass",  //
+#endif
   }};
 
   std::unordered_set<std::string> disabled_ir_passes_;

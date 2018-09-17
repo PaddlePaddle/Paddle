@@ -2,14 +2,8 @@
 #include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/reader.h"
-#include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/framework/tensor.h"
-#include "naive_executor.h"
 
 namespace paddle {
 namespace framework {
@@ -50,9 +44,11 @@ static void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
 void NaiveExecutor::Prepare(Scope* parent_scope,
                             const ProgramDesc& program_desc, int block_id) {
   if (!parent_scope) {
-    scope_.reset(new framework::Scope);
+    scope_ = new framework::Scope;
+  } else {
+    scope_ = &parent_scope->NewScope();
   }
-  CreateVariables(program_desc, scope_.get(), block_id);
+  CreateVariables(program_desc, scope_, block_id);
   CreateOps(program_desc, block_id);
 }
 
@@ -108,7 +104,7 @@ void NaiveExecutor::CreateOps(const ProgramDesc& desc, int block_id) {
 }
 
 LoDTensor *NaiveExecutor::FindTensor(const std::string &name) {
-  PADDLE_ENFORCE(scope_.get(), "Need to init scope first");
+  PADDLE_ENFORCE(scope_, "Need to init scope first");
   auto* var = scope_->FindVar(name);
   PADDLE_ENFORCE(var, "No variable [%s] in the scope");
   auto* tensor = const_cast<LoDTensor*>(&var->Get<LoDTensor>());

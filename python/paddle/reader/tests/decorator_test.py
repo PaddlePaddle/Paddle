@@ -14,6 +14,7 @@
 
 import time
 import unittest
+import functools
 
 import paddle.reader
 
@@ -172,6 +173,34 @@ class TestPipeReader(unittest.TestCase):
         finally:
             # delete the temporary file
             temp.close()
+
+
+class TestMultiProcessReader(unittest.TestCase):
+    def setup(self):
+        self.samples = []
+        for i in range(1000):
+            self.samples.append([[i], [i + 1, i + 2], i + 3])
+
+        def reader(index):
+            for i in range(len(self.samples)):
+                if i % 3 == index:
+                    yield self.samples[i]
+
+        self.reader0 = functools.partial(reader, 0)
+        self.reader1 = functools.partial(reader, 1)
+        self.reader2 = functools.partial(reader, 2)
+
+    def reader_test(self, use_pipe):
+        self.setup()
+        results = []
+        for data in paddle.reader.multiprocess_reader(
+                [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
+            results.append(data)
+        self.assertEqual(sorted(self.samples), sorted(results))
+
+    def test_multi_process_reader(self):
+        self.reader_test(use_pipe=False)
+        self.reader_test(use_pipe=True)
 
 
 if __name__ == '__main__':

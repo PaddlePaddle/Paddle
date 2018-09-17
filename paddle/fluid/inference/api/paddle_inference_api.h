@@ -33,6 +33,12 @@ enum PaddleDType {
   INT64,
 };
 
+enum PaddlePlace {
+  kUnknown = -1,
+  kCPU = 0,
+  kGPU = 1
+};
+
 class PaddleBuf {
  public:
   PaddleBuf() = default;
@@ -45,7 +51,7 @@ class PaddleBuf {
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  PaddleBuf(size_t length)
+  explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -73,11 +79,40 @@ struct PaddleTensor {
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
+// Tensor without copy, currently only supports AnalysisPredictor.
+class ZeroCopyTensor {
+ public:
+  void Reshape(const std::vector<int> &shape);
+
+  // Get the memory in CPU or GPU with specific data type, should Reshape first to tell the data size.
+  // Once can directly call this data to feed the data.
+  // This is for write the input tensor.
+  template<typename T>
+  T *mutable_data(PaddlePlace place);
+  // Get the memory directly, will return the place and memory size by pointer.
+  // This is for reading the output tensor.
+  template<typename T>
+  T *data(PaddlePlace *place, int *size);
+
+  std::vector<int64_t> shape();
+
+ protected:
+  ZeroCopyTensor(void *scope) : scope_{scope} {}
+  void SetName(const std::string &name) { name_ = name; }
+  void *FindTensor();
+
+ private:
+  std::string name_;
+  bool input_or_output_;
+  friend class AnalysisPredictor;
+  void *scope_{nullptr};
+};
+
 enum class PaddleEngineKind {
   kNative = 0,         // Use the native Fluid facility.
   kAnakin,             // Use Anakin for inference.
   kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
-  kAnalysis
+  kAnalysis            // With data flow graph optimization support.
   // TODO(Superjomn) support following engines latter.
   // kTensorRT,           // Use TensorRT for inference.
   // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
@@ -103,6 +138,12 @@ class PaddlePredictor {
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
 
+  // Zero copy input and output optimization.
+  // Get the input or output tensors, and operate on their memory directly, without copy.
+  virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(const std::string &name) { return nullptr; }
+  virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(const std::string &name) { return nullptr; }
+  virtual bool ZeroCopyRun() { return false; }
+
   // Clone a predictor that share the model weights, the Cloned predictor should
   // be thread-safe.
   virtual std::unique_ptr<PaddlePredictor> Clone() = 0;
@@ -121,6 +162,8 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
+  // NOTE: NOT use it, just for the internal test, will discard later
+  bool _use_mkldnn{false};
   // Specify the variable's name of each input.
   bool specify_input_name{false};
 

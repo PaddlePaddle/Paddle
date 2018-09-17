@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 
-#include <string>
-
 namespace paddle {
 namespace framework {
 namespace details {
@@ -51,7 +49,7 @@ void ScaleLossGradOpHandle::RunImpl() {
               ->stream();
       memory::Copy(boost::get<platform::CUDAPlace>(place_), tmp,
                    platform::CPUPlace(), &coeff_, sizeof(float), stream);
-      VLOG(1) << place_ << "RUN Scale loss grad op";
+      VLOG(10) << place_ << "RUN Scale loss grad op";
     });
 #endif
   }

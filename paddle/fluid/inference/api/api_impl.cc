@@ -106,6 +106,9 @@ bool NativePaddlePredictor::Init(
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);
+  if (config_._use_mkldnn) {
+    executor_->EnableMKLDNN(*inference_program_);
+  }
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
@@ -262,7 +265,7 @@ void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
   if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
     buffer.Resize(sizeof(T) * data.size());
   }
-  std::memcpy(buffer.data(), data.data(), buffer.length());
+  std::memcpy(buffer.data(), data.data(), sizeof(T) * data.size());
   // copy LoD
   for (const auto &level : fetch.lod()) {
     output->lod.emplace_back(level);

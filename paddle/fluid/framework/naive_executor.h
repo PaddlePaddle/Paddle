@@ -26,6 +26,8 @@ class NaiveExecutor {
   // Get an tensor to operating directly, without the need for feed_ops.
   LoDTensor* FindTensor(const std::string& name);
 
+  Scope *scope() { return scope_; }
+
  protected:
   void CreateVariables(const ProgramDesc& desc, Scope* scope, int block_id);
 
@@ -35,7 +37,7 @@ class NaiveExecutor {
   const platform::Place place_;
   // Catch the required resource to avoid recreate.
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  std::unique_ptr<Scope> scope_;
+  Scope *scope_;
 };
 
 }  // namespace framework
