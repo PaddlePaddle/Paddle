@@ -1,6 +1,6 @@
 # PaddlePaddle Releasing Process
 
-PaddlePaddle manages its branches using "git-flow branching model", and [Semantic Versioning](http://semver.org/) as it's version number semantics.
+PaddlePaddle manages its branches using Trunk Based Development, and [Semantic Versioning](http://semver.org/) as it's version number semantics.
 
 Each time we release a new PaddlePaddle version, we should follow the below steps:
 
