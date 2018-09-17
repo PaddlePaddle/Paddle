@@ -49,7 +49,8 @@ class RPCServer {
         bind_address_(address),
         exit_flag_(false),
         selected_port_(0),
-        client_num_(client_num) {}
+        client_num_(client_num),
+        need_reset_all_vars_(false) {}
 
   virtual ~RPCServer() {}
   virtual void StartServer() = 0;
@@ -86,6 +87,8 @@ class RPCServer {
   void ResetBarrierCounter();
   RPCServerProfiler& Profiler() { return profiler_; }
 
+  bool NeedResetAllVars();
+
  protected:
   virtual void ShutDownImpl() = 0;
 
@@ -104,6 +107,7 @@ class RPCServer {
   std::atomic<int> exit_flag_;
   int selected_port_;
   int client_num_;
+  bool need_reset_all_vars_;
 
   std::unordered_map<std::string, RequestHandler*> rpc_call_map_;
   std::unordered_map<std::string, int> rpc_thread_num_;

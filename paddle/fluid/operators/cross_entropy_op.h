@@ -40,7 +40,7 @@ class CrossEntropyOpKernel : public framework::OpKernel<T> {
 
     math::CrossEntropyFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), &y_2d, &x_2d, &labels_2d,
-        ctx.Attr<bool>("soft_label"));
+        ctx.Attr<bool>("soft_label"), ctx.Attr<int>("ignore_index"));
   }
 };
 
@@ -74,16 +74,22 @@ class XeGradFunctor {
                 const T* dy,           // NOLINT
                 const T* x,            // NOLINT
                 const int64_t* label,  // NOLINT
-                size_t num_classes)
-      : dx_(dx), dy_(dy), x_(x), label_(label), num_classes_(num_classes) {}
+                size_t num_classes, size_t ignore_index)
+      : dx_(dx),
+        dy_(dy),
+        x_(x),
+        label_(label),
+        num_classes_(num_classes),
+        ignore_index_(ignore_index) {}
 
   HOSTDEVICE void operator()(size_t sample_id) {
     auto x_is_true_offset = sample_id * num_classes_ + label_[sample_id];
     for (size_t x_offset = sample_id * num_classes_;
          x_offset < (sample_id + 1) * num_classes_; ++x_offset) {
-      dx_[x_offset] = x_offset != x_is_true_offset
-                          ? static_cast<T>(0)
-                          : -dy_[sample_id] / x_[x_offset];
+      dx_[x_offset] =
+          (x_offset != x_is_true_offset || label_[sample_id] == ignore_index_)
+              ? static_cast<T>(0)
+              : -dy_[sample_id] / x_[x_offset];
     }
   }
 
@@ -93,6 +99,7 @@ class XeGradFunctor {
   const T* x_;
   const int64_t* label_;
   size_t num_classes_;
+  size_t ignore_index_;
 };
 
 template <typename DeviceContext, typename T>
@@ -109,6 +116,7 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
     // unnecessary to convert tensors to 2-D views.
     int rank = x->dims().size();
     int64_t class_num = x->dims()[rank - 1];
+    int64_t ignore_index = ctx.Attr<int>("ignore_index");
     if (ctx.Attr<bool>("soft_label")) {
       XeSoftlabelGradFunctor<T> functor(dx_data, dy->data<T>(), x->data<T>(),
                                         label->data<T>(),
@@ -118,9 +126,9 @@ class CrossEntropyGradientOpKernel : public framework::OpKernel<T> {
           static_cast<size_t>(dx->numel()));
       for_range(functor);
     } else {
-      XeGradFunctor<T> functor(dx_data, dy->data<T>(), x->data<T>(),
-                               label->data<int64_t>(),
-                               static_cast<size_t>(class_num));
+      XeGradFunctor<T> functor(
+          dx_data, dy->data<T>(), x->data<T>(), label->data<int64_t>(),
+          static_cast<size_t>(class_num), static_cast<size_t>(ignore_index));
       platform::ForRange<DeviceContext> for_range(
           ctx.template device_context<DeviceContext>(),
           static_cast<size_t>(dy->numel()));
