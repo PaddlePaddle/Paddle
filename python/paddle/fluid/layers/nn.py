@@ -1781,6 +1781,31 @@ def sequence_pool(input, pool_type):
     return pool_out
 
 
+@templatedoc()
+def sequence_concat(input, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(list): List of Variables to be concatenated.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the concatenation.
+
+    Examples:
+        .. code-block:: python
+
+           out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
+    """
+    helper = LayerHelper('sequence_concat', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
+    return out
+
+
 def sequence_first_step(input):
     """
     This function gets the first step of sequence.
