@@ -54,6 +54,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'sequence_expand',
+    'sequence_expand_as',
     'sequence_pad',
     'lstm_unit',
     'reduce_sum',
@@ -2663,6 +2664,71 @@ def sequence_expand(x, y, ref_level=-1, name=None):
                 'Y': y},
         outputs={'Out': tmp},
         attrs={'ref_level': ref_level})
+    return tmp
+
+
+def sequence_expand_as(x, y, name=None):
+    """Sequence Expand As Layer. This layer will expand the input variable **x**
+    according to the zeroth level lod of **y**. Current implementation requires
+    the level number of Input(Y)'s lod must be 1, and the first dimension of
+    Input(X) should be equal to the size of Input(Y)'s zeroth level lod, and
+    lod of Input(X) is not considered.
+
+    Following examples will explain how sequence_expand_as works:
+
+    .. code-block:: text
+
+        * Case 1:
+
+            Given a 1-level LoDTensor input(X)
+                X.data = [[a], [b], [c], [d]]
+                X.dims = [4, 1]
+            and input(Y)
+                Y.lod = [[0, 3, 6, 7, 8]]
+            ref_level: 0
+            then we get 1-level LoDTensor
+                Out.lod =  [[0,            3,              6,  7,  8]]
+                Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
+                Out.dims = [8, 1]
+
+        * Case 2:
+
+            Given a common Tensor input(X)
+                X.data = [[a, b], [c, d], [e, f]]
+                X.dims = [3, 2]
+            and input(Y)
+                Y.lod = [[0, 2, 3, 6]]
+            ref_level: 0
+            then we get a common LoDTensor
+                Out.lod =  [[0,             2,     3,                    6]]
+                Out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
+                Out.dims = [6, 2]
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[10, 20],
+                             dtype='float32', lod_level=1)
+            out = layers.sequence_expand_as(x=x, y=y)
+    """
+    helper = LayerHelper('sequence_expand_as', input=x, **locals())
+    dtype = helper.input_dtype()
+    tmp = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sequence_expand_as',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': tmp})
     return tmp
 
 
