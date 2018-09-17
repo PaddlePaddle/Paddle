@@ -1,13 +1,18 @@
 set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
-set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo")
+set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
+    "A path setting inference demo download directories.")
 set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor)
-function (inference_download_and_uncompress install_dir url filename)
+function (inference_download install_dir url filename)
     message(STATUS "Download inference test stuff from ${url}/${filename}")
     execute_process(COMMAND bash -c "mkdir -p ${install_dir}")
     execute_process(COMMAND bash -c "cd ${install_dir} && wget -q ${url}/${filename}")
-    execute_process(COMMAND bash -c "cd ${install_dir} && tar xzf ${filename}")
     message(STATUS "finish downloading ${filename}")
-endfunction(inference_download_and_uncompress)
+endfunction()
+
+function (inference_download_and_uncompress install_dir url filename)
+    inference_download(${install_dir} ${url} ${filename})
+    execute_process(COMMAND bash -c "cd ${install_dir} && tar xzf ${filename}")
+endfunction()
 
 function(download_model_and_data install_dir model_name data_name)
     if (NOT EXISTS ${install_dir})
@@ -59,3 +64,24 @@ if (NOT EXISTS ${OCR_INSTALL_DIR})
     inference_download_and_uncompress(${OCR_INSTALL_DIR} "http://paddlemodels.cdn.bcebos.com/" "inference-vis-demos%2Focr.tar.gz")
 endif()
 inference_analysis_api_test(test_analyzer_ocr ${OCR_INSTALL_DIR} analyzer_vis_tester.cc)
+
+# anakin
+if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
+   # anakin rnn1
+   set(ANAKIN_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/anakin")
+   set(ANAKIN_RNN1_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/rnn1")
+   inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn.anakin2.model.bin")
+   inference_download(${ANAKIN_RNN1_INSTALL_DIR} ${INFERENCE_URL} "anakin_test%2Fditu_rnn_data.txt")
+   cc_test(test_anakin_rnn1 SRCS anakin_rnn1_tester.cc 
+           ARGS --model=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
+                --datapath=${ANAKIN_RNN1_INSTALL_DIR}/anakin_test%2Fditu_rnn_data.txt
+           DEPS inference_anakin_api_shared SERIAL)
+   # anakin mobilenet
+   if(WITH_GPU)
+       set(ANAKIN_MOBILENET_INSTALL_DIR "${ANAKIN_INSTALL_DIR}/mobilenet")
+       inference_download(${ANAKIN_MOBILENET_INSTALL_DIR} ${INFERENCE_URL} "mobilenet_v2.anakin.bin")
+       cc_test(test_anakin_mobilenet SRCS anakin_mobilenet_tester.cc 
+               ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
+               DEPS inference_anakin_api_shared dynload_cuda SERIAL)
+   endif()
+endif()
