@@ -75,3 +75,9 @@ inference_analysis_test(test_analyzer_ocr SRCS analyzer_vis_tester.cc
     EXTRA_DEPS ${INFERENCE_EXTRA_DEPS}
     ARGS --infer_model=${OCR_INSTALL_DIR}/model
         --infer_data=${OCR_INSTALL_DIR}/data.txt)
+
+# ResNet50
+set(RESNET50_MODEL "${THIRD_PARTY_PATH}/inference_demo/resnet50/resnet50-model")
+inference_analysis_test(test_resnet50 SRCS analyzer_resnet50_tester.cc
+    EXTRA_DEPS paddle_inference_api paddle_fluid_api mkldnn_analysis_predictor
+    ARGS --infer_model=${RESNET50_MODEL})
