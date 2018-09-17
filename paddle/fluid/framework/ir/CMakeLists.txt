@@ -41,6 +41,8 @@ cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass
 
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
+cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
+
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)
 cc_test(graph_helper_test SRCS graph_helper_test.cc DEPS graph graph_helper op_registry)
