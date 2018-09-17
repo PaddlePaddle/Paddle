@@ -35,7 +35,7 @@ namespace platform {
 
 struct EventList;
 
-static int64_t profiler_lister_id = 0;
+static int64_t profiler_lister_id = 100;
 static bool should_send_profile_state = false;
 std::mutex profiler_mu;
 
