@@ -216,11 +216,13 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   }
 
   gridMaxDims_ = GpuMaxGridDim(place_.device);
+  callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  WaitStreamCallback();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   eigen_stream_.reset();
   eigen_device_.reset();
