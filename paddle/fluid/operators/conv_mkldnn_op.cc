@@ -396,7 +396,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       PADDLE_ENFORCE(eltwise_param_data != nullptr, "Provide data if you want MKLDNN conv+elementwise_add fusion");
       PADDLE_ENFORCE_EQ(output->dims(), eltwise_param->dims(), "Output and elementwise parameter need to have the same dimension sizes");
 
-      output_data = const_cast<T*>(eltwise_param_data);
+      output_data = output->mutable_data<T>(ctx.GetPlace());
+      output->ShareDataWith(*eltwise_param);
     } else {
       output_data =
         output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
