@@ -134,7 +134,8 @@ void Conv2DOpMaker::Make() {
       .Reuse("Input");
   AddInput("EltwiseParameter",
            "(Tensor) Tensor to which convolution output will be added."
-           "Used on with fuse_eltwise fusion.");
+           "Used on with fuse_eltwise fusion.")
+      .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
                             "strides(h_stride, w_stride) of "
