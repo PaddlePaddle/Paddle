@@ -271,7 +271,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
       auto& grad = Ref(ctx.Input<LoDTensor>("Grad"), "Must set Grad");
 
       if (platform::is_cpu_place(ctx.GetPlace())) {
-        auto start = std::chrono::system_clock::now();
         AdamFunctor<T, CPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
             beta2_pow.template data<T>(), mom1.template data<T>(),
@@ -282,11 +281,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
             param.template data<T>(),
             param_out.template mutable_data<T>(ctx.GetPlace()));
         functor(param.numel());
-        auto end = std::chrono::system_clock::now();
-        std::chrono::duration<double> diff = end - start;
-        LOG(ERROR) << "lod_tensor adam end, cost: " << diff.count()
-                   << " param numel: " << param.numel()
-                   << " grad numel: " << grad.numel();
       } else if (platform::is_gpu_place(ctx.GetPlace())) {
         AdamFunctor<T, GPUAdam> functor(
             beta1, beta2, epsilon, beta1_pow.template data<T>(),
@@ -304,7 +298,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
-      auto start = std::chrono::system_clock::now();
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
       if (grad.rows().size() == 0) {
@@ -332,12 +325,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
 #endif
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
-      auto end = std::chrono::system_clock::now();
-      std::chrono::duration<double> diff = end - start;
-      LOG(ERROR) << "SelectedRows adam prepare end, cost: " << diff.count()
-                 << " param numel: " << param.numel();
-
-      start = std::chrono::system_clock::now();
       SparseAdamFunctor<T> functor(
           beta1, beta2, epsilon, beta1_pow.template data<T>(),
           beta2_pow.template data<T>(), mom1.template data<T>(),
@@ -350,12 +337,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
           static_cast<const DeviceContext&>(ctx.device_context()),
           grad_merge.rows().size());
       for_range(functor);
-      end = std::chrono::system_clock::now();
-      diff = end - start;
-      LOG(ERROR) << "SelectedRows adam for_range end, cost: " << diff.count()
-                 << " param numel: " << param.numel()
-                 << " each row_numel: " << row_numel
-                 << " rows size: " << grad_merge.rows().size();
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");
     }

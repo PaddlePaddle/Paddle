@@ -132,12 +132,14 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       if (pooltype == "AVERAGE") {
         out_e.device(place) = in_e.mean(Eigen::array<int, 1>({{0}}));
       } else if (pooltype == "SUM") {
-        const T* in_data = in_t.data<T>();
-        T* out_data = out_t.mutable_data<T>(context.GetPlace());
-        blas.VCOPY(w, in_data, out_data);
-        for (int r = 1; r != h; ++r) {
-          blas.VADD(w, in_data + r * w, const_cast<const T*>(out_data),
-                    out_data);
+        if (h > 0) {
+          const T* in_data = in_t.data<T>();
+          T* out_data = out_t.mutable_data<T>(context.GetPlace());
+          blas.VCOPY(w, in_data, out_data);
+          for (int r = 1; r != h; ++r) {
+            blas.VADD(w, in_data + r * w, const_cast<const T*>(out_data),
+                      out_data);
+          }
         }
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /

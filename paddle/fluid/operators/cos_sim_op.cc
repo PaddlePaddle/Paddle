@@ -48,9 +48,6 @@ class CosSimOp : public framework::OperatorWithKernel {
                       framework::slice_ddim(y_dims, 1, y_dims.size()),
                       "All dimensions except the 1st of Input(X) and Input(Y) "
                       "must be equal.");
-    // LOG(ERROR) << "cos_sim's " << ctx->Inputs("X")[0] << " "  <<
-    // ctx->Inputs("Y")[0] << " x_dims[0] " << x_dims[0] << " y_dims[0] " <<
-    // y_dims[0];
     PADDLE_ENFORCE(x_dims[0] == y_dims[0] || y_dims[0] == 1,
                    "The 1st dimension of Input(Y) must be equal to Input(X) or"
                    " just 1 (which will be broadcasted to match Input(X)).");

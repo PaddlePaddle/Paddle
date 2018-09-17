@@ -147,11 +147,6 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
 
       memset(d_table_data, 0, d_table->numel() * sizeof(T));
 
-      // LOG(ERROR) << "emb grad W@GRAD numel: " << d_table->numel();
-      // LOG(ERROR) << "emb grad ids numel: " << ids->numel();
-      // LOG(ERROR) << "emb grad table_dim N: " << N;
-      // LOG(ERROR) << "emb grad table_dim D: " << D;
-
       for (int64_t i = 0; i < ids->numel(); ++i) {
         PADDLE_ENFORCE_LT(ids_data[i], N);
         PADDLE_ENFORCE_GE(ids_data[i], 0);

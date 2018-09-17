@@ -12,20 +12,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <Eigen/Dense>
 #include <set>
 #include <vector>
 
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 namespace math {
-
-size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
-  return std::find(rows.begin(), rows.end(), value) - rows.begin();
-}
-
 template <typename T>
 struct SelectedRowsAdd<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
@@ -195,12 +190,15 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext, int64_t>;
 // add or mul.
 namespace scatter {
 
+size_t FindPos(const std::vector<int64_t>& rows, int64_t value) {
+  return std::find(rows.begin(), rows.end(), value) - rows.begin();
+}
+
 template <typename T>
 struct MergeAdd<platform::CPUDeviceContext, T> {
   framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
-
     auto input_rows = input.rows();
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());

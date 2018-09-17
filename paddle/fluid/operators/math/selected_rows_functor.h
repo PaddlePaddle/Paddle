@@ -119,39 +119,6 @@ template <>
 struct MergeAdd<platform::CPUDeviceContext, float> {
   framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
                                      const framework::SelectedRows& input) {
-    // framework::SelectedRows out;
-
-    // auto input_rows = input.rows();
-
-    // size_t idx_count = 0;
-    // std::unordered_map<int64_t, int64_t> row_map;
-    // for (auto iter = input_rows.begin(); iter != input_rows.end(); ++iter) {
-    // const int64_t row = *iter;
-    // if (row_map.find(row) == row_map.end()) {
-    // row_map[row] = idx_count++;
-    // }
-    // }
-
-    // std::vector<int64_t> merge_rows;
-    // merge_rows.reserve(row_map.size());
-    // for (std::unordered_map<int64_t, int64_t>::iterator iter =
-    // row_map.begin(); iter != row_map.end(); ++iter) {
-    // merge_rows.emplace_back(iter->first);
-    // }
-
-    // auto input_width = input.value().dims()[1];
-    // out.set_rows(merge_rows);
-    // out.set_height(input.height());
-    // out.mutable_value()->mutable_data<float>(
-    // framework::make_ddim(
-    // {static_cast<int64_t>(merge_rows.size()), input_width}),
-    // context.GetPlace());
-
-    // math::SetConstant<platform::CPUDeviceContext, float> constant_functor;
-    // constant_functor(context, out.mutable_value(), 0.0);
-
-    // auto* out_data = out.mutable_value()->data<float>();
-    // auto* input_data = input.value().data<float>();
     framework::SelectedRows out;
 
     auto input_rows = input.rows();
