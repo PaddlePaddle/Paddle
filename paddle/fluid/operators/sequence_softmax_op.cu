@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
+#include <cub/cub.cuh>  // NOLINT
 #include "paddle/fluid/operators/sequence_softmax_op.h"
 
 namespace paddle {
@@ -19,53 +21,92 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
-template <typename T>
+__device__ __forceinline__ float real_exp(float x) { return expf(x); }
+__device__ __forceinline__ double real_exp(double x) { return exp(x); }
+
+template <typename T, int BlockDim>
+using BlockReduce = cub::BlockReduce<T, BlockDim>;
+
+template <typename T, int BlockDim>
+using BlockReduceTempStorage = typename BlockReduce<T, BlockDim>::TempStorage;
+
+template <typename T, int BlockDim>
 __global__ void sequence_softmax_kernel(const T *in_data, const size_t *ref_lod,
                                         const size_t src_hight, T *out_data) {
-  for (size_t i = threadIdx.x; i < src_hight; i += blockDim.x) {
-    size_t span = ref_lod[i + 1] - ref_lod[i];
+  __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
+  __shared__ T shared_max_data;
+  __shared__ T shared_sum_data;
 
-    T result = 0;
-    T max = in_data[ref_lod[i]];
-    for (size_t j = 1; j < span; ++j) {
-      T ele = in_data[ref_lod[i] + j];
-      max = max > in_d ? max : ele;
+  for (int i = blockIdx.x; i < src_hight; i += gridDim.x) {
+    size_t start = ref_lod[i];
+    size_t span = ref_lod[i + 1] - start;
+
+    // Find the max ele
+    T max_ele = -FLT_MAX;
+    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+      T ele = in_data[start + tid];
+      max_ele = max_ele > ele ? max_ele : ele;
     }
-    for (size_t j = 0; j < span; ++j) {
-      T ele = in_data[ref_lod[i] + j];
-      ele = exp(ele - max);
-      result += ele;
-      out_data[ref_lod[i] + j] = ele;
+    max_ele =
+        BlockReduce<T, BlockDim>(temp_storage).Reduce(max_ele, cub::Max());
+    if (threadIdx.x == 0) {
+      shared_max_data = max_ele;
     }
-    for (size_t j = 0; j < span; ++j) {
-      T ele = out_data[ref_lod[i] + j];
-      ele = ele / result;
-      out_data[ref_lod[i] + j] = ele;
+    __syncthreads();
+
+    // sum
+    T sum_data = 0;
+    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+      T ele = in_data[start + tid];
+      sum_data += real_exp(ele - shared_max_data);
+    }
+    sum_data =
+        BlockReduce<T, BlockDim>(temp_storage).Reduce(sum_data, cub::Sum());
+    if (threadIdx.x == 0) {
+      shared_sum_data = sum_data;
+    }
+    __syncthreads();
+
+    // get final resit
+    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+      T ele = in_data[start + tid];
+      ele = real_exp(ele - shared_max_data) / shared_sum_data;
+      out_data[start + tid] = ele;
     }
   }
 }
 
-template <typename T>
+template <typename T, int BlockDim>
 __global__ void sequence_softmax_grad_kernel(const T *softmax_grad_data,
                                              const T *softmax_data,
                                              const size_t *ref_lod,
                                              const size_t src_hight,
                                              T *dx_data) {
-  for (size_t i = threadIdx.x; i < src_hight; i += blockDim.x) {
-    size_t span = ref_lod[i + 1] - ref_lod[i];
+  __shared__ BlockReduceTempStorage<T, BlockDim> temp_storage;
+  __shared__ T shared_data;
+
+  for (int i = blockIdx.x; i < src_hight; i += gridDim.x) {
+    size_t start = ref_lod[i];
+    size_t span = ref_lod[i + 1] - start;
+
     T result = 0;
-    for (size_t j = 0; j < span; ++j) {
-      size_t idx = ref_lod[i] + j;
+    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+      size_t idx = start + tid;
       T s_g_d = softmax_grad_data[idx];
       T s_d = softmax_data[idx];
       result += s_g_d * s_d;
     }
+    result = BlockReduce<T, BlockDim>(temp_storage).Reduce(result, cub::Sum());
+    if (threadIdx.x == 0) {
+      shared_data = result;
+    }
+    __syncthreads();
 
-    for (size_t j = 0; j < span; ++j) {
-      size_t idx = ref_lod[i] + j;
+    for (int tid = threadIdx.x; tid < span; tid += blockDim.x) {
+      size_t idx = start + tid;
       T s_g_d = softmax_grad_data[idx];
       T s_d = softmax_data[idx];
-      dx_data[idx] = (s_g_d - result) * s_d;
+      dx_data[idx] = (s_g_d - shared_data) * s_d;
     }
   }
 }
@@ -78,15 +119,15 @@ struct SequenceSoftmaxFunctor<platform::CUDADeviceContext, T> {
                   LoDTensor *out) {
     int hight = ref_lod.size() - 1;
 
-    const int kThreadsPerBlock = 1024;
+    const int kThreadsPerBlock = 32;
     int thread_x = kThreadsPerBlock;
-    if (hight < kThreadsPerBlock) {  // block_cols is aligned by 32.
-      thread_x = ((hight + 31) >> 5) << 5;
-    }
+    int max_threads = context.GetMaxPhysicalThreadCount();
+    int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
 
     dim3 block_size(thread_x);
-    dim3 grid_size(1);
-    sequence_softmax_kernel<<<grid_size, block_size, 0, context.stream()>>>(
+    dim3 grid_size(max_blocks);
+    sequence_softmax_kernel<
+        T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
         x.data<T>(), ref_lod.CUDAData(context.GetPlace()), hight,
         out->mutable_data<T>(context.GetPlace()));
   }
@@ -100,16 +141,16 @@ struct SequenceSoftmaxGradFunctor<platform::CUDADeviceContext, T> {
                   LoDTensor *dx) {
     size_t hight = ref_lod.size() - 1;
 
-    const int kThreadsPerBlock = 1024;
+    const int kThreadsPerBlock = 32;
     int thread_x = kThreadsPerBlock;
-    if (hight < kThreadsPerBlock) {  // block_cols is aligned by 32.
-      thread_x = ((hight + 31) >> 5) << 5;
-    }
+    int max_threads = context.GetMaxPhysicalThreadCount();
+    int max_blocks = std::max(max_threads / kThreadsPerBlock, 1);
 
     dim3 block_size(thread_x);
-    dim3 grid_size(1);
-    sequence_softmax_grad_kernel<<<grid_size, block_size, 0,
-                                   context.stream()>>>(
+    dim3 grid_size(max_blocks);
+
+    sequence_softmax_grad_kernel<
+        T, kThreadsPerBlock><<<grid_size, block_size, 0, context.stream()>>>(
         dout.data<T>(), out.data<T>(), ref_lod.CUDAData(context.GetPlace()),
         hight, dx->mutable_data<T>(context.GetPlace()));
   }
