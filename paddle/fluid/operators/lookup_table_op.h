@@ -100,6 +100,15 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
           "must be either LoDTensor or SelectedRows");
     }
 
+    auto d_ids = context.Output<LoDTensor>(framework::GradVarName("Ids"));
+    if (d_ids) {
+      auto *ids = context.Input<LoDTensor>("Ids");
+      auto gpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
+      auto *dev_ctx = platform::DeviceContextPool::Instance().Get(gpu_place);
+      d_ids->mutable_data<T>(context.GetPlace());
+      framework::TensorCopy(*ids, context.GetPlace(), *dev_ctx, d_ids);
+    }
+
     bool is_sparse = context.Attr<bool>("is_sparse");
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.

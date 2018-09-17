@@ -1,16 +1,16 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License. */
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
@@ -60,7 +60,9 @@ class WhileOp : public framework::OperatorBase {
 
     bool is_test = Attr<bool>("is_test");
     auto ctx = executor.Prepare(*program, block->ID());
+    int i = 0;
     while (cond.data<bool>()[0]) {
+      VLOG(3) << "Start forward at time_step " << i++;
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
       executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
@@ -138,6 +140,10 @@ class WhileGradOp : public framework::OperatorBase {
         auto inside_og_name = inside_og_names[i];
         VLOG(8) << "Linking outside " << outside_og_name << " --> inside "
                 << inside_og_name;
+        if (scope.FindVar(outside_og_name) == nullptr) {
+          continue;
+        }
+
         auto &og_outside =
             detail::Ref(scope.FindVar(outside_og_name),
                         "Cannot find Outside Gradient %s", outside_og_name);
@@ -167,9 +173,12 @@ class WhileGradOp : public framework::OperatorBase {
               PADDLE_ENFORCE_EQ(inside_array[j].numel(), 0);
             }
           }
+        } else {
+          PADDLE_THROW("Currently only support LoDTensor and LoDTensorArray.");
         }
       }
-      executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false);
+      executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false, true,
+                                  true);
 
       auto &pg_names = Outputs(kXGRAD);
       auto &p_names = Inputs(kX);
@@ -193,6 +202,11 @@ class WhileGradOp : public framework::OperatorBase {
         if (cur_scope_iter == step_scopes->rbegin()) {
           auto *var = (*cur_scope_iter)->FindVar(inside_grad_name);
           PADDLE_ENFORCE_NOT_NULL(var, "Can not find var %s", inside_grad_name);
+          PADDLE_ENFORCE(var->IsType<framework::LoDTensorArray>() ||
+                             var->IsType<LoDTensor>(),
+                         "Currently the type of var only can be LoDTensorArray "
+                         "or LoDTensor.");
+
           if (var->IsType<LoDTensor>()) {
             auto &inside_tensor = var->Get<framework::LoDTensor>();
             framework::AttributeMap attrs;
@@ -280,6 +294,7 @@ class WhileGradOpDescMaker : public framework::SingleGradOpDescMaker {
              parent_block->FindVarRecursive(input_name) != nullptr)) {
           continue;
         }
+
         output_grads.insert(input_name);
       }
       for (auto &output_name : op->OutputArgumentNames()) {
