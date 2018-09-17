@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import contextlib
 
-import core
+from . import core
 
-import executor
-import framework
-import io
-import parallel_executor
-import unique_name
-from trainer import check_and_get_place
+from . import executor
+from . import framework
+from . import io
+from . import parallel_executor
+from . import unique_name
+from .trainer import check_and_get_place
 
 __all__ = ['Inferencer', ]
 
@@ -96,10 +98,9 @@ class Inferencer(object):
             raise ValueError(
                 "inputs should be a map of {'input_name': input_var}")
 
-        with executor.scope_guard(self.scope):
-            results = self.exe.run(self.inference_program,
-                                   feed=inputs,
-                                   fetch_list=[self.predict_var],
+        with self._prog_and_scope_guard():
+            results = self.exe.run(feed=inputs,
+                                   fetch_list=[self.predict_var.name],
                                    return_numpy=return_numpy)
 
         return results

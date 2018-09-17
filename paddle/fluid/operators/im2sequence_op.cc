@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/im2sequence_op.h"
+#include <string>
 #include <vector>
 
 namespace paddle {
@@ -28,27 +29,18 @@ class Im2SequenceOp : public framework::OperatorWithKernel {
                    "Input(X) of Im2SequenceOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of Im2SequenceOp op should not be null.");
-
     auto in_dim = ctx->GetInputDim("X");
+
     PADDLE_ENFORCE_EQ(in_dim.size(), 4,
                       "Input(X) format must be 4D tensor, eg., NCHW.");
+    int img_channels = in_dim[1];
 
     auto kernels = ctx->Attrs().Get<std::vector<int>>("kernels");
     auto strides = ctx->Attrs().Get<std::vector<int>>("strides");
     auto paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
 
-    int batch_size = in_dim[0];
-    int img_channels = in_dim[1];
-    int img_height = in_dim[2];
-    int img_width = in_dim[3];
-
-    int output_height = Im2SeqOutputSize(img_height, kernels[0], paddings[0],
-                                         paddings[2], strides[0]);
-    int output_width = Im2SeqOutputSize(img_width, kernels[1], paddings[1],
-                                        paddings[3], strides[1]);
-
-    ctx->SetOutputDim("Out", {batch_size * output_height * output_width,
-                              img_channels * kernels[0] * kernels[1]});
+    ctx->SetOutputDim("Out",
+                      {in_dim[0], img_channels * kernels[0] * kernels[1]});
   }
 };
 
@@ -61,6 +53,10 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
              "C: channels"
              "H: height"
              "W: width");
+    AddInput("Y",
+             "(Tensor) The input tensor of image real size(H, W)."
+             "2-D with shape [batchsize, 2]")
+        .AsDispensable();
     AddOutput("Out", "(LodTensor) The output data of im2sequence op,");
     AddAttr<std::vector<int>>("kernels",
                               "(vector<int>), the "
@@ -73,6 +69,13 @@ class Im2SequenceOpMaker : public framework::OpProtoAndCheckerMaker {
                               "(vector<int> default:{0, 0, 0, 0}), the "
                               "paddings(up_pad, left_pad, down_pad, right_pad)")
         .SetDefault({0, 0, 0, 0});
+    AddAttr<std::vector<int>>("out_stride",
+                              "the attribute is valid only when input(Y)"
+                              "is not NULL.this attribute represents the"
+                              "scaling of the pic through the CNN"
+                              "(vector<int> dedault:{1,1}),the out_stride"
+                              " (out_stride_height, out_stride_width)")
+        .SetDefault({1, 1});
     AddComment(R"DOC(
 This op uses kernels to scan images and converts these images to sequences.
 After expanding, The number of time steps are output_height * output_width
@@ -123,7 +126,7 @@ output.data = [[ 6.  2.  8.  3.  2.  4.  6.  3.]
                [ 7.  1.  7.  9.  2.  1.  3.  5.]
                [ 5.  7.  2.  4.  1.  3.  9.  0.]
                [ 7.  9.  4.  8.  3.  5.  0.  8.]]
-output.dims = {8, 9}
+output.dims = {8, 8}
 output.lod = [[0, 4, 8]]
 
 )DOC");

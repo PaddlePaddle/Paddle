@@ -26,21 +26,21 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
-TEST_F(DFG_Tester, Test) {
-  DataFlowGraph graph;
+TEST(DataFlowGraph, Test) {
+  Argument argument(FLAGS_inference_model_dir);
 
   FluidToDataFlowGraphPass pass0;
   DataFlowGraphToFluidPass pass1;
   ASSERT_TRUE(pass0.Initialize(&argument));
   ASSERT_TRUE(pass1.Initialize(&argument));
 
-  pass0.Run(&graph);
-  pass1.Run(&graph);
+  pass0.Run(argument.main_dfg.get());
+  pass1.Run(argument.main_dfg.get());
 
   pass0.Finalize();
   pass1.Finalize();
 
-  LOG(INFO) << graph.nodes.size();
+  LOG(INFO) << argument.main_dfg->nodes.size();
 }
 
 };  // namespace analysis

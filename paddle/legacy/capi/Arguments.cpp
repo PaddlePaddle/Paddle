@@ -66,6 +66,17 @@ paddle_error paddle_arguments_get_value(paddle_arguments args,
   return kPD_NO_ERROR;
 }
 
+PD_API paddle_error paddle_arguments_get_prob(paddle_arguments args,
+                                              uint64_t ID,
+                                              paddle_matrix mat) {
+  if (args == nullptr || mat == nullptr) return kPD_NULLPTR;
+  auto m = paddle::capi::cast<paddle::capi::CMatrix>(mat);
+  auto a = castArg(args);
+  if (ID >= a->args.size()) return kPD_OUT_OF_RANGE;
+  m->mat = a->args[ID].in;
+  return kPD_NO_ERROR;
+}
+
 paddle_error paddle_arguments_get_ids(paddle_arguments args,
                                       uint64_t ID,
                                       paddle_ivector ids) {

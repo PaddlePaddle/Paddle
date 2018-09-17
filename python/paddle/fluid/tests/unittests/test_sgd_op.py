@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 import paddle.fluid.core as core
@@ -124,6 +126,7 @@ class TestSGDOpOptimizeSelectedRows(unittest.TestCase):
         w_selected_rows = scope.var('Param').get_selected_rows()
         w_selected_rows.set_height(len(param_rows))
         w_selected_rows.set_rows(param_rows)
+        w_selected_rows.sync_index()
         w_array = np.ones((len(param_rows), row_width)).astype("float32")
         for i in range(len(param_rows)):
             w_array[i] *= i

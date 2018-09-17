@@ -21,10 +21,8 @@ namespace reader {
 template <bool ThreadSafe>
 class RecordIOFileReader : public framework::FileReader {
  public:
-  explicit RecordIOFileReader(const std::string& filename,
-                              const std::vector<framework::DDim>& dims)
-      : FileReader(dims),
-        scanner_(filename),
+  explicit RecordIOFileReader(const std::string& filename)
+      : scanner_(filename),
         dev_ctx_(*platform::DeviceContextPool::Instance().Get(
             platform::CPUPlace())) {
     if (ThreadSafe) {
@@ -33,17 +31,20 @@ class RecordIOFileReader : public framework::FileReader {
     LOG(INFO) << "Creating file reader" << filename;
   }
 
-  void ReInit() override { scanner_.Reset(); }
-
  protected:
   void ReadNextImpl(std::vector<framework::LoDTensor>* out) override {
+    std::unique_ptr<std::lock_guard<std::mutex>> guard;
     if (ThreadSafe) {
-      std::lock_guard<std::mutex> guard(*mutex_);
-      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
-    } else {
-      *out = framework::ReadFromRecordIO(&scanner_, dev_ctx_);
+      guard.reset(new std::lock_guard<std::mutex>(*mutex_));
+    }
+
+    bool ok = framework::ReadFromRecordIO(&scanner_, dev_ctx_, out);
+    if (!ok) {
+      out->clear();
     }
   }
+
+  void StartImpl() override { scanner_.Reset(); }
 
  private:
   std::unique_ptr<std::mutex> mutex_;
@@ -58,20 +59,11 @@ class CreateRecordIOReaderOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    const auto& shape_concat = Attr<std::vector<int>>("shape_concat");
-    const auto& ranks = Attr<std::vector<int>>("ranks");
-    PADDLE_ENFORCE(!shape_concat.empty() && !ranks.empty());
-    PADDLE_ENFORCE_EQ(std::accumulate(ranks.begin(), ranks.end(), 0),
-                      static_cast<int>(shape_concat.size()),
-                      "The accumulate of all ranks should be equal to the "
-                      "shape concat's length.");
     std::string filename = Attr<std::string>("filename");
-
     auto* out = scope.FindVar(Output("Out"))
                     ->template GetMutable<framework::ReaderHolder>();
 
-    out->Reset(new RecordIOFileReader<true>(
-        filename, RestoreShapes(shape_concat, ranks)));
+    out->Reset(std::make_shared<RecordIOFileReader<true>>(filename));
   }
 };
 

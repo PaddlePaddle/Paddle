@@ -12,10 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import sys
+import six
 import re
-from graphviz import GraphPreviewGenerator
-import proto.framework_pb2 as framework_pb2
+from .graphviz import GraphPreviewGenerator
+from .proto import framework_pb2
 from google.protobuf import text_format
 
 _vartype2str_ = [
@@ -225,7 +228,7 @@ def draw_block_graphviz(block, highlights=None, path="./temp.dot"):
     graph = GraphPreviewGenerator("some graph")
     # collect parameters and args
     protostr = block.desc.serialize_to_string()
-    desc = framework_pb2.BlockDesc.FromString(str(protostr))
+    desc = framework_pb2.BlockDesc.FromString(six.binary_type(protostr))
 
     def need_highlight(name):
         if highlights is None: return False

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import paddle.fluid.core as core
 import numpy
@@ -19,6 +21,11 @@ import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard
 from paddle.fluid.executor import Executor
 from paddle.fluid.backward import append_backward
+
+from paddle.fluid.layers.control_flow import lod_rank_table
+from paddle.fluid.layers.control_flow import max_sequence_len
+from paddle.fluid.layers.control_flow import lod_tensor_to_array
+from paddle.fluid.layers.control_flow import array_to_lod_tensor
 
 
 class TestCPULoDTensorArrayOps(unittest.TestCase):
@@ -30,8 +37,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 1]])
-        expect = map(lambda x: numpy.array(x).astype('int32'),
-                     [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
+        expect = [
+            numpy.array(x).astype('int32')
+            for x in [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]]
+        ]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -43,8 +52,10 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         tensor.set(
             numpy.arange(10).reshape(10, 1).astype('int32'), self.place())
         tensor.set_recursive_sequence_lengths([[3, 6, 0, 1]])
-        expect = map(lambda x: numpy.array(x).astype('int32'),
-                     [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]])
+        expect = [
+            numpy.array(x).astype('int32')
+            for x in [[3, 0, 9], [4, 1], [5, 2], [6], [7], [8]]
+        ]
         self.main(
             tensor=tensor,
             expect_array=expect,
@@ -106,8 +117,8 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         expect = [
             numpy.array(
                 item, dtype='int32')
-            for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49], range(
-                22, 39) + range(7, 21), range(39, 46)]
+            for item in [[21, 0, 1, 2, 3, 4, 5, 6, 46, 47, 48, 49], list(
+                range(22, 39)) + list(range(7, 21)), list(range(39, 46))]
         ]
         lod = [[[1, 2, 1], [1, 3, 4, 4]], [[4, 3], [1, 4, 4, 8, 4, 6, 4]],
                [[2], [6, 1]]]
@@ -137,13 +148,13 @@ class TestCPULoDTensorArrayOps(unittest.TestCase):
         with program_guard(program):
             x = layers.data(name='x', shape=[10])
             x.persistable = True
-            table = layers.lod_rank_table(x, level=level)
-            max_len = layers.max_sequence_len(table)
+            table = lod_rank_table(x, level=level)
+            max_len = max_sequence_len(table)
             max_len.persistable = True
-            array = layers.lod_tensor_to_array(x, table)
+            array = lod_tensor_to_array(x, table)
             array.persistable = True
 
-            result = layers.array_to_lod_tensor(array, table)
+            result = array_to_lod_tensor(array, table)
             result.persistable = True
         exe = Executor(place)
         scope = core.Scope()
@@ -181,9 +192,9 @@ class TestCPULoDTensorArrayOpGrad(unittest.TestCase):
         with program_guard(program):
             x = layers.data(
                 name='x', shape=[1], dtype='float32', stop_gradient=False)
-            table = layers.lod_rank_table(x, level=0)
-            array = layers.lod_tensor_to_array(x, table)
-            result = layers.array_to_lod_tensor(array, table)
+            table = lod_rank_table(x, level=0)
+            array = lod_tensor_to_array(x, table)
+            result = array_to_lod_tensor(array, table)
 
             mean = layers.mean(result)
 
