@@ -1,4 +1,4 @@
-set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
+set(INFERENCE_URL "http://paddle-inference-dist.cdn.bcebos.com")
 set(INFERENCE_DEMO_INSTALL_DIR "${THIRD_PARTY_PATH}/inference_demo" CACHE STRING
     "A path setting inference demo download directories.")
 set(INFERENCE_EXTRA_DEPS paddle_inference_api paddle_fluid_api ir_pass_manager analysis_predictor)
