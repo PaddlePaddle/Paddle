@@ -36,6 +36,7 @@ pass_library(infer_clean_graph_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
+pass_library(feed_fetch_auto_prune_pass inference)
 
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
@@ -45,6 +46,7 @@ cc_test(graph_helper_test SRCS graph_helper_test.cc DEPS graph graph_helper op_r
 cc_test(graph_to_program_pass_test SRCS graph_to_program_pass_test.cc DEPS graph_to_program_pass)
 cc_test(test_graph_pattern_detector SRCS graph_pattern_detector_tester.cc DEPS graph_pattern_detector)
 cc_test(test_fc_fuse_pass SRCS fc_fuse_pass_tester.cc DEPS fc_fuse_pass framework_proto)
+cc_test(test_feed_fetch_prune_pass SRCS feed_fetch_auto_prune_pass_test.cc DEPS feed_fetch_auto_prune_pass infer_clean_graph_pass graph_viz_pass)
 if(WITH_MKLDNN)
   cc_test(test_conv_relu_mkldnn_fuse_pass SRCS conv_relu_mkldnn_fuse_pass_tester.cc DEPS conv_relu_mkldnn_fuse_pass)
 endif()
