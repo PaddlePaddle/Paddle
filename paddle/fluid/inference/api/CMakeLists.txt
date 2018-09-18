@@ -69,25 +69,4 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     endfunction()
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
-    if (WITH_TESTING)
-        # TODO(luotao): ANAKIN_MODLE_URL etc will move to demo ci later.
-        set(INFERENCE_URL "http://paddle-inference-dist.bj.bcebos.com")
-        set(ANAKIN_RNN_MODLE_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn.anakin2.model.bin")
-        set(ANAKIN_RNN_DATA_URL "${INFERENCE_URL}/anakin_test%2Fditu_rnn_data.txt")
-        execute_process(COMMAND bash -c "mkdir -p ${ANAKIN_SOURCE_DIR}")
-        execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_MODLE_URL} -N")
-        execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_RNN_DATA_URL} -N")
-        if(WITH_GPU)
-            set(anakin_test_extra_deps dynload_cuda)
-            set(ANAKIN_MODLE_URL "${INFERENCE_URL}/mobilenet_v2.anakin.bin")
-            execute_process(COMMAND bash -c "cd ${ANAKIN_SOURCE_DIR}; wget -q --no-check-certificate ${ANAKIN_MODLE_URL} -N")
-            cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
-                    ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
-                    DEPS inference_anakin_api_shared ${anakin_test_extra_deps} SERIAL)
-        endif()
-        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
-                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
-                DEPS inference_anakin_api_shared ${anakin_test_extra_deps} SERIAL)
-    endif(WITH_TESTING)
 endif()
