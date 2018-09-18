@@ -45,7 +45,7 @@ class PaddleBuf {
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  PaddleBuf(size_t length)
+  explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -121,6 +121,8 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
+  // NOTE: NOT use it, just for the internal test, will discard later
+  bool _use_mkldnn{false};
   // Specify the variable's name of each input.
   bool specify_input_name{false};
 

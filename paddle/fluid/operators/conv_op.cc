@@ -164,6 +164,11 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
+  AddAttr<bool>("fuse_eltwise",
+                "(bool, default false) Only used in mkldnn kernel. Used "
+                "whenever convolution output is connected via skip connection "
+                "to a previous layer.")
+      .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "

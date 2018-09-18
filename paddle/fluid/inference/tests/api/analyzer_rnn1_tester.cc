@@ -12,24 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-
-#include <google/protobuf/text_format.h>
-#include <gtest/gtest.h>
-#include <thread>  // NOLINT
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
-DEFINE_string(infer_model, "", "model path");
-DEFINE_string(infer_data, "", "data path");
-DEFINE_int32(batch_size, 10, "batch size.");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -164,26 +147,6 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void CompareResult(const std::vector<PaddleTensor> &outputs,
-                   const std::vector<PaddleTensor> &base_outputs) {
-  PADDLE_ENFORCE_GT(outputs.size(), 0);
-  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
-  for (size_t i = 0; i < outputs.size(); i++) {
-    auto &out = outputs[i];
-    auto &base_out = base_outputs[i];
-    size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                  [](int a, int b) { return a * b; });
-    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
-                                   1, [](int a, int b) { return a * b; });
-    PADDLE_ENFORCE_EQ(size, size1);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *data = static_cast<float *>(out.data.data());
-    float *base_data = static_cast<float *>(base_out.data.data());
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_data[i], 1e-3);
-    }
-  }
-}
 // Test with a really complicate model.
 void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
   AnalysisConfig config;
@@ -198,7 +161,6 @@ void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
   config.ir_passes.clear();  // Do not exclude any pass.
 
   int batch_size = FLAGS_batch_size;
-  int num_times = FLAGS_repeat;
 
   auto base_predictor =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
@@ -213,45 +175,14 @@ void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
 
   base_predictor->Run(input_slots, &base_outputs);
 
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  input_slots_all.emplace_back(input_slots);
   if (num_threads == 1) {
-    // Prepare inputs.
-    Timer timer;
-    timer.tic();
-    for (int i = 0; i < num_times; i++) {
-      predictor->Run(input_slots, &outputs);
-    }
-    PrintTime(batch_size, num_times, 1, 0, timer.toc() / num_times);
+    TestOneThreadPrediction(config, input_slots_all, &outputs);
     CompareResult(outputs, base_outputs);
   } else {
-    std::vector<std::thread> threads;
-    std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-    // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
-    // because AttentionLSTM's hard code nodeid will be damanged.
-    for (int tid = 0; tid < num_threads; ++tid) {
-      predictors.emplace_back(
-          CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-              config));
-    }
-    for (int tid = 0; tid < num_threads; ++tid) {
-      threads.emplace_back([&, tid]() {
-        // Each thread should have local input_slots and outputs.
-        std::vector<PaddleTensor> input_slots;
-        DataRecord data(FLAGS_infer_data, batch_size);
-        PrepareInputs(&input_slots, &data, batch_size);
-        std::vector<PaddleTensor> outputs;
-        Timer timer;
-        timer.tic();
-        for (int i = 0; i < num_times; i++) {
-          predictors[tid]->Run(input_slots, &outputs);
-        }
-        PrintTime(batch_size, num_times, num_threads, tid,
-                  timer.toc() / num_times);
-        CompareResult(outputs, base_outputs);
-      });
-    }
-    for (int i = 0; i < num_threads; ++i) {
-      threads[i].join();
-    }
+    // only return the output of first thread
+    TestMultiThreadPrediction(config, input_slots_all, &outputs, num_threads);
   }
 
   if (use_analysis && activate_ir) {
@@ -293,8 +224,7 @@ TEST(Analyzer, RNN_tests) {
     // Directly infer with the original model.
     TestRNN1Prediction(false, false, i);
     // Inference with the original model with the analysis turned on, the
-    // analysis
-    // module will transform the program to a data flow graph.
+    // analysis module will transform the program to a data flow graph.
     TestRNN1Prediction(true, false, i);
     // Inference with analysis and IR. The IR module will fuse some large
     // kernels.
