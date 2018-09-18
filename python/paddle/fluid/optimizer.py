@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 import re
+import sys
 from collections import defaultdict
 from paddle.fluid.framework import Program, Variable, name_scope
 from . import framework
@@ -70,9 +71,10 @@ class Optimizer(object):
         self.helper = None
         self._LARS_weight_decay = LARS_weight_decay
         if LARS_weight_decay > 0.0:
-            raise DeprecationWarning(
+            print(
                 "Argument LARS_weight_decay is deprecated, pass \
-use_lars to momentum layer to enable lars, see documents of momentum layer.")
+use_lars to momentum layer to enable lars, see documents of momentum layer.",
+                file=sys.stderr)
 
     def _create_global_learning_rate(self):
         lr = self._global_learning_rate()
