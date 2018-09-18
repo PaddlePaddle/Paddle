@@ -119,7 +119,8 @@ struct FindRangeAbsMaxFunctor<platform::CUDADeviceContext, T> {
                   const framework::Tensor& last_scale,
                   const framework::Tensor& iter, const int window_size,
                   framework::Tensor* scales_arr, framework::Tensor* out_scale) {
-    auto& gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+    const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+
     T* scale_arr = scales_arr->mutable_data<T>(gpu_place);
     T* out_scale_data = out_scale->mutable_data<T>(gpu_place);
 

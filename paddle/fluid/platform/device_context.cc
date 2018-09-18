@@ -176,13 +176,12 @@ class CudnnHolder {
     if (required_workspace_len <= workspace_len_) {
       return;
     }
-    void* new_workspace = paddle::memory::Alloc(place_, required_workspace_len);
     if (workspace_ != nullptr) {
       // Maybe someone is using the current workspace
       PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
       paddle::memory::Free(place_, workspace_);
     }
-    workspace_ = new_workspace;
+    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
     workspace_len_ = required_workspace_len;
   }
 
@@ -211,11 +210,14 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
   }
+
+  callback_manager_.reset(new StreamCallbackManager(stream_));
 }
 
 CUDADeviceContext::~CUDADeviceContext() {
   SetDeviceId(place_.device);
   Wait();
+  WaitStreamCallback();
   PADDLE_ENFORCE(dynload::cublasDestroy(cublas_handle_));
   eigen_stream_.reset();
   eigen_device_.reset();
