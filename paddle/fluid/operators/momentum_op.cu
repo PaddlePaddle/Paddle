@@ -56,9 +56,9 @@ __global__ void MomentumLarsKernel(const T* p, const T* g, const T* v,
       local_lr = lr * lars_coeff * p_norm[0] /
                  (g_norm[0] + lars_weight_decay * p_norm[0]);
     }
-    T v_new = v[i] * mu + (g[i] + lars_weight_decay * p[i]);
+    T v_new = v[i] * mu + local_lr * (g[i] + lars_weight_decay * p[i]);
     v_out[i] = v_new;
-    p_out[i] = p[i] - local_lr * v_new;
+    p_out[i] = p[i] - v_new;
   }
 }
 

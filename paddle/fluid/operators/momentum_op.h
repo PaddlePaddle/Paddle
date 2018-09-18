@@ -55,16 +55,23 @@ class MomentumOpKernel : public framework::OpKernel<T> {
         p_out = p - lr[0] * v_out;
       }
     } else {
-      // T local_lr = lr[0];
-      Eigen::TensorFixedSize<T, Eigen::Sizes<>, Eigen::RowMajor,
-                             Eigen::DenseIndex>
-          local_lr;
-      auto p_norm = p.square().sum().sqrt();
-      auto g_norm = g.square().sum().sqrt();
-      local_lr =
-          lr[0] * lars_coeff * p_norm / (g_norm + lars_weight_decay * p_norm);
-      v_out = v * mu + (g + lars_weight_decay * p);
-      p_out = p - local_lr + v_out;
+      framework::Tensor p_norm_t, g_norm_t;
+      p_norm_t.Resize({1});
+      g_norm_t.Resize({1});
+      p_norm_t.mutable_data<T>(ctx.GetPlace());
+      g_norm_t.mutable_data<T>(ctx.GetPlace());
+      auto ep_norm = framework::EigenScalar<T>::From(p_norm_t);
+      auto eg_norm = framework::EigenScalar<T>::From(g_norm_t);
+
+      ep_norm = p.square().sum().sqrt();
+      eg_norm = g.square().sum().sqrt();
+      T local_lr = lr[0];
+      if (ep_norm(0) > 0 && eg_norm(0) > 0) {
+        local_lr = lr[0] * lars_coeff * ep_norm(0) /
+                   (eg_norm(0) + lars_weight_decay * ep_norm(0));
+      }
+      v_out = v * mu + local_lr * (g + lars_weight_decay * p);
+      p_out = p - v_out;
     }
   }
 };
