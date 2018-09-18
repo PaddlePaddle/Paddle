@@ -296,6 +296,7 @@ op_library(flatten_op DEPS reshape_op)
 op_library(sequence_pad_op DEPS sequence_padding)
 op_library(unstack_op DEPS stack_op)
 op_library(fake_quantize_op DEPS memory)
+op_library(fusion_lstm_op DEPS cpu_lstm_compute)
 
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
