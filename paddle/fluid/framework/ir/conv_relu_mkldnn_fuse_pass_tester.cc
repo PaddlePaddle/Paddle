@@ -43,7 +43,7 @@ void SetOp(ProgramDesc *prog, const std::string &type,
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
   for (auto &v :
-      std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g"})) {
+       std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g"})) {
     auto *var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights" || v == "bias") {

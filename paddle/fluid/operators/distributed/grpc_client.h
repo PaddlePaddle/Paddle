@@ -49,7 +49,7 @@ namespace paddle {
 namespace operators {
 namespace distributed {
 
-void ProcGetResponse(const VarHandle& var_h, const grpc::ByteBuffer& msg);
+void ProcGetResponse(const VarHandle &var_h, const grpc::ByteBuffer &msg);
 
 class BaseProcessor {
  public:
@@ -87,7 +87,7 @@ class BaseProcessor {
   VarHandlePtr var_h_;
 };
 
-typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
+typedef std::function<void(const VarHandle &, const ::grpc::ByteBuffer &)>
     RequestSendCallBack;
 
 class SendProcessor : public BaseProcessor {
@@ -108,7 +108,7 @@ class SendProcessor : public BaseProcessor {
   RequestSendCallBack response_call_back_ = nullptr;
 };
 
-typedef std::function<void(const VarHandle&, const ::grpc::ByteBuffer&)>
+typedef std::function<void(const VarHandle &, const ::grpc::ByteBuffer &)>
     RequestGetCallBack;
 
 class GetProcessor : public BaseProcessor {
@@ -221,7 +221,7 @@ class GRPCClient : public RPCClient {
 
   void Proceed();
 
-  std::shared_ptr<grpc::Channel> GetChannel(const std::string& ep);
+  std::shared_ptr<grpc::Channel> GetChannel(const std::string &ep);
 
  private:
   grpc::CompletionQueue cq_;

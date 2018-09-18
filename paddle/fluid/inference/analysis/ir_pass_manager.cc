@@ -44,8 +44,8 @@ void IRPassManager::Apply(const std::vector<std::string> &passes) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     if (pass_name == "graph_viz_pass") {
       std::string dot_file_path = std::to_string(pass_num) + "_ir_" +
-          (pre_pass.empty() ? "origin" : pre_pass) +
-          ".dot";
+                                  (pre_pass.empty() ? "origin" : pre_pass) +
+                                  ".dot";
       pass->Set("graph_viz_path", new std::string(std::move(dot_file_path)));
       pass_num++;
     }

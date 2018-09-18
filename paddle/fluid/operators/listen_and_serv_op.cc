@@ -292,7 +292,7 @@ void ListenAndServOp::CacheVarsType(const std::vector<std::string> &varnames,
     if (var->IsType<framework::SelectedRows>()) {
       sparse_vars_.push_back(varname);
     } else if (var->IsType<framework::LoDTensor>() ||
-        var->IsType<framework::Tensor>()) {
+               var->IsType<framework::Tensor>()) {
       dense_vars_.push_back(varname);
     } else {
       PADDLE_THROW(

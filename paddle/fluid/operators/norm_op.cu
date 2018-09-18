@@ -19,26 +19,22 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-__device__ __forceinline__
-float square_root(float x) { return sqrtf(x); }
+__device__ __forceinline__ float square_root(float x) { return sqrtf(x); }
 
-__device__ __forceinline__
-double square_root(double x) { return sqrt(x); }
+__device__ __forceinline__ double square_root(double x) { return sqrt(x); }
 
-template<typename T, int BlockDim>
+template <typename T, int BlockDim>
 __global__ void Normalize(const T *x, const int pre,
                           const int axis_n,  // dim in axis
                           const int post, const T eps, T *y, T *out_norm) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__
-  typename BlockReduce::TempStorage temp_storage;
+  __shared__ typename BlockReduce::TempStorage temp_storage;
   int num = pre * post;
   for (int i = blockIdx.x; i < num; i += gridDim.x) {
     int base = (i / post) * post * axis_n + (i % post);
 
     T sum = 0.0;
-    __shared__
-    T norm;
+    __shared__ T norm;
     for (int j = threadIdx.x; j < axis_n; j += blockDim.x) {
       const T x_ij = x[base + j * post];
       sum += x_ij * x_ij;
@@ -57,7 +53,7 @@ __global__ void Normalize(const T *x, const int pre,
   }
 }
 
-template<typename DeviceContext, typename T>
+template <typename DeviceContext, typename T>
 class NormCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -82,27 +78,23 @@ class NormCUDAKernel : public framework::OpKernel<T> {
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     int grid = std::min(max_blocks, pre * post);
-    Normalize<T, block> << < grid, block, 0, dev_ctx.stream() >> > (x, pre, n, post,
-        eps, y, norm);
+    Normalize<T, block><<<grid, block, 0, dev_ctx.stream()>>>(x, pre, n, post,
+                                                              eps, y, norm);
   }
 };
 
-template<typename T, int BlockDim>
+template <typename T, int BlockDim>
 __global__ void NormalizeGradient(const T *x, const T *x_norm, const T *y_grad,
                                   const int pre, const int axis_n,
                                   const int post, T *x_grad) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
-  __shared__
-  typename BlockReduce::TempStorage temp_storage_sum;
+  __shared__ typename BlockReduce::TempStorage temp_storage_sum;
   int num = pre * post;
   for (int i = blockIdx.x; i < num; i += gridDim.x) {
     T sum = 0.0;
-    __shared__
-    T row_sum;
-    __shared__
-    T row_sqrt_norm;
-    __shared__
-    T row_norm;
+    __shared__ T row_sum;
+    __shared__ T row_sqrt_norm;
+    __shared__ T row_norm;
 
     auto base = (i / post) * post * axis_n + (i % post);
 
@@ -127,7 +119,7 @@ __global__ void NormalizeGradient(const T *x, const T *x_norm, const T *y_grad,
   }
 }
 
-template<typename DeviceContext, typename T, typename AttrType = T>
+template <typename DeviceContext, typename T, typename AttrType = T>
 class NormGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
@@ -152,7 +144,7 @@ class NormGradCUDAKernel : public framework::OpKernel<T> {
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
     const int max_blocks = std::max(max_threads / block, 1);
     int grid = std::min(max_blocks, pre * post);
-    NormalizeGradient<T, block> << < grid, block, 0, dev_ctx.stream() >> > (
+    NormalizeGradient<T, block><<<grid, block, 0, dev_ctx.stream()>>>(
         x, x_norm, dy, pre, n, post, dx);
   }
 };

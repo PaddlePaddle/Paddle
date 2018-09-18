@@ -103,15 +103,15 @@ class MaxSeqPoolGradFunctor {
   }
 };
 
-template<typename T>
+template <typename T>
 class LastSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
-                  const framework::LoDTensor &input,
-                  framework::Tensor *output) {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::LoDTensor& input,
+                  framework::Tensor* output) {
     // Create pointers to input and output data
-    auto *in_data = input.data<T>();
-    auto *out_data = output->data<T>();
+    auto* in_data = input.data<T>();
+    auto* out_data = output->data<T>();
 
     // Calculate the size of each item in sequence
     int64_t item_size = input.numel() / input.dims()[0];
@@ -129,15 +129,15 @@ class LastSeqPoolFunctor {
   }
 };
 
-template<typename T>
+template <typename T>
 class FirstSeqPoolFunctor {
  public:
-  void operator()(const platform::CPUDeviceContext &context,
-                  const framework::LoDTensor &input,
-                  framework::Tensor *output) {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::LoDTensor& input,
+                  framework::Tensor* output) {
     // Create pointers to input and output data
-    auto *in_data = input.data<T>();
-    auto *out_data = output->data<T>();
+    auto* in_data = input.data<T>();
+    auto* out_data = output->data<T>();
 
     // Calculate the size of each item in sequence
     int64_t item_size = input.numel() / input.dims()[0];

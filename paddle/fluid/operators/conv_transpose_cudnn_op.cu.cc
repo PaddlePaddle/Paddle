@@ -105,7 +105,7 @@ class CUDNNConvTransposeOpKernel : public framework::OpKernel<T> {
     int filter_offset = filter->numel() / groups;
     T alpha = 1.0f, beta = 0.0f;
     for (int g = 0; g < groups; g++) {
-      auto cudnn_func = [&](void *cudnn_workspace) {
+      auto cudnn_func = [&](void* cudnn_workspace) {
         CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
             handle, &alpha, cudnn_filter_desc, filter_data + filter_offset * g,
             cudnn_input_desc, input_data + input_offset * g, cudnn_conv_desc,
@@ -212,7 +212,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset input_grad.
       for (int g = 0; g < groups; g++) {
-        auto cudnn_func = [&](void *cudnn_workspace) {
+        auto cudnn_func = [&](void* cudnn_workspace) {
           CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
               handle, &alpha, cudnn_output_desc,
               output_grad_data + output_grad_offset * g, cudnn_filter_desc,
@@ -230,7 +230,7 @@ class CUDNNConvTransposeGradOpKernel : public framework::OpKernel<T> {
       // Because beta is zero, it is unnecessary to reset filter_grad.
       // Gradient with respect to the filter
       for (int g = 0; g < groups; g++) {
-        auto cudnn_func = [&](void *cudnn_workspace) {
+        auto cudnn_func = [&](void* cudnn_workspace) {
           CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
               handle, &alpha, cudnn_output_desc,
               output_grad_data + output_grad_offset * g, cudnn_input_desc,

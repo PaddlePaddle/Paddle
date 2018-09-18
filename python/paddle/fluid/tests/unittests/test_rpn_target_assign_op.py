@@ -39,7 +39,7 @@ def rpn_target_assign(anchor_by_gt_overlap,
     anchors_with_max_overlap = np.where(
         anchor_by_gt_overlap == gt_to_anchor_max)[0]
 
-    labels = np.ones((anchor_by_gt_overlap.shape[0],), dtype=np.int32) * -1
+    labels = np.ones((anchor_by_gt_overlap.shape[0], ), dtype=np.int32) * -1
     labels[anchors_with_max_overlap] = 1
     labels[anchor_to_gt_max >= rpn_positive_overlap] = 1
 
@@ -107,7 +107,7 @@ def rpn_target_assign_in_python(all_anchors,
             inds_inside = np.where(
                 (all_anchors[:, 0] >= -rpn_straddle_thresh) &
                 (all_anchors[:, 1] >= -rpn_straddle_thresh) & (
-                        all_anchors[:, 2] < im_width + rpn_straddle_thresh) & (
+                    all_anchors[:, 2] < im_width + rpn_straddle_thresh) & (
                         all_anchors[:, 3] < im_height + rpn_straddle_thresh))[0]
             # keep only inside anchors
             inside_anchors = all_anchors[inds_inside, :]

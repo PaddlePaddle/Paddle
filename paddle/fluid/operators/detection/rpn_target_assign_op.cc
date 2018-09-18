@@ -30,7 +30,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {
+  void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Anchor"),
                    "Input(Anchor) of RpnTargetAssignOp should not be null");
     PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
@@ -72,7 +72,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
+      const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::LoDTensor>("Anchor")->type()),
@@ -87,7 +87,7 @@ void AppendRpns(LoDTensor *out, int64_t offset, Tensor *to_add) {
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
-template<typename T>
+template <typename T>
 std::vector<Tensor> FilterStraddleAnchor(
     const platform::CPUDeviceContext &context, const Tensor *anchor,
     const float rpn_straddle_thresh, T im_height, T im_width) {
@@ -126,7 +126,7 @@ std::vector<Tensor> FilterStraddleAnchor(
   return res;
 }
 
-template<typename T>
+template <typename T>
 Tensor FilterCrowdGt(const platform::CPUDeviceContext &context,
                      Tensor *gt_boxes, Tensor *is_crowd) {
   int gt_num = gt_boxes->dims()[0];
@@ -162,7 +162,7 @@ void ReservoirSampling(const int num, std::vector<int> *inds,
   }
 }
 
-template<typename T>
+template <typename T>
 void ScoreAssign(const T *anchor_by_gt_overlap_data,
                  const Tensor &anchor_to_gt_max, const Tensor &gt_to_anchor_max,
                  const int rpn_batch_size_per_im, const float rpn_fg_fraction,
@@ -232,7 +232,7 @@ void ScoreAssign(const T *anchor_by_gt_overlap_data,
   std::copy(bg_lbl.begin(), bg_lbl.end(), tgt_lbl->data() + fg_num);
 }
 
-template<typename T>
+template <typename T>
 std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext &ctx,
                                     const Tensor &anchor_by_gt_overlap,
                                     const int rpn_batch_size_per_im,
@@ -305,7 +305,7 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext &ctx,
   return loc_score_tgtlbl_gt;
 }
 
-template<typename T>
+template <typename T>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {

@@ -30,7 +30,7 @@ Record ProcessALine(const std::string &line) {
   std::vector<std::string> columns;
   split(line, '\t', &columns);
   CHECK_EQ(columns.size(), 2UL)
-    << "data format error, should be <data>\t<shape>";
+      << "data format error, should be <data>\t<shape>";
 
   Record record;
   std::vector<std::string> data_strs;
@@ -92,7 +92,7 @@ void TestVisualPrediction(bool use_mkldnn) {
     predictor->Run({input}, &outputs_slots);
   }
   PrintTime(/*batch size*/ 1, FLAGS_repeat, /*num threads*/ 1, /*thread id*/ 0,
-                           timer.toc() / FLAGS_repeat);
+            timer.toc() / FLAGS_repeat);
 
   VLOG(3) << "output.size " << outputs_slots.size();
 
@@ -106,14 +106,14 @@ void TestVisualPrediction(bool use_mkldnn) {
   AnalysisPredictor *analysis_predictor =
       dynamic_cast<AnalysisPredictor *>(predictor.get());
   auto &fuse_statis = analysis_predictor->analysis_argument()
-      .Get<std::unordered_map<std::string, int>>(
-          framework::ir::kFuseStatisAttr);
+                          .Get<std::unordered_map<std::string, int>>(
+                              framework::ir::kFuseStatisAttr);
   for (auto &item : fuse_statis) {
     LOG(INFO) << "fused " << item.first << " " << item.second;
   }
   int num_ops = 0;
   for (auto &node :
-      analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+       analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
     if (node->IsFunction()) {
       ++num_ops;
     }

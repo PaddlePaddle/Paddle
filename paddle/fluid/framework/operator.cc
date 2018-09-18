@@ -465,12 +465,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool HasInput(const std::string& name) const override {
     // has only one input
-    const auto &ins = op_.Inputs();
+    const auto& ins = op_.Inputs();
     auto it = ins.find(name);
     if (it == ins.end()) {
       return false;
     }
-    const auto &in = it->second;
+    const auto& in = it->second;
     if (in.size() == 0 || in[0] == kEmptyVarName) {
       return false;
     }
@@ -481,12 +481,12 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   bool HasOutput(const std::string& name) const override {
     // has only one output
-    const auto &outs = op_.Outputs();
+    const auto& outs = op_.Outputs();
     auto it = outs.find(name);
     if (it == outs.end()) {
       return false;
     }
-    const auto &out = it->second;
+    const auto& out = it->second;
     if (out.size() == 0 || out[0] == kEmptyVarName) {
       return false;
     }

@@ -29,8 +29,8 @@ __global__ void CrossEntropyKernel(T* Y, const T* X, const int64_t* label,
        i += blockDim.x * gridDim.x) {
     PADDLE_ASSERT(label[i] >= 0 && label[i] < D || label[i] == ignore_index);
     Y[i] = ignore_index == label[i]
-           ? 0
-           : -math::TolerableValue<T>()(log(X[i * D + label[i]]));
+               ? 0
+               : -math::TolerableValue<T>()(log(X[i * D + label[i]]));
   }
 }
 
@@ -60,7 +60,7 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& ctx,
                   framework::Tensor* out, const framework::Tensor* prob,
-                  const framework::Tensor *labels, bool softLabel,
+                  const framework::Tensor* labels, bool softLabel,
                   const int ignore_index) {
     const T* prob_data = prob->data<T>();
     T* loss_data = out->mutable_data<T>(ctx.GetPlace());
@@ -82,7 +82,7 @@ class CrossEntropyFunctor<platform::CUDADeviceContext, T> {
       int grid = (batch_size + block - 1) / block;
       CrossEntropyKernel<T><<<grid, block, 0, ctx.stream()>>>(
           loss_data, prob_data, label_data, batch_size, class_num,
-              ignore_index);
+          ignore_index);
     }
   }
 };

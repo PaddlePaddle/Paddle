@@ -88,8 +88,8 @@ class XeGradFunctor {
          x_offset < (sample_id + 1) * num_classes_; ++x_offset) {
       dx_[x_offset] =
           (x_offset != x_is_true_offset || label_[sample_id] == ignore_index_)
-          ? static_cast<T>(0)
-          : -dy_[sample_id] / x_[x_offset];
+              ? static_cast<T>(0)
+              : -dy_[sample_id] / x_[x_offset];
     }
   }
 

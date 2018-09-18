@@ -52,10 +52,10 @@ class RPCServer;
 
 class VarHandle {
  public:
-  VarHandle(const std::string ep, const std::string &method,
-            const std::string &name,
-            const platform::DeviceContext *p_ctx = nullptr,
-            const framework::Scope *p_scope = nullptr)
+  VarHandle(const std::string ep, const std::string& method,
+            const std::string& name,
+            const platform::DeviceContext* p_ctx = nullptr,
+            const framework::Scope* p_scope = nullptr)
       : ok_(kVarHandleDefaultState) {
     ep_ = ep;
     ctx_ = p_ctx;
@@ -93,16 +93,16 @@ class VarHandle {
   }
 
   std::string ep() const { return ep_; }
-  const platform::DeviceContext *ctx() const { return ctx_; }
-  const framework::Scope *scope() const { return scope_; }
+  const platform::DeviceContext* ctx() const { return ctx_; }
+  const framework::Scope* scope() const { return scope_; }
   std::string name() const { return name_; }
   std::string method() const { return method_; }
 
  protected:
   // RPC endpoint.
   std::string ep_;
-  const platform::DeviceContext *ctx_;
-  const framework::Scope *scope_;
+  const platform::DeviceContext* ctx_;
+  const framework::Scope* scope_;
   // Variable name.
   std::string name_;
   // RPC method name.
@@ -116,7 +116,7 @@ class VarHandle {
   static const int kVarHandleDefaultState = -1;
 
  private:
- DISABLE_COPY_AND_ASSIGN(VarHandle);
+  DISABLE_COPY_AND_ASSIGN(VarHandle);
 };
 
 typedef std::shared_ptr<VarHandle> VarHandlePtr;

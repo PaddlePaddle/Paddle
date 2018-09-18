@@ -62,17 +62,17 @@ GRPCClient::~GRPCClient() {
   client_thread_->join();
 }
 
-VarHandlePtr GRPCClient::AsyncSendVar(const std::string &ep,
-                                      const platform::DeviceContext &ctx,
-                                      const framework::Scope &scope,
-                                      const std::string &var_name,
+VarHandlePtr GRPCClient::AsyncSendVar(const std::string& ep,
+                                      const platform::DeviceContext& ctx,
+                                      const framework::Scope& scope,
+                                      const std::string& var_name,
                                       int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  SendProcessor *s = new SendProcessor(ch);
+  SendProcessor* s = new SendProcessor(ch);
   VarHandlePtr h(new VarHandle(ep, "Send", var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
@@ -111,17 +111,17 @@ void RequestToByteBuffer(const T& proto, ::grpc::ByteBuffer* result) {
   result->Swap(&tmp);
 }
 
-VarHandlePtr GRPCClient::AsyncGetVar(const std::string &ep,
-                                     const platform::DeviceContext &ctx,
-                                     const framework::Scope &scope,
-                                     const std::string &var_name,
+VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
+                                     const platform::DeviceContext& ctx,
+                                     const framework::Scope& scope,
+                                     const std::string& var_name,
                                      int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
   const std::string var_name_val = var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  GetProcessor *s = new GetProcessor(ch);
+  GetProcessor* s = new GetProcessor(ch);
   VarHandlePtr h(new VarHandle(ep, "Get", var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
@@ -148,11 +148,11 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string &ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string &ep,
-                                          const platform::DeviceContext &ctx,
-                                          const framework::Scope &scope,
-                                          const std::string &in_var_name,
-                                          const std::string &out_var_name,
+VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
+                                          const platform::DeviceContext& ctx,
+                                          const framework::Scope& scope,
+                                          const std::string& in_var_name,
+                                          const std::string& out_var_name,
                                           int64_t time_out) {
   const platform::DeviceContext* p_ctx = &ctx;
   const std::string ep_val = ep;
@@ -160,13 +160,13 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string &ep,
   const std::string out_var_name_val = out_var_name;
   const framework::Scope* p_scope = &scope;
   const auto ch = GetChannel(ep_val);
-  GetProcessor *s = new GetProcessor(ch);
+  GetProcessor* s = new GetProcessor(ch);
   VarHandlePtr h(
       new VarHandle(ep, "Prefetch", out_var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                         s, this] {
+                      s, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -188,7 +188,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string &ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string &ep,
+VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string& ep,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
 
@@ -205,7 +205,7 @@ VarHandlePtr GRPCClient::AsyncSendBatchBarrier(const std::string &ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string &ep,
+VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string& ep,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
   FetchBarrierProcessor* s = new FetchBarrierProcessor(ch);
@@ -221,7 +221,7 @@ VarHandlePtr GRPCClient::AsyncSendFetchBarrier(const std::string &ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncSendComplete(const std::string &ep,
+VarHandlePtr GRPCClient::AsyncSendComplete(const std::string& ep,
                                            int64_t time_out) {
   const auto ch = GetChannel(ep);
 
@@ -238,8 +238,8 @@ VarHandlePtr GRPCClient::AsyncSendComplete(const std::string &ep,
   return h;
 }
 
-VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string &ep,
-                                               const std::string &dir,
+VarHandlePtr GRPCClient::AsyncCheckpointNotify(const std::string& ep,
+                                               const std::string& dir,
                                                int64_t time_out) {
   const auto ch = GetChannel(ep);
 

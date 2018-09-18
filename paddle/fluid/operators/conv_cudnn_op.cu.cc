@@ -161,7 +161,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     // ------------------- cudnn conv forward ---------------------
     ScalingParamType<T> alpha = 1.0f, beta = 0.0f;
     for (int i = 0; i < groups; i++) {
-      auto cudnn_func = [&](void *cudnn_workspace) {
+      auto cudnn_func = [&](void* cudnn_workspace) {
         CUDNN_ENFORCE(platform::dynload::cudnnConvolutionForward(
             handle, &alpha, cudnn_input_desc, input_data + i * group_offset_in,
             cudnn_filter_desc, filter_data + i * group_offset_filter,
@@ -319,7 +319,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       // Because beta is zero, it is unnecessary to reset input_grad.
 
       for (int i = 0; i < groups; i++) {
-        auto cudnn_func = [&](void *cudnn_workspace) {
+        auto cudnn_func = [&](void* cudnn_workspace) {
           CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardData(
               handle, &alpha, cudnn_filter_desc,
               filter_data + i * group_offset_filter, cudnn_output_grad_desc,
@@ -335,7 +335,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       T* filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace());
       // Because beta is zero, it is unnecessary to reset filter_grad.
       for (int i = 0; i < groups; i++) {
-        auto cudnn_func = [&](void *cudnn_workspace) {
+        auto cudnn_func = [&](void* cudnn_workspace) {
           CUDNN_ENFORCE(platform::dynload::cudnnConvolutionBackwardFilter(
               handle, &alpha, cudnn_input_desc,
               input_data + i * group_offset_in, cudnn_output_grad_desc,

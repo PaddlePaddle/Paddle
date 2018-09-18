@@ -194,7 +194,7 @@ class TestMultiProcessReader(unittest.TestCase):
         self.setup()
         results = []
         for data in paddle.reader.multiprocess_reader(
-                [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
+            [self.reader0, self.reader1, self.reader2], 100, use_pipe)():
             results.append(data)
         self.assertEqual(sorted(self.samples), sorted(results))
 

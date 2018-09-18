@@ -130,7 +130,7 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
-      std::vector<mkldnn::primitive> &pipeline,  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
       bool is_persistent = false) {
     auto user_weights_pd = user_weights_memory_p->get_primitive_desc();
     auto weights_pd = conv_pd_->weights_primitive_desc();
@@ -451,7 +451,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
                        const memory::desc& dst, const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine &engine, const bool fuse_relu,
+                       const mkldnn::engine& engine, const bool fuse_relu,
                        const bool fuse_eltwise) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};
@@ -475,7 +475,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                        const memory::desc& bias, const memory::desc& dst,
                        const std::vector<int>& strides,
                        const std::vector<int>& paddings,
-                       const mkldnn::engine &engine, const bool fuse_relu,
+                       const mkldnn::engine& engine, const bool fuse_relu,
                        const bool fuse_eltwise) const {
     memory::dims stride_dims = {strides[0], strides[1]};
     memory::dims padding_dims = {paddings[0], paddings[1]};

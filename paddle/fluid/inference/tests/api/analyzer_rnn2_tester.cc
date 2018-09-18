@@ -142,7 +142,7 @@ void TestRNN2Prediction() {
   config.specify_input_name = true;
   config.enable_ir_optim = true;
   PADDLE_ENFORCE(config.ir_mode ==
-      AnalysisConfig::IrPassMode::kExclude);  // default
+                 AnalysisConfig::IrPassMode::kExclude);  // default
 
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;

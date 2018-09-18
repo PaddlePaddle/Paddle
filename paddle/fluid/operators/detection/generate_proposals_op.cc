@@ -120,10 +120,10 @@ void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
           bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
       bbox_width = std::exp(std::min<T>(bbox_deltas_data[i * len + 2],
                                         std::log(1000.0 / 16.0))) *
-          anchor_width;
+                   anchor_width;
       bbox_height = std::exp(std::min<T>(bbox_deltas_data[i * len + 3],
                                          std::log(1000.0 / 16.0))) *
-          anchor_height;
+                    anchor_height;
     }
 
     proposals_data[i * len] = bbox_center_x - bbox_width / 2;

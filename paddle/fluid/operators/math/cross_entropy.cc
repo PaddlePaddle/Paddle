@@ -28,7 +28,7 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
-                  const framework::Tensor *labels, const bool softLabel,
+                  const framework::Tensor* labels, const bool softLabel,
                   const int ignore_index) {
     const int batch_size = prob->dims()[0];
     if (softLabel) {
@@ -54,8 +54,8 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
         int index = i * class_num + lbl;
         loss_data[i] =
             lbl == ignore_index
-            ? 0
-            : -math::TolerableValue<T>()(std::log(prob_data[index]));
+                ? 0
+                : -math::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }

@@ -460,7 +460,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   //    the optimization sub-graph would be run on every GPU;
   // 3. Allways broadcast received parameters in Distribute Training.
   if ((use_gpu &&
-      strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) ||
+       strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) ||
       is_dist_train) {
     for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
       auto &to_bcast_set = bcast_var_name_set[dev_id];

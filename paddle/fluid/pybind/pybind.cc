@@ -531,7 +531,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
-    m.def("_is_program_version_supported", IsProgramVersionSupported);
+  m.def("_is_program_version_supported", IsProgramVersionSupported);
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);

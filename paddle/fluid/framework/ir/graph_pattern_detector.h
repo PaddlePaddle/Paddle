@@ -367,10 +367,10 @@ struct PatternBase {
 // conv_bias, conv_out, conv,
 // relu_out, relu
 struct ConvReLU : public PatternBase {
-  ConvReLU(PDPattern *pattern, const std::string &name_scope)
+  ConvReLU(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "conv_relu") {}
 
-  PDNode *operator()(PDNode *conv_input);
+  PDNode* operator()(PDNode* conv_input);
 
   // declare operator node's name
   PATTERN_DECL_NODE(conv);

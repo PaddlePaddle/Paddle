@@ -192,7 +192,7 @@ class MKLDNNHandler {
       mkldnn::memory::primitive_desc& user_mpd,  // NOLINT
       const std::shared_ptr<mkldnn::memory> user_memory_p,
       const std::string& suffix,
-      std::vector<mkldnn::primitive> &pipeline,  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,  // NOLINT
       bool is_persistent = false) {
     // create reorder primitive if the input format is not the preferred one
     auto local_key = key_ + suffix;

@@ -22,7 +22,7 @@ namespace operators {
  */
 template <typename T>
 inline void BoxToDelta(const int box_num, const framework::Tensor& ex_boxes,
-                       const framework::Tensor &gt_boxes, const float *weights,
+                       const framework::Tensor& gt_boxes, const float* weights,
                        const bool normalized, framework::Tensor* box_delta) {
   auto ex_boxes_et = framework::EigenTensor<T, 2>::From(ex_boxes);
   auto gt_boxes_et = framework::EigenTensor<T, 2>::From(gt_boxes);
@@ -63,10 +63,10 @@ void Gather(const T* in, const int in_stride, const int* index, const int num,
   }
 }
 
-template<typename T>
-void BboxOverlaps(const framework::Tensor &r_boxes,
-                  const framework::Tensor &c_boxes,
-                  framework::Tensor *overlaps) {
+template <typename T>
+void BboxOverlaps(const framework::Tensor& r_boxes,
+                  const framework::Tensor& c_boxes,
+                  framework::Tensor* overlaps) {
   auto r_boxes_et = framework::EigenTensor<T, 2>::From(r_boxes);
   auto c_boxes_et = framework::EigenTensor<T, 2>::From(c_boxes);
   auto overlaps_et = framework::EigenTensor<T, 2>::From(*overlaps);
@@ -77,10 +77,10 @@ void BboxOverlaps(const framework::Tensor &r_boxes,
       inter_area;
   for (int i = 0; i < r_num; ++i) {
     r_box_area = (r_boxes_et(i, 2) - r_boxes_et(i, 0) + 1) *
-        (r_boxes_et(i, 3) - r_boxes_et(i, 1) + 1);
+                 (r_boxes_et(i, 3) - r_boxes_et(i, 1) + 1);
     for (int j = 0; j < c_num; ++j) {
       c_box_area = (c_boxes_et(j, 2) - c_boxes_et(j, 0) + 1) *
-          (c_boxes_et(j, 3) - c_boxes_et(j, 1) + 1);
+                   (c_boxes_et(j, 3) - c_boxes_et(j, 1) + 1);
       x_min = std::max(r_boxes_et(i, 0), c_boxes_et(j, 0));
       y_min = std::max(r_boxes_et(i, 1), c_boxes_et(j, 1));
       x_max = std::min(r_boxes_et(i, 2), c_boxes_et(j, 2));

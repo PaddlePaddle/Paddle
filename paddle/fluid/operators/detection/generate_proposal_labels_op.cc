@@ -108,15 +108,15 @@ void Concat(const platform::CPUDeviceContext& context,
 template <typename T>
 std::vector<std::vector<int>> SampleFgBgGt(
     const platform::CPUDeviceContext& context, Tensor* iou,
-    const Tensor &is_crowd, const int batch_size_per_im,
+    const Tensor& is_crowd, const int batch_size_per_im,
     const float fg_fraction, const float fg_thresh, const float bg_thresh_hi,
     const float bg_thresh_lo, std::minstd_rand engine, const bool use_random) {
   std::vector<int> fg_inds;
   std::vector<int> bg_inds;
   std::vector<int> gt_inds;
   int64_t gt_num = is_crowd.numel();
-  const int *crowd_data = is_crowd.data<int>();
-  T *proposal_to_gt_overlaps = iou->data<T>();
+  const int* crowd_data = is_crowd.data<int>();
+  T* proposal_to_gt_overlaps = iou->data<T>();
   int64_t row = iou->dims()[0];
   int64_t col = iou->dims()[1];
   float epsilon = 0.00001;
@@ -228,7 +228,7 @@ void GatherBoxesLabels(const platform::CPUDeviceContext& context,
 template <typename T>
 std::vector<Tensor> SampleRoisForOneImage(
     const platform::CPUDeviceContext& context, Tensor* rpn_rois,
-    Tensor *gt_classes, Tensor *is_crowd, Tensor *gt_boxes, Tensor *im_info,
+    Tensor* gt_classes, Tensor* is_crowd, Tensor* gt_boxes, Tensor* im_info,
     const int batch_size_per_im, const float fg_fraction, const float fg_thresh,
     const float bg_thresh_hi, const float bg_thresh_lo,
     const std::vector<float>& bbox_reg_weights, const int class_nums,
@@ -331,9 +331,9 @@ class GenerateProposalLabelsKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* rpn_rois = context.Input<LoDTensor>("RpnRois");
     auto* gt_classes = context.Input<LoDTensor>("GtClasses");
-    auto *is_crowd = context.Input<LoDTensor>("IsCrowd");
+    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
     auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto *im_info = context.Input<LoDTensor>("ImInfo");
+    auto* im_info = context.Input<LoDTensor>("ImInfo");
 
     auto* rois = context.Output<LoDTensor>("Rois");
     auto* labels_int32 = context.Output<LoDTensor>("LabelsInt32");

@@ -60,11 +60,11 @@ struct DataRecord {
         data.rnn_minute_datas.push_back(data.minute_data_all[j]);
         // calculate lod
         data.lod1.push_back(data.lod1.back() +
-            data.link_step_data_all[j].size());
+                            data.link_step_data_all[j].size());
         data.lod3.push_back(data.lod3.back() + 1);
         for (size_t i = 1; i < data.link_step_data_all[j].size() + 1; i++) {
           data.lod2.push_back(data.lod2.back() +
-              data.link_step_data_all[j].size());
+                              data.link_step_data_all[j].size());
         }
       }
     }
@@ -157,7 +157,7 @@ void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
   config.specify_input_name = true;
   config.enable_ir_optim = activate_ir;
   PADDLE_ENFORCE(config.ir_mode ==
-      AnalysisConfig::IrPassMode::kExclude);  // default
+                 AnalysisConfig::IrPassMode::kExclude);  // default
   config.ir_passes.clear();  // Do not exclude any pass.
 
   int batch_size = FLAGS_batch_size;
@@ -189,15 +189,15 @@ void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
     AnalysisPredictor *analysis_predictor =
         dynamic_cast<AnalysisPredictor *>(predictor.get());
     auto &fuse_statis = analysis_predictor->analysis_argument()
-        .Get<std::unordered_map<std::string, int>>(
-            framework::ir::kFuseStatisAttr);
+                            .Get<std::unordered_map<std::string, int>>(
+                                framework::ir::kFuseStatisAttr);
     for (auto &item : fuse_statis) {
       LOG(INFO) << "fused " << item.first << " " << item.second;
     }
 
     int num_ops = 0;
     for (auto &node :
-        analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
+         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
       if (node->IsFunction()) {
         ++num_ops;
       }

@@ -30,9 +30,9 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
 
   GraphPatternDetector gpd;
   auto *conv_input = gpd.mutable_pattern()
-      ->NewNode("conv_relu_mkldnn_fuse/conv_input")
-      ->AsInput()
-      ->assert_is_op_input("conv2d", "Input");
+                         ->NewNode("conv_relu_mkldnn_fuse/conv_input")
+                         ->AsInput()
+                         ->assert_is_op_input("conv2d", "Input");
   patterns::ConvReLU conv_relu_pattern(gpd.mutable_pattern(),
                                        "conv_relu_mkldnn_fuse");
   conv_relu_pattern(conv_input);

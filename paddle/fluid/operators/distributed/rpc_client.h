@@ -72,7 +72,7 @@ class RPCClient {
   virtual bool Wait() = 0;
 
   template <typename T>
-  static RPCClient* GetInstance() {
+  static RPCClient *GetInstance() {
     std::call_once(init_flag_, &RPCClient::Init<T>);
     return rpc_client_.get();
   }

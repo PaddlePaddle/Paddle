@@ -97,7 +97,7 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
 
     def test(self):
         for use_cuda in ([False, True]
-        if core.is_compiled_with_cuda() else [False]):
+                         if core.is_compiled_with_cuda() else [False]):
             for use_parallel_executor in [False, True]:
                 for use_double_buffer in [False, True]:
                     print('Test Parameters:'),

@@ -50,7 +50,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias and create a new weight
       PADDLE_ENFORCE(scope);
-      const std::string &new_bias_var = patterns::UniqueKey("NewBias");
+      const std::string& new_bias_var = patterns::UniqueKey("NewBias");
       auto* bias_var = scope->Var(new_bias_var);
       PADDLE_ENFORCE(bias_var);
       auto* bias_tensor = bias_var->GetMutable<framework::LoDTensor>();
