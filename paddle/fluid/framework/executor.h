@@ -72,11 +72,14 @@ struct ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
   ~ExecutorPrepareContext();
 
+  void ResetReferenceCount() { cur_ref_cnts_ = ref_cnts_; }
+
   const framework::ProgramDesc& prog_;
   size_t block_id_;
   std::vector<std::unique_ptr<OperatorBase>> ops_;
 
   std::unordered_map<std::string, int> ref_cnts_;
+  std::unordered_map<std::string, int> cur_ref_cnts_;
 };
 
 class Executor {
