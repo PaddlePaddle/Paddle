@@ -118,7 +118,18 @@ void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
 
     if (same != std::end(node.inputs)) {
       LinkNodes(to, &node);
-      node.Op()->SetInput("X", {to->Name()});
+
+      auto inputs = node.Op()->Inputs();
+
+      std::for_each(std::begin(inputs), std::end(inputs),
+                    [from, to](const std::pair<std::string, std::vector<std::string>>& i) -> void {
+                      auto params = i.second;
+
+                      std::remove_if(std::begin(params), std::end(params),
+                                     std::bind(std::equal_to<std::string>(), from->Name(), std::placeholders::_1));
+
+                      params.push_back(to->Name());
+                    });
     }
   }
 }
