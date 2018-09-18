@@ -143,7 +143,7 @@ function cmake_gen() {
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
