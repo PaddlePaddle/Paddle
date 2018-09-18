@@ -109,9 +109,23 @@ void LinkNodes(Node* from, Node* to) {
   to->inputs.push_back(from);
 }
 
+template<typename IT, typename FindFunc, typename ReplaceFunc>
+void ReplaceAllOccurances(IT s, IT e, FindFunc f, ReplaceFunc r) {
+  if (s == e)
+    return;
+
+  auto it = std::find_if(s, e, f);
+
+  if (it != e) {
+    r(*it);
+  }
+
+  it++;
+  ReplaceAllOccurances(it, e, f, r);
+}
+
 void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
   for (auto& node : GraphTraits::DFS(*graph)) {
-    std::vector<Node*> to_remove;
     auto same = std::find_if(std::begin(node.inputs),
                              std::end(node.inputs),
                              [from](Node* n) { return n == from; });
@@ -121,15 +135,19 @@ void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
 
       auto inputs = node.Op()->Inputs();
 
-      std::for_each(std::begin(inputs), std::end(inputs),
-                    [from, to](const std::pair<std::string, std::vector<std::string>>& i) -> void {
-                      auto params = i.second;
+      using input_type = VariableNameMap::value_type;
 
-                      std::remove_if(std::begin(params), std::end(params),
-                                     std::bind(std::equal_to<std::string>(), from->Name(), std::placeholders::_1));
-
-                      params.push_back(to->Name());
-                    });
+      ReplaceAllOccurances(std::begin(inputs), std::end(inputs),
+                           [from](const input_type& i) -> bool {
+                             auto params = i.second;
+                             auto pi = std::find_if(std::begin(params), std::end(params),
+                                                    std::bind(std::equal_to<std::string>(),
+                                                    from->Name(), std::placeholders::_1));
+                             return pi != std::end(params);
+                           },
+                           [to, &node](const input_type& i) {
+                             node.Op()->SetInput(i.first, {to->Name()});
+                           });
     }
   }
 }
