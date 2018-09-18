@@ -110,68 +110,12 @@ function cmake_gen() {
     fi
     
     if [ "$SYSTEM" == "Darwin" ]; then
-    cat <<EOF
-        ========================================
-        Configuring cmake in /paddle/build ...
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
-            ${PYTHON_FLAGS}
-            -DWITH_DSO=ON
-            -DWITH_DOC=${WITH_DOC:-OFF}
-            -DWITH_GPU=${WITH_GPU:-OFF}
-            -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF}
-            -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
-            -DWITH_MKL=${WITH_MKL:-ON}
-            -DWITH_AVX=${WITH_AVX:-ON}
-            -DWITH_GOLANG=${WITH_GOLANG:-OFF}
-            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All}
-            -DWITH_C_API=${WITH_C_API:-OFF}
-            -DWITH_PYTHON=${WITH_PYTHON:-ON}
-            -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON}
-            -DCUDNN_ROOT=/usr/
-            -DWITH_TESTING=${WITH_TESTING:-ON}
-            -DWITH_FAST_BUNDLE_TEST=ON
-            -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-            -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-            -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
-            -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
-            -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-            -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
-            -DPY_VERSION=${PY_VERSION:-2.7}
-        ========================================
-EOF
-        # Disable UNITTEST_USE_VIRTUALENV in docker because
-        # docker environment is fully controlled by this script.
-        # See /Paddle/CMakeLists.txt, UNITTEST_USE_VIRTUALENV option.
-        cmake .. \
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release} \
-            ${PYTHON_FLAGS} \
-            -DWITH_DSO=ON \
-            -DWITH_DOC=${WITH_DOC:-OFF} \
-            -DWITH_GPU=${WITH_GPU:-OFF} \
-            -DWITH_AMD_GPU=${WITH_AMD_GPU:-OFF} \
-            -DWITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON} \
-            -DWITH_MKL=${WITH_MKL:-ON} \
-            -DWITH_AVX=${WITH_AVX:-ON} \
-            -DWITH_GOLANG=${WITH_GOLANG:-OFF} \
-            -DCUDA_ARCH_NAME=${CUDA_ARCH_NAME:-All} \
-            -DWITH_SWIG_PY=${WITH_SWIG_PY:-ON} \
-            -DWITH_C_API=${WITH_C_API:-OFF} \
-            -DWITH_PYTHON=${WITH_PYTHON:-ON} \
-            -DCUDNN_ROOT=/usr/ \
-            -DWITH_TESTING=${WITH_TESTING:-ON} \
-            -DWITH_FAST_BUNDLE_TEST=ON \
-            -DCMAKE_MODULE_PATH=/opt/rocm/hip/cmake \
-            -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
-            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
-            -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
-            -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-            -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-            -DPY_VERSION=${PY_VERSION:-2.7}
+        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_AVX=${WITH_AVX:-ON}
     else
-        cat <<EOF
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR=-/root/.cache/inference_demo}
+    fi
+cat <<EOF
         ========================================
         Configuring cmake in /paddle/build ...
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE:-Release}
@@ -230,10 +174,8 @@ EOF
             -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
             -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
             -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-            -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo} \
             -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
             -DPY_VERSION=${PY_VERSION:-2.7}
-    fi
 
 }
 
