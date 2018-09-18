@@ -217,10 +217,10 @@ class BlockGuard(object):
         self.main_program = main_program
 
     def __enter__(self):
-        self.main_program.create_block()
+        self.main_program._create_block()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.main_program.rollback()
+        self.main_program._rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True
