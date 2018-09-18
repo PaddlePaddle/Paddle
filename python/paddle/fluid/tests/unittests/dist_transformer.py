@@ -1493,7 +1493,7 @@ def wrap_decoder(trg_vocab_size,
     if weight_sharing:
         predict = layers.matmul(
             x=dec_output,
-            y=fluid.get_var(word_emb_param_names[0]),
+            y=fluid.framework._get_var(word_emb_param_names[0]),
             transpose_y=True)
     else:
         predict = layers.fc(input=dec_output,
