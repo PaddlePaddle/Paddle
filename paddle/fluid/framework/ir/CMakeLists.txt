@@ -48,8 +48,6 @@ cc_test(test_graph_pattern_detector SRCS graph_pattern_detector_tester.cc DEPS g
 cc_test(test_fc_fuse_pass SRCS fc_fuse_pass_tester.cc DEPS fc_fuse_pass framework_proto)
 cc_test(test_feed_fetch_prune_pass SRCS feed_fetch_auto_prune_pass_test.cc DEPS feed_fetch_auto_prune_pass infer_clean_graph_pass graph_viz_pass
   ARGS --modelfile ${PYTHON_TESTS_DIR}/book/word2vec.inference.model/__model__)
-set_tests_properties(test_feed_fetch_prune_pass
-        PROPERTIES DEPENDS test_word2vec)
 
 if(WITH_MKLDNN)
   cc_test(test_conv_relu_mkldnn_fuse_pass SRCS conv_relu_mkldnn_fuse_pass_tester.cc DEPS conv_relu_mkldnn_fuse_pass)
