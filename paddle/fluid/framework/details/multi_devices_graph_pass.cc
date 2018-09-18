@@ -13,6 +13,8 @@
 // limitations under the License.
 #include <algorithm>
 #include <fstream>
+#include <string>
+#include <utility>
 #include <vector>
 
 #include "paddle/fluid/framework/details/all_reduce_op_handle.h"
@@ -23,6 +25,10 @@
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
+#include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/op_info.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {

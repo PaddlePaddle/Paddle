@@ -255,13 +255,13 @@ class TestGenerateProposalLabelsOp(OpTest):
     def init_test_input(self):
         np.random.seed(0)
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
-        proposal_nums = 2000  # self.batch_size_per_im - gt_nums
+        proposal_nums = 2000  #self.batch_size_per_im - gt_nums
         images_shape = [[64, 64]]
         self.im_info = np.ones((len(images_shape), 3)).astype(np.float32)
         for i in range(len(images_shape)):
             self.im_info[i, 0] = images_shape[i][0]
             self.im_info[i, 1] = images_shape[i][1]
-            self.im_info[i, 2] = 0.8  # scale
+            self.im_info[i, 2] = 0.8  #scale
 
         self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
                                                                proposal_nums)
@@ -275,11 +275,11 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.rois, self.labels_int32, self.bbox_targets, \
         self.bbox_inside_weights, self.bbox_outside_weights, \
         self.lod = generate_proposal_labels_in_python(
-            self.rpn_rois, self.gt_classes, self.is_crowd, self.gt_boxes, self.im_info,
+                self.rpn_rois, self.gt_classes, self.is_crowd, self.gt_boxes, self.im_info,
                 self.batch_size_per_im, self.fg_fraction,
                 self.fg_thresh, self.bg_thresh_hi, self.bg_thresh_lo,
                 self.bbox_reg_weights, self.class_nums
-        )
+            )
         self.rois = np.vstack(self.rois)
         self.labels_int32 = np.hstack(self.labels_int32)
         self.labels_int32 = self.labels_int32[:, np.newaxis]

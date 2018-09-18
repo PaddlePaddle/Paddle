@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
+#include "paddle/fluid/framework/details/container_cast.h"
+#include "paddle/fluid/framework/details/variable_visitor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {

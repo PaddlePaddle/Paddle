@@ -26,10 +26,10 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
   PADDLE_ENFORCE(graph.get());
   FusePassBase::Init("conv_relu_mkldnn_fuse", graph.get());
 
-  std::unordered_set<Node *> nodes2delete;
+  std::unordered_set<Node*> nodes2delete;
 
   GraphPatternDetector gpd;
-  auto *conv_input = gpd.mutable_pattern()
+  auto* conv_input = gpd.mutable_pattern()
                          ->NewNode("conv_relu_mkldnn_fuse/conv_input")
                          ->AsInput()
                          ->assert_is_op_input("conv2d", "Input");
@@ -38,8 +38,8 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
   conv_relu_pattern(conv_input);
 
   int found_conv_relu_count = 0;
-  auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
-                     Graph *g) {
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* g) {
     VLOG(4) << "handle ConvReLU fuse";
     GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight,
                               conv_relu_pattern);  // Filter
@@ -60,7 +60,7 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
     desc.SetInput("Bias", std::vector<std::string>({conv_relu_b_in}));
     desc.SetOutput("Output", std::vector<std::string>({conv_relu_out}));
     desc.SetType("conv2d");
-    for (auto &attr : conv->Op()->GetAttrMap()) {
+    for (auto& attr : conv->Op()->GetAttrMap()) {
       desc.SetAttr(attr.first, attr.second);
     }
     desc.SetAttr("fuse_relu", true);

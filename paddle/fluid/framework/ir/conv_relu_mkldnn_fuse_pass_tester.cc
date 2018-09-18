@@ -20,10 +20,10 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void SetOp(ProgramDesc *prog, const std::string &type,
-           const std::vector<std::string> &inputs,
-           const std::vector<std::string> &outputs) {
-  auto *op = prog->MutableBlock(0)->AppendOp();
+void SetOp(ProgramDesc* prog, const std::string& type,
+           const std::vector<std::string>& inputs,
+           const std::vector<std::string>& outputs) {
+  auto* op = prog->MutableBlock(0)->AppendOp();
   op->SetType(type);
   if (type == "conv2d") {
     op->SetAttr("use_mkldnn", true);
@@ -42,9 +42,9 @@ void SetOp(ProgramDesc *prog, const std::string &type,
 // (f)->relu->g
 ProgramDesc BuildProgramDesc() {
   ProgramDesc prog;
-  for (auto &v :
+  for (auto& v :
        std::vector<std::string>({"a", "b", "c", "weights", "bias", "f", "g"})) {
-    auto *var = prog.MutableBlock(0)->Var(v);
+    auto* var = prog.MutableBlock(0)->Var(v);
     var->SetType(proto::VarType::SELECTED_ROWS);
     if (v == "weights" || v == "bias") {
       var->SetPersistable(true);
@@ -83,7 +83,7 @@ TEST(ConvReLUFusePass, basic) {
   // Assert conv_relu op in newly generated graph
   int conv_relu_count = 0;
 
-  for (auto *node : graph->Nodes()) {
+  for (auto* node : graph->Nodes()) {
     if (node->IsOp() && node->Op()->Type() == "conv2d") {
       if (node->Op()->HasAttr("use_mkldnn")) {
         bool use_mkldnn = boost::get<bool>(node->Op()->GetAttr("use_mkldnn"));

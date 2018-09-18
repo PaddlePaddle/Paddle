@@ -24,9 +24,9 @@ __device__ __forceinline__ float square_root(float x) { return sqrtf(x); }
 __device__ __forceinline__ double square_root(double x) { return sqrt(x); }
 
 template <typename T, int BlockDim>
-__global__ void Normalize(const T *x, const int pre,
+__global__ void Normalize(const T* x, const int pre,
                           const int axis_n,  // dim in axis
-                          const int post, const T eps, T *y, T *out_norm) {
+                          const int post, const T eps, T* y, T* out_norm) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   int num = pre * post;
@@ -56,13 +56,13 @@ __global__ void Normalize(const T *x, const int pre,
 template <typename DeviceContext, typename T>
 class NormCUDAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *in_x = ctx.Input<framework::Tensor>("X");
-    auto *out_y = ctx.Output<framework::Tensor>("Out");
-    auto *out_norm = ctx.Output<framework::Tensor>("Norm");
-    const T *x = in_x->data<T>();
-    T *y = out_y->mutable_data<T>(ctx.GetPlace());
-    T *norm = out_norm->mutable_data<T>(ctx.GetPlace());
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* in_x = ctx.Input<framework::Tensor>("X");
+    auto* out_y = ctx.Output<framework::Tensor>("Out");
+    auto* out_norm = ctx.Output<framework::Tensor>("Norm");
+    const T* x = in_x->data<T>();
+    T* y = out_y->mutable_data<T>(ctx.GetPlace());
+    T* norm = out_norm->mutable_data<T>(ctx.GetPlace());
 
     auto xdim = in_x->dims();
     auto ndim = out_norm->dims();
@@ -72,7 +72,7 @@ class NormCUDAKernel : public framework::OpKernel<T> {
     int pre, n, post;
     GetDims(xdim, axis, &pre, &n, &post);
 
-    auto &dev_ctx = ctx.cuda_device_context();
+    auto& dev_ctx = ctx.cuda_device_context();
 
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();
@@ -84,9 +84,9 @@ class NormCUDAKernel : public framework::OpKernel<T> {
 };
 
 template <typename T, int BlockDim>
-__global__ void NormalizeGradient(const T *x, const T *x_norm, const T *y_grad,
+__global__ void NormalizeGradient(const T* x, const T* x_norm, const T* y_grad,
                                   const int pre, const int axis_n,
-                                  const int post, T *x_grad) {
+                                  const int post, T* x_grad) {
   typedef cub::BlockReduce<T, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage_sum;
   int num = pre * post;
@@ -122,15 +122,15 @@ __global__ void NormalizeGradient(const T *x, const T *x_norm, const T *y_grad,
 template <typename DeviceContext, typename T, typename AttrType = T>
 class NormGradCUDAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *in_x = ctx.Input<framework::Tensor>("X");
-    auto *in_norm = ctx.Input<framework::Tensor>("Norm");
-    auto *in_dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto *out_dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    T *dx = out_dx->mutable_data<T>(ctx.GetPlace());
-    const T *x = in_x->data<T>();
-    const T *x_norm = in_norm->data<T>();
-    const T *dy = in_dy->data<T>();
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* in_x = ctx.Input<framework::Tensor>("X");
+    auto* in_norm = ctx.Input<framework::Tensor>("Norm");
+    auto* in_dy = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* out_dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    T* dx = out_dx->mutable_data<T>(ctx.GetPlace());
+    const T* x = in_x->data<T>();
+    const T* x_norm = in_norm->data<T>();
+    const T* dy = in_dy->data<T>();
 
     auto xdim = in_x->dims();
     int axis = ctx.Attr<int>("axis");
@@ -138,7 +138,7 @@ class NormGradCUDAKernel : public framework::OpKernel<T> {
     int pre, n, post;
     GetDims(xdim, axis, &pre, &n, &post);
 
-    auto &dev_ctx = ctx.cuda_device_context();
+    auto& dev_ctx = ctx.cuda_device_context();
 
     const int block = 512;
     int max_threads = dev_ctx.GetMaxPhysicalThreadCount();

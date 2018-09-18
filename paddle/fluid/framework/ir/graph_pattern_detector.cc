@@ -20,7 +20,9 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/string/printf.h"
 
 namespace paddle {
 namespace framework {

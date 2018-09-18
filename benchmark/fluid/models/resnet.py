@@ -17,12 +17,16 @@ from __future__ import division
 from __future__ import print_function
 
 import functools
+import numpy as np
 import time
 import os
 import math
 
+import cProfile, pstats, StringIO
+
 import paddle
 import paddle.fluid as fluid
+import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
 from imagenet_reader import train, val
 

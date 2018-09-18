@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 
+#include <string>
+
 namespace paddle {
 namespace framework {
 namespace details {

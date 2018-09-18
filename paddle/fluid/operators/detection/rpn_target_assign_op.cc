@@ -30,7 +30,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext *ctx) const override {
+  void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Anchor"),
                    "Input(Anchor) of RpnTargetAssignOp should not be null");
     PADDLE_ENFORCE(ctx->HasInput("GtBoxes"),
@@ -72,7 +72,7 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
+      const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(
             ctx.Input<framework::LoDTensor>("Anchor")->type()),
@@ -81,19 +81,19 @@ class RpnTargetAssignOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-void AppendRpns(LoDTensor *out, int64_t offset, Tensor *to_add) {
-  auto *out_data = out->data<T>();
-  auto *to_add_data = to_add->data<T>();
+void AppendRpns(LoDTensor* out, int64_t offset, Tensor* to_add) {
+  auto* out_data = out->data<T>();
+  auto* to_add_data = to_add->data<T>();
   memcpy(out_data + offset, to_add_data, to_add->numel() * sizeof(T));
 }
 
 template <typename T>
 std::vector<Tensor> FilterStraddleAnchor(
-    const platform::CPUDeviceContext &context, const Tensor *anchor,
+    const platform::CPUDeviceContext& context, const Tensor* anchor,
     const float rpn_straddle_thresh, T im_height, T im_width) {
   std::vector<int> inds_inside;
   int anchor_num = anchor->dims()[0];
-  auto *anchor_data = anchor->data<T>();
+  auto* anchor_data = anchor->data<T>();
   if (rpn_straddle_thresh >= 0) {
     int index;
     for (int i = 0; i < anchor_num; ++i) {
@@ -112,11 +112,11 @@ std::vector<Tensor> FilterStraddleAnchor(
   }
   int inside_num = inds_inside.size();
   Tensor inds_inside_t;
-  int *inds_inside_data =
+  int* inds_inside_data =
       inds_inside_t.mutable_data<int>({inside_num}, context.GetPlace());
   std::copy(inds_inside.begin(), inds_inside.end(), inds_inside_data);
   Tensor inside_anchor_t;
-  T *inside_anchor_data =
+  T* inside_anchor_data =
       inside_anchor_t.mutable_data<T>({inside_num, 4}, context.GetPlace());
   Gather<T>(anchor->data<T>(), 4, inds_inside_data, inside_num,
             inside_anchor_data);
@@ -127,11 +127,11 @@ std::vector<Tensor> FilterStraddleAnchor(
 }
 
 template <typename T>
-Tensor FilterCrowdGt(const platform::CPUDeviceContext &context,
-                     Tensor *gt_boxes, Tensor *is_crowd) {
+Tensor FilterCrowdGt(const platform::CPUDeviceContext& context,
+                     Tensor* gt_boxes, Tensor* is_crowd) {
   int gt_num = gt_boxes->dims()[0];
   std::vector<int> not_crowd_inds;
-  auto *is_crowd_data = is_crowd->data<int>();
+  auto* is_crowd_data = is_crowd->data<int>();
   for (int i = 0; i < gt_num; ++i) {
     if (is_crowd_data[i] == 0) {
       not_crowd_inds.emplace_back(i);
@@ -139,14 +139,14 @@ Tensor FilterCrowdGt(const platform::CPUDeviceContext &context,
   }
   int ncrowd_num = not_crowd_inds.size();
   Tensor ncrowd_gt_boxes;
-  T *ncrowd_gt_boxes_data =
+  T* ncrowd_gt_boxes_data =
       ncrowd_gt_boxes.mutable_data<T>({ncrowd_num, 4}, context.GetPlace());
   Gather<T>(gt_boxes->data<T>(), 4, not_crowd_inds.data(), ncrowd_num,
             ncrowd_gt_boxes_data);
   return ncrowd_gt_boxes;
 }
 
-void ReservoirSampling(const int num, std::vector<int> *inds,
+void ReservoirSampling(const int num, std::vector<int>* inds,
                        std::minstd_rand engine, bool use_random) {
   std::uniform_real_distribution<float> uniform(0, 1);
   size_t len = inds->size();
@@ -163,12 +163,12 @@ void ReservoirSampling(const int num, std::vector<int> *inds,
 }
 
 template <typename T>
-void ScoreAssign(const T *anchor_by_gt_overlap_data,
-                 const Tensor &anchor_to_gt_max, const Tensor &gt_to_anchor_max,
+void ScoreAssign(const T* anchor_by_gt_overlap_data,
+                 const Tensor& anchor_to_gt_max, const Tensor& gt_to_anchor_max,
                  const int rpn_batch_size_per_im, const float rpn_fg_fraction,
                  const float rpn_positive_overlap,
-                 const float rpn_negative_overlap, std::vector<int> *fg_inds,
-                 std::vector<int> *bg_inds, std::vector<int> *tgt_lbl,
+                 const float rpn_negative_overlap, std::vector<int>* fg_inds,
+                 std::vector<int>* bg_inds, std::vector<int>* tgt_lbl,
                  std::minstd_rand engine, bool use_random) {
   float epsilon = 0.00001;
   int anchor_num = anchor_to_gt_max.dims()[0];
@@ -176,8 +176,8 @@ void ScoreAssign(const T *anchor_by_gt_overlap_data,
   std::vector<int> target_label(anchor_num, -1);
   std::vector<int> fg_inds_fake;
   std::vector<int> bg_inds_fake;
-  const T *anchor_to_gt_max_data = anchor_to_gt_max.data<T>();
-  const T *gt_to_anchor_max_data = gt_to_anchor_max.data<T>();
+  const T* anchor_to_gt_max_data = anchor_to_gt_max.data<T>();
+  const T* gt_to_anchor_max_data = gt_to_anchor_max.data<T>();
   // TODO(buxingyuan): Match with Detectron now
   // but it seems here is a bug in two directions assignment
   // in which the later one may overwrites the former one.
@@ -233,14 +233,14 @@ void ScoreAssign(const T *anchor_by_gt_overlap_data,
 }
 
 template <typename T>
-std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext &ctx,
-                                    const Tensor &anchor_by_gt_overlap,
+std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext& ctx,
+                                    const Tensor& anchor_by_gt_overlap,
                                     const int rpn_batch_size_per_im,
                                     const float rpn_positive_overlap,
                                     const float rpn_negative_overlap,
                                     const float rpn_fg_fraction,
                                     std::minstd_rand engine, bool use_random) {
-  auto *anchor_by_gt_overlap_data = anchor_by_gt_overlap.data<T>();
+  auto* anchor_by_gt_overlap_data = anchor_by_gt_overlap.data<T>();
   int anchor_num = anchor_by_gt_overlap.dims()[0];
   int gt_num = anchor_by_gt_overlap.dims()[1];
 
@@ -254,7 +254,7 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext &ctx,
   auto place = ctx.GetPlace();
   Tensor anchor_to_gt_max, anchor_to_gt_argmax, gt_to_anchor_max;
   anchor_to_gt_max.mutable_data<T>({anchor_num}, place);
-  int *argmax = anchor_to_gt_argmax.mutable_data<int>({anchor_num}, place);
+  int* argmax = anchor_to_gt_argmax.mutable_data<int>({anchor_num}, place);
   gt_to_anchor_max.mutable_data<T>({gt_num}, place);
 
   auto anchor_by_gt_overlap_et =
@@ -286,11 +286,11 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext &ctx,
   }
 
   Tensor loc_index_t, score_index_t, tgt_lbl_t, gt_inds_t;
-  int *loc_index_data = loc_index_t.mutable_data<int>({fg_num}, place);
-  int *score_index_data =
+  int* loc_index_data = loc_index_t.mutable_data<int>({fg_num}, place);
+  int* score_index_data =
       score_index_t.mutable_data<int>({fg_num + bg_num}, place);
-  int *tgt_lbl_data = tgt_lbl_t.mutable_data<int>({fg_num + bg_num}, place);
-  int *gt_inds_data = gt_inds_t.mutable_data<int>({fg_num}, place);
+  int* tgt_lbl_data = tgt_lbl_t.mutable_data<int>({fg_num + bg_num}, place);
+  int* gt_inds_data = gt_inds_t.mutable_data<int>({fg_num}, place);
   std::copy(fg_inds.begin(), fg_inds.end(), loc_index_data);
   std::copy(fg_inds.begin(), fg_inds.end(), score_index_data);
   std::copy(bg_inds.begin(), bg_inds.end(), score_index_data + fg_num);
@@ -308,16 +308,16 @@ std::vector<Tensor> SampleRpnFgBgGt(const platform::CPUDeviceContext &ctx,
 template <typename T>
 class RpnTargetAssignKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &context) const override {
-    auto *anchor = context.Input<Tensor>("Anchor");  // (H*W*A) * 4
-    auto *gt_boxes = context.Input<LoDTensor>("GtBoxes");
-    auto *is_crowd = context.Input<LoDTensor>("IsCrowd");
-    auto *im_info = context.Input<LoDTensor>("ImInfo");
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* anchor = context.Input<Tensor>("Anchor");  // (H*W*A) * 4
+    auto* gt_boxes = context.Input<LoDTensor>("GtBoxes");
+    auto* is_crowd = context.Input<LoDTensor>("IsCrowd");
+    auto* im_info = context.Input<LoDTensor>("ImInfo");
 
-    auto *loc_index = context.Output<LoDTensor>("LocationIndex");
-    auto *score_index = context.Output<LoDTensor>("ScoreIndex");
-    auto *tgt_bbox = context.Output<LoDTensor>("TargetBBox");
-    auto *tgt_lbl = context.Output<LoDTensor>("TargetLabel");
+    auto* loc_index = context.Output<LoDTensor>("LocationIndex");
+    auto* score_index = context.Output<LoDTensor>("ScoreIndex");
+    auto* tgt_bbox = context.Output<LoDTensor>("TargetBBox");
+    auto* tgt_lbl = context.Output<LoDTensor>("TargetLabel");
 
     PADDLE_ENFORCE_EQ(gt_boxes->lod().size(), 1UL,
                       "RpnTargetAssignOp gt_boxes needs 1 level of LoD");
@@ -341,7 +341,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
     tgt_bbox->mutable_data<T>({max_num, 4}, place);
     tgt_lbl->mutable_data<int>({max_num, 1}, place);
 
-    auto &dev_ctx = context.device_context<platform::CPUDeviceContext>();
+    auto& dev_ctx = context.device_context<platform::CPUDeviceContext>();
 
     std::random_device rnd;
     std::minstd_rand engine;
@@ -362,7 +362,7 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
       Tensor is_crowd_slice =
           is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
       Tensor im_info_slice = im_info->Slice(i, i + 1);
-      auto *im_info_data = im_info_slice.data<T>();
+      auto* im_info_data = im_info_slice.data<T>();
       auto im_height = im_info_data[0];
       auto im_width = im_info_data[1];
       auto im_scale = im_info_data[2];
@@ -408,9 +408,9 @@ class RpnTargetAssignKernel : public framework::OpKernel<T> {
 
       // get target bbox deltas
       Tensor sampled_anchor, sampled_gt, sampled_tgt_bbox;
-      auto *sampled_anchor_data =
+      auto* sampled_anchor_data =
           sampled_anchor.mutable_data<T>({loc_num, 4}, place);
-      auto *sampled_gt_data = sampled_gt.mutable_data<T>({loc_num, 4}, place);
+      auto* sampled_gt_data = sampled_gt.mutable_data<T>({loc_num, 4}, place);
       Gather<T>(anchor->data<T>(), 4, sampled_loc_index_unmap.data<int>(),
                 loc_num, sampled_anchor_data);
       Gather<T>(ncrowd_gt_boxes.data<T>(), 4, sampled_gt_index.data<int>(),

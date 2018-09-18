@@ -159,16 +159,16 @@ class TestRpnTargetAssignOp(OpTest):
         anchor_num = all_anchors.shape[0]
 
         images_shape = [[64, 64], [64, 64]]
-        # images_shape = [[64, 64]]
+        #images_shape = [[64, 64]]
         groundtruth, lod = _generate_groundtruth(images_shape, 3, 4)
         lod = [0, 4, 8]
-        # lod = [0, 4]
+        #lod = [0, 4]
 
         im_info = np.ones((len(images_shape), 3)).astype(np.float32)
         for i in range(len(images_shape)):
             im_info[i, 0] = images_shape[i][0]
             im_info[i, 1] = images_shape[i][1]
-            im_info[i, 2] = 0.8  # scale
+            im_info[i, 2] = 0.8  #scale
         gt_boxes = np.vstack([v['boxes'] for v in groundtruth])
         is_crowd = np.hstack([v['is_crowd'] for v in groundtruth])
 

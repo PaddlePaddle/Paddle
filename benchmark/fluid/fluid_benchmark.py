@@ -12,15 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import cProfile
-import numpy as np
+import time
 import os
+import traceback
+
+import numpy as np
+
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.fluid.profiler as profiler
 import paddle.fluid.transpiler.distribute_transpiler as distribute_transpiler
-import time
-import traceback
 
 from args import *
 
