@@ -153,11 +153,21 @@ CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
 }  // namespace paddle
 
 USE_TRT_CONVERTER(elementwise_add_weight);
+USE_TRT_CONVERTER(elementwise_add_tensor);
+USE_TRT_CONVERTER(elementwise_sub_tensor);
+USE_TRT_CONVERTER(elementwise_div_tensor);
+USE_TRT_CONVERTER(elementwise_mul_tensor);
+USE_TRT_CONVERTER(elementwise_max_tensor);
+USE_TRT_CONVERTER(elementwise_min_tensor);
+USE_TRT_CONVERTER(elementwise_pow_tensor);
 USE_TRT_CONVERTER(mul);
 USE_TRT_CONVERTER(conv2d);
 USE_TRT_CONVERTER(relu);
+USE_TRT_CONVERTER(sigmoid);
+USE_TRT_CONVERTER(tanh);
 USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
 USE_TRT_CONVERTER(concat);
+USE_TRT_CONVERTER(dropout);

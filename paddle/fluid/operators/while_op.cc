@@ -63,7 +63,7 @@ class WhileOp : public framework::OperatorBase {
     while (cond.data<bool>()[0]) {
       auto &current_scope = scope.NewScope();
       step_scopes->push_back(&current_scope);
-      executor.RunPreparedContext(ctx.get(), &current_scope, false);
+      executor.RunPreparedContext(ctx.get(), &current_scope, false, true, true);
       if (is_test) {
         scope.DeleteScope(&current_scope);
       }
@@ -169,7 +169,8 @@ class WhileGradOp : public framework::OperatorBase {
           }
         }
       }
-      executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false);
+      executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false, true,
+                                  true);
 
       auto &pg_names = Outputs(kXGRAD);
       auto &p_names = Inputs(kX);
