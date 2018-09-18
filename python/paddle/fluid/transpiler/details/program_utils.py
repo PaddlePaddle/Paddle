@@ -113,27 +113,32 @@ def op_to_code(op):
             inputs_str += ", "
     inputs_str += "}"
 
+    attr_names = sorted(op.attr_names)
     attrs_str = ""
-    for i in range(0, len(op.attr_names)):
-        name = op.attr_names[i]
+    for i in range(0, len(attr_names)):
+        name = attr_names[i]
 
         attr_type = op.desc.attr_type(name)
         if attr_type == core.AttrType.BLOCK:
             a = "{name} = block[{value}]".format(
                 name=name, type=attr_type, value=op.block_attr_id(name))
             attrs_str += a
+            if i != len(attr_names) - 1:
+                attrs_str += ", "
             continue
 
         if attr_type == core.AttrType.BLOCKS:
             a = "{name} = blocks{value}".format(
                 name=name, type=attr_type, value=op.blocks_attr_ids(name))
             attrs_str += a
+            if i != len(attr_names) - 1:
+                attrs_str += ", "
             continue
 
         a = "{name} = {value}".format(
             name=name, type=attr_type, value=op.desc.attr(name))
         attrs_str += a
-        if i != len(op.attr_names) - 1:
+        if i != len(attr_names) - 1:
             attrs_str += ", "
 
     if outputs_str != "{}":
