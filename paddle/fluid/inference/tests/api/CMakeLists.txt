@@ -85,3 +85,11 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
    endif()
 endif()
+
+if(WITH_GPU AND TENSORRT_FOUND)
+   set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
+   inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
+   cc_test(test_trt_models SRCS trt_models_tester.cc  
+     ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models
+     DEPS paddle_inference_tensorrt_subgraph_engine)
+endif()
