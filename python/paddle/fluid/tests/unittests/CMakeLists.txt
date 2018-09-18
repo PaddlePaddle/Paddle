@@ -30,12 +30,11 @@ list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
 
 if(APPLE)
-    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_debugger \n test_dist_se_resnext")
+    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_dist_se_resnext")
     # this op is not support on mac
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
     # TODO: add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_detection_map_op)
-    list(REMOVE_ITEM TEST_OPS test_debugger)
     list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
 endif()
 
