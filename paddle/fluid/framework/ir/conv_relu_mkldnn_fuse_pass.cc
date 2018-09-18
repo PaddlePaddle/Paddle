@@ -58,7 +58,7 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
     desc.SetInput("Input", std::vector<std::string>({conv_relu_i_in}));
     desc.SetInput("Filter", std::vector<std::string>({conv_relu_w_in}));
     desc.SetInput("Bias", std::vector<std::string>({conv_relu_b_in}));
-    desc.SetOutput("Out", std::vector<std::string>({conv_relu_out}));
+    desc.SetOutput("Output", std::vector<std::string>({conv_relu_out}));
     desc.SetType("conv2d");
     for (auto& attr : conv->Op()->GetAttrMap()) {
       desc.SetAttr(attr.first, attr.second);
