@@ -18,6 +18,7 @@ import unittest
 
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 import paddle.fluid.profiler as profiler
 import numpy
 import six
@@ -120,7 +121,7 @@ class BaseParallelForTest(unittest.TestCase):
                 thread_num = fluid.core.get_cuda_device_count(
                 ) if use_gpu else 8
                 places = get_places(thread_num)
-                pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
+                pd = ParallelDo(places, use_nccl=use_nccl)
                 data = next(generator)
 
                 if isinstance(data, fluid.framework.Variable):

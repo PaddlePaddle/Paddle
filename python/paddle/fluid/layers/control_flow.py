@@ -41,7 +41,6 @@ __all__ = [
     'DynamicRNN',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
-    'ParallelDo',
     'Print',
     'is_empty',
 ]
@@ -259,7 +258,7 @@ class ParallelDo(object):
       # ParallelDo version & Single-thread version
       if thread_num > 1:
           places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.ParallelDo(places)
+          pd = fluid.layers.control_flow.ParallelDo(places)
           with pd.do():
               images = pd.read_input(images)
               label = pd.read_input(label)
