@@ -125,7 +125,7 @@ VarHandlePtr GRPCClient::AsyncGetVar(const std::string& ep,
   VarHandlePtr h(new VarHandle(ep, "Get", var_name_val, p_ctx, p_scope));
   s->Prepare(h, time_out);
 
-  framework::AsyncIO([var_name_val, p_scope, p_ctx, s, this] {
+  framework::AsyncIO([var_name_val, s, this] {
     // prepare input
     sendrecv::VariableMessage req;
     req.set_varname(var_name_val);
@@ -166,7 +166,7 @@ VarHandlePtr GRPCClient::AsyncPrefetchVar(const std::string& ep,
   s->Prepare(h, time_out);
 
   framework::AsyncIO([in_var_name_val, out_var_name_val, ep_val, p_scope, p_ctx,
-                      time_out, s, this] {
+                      s, this] {
     auto* var = p_scope->FindVar(in_var_name_val);
 
     ::grpc::ByteBuffer req;
@@ -290,12 +290,18 @@ void GRPCClient::Proceed() {
       c->Finish(false);
     }
 
-    delete c;
+    bool notify = false;
     {
       std::lock_guard<std::mutex> lk(sync_mutex_);
       req_count_--;
+      notify = (req_count_ <= 0 || !c->status_.ok());
     }
-    sync_cond_.notify_all();
+
+    delete c;
+
+    if (notify) {
+      sync_cond_.notify_all();
+    }
   }
   VLOG(3) << "GRPCClient Proceed end";
 }
