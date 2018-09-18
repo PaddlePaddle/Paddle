@@ -1,29 +1,24 @@
 # PaddlePaddle Releasing Process
 
-PaddlePaddle manages its branches using "git-flow branching model", and [Semantic Versioning](http://semver.org/) as it's version number semantics.
+PaddlePaddle manages its branches using Trunk Based Development, and [Semantic Versioning](http://semver.org/) as it's version number semantics.
 
 Each time we release a new PaddlePaddle version, we should follow the below steps:
 
-1. Fork a new branch from `develop` named `release/[version]`, e.g. `release/0.10.0`.
-1. Push a new tag on the release branch, the tag name should be like `[version]rc.patch`. The
-   first tag should be `0.10.0rc1`, and the second should be `0.10.0.rc2` and so on.
-1. After that, we should do:
-  * Run all regression test on the Regression Test List (see PaddlePaddle TeamCity CI), to confirm
-      that this release has no major bugs.
-        * If regression test fails, we must fix those bugs and create a new `release/[version]`
-          branch from previous release branch.
-    * Modify `python/setup.py.in`, change the version number and change `ISTAGED` to `True`.
-    * Publish PaddlePaddle release wheel packages to pypi (see below instructions for detail).
-    * Update the Docker images (see below instructions for detail).
-1. After above step, merge `release/[version]` branch to master and push a tag on the master commit,
-   then merge `master` to `develop`.
-1. Update the Release Note.          
+1. Create a new release branch from `develop`，named `release/[version]`. E.g.，`release/0.10.0`
+2. Create a new tag for the release branch, tag format: `version-rc.Patch`. E.g. the first tag is `0.10.0-rc0`。
+3. New release branch normally doesn't accept new features or optimizations. QA will test on the release branch. Developer should develop based on `develop` branch.
+4. If QA or Developer find bugs. They should first fix and verify on `develop` branch. Then cherry-pick the fix to the release branch. Wait until the release branch is stable.
+5. If necessary, create a new tag on the relese branch, e.g. `0.10.0-rc1`. Involve more users to try it and repeat step 3-4.
+6. After release branch is stable，Create the official release tag，such as `0.10.0`.
+7. Release the python wheel package to pypi.
+8. Update the docker image (More details below).
 
-***NOTE:***
+NOTE:
 
-* Do ***NOT*** merge commits from develop branch to release branches to keep the release branch contain
-  features only for current release, so that we can test on that version.
-* If we want to fix bugs on release branches, we must merge the fix to master, develop and release branch.
+* bug fix should happen on `develop` branch, then cherry-pick to relese branch. Avoid developing directly on release branch.
+
+* release normally only accept bug fixes. Don't add new features.
+
 
 ## Publish Wheel Packages to pypi
 
@@ -97,25 +92,21 @@ You can then checkout the latest pushed tags at https://hub.docker.com/r/paddlep
 
 ## Branching Model
 
-We use [git-flow](http://nvie.com/posts/a-successful-git-branching-model/) as our branching model,
-with some modifications:
+PaddlePaddle uses [Trunk Based Development](https://trunkbaseddevelopment.com/) as our branching model.
 
-* `master` branch is the stable branch. Each version on the master branch is tested and guaranteed.
-* `develop` branch is for development. Each commit on develop branch has passed CI unit test, but no
-  regression tests are run.
-* `release/[version]` branch is used to publish each release. Latest release version branches have
-  bugfix only for that version, but no feature updates.
-* Developer forks are not required to follow
-  [git-flow](http://nvie.com/posts/a-successful-git-branching-model/)
-  branching model, all forks is like a feature branch.
-    * Advise: developer fork's develop branch is used to sync up with main repo's develop branch.
-    * Advise: developer use it's fork's develop branch to for new branch to start developing.
-  * Use that branch on developer's fork to create pull requests and start reviews.
-      * developer can push new commits to that branch when the pull request is open.
-* Bug fixes are also started from developers forked repo. And, bug fixes branch can merge to
-  `master`, `develop` and `releases`.
+* `develop` branch is used for development. Each comment to `develop` branc goes through unit tests and model regression tests.
+* `release/[version]` branch is used for each release. Release branch is used for tests, bug fix and evetual release.
+* `master` branch as been deprecated for historical reasons
+
+* Developer's feature branch。
+	* Developer's feature branch should sync with upstream `develop` branch.
+	* Developer's feature branch should be forked from upstream `develop` branch.
+	* After feature branch is ready, create a `Pull Request` against the Paddle repo and go through code review.
+	   * In the review process, develop modify codes and push to their own feature branch.
 
 ## PaddlePaddle Regression Test List
+
+TODO
 
 ### All Chapters of PaddlePaddle Book
 

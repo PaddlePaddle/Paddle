@@ -360,6 +360,28 @@ struct PatternBase {
   size_t id_;
 };
 
+// CONV with ReLU
+// op: conv + relu
+// named nodes:
+// conv_input, conv_weight,
+// conv_bias, conv_out, conv,
+// relu_out, relu
+struct ConvReLU : public PatternBase {
+  ConvReLU(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_relu") {}
+
+  PDNode* operator()(PDNode* conv_input);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(relu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_bias);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(relu_out);
+};
+
 // FC with bias
 // op: mul + elementwise_add
 // named nodes:
@@ -407,7 +429,7 @@ struct LSTM : public PatternBase {
 
 struct GRU : public PatternBase {
   GRU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "lstm") {}
+      : PatternBase(pattern, name_scope, "gru") {}
 
   PDNode* operator()(PDNode* x);
 
