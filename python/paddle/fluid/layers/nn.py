@@ -29,24 +29,90 @@ from .. import unique_name
 from functools import reduce
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
-    'sequence_expand', 'sequence_pad', 'lstm_unit', 'reduce_sum', 'reduce_mean',
-    'reduce_max', 'reduce_min', 'reduce_prod', 'sequence_first_step',
-    'sequence_last_step', 'dropout', 'split', 'ctc_greedy_decoder',
-    'edit_distance', 'l2_normalize', 'matmul', 'topk', 'warpctc',
-    'sequence_reshape', 'transpose', 'im2sequence', 'nce', 'hsigmoid',
-    'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
-    'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth', 'roi_pool',
-    'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
-    'gather', 'scatter', 'random_crop', 'mean_iou', 'relu', 'log', 'crop',
-    'rank_loss', 'prelu', 'flatten', 'sequence_mask', 'stack', 'pad2d',
-    'unstack', 'sequence_enumerate', 'expand'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'sequence_pad',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'hsigmoid',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'squeeze',
+    'unsqueeze',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'pad_constant_like',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'scatter',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'log',
+    'crop',
+    'rank_loss',
+    'prelu',
+    'flatten',
+    'sequence_mask',
+    'stack',
+    'pad2d',
+    'unstack',
+    'sequence_enumerate',
+    'expand',
 ]
 
 
@@ -5945,7 +6011,7 @@ def unstack(x, axis=0, num=None):
     return outs
 
 
-def expand(x, expand_times, out=None, name=None):
+def expand(x, expand_times, name=None):
     """Expand operator tiles the input by given times number. You should set times
     number for each dimension by providing attribute 'expand_times'. The rank of X
     should be in [1, 6]. Please note that size of 'expand_times' must be the same
@@ -5986,8 +6052,7 @@ def expand(x, expand_times, out=None, name=None):
     """
     helper = LayerHelper('expand', input=x, **locals())
     dtype = helper.input_dtype(input_param_name='x')
-    if out is None:
-        out = helper.create_tmp_variable(dtype)
+    out = helper.create_tmp_variable(dtype)
     helper.append_op(
         type='expand',
         inputs={'X': x},
