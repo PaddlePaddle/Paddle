@@ -15,5 +15,6 @@
 from __future__ import print_function
 
 from . import quantize_transpiler
+from .quantize_transpiler import *
 
 __all__ = quantize_transpiler.__all__
