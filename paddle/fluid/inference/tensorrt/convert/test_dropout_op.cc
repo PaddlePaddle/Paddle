@@ -11,7 +11,6 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License. */
-
 #include <gtest/gtest.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/inference/tensorrt/convert/ut_helper.h"
@@ -20,36 +19,40 @@ namespace paddle {
 namespace inference {
 namespace tensorrt {
 
-void test_activation(std::string act_type) {
+TEST(DropoutOpConverter, main) {
   framework::Scope scope;
   std::unordered_set<std::string> parameters;
-  TRTConvertValidation validator(10, parameters, scope, 1000);
-  validator.DeclInputVar("act-X", nvinfer1::Dims2(10, 6));
-  validator.DeclOutputVar("act-Out", nvinfer1::Dims2(10, 6));
+  TRTConvertValidation validator(8, parameters, scope, 1000);
+
+  std::vector<int> tensor_shape{8, 10};
+  validator.DeclInputVar("dropout-X", tensor_shape,
+                         nvinfer1::DimsCHW(10, 1, 1));
+  validator.DeclOutputVar("dropout-Out", nvinfer1::DimsCHW(10, 1, 1));
+  validator.DeclOutputVar("mask-Out", nvinfer1::DimsCHW(10, 1, 1));
 
   // Prepare Op description
   framework::OpDesc desc;
-  desc.SetType(act_type);
-  desc.SetInput("X", {"act-X"});
-  desc.SetOutput("Out", {"act-Out"});
+  int is_test = 1;
+  float dropout_prob = 0.4;
+
+  desc.SetType("dropout");
+  desc.SetInput("X", {"dropout-X"});
+  desc.SetOutput("Mask", {"mask-Out"});
+  desc.SetOutput("Out", {"dropout-Out"});
+  desc.SetAttr("is_test", is_test);
+  desc.SetAttr("dropout_prob", dropout_prob);
 
   LOG(INFO) << "set OP";
   validator.SetOp(*desc.Proto());
   LOG(INFO) << "execute";
 
-  validator.Execute(5);
+  std::unordered_set<std::string> neglected_output = {"mask-Out"};
+
+  validator.Execute(8, neglected_output);
 }
-
-TEST(ReluOpConverter, main) { test_activation("relu"); }
-
-TEST(SigmoidOpConverter, main) { test_activation("sigmoid"); }
-
-TEST(TanhOpConverter, main) { test_activation("tanh"); }
 
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
-USE_OP(relu);
-USE_OP(sigmoid);
-USE_OP(tanh);
+USE_OP(dropout);

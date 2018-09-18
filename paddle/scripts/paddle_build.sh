@@ -135,6 +135,8 @@ function cmake_gen() {
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
@@ -165,6 +167,8 @@ EOF
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
         -DPY_VERSION=${PY_VERSION:-2.7}
 }
@@ -715,6 +719,12 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
         run_mac_test
+        ;;
+      cicheck_py35)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_test
+        assert_api_not_changed
         ;;
       *)
         print_usage
