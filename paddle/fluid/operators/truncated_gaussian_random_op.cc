@@ -162,7 +162,7 @@ class CPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
     T* data = tensor->mutable_data<T>(context.GetPlace());
 
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
-    std::minstdrand engine;
+    std::minstd_rand engine;
     if (seed == 0) {
       seed = std::random_device()();
     }

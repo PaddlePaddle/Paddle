@@ -36,7 +36,7 @@ struct TruncatedNormal {
   }
 
   __host__ __device__ T operator()(const unsigned int n) const {
-    thrust::minstdrand rng;
+    thrust::minstd_rand rng;
     rng.seed(seed);
     thrust::uniform_real_distribution<T> dist(numeric_min, 1);
     rng.discard(n);
