@@ -60,7 +60,7 @@ class RWLockGuard {
  public:
   enum Status { kUnLock, kWRLock, kRDLock };
 
-  RWLockGuard(RWLock *rw_lock, Status init_status)
+  RWLockGuard(RWLock* rw_lock, Status init_status)
       : lock_(rw_lock), status_(Status::kUnLock) {
     switch (init_status) {
       case Status::kRDLock: {
@@ -123,7 +123,7 @@ class RWLockGuard {
   ~RWLockGuard() { UnLock(); }
 
  private:
-  RWLock *lock_;
+  RWLock* lock_;
   Status status_;
 };
 
