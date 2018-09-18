@@ -77,7 +77,7 @@ class AnalysisPredictor : public PaddlePredictor {
           config_.prog_file, config_.param_file);
     } else {
       LOG(ERROR) << string::Sprintf(
-          "not valid model path '%s' for program path '%s'.", config_.model_dir,
+          "not valid model path '%s' or program path '%s'.", config_.model_dir,
           config_.param_file);
       return false;
     }
@@ -98,7 +98,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
-  framework::Scope *sub_scope_;
+  framework::Scope *sub_scope_{nullptr};
   std::unique_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;

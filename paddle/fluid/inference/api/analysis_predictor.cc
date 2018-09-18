@@ -46,15 +46,18 @@ bool AnalysisPredictor::Init(
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
-    LOG(WARNING) << "ir optimize only supports CPU currently";
+    LOG(WARNING) << "ir optimize only supports CPU currently, enable_ir_optim "
+                    "is turned false.";
     config_.enable_ir_optim = false;
   } else {
     place_ = paddle::platform::CPUPlace();
   }
   if (parent_scope) {
+    LOG(INFO) << "scope_ = parent_scope";
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
   } else {
+    LOG(INFO) << "create new scope";
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
   }
@@ -80,7 +83,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   timer.tic();
   // set feed variable
   std::vector<framework::LoDTensor> feeds;
-  framework::Scope *scope = sub_scope_ != nullptr ? sub_scope_ : scope_.get();
+  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
   if (!SetFeed(inputs, scope)) {
     LOG(ERROR) << "fail to set feed";
     return false;
@@ -105,11 +108,6 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
                << inputs.size();
     return false;
-  }
-
-  LOG(INFO) << "feeds";
-  for (auto &item : feed_names_) {
-    LOG(INFO) << "name: " << item.first << " " << item.second;
   }
 
   for (size_t i = 0; i < inputs.size(); ++i) {
@@ -140,7 +138,6 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     } else {
       idx = boost::get<int>(feeds_[i]->GetAttr("col"));
     }
-    LOG(INFO) << "specify " << inputs[i].name << " " << idx;
     framework::SetFeedVariable(scope, input, "feed", idx);
   }
   return true;
