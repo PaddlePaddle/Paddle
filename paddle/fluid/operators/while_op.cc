@@ -178,14 +178,38 @@ class WhileGradOp : public framework::OperatorBase {
       executor.RunPreparedContext(ctx.get(), *cur_scope_iter, false, true,
                                   true);
 
-      auto &pg_names = Outputs(kXGRAD);
+      // The Outputs(kXGRAD) contains the names of the gradient of parameters
+      // and inputs.
+      auto &pg_ig_names = Outputs(kXGRAD);
       auto &p_names = Inputs(kX);
-      PADDLE_ENFORCE_EQ(pg_names.size(), p_names.size());
-      for (size_t param_id = 0; param_id < pg_names.size(); ++param_id) {
-        if (pg_names[param_id] == framework::kEmptyVarName) {
+      PADDLE_ENFORCE_EQ(pg_ig_names.size(), p_names.size());
+      for (size_t param_id = 0; param_id < pg_ig_names.size(); ++param_id) {
+        if (pg_ig_names[param_id] == framework::kEmptyVarName) {
           continue;  // parameter doesn't have gradient
         }
         auto inside_grad_name = framework::GradVarName(p_names[param_id]);
+
+        // for some grad_op, their input doesn't have gradient,
+        // for example lookup_table_grad_op, the input(Idx) doesn't have
+        // gradient.
+        auto pg_ig_var = cur_scope.FindVar(pg_ig_names[param_id]);
+        PADDLE_ENFORCE(pg_ig_var != nullptr);
+        if (pg_ig_var->IsType<framework::LoDTensorArray>()) {
+          auto pg_ig_lod_t_arr =
+              pg_ig_var->GetMutable<framework::LoDTensorArray>();
+          bool empty = true;
+          for (auto &each : *pg_ig_lod_t_arr) {
+            if (each.numel() != 0) {
+              empty = false;
+              break;
+            }
+          }
+          if (empty) {
+            LOG(WARNING) << pg_ig_names[param_id]
+                         << " is not found in cur_scope.";
+            continue;
+          }
+        }
 
         //  // TODO(tonyyang-svail): Not sure we need the following
         //  // If does not compute gradient of that variable inside rnn,
@@ -212,7 +236,7 @@ class WhileGradOp : public framework::OperatorBase {
             attrs["shape"] = framework::vectorize2int(inside_tensor.dims());
             attrs["value"] = 0.0f;
 
-            auto var_name = pg_names[param_id];
+            auto var_name = pg_ig_names[param_id];
             auto zero_op = framework::OpRegistry::CreateOp(
                 "fill_constant", framework::VariableNameMap{},
                 {{"Out", {var_name}}}, attrs);
@@ -224,8 +248,8 @@ class WhileGradOp : public framework::OperatorBase {
         }
         auto new_inside_name = cur_scope.Rename(inside_grad_name);
         auto sum_op = framework::OpRegistry::CreateOp(
-            "sum", {{"X", {pg_names[param_id], new_inside_name}}},
-            {{"Out", {pg_names[param_id]}}},
+            "sum", {{"X", {pg_ig_names[param_id], new_inside_name}}},
+            {{"Out", {pg_ig_names[param_id]}}},
             framework::AttributeMap{{"use_mkldnn", {false}}});
         sum_op->Run(cur_scope, dev_place);
         cur_scope.Rename(new_inside_name, inside_grad_name);
@@ -321,13 +345,13 @@ class WhileGradOpVarTypeInference : public framework::VarTypeInference {
   void operator()(const framework::OpDesc &op_desc,
                   framework::BlockDesc *block) const override {
     auto p_names = op_desc.Input(kX);
-    auto pg_names = op_desc.Output(framework::GradVarName(kX));
+    auto pg_ig_names = op_desc.Output(framework::GradVarName(kX));
 
     for (size_t i = 0; i < p_names.size(); ++i) {
       auto &p_var = detail::Ref(block->FindVarRecursive(p_names[i]));
-      auto *g_var = block->FindVarRecursive(pg_names[i]);
+      auto *g_var = block->FindVarRecursive(pg_ig_names[i]);
       if (g_var != nullptr) {  // Gradient could be @EMPTY@
-        VLOG(5) << "Setting " << pg_names[i] << " following " << p_names[i]
+        VLOG(5) << "Setting " << pg_ig_names[i] << " following " << p_names[i]
                 << " type: " << p_var.GetType();
         g_var->SetType(p_var.GetType());
         g_var->SetDataType(p_var.GetDataType());
@@ -345,21 +369,21 @@ class WhileGradOpShapeInference : public framework::InferShapeBase {
     ctx->HasInputs(framework::GradVarName(kOutputs));
 
     auto p_names = ctx->Inputs(kX);
-    auto pg_names = ctx->Outputs(kXGRAD);
+    auto pg_ig_names = ctx->Outputs(kXGRAD);
     auto var_types = ctx->GetInputsVarType(kX);
     std::vector<std::string> names_to_set;
     std::vector<framework::DDim> dims_to_set;
     for (size_t i = 0; i < p_names.size(); ++i) {
-      if (pg_names[i] == framework::kEmptyVarName) {
+      if (pg_ig_names[i] == framework::kEmptyVarName) {
         continue;
       }
       auto dims = ctx->GetInputsElementDim(kX, i);
       if (var_types[i] == framework::proto::VarType::LOD_TENSOR) {
-        names_to_set.push_back(pg_names[i]);
+        names_to_set.push_back(pg_ig_names[i]);
         dims_to_set.push_back(dims);
       } else if (var_types[i] == framework::proto::VarType::LOD_TENSOR_ARRAY) {
         // not sure how to set the dim of LOD_TENSOR_ARRAY
-        names_to_set.push_back(pg_names[i]);
+        names_to_set.push_back(pg_ig_names[i]);
         dims_to_set.push_back(dims);
       }
     }
