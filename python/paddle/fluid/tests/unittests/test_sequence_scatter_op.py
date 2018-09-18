@@ -23,7 +23,7 @@ class TestSequenceScatterOp(OpTest):
 
         X_data = np.random.uniform(0.1, 1.0, [3, 6]).astype('float32')
         Ids_data = np.array([[0], [1], [2], [5], [4], [3], [2], [1], [3], [2],
-                             [5], [4]]).astype('int32')
+                             [5], [4]]).astype('int64')
         Ids_lod = [[3, 5, 4]]
         Updates_data = np.random.uniform(0.1, 1.0, [12, 1]).astype('float32')
         Updates_lod = Ids_lod
