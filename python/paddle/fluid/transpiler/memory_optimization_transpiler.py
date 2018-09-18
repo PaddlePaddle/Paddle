@@ -17,7 +17,7 @@ from __future__ import print_function
 from collections import defaultdict
 from .. import core
 from ... import compat as cpt
-from ..framework import Program, default_main_program, Parameter
+from ..framework import Program, default_main_program, Parameter, Variable
 from ..backward import _rename_arg_
 from functools import reduce
 from six.moves import range
@@ -261,9 +261,11 @@ class ControlFlowGraph(object):
                         # Rename the var to the cache var already with
                         # memory allocated in order to reuse the memory.
                         _rename_arg_(self._ops, x, cache_var, begin_idx=i)
-                        # call sync with cpp to update reference in python
-                        self._program.block(block_desc.id)._sync_with_cpp()
-
+                        self._program.block(block_desc.id).var(cpt.to_text(
+                            x)).desc = self._find_var(block_desc, cache_var,
+                                                      is_forward)
+                        self._program.block(block_desc.id).vars[cpt.to_text(x)] = \
+                            Variable(self._program.block(block_desc.id), name=cpt.to_text(x))
                         self._update_graph(x, cache_var, begin_idx=i)
                         break
 
