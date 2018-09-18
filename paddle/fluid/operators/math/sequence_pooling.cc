@@ -136,9 +136,8 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
           const T* in_data = in_t.data<T>();
           T* out_data = out_t.mutable_data<T>(context.GetPlace());
           blas.VCOPY(w, in_data, out_data);
-          for (int r = 1; r != h; ++r) {
-            blas.VADD(w, in_data + r * w, const_cast<const T*>(out_data),
-                      out_data);
+          for (int64_t r = 1; r != h; ++r) {
+            blas.AXPY(w, 1., in_data + r * w, out_data);
           }
         }
       } else if (pooltype == "SQRT") {

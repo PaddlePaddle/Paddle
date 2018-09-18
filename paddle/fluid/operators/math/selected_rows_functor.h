@@ -151,7 +151,7 @@ struct MergeAdd<platform::CPUDeviceContext, float> {
 
       float* y = out_data + out_i * input_width;
       const float* x = input_data + i * input_width;
-      blas.VADD(input_width, x, const_cast<const float*>(y), y);
+      blas.AXPY(input_width, 1., x, y);
     }
 
     return out;

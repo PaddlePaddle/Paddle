@@ -3203,7 +3203,7 @@ def reduce_prod(input, dim=None, keep_dim=False, name=None):
     return out
 
 
-def split(input, num_or_sections, dim=-1, name=None):
+def split(input, num_or_sections, dim=-1, name=None, stop_gradient=False):
     """
     Split the input tensor into multiple sub-tensors.
 
@@ -3248,7 +3248,8 @@ def split(input, num_or_sections, dim=-1, name=None):
             dim], 'len(num_or_sections) must not be more than input.shape[dim].'
         num = len(num_or_sections)
     outs = [
-        helper.create_tmp_variable(dtype=helper.input_dtype())
+        helper.create_tmp_variable(
+            dtype=helper.input_dtype(), stop_gradient=stop_gradient)
         for i in range(num)
     ]
     helper.append_op(
