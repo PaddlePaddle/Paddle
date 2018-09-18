@@ -565,6 +565,13 @@ class TestBook(unittest.TestCase):
             out = layers.cross_entropy(x, label, False, 4)
             self.assertIsNotNone(out)
 
+    def test_expand(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="input", shape=[1], dtype='int32')
+            out = layers.sequence_enumerate(x, expand_times)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
