@@ -31,11 +31,11 @@ class TestSeqAvgPool(OpTest):
         self.op_type = 'sequence_pool'
         # one level, batch size is 4
         x = np.random.uniform(0.1, 1, [11, 23]).astype('float32')
-        lod = [[4, 1, 3, 3]]
+        lod = [[11]]
         self.inputs = {'X': (x, lod)}
         offset = self.convert_to_offset(lod)
 
-        out = np.zeros((4, 23)).astype('float32')
+        out = np.zeros((len(lod[0]), 23)).astype('float32')
         self.outputs = {'Out': out}
         return x, offset, out
 
@@ -71,7 +71,7 @@ class TestSeqMaxPool(TestSeqAvgPool):
     def set_data(self):
         self.op_type = 'sequence_pool'
         x = np.random.uniform(0.1, 1, [13, 23]).astype('float32')
-        lod = [[4, 1, 3, 5]]
+        lod = [[13]]
         offset = self.convert_to_offset(lod)
         for i in range(len(offset[0]) - 1):
             l = offset[0][i + 1] - offset[0][i]
@@ -79,7 +79,7 @@ class TestSeqMaxPool(TestSeqAvgPool):
 
         self.inputs = {'X': (x, lod)}
 
-        out = np.zeros((4, 23)).astype('float32')
+        out = np.zeros((1, 23)).astype('float32')
         self.outputs = {'Out': out}
         return x, offset, out
 
