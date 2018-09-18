@@ -132,8 +132,9 @@ void Conv2DOpMaker::Make() {
             "(Tensor) The output tensor of convolution operator. "
             "The format of output tensor is also NCHW.")
       .Reuse("Input");
-  AddInput("EltwiseParameter",
-           "(Tensor) Tensor to which convolution output will be added."
+  AddInput("ResidualData",
+           "(Tensor) Tensor with residual data "
+           "to which convolution output will be added."
            "Used on with fuse_eltwise fusion.")
       .AsDispensable();
   AddAttr<std::vector<int>>("strides",

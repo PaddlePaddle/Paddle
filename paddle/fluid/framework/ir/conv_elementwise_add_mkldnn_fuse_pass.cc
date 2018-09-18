@@ -184,7 +184,7 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
 
     op_desc.SetInput("Input", {conv_input->Name()});
     op_desc.SetInput("Filter", {conv_filter->Name()});
-    op_desc.SetInput("EltwiseParameter", {elementwise_add_x->Name()});
+    op_desc.SetInput("ResidualData", {elementwise_add_x->Name()});
     op_desc.SetOutput("Output", {conv_output->Name()});
 
     op_desc.SetAttr("use_mkldnn", true);
