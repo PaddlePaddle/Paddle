@@ -262,6 +262,14 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
   framework::SelectedRows operator()(const platform::CUDADeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
+    (*this)(context, input, &out);
+    return out;
+  }
+
+  void operator()(const platform::CUDADeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output) {
+    framework::SelectedRows& out = *output;
     framework::Vector<int64_t> input_rows(input.rows());
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
@@ -292,7 +300,6 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
         input_data, input_rows.CUDAData(context.GetPlace()), out_data,
         out.mutable_rows()->CUDAMutableData(context.GetPlace()),
         out.rows().size(), input_width);
-    return out;
   }
 };
 
