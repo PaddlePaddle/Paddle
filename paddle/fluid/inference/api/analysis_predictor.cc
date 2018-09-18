@@ -53,11 +53,9 @@ bool AnalysisPredictor::Init(
     place_ = paddle::platform::CPUPlace();
   }
   if (parent_scope) {
-    LOG(INFO) << "scope_ = parent_scope";
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
   } else {
-    LOG(INFO) << "create new scope";
     paddle::framework::InitDevices(false);
     scope_.reset(new paddle::framework::Scope());
   }
