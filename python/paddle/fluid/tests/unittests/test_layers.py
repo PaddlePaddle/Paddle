@@ -568,8 +568,8 @@ class TestBook(unittest.TestCase):
     def test_expand(self):
         program = Program()
         with program_guard(program):
-            x = layers.data(name="input", shape=[1], dtype='int32')
-            out = layers.expand(x, expand_times)
+            x = layers.data(name="input", shape=[10], dtype='int32')
+            out = layers.expand(x, [1, 2, 2])
         print(str(program))
 
 
