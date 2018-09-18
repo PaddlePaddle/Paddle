@@ -120,13 +120,13 @@ def op_to_code(op):
         attr_type = op.desc.attr_type(name)
         if attr_type == core.AttrType.BLOCK:
             a = "{name} = block[{value}]".format(
-                name=name, type=attr_type, value=op.block_attr_id(name))
+                name=name, type=attr_type, value=op._block_attr_id(name))
             attrs_str += a
             continue
 
         if attr_type == core.AttrType.BLOCKS:
             a = "{name} = blocks{value}".format(
-                name=name, type=attr_type, value=op.blocks_attr_ids(name))
+                name=name, type=attr_type, value=op._blocks_attr_ids(name))
             attrs_str += a
             continue
 
