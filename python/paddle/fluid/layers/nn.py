@@ -3388,13 +3388,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     return out
 
 
-def matmul(x,
-           y,
-           transpose_x=False,
-           transpose_y=False,
-           scale=1.0,
-           bias=0.0,
-           name=None):
+def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     Applies matrix multiplication to two tensors.
 
@@ -3428,8 +3422,7 @@ def matmul(x,
         y (Variable): The input variable which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
-        scale (float): The scale of output. Default 1.0.
-        bias (float): The bias added to output. Default 0.0.
+        alpha (float): The scale of output. Default 1.0.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -3500,8 +3493,7 @@ def matmul(x,
         attrs={
             'transpose_X': transpose_x,
             'transpose_Y': transpose_y,
-            'scale': scale,
-            'bias': bias
+            'alpha': alpha,
         })
     return out
 
