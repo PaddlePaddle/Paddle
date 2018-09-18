@@ -1,8 +1,22 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <gtest/gtest.h>
+#include <string>
+
 #include "paddle/fluid/framework/ir/conv_elementwise_add_mkldnn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
-
-#include <string>
-#include <gtest/gtest.h>
 
 namespace paddle {
 namespace framework {
@@ -33,10 +47,11 @@ void SetOp(ProgramDesc* prog, const std::string& type,
 }
 
 struct IsReachable {
-  using func = std::function<bool (const std::string&, const std::string&)>;
+  using func = std::function<bool(const std::string&, const std::string&)>;
 
   auto operator()(const std::unique_ptr<ir::Graph>& graph) -> func {
-    auto find_node = [](const std::unique_ptr<ir::Graph>& graph, const std::string& name) -> Node* {
+    auto find_node = [](const std::unique_ptr<ir::Graph>& graph,
+                        const std::string& name) -> Node* {
       for (auto& node : GraphTraits::DFS(*graph)) {
         if (name == node.Name()) {
           return &node;
@@ -47,8 +62,7 @@ struct IsReachable {
     };
 
     return [&](std::string from, const std::string to) -> bool {
-      if (from == to)
-        return true;
+      if (from == to) return true;
 
       std::map<std::string, bool> visited;
 
@@ -61,16 +75,14 @@ struct IsReachable {
       std::list<std::string> queue;
       queue.push_back(from);
 
-      while(!queue.empty()) {
+      while (!queue.empty()) {
         auto cur = find_node(graph, queue.front());
         queue.pop_front();
 
-        if (cur == nullptr)
-          return false;
+        if (cur == nullptr) return false;
 
         for (auto n : cur->outputs) {
-          if (n->Name() == to)
-            return true;
+          if (n->Name() == to) return true;
 
           if (!visited[n->Name()]) {
             visited[n->Name()] = true;
@@ -87,14 +99,14 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
     for (auto& v :
-      std::vector<std::string>({"a", "b", "weights", "c", "d", "e"})) {
+         std::vector<std::string>({"a", "b", "weights", "c", "d", "e"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       if (v == "weights") {
         var->SetPersistable(true);
       }
     }
-  
+
     SetOp(&prog, "conv2d", {"a", "weights"}, {"b"});
     SetOp(&prog, "elementwise_add", {"c", "b"}, {"d"});
     SetOp(&prog, "relu", {"d"}, {"e"});
@@ -109,14 +121,16 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
 
   EXPECT_TRUE(is_reachable(graph)("a", "relu"));
 
-  auto pass = PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
+  auto pass =
+      PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
   int original_nodes_num = graph->Nodes().size();
   graph = pass->Apply(std::move(graph));
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_TRUE(is_reachable(graph)("a", "relu"));
 
-  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added, current_nodes_num);
+  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
+            current_nodes_num);
   // Assert conv_relu op in newly generated graph
   int conv_count = 0;
   int elementwise_add_count = 0;
@@ -136,15 +150,14 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
-    for (auto& v :
-      std::vector<std::string>({"a", "b", "weights"})) {
+    for (auto& v : std::vector<std::string>({"a", "b", "weights"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       if (v == "weights" || v == "bias") {
         var->SetPersistable(true);
       }
     }
-  
+
     SetOp(&prog, "conv2d", {"a", "weights"}, {"b"});
     SetOp(&prog, "elementwise_add", {"c", "b"}, {"d"});
 
@@ -157,14 +170,16 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
   IsReachable is_reachable;
   EXPECT_TRUE(is_reachable(graph)("a", "d"));
 
-  auto pass = PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
+  auto pass =
+      PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
   int original_nodes_num = graph->Nodes().size();
   graph = pass->Apply(std::move(graph));
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_FALSE(is_reachable(graph)("a", "d"));
- 
-  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added, current_nodes_num);
+
+  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
+            current_nodes_num);
   // Assert conv_relu op in newly generated graph
   int conv_count = 0;
   int elementwise_add_count = 0;
@@ -185,14 +200,14 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
     for (auto& v :
-      std::vector<std::string>({"a", "b", "weights", "c", "d", "e", "f"})) {
+         std::vector<std::string>({"a", "b", "weights", "c", "d", "e", "f"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       if (v.find("weights")) {
         var->SetPersistable(true);
       }
     }
-  
+
     SetOp(&prog, "sigmoid", {"a"}, {"b"});
     SetOp(&prog, "conv2d", {"b", "weights"}, {"c"});
     SetOp(&prog, "elementwise_add", {"d", "c"}, {"e"});
@@ -208,14 +223,16 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
 
   EXPECT_TRUE(is_reachable(graph)("a", "f"));
 
-  auto pass = PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
+  auto pass =
+      PassRegistry::Instance().Get("conv_elementwise_add_mkldnn_fuse_pass");
   int original_nodes_num = graph->Nodes().size();
   graph = pass->Apply(std::move(graph));
   int current_nodes_num = graph->Nodes().size();
 
   EXPECT_TRUE(is_reachable(graph)("a", "f"));
 
-  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added, current_nodes_num);
+  EXPECT_EQ(original_nodes_num - nodes_removed + nodes_added,
+            current_nodes_num);
   // Assert conv_relu op in newly generated graph
   int conv_count = 0;
   int elementwise_add_count = 0;
