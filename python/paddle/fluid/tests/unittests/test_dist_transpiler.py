@@ -21,6 +21,7 @@ import paddle.fluid as fluid
 from paddle.fluid.transpiler.distribute_transpiler import delete_ops
 import traceback
 import collections
+import six
 
 
 class TranspilerTest(unittest.TestCase):
@@ -61,7 +62,7 @@ class TranspilerTest(unittest.TestCase):
 
         t = self._transpiler_instance(config)
 
-        trainer_main = t.get_trainer_program()
+        trainer_main = t.get_trainer_program(wait_port=False)
         trainer_startup = fluid.default_startup_program()
 
         assert (src.num_blocks == 1)
@@ -437,7 +438,7 @@ class TestLocalLookupTable(TestDistLookupTableBase):
         # 2 optimize for table adam
         # NOTE: if param is not selected rows, the grad will scaled to grad / trainer_num
         self.assertEqual([op.type for op in pserver1.blocks[2].ops],
-                         ["sum", "adam", "scale", "scale"])
+                         ["sum", "scale", "adam", "scale", "scale"])
 
         trainer, _ = self.get_trainer()
         self.assertEqual(len(trainer.blocks), 1)
@@ -644,18 +645,18 @@ class TestLoadSliceVar(TranspilerTest):
         self.assertTrue(pserver._slice_vars_and_attrs)
         self.assertTrue(pserver2._slice_vars_and_attrs)
 
-        for idx in xrange(len(pserver._slice_vars_and_attrs)):
+        for idx in six.moves.xrange(len(pserver._slice_vars_and_attrs)):
             self.assertEqual(pserver._slice_vars_and_attrs[idx][0],
                              pserver2._slice_vars_and_attrs[idx][0])
 
-            total_numel = reduce(lambda x, y: x * y,
-                                 pserver._slice_vars_and_attrs[idx][0].shape)
+            total_numel = six.moves.reduce(
+                lambda x, y: x * y, pserver._slice_vars_and_attrs[idx][0].shape)
             self.assertEqual(
                 total_numel,
-                reduce(lambda x, y: x * y,
-                       pserver._slice_vars_and_attrs[idx][2].shape) + reduce(
-                           lambda x, y: x * y,
-                           pserver2._slice_vars_and_attrs[idx][2].shape))
+                six.moves.reduce(lambda x, y: x * y,
+                                 pserver._slice_vars_and_attrs[idx][2].shape) +
+                six.moves.reduce(lambda x, y: x * y,
+                                 pserver2._slice_vars_and_attrs[idx][2].shape))
 
 
 if __name__ == "__main__":

@@ -1,24 +1,23 @@
 # PaddlePaddle发行规范
 
-PaddlePaddle使用git-flow branching model做分支管理，使用[Semantic Versioning](http://semver.org/)标准表示PaddlePaddle版本号。
+PaddlePaddle使用Trunk Based Development，使用[Semantic Versioning](http://semver.org/)标准表示PaddlePaddle版本号。
 
 PaddlePaddle每次发新的版本，遵循以下流程:
 
 1. 从`develop`分支派生出新的分支，分支名为`release/版本号`。例如，`release/0.10.0`
-1. 将新分支的版本打上tag，tag为`版本号rc.Patch号`。第一个tag为`0.10.0rc1`，第二个为`0.10.0rc2`，依次类推。
-1. 对这个版本的提交，做如下几个操作:
-  * 使用Regression Test List作为检查列表，测试本次release的正确性。
-	  * 如果失败，记录下所有失败的例子，在这个`release/版本号`分支中，修复所有bug后，Patch号加一，到第二步
-	* 修改`python/setup.py.in`中的版本信息,并将`istaged`字段设为`True`。
-	* 将这个版本的python wheel包发布到pypi。
-	* 更新Docker镜像（参考后面的操作细节）。
-1. 第三步完成后，将`release/版本号`分支合入master分支，将master分支的合入commit打上tag，tag为`版本号`。同时再将`master`分支合入`develop`分支。
-1. 协同完成Release Note的书写。
+2. 将新分支的版本打上tag，tag为`版本号rc-Patch号`。例如，第一个tag为`0.10.0-rc0`。
+3. 新分支一般不接受新的feature和优化。QA在release分支上进行测试。研发基于最新的develop开发。
+4. QA和研发发现的bug，在develop上修复验证后，cherry-pick修复到release分支。直到release分支相对稳定。
+5. 如果有需要，在release分支最新代码上打上新的tag，比如`0.10.0-rc1`，让更多的用户加入测试。重复3-4步。
+6. release分支稳定后，打上正式的release tag，比如`0.10.0`。
+7. 将这个版本的python wheel包发布到pypi。
+8. 更新Docker镜像（参考后面的操作细节）。
 
 需要注意的是:
 
-* `release/版本号`分支一旦建立，一般不允许再从`develop`分支合入`release/版本号`。这样保证`release/版本号`分支功能的封闭，方便测试人员测试PaddlePaddle的行为。
-* 在`release/版本号`分支存在的时候，如果有bugfix的行为，需要将bugfix的分支同时merge到`master`, `develop`和`release/版本号`这三个分支。
+* bug修复需要先在develop上进行，然后进入release分支。而不是直接在release分支上开发。
+
+* release分支原则上只接受修复类的修改，不接受新feature。
 
 ## 发布wheel包到pypi
 
@@ -61,24 +60,21 @@ docker push [镜像]:[version]
 
 ## PaddlePaddle 分支规范
 
-PaddlePaddle开发过程使用[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范，并适应github的特性做了一些区别。
+PaddlePaddle开发过程使用[Trunk Based Development](https://trunkbaseddevelopment.com/) 开发规范。
 
-* PaddlePaddle的主版本库遵循[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范。其中:
-	* `master`分支为稳定(stable branch)版本分支。每一个`master`分支的版本都是经过单元测试和回归测试的版本。
-	* `develop`分支为开发(develop branch)版本分支。每一个`develop`分支的版本都经过单元测试，但并没有经过回归测试。
-	* `release/版本号`分支为每一次Release时建立的临时分支。在这个阶段的代码正在经历回归测试。
+* `develop`分支为开发(develop branch)版本分支。每一个`develop`分支的版本都经过单元测试。并且会经过模型回归测试。
+* `release/版本号`分支为每一次Release时建立的临时分支。release分支主要用于测试，bug修复和最终发版。
+* `master`分支因为历史原因，已经废弃。
 
-* 其他用户的fork版本库并不需要严格遵守[git-flow](http://nvie.com/posts/a-successful-git-branching-model/)分支规范，但所有fork的版本库的所有分支都相当于特性分支。
-	* 建议，开发者fork的版本库使用`develop`分支同步主版本库的`develop`分支
-	* 建议，开发者fork的版本库中，再基于`develop`版本fork出自己的功能分支。
-	* 当功能分支开发完毕后，向PaddlePaddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
-		* 在评审过程中，开发者修改自己的代码，可以继续在自己的功能分支提交代码。
-
-* BugFix分支也是在开发者自己的fork版本库维护，与功能分支不同的是，BugFix分支需要分别给主版本库的`master`、`develop`与可能有的`release/版本号`分支，同时提起`Pull Request`。
+* 其他开发者fork的feature branch。
+	* 建议，开发者的feature branch需要同步主版本库的`develop`分支。
+	* 建议，开发者的feature branch需要基于主版本库中的`develop`分支。
+	* 当feature branch开发完毕后，向PaddlePaddle的主版本库提交`Pull Reuqest`，进而进行代码评审。
+		* 在评审过程中，开发者修改自己的代码，可以继续在自己的feature branch提交代码。
 
 ## PaddlePaddle回归测试列表
 
-本列表说明PaddlePaddle发版之前需要测试的功能点。
+TODO
 
 ### PaddlePaddle Book中所有章节
 

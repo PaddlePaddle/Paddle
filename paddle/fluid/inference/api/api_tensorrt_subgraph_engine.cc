@@ -32,6 +32,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
+    FLAGS_IA_enable_tensorrt_subgraph_engine = true;
     VLOG(3) << "Predictor::init()";
     FLAGS_tensorrt_max_batch_size = config_.max_batch_size;
     FLAGS_tensorrt_workspace_size = config_.workspace_size;
@@ -73,10 +74,8 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     VLOG(5) << "to create variables";
     executor_->CreateVariables(*inference_program_,
                                sub_scope_ ? sub_scope_ : scope_.get(), 0);
-
     // Get the feed_target_names and fetch_target_names
-    feed_target_names_ = inference_program_->GetFeedTargetNames();
-    fetch_target_names_ = inference_program_->GetFetchTargetNames();
+    PrepareFeedFetch();
     return true;
   }
 
@@ -161,3 +160,4 @@ USE_TRT_CONVERTER(fc);
 USE_TRT_CONVERTER(pool2d);
 USE_TRT_CONVERTER(softmax);
 USE_TRT_CONVERTER(batch_norm);
+USE_TRT_CONVERTER(concat);

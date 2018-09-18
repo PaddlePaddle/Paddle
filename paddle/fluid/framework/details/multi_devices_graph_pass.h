@@ -54,8 +54,8 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
 
   bool IsScaleLossOp(ir::Node *node) const;
 
-  void CreateRPCOp(ir::Graph *result, ir::Node *node) const;
-  void CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
+  int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
+  int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
 
   /**
    * Is this operator as the end-point operator before/after send operator.
@@ -69,9 +69,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   std::vector<std::string> FindDistTrainRecvVars(
       const std::vector<ir::Node *> &nodes) const;
 
-  void ConnectOp(ir::Graph *result, OpHandleBase *op,
-                 const std::string &prev_op_name) const;
-
   void CreateComputationalOps(ir::Graph *result, ir::Node *node,
                               size_t num_places) const;
 
@@ -82,10 +79,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
                             int dst_dev_id) const;
   void CreateComputationalOp(ir::Graph *result, ir::Node *node,
                              int dev_id) const;
-
-  bool IsParameterGradientOnce(
-      const std::string &og,
-      std::unordered_set<std::string> *og_has_been_broadcast) const;
 
   int GetOpDeviceID(const ir::Graph &graph, ir::Node *node) const;
 
