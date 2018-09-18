@@ -390,14 +390,14 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     T* output_data = nullptr;
 
     if (fuse_eltwise) {
-      auto eltwise_param = ctx.Input<Tensor>("EltwiseParameter");
-      auto eltwise_param_data = eltwise_param->data<T>();
+      auto residual_param = ctx.Input<Tensor>("ResidualData");
+      auto residual_param_data = residual_param->data<T>();
 
-      PADDLE_ENFORCE(eltwise_param_data != nullptr, "Provide data if you want MKLDNN conv+elementwise_add fusion");
-      PADDLE_ENFORCE_EQ(output->dims(), eltwise_param->dims(), "Output and elementwise parameter need to have the same dimension sizes");
+      PADDLE_ENFORCE(residual_param_data != nullptr, "Provide data if you want MKLDNN conv+elementwise_add fusion");
+      PADDLE_ENFORCE_EQ(output->dims(), residual_param->dims(), "Output and elementwise parameter need to have the same dimension sizes");
 
       output_data = output->mutable_data<T>(ctx.GetPlace());
-      output->ShareDataWith(*eltwise_param);
+      output->ShareDataWith(*residual_param);
     } else {
       output_data =
         output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
