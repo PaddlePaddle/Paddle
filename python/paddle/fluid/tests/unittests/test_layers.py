@@ -569,7 +569,7 @@ class TestBook(unittest.TestCase):
         program = Program()
         with program_guard(program):
             x = layers.data(name="input", shape=[10], dtype='int32')
-            out = layers.expand(x, [1, 2, 2])
+            out = layers.expand(x, [1, 2])
         print(str(program))
 
 
