@@ -716,6 +716,12 @@ function main() {
         build_mac
         run_mac_test
         ;;
+      cicheck_py35)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_test
+        assert_api_not_changed
+        ;;
       *)
         print_usage
         exit 0

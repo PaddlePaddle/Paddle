@@ -51,7 +51,7 @@ ENDIF()
 
 # memcpy depends on device_context, here add deps individually for
 # avoiding cycle dependencies
-cc_library(device_context SRCS device_context.cc init.cc DEPS malloc
+cc_library(device_context SRCS device_context.cc init.cc DEPS simple_threadpool malloc
     place eigen3 stringpiece cpu_helper cpu_info framework_proto ${GPU_CTX_DEPS} ${MKLDNN_CTX_DEPS})
 nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
 
