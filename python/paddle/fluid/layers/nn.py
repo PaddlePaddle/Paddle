@@ -113,6 +113,7 @@ __all__ = [
     'pad2d',
     'unstack',
     'sequence_enumerate',
+    'sequence_concat',
 ]
 
 
@@ -1781,6 +1782,31 @@ def sequence_pool(input, pool_type):
     return pool_out
 
 
+@templatedoc()
+def sequence_concat(input, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(list): List of Variables to be concatenated.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the concatenation.
+
+    Examples:
+        .. code-block:: python
+
+           out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
+    """
+    helper = LayerHelper('sequence_concat', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
+    return out
+
+
 def sequence_first_step(input):
     """
     This function gets the first step of sequence.
@@ -2750,7 +2776,8 @@ def sequence_pad(x, pad_value, maxlen=None):
             longest original sequence."
     
     Returns:
-        Variable: The padded sequence batch. All sequences has the same length.
+        Variable: The padded sequence batch and the original lengths before 
+                  padding. All sequences has the same length.
     
     Examples:
         .. code-block:: python
@@ -2766,15 +2793,21 @@ def sequence_pad(x, pad_value, maxlen=None):
     helper = LayerHelper('sequence_pad', input=x, **locals())
     dtype = helper.input_dtype()
     out = helper.create_tmp_variable(dtype)
+    length = helper.create_tmp_variable(dtype)
+
+    pad_value.stop_gradient = True
+    length.stop_gradient = True
+
     if maxlen is None:
         maxlen = -1
     helper.append_op(
         type='sequence_pad',
         inputs={'X': x,
                 'PadValue': pad_value},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'Length': length},
         attrs={'padded_length': maxlen})
-    return out
+    return out, length
 
 
 def beam_search(pre_ids,
@@ -5991,7 +6024,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         inputs={'X': [x]},
         outputs={'Y': out},
         attrs={
-            'max_len': maxlen if maxlen is not None else -1,
+            'maxlen': maxlen if maxlen is not None else -1,
             'out_dtype': out.dtype
         })
     return out
