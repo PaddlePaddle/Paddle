@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/cpu_lstm_compute.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
@@ -269,7 +270,6 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
             wh_data, D4, static_cast<T>(1), out, D4)
 
-// gates: W_ch, W_ih, W_fh, W_oh
 #define GET_Ct(ct_1, gates, ct)                   \
   /* C_t = C_t-1 * fgated + cand_gated * igated*/ \
   act_cand(D, gates, gates);                      \
@@ -395,11 +395,22 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         }
       }
     } else {
+      // TODO(TJ): unly workaround, clean me
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
+      if (platform::jit::MayIUse(platform::jit::avx) &&
+          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
+          act_cell_str == "tanh" && D == 8) {
+        compute_ctht = math::lstm_compute_ctht<T>;
+      } else {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
+          COMPUTE_CtHt(gates, ct_1, ct, ht);
+        };
+      }
       for (int i = 0; i < N; ++i) {
         PROCESS_H0C0
         for (int step = tstart; step < seq_len; ++step) {
           GEMM_WH_ADDON(1, prev_h_data, xx_data);
-          COMPUTE_CtHt(xx_data, prev_c_data, c_out_data, h_out_data);
+          compute_ctht(xx_data, prev_c_data, c_out_data, h_out_data);
           MOVE_ONE_STEP;
         }
       }
@@ -532,12 +543,23 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         MOVE_ONE_STEP;
       }
     } else {
+      // TODO(TJ): unly workaround, clean me
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
+      if (platform::jit::MayIUse(platform::jit::avx) &&
+          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
+          act_cell_str == "tanh" && D == 8) {
+        compute_ctht = math::lstm_compute_ctht<T>;
+      } else {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
+          COMPUTE_CtHt(gates, ct_1, ct, ht);
+        };
+      }
       for (int step = tstart; step < max_seq_len; ++step) {
         const int cur_bs = batch_starts[step + 1] - batch_starts[step];
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
-          COMPUTE_CtHt(cur_in_data, cur_prev_c_data, cur_c_out_data,
+          compute_ctht(cur_in_data, cur_prev_c_data, cur_c_out_data,
                        cur_h_out_data);
           MOVE_ONE_BATCH;
         }
