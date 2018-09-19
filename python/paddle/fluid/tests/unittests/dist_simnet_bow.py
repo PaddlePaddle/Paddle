@@ -33,7 +33,7 @@ from test_dist_base import TestDistRunnerBase, runtime_main
 
 DTYPE = "int64"
 DATA_URL = 'http://paddle-dist-ce-data.cdn.bcebos.com/simnet.train.1000'
-DATA_MD5 = '4cc060b0a0939a343fc9242aa1ee2e4e'
+DATA_MD5 = '24e49366eb0611c552667989de2f57d5'
 
 # For Net
 base_lr = 0.2
