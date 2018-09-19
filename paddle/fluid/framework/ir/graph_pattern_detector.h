@@ -429,7 +429,7 @@ struct LSTM : public PatternBase {
 
 struct GRU : public PatternBase {
   GRU(PDPattern* pattern, const std::string& name_scope)
-      : PatternBase(pattern, name_scope, "lstm") {}
+      : PatternBase(pattern, name_scope, "gru") {}
 
   PDNode* operator()(PDNode* x);
 

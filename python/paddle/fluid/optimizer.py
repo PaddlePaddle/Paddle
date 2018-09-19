@@ -239,7 +239,7 @@ use_lars to momentum layer to enable lars, see documents of momentum layer.")
             for param_and_grad in parameters_and_grads:
                 if param_and_grad[1] is None:
                     continue
-                with param_and_grad[0].block.program.optimized_guard(
+                with param_and_grad[0].block.program._optimized_guard(
                         param_and_grad), name_scope("optimizer"):
                     if param_and_grad[0].trainable is True:
                         optimize_op = self._append_optimize_op(loss.block,
@@ -613,7 +613,7 @@ class AdamOptimizer(Optimizer):
         for param, grad in param_and_grads:
             if grad is None:
                 continue
-            with param.block.program.optimized_guard([param, grad]):
+            with param.block.program._optimized_guard([param, grad]):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
@@ -742,7 +742,7 @@ class AdamaxOptimizer(Optimizer):
         for param, grad in parameters_and_grads:
             if grad is None:
                 continue
-            with param.block.program.optimized_guard([param, grad]):
+            with param.block.program._optimized_guard([param, grad]):
                 beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
                                                       param)
                 main_block.append_op(
@@ -1231,7 +1231,7 @@ class ModelAverage(Optimizer):
         for param, grad in self.params_grads:
             if grad is None:
                 continue
-            with param.block.program.optimized_guard([param, grad]):
+            with param.block.program._optimized_guard([param, grad]):
                 self._append_average_accumulate_op(param)
 
         self.apply_program = Program()
