@@ -27,13 +27,13 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::ApplyImpl(
   std::unordered_set<std::string> act_types = {"relu", "scale"};
   graph = FuseActElewiseAdd(std::move(graph), act_types);
   graph = FuseElewiseAddAct(std::move(graph), act_types);
-  //  {
-  //    std::unordered_set<std::string> in_place_act_types = {"relu_grad"};
-  //    // std::unordered_set<std::string> no_in_place_act_types =
-  //    {"scale_grad"};
-  //    //  graph = FuseActElewiseAdd(std::move(graph), act_types);
-  //    graph = FuseElewiseAddActGrad1(std::move(graph), in_place_act_types);
-  //  }
+  // backward
+  {
+    std::unordered_set<std::string> in_place_act_types = {"relu_grad"};
+    // std::unordered_set<std::string> no_in_place_act_types ={"scale_grad"};
+    //  graph = FuseActElewiseAdd(std::move(graph), act_types);
+    graph = FuseElewiseAddActGrad1(std::move(graph), in_place_act_types);
+  }
 
   // Remove the removable intermediate_out.
   RemoveIntermediateOut(graph.get());
@@ -220,45 +220,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActGrad1(
             << d_itermediate_out_n << " and " << act_out_n << " -> "
             << ele_add_grad->Name() << " -> " << d_itermediate_out_n;
 
-    for (auto in : act_grad->inputs) {
-      fused_node->inputs.emplace_back(in);
-      in->outputs = this->ReplaceNode(act_grad, fused_node, in->outputs);
-    }
-
-    std::unordered_set<const Node *> nodes2delete;
-    for (auto out : act_grad->outputs) {
-      if (out->IsCtrlVar()) {
-        auto result_iter = std::find_if(
-            ele_add_grad->inputs.begin(), ele_add_grad->inputs.end(),
-            [&out](const Node *node) -> bool { return node == out; });
-
-        if (result_iter == ele_add_grad->inputs.end()) {
-          IR_OP_VAR_LINK(fused_node, out);
-        } else {
-          nodes2delete.emplace(out);
-        }
-      } else {
-        PADDLE_ENFORCE(out == d_itermediate_out);
-        IR_OP_VAR_LINK(fused_node, out);
-      }
-    }
-
-    for (auto in : ele_add_grad->inputs) {
-      if (in == d_itermediate_out || nodes2delete.count(in)) {
-        continue;
-      }
-      fused_node->inputs.emplace_back(in);
-      in->outputs = this->ReplaceNode(ele_add_grad, fused_node, in->outputs);
-    }
-
-    for (auto out : ele_add_grad->outputs) {
-      IR_OP_VAR_LINK(fused_node, out);
-    }
-
-    nodes2delete.insert(std::move(act_grad));
-    nodes2delete.insert(std::move(ele_add_grad));
-
-    GraphSafeRemoveNodes(g, nodes2delete);
+    ReLinkNodes(g, d_itermediate_out, act_grad, ele_add_grad, fused_node);
     found_elewise_add_act_count++;
   };
 

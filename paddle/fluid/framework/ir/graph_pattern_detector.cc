@@ -830,13 +830,15 @@ PDNode *patterns::ElewiseAddActGrad1::operator()(
   auto *ele_add_grad = pattern->NewNode(ele_add_grad_repr())
                            ->assert_is_op("elementwise_add_grad");
 
-  auto *d_ele_x_var = pattern->NewNode(d_ele_x_repr())
-                          ->assert_is_not_ctrl_var()
-                          ->assert_is_op_output("elementwise_add_grad");
+  auto *d_ele_x_var =
+      pattern->NewNode(d_ele_x_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("elementwise_add_grad", "X@GRAD");
 
-  auto *d_ele_y_var = pattern->NewNode(d_ele_y_repr())
-                          ->assert_is_not_ctrl_var()
-                          ->assert_is_op_output("elementwise_add_grad");
+  auto *d_ele_y_var =
+      pattern->NewNode(d_ele_y_repr())
+          ->assert_is_not_ctrl_var()
+          ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
 
   ele_add_grad->LinksFrom({d_intermediate_var, ele_y_var})
       .LinksTo({d_ele_x_var, d_ele_y_var});
