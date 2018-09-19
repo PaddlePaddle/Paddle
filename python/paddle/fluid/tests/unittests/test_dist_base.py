@@ -158,6 +158,7 @@ def runtime_main(test_class):
     else:
         model.run_trainer(args)
 
+
 import paddle.compat as cpt
 import socket
 from contextlib import closing
