@@ -58,7 +58,7 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
   }
 
   // Apply op fusion.
-  if (strategy.fuse_adjacent_ops_) {
+  if (strategy.fuse_elewise_add_act_ops_) {
     auto fuse_elewise_add_act_pass =
         ir::PassRegistry::Instance().Get("fuse_elewise_add_act_pass");
     graph = fuse_elewise_add_act_pass->Apply(std::move(graph));

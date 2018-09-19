@@ -20,10 +20,10 @@
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
-
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -354,13 +354,6 @@ PDNode *PDNode::assert_is_op(const std::string &op_type) {
   return this;
 }
 
-PDNode *PDNode::assert_is_ops(const std::unordered_set<std::string> &op_types) {
-  asserts_.emplace_back([op_types](Node *x) {
-    return x && x->IsOp() && op_types.count(x->Op()->Type());
-  });
-  return this;
-}
-
 PDNode *PDNode::assert_is_var() {
   asserts_.emplace_back([](Node *x) { return x && x->IsVar(); });
   return this;
@@ -398,43 +391,12 @@ PDNode *PDNode::assert_is_op_nth_input(const std::string &op_type,
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_nth_input(
-    const std::unordered_set<std::string> &op_types,
-    const std::string &argument, int nth) {
-  assert_is_var();
-  assert_is_ops_input(op_types);
-  asserts_.emplace_back([=](Node *x) {
-    for (auto *op : x->outputs) {
-      if (op->IsOp() && op_types.count(op->Op()->Type()) &&
-          IsNthInput(x, op, argument, nth))
-        return true;
-    }
-    return false;
-  });
-  return this;
-}
-
 PDNode *PDNode::assert_is_op_nth_output(const std::string &op_type,
                                         const std::string &argument, int nth) {
   assert_is_var();
   asserts_.emplace_back([=](Node *x) {
     for (auto *op : x->inputs) {
       if (op->IsOp() && op->Op()->Type() == op_type &&
-          IsNthOutput(x, op, argument, nth))
-        return true;
-    }
-    return false;
-  });
-  return this;
-}
-
-PDNode *PDNode::assert_is_ops_nth_output(
-    const std::unordered_set<std::string> &op_types,
-    const std::string &argument, int nth) {
-  assert_is_var();
-  asserts_.emplace_back([=](Node *x) {
-    for (auto *op : x->inputs) {
-      if (op->IsOp() && op_types.count(op->Op()->Type()) &&
           IsNthOutput(x, op, argument, nth))
         return true;
     }
@@ -484,35 +446,12 @@ PDNode *PDNode::assert_is_op_output(const std::string &op_type) {
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_output(
-    const std::unordered_set<std::string> &op_types) {
-  assert_is_var();
-  asserts_.emplace_back([=](Node *x) {
-    for (auto *op : x->inputs) {
-      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type())) {
-        return true;
-      }
-    }
-    return false;
-  });
-  return this;
-}
-
 PDNode *PDNode::assert_is_op_output(const std::string &op_type,
                                     const std::string &argument) {
   assert_is_var();
   assert_is_op_nth_output(op_type, argument, 0);
   return this;
 }
-
-PDNode *PDNode::assert_is_ops_output(
-    const std::unordered_set<std::string> &op_types,
-    const std::string &argument) {
-  assert_is_var();
-  assert_is_ops_nth_output(op_types, argument, 0);
-  return this;
-}
-
 PDNode *PDNode::assert_is_op_input(const std::string &op_type) {
   assert_is_var();
   asserts_.emplace_back([=](Node *x) {
@@ -526,32 +465,10 @@ PDNode *PDNode::assert_is_op_input(const std::string &op_type) {
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_input(
-    const std::unordered_set<std::string> &op_types) {
-  assert_is_var();
-  asserts_.emplace_back([=](Node *x) {
-    for (auto *op : x->outputs) {
-      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type())) {
-        return true;
-      }
-    }
-    return false;
-  });
-  return this;
-}
-
 PDNode *PDNode::assert_is_op_input(const std::string &op_type,
                                    const std::string &argument) {
   assert_is_var();
   assert_is_op_nth_input(op_type, argument, 0);
-  return this;
-}
-
-PDNode *PDNode::assert_is_ops_input(
-    const std::unordered_set<std::string> &op_types,
-    const std::string &argument) {
-  assert_is_var();
-  assert_is_ops_nth_input(op_types, argument, 0);
   return this;
 }
 
@@ -569,6 +486,87 @@ PDNode *PDNode::assert_op_has_n_outputs(const std::string &op_type, size_t n) {
 
 PDNode *PDNode::assert_more(PDNode::teller_t &&teller) {
   asserts_.emplace_back(std::move(teller));
+  return this;
+}
+
+PDNode *PDNode::assert_is_ops(const std::unordered_set<std::string> &op_types) {
+  asserts_.emplace_back([op_types](Node *x) {
+    return x && x->IsOp() && op_types.count(x->Op()->Type());
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_ops_nth_input(
+    const std::unordered_set<std::string> &op_types,
+    const std::string &argument, int nth) {
+  assert_is_var();
+  assert_is_ops_input(op_types);
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->outputs) {
+      if (op->IsOp() && op_types.count(op->Op()->Type()) &&
+          IsNthInput(x, op, argument, nth))
+        return true;
+    }
+    return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_ops_nth_output(
+    const std::unordered_set<std::string> &op_types,
+    const std::string &argument, int nth) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->inputs) {
+      if (op->IsOp() && op_types.count(op->Op()->Type()) &&
+          IsNthOutput(x, op, argument, nth))
+        return true;
+    }
+    return false;
+  });
+  return this;
+}
+PDNode *PDNode::assert_is_ops_output(
+    const std::unordered_set<std::string> &op_types) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->inputs) {
+      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type())) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_ops_output(
+    const std::unordered_set<std::string> &op_types,
+    const std::string &argument) {
+  assert_is_var();
+  assert_is_ops_nth_output(op_types, argument, 0);
+  return this;
+}
+
+PDNode *PDNode::assert_is_ops_input(
+    const std::unordered_set<std::string> &op_types) {
+  assert_is_var();
+  asserts_.emplace_back([=](Node *x) {
+    for (auto *op : x->outputs) {
+      if (op && op->IsOp() && op->Op() && op_types.count(op->Op()->Type())) {
+        return true;
+      }
+    }
+    return false;
+  });
+  return this;
+}
+
+PDNode *PDNode::assert_is_ops_input(
+    const std::unordered_set<std::string> &op_types,
+    const std::string &argument) {
+  assert_is_var();
+  assert_is_ops_nth_input(op_types, argument, 0);
   return this;
 }
 
@@ -765,10 +763,10 @@ PDNode *patterns::ActElewiseAdd::operator()(
                           ->assert_is_ops_output(act_types);
   act_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
 
-  auto *x_var = pattern->NewNode(x_repr())
-                    ->assert_is_not_ctrl_var()
-                    ->assert_is_op_input("elementwise_add")
-                    ->AsInput();
+  auto *ele_x_var = pattern->NewNode(ele_x_repr())
+                        ->assert_is_not_ctrl_var()
+                        ->assert_is_op_input("elementwise_add")
+                        ->AsInput();
   auto *elementwise_add =
       pattern->NewNode(ele_add_repr())->assert_is_op("elementwise_add");
 
@@ -777,7 +775,8 @@ PDNode *patterns::ActElewiseAdd::operator()(
                               ->assert_is_op_output("elementwise_add", "Out");
 
   act->LinksFrom({in_var}).LinksTo({act_out_var});
-  elementwise_add->LinksFrom({act_out_var, x_var}).LinksTo({elewise_add_out});
+  elementwise_add->LinksFrom({act_out_var, ele_x_var})
+      .LinksTo({elewise_add_out});
 
   return elewise_add_out;
 }
@@ -807,7 +806,7 @@ PDNode *patterns::ElewiseAddAct::operator()(
   return act_out_var;
 }
 
-PDNode *patterns::ElewiseAddActGrad1::operator()(
+PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
     paddle::framework::ir::PDNode *d_act_out_var,
     std::unordered_set<std::string> act_types) {
   // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
@@ -817,8 +816,9 @@ PDNode *patterns::ElewiseAddActGrad1::operator()(
   auto *act_out_var =
       pattern->NewNode(act_out_repr())->assert_is_ops_input(act_types, "Out");
 
-  auto *d_intermediate_var = pattern->NewNode(d_itermediate_out_repr())
-                                 ->assert_is_ops_output(act_types, "X@GRAD");
+  auto *d_intermediate_var =
+      pattern->NewNode(d_itermediate_out_repr())
+          ->assert_is_ops_output(act_types, GradVarName("X"));
 
   act_grad->LinksFrom({d_act_out_var, act_out_var})
       .LinksTo({d_intermediate_var});
@@ -833,12 +833,12 @@ PDNode *patterns::ElewiseAddActGrad1::operator()(
   auto *d_ele_x_var =
       pattern->NewNode(d_ele_x_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad", "X@GRAD");
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("X"));
 
   auto *d_ele_y_var =
       pattern->NewNode(d_ele_y_repr())
           ->assert_is_not_ctrl_var()
-          ->assert_is_op_output("elementwise_add_grad", "Y@GRAD");
+          ->assert_is_op_output("elementwise_add_grad", GradVarName("Y"));
 
   ele_add_grad->LinksFrom({d_intermediate_var, ele_y_var})
       .LinksTo({d_ele_x_var, d_ele_y_var});

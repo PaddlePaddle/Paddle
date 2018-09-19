@@ -54,7 +54,7 @@ struct BuildStrategy {
 
   std::string debug_graphviz_path_{""};
 
-  bool fuse_adjacent_ops_{false};
+  bool fuse_elewise_add_act_ops_{false};
 
   bool enable_data_balance_{false};
 };

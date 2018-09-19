@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -30,9 +31,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::ApplyImpl(
   // backward
   {
     std::unordered_set<std::string> in_place_act_types = {"relu_grad"};
-    // std::unordered_set<std::string> no_in_place_act_types ={"scale_grad"};
-    //  graph = FuseActElewiseAdd(std::move(graph), act_types);
-    graph = FuseElewiseAddActGrad1(std::move(graph), in_place_act_types);
+    graph = FuseElewiseAddActInplaceGrad(std::move(graph), in_place_act_types);
   }
 
   // Remove the removable intermediate_out.
@@ -46,11 +45,11 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
     std::unique_ptr<ir::Graph> graph,
     const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("ealewise_add_act", graph.get());
+  FusePassBase::Init("elewise_add_act", graph.get());
 
   GraphPatternDetector gpd;
   auto *x = gpd.mutable_pattern()
-                ->NewNode("ealewise_add_act/x")
+                ->NewNode("elewise_add_act/x")
                 ->AsInput()
                 ->assert_is_op_input("elementwise_add", "X");
   patterns::ElewiseAddAct elewise_add_act_pattern(gpd.mutable_pattern(),
@@ -66,7 +65,6 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
     GET_IR_NODE_FROM_SUBGRAPH(ele_y, ele_y, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_out, elewise_add_out,
                               elewise_add_act_pattern);
-
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act, act, elewise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_add, ele_add, elewise_add_act_pattern);
@@ -116,16 +114,13 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "handle FuseElewiseAddAct fuse";
-
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, act_elewise_add_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(ele_x, x, act_elewise_add_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(ele_x, ele_x, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_out, elewise_add_out,
                               act_elewise_add_pattern);
-
     GET_IR_NODE_FROM_SUBGRAPH(act, act, act_elewise_add_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(ele_add, ele_add, act_elewise_add_pattern);
 
-    OpDesc desc;
     std::string act_i_n = subgraph.at(x)->Name();
     std::string act_o_n = act_out->Name();
     std::string elewise_add_x_n = ele_x->Name();
@@ -134,9 +129,8 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
     Node *elewise_add_act_node = CreateFuseElewiseAddActNode(
         g, ele_add, act, elewise_add_x_n, act_i_n, act_o_n, elewise_add_out_n);
 
-    VLOG(4) << "\t " << act_i_n << " -> " << act->Name() << " -> " << act_o_n
-            << "\n"
-            << "\t " << act_o_n << " and " << elewise_add_x_n << " -> "
+    VLOG(4) << "\n\t " << act_i_n << " -> " << act->Name() << " -> " << act_o_n
+            << "\n\t " << act_o_n << " and " << elewise_add_x_n << " -> "
             << ele_add->Name() << " -> " << elewise_add_out_n;
 
     ReLinkNodes(g, act_out, act, ele_add, elewise_add_act_node);
@@ -152,18 +146,18 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
 // the backward of act(ele_add(x,y))
 // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
 // ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
-std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActGrad1(
+std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
     std::unique_ptr<ir::Graph> graph,
     const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE(graph.get());
-  FusePassBase::Init("ealewise_add_act_grad", graph.get());
+  FusePassBase::Init("elewise_add_act_grad", graph.get());
 
   GraphPatternDetector gpd;
   auto *d_act_out = gpd.mutable_pattern()
-                        ->NewNode("ealewise_add_act_grad_inplace/x")
+                        ->NewNode("elewise_add_act_grad_inplace/x")
                         ->AsInput()
-                        ->assert_is_ops_input(act_types, "Out@GRAD");
-  patterns::ElewiseAddActGrad1 elewise_add_act_grad_pattern(
+                        ->assert_is_ops_input(act_types, GradVarName("Out"));
+  patterns::ElewiseAddActInplaceGrad elewise_add_act_grad_pattern(
       gpd.mutable_pattern(), "elewise_add_act_grad_inplace");
   elewise_add_act_grad_pattern(d_act_out, act_types);
 
@@ -172,7 +166,6 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActGrad1(
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "handle FuseElewiseAddActGrad1 fuse";
-
     GET_IR_NODE_FROM_SUBGRAPH(act_out, act_out, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(act_grad, act_grad, elewise_add_act_grad_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(d_itermediate_out, d_itermediate_out,
@@ -196,10 +189,10 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActGrad1(
     desc.SetInput("X", {});
     desc.SetInput("Y", std::vector<std::string>({ele_y_n}));
     desc.SetInput("Out", std::vector<std::string>({act_out_n}));
-    desc.SetInput("Out@GRAD", std::vector<std::string>({d_act_out_n}));
-    desc.SetOutput("X@GRAD", std::vector<std::string>({d_ele_x_n}));
-    desc.SetOutput("Y@GRAD", std::vector<std::string>({d_ele_y_n}));
-    desc.SetOutput("IntermediateOut@GRAD",
+    desc.SetInput(GradVarName("Out"), std::vector<std::string>({d_act_out_n}));
+    desc.SetOutput(GradVarName("X"), std::vector<std::string>({d_ele_x_n}));
+    desc.SetOutput(GradVarName("Y"), std::vector<std::string>({d_ele_y_n}));
+    desc.SetOutput(GradVarName("IntermediateOut"),
                    std::vector<std::string>({d_itermediate_out_n}));
 
     desc.SetAttr("save_intermediate_out", false);
@@ -257,46 +250,42 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
 
 void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
   std::unordered_set<const Node *> need_removed_nodes;
-  for (auto upstream_node : graph->Nodes()) {
-    if (upstream_node->IsVar()) continue;
-    if (upstream_node->Name() == "fused_elemwise_activation") {
-      bool save_intermediate_out = boost::get<bool>(
-          upstream_node->Op()->GetAttr("save_intermediate_out"));
-      auto intermediate_out_args =
-          upstream_node->Op()->Output("IntermediateOut");
+  for (auto cur_node : graph->Nodes()) {
+    if (cur_node->IsVar()) continue;
+    if (cur_node->Name() == "fused_elemwise_activation") {
+      bool save_intermediate_out =
+          boost::get<bool>(cur_node->Op()->GetAttr("save_intermediate_out"));
+      auto intermediate_out_args = cur_node->Op()->Output("IntermediateOut");
       PADDLE_ENFORCE(
           save_intermediate_out && !intermediate_out_args.empty(),
           "The %s should save the intermediate_out in the fusing stage.",
-          upstream_node->Name());
+          cur_node->Name());
 
-      // If the intermediate_out's output is only
-      // fused_elemwise_activation_grad, but the fused_elemwise_activation_grad
-      // doesn't use the intermediate_out.
-      auto upstream_node_outputs = upstream_node->outputs;
-      for (auto out : upstream_node_outputs) {
+      // If the intermediate_out's output is empty, it should be removed.
+      auto cur_node_outputs = cur_node->outputs;
+      for (auto out : cur_node_outputs) {
         if (out->Name() == intermediate_out_args[0]) {
           if (out->outputs.size() == 0) {
-            upstream_node->outputs =
-                this->RemoveNode(out, upstream_node->outputs);
+            cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
             need_removed_nodes.insert(std::move(out));
-            upstream_node->Op()->SetAttr("save_intermediate_out", false);
+            cur_node->Op()->SetAttr("save_intermediate_out", false);
           }
         }
       }
-    } else if (upstream_node->Name() == "fused_elemwise_activation_grad") {
+    } else if (cur_node->Name() == "fused_elemwise_activation_grad") {
       auto intermediate_out_grad_args =
-          upstream_node->Op()->Output("IntermediateOut@GRAD");
+          cur_node->Op()->Output(GradVarName("IntermediateOut"));
       PADDLE_ENFORCE(
           !intermediate_out_grad_args.empty(),
           "The %s should save the intermediate_out in the fusing stage.",
-          upstream_node->Name());
-      auto upstream_node_outputs = upstream_node->outputs;
-      for (auto &out : upstream_node_outputs) {
+          cur_node->Name());
+      auto cur_node_outputs = cur_node->outputs;
+      // If the intermediate_out_g's output is empty, it should be removed.
+      for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_grad_args[0] &&
             out->outputs.empty()) {
-          upstream_node->Op()->SetOutput("IntermediateOut@GRAD", {});
-          upstream_node->outputs =
-              this->RemoveNode(out, upstream_node->outputs);
+          cur_node->Op()->SetOutput(GradVarName("IntermediateOut"), {});
+          cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
           need_removed_nodes.insert(std::move(out));
         }
       }

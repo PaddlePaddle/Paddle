@@ -42,7 +42,7 @@ class FuseElewiseAddActPass : public FusePassBase {
       std::unique_ptr<ir::Graph> graph,
       const std::unordered_set<std::string> &act_types) const;
 
-  std::unique_ptr<ir::Graph> FuseElewiseAddActGrad1(
+  std::unique_ptr<ir::Graph> FuseElewiseAddActInplaceGrad(
       std::unique_ptr<ir::Graph> graph,
       const std::unordered_set<std::string> &act_types) const;
 

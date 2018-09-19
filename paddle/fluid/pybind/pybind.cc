@@ -676,10 +676,13 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
           [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
-      .def_property(
-          "fuse_adjacent_ops",
-          [](const BuildStrategy &self) { return self.fuse_adjacent_ops_; },
-          [](BuildStrategy &self, bool b) { self.fuse_adjacent_ops_ = b; });
+      .def_property("fuse_elewise_add_act_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_elewise_add_act_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.fuse_elewise_add_act_ops_ = b;
+                    });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
