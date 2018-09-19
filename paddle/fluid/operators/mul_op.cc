@@ -156,12 +156,29 @@ class MulGradOp : public framework::OperatorWithKernel {
   }
 };
 
+class MulOpGradMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> retv(new framework::OpDesc());
+    retv->SetType("mul_grad");
+    retv->SetInput("X", Input("X"));
+    retv->SetInput("Y", Input("Y"));
+    retv->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    retv->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    retv->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    retv->SetAttrMap(Attrs());
+    return retv;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker,
-                  paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(mul, ops::MulOp, ops::MulOpMaker, ops::MulOpGradMaker);
 REGISTER_OPERATOR(mul_grad, ops::MulGradOp);
 REGISTER_OP_CPU_KERNEL(
     mul, ops::MulKernel<paddle::platform::CPUDeviceContext, float>,
