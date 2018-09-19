@@ -115,18 +115,18 @@ class TestGRUOp(OpTest):
         T = sum(self.lod[0])
         N = len(self.lod[0])
 
-        input = np.random.rand(T, 3 * self.D).astype(dtype)
-        weight = np.random.rand(self.D, 3 * self.D).astype(dtype)
+        input = np.random.rand(T, 3 * self.D).astype(self.dtype)
+        weight = np.random.rand(self.D, 3 * self.D).astype(self.dtype)
         bias = np.random.rand(
-            1, 3 * self.D).astype(dtype) if self.with_bias else np.zeros(
-                (1, 3 * self.D), dtype=dtype)
-        h0 = np.random.rand(N,
-                            self.D).astype(dtype) if self.with_h0 else np.zeros(
-                                (N, self.D), dtype=dtype)
+            1, 3 * self.D).astype(self.dtype) if self.with_bias else np.zeros(
+                (1, 3 * self.D), dtype=self.dtype)
+        h0 = np.random.rand(
+            N, self.D).astype(self.dtype) if self.with_h0 else np.zeros(
+                (N, self.D), dtype=self.dtype)
 
         batch_gate, batch_reset_hidden_prev, batch_hidden, hidden = gru(
             input, self.lod, h0, weight, bias, self.is_reverse,
-            ACTIVATION[self.act_state], ACTIVATION[self.act_gate], dtype)
+            ACTIVATION[self.act_state], ACTIVATION[self.act_gate], self.dtype)
         self.inputs = {'Input': (input, self.lod), 'Weight': weight}
 
         if self.with_bias:
