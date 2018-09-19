@@ -41,57 +41,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::ApplyImpl(
   return graph;
 }
 
-void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
-  std::unordered_set<const Node *> need_removed_nodes;
-  for (auto upstream_node : graph->Nodes()) {
-    if (upstream_node->IsVar()) continue;
-    if (upstream_node->Name() == "fused_elemwise_activation") {
-      bool save_intermediate_out = boost::get<bool>(
-          upstream_node->Op()->GetAttr("save_intermediate_out"));
-      auto intermediate_out_args =
-          upstream_node->Op()->Output("IntermediateOut");
-      PADDLE_ENFORCE(
-          save_intermediate_out && !intermediate_out_args.empty(),
-          "The %s should save the intermediate_out in the fusing stage.",
-          upstream_node->Name());
-
-      // If the intermediate_out's output is only
-      // fused_elemwise_activation_grad, but the fused_elemwise_activation_grad
-      // doesn't use the intermediate_out.
-      auto upstream_node_outputs = upstream_node->outputs;
-      for (auto out : upstream_node_outputs) {
-        if (out->Name() == intermediate_out_args[0]) {
-          if (out->outputs.size() == 0) {
-            upstream_node->outputs =
-                this->RemoveNode(out, upstream_node->outputs);
-            need_removed_nodes.insert(std::move(out));
-            upstream_node->Op()->SetAttr("save_intermediate_out", false);
-          }
-        }
-      }
-    } else if (upstream_node->Name() == "fused_elemwise_activation_grad") {
-      auto intermediate_out_grad_args =
-          upstream_node->Op()->Output("IntermediateOut@GRAD");
-      PADDLE_ENFORCE(
-          !intermediate_out_grad_args.empty(),
-          "The %s should save the intermediate_out in the fusing stage.",
-          upstream_node->Name());
-      auto upstream_node_outputs = upstream_node->outputs;
-      for (auto &out : upstream_node_outputs) {
-        if (out->Name() == intermediate_out_grad_args[0] &&
-            out->outputs.empty()) {
-          upstream_node->Op()->SetOutput("IntermediateOut@GRAD", {});
-          upstream_node->outputs =
-              this->RemoveNode(out, upstream_node->outputs);
-          need_removed_nodes.insert(std::move(out));
-        }
-      }
-    }
-  }
-  GraphSafeRemoveNodes(graph, need_removed_nodes);
-}
-
-// f1(f2(x,y))
+// ele_add(x, act(y))
 std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
     std::unique_ptr<ir::Graph> graph,
     const std::unordered_set<std::string> &act_types) const {
@@ -144,6 +94,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddAct(
   return graph;
 }
 
+// act(ele_add(x,y))
 std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
     std::unique_ptr<ir::Graph> graph,
     const std::unordered_set<std::string> &act_types) const {
@@ -198,15 +149,15 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
   return graph;
 }
 
-// f1(f2(x,y)), act is inplace
+// the backward of act(ele_add(x,y))
+// act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
+// ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
 std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActGrad1(
     std::unique_ptr<ir::Graph> graph,
     const std::unordered_set<std::string> &act_types) const {
   PADDLE_ENFORCE(graph.get());
   FusePassBase::Init("ealewise_add_act_grad", graph.get());
 
-  // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
-  // ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
   GraphPatternDetector gpd;
   auto *d_act_out = gpd.mutable_pattern()
                         ->NewNode("ealewise_add_act_grad_inplace/x")
@@ -342,7 +293,56 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
   return elewise_add_act_node;
 }
 
-// f1(x,f2(y))
+void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
+  std::unordered_set<const Node *> need_removed_nodes;
+  for (auto upstream_node : graph->Nodes()) {
+    if (upstream_node->IsVar()) continue;
+    if (upstream_node->Name() == "fused_elemwise_activation") {
+      bool save_intermediate_out = boost::get<bool>(
+          upstream_node->Op()->GetAttr("save_intermediate_out"));
+      auto intermediate_out_args =
+          upstream_node->Op()->Output("IntermediateOut");
+      PADDLE_ENFORCE(
+          save_intermediate_out && !intermediate_out_args.empty(),
+          "The %s should save the intermediate_out in the fusing stage.",
+          upstream_node->Name());
+
+      // If the intermediate_out's output is only
+      // fused_elemwise_activation_grad, but the fused_elemwise_activation_grad
+      // doesn't use the intermediate_out.
+      auto upstream_node_outputs = upstream_node->outputs;
+      for (auto out : upstream_node_outputs) {
+        if (out->Name() == intermediate_out_args[0]) {
+          if (out->outputs.size() == 0) {
+            upstream_node->outputs =
+                this->RemoveNode(out, upstream_node->outputs);
+            need_removed_nodes.insert(std::move(out));
+            upstream_node->Op()->SetAttr("save_intermediate_out", false);
+          }
+        }
+      }
+    } else if (upstream_node->Name() == "fused_elemwise_activation_grad") {
+      auto intermediate_out_grad_args =
+          upstream_node->Op()->Output("IntermediateOut@GRAD");
+      PADDLE_ENFORCE(
+          !intermediate_out_grad_args.empty(),
+          "The %s should save the intermediate_out in the fusing stage.",
+          upstream_node->Name());
+      auto upstream_node_outputs = upstream_node->outputs;
+      for (auto &out : upstream_node_outputs) {
+        if (out->Name() == intermediate_out_grad_args[0] &&
+            out->outputs.empty()) {
+          upstream_node->Op()->SetOutput("IntermediateOut@GRAD", {});
+          upstream_node->outputs =
+              this->RemoveNode(out, upstream_node->outputs);
+          need_removed_nodes.insert(std::move(out));
+        }
+      }
+    }
+  }
+  GraphSafeRemoveNodes(graph, need_removed_nodes);
+}
+
 void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
                                         const Node *intermediate_out,
                                         Node *op_1, Node *op_2,
