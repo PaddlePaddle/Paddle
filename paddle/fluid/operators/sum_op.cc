@@ -218,6 +218,11 @@ class SumGradMaker : public framework::GradOpDescMakerBase {
   }
 };
 
+template struct SelectedRowsSumFunctor<platform::CPUDeviceContext, float>;
+template struct SelectedRowsSumFunctor<platform::CPUDeviceContext, double>;
+template struct SelectedRowsSumFunctor<platform::CPUDeviceContext, int>;
+template struct SelectedRowsSumFunctor<platform::CPUDeviceContext, int64_t>;
+
 }  // namespace operators
 }  // namespace paddle
 

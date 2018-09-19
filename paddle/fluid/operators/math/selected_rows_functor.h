@@ -54,6 +54,99 @@ struct SelectedRowsAddTo {
                   const int64_t input2_offset, framework::SelectedRows* input2);
 };
 
+// input2 = [all input in input1] + input2
+template <typename DeviceContext, typename T>
+struct SelectedRowsSumTo {
+  void operator()(const DeviceContext& context,
+                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<int64_t>& input2_offsets,
+                  framework::SelectedRows* input2);
+};
+
+template <>
+struct SelectedRowsSumTo<platform::CPUDeviceContext, float> {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<int64_t>& input2_offsets,
+                  framework::SelectedRows* input2) {
+    // Ensure all selected rows have the same height
+    auto start = std::chrono::system_clock::now();
+    size_t size = 0u;
+    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
+      auto& in_rows = (*iter)->rows();
+      size += in_rows.end() - in_rows.begin();
+      auto in1_height = (*iter)->height();
+      PADDLE_ENFORCE_EQ(in1_height, input2->height());
+    }
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(ERROR) << "selected rows check, cost: " << diff.count();
+
+    start = std::chrono::system_clock::now();
+    // concat rows
+    auto& in2_rows = *(input2->mutable_rows());
+    in2_rows.reserve(in2_rows.size() + size);
+    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
+      const framework::Vector<int64_t>& in_rows = (*iter)->rows();
+      in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
+    }
+
+    end = std::chrono::system_clock::now();
+    diff = end - start;
+    LOG(ERROR) << "selected rows concat rows, cost: " << diff.count();
+
+    start = std::chrono::system_clock::now();
+    auto* in2_value = input2->mutable_value();
+    auto* in2_data = in2_value->data<float>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, float>(context);
+    size_t offset = 0u;
+    for (size_t i = 0u; i != input1.size(); ++i) {
+      auto& in_value = input1[i]->value();
+      const auto* in_data = in_value.data<float>();
+      offset += input2_offsets[i];
+      blas.VCOPY(in_value.numel(), in_data, in2_data + offset);
+    }
+    end = std::chrono::system_clock::now();
+    diff = end - start;
+    LOG(ERROR) << "selected rows concat rows, cost: " << diff.count();
+  }
+};
+
+template <>
+struct SelectedRowsSumTo<platform::CPUDeviceContext, double> {
+  void operator()(const platform::CPUDeviceContext& context,
+                  const std::vector<framework::SelectedRows*>& input1,
+                  const std::vector<int64_t>& input2_offsets,
+                  framework::SelectedRows* input2) {
+    // Ensure all selected rows have the same height
+    size_t size = 0u;
+    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
+      auto& in_rows = (*iter)->rows();
+      size += in_rows.end() - in_rows.begin();
+      auto in1_height = (*iter)->height();
+      PADDLE_ENFORCE_EQ(in1_height, input2->height());
+    }
+
+    // concat rows
+    auto& in2_rows = *(input2->mutable_rows());
+    in2_rows.resize(size);
+    for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
+      auto& in_rows = (*iter)->rows();
+      in2_rows.Extend(in_rows.begin(), in_rows.end());
+    }
+
+    auto* in2_value = input2->mutable_value();
+    auto* in2_data = in2_value->data<double>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, double>(context);
+    for (size_t i = 0u; i != input1.size(); ++i) {
+      auto& in_value = input1[i]->value();
+      const auto* in_data = in_value.data<double>();
+      blas.VCOPY(in_value.numel(), in_data, in2_data + input2_offsets[i]);
+    }
+  }
+};
+
 // input2 = input1 + input2
 template <typename DeviceContext, typename T>
 struct SelectedRowsAddToTensor {

@@ -150,6 +150,9 @@ template struct SelectedRowsAddTo<platform::CPUDeviceContext, double>;
 template struct SelectedRowsAddTo<platform::CPUDeviceContext, int>;
 template struct SelectedRowsAddTo<platform::CPUDeviceContext, int64_t>;
 
+template struct SelectedRowsSumTo<platform::CPUDeviceContext, float>;
+template struct SelectedRowsSumTo<platform::CPUDeviceContext, double>;
+
 template <typename T>
 struct SelectedRowsAddToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,
