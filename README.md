@@ -61,9 +61,9 @@ Please refer to our [release announcement](https://github.com/PaddlePaddle/Paddl
 ## Installation
 
 It is recommended to check out the
-[Docker installation guide](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/docker_install_en.html)
+[Installation guide](http://paddlepaddle.org/documentation/docs/zh/0.14.0/new_docs/beginners_guide/install/install_doc.html#permalink-1--paddlepaddle)
 before looking into the
-[build from source guide](http://www.paddlepaddle.org/docs/develop/documentation/fluid/en/build_and_install/build_from_source_en.html).
+[build from source guide](http://paddlepaddle.org/documentation/docs/zh/0.14.0/new_docs/beginners_guide/install/install_doc.html#permalink-6--paddlepaddle).
 
 ## Documentation
 
