@@ -25,7 +25,7 @@ namespace operators {
 
 using LoD = framework::LoD;
 
-class ArrayToLoDFunctor;
+struct ArrayToLoDFunctor;
 template <typename DeviceContext>
 struct ArrayToLoDFunctorImpl {
   const ArrayToLoDFunctor *prev_functor_;
