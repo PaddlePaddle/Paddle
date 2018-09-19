@@ -1647,7 +1647,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self._inference_optimize(export_for_deployment=False)
+            p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -1717,7 +1717,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def _inference_optimize(self, export_for_deployment=True):
+    def _inference_optimize(self, prune_read_op=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1729,8 +1729,8 @@ class Program(object):
         information will be lost.
 
         Args:
-            export_for_deployment(bool): remove the read ops that are added by py_reader
-                                        for cpp inference library
+            prune_read_op(bool): remove the read ops that are added by py_reader
+                                 for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1744,7 +1744,7 @@ class Program(object):
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        if export_for_deployment:
+        if prune_read_op:
             while True:
                 if read_op_idx >= root_block.op_size() or root_block.op(
                         read_op_idx).type() == 'read':
