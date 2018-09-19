@@ -36,6 +36,7 @@ pass_library(infer_clean_graph_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
+pass_library(conv_bn_fuse_pass inference)
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
 if(WITH_MKLDNN)
