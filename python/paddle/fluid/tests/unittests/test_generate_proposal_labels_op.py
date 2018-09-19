@@ -20,10 +20,10 @@ import paddle.fluid as fluid
 from op_test import OpTest
 
 
-def generate_proposal_labels_in_python(
-        rpn_rois, gt_classes, gt_boxes, im_scales, batch_size_per_im,
-        fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo, bbox_reg_weights,
-        class_nums):
+def generate_proposal_labels_in_python(rpn_rois, gt_classes, is_crowd, gt_boxes,
+                                       im_info, batch_size_per_im, fg_fraction,
+                                       fg_thresh, bg_thresh_hi, bg_thresh_lo,
+                                       bbox_reg_weights, class_nums):
     rois = []
     labels_int32 = []
     bbox_targets = []
@@ -31,13 +31,13 @@ def generate_proposal_labels_in_python(
     bbox_outside_weights = []
     lod = []
     assert len(rpn_rois) == len(
-        im_scales), 'batch size of rpn_rois and ground_truth is not matched'
+        im_info), 'batch size of rpn_rois and ground_truth is not matched'
 
-    for im_i in range(len(im_scales)):
+    for im_i in range(len(im_info)):
         frcn_blobs = _sample_rois(
-            rpn_rois[im_i], gt_classes[im_i], gt_boxes[im_i], im_scales[im_i],
-            batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
-            bg_thresh_lo, bbox_reg_weights, class_nums)
+            rpn_rois[im_i], gt_classes[im_i], is_crowd[im_i], gt_boxes[im_i],
+            im_info[im_i], batch_size_per_im, fg_fraction, fg_thresh,
+            bg_thresh_hi, bg_thresh_lo, bbox_reg_weights, class_nums)
 
         lod.append(frcn_blobs['rois'].shape[0])
 
@@ -50,13 +50,14 @@ def generate_proposal_labels_in_python(
     return rois, labels_int32, bbox_targets, bbox_inside_weights, bbox_outside_weights, lod
 
 
-def _sample_rois(rpn_rois, gt_classes, gt_boxes, im_scale, batch_size_per_im,
-                 fg_fraction, fg_thresh, bg_thresh_hi, bg_thresh_lo,
-                 bbox_reg_weights, class_nums):
+def _sample_rois(rpn_rois, gt_classes, is_crowd, gt_boxes, im_info,
+                 batch_size_per_im, fg_fraction, fg_thresh, bg_thresh_hi,
+                 bg_thresh_lo, bbox_reg_weights, class_nums):
     rois_per_image = int(batch_size_per_im)
     fg_rois_per_im = int(np.round(fg_fraction * rois_per_image))
 
     # Roidb
+    im_scale = im_info[2]
     inv_im_scale = 1. / im_scale
     rpn_rois = rpn_rois * inv_im_scale
 
@@ -78,6 +79,9 @@ def _sample_rois(rpn_rois, gt_classes, gt_boxes, im_scale, batch_size_per_im,
         box_to_gt_ind_map[overlapped_boxes_ind] = overlaps_argmax[
             overlapped_boxes_ind]
 
+    crowd_ind = np.where(is_crowd)[0]
+    gt_overlaps[crowd_ind] = -1
+
     max_overlaps = gt_overlaps.max(axis=1)
     max_classes = gt_overlaps.argmax(axis=1)
 
@@ -85,9 +89,10 @@ def _sample_rois(rpn_rois, gt_classes, gt_boxes, im_scale, batch_size_per_im,
     fg_inds = np.where(max_overlaps >= fg_thresh)[0]
     fg_rois_per_this_image = np.minimum(fg_rois_per_im, fg_inds.shape[0])
     # Sample foreground if there are too many
-    if fg_inds.shape[0] > fg_rois_per_this_image:
-        fg_inds = np.random.choice(
-            fg_inds, size=fg_rois_per_this_image, replace=False)
+    # if fg_inds.shape[0] > fg_rois_per_this_image:
+    #     fg_inds = np.random.choice(
+    #         fg_inds, size=fg_rois_per_this_image, replace=False)
+    fg_inds = fg_inds[:fg_rois_per_this_image]
 
     # Background
     bg_inds = np.where((max_overlaps < bg_thresh_hi) & (max_overlaps >=
@@ -96,9 +101,10 @@ def _sample_rois(rpn_rois, gt_classes, gt_boxes, im_scale, batch_size_per_im,
     bg_rois_per_this_image = np.minimum(bg_rois_per_this_image,
                                         bg_inds.shape[0])
     # Sample background if there are too many
-    if bg_inds.shape[0] > bg_rois_per_this_image:
-        bg_inds = np.random.choice(
-            bg_inds, size=bg_rois_per_this_image, replace=False)
+    # if bg_inds.shape[0] > bg_rois_per_this_image:
+    #     bg_inds = np.random.choice(
+    #         bg_inds, size=bg_rois_per_this_image, replace=False)
+    bg_inds = bg_inds[:bg_rois_per_this_image]
 
     keep_inds = np.append(fg_inds, bg_inds)
     sampled_labels = max_classes[keep_inds]
@@ -208,8 +214,9 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.inputs = {
             'RpnRois': (self.rpn_rois[0], self.rpn_rois_lod),
             'GtClasses': (self.gt_classes[0], self.gts_lod),
+            'IsCrowd': (self.is_crowd[0], self.gts_lod),
             'GtBoxes': (self.gt_boxes[0], self.gts_lod),
-            'ImScales': self.im_scales[0]
+            'ImInfo': self.im_info
         }
         self.attrs = {
             'batch_size_per_im': self.batch_size_per_im,
@@ -218,14 +225,15 @@ class TestGenerateProposalLabelsOp(OpTest):
             'bg_thresh_hi': self.bg_thresh_hi,
             'bg_thresh_lo': self.bg_thresh_lo,
             'bbox_reg_weights': self.bbox_reg_weights,
-            'class_nums': self.class_nums
+            'class_nums': self.class_nums,
+            'use_random': False
         }
         self.outputs = {
-            'Rois': (self.rois[0], [self.lod]),
-            'LabelsInt32': (self.labels_int32[0], [self.lod]),
-            'BboxTargets': (self.bbox_targets[0], [self.lod]),
-            'BboxInsideWeights': (self.bbox_inside_weights[0], [self.lod]),
-            'BboxOutsideWeights': (self.bbox_outside_weights[0], [self.lod]),
+            'Rois': (self.rois, [self.lod]),
+            'LabelsInt32': (self.labels_int32, [self.lod]),
+            'BboxTargets': (self.bbox_targets, [self.lod]),
+            'BboxInsideWeights': (self.bbox_inside_weights, [self.lod]),
+            'BboxOutsideWeights': (self.bbox_outside_weights, [self.lod]),
         }
 
     def test_check_output(self):
@@ -236,8 +244,8 @@ class TestGenerateProposalLabelsOp(OpTest):
         self.set_data()
 
     def init_test_params(self):
-        self.batch_size_per_im = 10
-        self.fg_fraction = 1.0
+        self.batch_size_per_im = 512
+        self.fg_fraction = 0.25
         self.fg_thresh = 0.5
         self.bg_thresh_hi = 0.5
         self.bg_thresh_lo = 0.0
@@ -246,14 +254,14 @@ class TestGenerateProposalLabelsOp(OpTest):
 
     def init_test_input(self):
         np.random.seed(0)
-        image_nums = 1
         gt_nums = 6  # Keep same with batch_size_per_im for unittest
-        proposal_nums = self.batch_size_per_im - gt_nums
-        images_shape = []
-        self.im_scales = []
-        for i in range(image_nums):
-            images_shape.append(np.random.randint(200, size=2))
-            self.im_scales.append(np.ones((1)).astype(np.float32))
+        proposal_nums = 2000  #self.batch_size_per_im - gt_nums
+        images_shape = [[64, 64]]
+        self.im_info = np.ones((len(images_shape), 3)).astype(np.float32)
+        for i in range(len(images_shape)):
+            self.im_info[i, 0] = images_shape[i][0]
+            self.im_info[i, 1] = images_shape[i][1]
+            self.im_info[i, 2] = 0.8  #scale
 
         self.rpn_rois, self.rpn_rois_lod = _generate_proposals(images_shape,
                                                                proposal_nums)
@@ -261,16 +269,23 @@ class TestGenerateProposalLabelsOp(OpTest):
             images_shape, self.class_nums, gt_nums)
         self.gt_classes = [gt['gt_classes'] for gt in ground_truth]
         self.gt_boxes = [gt['boxes'] for gt in ground_truth]
+        self.is_crowd = [gt['is_crowd'] for gt in ground_truth]
 
     def init_test_output(self):
         self.rois, self.labels_int32, self.bbox_targets, \
         self.bbox_inside_weights, self.bbox_outside_weights, \
         self.lod = generate_proposal_labels_in_python(
-                self.rpn_rois, self.gt_classes, self.gt_boxes, self.im_scales,
+                self.rpn_rois, self.gt_classes, self.is_crowd, self.gt_boxes, self.im_info,
                 self.batch_size_per_im, self.fg_fraction,
                 self.fg_thresh, self.bg_thresh_hi, self.bg_thresh_lo,
                 self.bbox_reg_weights, self.class_nums
             )
+        self.rois = np.vstack(self.rois)
+        self.labels_int32 = np.hstack(self.labels_int32)
+        self.labels_int32 = self.labels_int32[:, np.newaxis]
+        self.bbox_targets = np.vstack(self.bbox_targets)
+        self.bbox_inside_weights = np.vstack(self.bbox_inside_weights)
+        self.bbox_outside_weights = np.vstack(self.bbox_outside_weights)
 
 
 def _generate_proposals(images_shape, proposal_nums):
@@ -280,7 +295,7 @@ def _generate_proposals(images_shape, proposal_nums):
     for i, image_shape in enumerate(images_shape):
         proposals = _generate_boxes(image_shape, proposal_nums)
         rpn_rois.append(proposals)
-        num_proposals += len(proposals)
+        num_proposals = len(proposals)
         rpn_rois_lod.append(num_proposals)
     return rpn_rois, [rpn_rois_lod]
 
@@ -294,7 +309,11 @@ def _generate_groundtruth(images_shape, class_nums, gt_nums):
         gt_classes = np.random.randint(
             low=1, high=class_nums, size=gt_nums).astype(np.int32)
         gt_boxes = _generate_boxes(image_shape, gt_nums)
-        ground_truth.append(dict(gt_classes=gt_classes, boxes=gt_boxes))
+        is_crowd = np.zeros((gt_nums), dtype=np.int32)
+        is_crowd[0] = 1
+        ground_truth.append(
+            dict(
+                gt_classes=gt_classes, boxes=gt_boxes, is_crowd=is_crowd))
         num_gts += len(gt_classes)
         gts_lod.append(num_gts)
     return ground_truth, [gts_lod]

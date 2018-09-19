@@ -32,6 +32,10 @@ struct ComputationOpHandle : public OpHandleBase {
 
   std::string Name() const override;
 
+  const Scope *GetScope() const { return scope_; }
+
+  const platform::Place &GetPlace() const { return place_; }
+
  protected:
   void RunImpl() override;
 
