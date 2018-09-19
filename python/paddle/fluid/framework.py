@@ -935,7 +935,7 @@ class Block(object):
 
     Notes:
         The constructor of Block should not be invoked directly. Please
-        use `Program.create_block()` to create a block.
+        use `Program._create_block()` to create a block.
 
     Examples:
         .. code-block:: python
@@ -1483,7 +1483,7 @@ class Program(object):
         self._op_role_var = [var_name]
 
     @contextlib.contextmanager
-    def optimized_guard(self, param_and_grads):
+    def _optimized_guard(self, param_and_grads):
         """
         A with guard to set :code:`Optimization` :code:`OpRole` and
         :code:`OpRoleVar` automatically.
@@ -1496,7 +1496,7 @@ class Program(object):
         Examples:
 
             >>> p, g = backward(...)
-            >>> with program.optimized_guard([p,g]):
+            >>> with program._optimized_guard([p,g]):
             >>>     p = p - 0.001 * g
         """
         OpRole = core.op_proto_and_checker_maker.OpRole
@@ -1554,7 +1554,7 @@ class Program(object):
             res_str = _debug_string_(proto, throw_on_error)
         return res_str
 
-    def get_desc(self):
+    def _get_desc(self):
         """
         Get the C++ side of `ProgramDesc` object pointer. The C++ object is
         exposed by :code:`pybind`.
@@ -1647,7 +1647,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self.inference_optimize(export_for_deployment=False)
+            p = self._inference_optimize(export_for_deployment=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -1663,10 +1663,10 @@ class Program(object):
             p._sync_with_cpp()
 
         p._copy_param_info_from(self)
-        p.copy_data_info_from(self)
+        p._copy_data_info_from(self)
         return p
 
-    def prune(self, targets):
+    def _prune(self, targets):
         """
         Prune operators and variables which are not needed to generate
         :code:`targets`.
@@ -1717,7 +1717,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def inference_optimize(self, export_for_deployment=True):
+    def _inference_optimize(self, export_for_deployment=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1841,7 +1841,7 @@ class Program(object):
         """
         return self.blocks[self.current_block_idx]
 
-    def create_block(self, parent_idx=None):
+    def _create_block(self, parent_idx=None):
         """
         Create a new block with the :code:`parent_idx` and change the current block
         to new block.
@@ -1860,7 +1860,7 @@ class Program(object):
         self.blocks.append(Block(self, self.current_block_idx))
         return self.current_block()
 
-    def rollback(self):
+    def _rollback(self):
         """
         Exit a code block, i.e., roll back to the parent block.
         Returns:
@@ -1906,7 +1906,7 @@ class Program(object):
                              "program, with represent the same topology")
         self.global_block()._copy_param_info_from(other.global_block())
 
-    def copy_data_info_from(self, other):
+    def _copy_data_info_from(self, other):
         """
         Copy the information of data variables from other program.
 
