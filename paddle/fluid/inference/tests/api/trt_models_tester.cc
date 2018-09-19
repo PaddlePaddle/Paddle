@@ -99,7 +99,7 @@ TEST(trt_models_test, main) {
   std::vector<std::string> infer_models = {"mobilenet", "resnet50",
                                            "resnext50"};
   for (auto &model_dir : infer_models) {
-    CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + model_dir);
+    CompareTensorRTWithFluid(5, FLAGS_dirname + "/" + model_dir);
   }
 }
 }  // namespace paddle
