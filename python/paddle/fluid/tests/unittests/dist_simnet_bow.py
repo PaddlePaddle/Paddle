@@ -38,7 +38,7 @@ DATA_MD5 = '24e49366eb0611c552667989de2f57d5'
 # For Net
 base_lr = 0.2
 emb_lr = base_lr * 3
-dict_dim = 1451594
+dict_dim = 1500
 emb_dim = 128
 hid_dim = 128
 margin = 0.1
