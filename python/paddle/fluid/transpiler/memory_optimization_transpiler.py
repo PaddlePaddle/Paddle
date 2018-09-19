@@ -357,7 +357,7 @@ def _get_cfgs(input_program):
     :return: A list of ControlFlowGraph, each corresponds to a block.
     """
     ops_list = []
-    pdesc = input_program.get_desc()
+    pdesc = input_program._get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
 

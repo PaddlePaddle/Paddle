@@ -20,79 +20,41 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-// Change it to thread safe flags if needed.
-class ThreadUnsafeOwnershipFlags {
+template <class T>
+class COWPtr {
  public:
-  explicit ThreadUnsafeOwnershipFlags(bool flag) : flag_(flag) {}
+  typedef std::shared_ptr<T> RefPtr;
 
-  ThreadUnsafeOwnershipFlags(const ThreadUnsafeOwnershipFlags& other) = delete;
-  ThreadUnsafeOwnershipFlags& operator=(
-      const ThreadUnsafeOwnershipFlags& other) = delete;
-  ThreadUnsafeOwnershipFlags(ThreadUnsafeOwnershipFlags&& other) = default;
+ private:
+  RefPtr m_sp;
 
-  void SetOwnership(bool flag) { flag_ = flag; }
-
-  // Invoke the callback if it is not owned.
-  template <typename Callback>
-  void AcquireOwnershipOnce(Callback acquire) {
-    if (!flag_) {
-      acquire();
-      flag_ = true;
+  void detach() {
+    T* tmp = m_sp.get();
+    if (!(tmp == nullptr || m_sp.unique())) {
+      m_sp = RefPtr(new T(*tmp));
     }
   }
 
- private:
-  bool flag_;
-};
-
-// Copy-On-Write pointer.
-// It will hold a T* pointer, and only copy once when `MutableData` is invoked.
-//
-// The template parameter OwnershipFlags should have:
-//   * a constructor takes a bool. True if own.
-//   * SetOwnership(bool flag).
-//   * AcquireOwnershipOnce(Callback). It will invoke the callback if it is not
-//     owned.
-//
-// https://en.wikipedia.org/wiki/Copy-on-write
-template <typename T, typename OwnershipFlags = ThreadUnsafeOwnershipFlags>
-class COWPtr {
  public:
-  // Ctor from raw pointer.
-  explicit COWPtr(T* ptr) : payload_(ptr), ownership_{true} {}
+  COWPtr() : m_sp(nullptr) {}
+  explicit COWPtr(T* t) : m_sp(t) {}
+  explicit COWPtr(const RefPtr& refptr) : m_sp(refptr) {}
 
-  // Move methods. Steal ownership from origin
-  COWPtr(COWPtr&& other)
-      : payload_(other.payload_), ownership_{std::move(other.ownership_)} {}
-  COWPtr& operator=(COWPtr&& origin) = default;
+  const T& Data() const { return operator*(); }
 
-  // Copy methods. Not own payload
-  COWPtr(const COWPtr& other) : payload_(other.payload_), ownership_{false} {}
-  COWPtr& operator=(const COWPtr& other) {
-    payload_ = other.payload_;
-    ownership_.SetOwnership(false);
-    return *this;
+  T* MutableData() { return operator->(); }
+
+  const T& operator*() const { return *m_sp; }
+  T& operator*() {
+    detach();
+    return *m_sp;
   }
-
-  // Access read only data.
-  const T& Data() const { return *payload_; }
-
-  // Access mutable data. If the data is not owned, the data will be copied
-  // before.
-  T* MutableData() {
-    ownership_.AcquireOwnershipOnce(
-        [this] { payload_.reset(new T(*payload_)); });
-    return payload_.get();
+  const T* operator->() const { return m_sp.operator->(); }
+  T* operator->() {
+    detach();
+    return m_sp.operator->();
   }
-
- private:
-  // Actual data pointer.
-  std::shared_ptr<T> payload_;
-
-  // Ownership flag.
-  OwnershipFlags ownership_;
 };
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
