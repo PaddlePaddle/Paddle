@@ -54,6 +54,7 @@ __all__ = [
     'conv2d_transpose',
     'conv3d_transpose',
     'sequence_expand',
+    'sequence_expand_as',
     'sequence_pad',
     'lstm_unit',
     'reduce_sum',
@@ -112,6 +113,8 @@ __all__ = [
     'pad2d',
     'unstack',
     'sequence_enumerate',
+    'expand',
+    'sequence_concat',
 ]
 
 
@@ -968,7 +971,7 @@ def dropout(x, dropout_prob, is_test=False, seed=None, name=None):
     return out
 
 
-def cross_entropy(input, label, soft_label=False):
+def cross_entropy(input, label, soft_label=False, ignore_index=-100):
     """
     **Cross Entropy Layer**
 
@@ -1012,7 +1015,10 @@ def cross_entropy(input, label, soft_label=False):
                                tensor<float/double> with shape [N x D].
         soft_label (bool): a flag indicating whether to
                                            interpretate the given labels as soft
-                                           labels, default `False`.
+                                           labels. Default: `False`.
+        ignore_index (int): Specifies a target value that is ignored and does 
+                            not contribute to the input gradient. Only valid 
+                            if soft_label is set to False. Default: -100
 
     Returns:
          A 2-D tensor with shape [N x 1], the cross entropy loss.
@@ -1037,7 +1043,8 @@ def cross_entropy(input, label, soft_label=False):
         inputs={'X': [input],
                 'Label': [label]},
         outputs={'Y': [out]},
-        attrs={"soft_label": soft_label})
+        attrs={"soft_label": soft_label,
+               "ignore_index": ignore_index})
     return out
 
 
@@ -1269,7 +1276,7 @@ def sequence_conv(input,
     return helper.append_activation(pre_act)
 
 
-def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
+def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=False):
     """
     This function computes the softmax activation among all time-steps for each
     sequence. The dimension of each time-step should be 1. Thus, the shape of
@@ -1292,7 +1299,7 @@ def sequence_softmax(input, param_attr=None, bias_attr=None, use_cudnn=True):
         bias_attr (ParamAttr|None): attributes for bias
         param_attr (ParamAttr|None): attributes for parameter
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn \
-        library is installed. Default: True
+        library is installed. Default: False
 
     Returns:
         Variable: output of sequence_softmax
@@ -1774,6 +1781,31 @@ def sequence_pool(input, pool_type):
         max_index.stop_gradient = True
 
     return pool_out
+
+
+@templatedoc()
+def sequence_concat(input, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(list): List of Variables to be concatenated.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                       will be named automatically.
+
+    Returns:
+        Variable: Output variable of the concatenation.
+
+    Examples:
+        .. code-block:: python
+
+           out = fluid.layers.sequence_concat(input=[seq1, seq2, seq3])
+    """
+    helper = LayerHelper('sequence_concat', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype())
+    helper.append_op(
+        type='sequence_concat', inputs={'X': input}, outputs={'Out': [out]})
+    return out
 
 
 def sequence_first_step(input):
@@ -2311,16 +2343,20 @@ def conv2d_transpose(input,
 
         .. math::
 
-           H_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
-           W_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
+           H_{out} \in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} \in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). This
-            parameter only works when filter_size is None.
+            tuple, it must contain two integers, (image_H, image_W). None if use
+            filter_size, padding, and stride to calculate output_size.
+            if output_size and filter_size are specified at the same time, They
+            should follow the formula above.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
@@ -2398,7 +2434,13 @@ def conv2d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
-
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, list) or isinstance(output_size, int):
+        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    else:
+        raise ValueError("output_size should be list or int")
+    padding = utils.convert_to_list(padding, 2, 'padding')
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
@@ -2411,6 +2453,7 @@ def conv2d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
         attrs={
+            'output_size': output_size,
             'strides': stride,
             'paddings': padding,
             'dilations': dilation,
@@ -2662,6 +2705,71 @@ def sequence_expand(x, y, ref_level=-1, name=None):
     return tmp
 
 
+def sequence_expand_as(x, y, name=None):
+    """Sequence Expand As Layer. This layer will expand the input variable **x**
+    according to the zeroth level lod of **y**. Current implementation requires
+    the level number of Input(Y)'s lod must be 1, and the first dimension of
+    Input(X) should be equal to the size of Input(Y)'s zeroth level lod, and
+    lod of Input(X) is not considered.
+
+    Following examples will explain how sequence_expand_as works:
+
+    .. code-block:: text
+
+        * Case 1:
+
+            Given a 1-level LoDTensor input(X)
+                X.data = [[a], [b], [c], [d]]
+                X.dims = [4, 1]
+            and input(Y)
+                Y.lod = [[0, 3, 6, 7, 8]]
+            ref_level: 0
+            then we get 1-level LoDTensor
+                Out.lod =  [[0,            3,              6,  7,  8]]
+                Out.data = [[a], [a], [a], [b], [b], [b], [c], [d]]
+                Out.dims = [8, 1]
+
+        * Case 2:
+
+            Given a common Tensor input(X)
+                X.data = [[a, b], [c, d], [e, f]]
+                X.dims = [3, 2]
+            and input(Y)
+                Y.lod = [[0, 2, 3, 6]]
+            ref_level: 0
+            then we get a common LoDTensor
+                Out.lod =  [[0,             2,     3,                    6]]
+                Out.data = [[a, b], [a, b] [c, d], [e, f], [e, f], [e, f]]
+                Out.dims = [6, 2]
+
+    Args:
+        x (Variable): The input variable which is a Tensor or LoDTensor.
+        y (Variable): The input variable which is a LoDTensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            y = fluid.layers.data(name='y', shape=[10, 20],
+                             dtype='float32', lod_level=1)
+            out = layers.sequence_expand_as(x=x, y=y)
+    """
+    helper = LayerHelper('sequence_expand_as', input=x, **locals())
+    dtype = helper.input_dtype()
+    tmp = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sequence_expand_as',
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': tmp})
+    return tmp
+
+
 @templatedoc()
 def sequence_pad(x, pad_value, maxlen=None):
     """
@@ -2680,7 +2788,8 @@ def sequence_pad(x, pad_value, maxlen=None):
             longest original sequence."
     
     Returns:
-        Variable: The padded sequence batch. All sequences has the same length.
+        Variable: The padded sequence batch and the original lengths before 
+                  padding. All sequences has the same length.
     
     Examples:
         .. code-block:: python
@@ -2696,15 +2805,21 @@ def sequence_pad(x, pad_value, maxlen=None):
     helper = LayerHelper('sequence_pad', input=x, **locals())
     dtype = helper.input_dtype()
     out = helper.create_tmp_variable(dtype)
+    length = helper.create_tmp_variable(dtype)
+
+    pad_value.stop_gradient = True
+    length.stop_gradient = True
+
     if maxlen is None:
         maxlen = -1
     helper.append_op(
         type='sequence_pad',
         inputs={'X': x,
                 'PadValue': pad_value},
-        outputs={'Out': out},
+        outputs={'Out': out,
+                 'Length': length},
         attrs={'padded_length': maxlen})
-    return out
+    return out, length
 
 
 def beam_search(pre_ids,
@@ -3384,7 +3499,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     return out
 
 
-def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     Applies matrix multiplication to two tensors.
 
@@ -3418,6 +3533,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         y (Variable): The input variable which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        alpha (float): The scale of output. Default 1.0.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -3485,8 +3601,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         inputs={'X': x,
                 'Y': y},
         outputs={'Out': out},
-        attrs={'transpose_X': transpose_x,
-               'transpose_Y': transpose_y})
+        attrs={
+            'transpose_X': transpose_x,
+            'transpose_Y': transpose_y,
+            'alpha': alpha,
+        })
     return out
 
 
@@ -4242,7 +4361,10 @@ def multiplex(inputs, index):
     return out
 
 
-def softmax_with_cross_entropy(logits, label, soft_label=False):
+def softmax_with_cross_entropy(logits,
+                               label,
+                               soft_label=False,
+                               ignore_index=-100):
     """
     **Softmax With Cross Entropy Operator.**
 
@@ -4284,6 +4406,10 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
             soft_label is set to true, Label is a Tensor<float/double> with
         soft_label (bool): A flag to indicate whether to interpretate the given
             labels as soft labels. By default, `soft_label` is set to False.
+        ignore_index (int): Specifies a target value that is ignored and does 
+                            not contribute to the input gradient. Only valid 
+                            if soft_label is set to False. Default: -100
+
     Returns:
         Variable: The cross entropy loss is a 2-D tensor with shape [N x 1].
 
@@ -4305,7 +4431,8 @@ def softmax_with_cross_entropy(logits, label, soft_label=False):
                 'Label': label},
         outputs={'Softmax': softmax,
                  'Loss': loss},
-        attrs={'soft_label': soft_label})
+        attrs={'soft_label': soft_label,
+               'ignore_index': ignore_index})
     return loss
 
 
@@ -4500,7 +4627,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     """
 
     if not (isinstance(shape, list) or isinstance(shape, tuple)):
-        raise ValueError("Input shape must be a python lsit or tuple.")
+        raise ValueError("Input shape must be a python list or tuple.")
     inputs = {"X": x}
     if isinstance(actual_shape, Variable):
         inputs["Shape"] = actual_shape
@@ -5913,7 +6040,7 @@ def sequence_mask(x, maxlen=None, dtype='int64', name=None):
         inputs={'X': [x]},
         outputs={'Y': out},
         attrs={
-            'max_len': maxlen if maxlen is not None else -1,
+            'maxlen': maxlen if maxlen is not None else -1,
             'out_dtype': out.dtype
         })
     return out
@@ -5996,3 +6123,53 @@ def unstack(x, axis=0, num=None):
         attrs={'axis': axis,
                'num': num})
     return outs
+
+
+def expand(x, expand_times, name=None):
+    """Expand operator tiles the input by given times number. You should set times
+    number for each dimension by providing attribute 'expand_times'. The rank of X
+    should be in [1, 6]. Please note that size of 'expand_times' must be the same
+    with X's rank. Following is a using case:
+
+
+    .. code-block:: text
+
+        Input(X) is a 3-D tensor with shape [2, 3, 1]:
+        
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+        
+        Attr(expand_times):  [1, 2, 2]
+        
+        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
+        
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+        
+    Args:
+        x (Variable): A tensor with rank in [1, 6].
+        expand_times (list|tuple): Expand times number for each dimension.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor. After expanding, size of each dimension of Output(Out) is equal to ithe size of the corresponding dimension of Input(X) multiplying the corresponding value given by expand_times.
+
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
+    """
+    helper = LayerHelper('expand', input=x, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='expand',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'expand_times': expand_times})
+    return out

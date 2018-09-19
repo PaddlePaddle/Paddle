@@ -150,7 +150,7 @@ if (WITH_ANAKIN AND WITH_MKL)
         SRCS
         ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/libinference_anakin_api* # compiled anakin api
         ${ANAKIN_INSTALL_DIR} # anakin release
-        DSTS ${dst_dir}/inference/anakin ${dst_dir}/inference/anakin)
+        DSTS ${dst_dir}/inference/anakin ${FLUID_INSTALL_DIR}/third_party/install/anakin)
      list(APPEND inference_deps anakin_inference_lib)
 endif()
 

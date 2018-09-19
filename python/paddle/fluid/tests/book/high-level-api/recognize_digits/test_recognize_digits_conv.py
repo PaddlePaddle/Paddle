@@ -18,6 +18,7 @@ import argparse
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle
+import six
 import sys
 import numpy
 import unittest
