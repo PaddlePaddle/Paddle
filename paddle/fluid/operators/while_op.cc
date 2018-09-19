@@ -192,7 +192,7 @@ class WhileGradOp : public framework::OperatorBase {
         // for some grad_op, their input doesn't have gradient,
         // for example lookup_table_grad_op, the input(Idx) doesn't have
         // gradient.
-        auto pg_ig_var = cur_scope.FindVar(pg_ig_names[param_id]);
+        auto pg_ig_var = cur_scope.FindVar(inside_grad_name);
         PADDLE_ENFORCE(pg_ig_var != nullptr);
         if (pg_ig_var->IsType<framework::LoDTensorArray>()) {
           auto pg_ig_lod_t_arr =
