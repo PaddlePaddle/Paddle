@@ -135,8 +135,6 @@ struct SelectedRowsSumFunctor<platform::CPUDeviceContext, float> {
       in0->mutable_value()->ShareDataWith(in_sel0.value());
     }
 
-    auto infer_start = std::chrono::system_clock::now();
-
     auto get_selected_row = [&](size_t i) -> const framework::SelectedRows & {
       if (i == 0 && in0) {
         return *in0.get();
@@ -177,12 +175,6 @@ struct SelectedRowsSumFunctor<platform::CPUDeviceContext, float> {
       in_dim[0] = static_cast<int64_t>(first_dim);
     }
 
-    auto infer_end = std::chrono::system_clock::now();
-    std::chrono::duration<double> diff = infer_end - infer_start;
-    LOG(ERROR) << "sum op infer shape end, cost: " << diff.count();
-
-    auto run_start = std::chrono::system_clock::now();
-
     out_value->Resize(framework::make_ddim(in_dim));
     out_value->mutable_data<float>(context.GetPlace());
 
@@ -207,10 +199,6 @@ struct SelectedRowsSumFunctor<platform::CPUDeviceContext, float> {
     }
     functor(context.template device_context<platform::CPUDeviceContext>(),
             selected_rows_vec, offset_vec, out);
-
-    auto run_end = std::chrono::system_clock::now();
-    diff = run_end - run_start;
-    LOG(ERROR) << "sum op add op end, cost: " << diff.count();
   }
 };
 
@@ -280,19 +268,27 @@ struct SelectedRowsSumFunctor<platform::CPUDeviceContext, double> {
     out_value->Resize(framework::make_ddim(in_dim));
     out_value->mutable_data<double>(context.GetPlace());
 
-    math::SelectedRowsAddTo<platform::CPUDeviceContext, double> functor;
+    math::SelectedRowsSumTo<platform::CPUDeviceContext, double> functor;
 
+    std::vector<framework::SelectedRows *> selected_rows_vec;
+    selected_rows_vec.reserve(N);
+    std::vector<int64_t> offset_vec;
+    offset_vec.reserve(N);
     int64_t offset = 0;
-    for (int i = 0; i < N; i++) {
+    for (int i = 0; i != N; ++i) {
       auto &sel_row = get_selected_row(i);
       if (sel_row.rows().size() == 0) {
         continue;
       }
-      PADDLE_ENFORCE_EQ(out->height(), sel_row.height());
-      functor(context.template device_context<platform::CPUDeviceContext>(),
-              sel_row, offset, out);
-      offset += sel_row.value().numel();
+
+      selected_rows_vec.emplace_back(
+          const_cast<framework::SelectedRows *>(&sel_row));
+
+      offset_vec.emplace_back(offset);
+      offset = sel_row.value().numel();
     }
+    functor(context.template device_context<platform::CPUDeviceContext>(),
+            selected_rows_vec, offset_vec, out);
   }
 };
 

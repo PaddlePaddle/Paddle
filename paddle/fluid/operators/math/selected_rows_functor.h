@@ -70,7 +70,7 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, float> {
                   const std::vector<int64_t>& input2_offsets,
                   framework::SelectedRows* input2) {
     // Ensure all selected rows have the same height
-    auto start = std::chrono::system_clock::now();
+    // auto start = std::chrono::system_clock::now();
     size_t size = 0u;
     for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
       auto& in_rows = (*iter)->rows();
@@ -79,11 +79,11 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, float> {
       PADDLE_ENFORCE_EQ(in1_height, input2->height());
     }
 
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    LOG(ERROR) << "selected rows check, cost: " << diff.count();
+    // auto end = std::chrono::system_clock::now();
+    // std::chrono::duration<double> diff = end - start;
+    // LOG(ERROR) << "selected rows check, cost: " << diff.count();
 
-    start = std::chrono::system_clock::now();
+    // start = std::chrono::system_clock::now();
     // concat rows
     auto& in2_rows = *(input2->mutable_rows());
     in2_rows.reserve(in2_rows.size() + size);
@@ -92,11 +92,11 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, float> {
       in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
 
-    end = std::chrono::system_clock::now();
-    diff = end - start;
-    LOG(ERROR) << "selected rows concat rows, cost: " << diff.count();
+    // end = std::chrono::system_clock::now();
+    // diff = end - start;
+    // LOG(ERROR) << "selected rows concat rows, cost: " << diff.count();
 
-    start = std::chrono::system_clock::now();
+    // start = std::chrono::system_clock::now();
     auto* in2_value = input2->mutable_value();
     auto* in2_data = in2_value->data<float>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, float>(context);
@@ -107,9 +107,9 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, float> {
       offset += input2_offsets[i];
       blas.VCOPY(in_value.numel(), in_data, in2_data + offset);
     }
-    end = std::chrono::system_clock::now();
-    diff = end - start;
-    LOG(ERROR) << "selected rows concat rows, cost: " << diff.count();
+    // end = std::chrono::system_clock::now();
+    // diff = end - start;
+    // LOG(ERROR) << "selected rows value copy, cost: " << diff.count();
   }
 };
 
@@ -130,19 +130,21 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, double> {
 
     // concat rows
     auto& in2_rows = *(input2->mutable_rows());
-    in2_rows.resize(size);
+    in2_rows.reserve(in2_rows.size() + size);
     for (auto iter = input1.begin(); iter != input1.end(); ++iter) {
-      auto& in_rows = (*iter)->rows();
-      in2_rows.Extend(in_rows.begin(), in_rows.end());
+      const framework::Vector<int64_t>& in_rows = (*iter)->rows();
+      in2_rows.insert(in2_rows.end(), in_rows.begin(), in_rows.end());
     }
 
     auto* in2_value = input2->mutable_value();
-    auto* in2_data = in2_value->data<double>();
-    auto blas = math::GetBlas<platform::CPUDeviceContext, double>(context);
+    auto* in2_data = in2_value->data<float>();
+    auto blas = math::GetBlas<platform::CPUDeviceContext, float>(context);
+    size_t offset = 0u;
     for (size_t i = 0u; i != input1.size(); ++i) {
       auto& in_value = input1[i]->value();
-      const auto* in_data = in_value.data<double>();
-      blas.VCOPY(in_value.numel(), in_data, in2_data + input2_offsets[i]);
+      const auto* in_data = in_value.data<float>();
+      offset += input2_offsets[i];
+      blas.VCOPY(in_value.numel(), in_data, in2_data + offset);
     }
   }
 };
@@ -214,16 +216,26 @@ struct MergeAdd<platform::CPUDeviceContext, float> {
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
 
+    auto start = std::chrono::system_clock::now();
     auto input_rows = input.rows();
-    std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
-    std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
+    std::vector<int64_t> merge_rows;
+    merge_rows.reserve(input_rows.size());
     std::unordered_map<int64_t, size_t> rows_pos_map;
-    rows_pos_map.reserve(merge_rows.size());
-    for (std::vector<int64_t>::iterator iter = merge_rows.begin();
-         iter != merge_rows.end(); ++iter) {
-      rows_pos_map[*iter] = iter - merge_rows.begin();
+    rows_pos_map.reserve(input_rows.size());
+    size_t idx = 0u;
+    for (std::vector<int64_t>::iterator iter = input_rows.begin();
+         iter != input_rows.end(); ++iter) {
+      if (rows_pos_map.find(*iter) == rows_pos_map.end()) {
+        rows_pos_map[*iter] = idx++;
+        merge_rows.emplace_back(*iter);
+      }
     }
 
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(ERROR) << "adam_op merge_add prepare, cost: " << diff.count();
+
+    start = std::chrono::system_clock::now();
     auto input_width = input.value().dims()[1];
     out.set_rows(merge_rows);
     out.set_height(input.height());
@@ -235,6 +247,11 @@ struct MergeAdd<platform::CPUDeviceContext, float> {
     math::SetConstant<platform::CPUDeviceContext, float> constant_functor;
     constant_functor(context, out.mutable_value(), 0.0);
 
+    end = std::chrono::system_clock::now();
+    diff = end - start;
+    LOG(ERROR) << "adam_op merge_add set_constant, cost: " << diff.count();
+
+    start = std::chrono::system_clock::now();
     auto* out_data = out.mutable_value()->data<float>();
     auto* input_data = input.value().data<float>();
 
@@ -246,6 +263,11 @@ struct MergeAdd<platform::CPUDeviceContext, float> {
       const float* x = input_data + i * input_width;
       blas.AXPY(input_width, 1., x, y);
     }
+
+    end = std::chrono::system_clock::now();
+    diff = end - start;
+    LOG(ERROR) << "adam_op merge_add do_merge, cost: " << diff.count()
+               << " size " << input_rows.size();
 
     return out;
   }

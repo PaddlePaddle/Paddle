@@ -231,6 +231,34 @@ struct SparseAdamFunctor {
     // Calculation
     lr *= sqrt(1 - beta2_pow) / (1 - beta1_pow);
 
+    // n = row_numel_;
+
+    // // do moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
+    // blas.VCOPY<T>(n, mom1, moment1_out);
+    // vec_scal<T>(n, beta1_, moment1_out);
+    // blas.AXPY<T>(n, 1 - beta1_, g, moment1_out);
+    // blas.VCOPY(n, mom1, moment1_out);
+
+    // // do moment2_out = beta2_ * mom2 + g * g * (1 - beta2_);
+    // blas.VCOPY<T>(n, mom2, moment2_out);
+    // vec_scal<T>(n, beta2_, moment2_out);
+    // blas.VMUL<float>(row_numel_, 1 - beta2_, g, g, moment2_out);
+
+    // // do param_out = param - lr * (moment1_out / (moment2_out.sqrt() +
+    // epsilon_));
+    // Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment1_out{
+    // moment1_out_p, static_cast<Eigen::Index>(n)};
+    // Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> moment2_out{
+    // moment2_out_p, static_cast<Eigen::Index>(n)};
+    // Tensor tensor;
+    // tensor->mutable_data<float>(
+    // paddle::framework::make_ddim({n}), cpu_place);
+    // Eigen::Map<Eigen::Array<T, 1, Eigen::Dynamic>> tmp{
+    // tensor->mutable_data<float>(), static_cast<Eigen::Index>(n)};
+
+    // blas.COPY<T>(n, param_out, param);
+    // blas.AXPY<T>(n, -lr, tmp, param_out);
+
     moment1_out = beta1_ * mom1 + (1 - beta1_) * g;
     moment2_out = beta2_ * mom2 + g * g * (1 - beta2_);
     param_out = param - lr * (moment1_out / (moment2_out.sqrt() + epsilon_));
@@ -241,6 +269,7 @@ template <typename DeviceContext, typename T>
 class AdamOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto start = std::chrono::system_clock::now();
     using paddle::framework::LoDTensor;
     using paddle::operators::detail::Ref;
 
@@ -304,6 +333,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         VLOG(3) << "grad row size is 0!!";
         return;
       }
+
+      auto start = std::chrono::system_clock::now();
       // merge duplicated rows if any.
       scatter::MergeAdd<DeviceContext, T> merge_func;
       auto grad_merge =
@@ -325,6 +356,11 @@ class AdamOpKernel : public framework::OpKernel<T> {
 #endif
       auto row_numel = grad_tensor.numel() / grad_merge.rows().size();
 
+      auto end = std::chrono::system_clock::now();
+      std::chrono::duration<double> diff = end - start;
+      LOG(ERROR) << "adam_op merge, cost: " << diff.count();
+
+      start = std::chrono::system_clock::now();
       SparseAdamFunctor<T> functor(
           beta1, beta2, epsilon, beta1_pow.template data<T>(),
           beta2_pow.template data<T>(), mom1.template data<T>(),
@@ -337,9 +373,17 @@ class AdamOpKernel : public framework::OpKernel<T> {
           static_cast<const DeviceContext&>(ctx.device_context()),
           grad_merge.rows().size());
       for_range(functor);
+      end = std::chrono::system_clock::now();
+      diff = end - start;
+      LOG(ERROR) << "adam_op functor, cost: " << diff.count();
     } else {
       PADDLE_THROW("Variable type not supported by adam_op");
     }
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> diff = end - start;
+    LOG(ERROR) << "adam_op run end, cost: " << diff.count() << " input name "
+               << ctx.Outputs("ParamOut")[0];
   }
 };
 
