@@ -31,7 +31,7 @@ def gru(
         is_reverse,
         act_state,
         act_gate,
-        dtype='float64'):
+        dtype):
     def _seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
         seq_lens = lod[0]
@@ -109,23 +109,24 @@ class TestGRUOp(OpTest):
         self.with_bias = True
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
+        self.dtype = 'float64'
         self.set_confs()
 
         T = sum(self.lod[0])
         N = len(self.lod[0])
 
-        input = np.random.rand(T, 3 * self.D).astype('float64')
-        weight = np.random.rand(self.D, 3 * self.D).astype('float64')
+        input = np.random.rand(T, 3 * self.D).astype(dtype)
+        weight = np.random.rand(self.D, 3 * self.D).astype(dtype)
         bias = np.random.rand(
-            1, 3 * self.D).astype('float64') if self.with_bias else np.zeros(
-                (1, 3 * self.D), dtype='float64')
-        h0 = np.random.rand(
-            N, self.D).astype('float64') if self.with_h0 else np.zeros(
-                (N, self.D), dtype='float64')
+            1, 3 * self.D).astype(dtype) if self.with_bias else np.zeros(
+                (1, 3 * self.D), dtype=dtype)
+        h0 = np.random.rand(N,
+                            self.D).astype(dtype) if self.with_h0 else np.zeros(
+                                (N, self.D), dtype=dtype)
 
         batch_gate, batch_reset_hidden_prev, batch_hidden, hidden = gru(
             input, self.lod, h0, weight, bias, self.is_reverse,
-            ACTIVATION[self.act_state], ACTIVATION[self.act_gate])
+            ACTIVATION[self.act_state], ACTIVATION[self.act_gate], dtype)
         self.inputs = {'Input': (input, self.lod), 'Weight': weight}
 
         if self.with_bias:
@@ -155,52 +156,9 @@ class TestGRUOp(OpTest):
 
 
 class TestGRUOp2(TestGRUOp):
-    def setUp(self):
-        self.op_type = "gru"
-        self.lod = [[2, 4, 3]]
+    def set_confs(self):
         self.D = 19
-        self.is_reverse = False
-        self.with_h0 = True
-        self.with_bias = True
-        self.act_state = 'tanh'
-        self.act_gate = 'sigmoid'
-        self.set_confs()
-
-        T = sum(self.lod[0])
-        N = len(self.lod[0])
-
-        input = np.random.rand(T, 3 * self.D).astype('float32')
-        weight = np.random.rand(self.D, 3 * self.D).astype('float32')
-        bias = np.random.rand(
-            1, 3 * self.D).astype('float32') if self.with_bias else np.zeros(
-                (1, 3 * self.D), dtype='float32')
-        h0 = np.random.rand(
-            N, self.D).astype('float32') if self.with_h0 else np.zeros(
-                (N, self.D), dtype='float32')
-
-        batch_gate, batch_reset_hidden_prev, batch_hidden, hidden = gru(
-            input, self.lod, h0, weight, bias, self.is_reverse,
-            ACTIVATION[self.act_state], ACTIVATION[self.act_gate], 'float32')
-        self.inputs = {'Input': (input, self.lod), 'Weight': weight}
-
-        if self.with_bias:
-            self.inputs['Bias'] = bias
-
-        if self.with_h0:
-            self.inputs['H0'] = h0
-
-        self.outputs = {
-            'Hidden': (hidden, self.lod),
-            'BatchGate': batch_gate,
-            'BatchResetHiddenPrev': batch_reset_hidden_prev,
-            'BatchHidden': batch_hidden,
-        }
-
-        self.attrs = {
-            'activation': self.act_state,
-            'gate_activation': self.act_gate,
-            'is_reverse': self.is_reverse
-        }
+        self.dtype = 'float32'
 
 
 class TestGRUOpNoInitial(TestGRUOp):
