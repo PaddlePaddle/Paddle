@@ -36,6 +36,14 @@ TEST(TensorRTSubGraphPass, main) {
   };
 
   Argument argument(FLAGS_inference_model_dir);
+  int* minimum_subgraph_size = new int(0);
+  int* max_batch_size = new int(3);
+  int* workspace_size = new int(1 << 20);
+  std::string* precision_mode = new std::string("FP32");
+  argument.Set<int>("minimun_subgraph_size", minimum_subgraph_size);
+  argument.Set<int>("max_batch_size", max_batch_size);
+  argument.Set<int>("workspace_size", workspace_size);
+  argument.Set<std::string>("precision_mode", precision_mode);
 
   DFG_GraphvizDrawPass::Config config{FLAGS_dot_dir, "origin"};
   DFG_GraphvizDrawPass::Config config1{FLAGS_dot_dir, "fusion"};
