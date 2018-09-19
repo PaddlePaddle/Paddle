@@ -52,6 +52,12 @@ $$Out = scale*X$$
 )DOC");
     AddAttr<float>("scale", "The scaling factor of the scale operator.")
         .SetDefault(1.0);
+    AddAttr<float>("bias", "The bias of the scale operator.").SetDefault(0.0);
+    AddAttr<bool>(
+        "bias_after_scale",
+        "Apply bias addition after or before scaling. It is useful for "
+        "numeric stability in some circumstances.")
+        .SetDefault(true);
   }
 };
 
@@ -80,6 +86,8 @@ class ScaleGradMaker : public framework::SingleGradOpDescMaker {
     grad_op->SetInput("X", OutputGrad("Out"));
     grad_op->SetOutput("Out", InputGrad("X"));
     grad_op->SetAttr("scale", GetAttr("scale"));
+    grad_op->SetAttr("bias", 0.0f);
+    grad_op->SetAttr("bias_after_scale", true);
     return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
