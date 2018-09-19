@@ -17,11 +17,24 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+import paddle.fluid.framework as framework
 import unittest
 import os
 import numpy as np
 import math
 import sys
+
+def save_program_desc(network_func):
+    startup_program = framework.Program()
+    train_program = framework.Program()
+
+    with framework.program_guard(train_program, startup_program):
+        network_func(with_optimize=False)
+
+    with open("startup_program", "w") as f:
+        f.write(startup_program.desc.serialize_to_string())
+    with open("main_program", "w") as f:
+        f.write(train_program.desc.serialize_to_string())
 
 
 def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
@@ -121,6 +134,9 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
                         fluid.io.save_inference_model(save_dirname, [
                             'firstw', 'secondw', 'thirdw', 'forthw'
                         ], [predict_word], exe)
+
+                        # save the whole program desc.
+
                     return
                 if math.isnan(float(avg_cost_np[0])):
                     sys.exit("got NaN loss, training failed.")
