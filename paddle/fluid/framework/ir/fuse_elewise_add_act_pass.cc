@@ -250,7 +250,7 @@ Node *FuseElewiseAddActPass::CreateFuseElewiseAddActNode(
 
 void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
   std::unordered_set<const Node *> need_removed_nodes;
-  for (auto cur_node : graph->Nodes()) {
+  for (auto &cur_node : graph->Nodes()) {
     if (cur_node->IsVar()) continue;
     if (cur_node->Name() == "fused_elemwise_activation") {
       bool save_intermediate_out =
@@ -263,7 +263,7 @@ void FuseElewiseAddActPass::RemoveIntermediateOut(Graph *graph) const {
 
       // If the intermediate_out's output is empty, it should be removed.
       auto cur_node_outputs = cur_node->outputs;
-      for (auto out : cur_node_outputs) {
+      for (auto &out : cur_node_outputs) {
         if (out->Name() == intermediate_out_args[0]) {
           if (out->outputs.size() == 0) {
             cur_node->outputs = this->RemoveNode(out, cur_node->outputs);
@@ -298,13 +298,13 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
                                         const Node *intermediate_out,
                                         Node *op_1, Node *op_2,
                                         Node *fused_op) const {  // delete act
-  for (auto in : op_1->inputs) {
+  for (auto &in : op_1->inputs) {
     fused_op->inputs.emplace_back(in);
     in->outputs = this->ReplaceNode(op_1, fused_op, in->outputs);
   }
 
   std::unordered_set<const Node *> nodes2delete;
-  for (auto out : op_1->outputs) {
+  for (auto &out : op_1->outputs) {
     if (out->IsCtrlVar()) {
       auto result_iter = std::find_if(
           op_2->inputs.begin(), op_2->inputs.end(),
@@ -321,7 +321,7 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
     }
   }
 
-  for (auto in : op_2->inputs) {
+  for (auto &in : op_2->inputs) {
     if (in == intermediate_out || nodes2delete.count(in)) {
       continue;
     }
@@ -329,7 +329,7 @@ void FuseElewiseAddActPass::ReLinkNodes(Graph *graph,
     in->outputs = this->ReplaceNode(op_2, fused_op, in->outputs);
   }
 
-  for (auto out : op_2->outputs) {
+  for (auto &out : op_2->outputs) {
     IR_OP_VAR_LINK(fused_op, out);
   }
 
