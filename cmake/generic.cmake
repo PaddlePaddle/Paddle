@@ -211,7 +211,7 @@ function(merge_static_libs TARGET_NAME)
       set(libfiles ${libfiles} $<TARGET_FILE:${lib}>)
       #endif()
     endforeach()
-   
+
     # windows cmd return error in clean env.
     # COMMAND del "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_BUILD_TYPE}/${TARGET_NAME}.lib"
     add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
@@ -255,7 +255,7 @@ function(cc_library TARGET_NAME)
       target_link_libraries(${TARGET_NAME} ${cc_library_DEPS})
       add_dependencies(${TARGET_NAME} ${cc_library_DEPS})
     endif()
-    
+
     # cpplint code style
     foreach(source_file ${cc_library_SRCS})
       string(REGEX REPLACE "\\.[^.]*$" "" source ${source_file})
@@ -298,11 +298,10 @@ function(cc_test TARGET_NAME)
              WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
     if (${cc_test_SERIAL})
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-
+    endif()
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    endif()
   endif()
 endfunction(cc_test)
 
@@ -366,11 +365,10 @@ function(nv_test TARGET_NAME)
     add_test(${TARGET_NAME} ${TARGET_NAME})
     if (nv_test_SERIAL)
         set_property(TEST ${TARGET_NAME} PROPERTY RUN_SERIAL 1)
-
+    endif()
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cpu_deterministic=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_init_allocated_mem=true)
     set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT FLAGS_cudnn_deterministic=true)
-    endif()
   endif()
 endfunction(nv_test)
 
@@ -558,26 +556,26 @@ function(paddle_protobuf_generate_cpp SRCS HDRS)
   set(${HDRS})
 
   if (MOBILE_INFERENCE)
-      set(EXTRA_FLAG "lite:")  
+      set(EXTRA_FLAG "lite:")
   else()
-      set(EXTRA_FLAG "") 
+      set(EXTRA_FLAG "")
   endif()
 
   foreach(FIL ${ARGN})
     get_filename_component(ABS_FIL ${FIL} ABSOLUTE)
     get_filename_component(FIL_WE ${FIL} NAME_WE)
-    
+
     set(_protobuf_protoc_src "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.cc")
     set(_protobuf_protoc_hdr "${CMAKE_CURRENT_BINARY_DIR}/${FIL_WE}.pb.h")
     list(APPEND ${SRCS} "${_protobuf_protoc_src}")
     list(APPEND ${HDRS} "${_protobuf_protoc_hdr}")
-    
+
     add_custom_command(
       OUTPUT "${_protobuf_protoc_src}"
              "${_protobuf_protoc_hdr}"
 
       COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}"
-      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE} 
+      COMMAND ${PROTOBUF_PROTOC_EXECUTABLE}
       -I${CMAKE_CURRENT_SOURCE_DIR}
       --cpp_out "${EXTRA_FLAG}${CMAKE_CURRENT_BINARY_DIR}" ${ABS_FIL}
       DEPENDS ${ABS_FIL} protoc
@@ -646,7 +644,7 @@ function(grpc_library TARGET_NAME)
   get_filename_component(PROTO_PATH ${ABS_PROTO} PATH)
 
   #FIXME(putcn): the follwoing line is supposed to generate *.pb.h and cc, but
-  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here 
+  # somehow it didn't. line 602 to 604 is to patching this. Leaving this here
   # for now to enable dist CI.
   protobuf_generate_cpp(grpc_proto_srcs grpc_proto_hdrs "${ABS_PROTO}")
   set(grpc_grpc_srcs "${CMAKE_CURRENT_BINARY_DIR}/${PROTO_WE}.grpc.pb.cc")
