@@ -41,7 +41,6 @@ __all__ = [
     'DynamicRNN',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
-    'ParallelDo',
     'Print',
     'is_empty',
 ]
@@ -218,10 +217,10 @@ class BlockGuard(object):
         self.main_program = main_program
 
     def __enter__(self):
-        self.main_program.create_block()
+        self.main_program._create_block()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.main_program.rollback()
+        self.main_program._rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True
@@ -259,7 +258,7 @@ class ParallelDo(object):
       # ParallelDo version & Single-thread version
       if thread_num > 1:
           places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.ParallelDo(places)
+          pd = fluid.layers.control_flow.ParallelDo(places)
           with pd.do():
               images = pd.read_input(images)
               label = pd.read_input(label)

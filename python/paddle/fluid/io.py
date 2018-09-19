@@ -515,8 +515,8 @@ def get_inference_program(target_vars, main_program=None):
             vars.extend(var.metrics)
         else:
             vars.append(var)
-    pruned_program = main_program.prune(targets=vars)
-    inference_program = pruned_program.inference_optimize()
+    pruned_program = main_program._prune(targets=vars)
+    inference_program = pruned_program._inference_optimize()
     return inference_program
 
 
@@ -644,8 +644,8 @@ def save_inference_model(dirname,
             global_block._remove_op(i)
     copy_program.desc.flush()
 
-    pruned_program = copy_program.prune(targets=target_vars)
-    inference_program = pruned_program.inference_optimize(
+    pruned_program = copy_program._prune(targets=target_vars)
+    inference_program = pruned_program._inference_optimize(
         export_for_deployment=export_for_deployment)
     fetch_var_names = [v.name for v in target_vars]
 
