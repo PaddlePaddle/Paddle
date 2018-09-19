@@ -80,7 +80,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
-            build_strategy.debug_graphviz_path = "./graph.dot"
+
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(
                     use_cuda,

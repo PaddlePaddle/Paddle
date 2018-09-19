@@ -531,11 +531,11 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   a->outputs.push_back(b);    \
   b->inputs.push_back(a);
 
-// Link two ir::Nodes from each other.
-#define IR_OP_VAR_LINK(a, b) \
-  a->outputs.push_back(b);   \
-  b->inputs.clear();         \
-  b->inputs.push_back(a);
+// Set the out_var as the output of the op
+#define IR_OP_VAR_LINK(op, out_var) \
+  op->outputs.push_back(out_var);   \
+  out_var->inputs.clear();          \
+  out_var->inputs.push_back(op);
 
 }  // namespace ir
 }  // namespace framework
