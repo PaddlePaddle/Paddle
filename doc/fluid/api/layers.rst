@@ -290,14 +290,6 @@ Recv
 ..  autofunction:: paddle.fluid.layers.Recv
     :noindex:
 
-.. _api_fluid_layers_open_recordio_file:
-
-open_recordio_file
-------------------
-
-..  autofunction:: paddle.fluid.layers.open_recordio_file
-    :noindex:
-
 .. _api_fluid_layers_open_files:
 
 open_files
@@ -822,6 +814,14 @@ pad
 ..  autofunction:: paddle.fluid.layers.pad
     :noindex:
 
+.. _api_fluid_layers_pad_constant_like:
+
+pad_constant_like
+---
+
+..  autofunction:: paddle.fluid.layers.pad_constant_like
+    :noindex:
+
 .. _api_fluid_layers_label_smooth:
 
 label_smooth
@@ -1143,6 +1143,14 @@ sigmoid
 -------
 
 ..  autofunction:: paddle.fluid.layers.sigmoid
+    :noindex:
+
+.. _api_fluid_layers_hsigmoid:
+
+hsigmoid
+-------
+
+..  autofunction:: paddle.fluid.layers.hsigmoid
     :noindex:
 
 .. _api_fluid_layers_logsigmoid:

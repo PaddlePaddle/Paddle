@@ -247,7 +247,7 @@ class DistributeTranspiler(object):
             np.random.seed(self.origin_program.random_seed)
             np.random.shuffle(grad_var_mapping_items)
 
-        grad_name_to_send_dummy_out = dict()
+        self.grad_name_to_send_dummy_out = dict()
         for grad_varname, splited_vars in grad_var_mapping_items:
             eplist = ps_dispatcher.dispatch(splited_vars)
 
@@ -271,7 +271,7 @@ class DistributeTranspiler(object):
 
             dummy_output = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
-            grad_name_to_send_dummy_out[grad_varname] = dummy_output
+            self.grad_name_to_send_dummy_out[grad_varname] = dummy_output
 
             # get send op_role_var, if not splited, the grad should have .trainer suffix
             # if splited, grad should be the original grad var name (split_by_ref and send
@@ -297,10 +297,15 @@ class DistributeTranspiler(object):
         if self.sync_mode:
             send_barrier_out = program.global_block().create_var(
                 name=framework.generate_control_dev_var_name())
-            input_deps = grad_name_to_send_dummy_out.values()
+            if self.has_distributed_lookup_table:
+                self.grad_name_to_send_dummy_out[
+                    self.table_name] = program.global_block().create_var(
+                        name=framework.generate_control_dev_var_name())
+            input_deps = self.grad_name_to_send_dummy_out.values()
+
             program.global_block().append_op(
                 type="send_barrier",
-                inputs={"X": input_deps},
+                inputs={"X": list(input_deps)},
                 outputs={"Out": send_barrier_out},
                 attrs={
                     "endpoints": pserver_endpoints,
@@ -329,7 +334,7 @@ class DistributeTranspiler(object):
                 recv_dep_in = send_barrier_out
             else:
                 # connect deps to send op in async mode
-                recv_dep_in = grad_name_to_send_dummy_out[
+                recv_dep_in = self.grad_name_to_send_dummy_out[
                     self.param_name_to_grad_name[param_varname]]
             all_recv_outputs.extend(splited_var)
             # get recv op_role_var, if not splited, the grad should have .trainer suffix
@@ -381,7 +386,7 @@ class DistributeTranspiler(object):
                                                         pserver_endpoints)
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
-    def get_trainer_program(self):
+    def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program.
 
@@ -393,6 +398,9 @@ class DistributeTranspiler(object):
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
         self.origin_program.__str__()
 
+        if wait_port:
+            wait_server_ready(self.pserver_endpoints)
+
         return self.origin_program
 
     def _get_trainer_startup_program(self, recv_vars, eplist):
@@ -401,7 +409,7 @@ class DistributeTranspiler(object):
 
         Args:
             recv_vars (list): Variable list to recv for current trainer_id
-            eplist (list): A list of strings indicating 
+            eplist (list): A list of strings indicating
 
         Returns:
             Program: trainer side startup program.
@@ -455,7 +463,7 @@ class DistributeTranspiler(object):
             if len(splited_var) <= 1:
                 continue
             # NOTE: if enable memory optimization, origin vars maybe removed.
-            if startup_program.global_block().vars.has_key(varname):
+            if varname in startup_program.global_block().vars:
                 orig_param = startup_program.global_block().vars[varname]
             else:
                 origin_param_var = self.origin_program.global_block().vars[
@@ -572,7 +580,7 @@ class DistributeTranspiler(object):
             assert isinstance(origin_block, Block)
             # we put the new sub block to new block to follow the block
             # hierarchy of the original blocks
-            new_sub_block = program.create_block(lr_block.idx)
+            new_sub_block = program._create_block(lr_block.idx)
 
             # clone vars
             for var in origin_block.vars:
@@ -592,7 +600,7 @@ class DistributeTranspiler(object):
         # record optimize blocks and we can run them on pserver parallel
         optimize_blocks = []
         if len(lr_ops) > 0:
-            lr_decay_block = pserver_program.create_block(
+            lr_decay_block = pserver_program._create_block(
                 pserver_program.num_blocks - 1)
             optimize_blocks.append(lr_decay_block)
             for _, op in enumerate(lr_ops):
@@ -605,7 +613,7 @@ class DistributeTranspiler(object):
         grad_to_block_id = []
         pre_block_idx = pserver_program.num_blocks - 1
         for idx, opt_op in enumerate(opt_op_on_pserver):
-            per_opt_block = pserver_program.create_block(pre_block_idx)
+            per_opt_block = pserver_program._create_block(pre_block_idx)
             optimize_blocks.append(per_opt_block)
             # append grad merging ops before clip and weight decay
             # cases may like:
@@ -628,7 +636,7 @@ class DistributeTranspiler(object):
         grad_to_block_id = list(set(grad_to_block_id))
         # append global ops
         if global_ops:
-            opt_state_block = pserver_program.create_block(
+            opt_state_block = pserver_program._create_block(
                 pserver_program.num_blocks - 1)
             optimize_blocks.append(opt_state_block)
             for glb_op in global_ops:
@@ -690,7 +698,7 @@ class DistributeTranspiler(object):
 
         Args:
             endpoint (str): current pserver endpoint.
-        
+
         Returns:
             tuple: (main_program, startup_program), of type "Program"
         """
@@ -713,7 +721,7 @@ class DistributeTranspiler(object):
             endpoint (str): current pserver endpoint.
             pserver_program (Program): deprecated, call get_pserver_program first.
             startup_program (Program): deprecated, should pass startup_program
-                when initalizing 
+                when initalizing
 
         Returns:
             Program: parameter server side startup program.
@@ -1043,9 +1051,13 @@ class DistributeTranspiler(object):
                     index=op_index + 2,
                     type="send",
                     inputs={'X': self.trainer_side_table_grad_list},
-                    outputs={'Out': []},
+                    outputs={
+                        'Out':
+                        [self.grad_name_to_send_dummy_out[self.table_name]]
+                        if self.sync_mode else []
+                    },
                     attrs={
-                        "sync_mode": True,
+                        "sync_mode": False,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME: [
@@ -1061,7 +1073,7 @@ class DistributeTranspiler(object):
         table_var = pserver_program.global_block().vars[self.table_name]
         prefetch_var_name_to_block_id = []
         for index in range(len(self.all_prefetch_input_vars)):
-            prefetch_block = pserver_program.create_block(optimize_block.idx)
+            prefetch_block = pserver_program._create_block(optimize_block.idx)
             trainer_ids = self.all_prefetch_input_vars[index][pserver_index]
             pserver_ids = pserver_program.global_block().create_var(
                 name=trainer_ids.name,
@@ -1096,7 +1108,8 @@ class DistributeTranspiler(object):
             self.table_name]
 
         zero_dim = int(
-            math.ceil(origin_param_var.shape[0] / len(self.pserver_endpoints)))
+            math.ceil(origin_param_var.shape[0] / float(
+                len(self.pserver_endpoints))))
         table_shape = list(origin_param_var.shape)
         table_shape[0] = zero_dim
 
@@ -1118,7 +1131,7 @@ class DistributeTranspiler(object):
             if 'Param' in op.input_names and op.input("Param")[0] ==
             self.table_name
         ][0]
-        table_opt_block = pserver_program.create_block(pre_block_idx)
+        table_opt_block = pserver_program._create_block(pre_block_idx)
 
         if self.sync_mode:
             # create grad vars in pserver program
@@ -1181,7 +1194,7 @@ class DistributeTranspiler(object):
             persistable=True,
             type=core.VarDesc.VarType.RAW)
 
-        checkpoint_save_block = pserver_program.create_block(pre_block_idx)
+        checkpoint_save_block = pserver_program._create_block(pre_block_idx)
         # this 'file_path' do not be used in save lookup table variable
         checkpoint_save_block.append_op(
             type='save',

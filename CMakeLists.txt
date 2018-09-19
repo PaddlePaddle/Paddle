@@ -69,6 +69,7 @@ option(WITH_ANAKIN      "Compile with Anakin library"                   OFF)
 option(WITH_GRPC     "Use grpc as the default rpc framework"            ${WITH_DISTRIBUTE})
 option(WITH_BRPC_RDMA     "Use brpc rdma as the rpc protocal"           OFF)
 option(WITH_INFERENCE    "Compile fluid inference library"              ON)
+option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
 
@@ -213,9 +214,11 @@ include(configure)          # add paddle env configuration
 if(WITH_GPU)
     include(cuda)
     include(tensorrt)
+endif()
+if(WITH_MKL OR WITH_MKLML)
     include(external/anakin)
 elseif()
-    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in GPU only now." FORCE)
+    set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
 include(generic)            # simplify cmake module

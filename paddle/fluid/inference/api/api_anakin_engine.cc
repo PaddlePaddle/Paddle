@@ -193,7 +193,9 @@ PaddleInferenceAnakinPredictor<Target>::Clone() {
   return std::move(cls);
 }
 
+#ifdef PADDLE_WITH_CUDA
 template class PaddleInferenceAnakinPredictor<anakin::NV>;
+#endif
 template class PaddleInferenceAnakinPredictor<anakin::X86>;
 
 // A factory to help create difference predictor.
@@ -202,10 +204,15 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     AnakinConfig, PaddleEngineKind::kAnakin>(const AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
   if (config.target_type == AnakinConfig::NVGPU) {
+#ifdef PADDLE_WITH_CUDA
     VLOG(3) << "Anakin Predictor create on [ NVIDIA GPU ].";
     std::unique_ptr<PaddlePredictor> x(
         new PaddleInferenceAnakinPredictor<anakin::NV>(config));
     return x;
+#else
+    LOG(ERROR) << "AnakinConfig::NVGPU could not used in ONLY-CPU environment";
+    return nullptr;
+#endif
   } else if (config.target_type == AnakinConfig::X86) {
     VLOG(3) << "Anakin Predictor create on [ Intel X86 ].";
     std::unique_ptr<PaddlePredictor> x(

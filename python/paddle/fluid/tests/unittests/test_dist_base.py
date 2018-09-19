@@ -158,6 +158,10 @@ def runtime_main(test_class):
     else:
         model.run_trainer(args)
 
+import paddle.compat as cpt
+import socket
+from contextlib import closing
+
 
 class TestDistBase(unittest.TestCase):
     def _setup_config(self):
@@ -166,13 +170,19 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._trainers = 2
         self._pservers = 2
-        self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
+        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._find_free_port(), self._find_free_port())
         self._python_interp = "python"
         self._sync_mode = True
         self._use_cuda = True
         self._mem_opt = False
         self._use_reduce = False
         self._setup_config()
+
+    def _find_free_port(self):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('', 0))
+            return s.getsockname()[1]
 
     def start_pserver(self, model_file, check_error_log, required_envs):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
@@ -233,11 +243,12 @@ class TestDistBase(unittest.TestCase):
     def check_with_place(self, model_file, delta=1e-3, check_error_log=False):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
-            "PATH": os.getenv("PATH"),
+            "PATH": os.getenv("PATH", ""),
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_cudnn_deterministic": "1"
+            "FLAGS_cudnn_deterministic": "1",
+            "CPU_NUM": "1"
         }
 
         required_envs.update(os.environ.copy())

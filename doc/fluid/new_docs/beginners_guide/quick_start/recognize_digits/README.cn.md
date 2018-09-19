@@ -6,8 +6,8 @@
 当我们学习编程的时候，编写的第一个程序一般是实现打印"Hello World"。而机器学习（或深度学习）的入门教程，一般都是 [MNIST](http://yann.lecun.com/exdb/mnist/) 数据库上的手写识别问题。原因是手写识别属于典型的图像分类问题，比较简单，同时MNIST数据集也很完备。MNIST数据集作为一个简单的计算机视觉数据集，包含一系列如图1所示的手写数字图片和对应的标签。图片是28x28的像素矩阵，标签则对应着0~9的10个数字。每张图片都经过了大小归一化和居中处理。
 
 <p align="center">
-    <img src="image/mnist_example_image.png" width="400"><br/>
-    图1. MNIST图片示例
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/mnist_example_image.png?raw=true" width="400"><br/>
+图1. MNIST图片示例
 </p>
 
 MNIST数据集是从 [NIST](https://www.nist.gov/srd/nist-special-database-19) 的Special Database 3（SD-3）和Special Database 1（SD-1）构建而来。由于SD-3是由美国人口调查局的员工进行标注，SD-1是由美国高中生进行标注，因此SD-3比SD-1更干净也更容易识别。Yann LeCun等人从SD-1和SD-3中各取一半作为MNIST的训练集（60000条数据）和测试集（10000条数据），其中训练集来自250位不同的标注员，此外还保证了训练集和测试集的标注员是不完全相同的。
@@ -40,12 +40,12 @@ $$ y_i = \text{softmax}(\sum_j W_{i,j}x_j + b_i) $$
 
 在分类问题中，我们一般采用交叉熵代价损失函数（cross entropy loss），公式如下：
 
-$$  L_{cross-entropy} (label, y) = -\sum_i label_ilog(y_i) $$
+$$  L_{cross-entropy}(label, y) = -\sum_i label_ilog(y_i) $$
 
 图2为softmax回归的网络图，图中权重用蓝线表示、偏置用红线表示、+1代表偏置参数的系数为1。
 
 <p align="center">
-<img src="image/softmax_regression.png" width=400><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/softmax_regression.png?raw=true" width=400><br/>
 图2. softmax回归网络结构图<br/>
 </p>
 
@@ -54,16 +54,14 @@ $$  L_{cross-entropy} (label, y) = -\sum_i label_ilog(y_i) $$
 Softmax回归模型采用了最简单的两层神经网络，即只有输入层和输出层，因此其拟合能力有限。为了达到更好的识别效果，我们考虑在输入层和输出层中间加上若干个隐藏层\[[10](#参考文献)\]。
 
 1.  经过第一个隐藏层，可以得到 $ H_1 = \phi(W_1X + b_1) $，其中$\phi$代表激活函数，常见的有sigmoid、tanh或ReLU等函数。
-
 2.  经过第二个隐藏层，可以得到 $ H_2 = \phi(W_2H_1 + b_2) $。
-
 3.  最后，再经过输出层，得到的$Y=\text{softmax}(W_3H_2 + b_3)$，即为最后的分类结果向量。
 
 
 图3为多层感知器的网络结构图，图中权重用蓝线表示、偏置用红线表示、+1代表偏置参数的系数为1。
 
 <p align="center">
-<img src="image/mlp.png" width=500><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/mlp.png?raw=true" width=500><br/>
 图3. 多层感知器网络结构图<br/>
 </p>
 
@@ -72,7 +70,7 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 在多层感知器模型中，将图像展开成一维向量输入到网络中，忽略了图像的位置和结构信息，而卷积神经网络能够更好的利用图像的结构信息。[LeNet-5](http://yann.lecun.com/exdb/lenet/)是一个较简单的卷积神经网络。图4显示了其结构：输入的二维图像，先经过两次卷积层到池化层，再经过全连接层，最后使用softmax分类作为输出层。下面我们主要介绍卷积层和池化层。
 
 <p align="center">
-<img src="image/cnn.png"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/cnn.png?raw=true" width="400"><br/>
 图4. LeNet-5卷积神经网络结构<br/>
 </p>
 
@@ -81,7 +79,7 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 卷积层是卷积神经网络的核心基石。在图像识别里我们提到的卷积是二维卷积，即离散二维滤波器（也称作卷积核）与二维图像做卷积操作，简单的讲是二维滤波器滑动到二维图像上所有位置，并在每个位置上与该像素点及其领域像素点做内积。卷积操作被广泛应用与图像处理领域，不同卷积核可以提取不同的特征，例如边沿、线性、角等特征。在深层卷积神经网络中，通过卷积操作可以提取出图像低级到复杂的特征。
 
 <p align="center">
-<img src="image/conv_layer.png" width='750'><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/conv_layer.png?raw=true" width='750'><br/>
 图5. 卷积层图片<br/>
 </p>
 
@@ -98,16 +96,15 @@ Softmax回归模型采用了最简单的两层神经网络，即只有输入层�
 #### 池化层
 
 <p align="center">
-<img src="image/max_pooling.png" width="400px"><br/>
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/max_pooling.png?raw=true" width="400px"><br/>
 图6. 池化层图片<br/>
 </p>
 
 池化是非线性下采样的一种形式，主要作用是通过减少网络的参数来减小计算量，并且能够在一定程度上控制过拟合。通常在卷积层的后面会加上一个池化层。池化包括最大池化、平均池化等。其中最大池化是用不重叠的矩形框将输入层分成不同的区域，对于每个矩形框的数取最大值作为输出层，如图6所示。
 
-更详细的关于卷积神经网络的具体知识可以参考[斯坦福大学公开课]( http://cs231n.github.io/convolutional-networks/ )和[图像分类](https://github.com/PaddlePaddle/book/blob/develop/image_classification/README.md)教程。
+更详细的关于卷积神经网络的具体知识可以参考[斯坦福大学公开课]( http://cs231n.github.io/convolutional-networks/ )和[图像分类]( https://github.com/PaddlePaddle/book/tree/develop/03.image_classification )教程。
 
-### 常见激活函数介绍
-
+### 常见激活函数介绍  
 - sigmoid激活函数： $ f(x) = sigmoid(x) = \frac{1}{1+e^{-x}} $
 
 - tanh激活函数： $ f(x) = tanh(x) = \frac{e^x-e^{-x}}{e^x+e^{-x}} $
@@ -136,20 +133,18 @@ PaddlePaddle在API中提供了自动加载[MNIST](http://yann.lecun.com/exdb/mni
 我们建议使用 Fluid API，因为它更容易学起来。
 
 下面是快速的 Fluid API 概述。
-
 1. `inference_program`：指定如何从数据输入中获得预测的函数。
 这是指定网络流的地方。
 
-2. `train_program`：指定如何从 `inference_program` 和`标签值`中获取 `loss` 的函数。
+1. `train_program`：指定如何从 `inference_program` 和`标签值`中获取 `loss` 的函数。
 这是指定损失计算的地方。
 
-3. `optimizer_func`: “指定优化器配置的函数。优化器负责减少损失并驱动培训。Paddle 支持多种不同的优化器。
+1. `optimizer_func`: “指定优化器配置的函数。优化器负责减少损失并驱动培训。Paddle 支持多种不同的优化器。
 
-4. `Trainer`：PaddlePaddle Trainer 管理由 `train_program` 和 `optimizer` 指定的训练过程。
+1. `Trainer`：PaddlePaddle Trainer 管理由 `train_program` 和 `optimizer` 指定的训练过程。
 通过 `event_handler` 回调函数，用户可以监控培训的进展。
 
-5. `Inferencer`：Fluid inferencer 加载 `inference_program` 和由 Trainer 训练的参数。
-
+1. `Inferencer`：Fluid inferencer 加载 `inference_program` 和由 Trainer 训练的参数。
 然后，它可以推断数据和返回预测。
 
 在这个演示中，我们将深入了解它们。
@@ -240,6 +235,7 @@ def train_program():
     acc = fluid.layers.accuracy(input=predict, label=label)
     return [avg_cost, acc]
 
+
 ```
 
 #### Optimizer Function 配置
@@ -255,9 +251,9 @@ def optimizer_program():
 
 下一步，我们开始训练过程。`paddle.dataset.movielens.train()`和`paddle.dataset.movielens.test()`分别做训练和测试数据集。这两个函数各自返回一个reader——PaddlePaddle中的reader是一个Python函数，每次调用的时候返回一个Python yield generator。
 
-下面`shuffle`是一个reader decorator，它接受一个reader A，返回另一个reader B 。reader B 每次读入`buffer_size`条训练数据到一个buffer里，然后随机打乱其顺序，并且逐条输出。
+下面`shuffle`是一个reader decorator，它接受一个reader A，返回另一个reader B。reader B 每次读入`buffer_size`条训练数据到一个buffer里，然后随机打乱其顺序，并且逐条输出。
 
-`batch`是一个特殊的decorator，它的输入是一个reader，输出是一个batched reader 。在PaddlePaddle里，一个reader每次yield一条训练数据，而一个batched reader每次yield一个minibatch。
+`batch`是一个特殊的decorator，它的输入是一个reader，输出是一个batched reader。在PaddlePaddle里，一个reader每次yield一条训练数据，而一个batched reader每次yield一个minibatch。
 
 ```python
 train_reader = paddle.batch(
@@ -280,7 +276,6 @@ place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
 trainer = fluid.Trainer(
     train_func=train_program, place=place, optimizer_func=optimizer_program)
-
 ```
 
 #### Event Handler 配置
@@ -315,11 +310,10 @@ def event_handler(event):
 
 `event_handler_plot` 可以用来在训练过程中画图如下：
 
-
-<p align="center">
-<img src="image/train_and_test2.png" width="400"><br/>
-图7. 训练结果
-</p>
+<div align="center">
+<img src="https://github.com/PaddlePaddle/book/blob/develop/02.recognize_digits/image/train_and_test.png?raw=true" width="400"><br/>
+图7 训练结果
+</div>
 
 
 ```python
