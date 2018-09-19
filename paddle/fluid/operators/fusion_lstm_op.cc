@@ -367,29 +367,35 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   tmp = _mm256_add_ps(tmp, _mm256_loadu_ps((const float*)gates + D3 + i)); \
   _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D3 + i, tmp)
 
-#define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht)              \
-  GET_Ct_NOH0C0(gates, ct);                                      \
-  /* get outgated, put W_oc * C_t on igated */                   \
-  if ((D >= 8) && std::is_same<float, T>::value) {               \
-    constexpr int block = 8;                                     \
-    const int rest = D % block;                                  \
-    const int end = D - rest;                                    \
-    int i = 0;                                                   \
-                                                                 \
-    __m256 tmp;                                                  \
-    for (i = 0; i < end; i += block) {                           \
-      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht); \
-    }                                                            \
-                                                                 \
-    if (rest > 0) {                                              \
-      i = D - 8;                                                 \
-      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht); \
-    }                                                            \
-  } else {                                                       \
-    blas.VMUL(D, wc_data + D2, ct, gates + D);                   \
-    blas.VADD(D, gates + D, gates + D3, gates + D3);             \
-  }                                                              \
-  act_gate(D, gates + D3, gates + D3);                           \
+#define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht)                  \
+  GET_Ct_NOH0C0(gates, ct);                                          \
+  /* get outgated, put W_oc * C_t on igated */                       \
+  if ((D >= 8) && std::is_same<float, T>::value) {                   \
+    constexpr int block = 8;                                         \
+    const int rest = D % block;                                      \
+    const int end = D - rest;                                        \
+    int i = 0;                                                       \
+                                                                     \
+    __m256 tmp, last_gates_D3;                                       \
+    if (rest > 0) {                                                  \
+      i = D - 8;                                                     \
+      last_gates_D3 = _mm256_loadu_ps((const float*)gates + D3 + i); \
+    }                                                                \
+    for (i = 0; i < end; i += block) {                               \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);     \
+    }                                                                \
+                                                                     \
+    if (rest > 0) {                                                  \
+      i = D - 8;                                                     \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D3 + i,     \
+                       last_gates_D3);                               \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);     \
+    }                                                                \
+  } else {                                                           \
+    blas.VMUL(D, wc_data + D2, ct, gates + D);                       \
+    blas.VADD(D, gates + D, gates + D3, gates + D3);                 \
+  }                                                                  \
+  act_gate(D, gates + D3, gates + D3);                               \
   GET_Ht(ct, gates, ht)
 
 #define COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht)             \
@@ -402,51 +408,65 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D + i, tmp0);           \
   _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D2 + i, tmp1)
 
-#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)               \
-  /* get fgated and igated*/                                     \
-  if ((D >= 8) && std::is_same<float, T>::value) {               \
-    constexpr int block = 8;                                     \
-    const int rest = D % block;                                  \
-    const int end = D - rest;                                    \
-    int i = 0;                                                   \
-                                                                 \
-    __m256 tmp0, tmp1;                                           \
-    for (i = 0; i < end; i += block) {                           \
-      COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht);  \
-    }                                                            \
-                                                                 \
-    if (rest > 0) {                                              \
-      i = D - 8;                                                 \
-      COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht);  \
-    }                                                            \
-  } else {                                                       \
-    blas.VMUL(D, wc_data, ct_1, checked_cell_data);              \
-    blas.VMUL(D, wc_data + D, ct_1, checked_cell_data + D);      \
-    blas.VADD(D2, checked_cell_data, gates + D, gates + D);      \
-  }                                                              \
-  act_gate(D2, gates + D, gates + D);                            \
-  GET_Ct(ct_1, gates, ct);                                       \
-  /* get ogated*/                                                \
-  if ((D >= 8) && std::is_same<float, T>::value) {               \
-    constexpr int block = 8;                                     \
-    const int rest = D % block;                                  \
-    const int end = D - rest;                                    \
-    int i = 0;                                                   \
-                                                                 \
-    __m256 tmp;                                                  \
-    for (i = 0; i < end; i += block) {                           \
-      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht); \
-    }                                                            \
-                                                                 \
-    if (rest > 0) {                                              \
-      i = D - 8;                                                 \
-      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht); \
-    }                                                            \
-  } else {                                                       \
-    blas.VMUL(D, wc_data + D2, ct, gates + D);                   \
-    blas.VADD(D, gates + D, gates + D3, gates + D3);             \
-  }                                                              \
-  act_gate(D, gates + D3, gates + D3);                           \
+#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)                             \
+  /* get fgated and igated*/                                                   \
+  if ((D >= 8) && std::is_same<float, T>::value) {                             \
+    constexpr int block = 8;                                                   \
+    const int rest = D % block;                                                \
+    const int end = D - rest;                                                  \
+    int i = 0;                                                                 \
+                                                                               \
+    __m256 tmp0, tmp1, last_gates_D, last_gates_D2;                            \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      last_gates_D = _mm256_loadu_ps((const float*)gates + D + i);             \
+      last_gates_D2 = _mm256_loadu_ps((const float*)gates + D2 + i);           \
+    }                                                                          \
+    for (i = 0; i < end; i += block) {                                         \
+      COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht);                \
+    }                                                                          \
+                                                                               \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D + i, last_gates_D); \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D2 + i,               \
+                       last_gates_D2);                                         \
+      COMPUTE_CTHT_PEEPHOLE_MOVE_ONE_STEP(gates, ct_1, ct, ht);                \
+    }                                                                          \
+  } else {                                                                     \
+    blas.VMUL(D, wc_data, ct_1, checked_cell_data);                            \
+    blas.VMUL(D, wc_data + D, ct_1, checked_cell_data + D);                    \
+    blas.VADD(D2, checked_cell_data, gates + D, gates + D);                    \
+  }                                                                            \
+  act_gate(D2, gates + D, gates + D);                                          \
+  GET_Ct(ct_1, gates, ct);                                                     \
+  /* get ogated*/                                                              \
+  if ((D >= 8) && std::is_same<float, T>::value) {                             \
+    constexpr int block = 8;                                                   \
+    const int rest = D % block;                                                \
+    const int end = D - rest;                                                  \
+    int i = 0;                                                                 \
+                                                                               \
+    __m256 tmp, last_gates_D3;                                                 \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      last_gates_D3 = _mm256_loadu_ps((const float*)gates + D3 + i);           \
+    }                                                                          \
+    for (i = 0; i < end; i += block) {                                         \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);               \
+    }                                                                          \
+                                                                               \
+    if (rest > 0) {                                                            \
+      i = D - 8;                                                               \
+      _mm256_storeu_ps(reinterpret_cast<float*>(gates) + D3 + i,               \
+                       last_gates_D3);                                         \
+      COMPUTE_CTHT_PEEPHOLE_NOH0C0_MOVE_ONE_STEP(gates, ct, ht);               \
+    }                                                                          \
+  } else {                                                                     \
+    blas.VMUL(D, wc_data + D2, ct, gates + D);                                 \
+    blas.VADD(D, gates + D, gates + D3, gates + D3);                           \
+  }                                                                            \
+  act_gate(D, gates + D3, gates + D3);                                         \
   GET_Ht(ct, gates, ht)
 #else
 // gates: W_ch, W_ih, W_fh, W_oh
