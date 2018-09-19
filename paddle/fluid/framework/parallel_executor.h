@@ -72,9 +72,9 @@ class ParallelExecutor {
   void Run(const std::vector<std::string> &fetch_tensors,
            const std::string &fetched_var_name);
 
+ private:
   void BCastParamsToDevices(const std::unordered_set<std::string> &vars) const;
 
- private:
   ParallelExecutorPrivate *member_;
 
 #ifdef PADDLE_WITH_CUDA
