@@ -112,6 +112,7 @@ function cmake_gen() {
     if [ "$SYSTEM" == "Darwin" ]; then
         WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
         WITH_AVX=${WITH_AVX:-ON}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
     else
         INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR=-/root/.cache/inference_demo}
     fi
