@@ -68,7 +68,7 @@ TEST(SubGraphSplitter, Fuse) {
   auto dfg = ProgramDescToDFG(desc);
   Argument argument;
   int* minmum_subgraph_size = new int(3);
-  argument.Set<int>("minmum_subgraph_size", minmum_subgraph_size);
+  argument.Set<int>("minimum_subgraph_size", minmum_subgraph_size);
 
   size_t count0 = dfg.nodes.size();
 

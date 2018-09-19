@@ -94,7 +94,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     int* max_batch_size = new int(config_.max_batch_size);
     int* workspace_size = new int(config_.workspace_size);
     std::string* precision_mode = new std::string(config_.precision_mode);
-    argument.Set<int>("minimun_subgraph_size", minimum_subgraph_size);
+    argument.Set<int>("minimum_subgraph_size", minimum_subgraph_size);
     argument.Set<int>("max_batch_size", max_batch_size);
     argument.Set<int>("workspace_size", workspace_size);
     argument.Set<std::string>("precision_mode", precision_mode);
