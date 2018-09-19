@@ -88,7 +88,8 @@ class TestDistCTR2x2(TestDistRunnerBase):
 
         predict = fluid.layers.fc(input=merge_layer, size=2, act='softmax')
         acc = fluid.layers.accuracy(input=predict, label=label)
-        auc_var, auc_states = fluid.layers.auc(input=predict, label=label)
+        auc_var, batch_auc_var, auc_states = fluid.layers.auc(input=predict,
+                                                              label=label)
         cost = fluid.layers.cross_entropy(input=predict, label=label)
         avg_cost = fluid.layers.mean(x=cost)
 
