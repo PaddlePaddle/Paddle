@@ -144,6 +144,142 @@ class TestDynRNN(unittest.TestCase):
         # loss should be small after 100 mini-batch
         self.assertLess(val[0], loss_0[0])
 
+    # this unit test is just used to the two layer nested dyn_rnn.
+    def test_train_nested_dyn_rnn(self):
+        word_dict = [i for i in range(30)]
+
+        def fake_reader():
+            seq_len, label = [[2, 2]], [0, 1]
+            data = []
+            for ele in seq_len:
+                for j in ele:
+                    data.append([numpy.random.randint(30) \
+                                 for _ in range(j)])
+
+            while True:
+                yield data, label
+
+        train_data = paddle.batch(fake_reader, batch_size=2)
+
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            sentence = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=2)
+            label = fluid.layers.data(
+                name='label', shape=[1], dtype='float32', lod_level=1)
+
+            rnn = fluid.layers.DynamicRNN()
+            with rnn.block():
+                in_ = rnn.step_input(sentence)
+                sent_emb = fluid.layers.embedding(
+                    input=in_, size=[len(word_dict), 32], dtype='float32')
+                out_ = fluid.layers.fc(input=sent_emb, size=100, act='tanh')
+
+                rnn1 = fluid.layers.DynamicRNN()
+                with rnn1.block():
+                    in_1 = rnn1.step_input(out_)
+                    out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
+                    rnn1.output(out_1)
+
+                last = fluid.layers.sequence_last_step(input=rnn1())
+                rnn.output(last)
+
+            last = rnn()
+            logits = fluid.layers.fc(input=last, size=1, act=None)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=logits, label=label)
+            loss = fluid.layers.mean(loss)
+            sgd = fluid.optimizer.SGD(1e-3)
+            #sgd = fluid.optimizer.Adam(1e-3)
+            sgd.minimize(loss=loss)
+
+        cpu = fluid.CPUPlace()
+        exe = fluid.Executor(cpu)
+        exe.run(startup_program)
+        feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
+        data = next(train_data())
+        val = exe.run(main_program, feed=feeder.feed(data),
+                      fetch_list=[loss])[0]
+
+        for _ in range(100):
+            val = exe.run(main_program,
+                          feed=feeder.feed(data),
+                          fetch_list=[loss])[0]
+            print(val)
+
+    # this unit test is just used to the two layer nested dyn_rnn.
+    def test_train_nested_dyn_rnn2(self):
+        word_dict = [i for i in range(30)]
+
+        def fake_reader():
+            seq_len, label = [[2, 2]], [0, 1]
+            data = []
+            for ele in seq_len:
+                for j in ele:
+                    data.append([numpy.random.randint(30) \
+                                 for _ in range(j)])
+
+            while True:
+                yield data, label
+
+        train_data = paddle.batch(fake_reader, batch_size=2)
+        hidden_size = 32
+        main_program = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(main_program, startup_program):
+            sentence = fluid.layers.data(
+                name='word', shape=[1], dtype='int64', lod_level=2)
+            label = fluid.layers.data(
+                name='label', shape=[1], dtype='float32', lod_level=1)
+
+            rnn = fluid.layers.DynamicRNN()
+            with rnn.block():
+                in_ = rnn.step_input(sentence)
+                sent_emb = fluid.layers.embedding(
+                    input=in_,
+                    size=[len(word_dict), hidden_size],
+                    dtype='float32')
+                input_forward_proj = fluid.layers.fc(input=sent_emb,
+                                                     size=hidden_size * 4,
+                                                     act=None,
+                                                     bias_attr=False)
+                forward, _ = fluid.layers.dynamic_lstm(
+                    input=input_forward_proj,
+                    size=hidden_size * 4,
+                    use_peepholes=False)
+
+                rnn1 = fluid.layers.DynamicRNN()
+                with rnn1.block():
+                    in_1 = rnn1.step_input(forward)
+                    out_1 = fluid.layers.fc(input=[in_1], size=100, act='tanh')
+                    rnn1.output(out_1)
+
+                last = fluid.layers.sequence_last_step(input=rnn1())
+                rnn.output(last)
+
+            last = rnn()
+            logits = fluid.layers.fc(input=last, size=1, act=None)
+            loss = fluid.layers.sigmoid_cross_entropy_with_logits(
+                x=logits, label=label)
+            loss = fluid.layers.mean(loss)
+            sgd = fluid.optimizer.SGD(1e-3)
+            #sgd = fluid.optimizer.Adam(1e-3)
+            sgd.minimize(loss=loss)
+
+        cpu = fluid.CPUPlace()
+        exe = fluid.Executor(cpu)
+        exe.run(startup_program)
+        feeder = fluid.DataFeeder(feed_list=[sentence, label], place=cpu)
+        data = next(train_data())
+        val = exe.run(main_program, feed=feeder.feed(data),
+                      fetch_list=[loss])[0]
+
+        for _ in range(100):
+            val = exe.run(main_program,
+                          feed=feeder.feed(data),
+                          fetch_list=[loss])[0]
+
 
 if __name__ == '__main__':
     unittest.main()

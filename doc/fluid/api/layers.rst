@@ -290,14 +290,6 @@ Recv
 ..  autofunction:: paddle.fluid.layers.Recv
     :noindex:
 
-.. _api_fluid_layers_open_recordio_file:
-
-open_recordio_file
-------------------
-
-..  autofunction:: paddle.fluid.layers.open_recordio_file
-    :noindex:
-
 .. _api_fluid_layers_open_files:
 
 open_files

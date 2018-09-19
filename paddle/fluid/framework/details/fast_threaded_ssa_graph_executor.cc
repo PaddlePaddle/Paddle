@@ -54,7 +54,6 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
   paddle::framework::FeedFetchList fetches;
   fetches.resize(fetch_tensors.size());
   std::unordered_map<std::string, std::vector<VarHandleBase *>> fetched_vars;
-  std::vector<std::unique_ptr<ir::Node>> fetch_nodes;
   std::vector<std::unique_ptr<FetchOpHandle>> fetch_ops;
 
   for (auto &fetch_var_name : fetch_tensors) {
@@ -75,9 +74,9 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
 
     auto &vars = fetched_var_it->second;
 
-    fetch_nodes.emplace_back(new ir::Node("fetch", ir::Node::Type::kOperation));
-    auto *op = new FetchOpHandle(fetch_nodes.back().get(), &fetches, i,
-                                 &local_scopes_);
+    ir::Node *fetch_node =
+        graph_->CreateEmptyNode("fetch", ir::Node::Type::kOperation);
+    auto *op = new FetchOpHandle(fetch_node, &fetches, i, &local_scopes_);
     fetch_ops.emplace_back(op);
 
     for (auto &p : places_) {
@@ -116,9 +115,7 @@ FeedFetchList FastThreadedSSAGraphExecutor::Run(
     num_complete += num_comp;
   }
   // Wait FetchOps.
-  if (!fetch_ops.empty()) {
-    fetch_ops.clear();
-  }
+  ClearFetchOp(graph_.get(), &fetch_ops);
   return fetches;
 }
 void FastThreadedSSAGraphExecutor::RunOpAsync(
