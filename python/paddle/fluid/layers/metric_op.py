@@ -110,9 +110,10 @@ def auc(input,
         curve(str): Curve type, can be 'ROC' or 'PR'. Default 'ROC'.
         num_thresholds(int): The number of thresholds to use when discretizing
                              the roc curve. Default 200.
+        slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
         topk(int): only topk number of prediction output will be used for auc.
-        is_distributed(bool): distributed auc calc.
-        slide_steps: null.
+        is_distributed(bool): distributed auc calc, it can be used in distributed training.
+
 
     Returns:
         Variable: A scalar representing the current AUC.
