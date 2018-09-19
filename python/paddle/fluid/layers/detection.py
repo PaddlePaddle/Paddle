@@ -723,11 +723,10 @@ def ssd_loss(location,
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
+    actual_shape = ops.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape.stop_gradient = True
     conf_loss = nn.reshape(
-        x=conf_loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+        x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
@@ -796,11 +795,7 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(
-        x=loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+    loss = nn.reshape(x=loss, shape=(num, num_prior), actual_shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
