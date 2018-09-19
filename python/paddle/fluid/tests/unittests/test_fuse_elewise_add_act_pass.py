@@ -37,7 +37,7 @@ def simple_fc_net(use_feed):
         reader = fluid.layers.io.double_buffer(reader)
         img, label = fluid.layers.read_file(reader)
     hidden = img
-    for _ in xrange(1):
+    for _ in range(4):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
@@ -64,7 +64,7 @@ def fc_with_batchnorm(use_feed):
         img, label = fluid.layers.read_file(reader)
 
     hidden = img
-    for _ in xrange(1):
+    for _ in range(2):
         hidden = fluid.layers.fc(
             hidden,
             size=200,
