@@ -31,7 +31,7 @@ def gru(
         is_reverse,
         act_state,
         act_gate,
-        dtype='float64'):
+        dtype='float32'):
     def _seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
         seq_lens = lod[0]
