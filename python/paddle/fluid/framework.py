@@ -1738,8 +1738,6 @@ class Program(object):
         Returns:
             Program: The new program.
         """
-        # this is an alternative implement before
-        # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
 
