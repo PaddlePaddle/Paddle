@@ -129,7 +129,7 @@ class LookupTableGradCUDAKernel : public framework::OpKernel<T> {
       // TODO(yuyang18): Strange code here.
       memory::Copy(platform::CPUPlace(),
                    new_rows.CUDAMutableData(context.GetPlace()), gpu_place,
-                   ids_data, ids_num * sizeof(int64_t), stream);
+                   ids_data, ids_num * sizeof(int64_t), nullptr);
 
       d_table->set_rows(new_rows);
 

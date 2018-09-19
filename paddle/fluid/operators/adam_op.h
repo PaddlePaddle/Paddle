@@ -300,6 +300,8 @@ class AdamOpKernel : public framework::OpKernel<T> {
         for_range(functor);
       }
     } else if (grad_var->IsType<framework::SelectedRows>()) {
+      // std::cerr << "Running sparse here" << std::endl;
+
       auto& grad =
           Ref(ctx.Input<framework::SelectedRows>("Grad"), "Must set Grad");
       if (grad.rows().size() == 0) {

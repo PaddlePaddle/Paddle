@@ -340,6 +340,10 @@ endforeach()
 set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 set(GLOB_DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} CACHE INTERNAL "distributed dependency")
 
+if(WITH_GPU)
+  nv_test(sparse_adam_op_test SRCS sparse_adam_op_test.cu DEPS adam_op lookup_table_op selected_rows_functor)
+endif()
+
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
 cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
