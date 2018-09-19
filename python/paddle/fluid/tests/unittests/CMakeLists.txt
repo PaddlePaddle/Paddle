@@ -30,6 +30,10 @@ list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
 
 if(APPLE)
+    if(NOT WITH_DISTRIBUTE)
+        list(REMOVE_ITEM TEST_OPS test_desc_clone)
+        list(REMOVE_ITEM TEST_OPS test_program_code)
+    endif(NOT WITH_DISTRIBUTE)
     message(WARNING "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_dist_se_resnext")
     # this op is not support on mac
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
