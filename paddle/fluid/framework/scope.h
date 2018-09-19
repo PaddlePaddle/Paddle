@@ -26,6 +26,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+int64_t GetEagerDeletionThreshold();
+
 class Scope;
 
 /**

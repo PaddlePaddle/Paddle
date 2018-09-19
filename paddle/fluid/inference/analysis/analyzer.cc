@@ -69,8 +69,9 @@ class DfgPassManagerImpl final : public DfgPassManager {
     if (FLAGS_IA_enable_tensorrt_subgraph_engine) {
       auto trt_teller = [&](const Node* node) {
         std::unordered_set<std::string> teller_set(
-            {"elementwise_add", "mul", "conv2d", "pool2d", "relu", "softmax",
-             "depthwise_conv2d", "batch_norm", "concat"});
+            {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
+             "depthwise_conv2d", "batch_norm", "concat", "tanh",
+             "elementwise_add", "dropout"});
         if (!node->IsFunction()) return false;
 
         const auto* func = static_cast<const Function*>(node);
