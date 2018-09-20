@@ -45,6 +45,7 @@ void PrintResults(int bs, int iterations, double lat_avg, float acc_avg) {
   LOG(INFO) << "===========profile result===========";
   LOG(INFO) << "batch_size: " << bs << ", iterations: " << iterations
             << ", avg latency: " << lat_avg << "ms"
+            << ", avg fps: " << bs * 1000 / lat_avg
             << ", avg accuracy: " << acc_avg;
   LOG(INFO) << "=====================================";
 }
@@ -103,11 +104,13 @@ void Main(int batch_size) {
   config.use_gpu = false;
   config.enable_ir_optim = true;
   // add passes to execute keeping the order - without MKL-DNN
+  config.ir_passes.push_back("conv_bn_fuse_pass");
   config.ir_passes.push_back("fc_fuse_pass");
 #ifdef PADDLE_WITH_MKLDNN
   // add passes to execute with MKL-DNN
-  config.ir_mkldnn_passes.push_back("conv_relu_mkldnn_fuse_pass");
+  config.ir_mkldnn_passes.push_back("conv_bn_fuse_pass");
   config.ir_mkldnn_passes.push_back("conv_elementwise_add_mkldnn_fuse_pass");
+  config.ir_mkldnn_passes.push_back("conv_relu_mkldnn_fuse_pass");
   config.ir_mkldnn_passes.push_back("fc_fuse_pass");
 #endif
   auto predictor =
