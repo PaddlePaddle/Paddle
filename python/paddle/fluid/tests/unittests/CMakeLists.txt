@@ -34,12 +34,13 @@ if(APPLE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
         list(REMOVE_ITEM TEST_OPS test_program_code)
     endif(NOT WITH_DISTRIBUTE)
-    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_detection_map_op \n test_dist_se_resnext")
+    message(WARNING "These tests has been disabled in OSX before being fixed: \n test_fuse_elewise_add_act_pass \n test_detection_map_op \n test_dist_se_resnext")
     # this op is not support on mac
     list(REMOVE_ITEM TEST_OPS test_fusion_seqexpand_concat_fc_op)
     # TODO: add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_detection_map_op)
     list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
+    list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
 
 function(py_test_modules TARGET_NAME)
