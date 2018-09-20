@@ -129,6 +129,9 @@ class GradOpDescMakerBase {
 
   std::string ForwardOpType() const { return this->fwd_op_.Type(); }
 
+ protected:
+  const OpDesc& ForwardOp() const { return fwd_op_; }
+
  private:
   const OpDesc& fwd_op_;
   const std::unordered_set<std::string>& no_grad_set_;

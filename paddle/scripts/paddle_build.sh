@@ -108,7 +108,15 @@ function cmake_gen() {
            fi
         fi
     fi
-
+    
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_AVX=${WITH_AVX:-ON}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+    
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -136,7 +144,7 @@ function cmake_gen() {
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DPY_VERSION=${PY_VERSION:-2.7}
     ========================================
@@ -168,9 +176,10 @@ EOF
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
         -DPY_VERSION=${PY_VERSION:-2.7}
+
 }
 
 function abort(){
@@ -232,8 +241,8 @@ function build_mac() {
     ============================================
 EOF
     make clean
-    sudo make -j 8
-    sudo make install -j 8
+    make -j 8
+    make install -j 8
 }
 
 function build_android() {

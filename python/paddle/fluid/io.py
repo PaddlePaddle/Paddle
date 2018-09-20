@@ -20,6 +20,7 @@ import time
 import shutil
 import six
 
+from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
 from . import core
@@ -587,8 +588,11 @@ def save_inference_model(dirname,
         params_filename(str|None): The name of file to save all related parameters.
                                    If it is setted None, parameters will be saved
                                    in separate files .
-        export_for_deployment(bool): remove the read ops that are added by py_reader
-                                    for cpp inference lib. Default True
+        export_for_deployment(bool): If True, programs are modified to only support
+                                     direct inference deployment. Otherwise,
+                                     more information will be stored for flexible
+                                     optimization and re-training. Currently, only
+                                     True is supported.
 
     Returns:
         None
@@ -636,21 +640,28 @@ def save_inference_model(dirname,
     if not os.path.isdir(dirname):
         os.makedirs(dirname)
 
-    # Clear the is_target information and remove the existed feed and fetch op
-    global_block = copy_program.global_block()
-    for i, op in enumerate(global_block.ops):
-        op.desc.set_is_target(False)
-        if op.type == "feed" or op.type == "fetch":
-            global_block._remove_op(i)
-    copy_program.desc.flush()
+    # When export_for_deployment is true, we modify the program online so that
+    # it can only be loaded for inference directly. If it's false, the whole
+    # original program and related meta are saved so that future usage can be
+    # more flexible.
+    if export_for_deployment:
+        global_block = copy_program.global_block()
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                global_block._remove_op(i)
+        copy_program.desc.flush()
 
-    pruned_program = copy_program._prune(targets=target_vars)
-    inference_program = pruned_program._inference_optimize(
-        export_for_deployment=export_for_deployment)
-    fetch_var_names = [v.name for v in target_vars]
+        pruned_program = copy_program._prune(targets=target_vars)
+        saved_program = pruned_program._inference_optimize(prune_read_op=True)
+        fetch_var_names = [v.name for v in target_vars]
 
-    prepend_feed_ops(inference_program, feeded_var_names)
-    append_fetch_ops(inference_program, fetch_var_names)
+        prepend_feed_ops(saved_program, feeded_var_names)
+        append_fetch_ops(saved_program, fetch_var_names)
+    else:
+        # TODO(panyx0718): Save more information so that it can also be used
+        # for training and more flexible post-processing.
+        saved_program = copy_program
 
     if model_filename is not None:
         model_filename = os.path.basename(model_filename)
@@ -662,9 +673,9 @@ def save_inference_model(dirname,
         params_filename = os.path.basename(params_filename)
 
     with open(model_filename, "wb") as f:
-        f.write(inference_program.desc.serialize_to_string())
+        f.write(saved_program.desc.serialize_to_string())
 
-    save_persistables(executor, dirname, inference_program, params_filename)
+    save_persistables(executor, dirname, saved_program, params_filename)
 
     # if there is lookup table, the trainer 0 will notify all pserver to save.
     if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
