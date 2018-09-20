@@ -13,15 +13,27 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .layer_function_generator import generate_layer_fn
+from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
 
 __activations__ = [
+    'softshrink',
+    'brelu',
+    'leaky_relu',
+    'soft_relu',
+    'elu',
+    'relu6',
+    'pow',
+    'stanh',
+    'hard_sigmoid',
+    'swish',
+]
+
+__activations_noattr__ = [
     'sigmoid',
     'logsigmoid',
     'exp',
     'tanh',
     'tanh_shrink',
-    'softshrink',
     'sqrt',
     'abs',
     'ceil',
@@ -33,15 +45,6 @@ __activations__ = [
     'square',
     'softplus',
     'softsign',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
 ]
 
 __all__ = [
@@ -74,6 +77,11 @@ __all__ = [
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+__all__ += __activations_noattr__
+
+for _OP in set(__activations_noattr__):
+    globals()[_OP] = generate_layer_fn_noattr(_OP)
 
 __all__ += ["uniform_random"]
 
