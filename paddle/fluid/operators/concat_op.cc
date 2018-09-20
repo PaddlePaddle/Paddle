@@ -95,7 +95,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     ctx->SetOutputsDim(framework::GradVarName("X"), ctx->GetInputsDim("X"));
-    ctx->ShareLoD("X", framework::GradVarName("X"));
+    ctx->ShareLoDs("X", framework::GradVarName("X"));
   }
 };
 
