@@ -29,9 +29,8 @@ from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 __all__ = [
-    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
-    'load'
+    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
+    'random_data_generator', 'py_reader', 'Preprocessor', 'load'
 ]
 
 
@@ -1008,9 +1007,9 @@ class Preprocessor(object):
     @contextlib.contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
-        self.sub_block = self.main_prog.create_block()
+        self.sub_block = self.main_prog._create_block()
         yield
-        self.main_prog.rollback()
+        self.main_prog._rollback()
         self.status = Preprocessor.AFTER_SUB_BLOCK
         if not self._is_completed():
             raise RuntimeError(

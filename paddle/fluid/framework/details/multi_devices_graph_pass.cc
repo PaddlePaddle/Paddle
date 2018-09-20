@@ -127,6 +127,9 @@ static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
 
 void MultiDevSSAGraphBuilder::Init() const {
+  all_vars_.clear();
+  balance_vars_.clear();
+
   loss_var_name_ = Get<const std::string>(kLossVarName);
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);

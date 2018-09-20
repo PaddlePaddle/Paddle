@@ -18,7 +18,7 @@ find_library(TENSORRT_LIBRARY NAMES libnvinfer.so libnvinfer.a
 if(TENSORRT_INCLUDE_DIR AND TENSORRT_LIBRARY)
   if(WITH_DSO)
     set(TENSORRT_FOUND ON)
-  endif(WITH DSO)
+  endif(WITH_DSO)
 else()
     set(TENSORRT_FOUND OFF)
 endif()

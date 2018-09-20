@@ -27,7 +27,7 @@ template <typename T>
 class ConcatFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
     // TODO(zcd): Add input data validity checking
     int num = input.size();
@@ -71,7 +71,7 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
                   const framework::Tensor& input,
-                  const std::vector<const framework::LoDTensor*>& ref_inputs,
+                  const std::vector<const framework::Tensor*>& ref_inputs,
                   const int axis, std::vector<framework::Tensor*>* outputs) {
     // TODO(zcd): Add input data validity checking
     size_t num = outputs->size();
@@ -109,16 +109,11 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+#define DEFINE_FUNCTOR(type)                                      \
+  template class ConcatFunctor<platform::CPUDeviceContext, type>; \
+  template class ConcatGradFunctor<platform::CPUDeviceContext, type>;
 
-template class ConcatFunctor<platform::CPUDeviceContext, int>;
-template class ConcatFunctor<platform::CPUDeviceContext, int64_t>;
-template class ConcatFunctor<platform::CPUDeviceContext, float>;
-template class ConcatFunctor<platform::CPUDeviceContext, double>;
-
-template class ConcatGradFunctor<platform::CPUDeviceContext, int>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, int64_t>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, float>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, double>;
+FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 }  // namespace math
 }  // namespace operators
