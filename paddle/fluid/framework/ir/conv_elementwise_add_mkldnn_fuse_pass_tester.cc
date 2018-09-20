@@ -34,7 +34,8 @@ void SetOp(ProgramDesc* prog, const std::string& type,
   if (type == "conv2d") {
     op->SetAttr("use_mkldnn", true);
     op->SetInput("Input", {inputs[0]});
-    op->SetInput("Filter", {inputs[1]});
+    op->SetInput("Bias", {inputs[1]});
+    op->SetInput("Filter", {inputs[2]});
     op->SetOutput("Output", outputs);
   } else if (type == "elementwise_add") {
     op->SetInput("X", {inputs[0]});
@@ -98,8 +99,8 @@ struct IsReachable {
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
-    for (auto& v :
-         std::vector<std::string>({"a", "b", "weights", "c", "d", "e"})) {
+    for (auto& v : std::vector<std::string>(
+             {"a", "b", "bias", "weights", "c", "d", "e", "f"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       if (v == "weights") {
@@ -107,7 +108,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
       }
     }
 
-    SetOp(&prog, "conv2d", {"a", "weights"}, {"b"});
+    SetOp(&prog, "conv2d", {"a", "bias", "weights"}, {"b"});
     SetOp(&prog, "elementwise_add", {"c", "b"}, {"d"});
     SetOp(&prog, "relu", {"d"}, {"e"});
 
@@ -150,7 +151,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
 TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
-    for (auto& v : std::vector<std::string>({"a", "b", "weights"})) {
+    for (auto& v : std::vector<std::string>({"a", "b", "bias", "weights"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       if (v == "weights" || v == "bias") {
@@ -158,7 +159,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
       }
     }
 
-    SetOp(&prog, "conv2d", {"a", "weights"}, {"b"});
+    SetOp(&prog, "conv2d", {"a", "bias", "weights"}, {"b"});
     SetOp(&prog, "elementwise_add", {"c", "b"}, {"d"});
 
     return prog;
@@ -199,8 +200,8 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionElementwiseAdd) {
 TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
   auto build_program_desc = [&]() -> ProgramDesc {
     ProgramDesc prog;
-    for (auto& v :
-         std::vector<std::string>({"a", "b", "weights", "c", "d", "e", "f"})) {
+    for (auto& v : std::vector<std::string>(
+             {"a", "b", "bias", "weights", "c", "d", "e", "f"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
       if (v.find("weights")) {
@@ -209,7 +210,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
     }
 
     SetOp(&prog, "sigmoid", {"a"}, {"b"});
-    SetOp(&prog, "conv2d", {"b", "weights"}, {"c"});
+    SetOp(&prog, "conv2d", {"b", "bias", "weights"}, {"c"});
     SetOp(&prog, "elementwise_add", {"d", "c"}, {"e"});
     SetOp(&prog, "relu", {"e"}, {"f"});
 
