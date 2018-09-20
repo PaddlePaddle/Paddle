@@ -40,6 +40,7 @@ if(APPLE)
     # TODO: add the unitest back when it fixed
     list(REMOVE_ITEM TEST_OPS test_detection_map_op)
     list(REMOVE_ITEM TEST_OPS test_dist_se_resnext)
+    list(REMOVE_ITEM TEST_OPS test_fuse_elewise_add_act_pass)
 endif()
 
 function(py_test_modules TARGET_NAME)
