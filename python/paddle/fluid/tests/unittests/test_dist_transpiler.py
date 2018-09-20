@@ -668,12 +668,13 @@ class TestNCCL2Transpile(TranspilerTest):
 
         config = fluid.DistributeTranspilerConfig()
         config.mode = "nccl2"
-        t = fluid.DistributeTranspiler()
+        t = fluid.DistributeTranspiler(config=config)
         t.transpile(
             0,
-            trainers="127.0.0.1:6174:127.0.0.1:6175",
+            trainers="127.0.0.1:6174,127.0.0.1:6175",
             current_endpoint="127.0.0.1:6174",
             startup_program=startup)
+        print([op.type for op in startup.global_block().ops])
         self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
         self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
 
