@@ -347,6 +347,32 @@ class TestDepthwiseConv2(TestConv2dOp):
         self.op_type = "depthwise_conv2d"
 
 
+class TestDepthwiseConvWithDilation(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [2, 2]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConvWithDilation2(TestConv2dOp):
+    def init_test_case(self):
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        self.dilations = [2, 2]
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [6, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
 # Please Don't remove the following code.
 # Currently, CI use cudnn V5.0 which not support dilation conv.
 # class TestCUDNNWithDilation(TestWithDilation):

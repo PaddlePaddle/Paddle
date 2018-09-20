@@ -19,16 +19,14 @@
 namespace paddle {
 namespace operators {
 
+template <typename T>
 struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_(n) {}
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
 
-  template <typename T>
-  HOSTDEVICE inline T operator()(const T& x) const {
-    return x / n_;
-  }
+  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
 
  private:
-  int n_;
+  T n_inv;
 };
 
 template <typename T>
@@ -58,29 +56,20 @@ class ReduceMeanKernel : public framework::OpKernel<T> {
     }
 
     auto stream = context.cuda_device_context().stream();
-    TensorReduce<T, T, cub::Sum, DivideFunctor>(
+    TensorReduce<T, T, cub::Sum, DivideFunctor<T>>(
         *input, output, reduce_dims, static_cast<T>(0), cub::Sum(),
-        DivideFunctor(reduce_num), stream);
-    if (keep_dim) {
-      framework::DDim out_dim = input->dims();
-      for (int i = 0; i < reduce_dims.size(); ++i) out_dim[reduce_dims[i]] = 1;
-      output->Resize(out_dim);
-    }
+        DivideFunctor<T>(reduce_num), stream);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-REGISTER_OP_CUDA_KERNEL(reduce_mean,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          float, ops::MeanFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          double, ops::MeanFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int, ops::MeanFunctor>,
-                        ops::ReduceKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t, ops::MeanFunctor>);
+REGISTER_OP_CUDA_KERNEL(reduce_mean, ops::ReduceMeanKernel<float>,
+                        ops::ReduceMeanKernel<double>,
+                        ops::ReduceMeanKernel<int>,
+                        ops::ReduceMeanKernel<int64_t>);
+
 REGISTER_OP_CUDA_KERNEL(
     reduce_mean_grad, ops::ReduceGradKernel<paddle::platform::CUDADeviceContext,
                                             float, ops::MeanGradFunctor>,

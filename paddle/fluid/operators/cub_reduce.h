@@ -53,6 +53,27 @@ struct Array {
   T data_[ElementCount];
 };
 
+// reduce the last axis of 2d array
+template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
+          int BlockDim>
+__global__ void ReduceKernel2D(const Tx* x, Ty* y, ReduceOp reducer,
+                               TransformOp transformer, Ty init,
+                               int reduce_num) {
+  __shared__ typename cub::BlockReduce<Ty, BlockDim>::TempStorage temp_storage;
+  int idx_x = blockIdx.x * reduce_num;
+  int idx_y = threadIdx.x;
+  Ty reduce_var = init;
+  for (int idx_y = threadIdx.x; idx_y < reduce_num; idx_y += BlockDim)
+    reduce_var = reducer(reduce_var, transformer(x[idx_x + idx_y]));
+
+  reduce_var =
+      cub::BlockReduce<Ty, BlockDim>(temp_storage).Reduce(reduce_var, reducer);
+
+  if (threadIdx.x == 0) {
+    y[blockIdx.x] = reduce_var;
+  }
+}
+
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
           int BlockDim, int Rank, int ReduceRank>
 __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
@@ -96,7 +117,7 @@ __global__ void ReduceKernel(const Tx* x, Ty* y, ReduceOp reducer,
       cub::BlockReduce<Ty, BlockDim>(temp_storage).Reduce(reduce_var, reducer);
 
   if (threadIdx.x == 0) {
-    y[blockIdx.x] = reducer(init, reduce_var);
+    y[blockIdx.x] = reduce_var;
   }
 }
 
@@ -118,7 +139,7 @@ static inline std::vector<int> GetStrides(const std::vector<int>& dims,
   std::vector<int> strides(n);
   strides.back() = 1;
   for (int i = n - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * dims[idx[i]];
+    strides[i] = strides[i + 1] * dims[idx[i + 1]];
   }
   return strides;
 }
@@ -175,6 +196,15 @@ static void TensorReduceImpl(
                               reduce_num, reducer, init, stream);
     return;
   }
+  if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
+    ReduceKernel2D<Tx, Ty, ReduceOp, TransformOp,
+                   BlockDim><<<left_num, BlockDim, 0, stream>>>(
+        x_data, y_data, reducer, transformer, init, reduce_num);
+    return;
+  }
+  if (rank == 3 && reduce_rank == 1 && reduce_dim[0] == 1) {
+    // TODO(liangdun): we have to optimize 3d case which the 2nd axis is reduced
+  }
 
   switch (rank) {
     CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
@@ -213,18 +243,36 @@ static void TensorReduceImpl(
 
 template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
 void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
-                  const std::vector<int>& origin_reduce_dims, const Ty& init,
+                  std::vector<int> origin_reduce_dims, const Ty& init,
                   const ReduceOp& reducer, const TransformOp& transformer,
                   cudaStream_t stream) {
   auto x_dim = framework::vectorize2int(x.dims());
+  std::vector<int> new_x_dim, new_reduce_dims;
+  int is_reduced = 0;
+  for (auto e : origin_reduce_dims) {
+    auto pos = e >= 0 ? e : e + x_dim.size();
+    is_reduced |= 1 << e;
+  }
+  for (int i = 0; i < x_dim.size(); i++) {
+    if ((i == 0) || (((is_reduced >> i) ^ (is_reduced >> (i - 1))) & 1)) {
+      new_x_dim.push_back(x_dim[i]);
+      if ((is_reduced >> i) & 1)
+        new_reduce_dims.push_back(new_x_dim.size() - 1);
+    } else {
+      new_x_dim[new_x_dim.size() - 1] *= x_dim[i];
+    }
+  }
+  x_dim = new_x_dim;
+  // for (auto e : x_dim) VLOG(10) << "newdim " << e;
+  origin_reduce_dims = new_reduce_dims;
+  // for (auto e : origin_reduce_dims) VLOG(10) << "newrdim " << e;
   int x_rank = static_cast<int>(x_dim.size());
   std::set<int> left_set, reduce_set;
   for (int i = 0; i < x_rank; ++i) left_set.insert(i);
 
   for (auto e : origin_reduce_dims) {
-    auto pos = e >= 0 ? e : e + x_rank;
-    left_set.erase(pos);
-    reduce_set.insert(pos);
+    left_set.erase(e);
+    reduce_set.insert(e);
   }
 
   std::vector<int> reduce_dim(reduce_set.begin(), reduce_set.end());
@@ -234,14 +282,16 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   std::vector<int> reduce_strides = detail::GetStrides(x_dim, reduce_dim);
   std::vector<int> left_strides = detail::GetStrides(x_dim, left_dim);
   int reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
-  int left_num = left_strides[0] * x_dim[left_dim[0]];
+  int left_num = 1;
+  if (left_dim.size()) left_num = left_strides[0] * x_dim[left_dim[0]];
 
   std::vector<int> y_dim(left_dim.size());
   for (int i = 0; i < left_dim.size(); ++i) {
     y_dim[i] = x_dim[left_dim[i]];
   }
   auto x_data = x.data<Tx>();
-  auto y_data = y->mutable_data<Ty>(framework::make_ddim(y_dim), x.place());
+  // auto y_data = y->mutable_data<Ty>(framework::make_ddim(y_dim), x.place());
+  auto y_data = y->mutable_data<Ty>(x.place());
   if (reduce_num == 1) return;
 
 #define CUB_BLOCK_DIM_CASE(block_dim)                                    \
