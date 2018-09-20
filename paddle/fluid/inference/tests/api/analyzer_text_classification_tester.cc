@@ -46,54 +46,63 @@ struct DataReader {
   std::unique_ptr<std::ifstream> file;
 };
 
-void Main(int batch_size) {
-  // shape --
-  // Create Predictor --
-  AnalysisConfig config;
-  config.model_dir = FLAGS_infer_model;
-  config.use_gpu = false;
-  config.enable_ir_optim = true;
+void SetConfig(AnalysisConfig *cfg) {
+  cfg->model_dir = FLAGS_infer_model;
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
+}
 
-  std::vector<PaddleTensor> input_slots, output_slots;
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  std::vector<PaddleTensor> input_slots;
   DataReader reader(FLAGS_infer_data);
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-
-  if (FLAGS_test_all_data) {
-    LOG(INFO) << "test all data";
-    int num_batches = 0;
-    while (reader.NextBatch(&input_slots, FLAGS_batch_size)) {
-      input_slots_all.emplace_back(input_slots);
-      ++num_batches;
-    }
-    LOG(INFO) << "total number of samples: " << num_batches * FLAGS_batch_size;
-    TestPrediction(config, input_slots_all, &output_slots, FLAGS_num_threads);
-    return;
+  int num_batches = 0;
+  while (reader.NextBatch(&input_slots, FLAGS_batch_size)) {
+    (*inputs).emplace_back(input_slots);
+    ++num_batches;
+    if (!FLAGS_test_all_data) return;
   }
+  LOG(INFO) << "total number of samples: " << num_batches * FLAGS_batch_size;
+}
 
-  // one batch starts
-  // data --
-  reader.NextBatch(&input_slots, FLAGS_batch_size);
-  input_slots_all.emplace_back(input_slots);
-  TestPrediction(config, input_slots_all, &output_slots, FLAGS_num_threads);
+// Easy for profiling independently.
+TEST(Analyzer_Text_Classification, profile) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
 
-  // Get output
-  LOG(INFO) << "get outputs " << output_slots.size();
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
-  for (auto &output : output_slots) {
-    LOG(INFO) << "output.shape: " << to_string(output.shape);
-    // no lod ?
-    CHECK_EQ(output.lod.size(), 0UL);
-    LOG(INFO) << "output.dtype: " << output.dtype;
-    std::stringstream ss;
-    for (int i = 0; i < 5; i++) {
-      ss << static_cast<float *>(output.data.data())[i] << " ";
+  if (FLAGS_num_threads == 1) {
+    // Get output
+    LOG(INFO) << "get outputs " << outputs.size();
+    for (auto &output : outputs) {
+      LOG(INFO) << "output.shape: " << to_string(output.shape);
+      // no lod ?
+      CHECK_EQ(output.lod.size(), 0UL);
+      LOG(INFO) << "output.dtype: " << output.dtype;
+      std::stringstream ss;
+      for (int i = 0; i < 5; i++) {
+        ss << static_cast<float *>(output.data.data())[i] << " ";
+      }
+      LOG(INFO) << "output.data summary: " << ss.str();
+      // one batch ends
     }
-    LOG(INFO) << "output.data summary: " << ss.str();
-    // one batch ends
   }
 }
 
-TEST(text_classification, basic) { Main(FLAGS_batch_size); }
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_Text_Classification, compare) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
 
 }  // namespace inference
 }  // namespace paddle
