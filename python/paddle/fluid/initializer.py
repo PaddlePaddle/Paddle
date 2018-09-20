@@ -293,7 +293,6 @@ class TruncatedNormalInitializer(Initializer):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(NormalInitializer, self).__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
