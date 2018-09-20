@@ -23,7 +23,10 @@ from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable
 from ..layer_helper import LayerHelper
 
-__all__ = ['deprecated', 'generate_layer_fn', 'autodoc', 'templatedoc']
+__all__ = [
+    'deprecated', 'generate_layer_fn', 'generate_layer_fn_noattr', 'autodoc',
+    'templatedoc'
+]
 
 
 def _convert_(name):
@@ -199,6 +202,30 @@ def generate_layer_fn(op_type):
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=kwargs)
         return helper.append_activation(out_var)
+
+    func.__name__ = op_type
+    func.__doc__ = _generate_doc_string_(op_proto)
+    return func
+
+
+def generate_layer_fn_noattr(op_type):
+    """Register the Python layer for an Operator without Attribute.
+
+    Args:
+       op_type: The name of the operator to be created.
+
+    This function takes in the operator type (sigmoid, exp , tanh etc) and
+    creates the operator functionality.
+
+    """
+    op_proto = OpProtoHolder.instance().get_op_proto(op_type)
+
+    def func(x):
+        helper = LayerHelper(op_type, **locals())
+        output = helper.create_tmp_variable(dtype=helper.input_dtype())
+        helper.append_op(
+            type=op_type, inputs={"X": [x]}, outputs={"Out": [output]})
+        return output
 
     func.__name__ = op_type
     func.__doc__ = _generate_doc_string_(op_proto)
