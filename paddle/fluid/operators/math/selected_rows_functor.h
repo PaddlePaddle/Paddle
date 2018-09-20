@@ -65,6 +65,9 @@ struct MergeAdd {
   // the input SelectedRows object.
   framework::SelectedRows operator()(const DeviceContext& context,
                                      const framework::SelectedRows& input);
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output);
 };
 
 template <typename DeviceContext, typename T>
