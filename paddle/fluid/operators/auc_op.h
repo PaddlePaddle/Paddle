@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <mutex>  // NOLINT
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
@@ -27,6 +28,8 @@ template <typename DeviceContext, typename T>
 class AucKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    std::unique_lock<std::mutex> lock(mutex_);
+
     auto *predict = ctx.Input<Tensor>("Predict");
     auto *label = ctx.Input<Tensor>("Label");
 
@@ -154,6 +157,8 @@ class AucKernel : public framework::OpKernel<T> {
       *auc = *auc / totPos / totNeg;
     }
   }
+
+  std::mutex mutex_;
 };
 
 }  // namespace operators
