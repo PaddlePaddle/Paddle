@@ -17,6 +17,7 @@ limitations under the License. */
 #include <memory>  // for shared_ptr
 #include <string>
 #include <unordered_map>
+#include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/macros.h"
 
 // Note: Only support on CPU yet.
@@ -24,6 +25,18 @@ namespace paddle {
 namespace operators {
 namespace math {
 namespace jitkernel {
+
+#define SIGMOID_THRESHOLD_MIN -40.0
+#define SIGMOID_THRESHOLD_MAX 13.0
+
+#define AVX_FLOAT_BLOCK 8
+#define AVX_DOUBLE_BLOCK 4
+#define AVX2_FLOAT_BLOCK 8
+#define AVX2_DOUBLE_BLOCK 4
+#define AVX512_FLOAT_BLOCK 16
+#define AVX512_DOUBLE_BLOCK 8
+
+typedef enum { kLT8, kEQ8, kEQ16, kGT16 } jit_block;
 
 class Kernel {
  public:
@@ -36,7 +49,7 @@ class Kernel {
 
 class KernelPool {
  public:
-  static KernelPool& Instance();
+  static KernelPool &Instance();
 
   template <typename Ker, typename... ARGS>
   const std::shared_ptr<Ker> Get(ARGS... args);
@@ -49,16 +62,23 @@ class KernelPool {
 };
 
 template <typename T>
+class VMulKernel : public Kernel {
+ public:
+  explicit VMulKernel(int n);
+  void (*Compute)(const int n, const T *, const T *, T *);
+};
+
+template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  explicit LSTMKernel(int d, const std::string& act_gate,
-                      const std::string& act_cand, const std::string& act_cell);
+  explicit LSTMKernel(int d, const std::string &act_gate,
+                      const std::string &act_cand, const std::string &act_cell);
 
-  void ComputeCtHt(T* gates, const T* ct_1, T* ct);
-  void ComputeCtHt_NoC0H0(T* gates, const T* ct_1, T* ct);
+  void (*jit_ker)(T *, const T *, T *, T *);
+  std::function<void(T *, const T *, T *, T *)> ComputeCtHt, ComputeCtHt_NoC0H0;
 
  private:
-  int d_;
+  int d_, d2_, d3_;
   std::function<void(const int, const T *, T *)> act_gate_, act_cell_,
       act_cand_;
 };
