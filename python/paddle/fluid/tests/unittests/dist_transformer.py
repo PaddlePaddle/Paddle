@@ -440,9 +440,7 @@ def split_data(data, num_part):
 def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
                  sum_cost, token_num):
     # Context to do validation.
-    test_program = train_progm.clone()
-    with fluid.program_guard(test_program):
-        test_program = fluid.io.get_inference_program([avg_cost])
+    test_program = train_progm.clone(for_test=True)
 
     val_data = DataReader(
         src_vocab_fpath=TrainTaskConfig.src_vocab_fpath,
