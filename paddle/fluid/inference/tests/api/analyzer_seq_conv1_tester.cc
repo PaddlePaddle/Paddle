@@ -154,7 +154,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 }
 
 // Easy for profiling independently.
-TEST(Analyzer_multi_label, profile) {
+TEST(Analyzer_seq_conv1, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
@@ -177,8 +177,16 @@ TEST(Analyzer_multi_label, profile) {
   }
 }
 
+// Check the fuse status
+TEST(Analyzer_seq_conv1, fuse_statis) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  int num_ops;
+  auto fuse_statis = GetFuseStatis(cfg, &num_ops);
+}
+
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_multi_label, compare) {
+TEST(Analyzer_seq_conv1, compare) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
