@@ -234,7 +234,10 @@ class TestQuantizeTranspiler(unittest.TestCase):
                                        feed=feeder.feed(test_data),
                                        fetch_list=[loss, fv2])
             self.assertAlmostEqual(test_loss1, test_loss2, delta=1e-3)
-            self.assertTrue(np.allclose(f_v1, f_v2, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    f_v1, f_v2, rtol=1e-04, atol=1e-05),
+                "There is diff: " + str(f_v1) + "\n" + str(f_v2))
             w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
                                 .get_tensor())
             self.assertEqual(np.sum(w_freeze), np.sum(w_quant))
