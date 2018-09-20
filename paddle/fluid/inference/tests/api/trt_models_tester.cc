@@ -26,7 +26,7 @@ NativeConfig GetConfigNative() {
   NativeConfig config;
   config.model_dir = FLAGS_dirname;
   // LOG(INFO) << "dirname  " << config.model_dir;
-  config.fraction_of_gpu_memory = 0.7;
+  config.fraction_of_gpu_memory = 0.45;
   config.use_gpu = true;
   config.device = 0;
   return config;
@@ -36,7 +36,7 @@ TensorRTConfig GetConfigTRT() {
   TensorRTConfig config;
   config.model_dir = FLAGS_dirname;
   config.use_gpu = true;
-  config.fraction_of_gpu_memory = 0.1;
+  config.fraction_of_gpu_memory = 0.2;
   config.device = 0;
   config.max_batch_size = 3;
   return config;
@@ -99,7 +99,7 @@ TEST(trt_models_test, main) {
   std::vector<std::string> infer_models = {"mobilenet", "resnet50",
                                            "resnext50"};
   for (auto &model_dir : infer_models) {
-    CompareTensorRTWithFluid(5, FLAGS_dirname + "/" + model_dir);
+    CompareTensorRTWithFluid(1, FLAGS_dirname + "/" + model_dir);
   }
 }
 }  // namespace paddle
