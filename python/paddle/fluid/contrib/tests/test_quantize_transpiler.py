@@ -210,7 +210,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
 
         with fluid.program_guard(main):
             for _ in range(iter):
-                data = train_reader().next()
+                data = next(train_reader())
                 loss_v = exe.run(program=main,
                                  feed=feeder.feed(data),
                                  fetch_list=[loss])
