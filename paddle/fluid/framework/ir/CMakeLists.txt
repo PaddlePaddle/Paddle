@@ -37,6 +37,8 @@ pass_library(fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
 
+cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
+
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
 
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
