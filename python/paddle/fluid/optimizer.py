@@ -104,7 +104,6 @@ class Optimizer(object):
         param = param_and_grad[0]
         param_lr = param.optimize_attr['learning_rate']
         if type(param_lr) == Variable:
-            # param learning rate has been updated (LARS)
             print("returns updated param lr ", param_lr)
             return param_lr
         else:
