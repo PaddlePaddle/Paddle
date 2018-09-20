@@ -208,53 +208,60 @@ class TestQuantizeTranspiler(unittest.TestCase):
             paddle.dataset.mnist.test(), batch_size=batch_size)
         feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
 
-        for _ in range(iter):
-            data = train_reader().next()
-            loss_v = exe.run(program=main,
-                             feed=feeder.feed(data),
-                             fetch_list=[loss])
-        test_data = test_reader().next()
+        with fluid.program_guard(main):
+            for _ in range(iter):
+                data = train_reader().next()
+                loss_v = exe.run(program=main,
+                                 feed=feeder.feed(data),
+                                 fetch_list=[loss])
 
-        f_var = fluid.framework.get_var('conv2d_1.tmp_0', test_program)
-        w_var = fluid.framework.get_var('conv2d_1.w_0.quantized', test_program)
-        # Testing during training
-        test_loss1, f_v1, w_quant = exe.run(program=test_program,
-                                            feed=feeder.feed(test_data),
-                                            fetch_list=[loss, f_var, w_var])
+        with fluid.program_guard(test_program):
+            test_data = test_reader().next()
+            f_var = fluid.framework.get_var('conv2d_1.tmp_0', test_program)
+            w_var = fluid.framework.get_var('conv2d_1.w_0.quantized',
+                                            test_program)
+            # Testing during training
+            test_loss1, f_v1, w_quant = exe.run(
+                program=test_program,
+                feed=feeder.feed(test_data),
+                fetch_list=[loss, f_var, w_var])
 
-        # Freeze program for inference, but the weight of fc/conv is still float type.
-        quant_transpiler.freeze_program(test_program, place)
-        fv2 = fluid.framework.get_var('conv2d_1.tmp_0.dequantized',
-                                      test_program)
-        test_loss2, f_v2 = exe.run(program=test_program,
-                                   feed=feeder.feed(test_data),
-                                   fetch_list=[loss, fv2])
-        self.assertAlmostEqual(test_loss1, test_loss2, delta=1e-5)
-        self.assertAlmostEqual(f_v1.all(), f_v2.all(), delta=1e-5)
-        w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
-                            .get_tensor())
-        self.assertEqual(np.sum(w_freeze), np.sum(w_quant))
+            # Freeze program for inference, but the weight of fc/conv is still float type.
+            quant_transpiler.freeze_program(test_program, place)
+            fv2 = fluid.framework.get_var('conv2d_1.tmp_0.dequantized',
+                                          test_program)
+            test_loss2, f_v2 = exe.run(program=test_program,
+                                       feed=feeder.feed(test_data),
+                                       fetch_list=[loss, fv2])
+            self.assertAlmostEqual(test_loss1, test_loss2, delta=1e-3)
+            self.assertTrue(np.allclose(f_v1, f_v2, rtol=1e-05, atol=1e-05))
+            w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
+                                .get_tensor())
+            self.assertEqual(np.sum(w_freeze), np.sum(w_quant))
 
-        # Convert parameter to 8-bit.
-        quant_transpiler.convert_to_int8(test_program, place)
-        # Save the 8-bit parameter and model file.
-        fluid.io.save_inference_model('model_8bit', ['image', 'label'], [loss],
-                                      exe, test_program)
-        # Test whether the 8-bit parameter and model file can be loaded successfully.
-        [infer, feed, fetch] = fluid.io.load_inference_model('model_8bit', exe)
-        # Check the loaded 8-bit weight.
-        w_8bit = np.array(fluid.global_scope().find_var('conv2d_1.w_0.int8')
-                          .get_tensor())
+            # Convert parameter to 8-bit.
+            quant_transpiler.convert_to_int8(test_program, place)
+            # Save the 8-bit parameter and model file.
+            fluid.io.save_inference_model('model_8bit', ['image', 'label'],
+                                          [loss], exe, test_program)
+            # Test whether the 8-bit parameter and model file can be loaded successfully.
+            [infer, feed, fetch] = fluid.io.load_inference_model('model_8bit',
+                                                                 exe)
+            # Check the loaded 8-bit weight.
+            w_8bit = np.array(fluid.global_scope().find_var('conv2d_1.w_0.int8')
+                              .get_tensor())
 
-        self.assertEqual(w_8bit.dtype, np.int8)
-        self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
+            self.assertEqual(w_8bit.dtype, np.int8)
+            self.assertEqual(np.sum(w_8bit), np.sum(w_freeze))
 
     def test_freeze_program_cuda(self):
         if fluid.core.is_compiled_with_cuda():
-            self.freeze_program(True)
+            with fluid.unique_name.guard():
+                self.freeze_program(True)
 
     def test_freeze_program_cpu(self):
-        self.freeze_program(False)
+        with fluid.unique_name.guard():
+            self.freeze_program(False)
 
 
 if __name__ == '__main__':
