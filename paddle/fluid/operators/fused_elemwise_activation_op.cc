@@ -13,18 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/fused_elemwise_activation_op.h"
-#include <string>
-#include <vector>
 
 namespace paddle {
 namespace operators {
 
-/*
- * Whether the compound function is Unary(Binary(X, Y)).
- * For Unary(Binary(X, Y)), the intermediate_out's shape is the same the final
- * out.
- */
-static bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
+bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(functor_list.size(), 2);
   static std::unordered_set<std::string> binary_fun = {
       "elementwise_add", "elementwise_mul", "elementwise_add_grad",
@@ -32,10 +25,17 @@ static bool IsUnaryCompound(const std::vector<std::string> &functor_list) {
   return binary_fun.count(functor_list[1]) != 0;
 }
 
-/*
- * Whether the Input(X) could be absent.
- */
-static bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
+bool HasInPlaceUnary(const std::vector<std::string> &functor_list) {
+  PADDLE_ENFORCE_EQ(functor_list.size(), 2);
+  static std::unordered_set<std::string> InplaceOpSet = {"relu", "relu_grad"};
+  bool is_in_place = false;
+  for (auto &func_name : functor_list) {
+    is_in_place |= (InplaceOpSet.count(func_name) == 1);
+  }
+  return is_in_place;
+}
+
+bool InputXCanBeAbsent(const std::vector<std::string> &functor_list) {
   PADDLE_ENFORCE_EQ(functor_list.size(), 2);
   static std::unordered_set<std::string> binary_fun = {"elementwise_add_grad"};
   return binary_fun.count(functor_list[0]) != 0 ||
@@ -86,20 +86,12 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
 
     // Whether the shape of Y is a continuous subsequence of X,
     // For more information please refer to the op's introduction.
-    bool bcast_y = x_dim.size() >= y_dim.size();
-    if (x_dim.size() == y_dim.size()) {
-      for (int i = 0; i < x_dim.size(); ++i) {
-        if (x_dim[i] < y_dim[i]) {
-          bcast_y = false;
-          break;
-        }
-      }
-    }
+    bool bcast_y = IsBcastY(x_dim, y_dim);
 
     auto &out_dim = bcast_y ? x_dim : y_dim;
     std::string out_lod = bcast_y ? "X" : "Y";
 
-    if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
+    if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx->HasOutput("IntermediateOut"),
                      "Output(IntermediateOut) of FusedElemwiseActivationOp "
                      "should not be null.");
@@ -121,6 +113,20 @@ class FusedElemwiseActivationOp : public framework::OperatorWithKernel {
     }
     ctx->SetOutputDim("Out", out_dim);
     ctx->ShareLoD(out_lod, /*->*/ "Out");
+  }
+
+  static bool IsBcastY(const framework::DDim &x_dim,
+                       const framework::DDim &y_dim) {
+    bool bcast_y = x_dim.size() >= y_dim.size();
+    if (x_dim.size() == y_dim.size()) {
+      for (int i = 0; i < x_dim.size(); ++i) {
+        if (x_dim[i] < y_dim[i]) {
+          bcast_y = false;
+          break;
+        }
+      }
+    }
+    return bcast_y;
   }
 
  protected:
@@ -157,17 +163,7 @@ class FusedElemwiseActivationMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("scale",
                    "scale is used by scale_op, the default value is 0.0.")
         .SetDefault(0.0);
-    AddAttr<bool>(
-        "recomputation",
-        "Whether to recompute the Out."
-        "The computation of fused_elemwise_activation_grad has two methods to "
-        "get the dx and dy, one is to use the 'Out', and the other is not. "
-        "The former method will save the time of recomputing the 'Out', but it "
-        "must occupy the memory to store the 'out'. While, the later method "
-        "can avoid occupying the memory, but it must recompute the 'Out'. "
-        "It is useful for Unary(Binary(X, Y)). The default value is true.")
-        .SetDefault(true);
-    AddAttr<bool>("keep_intermediate_value",
+    AddAttr<bool>("save_intermediate_out",
                   "Whether to save the intermediate_out.")
         .SetDefault(false);
     AddAttr<std::vector<std::string>>("functor_list",
@@ -227,30 +223,38 @@ class FusedElemwiseActivationGradMaker
 
  protected:
   std::unique_ptr<framework::OpDesc> Apply() const override {
-    auto *op_desc_ptr = new framework::OpDesc();
-    op_desc_ptr->SetType(this->ForwardOpType() + "_grad");
+    auto *grad_op = new framework::OpDesc();
+    grad_op->SetType(this->ForwardOpType() + "_grad");
 
     for (auto &input_param : this->InputNames()) {
-      op_desc_ptr->SetInput(input_param, this->Input(input_param));
-      op_desc_ptr->SetOutput(framework::GradVarName(input_param),
-                             this->InputGrad(input_param, true));
+      grad_op->SetInput(input_param, this->Input(input_param));
+      grad_op->SetOutput(framework::GradVarName(input_param),
+                         this->InputGrad(input_param, true));
     }
 
-    for (auto &output_param : this->OutputNames()) {
-      op_desc_ptr->SetInput(output_param, this->Output(output_param));
-      op_desc_ptr->SetInput(framework::GradVarName(output_param),
-                            this->OutputGrad(output_param));
-    }
+    grad_op->SetInput("Out", this->Output("Out"));
+    grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
 
-    op_desc_ptr->SetAttrMap(this->Attrs());
+    grad_op->SetAttrMap(this->Attrs());
 
     std::vector<std::string> functor_names =
-        boost::get<std::vector<std::string>>(
-            op_desc_ptr->GetAttr("functor_list"));
+        boost::get<std::vector<std::string>>(grad_op->GetAttr("functor_list"));
+
     functor_names[0] += "_grad";
     functor_names[1] += "_grad";
-    op_desc_ptr->SetAttr("functor_list", functor_names);
-    return std::unique_ptr<framework::OpDesc>(op_desc_ptr);
+    grad_op->SetAttr("functor_list", functor_names);
+
+    if (boost::get<bool>(grad_op->GetAttr("save_intermediate_out"))) {
+      PADDLE_ENFORCE_NE(Output("IntermediateOut").size(), 0);
+      grad_op->SetInput("IntermediateOut", this->Output("IntermediateOut"));
+      grad_op->SetOutput(framework::GradVarName("IntermediateOut"),
+                         this->OutputGrad("IntermediateOut"));
+    } else {
+      grad_op->SetInput("IntermediateOut", {});
+      grad_op->SetOutput(framework::GradVarName("IntermediateOut"), {});
+    }
+
+    return std::unique_ptr<framework::OpDesc>(grad_op);
   }
 };
 
@@ -261,56 +265,65 @@ class FusedElemwiseActivationOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput(framework::GradVarName("Out")),
                    "Input(Out@Grad) should not be null");
-    if (ctx->Attrs().Get<bool>("keep_intermediate_value")) {
+
+    auto functor_list =
+        ctx->Attrs().Get<std::vector<std::string>>("functor_list");
+
+    if (ctx->Attrs().Get<bool>("save_intermediate_out")) {
       PADDLE_ENFORCE(ctx->HasInput("IntermediateOut"),
                      "Input(IntermediateOut) should not be null");
     } else {
-      PADDLE_ENFORCE_EQ(ctx->Inputs(framework::GradVarName("Out")).size(), 1);
+      if (!InputXCanBeAbsent(functor_list)) {
+        PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) should not be null");
+      }
     }
 
-    auto funtor_list =
-        ctx->Attrs().Get<std::vector<std::string>>("functor_list");
     auto x_grad_name = framework::GradVarName("X");
     auto y_grad_name = framework::GradVarName("Y");
+    auto inter_grad_name = framework::GradVarName("IntermediateOut");
 
     if (ctx->HasOutput(x_grad_name)) {
       if (ctx->HasInputs("X")) {
         ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("X"));
         ctx->ShareLoD("X", x_grad_name);
       } else {
-        // Node: If "X" is absence, the shape of Y should be a continuous
-        // subsequence of X, if not, we could not infer the shape of dx.
-
         // Currently, only when Binary is elementwise_add or elementwise_sub,
         // the "X" could be absent.
-        PADDLE_ENFORCE(InputXCanBeAbsent(funtor_list),
+        PADDLE_ENFORCE(InputXCanBeAbsent(functor_list),
                        "Only when BinaryFunctor is elementwise_add, the 'X' "
                        "could be absent.");
 
-        // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
-        if (IsUnaryCompound(funtor_list)) {
-          PADDLE_ENFORCE(
-              ctx->HasInputs("IntermediateOut"),
-              "If the compound_functor is Unary(Binary(X, Y)) and Binary "
-              "is elementwise_add, the intermediate_out must be not absent.");
-        }
+        // Node: If "X" is absence, the shape of Y should be a continuous
+        // subsequence of X, otherwise, we could not infer the shape of dx.
 
         ctx->SetOutputDim(x_grad_name,
                           ctx->GetInputDim(framework::GradVarName("Out")));
         ctx->ShareLoD(framework::GradVarName("Out"), x_grad_name);
       }
     }
+
     if (ctx->HasOutput(y_grad_name)) {
       PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
       ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("Y"));
       ctx->ShareLoD("Y", y_grad_name);
+    }
+
+    if (ctx->HasOutput(inter_grad_name)) {
+      // For Unary(Binary(X, Y)), IntermediateOut should not be empty.
+      if (IsUnaryCompound(functor_list)) {
+        ctx->SetOutputDim(inter_grad_name,
+                          ctx->GetInputDim(framework::GradVarName("Out")));
+        ctx->ShareLoD(framework::GradVarName("Out"), inter_grad_name);
+      } else {
+        ctx->SetOutputDim(inter_grad_name, ctx->GetInputDim("Y"));
+        ctx->ShareLoD("Y", inter_grad_name);
+      }
     }
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    //    PADDLE_ENFORCE(ctx->HasInput("Y"), "Input(Y) should not be null");
     auto input_data_type_index = ctx.Input<framework::Tensor>("Y")->type();
     auto input_data_type = framework::ToDataType(input_data_type_index);
     return framework::OpKernelType(input_data_type, ctx.GetPlace());

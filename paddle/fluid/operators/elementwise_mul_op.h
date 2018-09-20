@@ -93,8 +93,8 @@ class ElementwiseMulGradKernel : public ElemwiseGradKernel<T> {
 
     auto* x = ctx.Input<Tensor>("X");
     auto* y = ctx.Input<Tensor>("Y");
-    auto* out = ctx.Input<Tensor>("Out");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* out = dout;  // out is not necessary
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
     int axis = ctx.Attr<int>("axis");

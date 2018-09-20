@@ -30,7 +30,8 @@ def gru(
         bias,  # 1 x 3D
         is_reverse,
         act_state,
-        act_gate):
+        act_gate,
+        dtype='float32'):
     def _seq_to_batch(lod, is_reverse):
         idx_in_seq_list = []
         seq_lens = lod[0]
@@ -71,10 +72,10 @@ def gru(
     T = sum(lod[0])
     N = len(lod[0])
     D = weight.shape[0]
-    batch_gate = np.zeros((T, 3 * D), dtype='float64')
-    batch_reset_hidden_prev = np.zeros((T, D), dtype='float64')
-    batch_hidden = np.zeros((T, D), dtype='float64')
-    hidden = np.zeros((T, D), dtype='float64')
+    batch_gate = np.zeros((T, 3 * D), dtype=dtype)
+    batch_reset_hidden_prev = np.zeros((T, D), dtype=dtype)
+    batch_hidden = np.zeros((T, D), dtype=dtype)
+    hidden = np.zeros((T, D), dtype=dtype)
 
     idx_in_seq_list, sorted_seqs = _seq_to_batch(lod, is_reverse)
     h_p = h0[sorted_seqs]
@@ -108,23 +109,24 @@ class TestGRUOp(OpTest):
         self.with_bias = True
         self.act_state = 'tanh'
         self.act_gate = 'sigmoid'
+        self.dtype = 'float64'
         self.set_confs()
 
         T = sum(self.lod[0])
         N = len(self.lod[0])
 
-        input = np.random.rand(T, 3 * self.D).astype('float64')
-        weight = np.random.rand(self.D, 3 * self.D).astype('float64')
+        input = np.random.rand(T, 3 * self.D).astype(self.dtype)
+        weight = np.random.rand(self.D, 3 * self.D).astype(self.dtype)
         bias = np.random.rand(
-            1, 3 * self.D).astype('float64') if self.with_bias else np.zeros(
-                (1, 3 * self.D), dtype='float64')
+            1, 3 * self.D).astype(self.dtype) if self.with_bias else np.zeros(
+                (1, 3 * self.D), dtype=self.dtype)
         h0 = np.random.rand(
-            N, self.D).astype('float64') if self.with_h0 else np.zeros(
-                (N, self.D), dtype='float64')
+            N, self.D).astype(self.dtype) if self.with_h0 else np.zeros(
+                (N, self.D), dtype=self.dtype)
 
         batch_gate, batch_reset_hidden_prev, batch_hidden, hidden = gru(
             input, self.lod, h0, weight, bias, self.is_reverse,
-            ACTIVATION[self.act_state], ACTIVATION[self.act_gate])
+            ACTIVATION[self.act_state], ACTIVATION[self.act_gate], self.dtype)
         self.inputs = {'Input': (input, self.lod), 'Weight': weight}
 
         if self.with_bias:
@@ -151,6 +153,12 @@ class TestGRUOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['Input', 'H0', 'Weight', 'Bias'], ['Hidden'])
+
+
+class TestGRUOp2(TestGRUOp):
+    def set_confs(self):
+        self.D = 19
+        self.dtype = 'float32'
 
 
 class TestGRUOpNoInitial(TestGRUOp):
