@@ -330,8 +330,6 @@ class AdamOpKernel : public framework::OpKernel<T> {
         merge_func(ctx.template device_context<DeviceContext>(), grad,
                    grad_merge_var);
         grad_merge_ptr = grad_merge_var;
-
-        std::cerr << "Create new variables in adam_op" << std::endl;
       }
 
       auto& grad_merge = *grad_merge_ptr;
