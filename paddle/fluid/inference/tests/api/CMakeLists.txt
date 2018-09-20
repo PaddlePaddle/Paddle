@@ -58,6 +58,11 @@ set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classifi
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR} analyzer_text_classification_tester.cc)
 
+# chinese_ner
+set(MULTI_LABEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/multi_label")
+download_model_and_data(${MULTI_LABEL_INSTALL_DIR} "multi_label_model.tar.gz" "multi_label_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_multi_label ${MULTI_LABEL_INSTALL_DIR} analyzer_multi_label_tester.cc)
+
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
