@@ -109,6 +109,7 @@ void Main(int batch_size) {
 #ifdef PADDLE_WITH_MKLDNN
   // add passes to execute with MKL-DNN
   config.ir_mkldnn_passes.push_back("conv_bn_fuse_pass");
+  config.ir_mkldnn_passes.push_back("conv_eltwiseadd_bn_fuse_pass");
   config.ir_mkldnn_passes.push_back("conv_elementwise_add_mkldnn_fuse_pass");
   config.ir_mkldnn_passes.push_back("conv_relu_mkldnn_fuse_pass");
   config.ir_mkldnn_passes.push_back("fc_fuse_pass");
@@ -136,7 +137,7 @@ void Main(int batch_size) {
   CHECK_EQ(output.dtype, paddle::PaddleDType::FLOAT32);
   float* odata = static_cast<float*>(output.data.data());
   size_t olen = output.data.length() / sizeof(FLOAT32);
-  float acc_avg = std::accumulate(odata, odata + olen, 0.0) / 10;
+  float acc_avg = std::accumulate(odata, odata + olen, 0.0) / olen;
   double lat_avg = sum / FLAGS_iterations;
 
   PrintResults(batch_size, FLAGS_iterations, lat_avg, acc_avg);
