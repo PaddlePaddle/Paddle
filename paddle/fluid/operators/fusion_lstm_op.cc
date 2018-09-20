@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/cpu_lstm_compute.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
@@ -24,20 +25,17 @@ namespace paddle {
 namespace operators {
 
 void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Assert only one Input(X) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("WeightX"),
-                 "Input(WeightX) of LSTM should not be null.");
+                 "Assert only one Input(WeightX) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("WeightH"),
-                 "Input(WeightH) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                 "Input(Bias) of LSTM should not be null.");
-
-  PADDLE_ENFORCE(ctx->HasOutput("XX"),
-                 "Output(XX) of LSTM should not be null.");
+                 "Assert only one Input(WeightH) of LSTM.");
+  PADDLE_ENFORCE(ctx->HasInput("Bias"), "Assert only one Input(Bias) of LSTM.");
+  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Assert only one Output(XX) of LSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                 "Output(Hidden) of LSTM should not be null.");
+                 "Assert only one Output(Hidden) of LSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                 "Output(Cell) of LSTM should not be null.");
+                 "Assert only one Output(Cell) of LSTM.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
@@ -96,15 +94,15 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
     PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
-                   "Output(BatchedInput) of LSTM should not be null.");
+                   "Assert only one Output(BatchedInput) of LSTM.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
-                   "Output(BatchedHidden) of LSTM should not be null.");
+                   "Assert only one Output(BatchedHidden) of LSTM.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchedCell"),
-                   "Output(BatchedCell) of LSTM should not be null.");
+                   "Assert only one Output(BatchedCell) of LSTM.");
     PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
-                   "Output(ReorderedH0) of LSTM should not be null.");
+                   "Assert only one Output(ReorderedH0) of LSTM");
     PADDLE_ENFORCE(ctx->HasOutput("ReorderedC0"),
-                   "Output(ReorderedC0) of LSTM should not be null.");
+                   "Assert only one Output(ReorderedC0) of LSTM.");
     ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
     ctx->SetOutputDim("BatchedHidden", out_dims);
     ctx->SetOutputDim("BatchedCell", out_dims);
@@ -596,11 +594,22 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         }
       }
     } else {
+      // TODO(TJ): unly workaround, clean me
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
+      if (platform::jit::MayIUse(platform::jit::avx) &&
+          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
+          act_cell_str == "tanh" && D == 8) {
+        compute_ctht = math::lstm_compute_ctht<T>;
+      } else {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
+          COMPUTE_CtHt(gates, ct_1, ct, ht);
+        };
+      }
       for (int i = 0; i < N; ++i) {
         PROCESS_H0C0
         for (int step = tstart; step < seq_len; ++step) {
           GEMM_WH_ADDON(1, prev_h_data, xx_data);
-          COMPUTE_CtHt(xx_data, prev_c_data, c_out_data, h_out_data);
+          compute_ctht(xx_data, prev_c_data, c_out_data, h_out_data);
           MOVE_ONE_STEP;
         }
       }
@@ -733,12 +742,23 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         MOVE_ONE_STEP;
       }
     } else {
+      // TODO(TJ): unly workaround, clean me
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
+      if (platform::jit::MayIUse(platform::jit::avx) &&
+          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
+          act_cell_str == "tanh" && D == 8) {
+        compute_ctht = math::lstm_compute_ctht<T>;
+      } else {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
+          COMPUTE_CtHt(gates, ct_1, ct, ht);
+        };
+      }
       for (int step = tstart; step < max_seq_len; ++step) {
         const int cur_bs = batch_starts[step + 1] - batch_starts[step];
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
-          COMPUTE_CtHt(cur_in_data, cur_prev_c_data, cur_c_out_data,
+          compute_ctht(cur_in_data, cur_prev_c_data, cur_c_out_data,
                        cur_h_out_data);
           MOVE_ONE_BATCH;
         }

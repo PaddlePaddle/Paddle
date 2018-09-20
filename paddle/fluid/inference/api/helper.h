@@ -123,10 +123,16 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
 }
 
 void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-               double latency) {
+               double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
             << ", latency: " << latency << "ms ======";
+  if (epoch > 1) {
+    int samples = batch_size * epoch;
+    LOG(INFO) << "====== sample number: " << samples
+              << ", average latency of each sample: " << latency / samples
+              << "ms ======";
+  }
 }
 
 }  // namespace inference

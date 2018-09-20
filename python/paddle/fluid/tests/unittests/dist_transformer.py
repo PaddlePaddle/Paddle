@@ -92,7 +92,7 @@ class TrainTaskConfig(object):
     src_vocab_fpath = data_path + "vocab.bpe.32000"
     trg_vocab_fpath = data_path + "vocab.bpe.32000"
     train_file_pattern = data_path + "train.tok.clean.bpe.32000.en-de"
-    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de"
+    val_file_pattern = data_path + "newstest2013.tok.bpe.32000.en-de.cut"
     pool_size = 2000
     sort_type = None
     local = True
@@ -624,11 +624,12 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
             init = True
 
             # Validate and save the model for inference.
-            if TrainTaskConfig.val_file_pattern is not None:
-                val_avg_cost, val_ppl = test()
-                print("[%f]" % val_avg_cost)
-            else:
-                assert (False)
+            if batch_id == 0 or batch_id == 4:
+                if TrainTaskConfig.val_file_pattern is not None:
+                    val_avg_cost, val_ppl = test()
+                    print("[%f]" % val_avg_cost)
+                else:
+                    assert (False)
 
 
 #import transformer_reader as reader
@@ -1701,8 +1702,9 @@ class DistTransformer2x2(TestDistRunnerBase):
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, place, args):
-
+    def run_trainer(self, use_cuda, args):
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        TrainTaskConfig.use_gpu = use_cuda
         sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
             args.is_dist, not args.sync_mode)
 

@@ -348,7 +348,7 @@ class OpTest(unittest.TestCase):
                         actual_t, expect_t, atol=atol, equal_nan=equal_nan),
                     "Output (" + out_name + ") has diff at " + str(place) +
                     "\nExpect " + str(expect_t) + "\n" + "But Got" +
-                    str(actual_t))
+                    str(actual_t) + " in class " + self.__class__.__name__)
                 if isinstance(expect, tuple):
                     self.assertListEqual(actual.recursive_sequence_lengths(),
                                          expect[1], "Output (" + out_name +
