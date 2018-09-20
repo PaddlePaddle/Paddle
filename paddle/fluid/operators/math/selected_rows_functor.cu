@@ -236,7 +236,7 @@ template <typename T, int block_size>
 __global__ void MergeAddKernel(const T* input, const int64_t* input_rows,
                                T* out, const int64_t* out_rows,
                                size_t out_rows_size, int64_t row_numel) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
   __shared__ size_t out_idx;
 
@@ -291,12 +291,9 @@ struct MergeAdd<platform::CUDADeviceContext, T> {
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid1(1, input_rows.size());
+    dim3 grid1(input_rows.size(), 1);
 
-    MergeAddKernel<
-        T, 256><<<grid1, threads, 0,
-                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(
+    MergeAddKernel<T, 256><<<grid1, threads, 0, context.stream()>>>(
         input_data, input_rows.CUDAData(context.GetPlace()), out_data,
         out.mutable_rows()->CUDAMutableData(context.GetPlace()),
         out.rows().size(), input_width);
