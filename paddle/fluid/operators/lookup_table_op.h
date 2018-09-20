@@ -21,13 +21,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/operators/math/selected_rows_functor.h"
 
 namespace paddle {
 namespace operators {
 
+namespace scatter = paddle::operators::math::scatter;
+
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 using SelectedRows = framework::SelectedRows;
+
 using DDim = framework::DDim;
 
 constexpr int64_t kNoPadding = -1;
@@ -106,6 +110,7 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     if (is_sparse) {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      SelectedRows tmp_d_table;
       auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
       auto *ids_data = ids->data<int64_t>();
@@ -116,13 +121,13 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < ids_num; i++) {
         new_rows.push_back(ids_data[i]);
       }
-      d_table->set_rows(new_rows);
+      tmp_d_table.set_rows(new_rows);
 
-      auto *d_table_value = d_table->mutable_value();
+      auto *d_table_value = tmp_d_table.mutable_value();
       d_table_value->Resize({ids_num, table_dim[1]});
       d_table_value->mutable_data<T>(context.GetPlace());
 
-      d_table->set_height(table_dim[0]);
+      tmp_d_table.set_height(table_dim[0]);
 
       auto *d_output_data = d_output->data<T>();
       auto *d_table_data = d_table_value->data<T>();
@@ -131,7 +136,12 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(
           d_table_value->dims(),
           framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
+
       memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
+
+      scatter::MergeAddTo<platform::CPUDeviceContext, T> merge_func;
+      merge_func(context.template device_context<platform::CPUDeviceContext>(),
+                 tmp_d_table, *d_table);
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));

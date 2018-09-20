@@ -235,6 +235,9 @@ template struct MergeAdd<platform::CPUDeviceContext, double>;
 template struct MergeAdd<platform::CPUDeviceContext, int>;
 template struct MergeAdd<platform::CPUDeviceContext, int64_t>;
 
+template struct MergeAddTo<platform::CPUDeviceContext, float>;
+template struct MergeAddTo<platform::CPUDeviceContext, double>;
+
 template <typename T>
 struct UpdateToTensor<platform::CPUDeviceContext, T> {
   void operator()(const platform::CPUDeviceContext& context,

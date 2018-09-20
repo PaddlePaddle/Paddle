@@ -45,13 +45,21 @@ class ConcatKernel : public framework::OpKernel<T> {
         output_offset += in_stride[axis];
       }
     } else {
+      // auto start = std::chrono::system_clock::now();
       std::vector<framework::Tensor> inputs(ins.size());
       for (size_t j = 0; j < ins.size(); ++j) {
         inputs[j] = *ins[j];
       }
+      // auto end = std::chrono::system_clock::now();
+      // std::chrono::duration<double> diff = end - start;
+      // LOG(ERROR) << "concat_op prepare, cost: " << diff.count();
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatFunctor<DeviceContext, T> concat_functor;
       concat_functor(dev_ctx, inputs, static_cast<int>(axis), out);
+      // end = std::chrono::system_clock::now();
+      // diff = end - start;
+      // LOG(ERROR) << "concat_op functor, cost: " << diff.count() << " Output "
+      // << ctx.Outputs("Out")[0] << " size " << ins.size();
     }
   }
 };

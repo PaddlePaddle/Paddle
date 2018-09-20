@@ -4459,12 +4459,13 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
                 "except one unknown dimension.")
 
     helper = LayerHelper("reshape2", **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    out = x if inplace else helper.create_tmp_variable(dtype=x.dtype)
     x_shape = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
         type="reshape2",
         inputs=inputs,
-        attrs={"shape": shape},
+        attrs={"shape": shape,
+               "inplace": inplace},
         outputs={"Out": out,
                  "XShape": x_shape})
 

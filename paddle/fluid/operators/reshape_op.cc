@@ -44,6 +44,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     }
 
     auto x_dims = ctx->GetInputDim("X");
+    LOG(ERROR) << " reshape infershape x_dims " << x_dims;
     auto out_dims = ValidateShape(shape, x_dims);
     ctx->SetOutputDim("Out", out_dims);
     if (x_dims[0] == out_dims[0]) {
@@ -51,6 +52,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", /*->*/ "Out");
     }
+    LOG(ERROR) << " reshape infershape end x_dims " << x_dims;
   }
 
   static framework::DDim ValidateShape(const std::vector<int> shape,
@@ -127,6 +129,8 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor). The output tensor of reshape operator.");
     AddAttr<std::vector<int>>(
         "shape", "(std::vector<int>) Target shape of reshape operator.");
+    AddAttr<bool>("inplace", "(bool). If provided, we will do reshape in place")
+        .SetDefault(false);
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -164,7 +168,7 @@ dimension value will be copied from Input(X) at runtime. Note that the index of
 [2, 3, 4], Attr(shape) = [2, 3, 2, 0] is an invalid input.
 
 3. Input(Shape) has a higher priority than Attr(shape) if it is provided, while
-Attr(shape) still should be set correctly to gurantee shape inference in 
+Attr(shape) still should be set correctly to gurantee shape inference in
 compile-time.
 
 )DOC");
@@ -201,6 +205,8 @@ class ReshapeKernel {
     auto *out = ctx.Output<framework::LoDTensor>("Out");
     auto *in = ctx.Input<framework::LoDTensor>("X");
 
+    LOG(ERROR) << " reize op " << in->dims();
+
     auto *shape_tensor = ctx.HasInput("Shape")
                              ? ctx.Input<framework::LoDTensor>("Shape")
                              : nullptr;
@@ -227,6 +233,24 @@ class ReshapeKernel {
           "sequence_reshape op.");
     }
 
+    const bool inplace = ctx.Attr<bool>("inplace");
+    if (inplace) {
+      PADDLE_ENFORCE_EQ(
+          ctx.Outputs("Out").size(), 1u,
+          "if inplace attribute was set, reshape must have only one Out var");
+      PADDLE_ENFORCE_EQ(
+          ctx.Outputs("Out").size(), ctx.Inputs("X").size(),
+          "if inplace attribute was set, X must have the same size of Out");
+      PADDLE_ENFORCE_EQ(
+          ctx.Outputs("Out")[0], ctx.Inputs("X")[0],
+          "if inplace attribute was set, X's name must keep the same with Out");
+
+      LOG(ERROR) << " reize op " << in->dims();
+      LOG(ERROR) << " reize op " << out_dims;
+      out->Resize(out_dims);
+      return;
+    }
+
     out->mutable_data(ctx.GetPlace(), in->type());
     framework::TensorCopySync(*in, ctx.GetPlace(), out);
     out->Resize(out_dims);
@@ -239,6 +263,28 @@ class ReshapeGradKernel {
     auto *d_out = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto *d_x = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto in_dims = d_x->dims();
+
+    auto *in = ctx.Input<framework::LoDTensor>("XShape");
+
+    const bool inplace = ctx.Attr<bool>("inplace");
+    if (inplace) {
+      PADDLE_ENFORCE_EQ(
+          ctx.Inputs(framework::GradVarName("Out")).size(), 1u,
+          "if inplace attribute was set, reshape must have only one Out var");
+      PADDLE_ENFORCE_EQ(
+          ctx.Inputs(framework::GradVarName("Out")).size(),
+          ctx.Outputs(framework::GradVarName("X")).size(),
+          "if inplace attribute was set, X must have the same size of Out");
+      PADDLE_ENFORCE_EQ(
+          ctx.Inputs(framework::GradVarName("Out"))[0],
+          ctx.Outputs(framework::GradVarName("X"))[0],
+          "if inplace attribute was set, X's name must keep the same with Out");
+
+      LOG(ERROR) << " reize op grad output " << in->dims();
+      LOG(ERROR) << " reize op grad input " << d_out->dims();
+      d_x->Resize(in->dims());
+      return;
+    }
 
     d_x->mutable_data(ctx.GetPlace(), d_out->type());
     framework::TensorCopySync(*d_out, ctx.GetPlace(), d_x);

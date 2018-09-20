@@ -296,7 +296,7 @@ template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
-    auto start = std::chrono::system_clock::now();
+    // auto start = std::chrono::system_clock::now();
     auto in_vars = context.MultiInputVar("X");
     int N = in_vars.size();
     auto out_var = context.OutputVar("Out");
@@ -367,11 +367,11 @@ class SumKernel : public framework::OpKernel<T> {
       PADDLE_THROW("Unexpected branch, output variable type is %s",
                    out_var->Type().name());
     }
-    auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> diff = end - start;
-    LOG(ERROR) << "sum op run end, cost: " << diff.count()
-               << " input arg name: " << context.Inputs("X")[0]
-               << " output type: " << context.OutputVar("Out")->Type().name();
+    // auto end = std::chrono::system_clock::now();
+    // std::chrono::duration<double> diff = end - start;
+    // LOG(ERROR) << "sum op run end, cost: " << diff.count()
+    // << " input arg name: " << context.Inputs("X")[0]
+    // << " output type: " << context.OutputVar("Out")->Type().name();
   }
 };
 }  // namespace operators

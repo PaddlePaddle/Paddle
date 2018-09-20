@@ -158,6 +158,51 @@ struct SelectedRowsAddToTensor {
 };
 
 namespace scatter {
+
+template <typename DeviceContext, typename T>
+struct MergeAddTo {
+  void operator()(const DeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output) {
+    auto input_rows = input.rows();
+    std::vector<int64_t> merge_rows;
+    merge_rows.reserve(input_rows.size());
+    std::unordered_map<int64_t, size_t> rows_pos_map;
+    rows_pos_map.reserve(input_rows.size());
+    size_t idx = 0u;
+    for (std::vector<int64_t>::iterator iter = input_rows.begin();
+         iter != input_rows.end(); ++iter) {
+      if (rows_pos_map.find(*iter) == rows_pos_map.end()) {
+        rows_pos_map[*iter] = idx++;
+        merge_rows.emplace_back(*iter);
+      }
+    }
+
+    auto input_width = input.value().dims()[1];
+    output->set_rows(merge_rows);
+    output->set_height(input.height());
+    output->mutable_value()->mutable_data<T>(
+        framework::make_ddim(
+            {static_cast<int64_t>(merge_rows.size()), input_width}),
+        context.GetPlace());
+
+    math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
+    constant_functor(context, output->mutable_value(), 0.0);
+
+    auto* out_data = output->mutable_value()->data<T>();
+    auto* input_data = input.value().data<T>();
+
+    auto blas = GetBlas<DeviceContext, T>(context);
+    for (size_t i = 0; i < input_rows.size(); i++) {
+      size_t out_i = rows_pos_map[input_rows[i]];
+
+      T* y = out_data + out_i * input_width;
+      const T* x = input_data + i * input_width;
+      blas.AXPY(input_width, 1., x, y);
+    }
+  }
+};
+
 // functors for manuplating SelectedRows data
 template <typename DeviceContext, typename T>
 struct MergeAdd {
@@ -267,7 +312,7 @@ struct MergeAdd<platform::CPUDeviceContext, float> {
     end = std::chrono::system_clock::now();
     diff = end - start;
     LOG(ERROR) << "adam_op merge_add do_merge, cost: " << diff.count()
-               << " size " << input_rows.size();
+               << " size " << input_rows.size() << " " << rows_pos_map.size();
 
     return out;
   }
