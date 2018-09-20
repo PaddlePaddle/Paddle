@@ -71,7 +71,7 @@ bool AnalysisPredictor::Init(
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
   } else {
-    LOG(ERROR) << "fail to load inference model.";
+    LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
     return false;
   }
 
@@ -152,6 +152,13 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     return nullptr;
   }
   return predictor;
+}
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
+    const AnalysisConfig& config) {
+  return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
+      config);
 }
 
 }  // namespace paddle

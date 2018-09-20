@@ -28,7 +28,7 @@ using framework::proto::ProgramDesc;
 
 class TensorRTSubgraphPredictor : public NativePaddlePredictor {
  public:
-  explicit TensorRTSubgraphPredictor(const TensorRTConfig& config)
+  explicit TensorRTSubgraphPredictor(const MixedRTConfig& config)
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
@@ -115,13 +115,13 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   }
 
  private:
-  TensorRTConfig config_;
+  MixedRTConfig config_;
 };
 
 template <>
 std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
-    const TensorRTConfig& config) {
+CreatePaddlePredictor<MixedRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
+    const MixedRTConfig& config) {
   VLOG(3) << "create TensorRTSubgraphPredictor";
   if (config.use_gpu) {
     // 1. GPU memeroy
@@ -148,6 +148,14 @@ CreatePaddlePredictor<TensorRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
     return nullptr;
   }
   return std::move(predictor);
+}
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<MixedRTConfig>(
+    const NativeConfig& config) {
+  return CreatePaddlePredictor<MixedRTConfig,
+                               PaddleEngineKind::kAutoMixedTensorRT>(
+      const NativeConfig& config);
 }
 
 }  // namespace paddle
