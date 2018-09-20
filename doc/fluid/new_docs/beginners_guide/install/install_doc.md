@@ -965,7 +965,7 @@
 	*  对于需要编译**CPU版本PaddlePaddle**的用户：
 
 		`cmake .. -DWITH_FLUID_ONLY=ON -DWITH_GPU=OFF -DWITH_TESTING=OFF`
-		> 我们目前不支持CentOS下GPU版本PaddlePaddle的编译
+		> 我们目前不支持MacOS下GPU版本PaddlePaddle的编译
 
 
 
