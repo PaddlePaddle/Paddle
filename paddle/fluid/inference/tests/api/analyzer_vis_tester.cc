@@ -49,84 +49,83 @@ Record ProcessALine(const std::string &line) {
   return record;
 }
 
-/*
- * Use the native and analysis fluid engine to inference the demo.
- * ocr, mobilenet and se_resnext50
- */
-void TestVisualPrediction(bool use_mkldnn) {
-  std::unique_ptr<PaddlePredictor> predictor;
-  AnalysisConfig cfg;
-  cfg.param_file = FLAGS_infer_model + "/__params__";
-  cfg.prog_file = FLAGS_infer_model + "/__model__";
-  cfg.use_gpu = false;
-  cfg._use_mkldnn = use_mkldnn;
-  cfg.device = 0;
-  cfg.enable_ir_optim = true;
+void SetConfig(AnalysisConfig *cfg) {
+  cfg->param_file = FLAGS_infer_model + "/__params__";
+  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->enable_ir_optim = true;
+  cfg->specify_input_name = true;
   // TODO(TJ): fix fusion gru
-  cfg.ir_passes.push_back("fc_gru_fuse_pass");
+  cfg->ir_passes.push_back("fc_gru_fuse_pass");
 #ifdef PADDLE_WITH_MKLDNN
+  cfg->_use_mkldnn = true;
   // disable mkldnn fuse since it should have some bugs
-  cfg.ir_passes.push_back("conv_relu_mkldnn_fuse_pass");
+  cfg->ir_passes.push_back("conv_relu_mkldnn_fuse_pass");
 #endif
-  predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(cfg);
+}
 
-  // Only have single batch of data.
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
   std::string line;
   std::ifstream file(FLAGS_infer_data);
   std::getline(file, line);
   auto record = ProcessALine(line);
-  file.close();
 
-  // Inference.
   PaddleTensor input;
   input.shape = record.shape;
-  input.data =
-      PaddleBuf(record.data.data(), record.data.size() * sizeof(float));
   input.dtype = PaddleDType::FLOAT32;
+  size_t input_size = record.data.size() * sizeof(float);
+  input.data.Resize(input_size);
+  memcpy(input.data.data(), record.data.data(), input_size);
+  std::vector<PaddleTensor> input_slots;
+  input_slots.assign({input});
+  (*inputs).emplace_back(input_slots);
+}
 
-  std::vector<PaddleTensor> outputs_slots;
-  Timer timer;
-  timer.tic();
-  for (int i = 0; i < FLAGS_repeat; i++) {
-    predictor->Run({input}, &outputs_slots);
-  }
-  PrintTime(/*batch size*/ 1, FLAGS_repeat, /*num threads*/ 1, /*thread id*/ 0,
-            timer.toc() / FLAGS_repeat);
+// Easy for profiling independently.
+//  ocr, mobilenet and se_resnext50
+TEST(Analyzer_vis, profile) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
 
-  VLOG(3) << "output.size " << outputs_slots.size();
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
-  // run native as reference
-  auto ref_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(cfg);
-  std::vector<PaddleTensor> ref_outputs_slots;
-  ref_predictor->Run({input}, &ref_outputs_slots);
-  CompareResult(outputs_slots, ref_outputs_slots);
-  // print what are fused
-  AnalysisPredictor *analysis_predictor =
-      dynamic_cast<AnalysisPredictor *>(predictor.get());
-  auto &fuse_statis = analysis_predictor->analysis_argument()
-                          .Get<std::unordered_map<std::string, int>>(
-                              framework::ir::kFuseStatisAttr);
-  for (auto &item : fuse_statis) {
-    LOG(INFO) << "fused " << item.first << " " << item.second;
-  }
-  int num_ops = 0;
-  for (auto &node :
-       analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
-    if (node->IsFunction()) {
-      ++num_ops;
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+    const float ocr_result_data[] = {
+        5.273636460856323538e-08, 3.296741795111302054e-07,
+        1.873261190610264748e-08, 3.403730275408634043e-08,
+        3.383312474625199684e-08};
+    PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
+    size_t size = GetSize(outputs[0]);
+    PADDLE_ENFORCE_GT(size, 0);
+    float *result = static_cast<float *>(outputs[0].data.data());
+    for (size_t i = 0; i < std::min(5UL, size); i++) {
+      EXPECT_NEAR(result[i], ocr_result_data[i], 1e-3);
     }
   }
-  LOG(INFO) << "has num ops: " << num_ops;
 }
 
-TEST(Analyzer_vis, analysis) { TestVisualPrediction(/*use_mkldnn*/ false); }
-#ifdef PADDLE_WITH_MKLDNN
-TEST(Analyzer_vis, analysis_mkldnn) {
-  TestVisualPrediction(/*use_mkldnn*/ true);
+// Check the fuse status
+TEST(Analyzer_vis, fuse_statis) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  int num_ops;
+  GetFuseStatis(cfg, &num_ops);
 }
-#endif
+
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_vis, compare) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
 
 }  // namespace analysis
 }  // namespace inference
