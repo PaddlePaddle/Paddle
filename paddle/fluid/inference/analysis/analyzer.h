@@ -76,6 +76,7 @@ class Analyzer : public OrderedRegistry<PassManager> {
       "fc_fuse_pass",              //
 #ifdef PADDLE_WITH_MKLDNN
       "conv_relu_mkldnn_fuse_pass",  //
+      "conv_elementwise_add_mkldnn_fuse_pass",  //
 #endif
   }};
 

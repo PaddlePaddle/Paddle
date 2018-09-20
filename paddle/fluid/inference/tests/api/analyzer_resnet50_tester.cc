@@ -107,6 +107,7 @@ void Main(int batch_size) {
 #ifdef PADDLE_WITH_MKLDNN
   // add passes to execute with MKL-DNN
   config.ir_mkldnn_passes.push_back("conv_relu_mkldnn_fuse_pass");
+  config.ir_mkldnn_passes.push_back("conv_elementwise_add_mkldnn_fuse_pass");
   config.ir_mkldnn_passes.push_back("fc_fuse_pass");
 #endif
   auto predictor =
