@@ -20,10 +20,9 @@
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/profiler.h"
