@@ -28,7 +28,7 @@ class TestDistSimnetBowDense2x2(TestDistBase):
         need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '0'}
         self.check_with_place(
             "dist_simnet_bow.py",
-            delta=1e-7,
+            delta=1e-5,
             check_error_log=False,
             need_envs=need_envs)
 
