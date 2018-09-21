@@ -252,6 +252,9 @@ class OpTest(unittest.TestCase):
         block = program.global_block()
         self._append_ops(block)
 
+        from paddle.fluid.transpiler.details import program_to_code
+        program_to_code(program)
+
         inputs = self._get_inputs(block)
         outputs = self._get_outputs(block)
         feed_map = self.feed_var(inputs, place)
