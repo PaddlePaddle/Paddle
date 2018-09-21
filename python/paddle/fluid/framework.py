@@ -1509,6 +1509,30 @@ class Program(object):
         self._op_role_var = []
         self._current_role = OpRole.Forward
 
+    @contextlib.contextmanager
+    def _lr_schedule_guard(self):
+        """
+        A with guard to set :code:`LRSched` :code:`OpRole` and
+        :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
+        set to the target learning rate.
+
+        Notes: This is a very low level API. Users should not use it directly.
+
+
+        Examples:
+
+            >>> p, g = backward(...)
+            >>> with program.lr_schedule_guard():
+            >>>     lr = lr * decay
+        """
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.LRSched
+        # TODO(typhoonzero): how to set target learning rate var
+        self._op_role_var = []
+        yield
+        self._op_role_var = []
+        self._current_role = OpRole.Forward
+
     def __str__(self):
         """
         Get the protobuf debug string of this Program.
