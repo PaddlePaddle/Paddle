@@ -36,12 +36,6 @@ __activations__ = [
     'brelu',
     'leaky_relu',
     'soft_relu',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
 ]
 
 __all__ = [
