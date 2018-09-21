@@ -47,15 +47,7 @@ __activations__ = [
 __all__ = [
     'mean',
     'mul',
-    'scale',
     'sigmoid_cross_entropy_with_logits',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
     'clip',
     'clip_by_norm',
     'logical_and',
@@ -74,6 +66,11 @@ __all__ = [
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
+
+# It is a hot fix in some unittest using:
+#   fluid.layers.scale(x=x, scale=10.0, out=out_var)
+# e.g.: test_program_code.py, test_dist_train.py
+globals()['_scale'] = generate_layer_fn('scale')
 
 __all__ += ["uniform_random"]
 

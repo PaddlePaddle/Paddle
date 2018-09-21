@@ -58,7 +58,7 @@ def escape_math(text):
                                     _two_dollar_pattern_.sub(r"!!\1!!", text)))
 
 
-def _generate_doc_string_(op_proto):
+def _generate_doc_string_(op_proto, additional_args_lines=None):
     """
     Generate docstring by OpProto
 
@@ -97,6 +97,13 @@ def _generate_doc_string_(op_proto):
         buf.write('): ')
         buf.write(escape_math(each_attr.comment))
         buf.write('\n')
+
+    if additional_args_lines is not None:
+        for line in additional_args_lines:
+            line = line.strip()
+            buf.write('    ')
+            buf.write(line)
+            buf.write('\n')
 
     if len(op_proto.outputs) != 0:
         buf.write('\nReturns:\n')
