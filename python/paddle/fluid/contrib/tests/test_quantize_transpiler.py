@@ -216,7 +216,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
                                  fetch_list=[loss])
 
         with fluid.program_guard(test_program):
-            test_data = test_reader().next()
+            test_data = next(test_reader())
             f_var = fluid.framework.get_var('conv2d_1.tmp_0', test_program)
             w_var = fluid.framework.get_var('conv2d_1.w_0.quantized',
                                             test_program)
