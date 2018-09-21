@@ -596,6 +596,14 @@ class TestBook(unittest.TestCase):
             out = layers.expand(x, [1, 2])
         print(str(program))
 
+    def test_uniform_random_batch_size_like(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[500, 2000], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 2000])
+            self.assertIsNotNone(out)
+
 
 if __name__ == '__main__':
     unittest.main()
