@@ -25,7 +25,7 @@ import argparse
 
 import paddle.fluid as fluid
 
-RUN_STEP = 10
+RUN_STEP = 5
 
 
 class TestDistRunnerBase(object):
