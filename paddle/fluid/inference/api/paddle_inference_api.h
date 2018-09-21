@@ -155,7 +155,7 @@ struct TensorRTConfig : public NativeConfig {
   //  We set this variable to control the minimum number of nodes in the
   //  subgraph, 3 as
   //  default value.
-  int minimun_subgraph_size = 3;
+  int minimum_subgraph_size = 3;
   // Reserved configuration
   // We just support "FP32" now, "FP16" and "INT8" will be supported.
   std::string precision_mode = "FP32";
