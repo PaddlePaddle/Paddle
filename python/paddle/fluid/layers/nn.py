@@ -45,8 +45,9 @@ __all__ = [
     'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth', 'roi_pool',
     'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
     'gather', 'scatter', 'sequence_scatter', 'random_crop', 'mean_iou', 'relu',
-    'log', 'crop', 'rank_loss', 'prelu', 'flatten', 'sequence_mask', 'stack',
-    'pad2d', 'unstack', 'sequence_enumerate', 'expand', 'sequence_concat',
+    'log', 'crop', 'rank_loss', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid',
+    'swish', 'prelu', 'flatten', 'sequence_mask', 'stack', 'pad2d', 'unstack',
+    'sequence_enumerate', 'expand', 'sequence_concat',
     'uniform_random_batch_size_like', 'gaussian_random', 'sampling_id',
     'gaussian_random_batch_size_like', 'sum', 'slice', 'shape'
 ]
@@ -5825,6 +5826,148 @@ def pad2d(input,
             'data_frmat': data_format
         })
 
+    return out
+
+
+@templatedoc()
+def elu(x, alpha=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|1.0): ${alpha_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('elu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='elu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
+@templatedoc()
+def relu6(x, threshold=6.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        threshold(${threshold_type}|6.0): ${threshold_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('relu6', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='relu6',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
+
+
+@templatedoc()
+def pow(x, factor=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        factor(${factor_type}|1.0): ${factor_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('pow', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='pow',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'factor': factor})
+    return out
+
+
+@templatedoc()
+def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        scale_a(${scale_a_type}|2.0 / 3.0): ${scale_a_comment}
+        scale_b(${scale_b_type}|1.7159): ${scale_b_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('stanh', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='stanh',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'scale_a': scale_a,
+               'scale_b': scale_b})
+    return out
+
+
+@templatedoc()
+def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        slope(${slope_type}|0.2): ${slope_comment}
+        offset(${offset_type}|0.5): ${offset_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('hard_sigmoid', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='hard_sigmoid',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': slope,
+               'offset': offset})
+    return out
+
+
+@templatedoc()
+def swish(x, beta=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        beta(${beta_type}|1.0): ${beta_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('swish', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': beta})
     return out
 
 
