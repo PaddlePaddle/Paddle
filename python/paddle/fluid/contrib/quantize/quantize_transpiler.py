@@ -198,7 +198,7 @@ class QuantizeTranspiler(object):
                                  (op.type))
 
         with program_guard(program, startup_program):
-            self._create_globael_step()
+            self._create_global_step()
             for block in program.blocks:
                 ops = list(block.ops)
                 block_id = block.idx
@@ -210,7 +210,7 @@ class QuantizeTranspiler(object):
                     if op.type in grad_op_types:
                         _transpile_backward(block, op)
 
-    def _create_globael_step(self):
+    def _create_global_step(self):
         if self.weight_quantize_type == 'range_abs_max' or \
             self.activation_quantize_type == 'range_abs_max':
             self.global_step = autoincreased_step_counter()
