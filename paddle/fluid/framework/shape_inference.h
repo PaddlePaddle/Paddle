@@ -59,15 +59,6 @@ class InferShapeContext {
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
 
-  void ShareLoDs(const std::string &in, const std::string &out) const {
-    PADDLE_ENFORCE_EQ(Inputs(in).size(), Outputs(out).size(),
-                      "The number of arguments in %s and %s is not equal.", in,
-                      out);
-    for (size_t i = 0; i < in.size(); ++i) {
-      ShareLoD(in, out, i, i);
-    }
-  }
-
   virtual bool IsRuntime() const = 0;
 
   std::vector<InferShapeVarPtr> GetInputVarPtrs(const std::string &name);
