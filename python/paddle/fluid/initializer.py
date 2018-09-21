@@ -74,7 +74,7 @@ class Initializer(object):
     directly, but need to use one of its implementations.
     """
 
-    def __init_(self):
+    def __init__(self):
         pass
 
     def __call__(self, param, block):
@@ -293,7 +293,7 @@ class TruncatedNormalInitializer(Initializer):
         assert loc is not None
         assert scale is not None
         assert seed is not None
-        super(NormalInitializer, self).__init__()
+        super(TruncatedNormalInitializer, self).__init__()
         self._mean = loc
         self._std_dev = scale
         self._seed = seed
