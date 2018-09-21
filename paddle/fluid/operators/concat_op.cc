@@ -105,7 +105,7 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
         in_names.size(), out_x_g_n, out_names.size());
 
     for (size_t i = 0; i < in_names.size(); ++i) {
-      if (!paddle::framework::IsEmptyVarName(out_names[i])) {
+      if (out_names[i] != framework::kEmptyVarName) {
         ctx->ShareLoD(in_x, out_x_g_n, i, i);
       }
     }
