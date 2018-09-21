@@ -17,9 +17,6 @@ from .layer_function_generator import generate_layer_fn, generate_layer_fn_noatt
 
 __activations__ = [
     'softshrink',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
     'elu',
     'relu6',
     'pow',
