@@ -74,8 +74,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
   }
 }
 
-std::unique_ptr<PaddlePredictor> GetPrediction(AnalysisConfig config,
-                                               bool use_analysis = true) {
+std::unique_ptr<PaddlePredictor> CreateTestPredictor(
+    const AnalysisConfig &config, bool use_analysis = true) {
   if (use_analysis) {
     return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         config);
@@ -92,7 +92,7 @@ size_t GetSize(const PaddleTensor &out) {
 
 std::unordered_map<std::string, int> GetFuseStatis(AnalysisConfig config,
                                                    int *num_ops) {
-  auto predictor = GetPrediction(config);
+  auto predictor = CreateTestPredictor(config);
   AnalysisPredictor *analysis_predictor =
       dynamic_cast<AnalysisPredictor *>(predictor.get());
   auto &fuse_statis = analysis_predictor->analysis_argument()
@@ -113,11 +113,12 @@ std::unordered_map<std::string, int> GetFuseStatis(AnalysisConfig config,
 }
 
 void TestOneThreadPrediction(
-    AnalysisConfig config, const std::vector<std::vector<PaddleTensor>> inputs,
+    const AnalysisConfig &config,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
-  auto predictor = GetPrediction(config, use_analysis);
+  auto predictor = CreateTestPredictor(config, use_analysis);
   Timer timer;
   timer.tic();
   for (int i = 0; i < num_times; i++) {
@@ -130,7 +131,8 @@ void TestOneThreadPrediction(
 }
 
 void TestMultiThreadPrediction(
-    AnalysisConfig config, const std::vector<std::vector<PaddleTensor>> inputs,
+    const AnalysisConfig &config,
+    const std::vector<std::vector<PaddleTensor>> &inputs,
     std::vector<PaddleTensor> *outputs, int num_threads,
     bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
@@ -140,7 +142,7 @@ void TestMultiThreadPrediction(
   // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
   // because AttentionLSTM's hard code nodeid will be damanged.
   for (int tid = 0; tid < num_threads; ++tid) {
-    predictors.emplace_back(GetPrediction(config, use_analysis));
+    predictors.emplace_back(CreateTestPredictor(config, use_analysis));
   }
   for (int tid = 0; tid < num_threads; ++tid) {
     threads.emplace_back([&, tid]() {
@@ -164,8 +166,8 @@ void TestMultiThreadPrediction(
   }
 }
 
-void TestPrediction(AnalysisConfig config,
-                    const std::vector<std::vector<PaddleTensor>> inputs,
+void TestPrediction(const AnalysisConfig &config,
+                    const std::vector<std::vector<PaddleTensor>> &inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
   LOG(INFO) << "use_analysis: " << use_analysis;
@@ -178,8 +180,8 @@ void TestPrediction(AnalysisConfig config,
 }
 
 void CompareNativeAndAnalysis(
-    AnalysisConfig config,
-    const std::vector<std::vector<PaddleTensor>> inputs) {
+    const AnalysisConfig &config,
+    const std::vector<std::vector<PaddleTensor>> &inputs) {
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);
   TestOneThreadPrediction(config, inputs, &analysis_outputs, true);
