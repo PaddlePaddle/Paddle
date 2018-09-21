@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <initializer_list>
 #include <memory>
+#include <mutex>  // NOLINT
 #include <utility>
 #include <vector>
 #include "paddle/fluid/framework/details/cow_ptr.h"
@@ -51,6 +52,7 @@ struct CUDABuffer {
     ClearMemory();
     place_ = boost::get<platform::CUDAPlace>(place);
     data_ = memory::Alloc(place_, size);
+    PADDLE_ENFORCE_NOT_NULL(data_);
     size_ = size;
   }
 
@@ -62,7 +64,7 @@ struct CUDABuffer {
 
  private:
   void ClearMemory() const {
-    if (data_) {
+    if (data_ != nullptr) {
       memory::Free(place_, data_);
     }
   }
@@ -89,6 +91,7 @@ class Vector {
     template <typename U>
     explicit VectorData(const std::vector<U> &dat)
         : cpu_(dat), flag_(kDataInCPU) {}
+    ~VectorData() {}
 
     VectorData(const VectorData &o) {
       o.ImmutableCPU();
@@ -215,7 +218,7 @@ class Vector {
     size_t capacity() const { return cpu_.capacity(); }
 
     // reserve data
-    void reserve(size_t size) { cpu_.reserve(size); }
+    void reserve(size_t size) const { cpu_.reserve(size); }
 
     // implicit cast operator. Vector can be cast to std::vector implicitly.
     operator std::vector<T>() const {
@@ -229,6 +232,17 @@ class Vector {
       return cpu_ == other.cpu_;
     }
 
+    std::mutex &Mutex() const { return mtx_; }
+
+    std::unique_ptr<platform::CUDAPlace> CUDAPlace() const {
+      if (gpu_.data_ == nullptr) {
+        return nullptr;
+      } else {
+        return std::unique_ptr<platform::CUDAPlace>(
+            new platform::CUDAPlace(gpu_.place_));
+      }
+    }
+
    private:
     enum DataFlag {
       kDataInCPU = 0x01,
@@ -239,10 +253,15 @@ class Vector {
 
     void CopyToCPU() const {
       // COPY GPU Data To CPU
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(
+              platform::Place(gpu_.place_)));
+      auto stream = dev_ctx->stream();
       void *src = gpu_.data_;
       void *dst = cpu_.data();
       memory::Copy(platform::CPUPlace(), dst, gpu_.place_, src, gpu_.size_,
-                   nullptr);
+                   stream);
+      dev_ctx->Wait();
     }
 
     void MutableCPU() {
@@ -260,7 +279,7 @@ class Vector {
           SetFlag(kDataInCUDA);
         } else if (IsInCUDA() &&
                    !(boost::get<platform::CUDAPlace>(place) == gpu_.place_)) {
-          CopyCUDADataToAnotherPlace(place);
+          PADDLE_THROW("This situation should not happen");
           // Still dirty
         } else {
           // Dirty && DataInCUDA && Device is same
@@ -272,28 +291,21 @@ class Vector {
           CopyCPUDataToCUDA(place);
           SetFlag(kDataInCUDA);
         } else if (!(boost::get<platform::CUDAPlace>(place) == gpu_.place_)) {
-          CopyCUDADataToAnotherPlace(place);
+          PADDLE_THROW("This situation should not happen.");
         } else {
           // Not Dirty && DataInCUDA && Device is same
           // Do nothing.
         }
       }
     }
-    void CopyCUDADataToAnotherPlace(const platform::Place &place) const {
-      details::CUDABuffer tmp(place, gpu_.size_);
-      const void *src = gpu_.data_;
-      void *dst = tmp.data_;
 
-      memory::Copy(tmp.place_, dst, gpu_.place_, src, gpu_.size_, nullptr);
-      gpu_.Swap(tmp);
-    }
     void CopyCPUDataToCUDA(const platform::Place &place) const {
       void *src = cpu_.data();
       gpu_.Resize(place, cpu_.size() * sizeof(T));
       void *dst = gpu_.data_;
-      auto stream = static_cast<platform::CUDADeviceContext *>(
-                        platform::DeviceContextPool::Instance().Get(place))
-                        ->stream();
+      auto *dev_ctx = static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(place));
+      auto stream = dev_ctx->stream();
       memory::Copy(gpu_.place_, dst, platform::CPUPlace(), src, gpu_.size_,
                    stream);
     }
@@ -319,6 +331,8 @@ class Vector {
     mutable std::vector<T> cpu_;
     mutable details::CUDABuffer gpu_;
     mutable int flag_;
+
+    mutable std::mutex mtx_;
   };
 
  public:
@@ -350,81 +364,103 @@ class Vector {
   Vector(Vector<T> &&other) { m_ = std::move(other.m_); }
 
   // CPU data access method. Mutable.
-  T &operator[](size_t i) { return (*m_)[i]; }
+  T &operator[](size_t i) { return (*m_.MutableData())[i]; }
 
   // CPU data access method. Immutable.
-  const T &operator[](size_t i) const { return (*m_)[i]; }
+  const T &operator[](size_t i) const { return m_.Data()[i]; }
 
   // std::vector iterator methods. Based on CPU data access method
-  size_t size() const { return m_->size(); }
+  size_t size() const { return m_.Data().size(); }
 
-  iterator begin() { return m_->begin(); }
+  iterator begin() { return m_.MutableData()->begin(); }
 
-  iterator end() { return m_->end(); }
+  iterator end() { return m_.MutableData()->end(); }
 
-  T &front() { return m_->front(); }
+  T &front() { return m_.MutableData()->front(); }
 
-  T &back() { return m_->back(); }
+  T &back() { return m_.MutableData()->back(); }
 
-  const_iterator begin() const { return m_->begin(); }
+  const_iterator begin() const { return m_.Data().begin(); }
 
-  const_iterator end() const { return m_->end(); }
+  const_iterator end() const { return m_.Data().end(); }
 
   const_iterator cbegin() const { return begin(); }
 
   const_iterator cend() const { return end(); }
 
-  const T &back() const { return m_->back(); }
+  const T &back() const { return m_.Data().back(); }
 
-  T *data() { return m_->data(); }
+  T *data() { return m_.MutableData()->data(); }
 
-  const T *data() const { return m_->data(); }
+  const T *data() const { return m_.Data().data(); }
 
-  const T &front() const { return m_->front(); }
+  const T &front() const { return m_.Data().front(); }
   // end of std::vector iterator methods
 
   // assign this from iterator.
   // NOTE: the iterator must support `end-begin`
   template <typename Iter>
   void assign(Iter begin, Iter end) {
-    m_->assign(begin, end);
+    m_.MutableData()->assign(begin, end);
   }
 
   // push_back. If the previous capacity is not enough, the memory will
   // double.
-  void push_back(T elem) { m_->push_back(elem); }
+  void push_back(T elem) { m_.MutableData()->push_back(elem); }
 
   // extend a vector by iterator.
   // NOTE: the iterator must support end-begin
   template <typename It>
   void Extend(It begin, It end) {
-    m_->Extend(begin, end);
+    m_.MutableData()->Extend(begin, end);
   }
 
   // resize the vector
   void resize(size_t size) {
     if (m_.Data().size() != size) {
-      m_->resize(size);
+      m_.MutableData()->resize(size);
     }
   }
 
   // get cuda ptr. immutable
   const T *CUDAData(platform::Place place) const {
-    return m_.Data().CUDAData(place);
+    {
+      auto &mtx = m_.Data().Mutex();
+      std::lock_guard<std::mutex> guard(mtx);
+      auto cuda_place = m_.Data().CUDAPlace();
+      if (cuda_place == nullptr ||
+          *cuda_place == boost::get<platform::CUDAPlace>(place)) {
+        return m_.Data().CUDAData(place);
+      }
+    }
+    // If m_ contains CUDAData in a different place. Detach manually.
+    m_.Detach();
+    return CUDAData(place);
   }
 
   // get cuda ptr. mutable
   T *CUDAMutableData(platform::Place place) {
-    return m_->CUDAMutableData(place);
+    {
+      auto &mtx = m_.Data().Mutex();
+      std::lock_guard<std::mutex> guard(mtx);
+      auto cuda_place = m_.Data().CUDAPlace();
+      if (cuda_place == nullptr ||
+          *cuda_place == boost::get<platform::CUDAPlace>(place)) {
+        return m_.MutableData()->CUDAMutableData(place);
+      }
+    }
+    // If m_ contains CUDAData in a different place. Detach manually.
+    m_.Detach();
+    return CUDAMutableData(place);
   }
 
   // clear
-  void clear() { m_->clear(); }
+  void clear() { m_.MutableData()->clear(); }
 
-  size_t capacity() const { return m_->capacity(); }
+  size_t capacity() const { return m_.Data().capacity(); }
 
   // reserve data
-  void reserve(size_t size) { m_->reserve(size); }
+  void reserve(size_t size) { m_.Data().reserve(size); }
 
   // the unify method to access CPU or CUDA data. immutable.
   const T *Data(platform::Place place) const {
@@ -445,7 +481,7 @@ class Vector {
   }
 
   // implicit cast operator. Vector can be cast to std::vector implicitly.
-  operator std::vector<T>() const { return *m_; }
+  operator std::vector<T>() const { return m_.Data(); }
 
   bool operator==(const Vector<T> &other) const {
     if (size() != other.size()) return false;
@@ -463,7 +499,7 @@ class Vector {
 
  private:
   // Vector is an COW object.
-  details::COWPtr<VectorData> m_;
+  mutable details::COWPtr<VectorData> m_;
 };
 
 #else  // PADDLE_WITH_CUDA
