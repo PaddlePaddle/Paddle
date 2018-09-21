@@ -190,6 +190,8 @@ def get_attrs(op_type):
 
 def get_outvars(op_type, indent=1):
     inputs = _get_inputs(op_type)
+    if len(inputs) == 0:
+        return ""
     ret = ""
     for t in _get_outputs(op_type):
         ret += get_indent_space(
@@ -244,11 +246,10 @@ def {op_type}({args}):
     return code
 
 
-print(get_op_py("uniform_random_batch_size_like"))
+#print(get_op_py("uniform_random_batch_size_like"))
 #print(get_op_py("gaussian_random"))
-#print(get_op_py("sampling_id"))
-#print(get_op_py("gaussian_random_batch_size_like"))
-#print(get_op_py("sum"))
-#print(get_op_py("slice"))
-#print(get_op_py("shape"))
-#get_meta("linear_chain_crf")
+print(get_op_py("sampling_id"))
+print(get_op_py("gaussian_random_batch_size_like"))
+print(get_op_py("sum"))
+print(get_op_py("slice"))
+print(get_op_py("shape"))

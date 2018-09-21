@@ -62,12 +62,6 @@ __all__ = [
     'logical_or',
     'logical_xor',
     'logical_not',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'shape',
     'maxout',
 ] + __activations__
 
