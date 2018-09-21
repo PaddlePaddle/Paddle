@@ -114,6 +114,9 @@ __all__ = [
     'hard_sigmoid',
     'swish',
     'prelu',
+    'brelu',
+    'leaky_relu',
+    'soft_relu',
     'flatten',
     'sequence_mask',
     'stack',
@@ -6093,6 +6096,74 @@ def prelu(x, mode, param_attr=None, name=None):
                 'Alpha': alpha},
         attrs={"mode": mode},
         outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def brelu(x, t_min=0.0, t_max=24.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        t_min(${t_min_type}|0.0): ${t_min_comment}
+        t_max(${t_max_type}|24.0): ${t_max_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('brelu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='brelu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'t_min': t_min,
+               't_max': t_max})
+    return out
+
+
+@templatedoc()
+def leaky_relu(x, alpha=0.02, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|0.02): ${alpha_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('leaky_relu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='leaky_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
+@templatedoc()
+def soft_relu(x, threshold=40.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        threshold(${threshold_type}|40.0): ${threshold_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('soft_relu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='soft_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
     return out
 
 
