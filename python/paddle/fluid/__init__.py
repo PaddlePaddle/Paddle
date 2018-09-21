@@ -46,7 +46,7 @@ from . import transpiler
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
-from .transpiler import DistributeTranspiler, InferenceTranspiler, \
+from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
