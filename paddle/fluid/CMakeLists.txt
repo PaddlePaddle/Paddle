@@ -13,3 +13,5 @@ if(WITH_INFERENCE)
   # NOTE: please add subdirectory inference at last.
   add_subdirectory(inference)
 endif()
+
+add_subdirectory(train)
