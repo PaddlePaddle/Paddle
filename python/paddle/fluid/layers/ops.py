@@ -13,15 +13,14 @@
 # limitations under the License.
 
 from __future__ import print_function
-from .layer_function_generator import generate_layer_fn
+from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
 
-__activations__ = [
+__activations_noattr__ = [
     'sigmoid',
     'logsigmoid',
     'exp',
     'tanh',
     'tanh_shrink',
-    'softshrink',
     'sqrt',
     'abs',
     'ceil',
@@ -33,9 +32,6 @@ __activations__ = [
     'square',
     'softplus',
     'softsign',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
 ]
 
 __all__ = [
@@ -56,7 +52,8 @@ __all__ = [
     'slice',
     'shape',
     'maxout',
-] + __activations__
+    'softshrink',
+]
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
@@ -65,6 +62,11 @@ for _OP in set(__all__):
 #   fluid.layers.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
+
+__all__ += __activations_noattr__
+
+for _OP in set(__activations_noattr__):
+    globals()[_OP] = generate_layer_fn_noattr(_OP)
 
 __all__ += ["uniform_random"]
 
