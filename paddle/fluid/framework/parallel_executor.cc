@@ -57,6 +57,21 @@ std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
     graph = viz_pass->Apply(std::move(graph));
   }
 
+  // Apply op fusion.
+  if (strategy.fuse_elewise_add_act_ops_) {
+    auto fuse_elewise_add_act_pass =
+        ir::PassRegistry::Instance().Get("fuse_elewise_add_act_pass");
+    graph = fuse_elewise_add_act_pass->Apply(std::move(graph));
+    // Apply a graph viz pass to record a graph.
+    if (!strategy.debug_graphviz_path_.empty()) {
+      auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+      const std::string graph_path = string::Sprintf(
+          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
+      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+      graph = viz_pass->Apply(std::move(graph));
+    }
+  }
+
   // Convert graph to run on multi-devices.
   auto multi_devices_pass =
       ir::PassRegistry::Instance().Get("multi_devices_pass");
@@ -359,6 +374,7 @@ ParallelExecutor::~ParallelExecutor() {
 }  // namespace framework
 }  // namespace paddle
 
+USE_PASS(fuse_elewise_add_act_pass);
 USE_PASS(graph_viz_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
