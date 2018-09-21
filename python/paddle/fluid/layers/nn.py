@@ -6357,7 +6357,7 @@ def sum(x, use_mkldnn=False):
     """
 
     helper = LayerHelper('sum', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype('X'))
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('x'))
     helper.append_op(
         type='sum',
         inputs={'X': x},
@@ -6414,7 +6414,7 @@ def slice(input, axes, starts, ends):
     """
 
     helper = LayerHelper('slice', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype('Input'))
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
     helper.append_op(
         type='slice',
         inputs={'Input': input},
@@ -6440,8 +6440,8 @@ def shape(input):
     """
 
     helper = LayerHelper('shape', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype('Input'))
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
     helper.append_op(
-        type='shape', inputs={'Input': input}, outputs={'Out': out}, attrs={})
+        type='shape', inputs={'Input': input}, outputs={'Out': out})
 
     return out

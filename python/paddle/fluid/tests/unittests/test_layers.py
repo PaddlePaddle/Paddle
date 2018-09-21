@@ -602,12 +602,14 @@ class TestBook(unittest.TestCase):
             input = layers.data(name="input", shape=[13, 11], dtype='float32')
             out = layers.uniform_random_batch_size_like(input, [-1, 11])
             self.assertIsNotNone(out)
+        print(str(program))
 
     def test_gaussian_random(self):
         program = Program()
         with program_guard(program):
             out = layers.gaussian_random(shape=[20, 30])
             self.assertIsNotNone(out)
+        print(str(program))
 
     def test_sampling_id(self):
         program = Program()
@@ -616,6 +618,7 @@ class TestBook(unittest.TestCase):
 
             out = layers.sampling_id(x)
             self.assertIsNotNone(out)
+        print(str(program))
 
     def test_gaussian_random_batch_size_like(self):
         program = Program()
@@ -625,6 +628,7 @@ class TestBook(unittest.TestCase):
             out = layers.gaussian_random_batch_size_like(
                 input, shape=[-1, 11], mean=1.0, std=2.0)
             self.assertIsNotNone(out)
+        print(str(program))
 
     def test_sum(self):
         program = Program()
@@ -633,6 +637,7 @@ class TestBook(unittest.TestCase):
 
             out = layers.sum(input)
             self.assertIsNotNone(out)
+        print(str(program))
 
     def test_slice(self):
         starts = [1, 0, 2]
@@ -646,6 +651,7 @@ class TestBook(unittest.TestCase):
 
             out = layers.slice(input, axes=axes, starts=starts, ends=ends)
             self.assertIsNotNone(out)
+        print(str(program))
 
 
 if __name__ == '__main__':
