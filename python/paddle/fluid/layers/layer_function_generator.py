@@ -220,11 +220,10 @@ def generate_layer_fn_noattr(op_type):
     """
     op_proto = OpProtoHolder.instance().get_op_proto(op_type)
 
-    def func(x):
+    def func(x, name=None):
         helper = LayerHelper(op_type, **locals())
-        output = helper.create_tmp_variable(dtype=helper.input_dtype())
-        helper.append_op(
-            type=op_type, inputs={"X": [x]}, outputs={"Out": [output]})
+        output = helper.create_tmp_variable(dtype=x.dtype)
+        helper.append_op(type=op_type, inputs={"X": x}, outputs={"Out": output})
         return output
 
     func.__name__ = op_type
