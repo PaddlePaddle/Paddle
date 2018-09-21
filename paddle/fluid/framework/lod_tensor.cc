@@ -215,11 +215,12 @@ using LoDAndOffset = std::pair<LoD, std::pair<size_t, size_t>>;
 LoDAndOffset GetSubLoDAndAbsoluteOffset(const LoD &lod, size_t start_idx,
                                         size_t end_idx, size_t start_level) {
   LoD sub_lod;
-
+  sub_lod.reserve(lod.size());
   for (size_t level_idx = start_level; level_idx < lod.size(); ++level_idx) {
     PADDLE_ENFORCE_LE(start_idx, end_idx);
     PADDLE_ENFORCE_LT(end_idx, lod[level_idx].size());
     std::vector<size_t> level_lens;
+    level_lens.reserve(end_idx - start_idx);
     for (size_t i = start_idx; i < end_idx; ++i) {
       level_lens.push_back(lod[level_idx][i + 1] - lod[level_idx][i]);
     }
@@ -236,13 +237,11 @@ void AppendLoD(LoD *lod, const LoD &lod_length) {
       lod->empty() || lod->size() == lod_length.size(),
       "The lod_length should has the same size with the appended lod.");
   if (lod->empty()) {
-    for (size_t i = 0; i < lod_length.size(); ++i) {
-      lod->emplace_back(1, 0);  // size = 1, value = 0;
-    }
     *lod = LoD(lod_length.size(), std::vector<size_t>({0}));
   }
   for (size_t i = 0; i < lod->size(); ++i) {
     auto &level = (*lod)[i];
+    level.reserve(lod_length.size());
     for (size_t len : lod_length[i]) {
       level.push_back(level.back() + len);
     }

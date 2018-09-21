@@ -39,7 +39,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     auto &rank_table = rank_table_var->Get<framework::LoDRankTable>();
 
     auto &rank_items = rank_table.items();
-    int dst_num_rows =
+    int64_t dst_num_rows =
         std::lower_bound(rank_items.begin(), rank_items.end(), offset,
                          [](const framework::LoDRankTable::TableItem &a,
                             size_t b) { return a.length > b; }) -
@@ -49,19 +49,29 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     PADDLE_ENFORCE(out_var != nullptr, "Output(Out) must be set.");
     auto &out_tensor = *out_var->GetMutable<framework::LoDTensor>();
 
-    size_t height = dst_num_rows;
+    int64_t height = dst_num_rows;
 
     // do shrink for the top level LoD
+
     if (x_tensor.lod().size() > 0 &&
         x_tensor.lod()[0].size() > static_cast<size_t>(dst_num_rows)) {
-      auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(x_tensor.lod(), 0,
-                                                              dst_num_rows, 0);
-      height = lod_offset.second.second;
-      auto out_lod = out_tensor.mutable_lod();
-      framework::AppendLoD(out_lod, lod_offset.first);
+      if (x_tensor.lod().size() > 1) {  // MultiLevel LoD
+        auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(
+            x_tensor.lod(), 0, dst_num_rows, 0);
+        height = lod_offset.second.second;
+        auto out_lod = out_tensor.mutable_lod();
+        framework::AppendLoD(out_lod, lod_offset.first);
+      } else {
+        // Shrink LoD
+        auto lod_item = x_tensor.lod()[0];
+        lod_item.resize(dst_num_rows + 1);
+        out_tensor.set_lod({lod_item});
+        const auto &const_lod_item = lod_item;
+        height = const_lod_item.back();
+      }
     }
 
-    if (dst_num_rows != 0) {
+    if (height != 0) {
       out_tensor.mutable_data(place, x_tensor.type());
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
       framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
@@ -134,8 +144,11 @@ class ShrinkRNNMemoryGradOp : public ArrayOp {
     } else {
       auto &dout_tensor = dout_var->Get<framework::LoDTensor>();
       auto height = dout_tensor.dims()[0];
-      auto slice = dx_tensor.Slice(0, static_cast<int>(height));
-      framework::TensorCopy(dout_tensor, dout_tensor.place(), dev_ctx, &slice);
+      if (height != 0) {
+        auto slice = dx_tensor.Slice(0, static_cast<int>(height));
+        framework::TensorCopy(dout_tensor, dout_tensor.place(), dev_ctx,
+                              &slice);
+      }
       if (dx_tensor.dims()[0] > height) {
         auto rest_tensor = dx_tensor.Slice(
             static_cast<int>(height), static_cast<int>(dx_tensor.dims()[0]));
