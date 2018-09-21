@@ -18,16 +18,12 @@ import time
 import unittest
 import os
 import sys
-import six
 import signal
 import subprocess
 import six
 import argparse
 
-import paddle
 import paddle.fluid as fluid
-import paddle.fluid.core as core
-import paddle.compat as cpt
 
 RUN_STEP = 10
 
@@ -189,11 +185,11 @@ class TestDistBase(unittest.TestCase):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
         ps_cmd = "%s %s --role pserver --endpoints %s --trainer_id 0 --current_endpoint %s --trainers %d --is_dist"
         ps0_cmd = ps_cmd % \
-            (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
-             self._trainers)
+                  (self._python_interp, model_file, self._ps_endpoints, ps0_ep,
+                   self._trainers)
         ps1_cmd = ps_cmd % \
-            (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
-             self._trainers)
+                  (self._python_interp, model_file, self._ps_endpoints, ps1_ep,
+                   self._trainers)
 
         if self._sync_mode:
             ps0_cmd += " --sync_mode"
