@@ -614,7 +614,11 @@ class TestBook(unittest.TestCase):
     def test_sampling_id(self):
         program = Program()
         with program_guard(program):
-            x = layers.data(name="X", shape=[13, 11], dtype='float32')
+            x = layers.data(
+                name="X",
+                shape=[13, 11],
+                dtype='float32',
+                append_batch_size=False)
 
             out = layers.sampling_id(x)
             self.assertIsNotNone(out)
