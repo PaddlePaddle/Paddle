@@ -573,6 +573,158 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_brelu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.brelu(input, t_min=1.0, t_max=20.0, name='brelu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_leaky_relu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.leaky_relu(input, alpha=0.1, name='leaky_relu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_soft_relu(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.soft_relu(input, threshold=30.0, name='soft_relu')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sigmoid(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.sigmoid(input, name='sigmoid')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_logsigmoid(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.logsigmoid(input, name='logsigmoid')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_exp(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.exp(input, name='exp')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_tanh(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.tanh(input, name='tanh')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_tanh_shrink(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.tanh_shrink(input, name='tanh_shrink')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sqrt(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.sqrt(input, name='sqrt')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_abs(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.abs(input, name='abs')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_ceil(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.ceil(input, name='ceil')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_floor(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.floor(input, name='floor')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_cos(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.cos(input, name='cos')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sin(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.sin(input, name='sin')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_round(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.round(input, name='round')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_reciprocal(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.reciprocal(input, name='reciprocal')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_square(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.square(input, name='square')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_softplus(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.softplus(input, name='softplus')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_softsign(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.softsign(input, name='softsign')
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_sequence_enumerate(self):
         program = Program()
         with program_guard(program):
