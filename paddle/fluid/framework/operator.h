@@ -60,6 +60,10 @@ inline std::string GradVarName(const std::string& var_name) {
   return var_name + kGradVarSuffix;
 }
 
+inline bool IsEmptyVarName(const std::string& var_name) {
+  return var_name == kEmptyVarName;
+}
+
 proto::VarType::Type GetDataTypeOfVar(const Variable* var);
 
 class OperatorBase;
