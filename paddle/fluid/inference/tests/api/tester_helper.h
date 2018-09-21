@@ -74,11 +74,11 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
   }
 }
 
-std::unique_ptr<PaddlePredictor> GetPrediction(AnalysisConfig config,
+std::unique_ptr<PaddlePredictor> GetPrediction(contrib::AnalysisConfig config,
                                                bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-        config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig,
+                                 PaddleEngineKind::kAnalysis>(config);
   } else {
     return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
         config);
@@ -90,8 +90,8 @@ size_t GetSize(const PaddleTensor &out) {
                          [](int a, int b) { return a * b; });
 }
 
-std::unordered_map<std::string, int> GetFuseStatis(AnalysisConfig config,
-                                                   int *num_ops) {
+std::unordered_map<std::string, int> GetFuseStatis(
+    contrib::AnalysisConfig config, int *num_ops) {
   auto predictor = GetPrediction(config);
   AnalysisPredictor *analysis_predictor =
       dynamic_cast<AnalysisPredictor *>(predictor.get());
@@ -113,7 +113,8 @@ std::unordered_map<std::string, int> GetFuseStatis(AnalysisConfig config,
 }
 
 void TestOneThreadPrediction(
-    AnalysisConfig config, const std::vector<std::vector<PaddleTensor>> inputs,
+    contrib::AnalysisConfig config,
+    const std::vector<std::vector<PaddleTensor>> inputs,
     std::vector<PaddleTensor> *outputs, bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
@@ -130,7 +131,8 @@ void TestOneThreadPrediction(
 }
 
 void TestMultiThreadPrediction(
-    AnalysisConfig config, const std::vector<std::vector<PaddleTensor>> inputs,
+    contrib::AnalysisConfig config,
+    const std::vector<std::vector<PaddleTensor>> inputs,
     std::vector<PaddleTensor> *outputs, int num_threads,
     bool use_analysis = true) {
   int batch_size = FLAGS_batch_size;
@@ -164,7 +166,7 @@ void TestMultiThreadPrediction(
   }
 }
 
-void TestPrediction(AnalysisConfig config,
+void TestPrediction(contrib::AnalysisConfig config,
                     const std::vector<std::vector<PaddleTensor>> inputs,
                     std::vector<PaddleTensor> *outputs, int num_threads,
                     bool use_analysis = FLAGS_use_analysis) {
@@ -178,7 +180,7 @@ void TestPrediction(AnalysisConfig config,
 }
 
 void CompareNativeAndAnalysis(
-    AnalysisConfig config,
+    contrib::AnalysisConfig config,
     const std::vector<std::vector<PaddleTensor>> inputs) {
   std::vector<PaddleTensor> native_outputs, analysis_outputs;
   TestOneThreadPrediction(config, inputs, &native_outputs, false);

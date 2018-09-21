@@ -109,8 +109,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(config_.ir_mode == AnalysisConfig::IrPassMode::kExclude,
-                 "Only kExclude is supported yet.");
+  PADDLE_ENFORCE(
+      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
+      "Only kExclude is supported yet.");
   Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
 
   CHECK(argument_.transformed_program_desc);
@@ -126,8 +127,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig& config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<contrib::AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const contrib::AnalysisConfig& config) {
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
@@ -155,10 +157,10 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<AnalysisConfig>(
-    const AnalysisConfig& config) {
-  return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-      config);
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
+    const contrib::AnalysisConfig& config) {
+  return CreatePaddlePredictor<contrib::AnalysisConfig,
+                               PaddleEngineKind::kAnalysis>(config);
 }
 
 }  // namespace paddle

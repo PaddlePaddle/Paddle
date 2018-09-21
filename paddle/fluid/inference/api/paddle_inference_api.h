@@ -158,6 +158,8 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
 // -----------------------------------------------------------------------------------
 // NOTE: The following APIs are not mature yet, we are still working on them.
 
+namespace contrib {
+
 // Accelerate GPU computation with TensorRT engine.
 struct MixedRTConfig : public NativeConfig {
   // Determine whether a subgraph will be executed by TRT.
@@ -197,6 +199,8 @@ struct AnakinConfig : public PaddlePredictor::Config {
   int max_batch_size{-1};
   TargetType target_type;
 };
+
+}  // namespace contrib
 
 int PaddleDtypeSize(PaddleDType dtype);
 
