@@ -17,12 +17,6 @@ from .layer_function_generator import generate_layer_fn, generate_layer_fn_noatt
 
 __activations__ = [
     'softshrink',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
 ]
 
 __activations_noattr__ = [

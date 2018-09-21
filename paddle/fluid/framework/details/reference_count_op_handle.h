@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/selected_rows.h"
 #include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
@@ -46,17 +47,15 @@ class ReferenceCountOpHandle : public OpHandleBase {
                          const std::vector<std::string> &var_names,
                          GarbageCollector<Tensor> *gc,
                          AtomicReferenceCountMap *ref_cnts)
-      : OpHandleBase(node),
-        scope_(scope),
-        var_names_(var_names),
-        gc_(gc),
-        ref_cnts_(ref_cnts) {
+      : OpHandleBase(node), scope_(scope), gc_(gc), ref_cnts_(ref_cnts) {
     dev_ctx_ = static_cast<platform::CUDADeviceContext *>(
         platform::DeviceContextPool::Instance().Get(place));
     if (IsStreamGarabageCollector()) {
       PADDLE_ENFORCE(cudaSetDevice(place.device));
       PADDLE_ENFORCE(cudaEventCreateWithFlags(&event_, cudaEventDisableTiming));
     }
+
+    for (auto &name : var_names) AddVar(name);
   }
 
   ~ReferenceCountOpHandle() {
@@ -69,19 +68,35 @@ class ReferenceCountOpHandle : public OpHandleBase {
 
   std::string Name() const override { return "reference_count"; }
 
+  void AddVar(const std::string &name) {
+    auto it = var_names_.find(name);
+    if (it != var_names_.end())
+      ++(it->second);
+    else
+      var_names_[name] = 1;
+  }
+
  protected:
   void RunImpl() override {
     auto *exec_scope = scope_->FindVar(kLocalExecScopeName)->Get<Scope *>();
-    std::vector<LoDTensor *> tensors;
-    for (auto &name : var_names_) {
+    std::vector<Tensor *> tensors;
+    for (auto &pair : var_names_) {
+      auto &name = pair.first;
       auto it = ref_cnts_->find(name);
       if (it == ref_cnts_->end()) continue;
 
       auto *var = exec_scope->FindVar(name);
-      if (var == nullptr || !var->IsType<LoDTensor>()) continue;
+      if (var == nullptr) continue;
 
-      if (it->second.fetch_sub(1) <= 1) {
-        tensors.emplace_back(var->GetMutable<LoDTensor>());
+      if (var->IsType<LoDTensor>()) {
+        if (it->second.fetch_sub(pair.second) <= pair.second) {
+          tensors.emplace_back(var->GetMutable<LoDTensor>());
+        }
+      } else if (var->IsType<SelectedRows>()) {
+        if (it->second.fetch_sub(pair.second) <= pair.second) {
+          tensors.emplace_back(
+              var->GetMutable<SelectedRows>()->mutable_value());
+        }
       }
     }
 
@@ -91,7 +106,7 @@ class ReferenceCountOpHandle : public OpHandleBase {
   }
 
  private:
-  void ClearTensors(const std::vector<LoDTensor *> &tensors) {
+  void ClearTensors(const std::vector<Tensor *> &tensors) {
     auto *gc = dynamic_cast<StreamGarbageCollector<Tensor> *>(gc_);
     if (gc != nullptr) {
       auto compute_stream = dev_ctx_->stream();
@@ -112,7 +127,7 @@ class ReferenceCountOpHandle : public OpHandleBase {
 
   const Scope *scope_;
   platform::CUDADeviceContext *dev_ctx_;
-  std::vector<std::string> var_names_;
+  std::unordered_map<std::string, int> var_names_;
   GarbageCollector<Tensor> *gc_;       // not own
   AtomicReferenceCountMap *ref_cnts_;  // not own
   cudaEvent_t event_;
