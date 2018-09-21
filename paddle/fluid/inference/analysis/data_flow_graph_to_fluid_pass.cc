@@ -99,6 +99,7 @@ void DataFlowGraphToFluidPass::AddFluidOp(Node *node) {
 
 void CreateTrtEngineOp(Node *node, Argument *argument,
                        framework::proto::BlockDesc *block) {
+  PADDLE_ENFORCE(argument->main_dfg.get());
   const DataFlowGraph &graph = *(argument->main_dfg);
   static int counter{0};
   PADDLE_ENFORCE(node->IsFunctionBlock());
