@@ -53,9 +53,9 @@ class SamplingIdOpMaker : public framework::OpProtoAndCheckerMaker {
 SamplingId Operator.
 A layer for sampling id from multinomial distribution from the
  input. Sampling one id for one sample.)DOC");
-    AddAttr<float>("min", "Minimum value of random. [default 0.0].")
+    AddAttr<float>("min", "Minimum value of random. (float, default 0.0).")
         .SetDefault(0.0f);
-    AddAttr<float>("max", "Maximun value of random. [default 1.0].")
+    AddAttr<float>("max", "Maximun value of random. (float, default 1.0).")
         .SetDefault(1.0f);
     AddAttr<int>("seed",
                  "Random seed used for the random number engine. "

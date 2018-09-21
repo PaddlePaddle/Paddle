@@ -541,7 +541,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
-            out = layers.shape(input, name="shape")
+            out = layers.shape(input)
             self.assertIsNotNone(out)
         print(str(program))
 
@@ -599,9 +599,52 @@ class TestBook(unittest.TestCase):
     def test_uniform_random_batch_size_like(self):
         program = Program()
         with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            self.assertIsNotNone(out)
+
+    def test_gaussian_random(self):
+        program = Program()
+        with program_guard(program):
+            out = layers.gaussian_random(shape=[20, 30])
+            self.assertIsNotNone(out)
+
+    def test_sampling_id(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="X", shape=[13, 11], dtype='float32')
+
+            out = layers.sampling_id(x)
+            self.assertIsNotNone(out)
+
+    def test_gaussian_random_batch_size_like(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.gaussian_random_batch_size_like(
+                input, shape=[-1, 11], mean=1.0, std=2.0)
+            self.assertIsNotNone(out)
+
+    def test_sum(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.sum(input)
+            self.assertIsNotNone(out)
+
+    def test_slice(self):
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        axes = [0, 1, 2]
+
+        program = Program()
+        with program_guard(program):
             input = layers.data(
-                name="input", shape=[500, 2000], dtype='float32')
-            out = layers.uniform_random_batch_size_like(input, [-1, 2000])
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
             self.assertIsNotNone(out)
 
 
