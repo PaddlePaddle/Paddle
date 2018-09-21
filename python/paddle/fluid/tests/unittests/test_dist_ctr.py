@@ -24,8 +24,12 @@ class TestDistCTR2x2(TestDistBase):
         self._use_cuda = False
 
     def test_dist_ctr(self):
-        os.environ['CPU_NUM'] = '1'
-        self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
+        need_envs = {'CPU_NUM': '1'}
+        self.check_with_place(
+            "dist_ctr.py",
+            delta=1e-7,
+            check_error_log=False,
+            need_envs=need_envs)
 
 
 if __name__ == "__main__":

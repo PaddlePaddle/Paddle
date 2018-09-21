@@ -24,8 +24,9 @@ class TestDistTextClassification2x2(TestDistBase):
         self._use_cuda = False
 
     def test_text_classification(self):
-        os.environ['CPU_NUM'] = '1'
-        self.check_with_place("dist_text_classification.py", delta=1e-6)
+        need_envs = {'CPU_NUM': '1'}
+        self.check_with_place(
+            "dist_text_classification.py", delta=1e-6, need_envs=need_envs)
 
 
 class TestDistTextClassification2x2Async(TestDistBase):
@@ -34,8 +35,9 @@ class TestDistTextClassification2x2Async(TestDistBase):
         self._use_cuda = False
 
     def test_se_resnext(self):
-        os.environ['CPU_NUM'] = '1'
-        self.check_with_place("dist_text_classification.py", delta=100)
+        need_envs = {'CPU_NUM': '1'}
+        self.check_with_place(
+            "dist_text_classification.py", delta=100, need_envs=need_envs)
 
 
 if __name__ == "__main__":

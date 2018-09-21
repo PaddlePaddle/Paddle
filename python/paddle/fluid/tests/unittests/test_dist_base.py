@@ -241,41 +241,26 @@ class TestDistBase(unittest.TestCase):
                                  (e, retry_times))
                 retry_times -= 1
 
-    def check_with_place(self, model_file, delta=1e-3, check_error_log=False):
-        # TODO(typhoonzero): should auto adapt GPU count on the machine.
-        required_envs = {
-            "PATH": os.getenv("PATH", ""),
-            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
-            "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_cudnn_deterministic": "1",
-            "CPU_NUM": "1"
-        }
-
-        required_envs.update(os.environ.copy())
-
-        if check_error_log:
-            required_envs["GLOG_v"] = "7"
-            required_envs["GLOG_logtostderr"] = "1"
-
+    def _run_local(self, model, envs, check_error_log):
         # Run local to get a base line
         env_local = {"CUDA_VISIBLE_DEVICES": "0"}
-        env_local.update(required_envs)
-        local_cmd = "%s %s --role trainer" % (self._python_interp, model_file)
+        envs.update(env_local)
+
+        cmd = "%s %s --role trainer" % (self._python_interp, model)
 
         if not check_error_log:
             local_proc = subprocess.Popen(
-                local_cmd.split(" "),
+                cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                env=env_local)
+                env=envs)
         else:
             err_log = open("/tmp/trainer.err.log", "wb")
             local_proc = subprocess.Popen(
-                local_cmd.split(" "),
+                cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=err_log,
-                env=env_local)
+                env=envs)
 
         local_proc.wait()
         local_out, local_err = local_proc.communicate()
@@ -283,21 +268,24 @@ class TestDistBase(unittest.TestCase):
         sys.stderr.write('local_stdout: %s\n' % local_ret)
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
+        local_losses = local_ret.split("\n")
+        return local_losses
+
+    def _run_cluster(self, model, envs, check_error_log):
         # Run dist train to compare with local results
-        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(
-            model_file, check_error_log, required_envs)
+        ps0, ps1, ps0_pipe, ps1_pipe = self.start_pserver(model,
+                                                          check_error_log, envs)
         self._wait_ps_ready(ps0.pid)
         self._wait_ps_ready(ps1.pid)
-
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
 
         tr_cmd = "%s %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --trainers %d --is_dist"
         tr0_cmd = tr_cmd % \
-            (self._python_interp, model_file, self._ps_endpoints,
-             0, ps0_ep, self._trainers)
+                  (self._python_interp, model, self._ps_endpoints,
+                   0, ps0_ep, self._trainers)
         tr1_cmd = tr_cmd % \
-            (self._python_interp, model_file, self._ps_endpoints,
-             1, ps1_ep, self._trainers)
+                  (self._python_interp, model, self._ps_endpoints,
+                   1, ps1_ep, self._trainers)
 
         if self._sync_mode:
             tr0_cmd += " --sync_mode"
@@ -318,16 +306,16 @@ class TestDistBase(unittest.TestCase):
             env0 = {}
             env1 = {}
 
-        env0.update(required_envs)
-        env1.update(required_envs)
+        env0.update(envs)
+        env1.update(envs)
 
         FNULL = open(os.devnull, 'w')
 
         tr0_pipe = subprocess.PIPE
         tr1_pipe = subprocess.PIPE
         if check_error_log:
-            print("tr0_cmd:", tr0_cmd)
-            print("tr1_cmd:", tr1_cmd)
+            print("tr0_cmd:{}, env0: {}".format(tr0_cmd, env0))
+            print("tr1_cmd:{}, env1: {}".format(tr1_cmd, env1))
             tr0_pipe = open("/tmp/tr0_err.log", "wb")
             tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
@@ -344,21 +332,11 @@ class TestDistBase(unittest.TestCase):
 
         tr0_proc.wait()
         tr1_proc.wait()
+
         tr0_out, tr0_err = tr0_proc.communicate()
         tr0_loss_text = cpt.to_text(tr0_out)
         tr1_out, tr1_err = tr1_proc.communicate()
         tr1_loss_text = cpt.to_text(tr1_out)
-
-        # print log
-        sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
-        sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
-        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_loss_text)
-        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
-
-        tr0_losses = tr0_loss_text.split("\n")
-        tr1_losses = tr1_loss_text.split("\n")
-
-        local_lines = local_ret.split("\n")
 
         # close trainer file
         if check_error_log:
@@ -376,8 +354,44 @@ class TestDistBase(unittest.TestCase):
         ps1.wait()
         FNULL.close()
 
+        # print log
+        sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
+        sys.stderr.write('trainer 0 stderr:\n %s\n' % tr0_err)
+        sys.stderr.write('trainer 1 stdout: %s\n' % tr1_loss_text)
+        sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
+
+        tr0_losses = tr0_loss_text.split("\n")
+        tr1_losses = tr1_loss_text.split("\n")
+
+        return tr0_losses, tr1_losses
+
+    def check_with_place(self,
+                         model_file,
+                         delta=1e-3,
+                         check_error_log=False,
+                         need_envs={}):
+        # TODO(typhoonzero): should auto adapt GPU count on the machine.
+        required_envs = {
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
+            "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
+            "FLAGS_cudnn_deterministic": "1",
+        }
+
+        required_envs.update(need_envs)
+
+        if check_error_log:
+            required_envs["GLOG_v"] = "7"
+            required_envs["GLOG_logtostderr"] = "1"
+
+        local_losses = self._run_local(model_file, required_envs,
+                                       check_error_log)
+        tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs,
+                                                   check_error_log)
+
         for step_id in range(RUN_STEP):
-            local_loss = eval(local_lines[step_id])[0]
+            local_loss = eval(local_losses[step_id])[0]
             tr0_loss = eval(tr0_losses[step_id])[0]
             tr1_loss = eval(tr1_losses[step_id])[0]
             dist_loss = (tr0_loss + tr1_loss) / 2
