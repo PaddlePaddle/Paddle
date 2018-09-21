@@ -15,10 +15,6 @@
 from __future__ import print_function
 from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
 
-__activations__ = [
-    'softshrink',
-]
-
 __activations_noattr__ = [
     'sigmoid',
     'logsigmoid',
@@ -64,7 +60,8 @@ __all__ = [
     'slice',
     'shape',
     'maxout',
-] + __activations__
+    'softshrink',
+]
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
