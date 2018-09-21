@@ -25,7 +25,7 @@ import argparse
 
 import paddle.fluid as fluid
 
-RUN_STEP = 5
+RUN_STEP = 10
 
 
 class TestDistRunnerBase(object):
@@ -116,7 +116,7 @@ class TestDistRunnerBase(object):
 
         def get_data():
             origin_batch = next(reader_generator)
-            if args.is_dist:
+            if args.is_dist and args.use_reader_alloc:
                 new_batch = []
                 for offset, item in enumerate(origin_batch):
                     if offset % 2 == args.trainer_id:
@@ -145,6 +145,8 @@ def runtime_main(test_class):
     parser.add_argument('--mem_opt', action='store_true')
     parser.add_argument('--use_cuda', action='store_true')
     parser.add_argument('--use_reduce', action='store_true')
+    parser.add_argument(
+        '--use_reader_alloc', action='store_true', required=False, default=True)
 
     args = parser.parse_args()
 
@@ -174,6 +176,7 @@ class TestDistBase(unittest.TestCase):
         self._use_cuda = True
         self._mem_opt = False
         self._use_reduce = False
+        self._use_reader_alloc = True
         self._setup_config()
 
     def _find_free_port(self):
@@ -297,7 +300,9 @@ class TestDistBase(unittest.TestCase):
         if self._use_reduce:
             tr0_cmd += " --use_reduce"
             tr1_cmd += " --use_reduce"
-
+        if self._use_reader_alloc:
+            tr0_cmd += " --use_reader_alloc"
+            tr1_cmd += " --use_reader_alloc"
         if self._use_cuda:
             tr0_cmd += " --use_cuda"
             tr1_cmd += " --use_cuda"
