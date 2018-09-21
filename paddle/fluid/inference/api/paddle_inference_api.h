@@ -153,8 +153,7 @@ struct TensorRTConfig : public NativeConfig {
   //  We transform the Ops that can be converted into TRT layer in the model,
   //  and aggregate these Ops into subgraphs for TRT execution.
   //  We set this variable to control the minimum number of nodes in the
-  //  subgraph, 3 as
-  //  default value.
+  //  subgraph, 3 as default value.
   int minimum_subgraph_size = 3;
   // Reserved configuration
   // We just support "FP32" now, "FP16" and "INT8" will be supported.

@@ -37,14 +37,10 @@ TEST(Analyzer, analysis_without_tensorrt) {
 TEST(Analyzer, analysis_with_tensorrt) {
   FLAGS_IA_enable_tensorrt_subgraph_engine = true;
   Argument argument;
-  int* minimum_subgraph_size = new int(0);
-  int* max_batch_size = new int(3);
-  int* workspace_size = new int(1 << 20);
-  std::string* precision_mode = new std::string("FP32");
-  argument.Set<int>("minimum_subgraph_size", minimum_subgraph_size);
-  argument.Set<int>("max_batch_size", max_batch_size);
-  argument.Set<int>("workspace_size", workspace_size);
-  argument.Set<std::string>("precision_mode", precision_mode);
+  argument.Set<int>("minimum_subgraph_size", new int(0));
+  argument.Set<int>("max_batch_size", new int(3));
+  argument.Set<int>("workspace_size", new int(1 << 20));
+  argument.Set<std::string>("precision_mode", new std::string("FP32"));
   argument.fluid_model_dir.reset(new std::string(FLAGS_inference_model_dir));
   Analyzer analyser;
   analyser.Run(&argument);
