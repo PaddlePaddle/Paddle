@@ -90,7 +90,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     // Analyze inference_program
     Argument argument;
 
-    int* minimum_subgraph_size = new int(config_.minimun_subgraph_size);
+    int* minimum_subgraph_size = new int(config_.minimum_subgraph_size);
     int* max_batch_size = new int(config_.max_batch_size);
     int* workspace_size = new int(config_.workspace_size);
     std::string* precision_mode = new std::string(config_.precision_mode);
