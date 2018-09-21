@@ -6471,7 +6471,13 @@ def _elementwise_op(helper):
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
-    out = helper.create_tmp_variable(dtype=x.dtype)
+    name = helper.kwargs.get('name', None)
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
     helper.append_op(
         type=op_type,
         inputs={'X': x,
@@ -6483,7 +6489,7 @@ def _elementwise_op(helper):
 
 
 @templatedoc()
-def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, name=None):
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     ${comment}
 
@@ -6492,6 +6498,7 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, name=None):
         scale(${scale_type}): ${scale_comment}
         bias(${bias_type}): ${bias_comment}
         bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
+        act(basestring|None): Activation applied to the output.
         name(basestring|None): Name of the output. 
 
     Returns:
@@ -6499,7 +6506,6 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, name=None):
     """
 
     helper = LayerHelper('scale', **locals())
-    out = helper.create_tmp_variable(dtype=x.dtype)
     if name is None:
         out = helper.create_tmp_variable(dtype=x.dtype)
     else:
@@ -6515,34 +6521,34 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, name=None):
             'bias': float(bias),
             'bias_after_scale': bias_after_scale
         })
-    return out
+    return helper.append_activation(out)
 
 
-def elementwise_add(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_add(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
-def elementwise_div(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_div(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
-def elementwise_sub(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_sub(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
-def elementwise_mul(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_mul(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_max(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_max(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-def elementwise_min(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_min(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
-def elementwise_pow(x, y, axis=-1, use_mkldnn=False, act=None):
+def elementwise_pow(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -6554,5 +6560,6 @@ for func in [
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
-            "act(basestring|None): Activation to be applied to the output."
+            "act (basestring|None): Activation applied to the output.",
+            "name (basestring|None): Name of the output."
         ])
