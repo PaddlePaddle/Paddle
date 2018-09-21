@@ -199,6 +199,14 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
   framework::SelectedRows operator()(const platform::CPUDeviceContext& context,
                                      const framework::SelectedRows& input) {
     framework::SelectedRows out;
+    (*this)(context, input, &out);
+    return out;
+  }
+
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::SelectedRows& input,
+                  framework::SelectedRows* output) {
+    framework::SelectedRows& out = *output;
     auto input_rows = input.rows();
     std::set<int64_t> row_set(input_rows.begin(), input_rows.end());
     std::vector<int64_t> merge_rows(row_set.begin(), row_set.end());
@@ -223,7 +231,6 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
         out_data[out_i * input_width + j] += input_data[i * input_width + j];
       }
     }
-    return out;
   }
 };
 

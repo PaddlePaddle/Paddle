@@ -382,6 +382,30 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def test_sequence_scatter(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name='x',
+                shape=[3, 6],
+                append_batch_size=False,
+                dtype='float32')
+            idx = layers.data(
+                name='idx',
+                shape=[12, 1],
+                append_batch_size=False,
+                dtype='int32',
+                lod_level=1)
+            updates = layers.data(
+                name='updates',
+                shape=[12, 1],
+                append_batch_size=False,
+                dtype='float32',
+                lod_level=1)
+            out = layers.sequence_scatter(input=x, index=idx, updates=updates)
+            self.assertIsNotNone(out)
+        print(str(program))
+
     def test_lod_reset(self):
         program = Program()
         with program_guard(program):
@@ -547,6 +571,16 @@ class TestBook(unittest.TestCase):
                 param_attr=ParamAttr(initializer=Constant(1.0)),
                 name='prelu')
             self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_roi_perspective_transform(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[256, 30, 30], dtype="float32")
+            rois = layers.data(
+                name="rois", shape=[8], dtype="float32", lod_level=1)
+            output = layers.roi_perspective_transform(x, rois, 7, 7, 0.6)
+            self.assertIsNotNone(output)
         print(str(program))
 
     def test_sequence_enumerate(self):

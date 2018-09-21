@@ -122,7 +122,7 @@ class TestProgram(unittest.TestCase):
             net()
         no_read_program = main_program._inference_optimize()
         keep_read_program = main_program._inference_optimize(
-            export_for_deployment=False)
+            prune_read_op=False)
         no_read_ops = no_read_program.global_block().ops
         keep_read_ops = keep_read_program.global_block().ops
         self.assertEqual(len(keep_read_ops) - len(no_read_ops), 2)

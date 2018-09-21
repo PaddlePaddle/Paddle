@@ -437,13 +437,8 @@ def split_data(data, num_part):
     ]
 
 
-def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
+def test_context(test_program, avg_cost, train_exe, dev_count, data_input_names,
                  sum_cost, token_num):
-    # Context to do validation.
-    test_program = train_progm.clone()
-    with fluid.program_guard(test_program):
-        test_program = fluid.io.get_inference_program([avg_cost])
-
     val_data = DataReader(
         src_vocab_fpath=TrainTaskConfig.src_vocab_fpath,
         trg_vocab_fpath=TrainTaskConfig.trg_vocab_fpath,
@@ -505,7 +500,7 @@ def test_context(train_progm, avg_cost, train_exe, dev_count, data_input_names,
 
 
 def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
-               token_num, predict):
+               token_num, predict, test_program):
     # Initialize the parameters.
     if TrainTaskConfig.ckpt_path:
         lr_scheduler.current_steps = TrainTaskConfig.start_step
@@ -554,7 +549,7 @@ def train_loop(exe, train_progm, dev_count, sum_cost, avg_cost, lr_scheduler,
                                                                              -1] + label_data_input_fields
 
     if TrainTaskConfig.val_file_pattern is not None:
-        test = test_context(train_progm, avg_cost, train_exe, dev_count,
+        test = test_context(test_program, avg_cost, train_exe, dev_count,
                             data_input_names, sum_cost, token_num)
 
     # the best cross-entropy value with label smoothing
@@ -1647,6 +1642,8 @@ def get_model(is_dist, is_async):
     local_lr_scheduler = LearningRateScheduler(ModelHyperParams.d_model,
                                                TrainTaskConfig.warmup_steps,
                                                TrainTaskConfig.learning_rate)
+    # Context to do validation.
+    test_program = fluid.default_main_program().clone(for_test=True)
 
     if not is_dist:
         optimizer = fluid.optimizer.Adam(
@@ -1671,7 +1668,7 @@ def get_model(is_dist, is_async):
             epsilon=TrainTaskConfig.eps)
         optimizer.minimize(sum_cost)
 
-    return sum_cost, avg_cost, predict, token_num, local_lr_scheduler
+    return sum_cost, avg_cost, predict, token_num, local_lr_scheduler, test_program
 
 
 def update_args():
@@ -1703,6 +1700,7 @@ class DistTransformer2x2(TestDistRunnerBase):
         exe.run(pserver_prog)
 
     def run_trainer(self, args):
+        TrainTaskConfig.use_gpu = args.use_cuda
         sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
             args.is_dist, not args.sync_mode)
 
@@ -1729,7 +1727,7 @@ class DistTransformer2x2(TestDistRunnerBase):
         TrainTaskConfig.local = not args.is_dist
 
         train_loop(startup_exe, trainer_prog, 1, sum_cost, avg_cost,
-                   local_lr_scheduler, token_num, predict)
+                   local_lr_scheduler, token_num, predict, test_program)
 
 
 if __name__ == "__main__":
