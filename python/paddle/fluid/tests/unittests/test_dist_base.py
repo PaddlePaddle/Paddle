@@ -242,11 +242,16 @@ class TestDistBase(unittest.TestCase):
                 retry_times -= 1
 
     def _run_local(self, model, envs, check_error_log):
-        # Run local to get a base line
-        env_local = {"CUDA_VISIBLE_DEVICES": "0"}
-        envs.update(env_local)
 
         cmd = "%s %s --role trainer" % (self._python_interp, model)
+
+        if self._use_cuda:
+            cmd += " --use_cuda"
+            env_local = {"CUDA_VISIBLE_DEVICES": "0"}
+        else:
+            env_local = {'CPU_NUM': '1'}
+
+        envs.update(env_local)
 
         if not check_error_log:
             local_proc = subprocess.Popen(
@@ -303,8 +308,8 @@ class TestDistBase(unittest.TestCase):
             env0 = {"CUDA_VISIBLE_DEVICES": "0"}
             env1 = {"CUDA_VISIBLE_DEVICES": "1"}
         else:
-            env0 = {}
-            env1 = {}
+            env0 = {'CPU_NUM': '1'}
+            env1 = {'CPU_NUM': '1'}
 
         env0.update(envs)
         env1.update(envs)
