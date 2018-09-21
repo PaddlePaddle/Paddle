@@ -52,8 +52,6 @@ void Train() {
 
   PADDLE_ENFORCE_NE(loss_name, "", "loss not found");
 
-  // init all parameters
-
   // prepare data
   auto x_var = scope.Var("img");
   auto x_tensor = x_var->GetMutable<framework::LoDTensor>();

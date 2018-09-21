@@ -25,4 +25,6 @@ function(train_test TARGET_NAME)
 endfunction(train_test)
 
 
-train_test(recognize_digits ARGS mlp conv)
+if(WITH_TESTING)
+  train_test(recognize_digits ARGS mlp conv)
+endif()
