@@ -27,8 +27,7 @@ from . import core
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model',
-    'get_inference_program'
+    'load_persistables', 'save_inference_model', 'load_inference_model'
 ]
 
 
@@ -502,23 +501,6 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         main_program=main_program,
         predicate=is_persistable,
         filename=filename)
-
-
-def get_inference_program(target_vars, main_program=None):
-    if main_program is None:
-        main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
-    vars = []
-    for var in target_vars:
-        if isinstance(var, Evaluator):
-            vars.extend(var.states)
-            vars.extend(var.metrics)
-        else:
-            vars.append(var)
-    pruned_program = main_program._prune(targets=vars)
-    inference_program = pruned_program._inference_optimize()
-    return inference_program
 
 
 def prepend_feed_ops(inference_program,
