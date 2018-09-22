@@ -31,6 +31,8 @@
 
 namespace paddle {
 
+using paddle::contrib::AnakinConfig;
+
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
     const contrib::AnakinConfig &config) {
@@ -45,7 +47,8 @@ PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
   CHECK(Init(config));
 }
 template <typename Target>
-bool PaddleInferenceAnakinPredictor<Target>::Init(const contrib::AnakinConfig &config) {
+bool PaddleInferenceAnakinPredictor<Target>::Init(
+    const contrib::AnakinConfig &config) {
   if (!(graph_.load(config.model_file))) {
     VLOG(3) << "fail to load graph from " << config.model_file;
     return false;
@@ -200,8 +203,9 @@ template class PaddleInferenceAnakinPredictor<anakin::X86>;
 
 // A factory to help create difference predictor.
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    contrib::AnakinConfig, PaddleEngineKind::kAnakin>(const contrib::AnakinConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
+    const contrib::AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
   if (config.target_type == contrib::AnakinConfig::NVGPU) {
 #ifdef PADDLE_WITH_CUDA
