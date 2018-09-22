@@ -42,36 +42,25 @@ __forceinline__ __device__ unsigned warp_id() {
 
 // A Cuda kernel to compute the depthwise convolution forward pass
 // in NCHW format.
-template <typename T, int c_filter_multiplier, int c_stride>
-__global__ void KernelDepthwiseConv(
-    const int nthreads, const T* const input_data, const T* const filter_data,
-    const int batch_size, const int output_channels, const int output_height,
-    const int output_width, const int input_channels, const int input_height,
-    const int input_width, const int filter_multiplier, const int filter_height,
+template <typename T>
+__device__ __inline__ void KernelDepthwiseConv(
+    const T* const input_data, const T* const filter_data, const int batch_size,
+    const int output_channels, const int output_height, const int output_width,
+    const int input_channels, const int input_height, const int input_width,
+    const int filter_multiplier, const int filter_height,
     const int filter_width, const int stride_height, const int stride_width,
     const int padding_height, const int padding_width, const int dilate_height,
     const int dilate_width, T* const output_data) {
-  int real_stride_height = c_stride;
-  int real_stride_width = c_stride;
-  int real_filter_multiplier = c_filter_multiplier;
-  if (c_stride == 0) {
-    real_stride_height = stride_height;
-    real_stride_width = stride_width;
-  }
-  if (c_filter_multiplier == 0) {
-    real_stride_height = filter_multiplier;
-  }
-
   for (int w_out = threadIdx.x; w_out < output_width; w_out += blockDim.x) {
     for (int h_out = threadIdx.y; h_out < output_height; h_out += blockDim.y) {
       const int batch = blockIdx.y;
       const int c_out = blockIdx.x;
 
-      const int c_in = c_out / real_filter_multiplier;
+      const int c_in = c_out / filter_multiplier;
       const T* weight = filter_data + c_out * filter_height * filter_width;
       T value = 0;
-      const int h_in_start = -padding_height + h_out * real_stride_height;
-      const int w_in_start = -padding_width + w_out * real_stride_width;
+      const int h_in_start = -padding_height + h_out * stride_height;
+      const int w_in_start = -padding_width + w_out * stride_width;
       const int h_in_end = h_in_start + filter_height * dilate_height;
       const int w_in_end = w_in_start + filter_width * dilate_width;
 
@@ -102,55 +91,70 @@ __global__ void KernelDepthwiseConv(
   }
 }
 
-// CUDA kernel to compute the depthwise convolution backprop w.r.t input.
 template <typename T, int c_filter_multiplier, int c_stride>
-__global__ void KernelDepthwiseConvInputGrad(
-    const int nthreads, const T* const output_grad_data,
-    const T* const filter_data, const int batch_size, const int output_channels,
-    const int output_height, const int output_width, const int input_channels,
-    const int input_height, const int input_width, const int filter_multiplier,
-    const int filter_height, const int filter_width, const int stride_height,
-    const int stride_width, const int padding_height, const int padding_width,
-    const int dilate_height, const int dilate_width, T* const input_grad_data) {
-  int real_stride_height = c_stride;
-  int real_stride_width = c_stride;
-  int real_filter_multiplier = c_filter_multiplier;
-  if (c_stride == 0) {
-    real_stride_height = stride_height;
-    real_stride_width = stride_width;
-  }
-  if (c_filter_multiplier == 0) {
-    real_stride_height = filter_multiplier;
-  }
+__global__ void KernelDepthwiseConvSp(
+    const T* const input_data, const T* const filter_data, const int batch_size,
+    const int output_channels, const int output_height, const int output_width,
+    const int input_channels, const int input_height, const int input_width,
+    const int filter_multiplier, const int filter_height,
+    const int filter_width, const int stride_height, const int stride_width,
+    const int padding_height, const int padding_width, const int dilate_height,
+    const int dilate_width, T* const output_data) {
+  if (c_filter_multiplier == 0)
+    KernelDepthwiseConv<T>(input_data, filter_data, batch_size, output_channels,
+                           output_height, output_width, input_channels,
+                           input_height, input_width, filter_multiplier,
+                           filter_height, filter_width, stride_height,
+                           stride_width, padding_height, padding_width,
+                           dilate_height, dilate_width, output_data);
+
+  else
+    KernelDepthwiseConv<T>(input_data, filter_data, batch_size, output_channels,
+                           output_height, output_width, input_channels,
+                           input_height, input_width, c_filter_multiplier,
+                           filter_height, filter_height, c_stride, c_stride,
+                           padding_height, padding_width, dilate_height,
+                           dilate_width, output_data);
+}
+
+// CUDA kernel to compute the depthwise convolution backprop w.r.t input.
+template <typename T>
+__device__ __inline__ void KernelDepthwiseConvInputGrad(
+    const T* const output_grad_data, const T* const filter_data,
+    const int batch_size, const int output_channels, const int output_height,
+    const int output_width, const int input_channels, const int input_height,
+    const int input_width, const int filter_multiplier, const int filter_height,
+    const int filter_width, const int stride_height, const int stride_width,
+    const int padding_height, const int padding_width, const int dilate_height,
+    const int dilate_width, T* const input_grad_data) {
   for (int w_in = threadIdx.x; w_in < input_width; w_in += blockDim.x) {
     for (int h_in = threadIdx.y; h_in < input_height; h_in += blockDim.y) {
       const int batch = blockIdx.y;
       const int c_in = blockIdx.x;
 
-      const int c_out_start = c_in * real_filter_multiplier;
+      const int c_out_start = c_in * filter_multiplier;
 
       int h_out_start =
-          (h_in - filter_height + padding_height + real_stride_height) /
-          real_stride_height;
+          (h_in - filter_height + padding_height + stride_height) /
+          stride_height;
       int _h_out_start = 0 > h_out_start ? 0 : h_out_start;
 
-      int h_out_end = (h_in + padding_height) / real_stride_height;
+      int h_out_end = (h_in + padding_height) / stride_height;
       int _h_out_end =
           output_height - 1 < h_out_end ? output_height - 1 : h_out_end;
 
       int w_out_start =
-          (w_in - filter_width + padding_width + real_stride_width) /
-          real_stride_width;
+          (w_in - filter_width + padding_width + stride_width) / stride_width;
       int _w_out_start = 0 > w_out_start ? 0 : w_out_start;
 
-      int w_out_end = (w_in + padding_width) / real_stride_width;
+      int w_out_end = (w_in + padding_width) / stride_width;
       int _w_out_end =
           output_width - 1 < w_out_end ? output_width - 1 : w_out_end;
 
       T value = 0;
 
-      for (int c_out = c_out_start;
-           c_out < c_out_start + real_filter_multiplier; c_out++) {
+      for (int c_out = c_out_start; c_out < c_out_start + filter_multiplier;
+           c_out++) {
         int filter_offset = (c_out + 1) * filter_height * filter_width;
         for (int h_out = h_out_start; h_out <= h_out_end;
              h_out += dilate_height) {
@@ -175,6 +179,31 @@ __global__ void KernelDepthwiseConvInputGrad(
       input_grad_data[index] = value;
     }
   }
+}
+
+template <typename T, int c_filter_multiplier, int c_stride>
+__global__ void KernelDepthwiseConvInputGradSp(
+    const T* const output_grad_data, const T* const filter_data,
+    const int batch_size, const int output_channels, const int output_height,
+    const int output_width, const int input_channels, const int input_height,
+    const int input_width, const int filter_multiplier, const int filter_height,
+    const int filter_width, const int stride_height, const int stride_width,
+    const int padding_height, const int padding_width, const int dilate_height,
+    const int dilate_width, T* const input_grad_data) {
+  if (c_filter_multiplier == 0)
+    KernelDepthwiseConvInputGrad<T>(
+        output_grad_data, filter_data, batch_size, output_channels,
+        output_height, output_width, input_channels, input_height, input_width,
+        filter_multiplier, filter_height, filter_width, stride_height,
+        stride_width, padding_height, padding_width, dilate_height,
+        dilate_width, input_grad_data);
+  else
+    KernelDepthwiseConvInputGrad<T>(
+        output_grad_data, filter_data, batch_size, output_channels,
+        output_height, output_width, input_channels, input_height, input_width,
+        c_filter_multiplier, filter_height, filter_width, c_stride, c_stride,
+        padding_height, padding_width, dilate_height, dilate_width,
+        input_grad_data);
 }
 
 // Cuda kernel to compute the depthwise convolution backprop w.r.t. filter.
@@ -258,28 +287,30 @@ class DepthwiseConvFunctor<platform::CUDADeviceContext, T> {
     const T* filter_data = filter.data<T>();
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
-    int nthreads = batch_size * output_channels * output_height * output_width;
     int thread = 512;
     int blocks = std::min(std::max(thread / output_width, 1), output_height);
     dim3 threads(std::min(output_width, thread), blocks, 1);
     dim3 grid(output_channels, batch_size, 1);
     int filter_multiplier = output_channels / input_channels;
-
-    if (filter_multiplier == 1 && stride_height == 1 && stride_width == 1) {
-      KernelDepthwiseConv<T, 1, 1><<<grid, threads, 0, context.stream()>>>(
-          nthreads, input_data, filter_data, batch_size, output_channels,
-          output_height, output_width, input_channels, input_height,
-          input_width, output_channels / input_channels, ksize_height,
-          ksize_width, stride_height, stride_width, padding_height,
-          padding_width, dilate_height, dilate_width, output_data);
-    } else {
-      KernelDepthwiseConv<T, 0, 0><<<grid, threads, 0, context.stream()>>>(
-          nthreads, input_data, filter_data, batch_size, output_channels,
-          output_height, output_width, input_channels, input_height,
-          input_width, output_channels / input_channels, ksize_height,
-          ksize_width, stride_height, stride_width, padding_height,
-          padding_width, dilate_height, dilate_width, output_data);
-    }
+#define check_case(c_filter_multiplier, c_stride)                            \
+  if (filter_multiplier == 0 ||                                              \
+      filter_multiplier == c_filter_multiplier &&                            \
+          stride_height == stride_width && stride_height == c_stride) {      \
+    KernelDepthwiseConvSp<T, c_filter_multiplier,                            \
+                          c_stride><<<grid, threads, 0, context.stream()>>>( \
+        input_data, filter_data, batch_size, output_channels, output_height, \
+        output_width, input_channels, input_height, input_width,             \
+        filter_multiplier, ksize_height, ksize_width, stride_height,         \
+        stride_width, padding_height, padding_width, dilate_height,          \
+        dilate_width, output_data);                                          \
+    return;                                                                  \
+  }
+    check_case(1, 1);
+    check_case(1, 2);
+    // NOTE(liangdun): 0,0 for other case
+    // add other case if needed, e.g. check_case(2^n,1)
+    check_case(0, 0);
+#undef check_case
   }
 };
 
@@ -314,30 +345,32 @@ class DepthwiseConvInputGradFunctor<platform::CUDADeviceContext, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-    int nthreads = batch_size * input_channels * input_height * input_width;
     int thread = 512;
     int blocks = std::min(std::max(thread / input_width, 1), input_height);
     dim3 threads(std::min(input_width, thread), blocks, 1);
     dim3 grid(input_channels, batch_size, 1);
     int filter_multiplier = output_channels / input_channels;
 
-    if (filter_multiplier == 1 && stride_height == 1 && stride_width == 1) {
-      KernelDepthwiseConvInputGrad<T, 1,
-                                   1><<<grid, threads, 0, context.stream()>>>(
-          nthreads, output_grad_data, filter_data, batch_size, output_channels,
-          output_height, output_width, input_channels, input_height,
-          input_width, output_channels / input_channels, ksize_height,
-          ksize_width, stride_height, stride_width, padding_height,
-          padding_width, dilate_height, dilate_width, input_grad_data);
-    } else {
-      KernelDepthwiseConvInputGrad<T, 0,
-                                   0><<<grid, threads, 0, context.stream()>>>(
-          nthreads, output_grad_data, filter_data, batch_size, output_channels,
-          output_height, output_width, input_channels, input_height,
-          input_width, output_channels / input_channels, ksize_height,
-          ksize_width, stride_height, stride_width, padding_height,
-          padding_width, dilate_height, dilate_width, input_grad_data);
-    }
+#define check_case(c_filter_multiplier, c_stride)                       \
+  if (filter_multiplier == 0 ||                                         \
+      filter_multiplier == c_filter_multiplier &&                       \
+          stride_height == stride_width && stride_height == c_stride) { \
+    KernelDepthwiseConvInputGradSp<                                     \
+        T, c_filter_multiplier,                                         \
+        c_stride><<<grid, threads, 0, context.stream()>>>(              \
+        output_grad_data, filter_data, batch_size, output_channels,     \
+        output_height, output_width, input_channels, input_height,      \
+        input_width, filter_multiplier, ksize_height, ksize_width,      \
+        stride_height, stride_width, padding_height, padding_width,     \
+        dilate_height, dilate_width, input_grad_data);                  \
+    return;                                                             \
+  }
+    check_case(1, 1);
+    check_case(1, 2);
+    // NOTE(liangdun): 0,0 for other case
+    // add other case if needed, e.g. check_case(2^n,1)
+    check_case(0, 0);
+#undef check_case
   }
 };
 
@@ -370,8 +403,6 @@ class DepthwiseConvFilterGradFunctor<platform::CUDADeviceContext, T> {
     const T* input_data = input.data<T>();
     const T* output_grad_data = output_grad.data<T>();
     T* filter_grad_data = filter_grad->mutable_data<T>(context.GetPlace());
-
-    int nthreads = batch_size * output_channels * output_height * output_width;
 
     int block_size = 512;
     int crop_output_height =
