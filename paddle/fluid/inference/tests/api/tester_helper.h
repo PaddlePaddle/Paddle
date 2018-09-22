@@ -38,6 +38,8 @@ DEFINE_bool(use_analysis, true,
 namespace paddle {
 namespace inference {
 
+using contrib::AnalysisConfig;
+
 void CompareResult(const std::vector<PaddleTensor> &outputs,
                    const std::vector<PaddleTensor> &ref_outputs) {
   EXPECT_GT(outputs.size(), 0UL);

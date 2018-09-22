@@ -20,6 +20,8 @@
 
 namespace paddle {
 
+using contrib::MixedRTConfig;
+
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
 void CompareTensorRTWithFluid(bool enable_tensorrt) {

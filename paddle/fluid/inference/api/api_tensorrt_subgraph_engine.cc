@@ -153,10 +153,9 @@ CreatePaddlePredictor<MixedRTConfig, PaddleEngineKind::kAutoMixedTensorRT>(
 
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<MixedRTConfig>(
-    const NativeConfig& config) {
+    const MixedRTConfig& config) {
   return CreatePaddlePredictor<MixedRTConfig,
-                               PaddleEngineKind::kAutoMixedTensorRT>(
-      const NativeConfig& config);
+                               PaddleEngineKind::kAutoMixedTensorRT>(config);
 }
 
 }  // namespace paddle
