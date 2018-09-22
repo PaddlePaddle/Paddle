@@ -25,6 +25,7 @@ using inference::analysis::Argument;
 using inference::Singleton;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
+using paddle::contrib::MixedRTConfig;
 
 class TensorRTSubgraphPredictor : public NativePaddlePredictor {
  public:
