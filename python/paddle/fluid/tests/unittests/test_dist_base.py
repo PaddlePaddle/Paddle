@@ -341,5 +341,10 @@ class TestDistBase(unittest.TestCase):
         ps1.wait()
         FNULL.close()
 
+        first_diff = abs(local_first_loss - dist_first_loss) > delta
+        last_diff = abs(local_last_loss, dist_last_loss) > delta
+        if first_diff or last_idff:
+            os.system("cat /tmp/ps*.log")
+            os.sysstem("cat /tmp/tr*.log")
         self.assertAlmostEqual(local_first_loss, dist_first_loss, delta=delta)
         self.assertAlmostEqual(local_last_loss, dist_last_loss, delta=delta)
