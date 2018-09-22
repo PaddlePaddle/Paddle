@@ -127,6 +127,9 @@ static const char kLocalScopes[] = "local_scopes";
 static const char kStrategy[] = "strategy";
 
 void MultiDevSSAGraphBuilder::Init() const {
+  all_vars_.clear();
+  balance_vars_.clear();
+
   loss_var_name_ = Get<const std::string>(kLossVarName);
   places_ = Get<const std::vector<platform::Place>>(kPlaces);
   local_scopes_ = Get<const std::vector<Scope *>>(kLocalScopes);
@@ -205,43 +208,6 @@ std::vector<std::string> MultiDevSSAGraphBuilder::FindDistTrainRecvVars(
     }
   }
   return recv_vars;
-}
-
-bool MultiDevSSAGraphBuilder::IsDistTrainOp(
-    ir::Node *node, const std::vector<std::string> &send_vars,
-    const std::vector<std::string> &recv_vars) const {
-  if (send_vars.size() == 0 || recv_vars.size() == 0) {
-    return false;
-  }
-
-  /**
-   * Check any of opvars contains `.block` and in sendvars
-   */
-  auto checker = [](const std::vector<std::string> &opvars,
-                    const std::vector<std::string> &rpc_vars) -> bool {
-    for (auto &var : opvars) {
-      // a variable name with the suffix `.block` means it's a splited
-      // variable by (DistributeTranspiler)
-      // [python/paddle/fluid/transpiler/distribute_transpiler.py]
-      if (var.find(".block") != std::string::npos &&
-          std::find(rpc_vars.begin(), rpc_vars.end(), var) != rpc_vars.end()) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  std::vector<std::string> input_var_names;
-  std::vector<std::string> output_var_names;
-  for (ir::Node *input : node->inputs) {
-    input_var_names.push_back(input->Name());
-  }
-  for (ir::Node *output : node->outputs) {
-    output_var_names.push_back(output->Name());
-  }
-
-  return checker(output_var_names, send_vars) ||
-         checker(input_var_names, recv_vars);
 }
 
 size_t MultiDevSSAGraphBuilder::GetAppropriateDeviceID(
@@ -367,7 +333,9 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
         }
       }
       is_dist_train = true;
-    } else if (IsDistTrainOp(node, send_vars, recv_vars)) {
+    } else if (boost::get<int>(node->Op()->GetAttr(
+                   OpProtoAndCheckerMaker::OpRoleAttrName())) ==
+               static_cast<int>(OpRole::kDist)) {
       int op_dev_id = CreateDistTrainOp(&result, node);
       if (node->Op()->Type() == "concat") {
         auto origin_param_name = node->Op()->OutputArgumentNames()[0];
@@ -733,6 +701,7 @@ int MultiDevSSAGraphBuilder::CreateDistTrainOp(ir::Graph *result,
           .emplace(varname, op_dev_id);
     }
   } else {
+    LOG(ERROR) << "got unexpected dist op: " << node->Op()->Type();
     PADDLE_THROW(
         "the distribute training related op should be in [split_byref, "
         "concat].");

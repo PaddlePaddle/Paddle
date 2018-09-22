@@ -12,24 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-
-#include <google/protobuf/text_format.h>
-#include <gtest/gtest.h>
-#include <thread>  // NOLINT
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
-DEFINE_string(infer_model, "", "model path");
-DEFINE_string(infer_data, "", "data path");
-DEFINE_int32(batch_size, 1, "batch size.");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -41,6 +24,7 @@ struct DataRecord {
   std::vector<size_t> lod;
   std::vector<std::vector<float>> rnn_link_data;
   std::vector<float> result_data;
+  size_t num_samples;  // total number of samples
   size_t batch_iter{0};
   size_t batch_size{1};
   DataRecord() = default;
@@ -100,6 +84,7 @@ struct DataRecord {
         result_data.insert(result_data.end(), tmp.begin(), tmp.end());
       }
     }
+    num_samples = num_lines / 2;
   }
 };
 void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
@@ -118,64 +103,58 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   input_slots->assign({feed_tensor});
 }
 
-void CompareResult(const std::vector<PaddleTensor> &outputs,
-                   const std::vector<float> &base_result) {
-  PADDLE_ENFORCE_GT(outputs.size(), 0);
-  for (size_t i = 0; i < outputs.size(); i++) {
-    auto &out = outputs[i];
-    size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                  [](int a, int b) { return a * b; });
+void SetConfig(AnalysisConfig *cfg) {
+  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->param_file = FLAGS_infer_model + "/param";
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
+}
+
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+  std::vector<PaddleTensor> input_slots;
+  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
+  for (int bid = 0; bid < epoch; ++bid) {
+    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    (*inputs).emplace_back(input_slots);
+  }
+}
+
+// Easy for profiling independently.
+TEST(Analyzer_rnn2, profile) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+
+  if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
+    // the first inference result
+    DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+    PADDLE_ENFORCE_GT(outputs.size(), 0);
+    size_t size = GetSize(outputs[0]);
     PADDLE_ENFORCE_GT(size, 0);
-    float *data = static_cast<float *>(out.data.data());
+    float *result = static_cast<float *>(outputs[0].data.data());
     for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_result[i], 1e-3);
+      EXPECT_NEAR(result[i], data.result_data[i], 1e-3);
     }
   }
 }
-// Test with a really complicate model.
-void TestRNN2Prediction() {
-  AnalysisConfig config;
-  config.prog_file = FLAGS_infer_model + "/__model__";
-  config.param_file = FLAGS_infer_model + "/param";
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-  config.enable_ir_optim = true;
-  PADDLE_ENFORCE(config.ir_mode ==
-                 AnalysisConfig::IrPassMode::kExclude);  // default
 
-  int batch_size = FLAGS_batch_size;
-  int num_times = FLAGS_repeat;
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_rnn2, compare) {
+  AnalysisConfig cfg;
+  SetConfig(&cfg);
 
-  auto base_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
-  std::vector<PaddleTensor> input_slots;
-  DataRecord data(FLAGS_infer_data, batch_size);
-  PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs, base_outputs;
-
-  Timer timer1;
-  timer1.tic();
-  for (int i = 0; i < num_times; i++) {
-    base_predictor->Run(input_slots, &base_outputs);
-  }
-  PrintTime(batch_size, num_times, 1, 0, timer1.toc() / num_times);
-
-  Timer timer2;
-  timer2.tic();
-  for (int i = 0; i < num_times; i++) {
-    predictor->Run(input_slots, &outputs);
-  }
-  PrintTime(batch_size, num_times, 1, 0, timer2.toc() / num_times);
-
-  CompareResult(base_outputs, data.result_data);
-  CompareResult(outputs, data.result_data);
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
 }
-
-TEST(Analyzer, rnn2) { TestRNN2Prediction(); }
 
 }  // namespace inference
 }  // namespace paddle

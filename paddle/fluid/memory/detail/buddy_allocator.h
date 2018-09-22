@@ -42,6 +42,8 @@ class BuddyAllocator {
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
   size_t Used();
+  size_t GetMinChunkSize();
+  size_t GetMaxChunkSize();
 
  public:
   // Disable copy and assignment

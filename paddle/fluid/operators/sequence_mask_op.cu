@@ -19,4 +19,8 @@ REGISTER_OP_CUDA_KERNEL(
     paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
                                           int>,
     paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
-                                          int64_t>);
+                                          int64_t>,
+    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
+                                          float>,
+    paddle::operators::SequenceMaskKernel<paddle::platform::CUDADeviceContext,
+                                          double>);

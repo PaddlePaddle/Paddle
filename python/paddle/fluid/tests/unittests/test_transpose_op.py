@@ -34,7 +34,7 @@ class TestTransposeOp(OpTest):
         self.check_output(no_check_set=['XShape'])
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', sum_outputs=['Out'])
+        self.check_grad(['X'], 'Out')
 
     def initTestCase(self):
         self.shape = (3, 4)
