@@ -108,6 +108,20 @@ class Tensor {
   template <typename T>
   T* mutable_data(DDim dims, platform::Place place, size_t requested_size = 0);
 
+  void* fill_data(platform::Place place, std::type_index type, void* handler);
+
+  /**
+   * @brief     Fill tensor with passed in data and return it's pointer
+   *
+   * @param[in] dims           The dimensions of the memory block.
+   * @param[in] place          The place of the memory block.
+   * @param[in] handler        The pointer of passed in data.
+   *
+   * @note      Assert if tensor already have data
+   */
+  template <typename T>
+  T* fill_data(DDim dims, platform::Place place, void* handler);
+
   /*! Return the dimensions of the memory block. */
   const DDim& dims() const;
 
@@ -178,6 +192,15 @@ class Tensor {
           type_(type) {
       PADDLE_ENFORCE_NOT_NULL(ptr_, "Insufficient %s memory to allocation.",
                               (is_cpu_place(place_) ? "CPU" : "GPU"));
+    }
+    PlaceholderImpl(Place place, size_t size, std::type_index type,
+                    void* handler)
+        : ptr_(static_cast<uint8_t*>(handler),
+               memory::PODDeleter<uint8_t, Place>(place, true)),
+          place_(place),
+          size_(size),
+          type_(type) {
+      PADDLE_ENFORCE_NOT_NULL(ptr_, "Memory block should not be null.");
     }
 
     virtual size_t size() const { return size_; }

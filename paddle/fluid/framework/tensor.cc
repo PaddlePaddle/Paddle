@@ -79,6 +79,27 @@ void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   return mutable_data(place, holder_->type(), requested_size);
 }
 
+void* Tensor::fill_data(platform::Place place, std::type_index type,
+                        void* handler) {
+  if (holder_ != nullptr)
+    PADDLE_THROW("Can not fill in tensor which already have data.");
+
+  if (!platform::is_cpu_place(place)) PADDLE_THROW("Only support CPUPlace now");
+
+  PADDLE_ENFORCE_GE(numel(), 0,
+                    "When calling this method, the Tensor's numel must be "
+                    "equal or larger than zero. "
+                    "Please check Tensor::Resize has been called first.");
+
+  size_t size = numel() * SizeOfType(type);
+
+  holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
+      boost::get<platform::CPUPlace>(place), size, type, handler));
+
+  offset_ = 0;
+  return reinterpret_cast<void*>(holder_->ptr());
+}
+
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
   src.check_memory_size();
   *this = src;
