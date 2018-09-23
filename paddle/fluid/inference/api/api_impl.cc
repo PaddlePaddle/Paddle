@@ -184,19 +184,16 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   for (size_t i = 0; i < inputs.size(); ++i) {
     framework::LoDTensor input;
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
-    void *input_ptr;
+    void *handler = inputs[i].data.data();
     if (inputs[i].dtype == PaddleDType::INT64) {
-      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+      input.fill_data<int64_t>(ddim, platform::CPUPlace(), handler);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
-      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+      input.fill_data<float>(ddim, platform::CPUPlace(), handler);
     } else {
       LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
       return false;
     }
 
-    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
-    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
-                inputs[i].data.length());
     // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
     framework::LoD lod;
     for (auto &level : inputs[i].lod) {
