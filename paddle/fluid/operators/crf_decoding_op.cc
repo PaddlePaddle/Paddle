@@ -43,6 +43,16 @@ class CRFDecodingOpMaker : public framework::OpProtoAndCheckerMaker {
         "(LoDTensor, LoDTensor<int64_t>). The decoding results. What to "
         "return changes depending on whether the Input(Label) (the ground "
         "truth) is given. See more details in the operator's comment.");
+    AddOutput(
+        "Alpha",
+        "(LoDTensor, default: LoDTensor<float>). Same LoD/shape as Emission. "
+        "Used as internal buffer for a momo table during computing.")
+        .AsIntermediate();
+    AddOutput(
+        "Track",
+        "(LoDTensor, default: LoDTensor<int>). Same LoD/shape as Emission. "
+        "Used as internal buffer during computing.")
+        .AsIntermediate();
     AddComment(R"DOC(
 The crf_decoding operator reads the emission feature weights and the transition
 feature weights learned by the linear_chain_crf operator. It implements the
@@ -83,6 +93,11 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("ViterbiPath"),
                    "Output(ViterbiPath) should be not null.");
 
+    PADDLE_ENFORCE(ctx->HasOutput("Alpha"),
+                   "Output(Alpha) should be not null.");
+    PADDLE_ENFORCE(ctx->HasOutput("Track"),
+                   "Output(Track) should be not null.");
+
     auto emission_dims = ctx->GetInputDim("Emission");
     PADDLE_ENFORCE_EQ(emission_dims.size(), 2UL,
                       "The Input(Emission) should be a 2-D tensor.");
@@ -113,6 +128,11 @@ class CRFDecodingOp : public framework::OperatorWithKernel {
 
     ctx->ShareLoD("Emission", /*->*/ "ViterbiPath");
     ctx->SetOutputDim("ViterbiPath", {emission_dims[0], 1});
+
+    ctx->ShareLoD("Emission", /*->*/ "Alpha");
+    ctx->SetOutputDim("Alpha", emission_dims);
+    ctx->ShareLoD("Emission", /*->*/ "Track");
+    ctx->SetOutputDim("Track", emission_dims);
   }
 
  protected:
