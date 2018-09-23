@@ -104,6 +104,58 @@ class MaxSeqPoolGradFunctor {
 };
 
 template <typename T>
+class LastSeqPoolFunctor {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::LoDTensor& input,
+                  framework::Tensor* output) {
+    // Create pointers to input and output data
+    auto* in_data = input.data<T>();
+    auto* out_data = output->data<T>();
+
+    // Calculate the size of each item in sequence
+    int64_t item_size = input.numel() / input.dims()[0];
+    auto lod = input.lod()[0];
+    int seq_num = static_cast<int>(lod.size()) - 1;
+    for (int i = 0; i < seq_num; ++i) {
+      // Calculate the length of each sequence
+      int64_t seq_len = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      // Point to the begin of next sequence
+      in_data += seq_len * item_size;
+      // Copy the last item of sequence to output
+      std::memcpy(out_data, (in_data - item_size), item_size * sizeof(T));
+      out_data += item_size;
+    }
+  }
+};
+
+template <typename T>
+class FirstSeqPoolFunctor {
+ public:
+  void operator()(const platform::CPUDeviceContext& context,
+                  const framework::LoDTensor& input,
+                  framework::Tensor* output) {
+    // Create pointers to input and output data
+    auto* in_data = input.data<T>();
+    auto* out_data = output->data<T>();
+
+    // Calculate the size of each item in sequence
+    int64_t item_size = input.numel() / input.dims()[0];
+    auto lod = input.lod()[0];
+    int seq_num = static_cast<int>(lod.size()) - 1;
+    for (int i = 0; i < seq_num; ++i) {
+      // Calculate the length of each sequence
+      int64_t seq_len = static_cast<int64_t>(lod[i + 1] - lod[i]);
+      // Copy the first item of sequence to output
+      std::memcpy(out_data, in_data, item_size * sizeof(T));
+      // Point to the next sequence
+      in_data += seq_len * item_size;
+      out_data += item_size;
+    }
+  }
+};
+
+template <typename T>
 class SequencePoolFunctor<platform::CPUDeviceContext, T> {
  public:
   /* max pool has index output */
@@ -114,6 +166,16 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
     if (pooltype == "MAX") {
       math::MaxSeqPoolFunctor<T> max_pool;
       max_pool(context, input, output, index);
+      return;
+    }
+    if (pooltype == "LAST") {
+      math::LastSeqPoolFunctor<T> last_pool;
+      last_pool(context, input, output);
+      return;
+    }
+    if (pooltype == "FIRST") {
+      math::FirstSeqPoolFunctor<T> first_pool;
+      first_pool(context, input, output);
       return;
     }
     auto lod = input.lod()[0];
@@ -133,10 +195,6 @@ class SequencePoolFunctor<platform::CPUDeviceContext, T> {
       } else if (pooltype == "SQRT") {
         out_e.device(place) = in_e.sum(Eigen::array<int, 1>({{0}})) /
                               std::sqrt(static_cast<T>(h));
-      } else if (pooltype == "LAST") {
-        out_e.device(place) = in_e.chip(h - 1, 0);
-      } else if (pooltype == "FIRST") {
-        out_e.device(place) = in_e.chip(0, 0);
       } else {
         PADDLE_THROW("unsupported pooling pooltype");
       }

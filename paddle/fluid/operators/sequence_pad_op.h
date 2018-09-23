@@ -32,6 +32,7 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* x = ctx.Input<LoDTensor>("X");
     auto* out = ctx.Output<LoDTensor>("Out");
+    auto* len_t = ctx.Output<LoDTensor>("Length");
     out->mutable_data<T>(ctx.GetPlace());
 
     const auto* pad_value = ctx.Input<LoDTensor>("PadValue");
@@ -41,6 +42,15 @@ class SequencePadOpKernel : public framework::OpKernel<T> {
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *x, out, *pad_value,
         padded_length, 0, false, math::kBatchLengthWidth);
+
+    LoDTensor seq_len;
+    seq_len.Resize(len_t->dims());
+    int64_t* len_data = seq_len.mutable_data<int64_t>(platform::CPUPlace());
+    for (size_t i = 1; i < x->lod()[0].size(); ++i) {
+      len_data[i - 1] = x->lod()[0][i] - x->lod()[0][i - 1];
+    }
+    framework::TensorCopy(seq_len, ctx.GetPlace(),
+                          ctx.template device_context<DeviceContext>(), len_t);
   }
 };
 

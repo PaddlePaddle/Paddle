@@ -55,14 +55,16 @@ class TestDistRunnerBase(object):
         pserver_prog = t.get_pserver_program(args.current_endpoint)
         startup_prog = t.get_startup_program(args.current_endpoint,
                                              pserver_prog)
+
         place = fluid.CPUPlace()
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, place, args):
+    def run_trainer(self, use_cuda, args):
         import paddle
         import paddle.fluid as fluid
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=2)
         if args.mem_opt:
@@ -90,7 +92,7 @@ class TestDistRunnerBase(object):
             build_stra.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.AllReduce
 
         exe = fluid.ParallelExecutor(
-            True,
+            use_cuda,
             loss_name=avg_cost.name,
             exec_strategy=strategy,
             build_strategy=build_stra)
@@ -141,12 +143,13 @@ def runtime_main(test_class):
     if args.role == "pserver" and args.is_dist:
         model.run_pserver(args)
     else:
-        p = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(
-        ) else fluid.CPUPlace()
-        model.run_trainer(p, args)
+        use_cuda = True if core.is_compiled_with_cuda() else False
+        model.run_trainer(use_cuda, args)
 
 
 import paddle.compat as cpt
+import socket
+from contextlib import closing
 
 
 class TestDistBase(unittest.TestCase):
@@ -156,12 +159,18 @@ class TestDistBase(unittest.TestCase):
     def setUp(self):
         self._trainers = 2
         self._pservers = 2
-        self._ps_endpoints = "127.0.0.1:9123,127.0.0.1:9124"
+        self._ps_endpoints = "127.0.0.1:%s,127.0.0.1:%s" % (
+            self._find_free_port(), self._find_free_port())
         self._python_interp = "python"
         self._sync_mode = True
         self._mem_opt = False
         self._use_reduce = False
         self._setup_config()
+
+    def _find_free_port(self):
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(('', 0))
+            return s.getsockname()[1]
 
     def start_pserver(self, model_file, check_error_log):
         ps0_ep, ps1_ep = self._ps_endpoints.split(",")
@@ -216,11 +225,12 @@ class TestDistBase(unittest.TestCase):
     def check_with_place(self, model_file, delta=1e-3, check_error_log=False):
         # TODO(typhoonzero): should auto adapt GPU count on the machine.
         required_envs = {
-            "PATH": os.getenv("PATH"),
-            "PYTHONPATH": os.getenv("PYTHONPATH"),
-            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH"),
+            "PATH": os.getenv("PATH", ""),
+            "PYTHONPATH": os.getenv("PYTHONPATH", ""),
+            "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
-            "FLAGS_cudnn_deterministic": "1"
+            "FLAGS_cudnn_deterministic": "1",
+            "CPU_NUM": "1"
         }
 
         if check_error_log:
