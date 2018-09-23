@@ -35,7 +35,27 @@ enum PaddleDType {
   // TODO(Superjomn) support more data types if needed.
 };
 
-// Memory buffer for PaddleTensor.
+/*
+ * Memory menage for PaddleTensor.
+ * The PaddleBuf holds a buffer for data input or output. The memory can be
+ * allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
+ * should be reused for better performance.
+ *
+ * For user allocated memory, the following API can be used:
+ * - PaddleBuf(void* data, size_t length) to set an external memory by
+ * specifying
+ *   the memory address and length.
+ * - Reset(void* data, size_t length) to reset the PaddleBuf with an external
+ * memory.
+ * ATTENTION, for user allocated memory, deallocation should be done by users
+ * externally after the program finished. The PaddleBuf won't do any allocation
+ * or deallocation.
+ *
+ * To have the PaddleBuf allocate and manage the memory:
+ * - PaddleBuf(size_t length) will allocate a memory of size `length`.
+ * - Resize(size_t length) resize the memory to no less than `length`, ATTENTION
+ *   if the allocated memory is larger than `length`, nothing will done.
+ */
 class PaddleBuf {
  public:
   // PaddleBuf allocate memory internally, and manage it.
@@ -123,7 +143,9 @@ struct NativeConfig : public PaddlePredictor::Config {
   std::string prog_file;
   std::string param_file;
 
-  bool specify_input_name{false};  // Specify the variable's name of each input.
+  // Specify the variable's name of each input if input tensors don't follow the
+  // `feeds` and `fetches` of the phase `save_inference_model`.
+  bool specify_input_name{false};
 };
 
 // A factory to help create different predictors.
