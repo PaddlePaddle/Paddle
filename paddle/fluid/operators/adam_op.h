@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <math.h>  // for sqrt in CPU and CUDA
 #include <Eigen/Dense>
+#include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
@@ -306,26 +307,43 @@ class AdamOpKernel : public framework::OpKernel<T> {
         VLOG(3) << "grad row size is 0!!";
         return;
       }
-      // merge duplicated rows if any.
-      // The rows of grad_merge have been sorted inside MergeAdd functor
-      scatter::MergeAdd<DeviceContext, T> merge_func;
-      auto& grad_merge = *(ctx.scope()
-                               .NewScope()
-                               .Var("sparse_adam_grad_merge")
-                               ->GetMutable<framework::SelectedRows>());
-      merge_func(ctx.template device_context<DeviceContext>(), grad,
-                 &grad_merge);
+
+      std::vector<int64_t> cpu_rows(grad.rows().begin(), grad.rows().end());
+      bool is_strict_sorted = true;
+      for (size_t i = 1; i < cpu_rows.size(); ++i) {
+        if (cpu_rows[i - 1] >= cpu_rows[i]) {
+          is_strict_sorted = false;
+          break;
+        }
+      }
+
+      const framework::SelectedRows* grad_merge_ptr;
+      if (is_strict_sorted) {
+        grad_merge_ptr = &grad;
+      } else {
+        // merge duplicated rows if any.
+        // The rows of grad_merge have been sorted inside MergeAdd functor
+        scatter::MergeAdd<DeviceContext, T> merge_func;
+        auto* grad_merge_var = const_cast<framework::Scope&>(ctx.scope())
+                                   .Var()
+                                   ->GetMutable<framework::SelectedRows>();
+        merge_func(ctx.template device_context<DeviceContext>(), grad,
+                   grad_merge_var);
+        grad_merge_ptr = grad_merge_var;
+      }
+
+      auto& grad_merge = *grad_merge_ptr;
       auto& grad_tensor = grad_merge.value();
       const T* grad_data = grad_tensor.template data<T>();
-      int64_t* rows = nullptr;
-// When compiled without CUDA, the CUDAMutableData() interface should not be
+      const int64_t* rows = nullptr;
+// When compiled without CUDA, the CUDAData() interface should not be
 // provided.
 #if defined(PADDLE_WITH_CUDA)
       if (platform::is_gpu_place(ctx.GetPlace())) {
-        rows = grad_merge.mutable_rows()->CUDAMutableData(ctx.GetPlace());
+        rows = grad_merge.rows().CUDAData(ctx.GetPlace());
       } else {
 #endif
-        rows = grad_merge.mutable_rows()->data();
+        rows = grad_merge.rows().data();
 
 #if defined(PADDLE_WITH_CUDA)
       }
