@@ -33,6 +33,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     auto* transition_weights = ctx.Input<Tensor>("Transition");
     auto* label = ctx.Input<LoDTensor>("Label");
     auto* decoded_path = ctx.Output<Tensor>("ViterbiPath");
+    auto* alpha_all = ctx.Output<LoDTensor>("Alpha");
+    auto* track_all = ctx.Output<LoDTensor>("Track");
 
     PADDLE_ENFORCE_EQ(emission_weights->NumLevels(), 1UL,
                       "The Input(Emission) should be a sequence.");
@@ -42,14 +44,21 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     const size_t seq_num = lod[level].size() - 1;
 
     int64_t* path = decoded_path->mutable_data<int64_t>(platform::CPUPlace());
+
+    // allocate memory for intermediate buffer
+    alpha_all->mutable_data<T>(platform::CPUPlace());
+    track_all->mutable_data<int>(platform::CPUPlace());
+
     math::SetConstant<DeviceContext, int64_t>()(
         ctx.template device_context<DeviceContext>(), decoded_path, 0);
     for (size_t i = 0; i < seq_num; ++i) {
       int start_pos = static_cast<int>(lod[level][i]);
       int end_pos = static_cast<int>(lod[level][i + 1]);
       Tensor decoded_path_one_seq = decoded_path->Slice(start_pos, end_pos);
+      Tensor alpha = alpha_all->Slice(start_pos, end_pos);
+      Tensor track = track_all->Slice(start_pos, end_pos);
       Decode(emission_weights->Slice(start_pos, end_pos), *transition_weights,
-             &decoded_path_one_seq);
+             &decoded_path_one_seq, &alpha, &track);
     }
 
     if (label) {
@@ -65,7 +74,7 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
 
  private:
   void Decode(const Tensor& emission_weights, const Tensor& transition_weights,
-              Tensor* decoded_path) const {
+              Tensor* decoded_path, Tensor* alpha, Tensor* track) const {
     auto emission_dims = emission_weights.dims();
     const size_t seq_len = emission_dims[0];
     const size_t tag_num = emission_dims[1];
@@ -79,11 +88,8 @@ class CRFDecodingOpKernel : public framework::OpKernel<T> {
     // alpha is a memo table. An element alpha(k, v) records the score of the
     // best sequence of tags from position 1 to position k with v being the end
     // tag.
-    Tensor alpha;
-    T* alpha_value = alpha.mutable_data<T>(emission_dims, platform::CPUPlace());
-    Tensor track;
-    int* track_value =
-        track.mutable_data<int>(emission_dims, platform::CPUPlace());
+    T* alpha_value = alpha->data<T>();
+    int* track_value = track->data<int>();
 
 #ifdef __AVX__
 // It use the AVX or AVX512 instruction to deal the data as the vector of 8 or

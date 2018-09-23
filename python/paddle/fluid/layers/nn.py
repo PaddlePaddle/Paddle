@@ -819,12 +819,18 @@ def crf_decoding(input, param_attr, label=None):
     helper = LayerHelper('crf_decoding', **locals())
     transition = helper.get_parameter(param_attr.name)
     viterbi_path = helper.create_tmp_variable(dtype=helper.input_dtype())
+    alpha = helper.create_tmp_variable(dtype=helper.input_dtype())
+    track = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='crf_decoding',
         inputs={"Emission": [input],
                 "Transition": transition,
                 "Label": label},
-        outputs={"ViterbiPath": [viterbi_path]})
+        outputs={
+            "ViterbiPath": [viterbi_path],
+            "Alpha": [alpha],
+            "Track": [track]
+        })
 
     return viterbi_path
 
