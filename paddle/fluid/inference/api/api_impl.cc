@@ -176,7 +176,8 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
                                     framework::Scope *scope) {
   VLOG(3) << "Predictor::set_feed";
   if (inputs.size() != feeds_.size()) {
-    LOG(ERROR) << "wrong feed input size.";
+    LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
+               << inputs.size();
     return false;
   }
   for (size_t i = 0; i < inputs.size(); ++i) {
@@ -261,7 +262,7 @@ void NativePaddlePredictor::GetFetchOne(const framework::LoDTensor &fetch,
   if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
     buffer.Resize(sizeof(T) * data.size());
   }
-  std::memcpy(buffer.data(), data.data(), buffer.length());
+  std::memcpy(buffer.data(), data.data(), sizeof(T) * data.size());
   // copy LoD
   for (const auto &level : fetch.lod()) {
     output->lod.emplace_back(level);
