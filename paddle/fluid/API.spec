@@ -350,6 +350,7 @@ paddle.fluid.nets.simple_img_conv_pool ArgSpec(args=['input', 'num_filters', 'fi
 paddle.fluid.nets.sequence_conv_pool ArgSpec(args=['input', 'num_filters', 'filter_size', 'param_attr', 'act', 'pool_type'], varargs=None, keywords=None, defaults=(None, 'sigmoid', 'max'))
 paddle.fluid.nets.glu ArgSpec(args=['input', 'dim'], varargs=None, keywords=None, defaults=(-1,))
 paddle.fluid.nets.scaled_dot_product_attention ArgSpec(args=['queries', 'keys', 'values', 'num_heads', 'dropout_rate'], varargs=None, keywords=None, defaults=(1, 0.0))
+paddle.fluid.nets.img_conv_group ArgSpec(args=['input', 'conv_num_filter', 'pool_size', 'conv_padding', 'conv_filter_size', 'conv_act', 'param_attr', 'conv_with_batchnorm', 'conv_batchnorm_drop_rate', 'pool_stride', 'pool_type', 'use_cudnn', 'use_mkldnn'], varargs=None, keywords=None, defaults=(1, 3, None, None, False, 0.0, 1, 'max', True, False))
 paddle.fluid.optimizer.SGDOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'regularization', 'name'], varargs=None, keywords=None, defaults=(None, None))
 paddle.fluid.optimizer.SGDOptimizer.minimize ArgSpec(args=['self', 'loss', 'startup_program', 'parameter_list', 'no_grad_set'], varargs=None, keywords=None, defaults=(None, None, None))
 paddle.fluid.optimizer.MomentumOptimizer.__init__ ArgSpec(args=['self', 'learning_rate', 'momentum', 'use_nesterov', 'regularization', 'name'], varargs=None, keywords=None, defaults=(False, None, None))
