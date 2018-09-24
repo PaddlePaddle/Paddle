@@ -1,4 +1,4 @@
-#windows inference
+# windows inference
 本文介绍windows inference，目前只提供了静态编译，编译出paddle_fluid.lib，包含了除openblas.dll之外的所有第三方依赖库。
 
 1. 下载最新的paddle_fluid.lib和openblas.dll，并把它们放在同一个目录下。
@@ -14,6 +14,6 @@
 
 4. 该exe即为项目生成文件，可绑定运行。
 
-##FAQ
+## FAQ
 1. cmake需要您手动下载，并添加到系统路径里
 2. 路径中的不要包含空格，例如发现CUDA_LIB路径是Program Files(x86)可能会出错。可以将CUDA拷贝到一个新位置。
