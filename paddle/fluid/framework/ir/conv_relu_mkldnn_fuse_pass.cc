@@ -26,8 +26,6 @@ std::unique_ptr<ir::Graph> ConvReLUFusePass::ApplyImpl(
   PADDLE_ENFORCE(graph.get());
   FusePassBase::Init("conv_relu_mkldnn_fuse", graph.get());
 
-  std::unordered_set<Node*> nodes2delete;
-
   GraphPatternDetector gpd;
   auto* conv_input = gpd.mutable_pattern()
                          ->NewNode("conv_relu_mkldnn_fuse/conv_input")
