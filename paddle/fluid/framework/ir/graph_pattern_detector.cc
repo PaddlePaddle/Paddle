@@ -83,7 +83,8 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 
   auto subgraphs = DetectPatterns();
-  UniquePatterns(&subgraphs);
+  // https://github.com/PaddlePaddle/Paddle/issues/13550
+  // UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
   ValidateByNodeRole(&subgraphs);
 
