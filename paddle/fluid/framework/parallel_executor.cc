@@ -232,6 +232,8 @@ ParallelExecutor::ParallelExecutor(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, build_strategy);
 #endif
+  auto mem_opt_pass = ir::PassRegistry::Instance().Get("memory_optimize_pass");
+  graph = mem_opt_pass->Apply(std::move(graph));
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(

@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#pragma once
 
 #include <set>
+#include <string>
 #include "paddle/fluid/framework/details/cfg_graph.h"
 #include "paddle/fluid/framework/ir/pass.h"
 
@@ -35,11 +37,10 @@ class MemoryOptimizePass : public Pass {
 
  private:
   OptimizeStrategy strategy_{OptimizeStrategy::kBruteForce};
-std::unique_ptr<Graph> graph_;
-std::unique_ptr<ControlFlowGraph> cfg_;
-// order matters, use set instead unordered
-std::set<ir::Node*> pool_;
-std::unordered_set<ir::Node*> skip_set_;
+  std::unique_ptr<Graph> graph_;
+  std::unique_ptr<ControlFlowGraph> cfg_;
+  std::set<ir::Node*> pool_;  // order matters
+  std::unordered_set<ir::Node*> skip_set_;
 };
 
 }  // namespace details
