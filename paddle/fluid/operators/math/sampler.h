@@ -16,6 +16,8 @@ limitations under the License. */
 #include <cstdint>
 #include <memory>
 #include <random>
+#include <vector>
+
 namespace paddle {
 namespace operators {
 namespace math {
@@ -27,14 +29,14 @@ namespace math {
 */
 class Sampler {
  public:
-  explicit Sampler(int64_t range) : range_(range) {
-    PADDLE_ENFORCE_GT(range, 0);
-    std::random_device r;
-    seed_ = r();
-  }
-  explicit Sampler(int64_t range, unsigned int seed)
-      : range_(range), seed_(seed) {
-    PADDLE_ENFORCE_GT(range, 0);
+  explicit Sampler(int64_t range, unsigned int seed = 0UL) : range_(range) {
+    //    PADDLE_ENFORCE_GT(range, 0, "Range should be greater than 0.");
+    if (seed == 0) {
+      std::random_device r;
+      seed_ = r();
+    } else {
+      seed_ = seed;
+    }
   }
   virtual ~Sampler();
   // Sample a single value
@@ -42,7 +44,7 @@ class Sampler {
   // The probability that a single call to Sample() returns the given value.
   virtual float Probability(int64_t value) const = 0;
 
-  int64 range() { return range_; }
+  int64_t range() { return range_; }
 
  protected:
   const int64_t range_;
@@ -56,13 +58,11 @@ class Sampler {
  */
 class UniformSampler : public Sampler {
  public:
-  explicit UniformSampler(int64_t range);
-
-  explicit UniformSampler(int64_t range, unsigned int seed);
+  explicit UniformSampler(int64_t range, unsigned int seed = 0UL);
 
   ~UniformSampler() override {}
 
-  int64 Sample() const override;
+  int64_t Sample() const override;
 
   float Probability(int64_t value) const override;
 
@@ -79,13 +79,11 @@ class UniformSampler : public Sampler {
  */
 class LogUniformSampler : public Sampler {
  public:
-  explicit LogUniformSampler(int64_t range);
-
-  explicit LogUniformSampler(int64_t range, unsigned int seed);
+  explicit LogUniformSampler(int64_t range, unsigned int seed = 0UL);
 
   ~LogUniformSampler() override {}
 
-  int64 Sample() const override;
+  int64_t Sample() const override;
 
   float Probability(int64_t value) const override;
 
@@ -93,6 +91,29 @@ class LogUniformSampler : public Sampler {
   const float log_range_;
   std::shared_ptr<std::mt19937_64> random_engine_;
   std::shared_ptr<std::uniform_real_distribution<>> dist_;
+};
+
+/**
+ * Sample integers from [0, range) from custom distribution.
+ */
+class CustomSampler : public Sampler {
+ public:
+  explicit CustomSampler(int64_t range, const float* probabilities,
+                         unsigned int seed = 0UL);
+
+  ~CustomSampler() override {}
+
+  int64_t Sample() const override;
+
+  float Probability(int64_t value) const override;
+
+ private:
+  std::shared_ptr<std::vector<float>> alias_probs_;
+  std::shared_ptr<std::vector<int64_t>> alias_;
+  std::shared_ptr<std::vector<float>> probs_;
+  std::shared_ptr<std::mt19937_64> random_engine_;
+  std::shared_ptr<std::uniform_real_distribution<>> real_dist_;
+  std::shared_ptr<std::uniform_int_distribution<>> int_dist_;
 };
 
 }  // namespace math

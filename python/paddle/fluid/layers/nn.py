@@ -3948,10 +3948,13 @@ def sequence_reshape(input, new_dim):
 def nce(input,
         label,
         num_total_classes,
+        sampler="uniform",
+        custom_dist=None,
         sample_weight=None,
         param_attr=None,
         bias_attr=None,
-        num_neg_samples=None):
+        num_neg_samples=None,
+        seed=0):
     """
     ${comment}
 
@@ -3959,12 +3962,20 @@ def nce(input,
         input (Variable): input variable.
         label (Variable): label.
         num_total_classes (int):${num_total_classes_comment}
+        sampler (str): The sampler used to sample class from negtive classes.
+                       It can be 'uniform', 'log_uniform' or 'custom_dist'.
+                       default: 'uniform'.
+        custom_dist (Variable): A tensor with shape [num_total_classes]. 
+                       It is used when sampler is set to 'custom_dist'.
+                       custom_dist[i] is the probsbility of i-th class to be sampled.
+                       default: None.
         sample_weight (Variable|None): A Variable of shape [batch_size, 1]
             storing a weight for each sample. The default weight for each
             sample is 1.0.
         param_attr (ParamAttr|None): attributes for parameter
         bias_attr (ParamAttr|None): attributes for bias
         num_neg_samples (int): ${num_neg_samples_comment}
+        seed (int): The seed used in sampler. default: 0.
 
     Returns:
         Variable: The output nce loss.
@@ -3997,6 +4008,7 @@ def nce(input,
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
+    assert isinstance(custom_dist, Variable)
     dim = input.shape[1]
     assert isinstance(label, Variable)
     num_true_class = label.shape[1]
@@ -4019,20 +4031,35 @@ def nce(input,
     else:
         num_neg_samples = int(num_neg_samples)
 
+    inputs = {
+        'Input': input,
+        'Label': label,
+        'Weight': w,
+        'Bias': b,
+        'SampleWeight': sample_weight if sample_weight is not None else []
+    }
+
+    if sampler == "uniform":
+        sampler = 0
+    elif sampler == "log_uniform":
+        sampler = 1
+    elif sampler == "custom_dist":
+        assert custom_dist is not None
+        inputs['CustomDist'] = custom_dist
+        sampler = 2
+    else:
+        raise Exception("Unsupported sampler type.")
+
     attrs = {
         'num_total_classes': int(num_total_classes),
-        'num_neg_samples': num_neg_samples
+        'num_neg_samples': num_neg_samples,
+        'seed': seed,
+        'sampler': sampler
     }
 
     helper.append_op(
         type='nce',
-        inputs={
-            'Input': input,
-            'Label': label,
-            'Weight': w,
-            'Bias': b,
-            'SampleWeight': sample_weight if sample_weight is not None else []
-        },
+        inputs=inputs,
         outputs={
             'Cost': cost,
             'SampleLogits': sample_logits,

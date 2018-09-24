@@ -98,6 +98,13 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
              "each sample. And it is a dispensable input. The default value of "
              "sample is 1.")
         .AsDispensable();
+
+    AddInput(
+        "CustomDistribution",
+        "(Tensor) It is used in 'CostumDist' sampler. "
+        "It is a tensor with shape [num_total_classes]."
+        "The i-th element is the probsbility of the i-th class being sampled.")
+        .AsDispensable();
     AddOutput("Cost",
               "(Tensor) A tensor of shape [batch_size, 1]. Cost of samples.");
     AddOutput("SampleLogits",
@@ -121,6 +128,17 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("num_neg_samples",
                  "The number of negative classes. The default value is 10.")
         .SetDefault(10);
+
+    AddAttr<int>("sampler",
+                 "(int) Which sampler to be used to sample negative class."
+                 "0: Uniform; 1: LogUniform; 2: CostumDist.")
+        .SetDefault(0);
+
+    AddAttr<int>("seed",
+                 "(int) The seed used in sampler. If it is 0, "
+                 "the sampler will generate a seed randomly.")
+        .SetDefault(0);
+
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
