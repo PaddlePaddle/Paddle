@@ -22,25 +22,26 @@ namespace paddle {
 namespace framework {
 namespace details {
 
-class MemoryOptimizePass : public Pass {
+class MemoryOptimizePass : public ir::Pass {
  public:
   enum class OptimizeStrategy {
     kBruteForce = 0,
     kControlFlowGraph = 1,
   };
   bool IsValidVar(ir::Node* node) const;
-  const ir::Node* SearchMatch(ir::Node* var) const;
+  ir::Node* SearchMatch(ir::Node* var) const;
   const std::string DebugString(ir::Node* var) const;
 
  protected:
-  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  std::unique_ptr<ir::Graph> ApplyImpl(
+      std::unique_ptr<ir::Graph> graph) const override;
 
  private:
   OptimizeStrategy strategy_{OptimizeStrategy::kBruteForce};
-  std::unique_ptr<Graph> graph_;
-  std::unique_ptr<ControlFlowGraph> cfg_;
-  std::set<ir::Node*> pool_;  // order matters
-  std::unordered_set<ir::Node*> skip_set_;
+  // std::unique_ptr<ir::Graph> graph_;
+  mutable std::unique_ptr<ControlFlowGraph> cfg_;
+  mutable std::set<ir::Node*> pool_;  // order matters
+  mutable std::unordered_set<ir::Node*> skip_set_;
 };
 
 }  // namespace details
