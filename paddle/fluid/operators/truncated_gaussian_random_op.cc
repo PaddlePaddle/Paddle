@@ -86,7 +86,7 @@ T Erfinv(T x) {
   const T F6 = 2.010321207683943062279931e-7;
   const T F7 = 2.891024605872965461538222e-15;
 
-  T abs_x = abs(x);
+  T abs_x = std::abs(x);
 
   if (abs_x <= 0.85) {
     T r = 0.180625 - 0.25 * x * x;

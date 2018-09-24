@@ -133,6 +133,7 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'maxout',
 ]
 
 
@@ -6563,3 +6564,26 @@ for func in [
             "act (basestring|None): Activation applied to the output.",
             "name (basestring|None): Name of the output."
         ])
+
+
+@templatedoc()
+def maxout(x, groups, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        groups(${groups_type}): ${groups_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('maxout', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='maxout',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'groups': groups})
+    return out

@@ -51,7 +51,6 @@ __all__ = [
     'sum',
     'slice',
     'shape',
-    'maxout',
     'softshrink',
 ]
 

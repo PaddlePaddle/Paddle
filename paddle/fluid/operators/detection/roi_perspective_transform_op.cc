@@ -25,12 +25,12 @@ using LoDTensor = framework::LoDTensor;
 
 template <typename T>
 bool GT_E(T a, T b) {
-  return (a > b) || fabs(a - b) < 1e-4;
+  return (a > b) || std::abs(a - b) < 1e-4;
 }
 
 template <typename T>
 bool LT_E(T a, T b) {
-  return (a < b) || fabs(a - b) < 1e-4;
+  return (a < b) || std::abs(a - b) < 1e-4;
 }
 
 template <typename T>
@@ -48,14 +48,14 @@ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
     T ys = roi_y[i];
     T xe = roi_x[(i + 1) % 4];
     T ye = roi_y[(i + 1) % 4];
-    if (fabs(ys - ye) < 1e-4) {
-      if (fabs(y - ys) < 1e-4 && fabs(y - ye) < 1e-4 &&
+    if (std::abs(ys - ye) < 1e-4) {
+      if (std::abs(y - ys) < 1e-4 && std::abs(y - ye) < 1e-4 &&
           GT_E<T>(x, std::min(xs, xe)) && LT_E<T>(x, std::max(xs, xe))) {
         return true;
       }
     } else {
       T intersec_x = (y - ys) * (xe - xs) / (ye - ys) + xs;
-      if (fabs(intersec_x - x) < 1e-4 && GT_E<T>(y, std::min(ys, ye)) &&
+      if (std::abs(intersec_x - x) < 1e-4 && GT_E<T>(y, std::min(ys, ye)) &&
           LT_E<T>(y, std::max(ys, ye))) {
         return true;
       }
@@ -68,14 +68,14 @@ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
     T ys = roi_y[i];
     T xe = roi_x[(i + 1) % 4];
     T ye = roi_y[(i + 1) % 4];
-    if (fabs(ys - ye) < 1e-4) {
+    if (std::abs(ys - ye) < 1e-4) {
       continue;
     }
     if (LT_E<T>(y, std::min(ys, ye)) || GT<T>(y, std::max(ys, ye))) {
       continue;
     }
     T intersec_x = (y - ys) * (xe - xs) / (ye - ys) + xs;
-    if (fabs(intersec_x - x) < 1e-4) {
+    if (std::abs(intersec_x - x) < 1e-4) {
       return true;
     }
     if (GT<T>(intersec_x, x)) {
