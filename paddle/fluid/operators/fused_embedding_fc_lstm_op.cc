@@ -97,7 +97,8 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = wh_dims[1];
   } else {
-    xx_width = x_dims[1] > wh_dims[1] ? wh_dims[1] : x_dims[1];
+    // xx_width = x_dims[1] > wh_dims[1] ? wh_dims[1] : x_dims[1];   // ?
+    xx_width = wh_dims[1];  //
     PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
                    "Assert only one Output(BatchedInput) of LSTM.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
