@@ -45,7 +45,7 @@ class PaddleBuf {
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
   // Own memory.
-  PaddleBuf(size_t length)
+  explicit PaddleBuf(size_t length)
       : data_(new char[length]), length_(length), memory_owned_(true) {}
   // Resize to `length` bytes.
   void Resize(size_t length);
@@ -121,6 +121,8 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
+  // NOTE: NOT use it, just for the internal test, will discard later
+  bool _use_mkldnn{false};
   // Specify the variable's name of each input.
   bool specify_input_name{false};
 
@@ -148,6 +150,21 @@ struct TensorRTConfig : public NativeConfig {
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
   int workspace_size{1 << 30};
+};
+
+// NOTE WIP, not stable yet.
+struct AnalysisConfig : public NativeConfig {
+  //
+  enum class IrPassMode {
+    kSystem,   // Use system default passes, not customize.
+    kInclude,  // Specify the passes in `ir_passes`.
+    kExclude   // Specify the disabled passes in `ir_passes`.
+  };
+
+  bool enable_ir_optim = true;
+  IrPassMode ir_mode{IrPassMode::kExclude};
+  // attention lstm fuse works only on some specific models, disable as default.
+  std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
 };
 
 // A factory to help create different predictors.

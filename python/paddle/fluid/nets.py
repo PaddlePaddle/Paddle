@@ -21,6 +21,7 @@ __all__ = [
     "sequence_conv_pool",
     "glu",
     "scaled_dot_product_attention",
+    "img_conv_group",
 ]
 
 

@@ -13,9 +13,45 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise_mul_op.h"
+#include <string>
 #include "paddle/fluid/operators/elementwise_op.h"
+
+namespace paddle {
+namespace operators {
+
+class ElementwiseMulOpGradDescMaker : public framework::SingleGradOpDescMaker {
+ public:
+  using framework::SingleGradOpDescMaker::SingleGradOpDescMaker;
+
+ protected:
+  std::unique_ptr<framework::OpDesc> Apply() const override {
+    std::unique_ptr<framework::OpDesc> op(new framework::OpDesc());
+    op->SetType("elementwise_mul_grad");
+    op->SetInput("X", Input("X"));
+    op->SetInput("Y", Input("Y"));
+    op->SetInput(framework::GradVarName("Out"), OutputGrad("Out"));
+    op->SetAttrMap(Attrs());
+    op->SetOutput(framework::GradVarName("X"), InputGrad("X"));
+    op->SetOutput(framework::GradVarName("Y"), InputGrad("Y"));
+    return op;
+  }
+};
+
+class ElementwiseMulOpMaker : public ElementwiseOpMaker {
+ protected:
+  virtual std::string GetName() const { return "Mul"; }
+  virtual std::string GetEquation() const { return "Out = X \\\\odot Y"; }
+};
+
+}  // namespace operators
+}  // namespace paddle
+
 namespace ops = paddle::operators;
-REGISTER_ELEMWISE_OP(elementwise_mul, "Mul", "Out = X \\\\odot Y");
+REGISTER_OPERATOR(elementwise_mul, ops::ElementwiseOp,
+                  ops::ElementwiseMulOpMaker, ops::ElementwiseOpInferVarType,
+                  ops::ElementwiseMulOpGradDescMaker);
+REGISTER_OPERATOR(elementwise_mul_grad, ops::ElementwiseOpGrad);
+
 REGISTER_OP_CPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulKernel<paddle::platform::CPUDeviceContext, float>,

@@ -25,6 +25,7 @@ import numpy
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 
 BATCH_SIZE = 64
 
@@ -81,7 +82,7 @@ def train(nn_type,
 
     if parallel:
         places = get_places()
-        pd = fluid.layers.ParallelDo(places)
+        pd = ParallelDo(places)
         with pd.do():
             img_ = pd.read_input(img)
             label_ = pd.read_input(label)
@@ -98,7 +99,7 @@ def train(nn_type,
 
     test_program = fluid.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001, LARS_weight_decay=0.3)
+    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
