@@ -293,6 +293,11 @@ function(cc_binary TARGET_NAME)
   endif()
 endfunction(cc_binary)
 
+
+# OpenCV for resnet50 inference analysis test
+find_package(OpenCV REQUIRED COMPONENTS core imgproc highgui)
+message(STATUS "OpenCV found (${OpenCV_CONFIG_PATH})")
+
 function(cc_test TARGET_NAME)
   if(WITH_TESTING)
     set(options SERIAL)
@@ -300,7 +305,7 @@ function(cc_test TARGET_NAME)
     set(multiValueArgs SRCS DEPS ARGS)
     cmake_parse_arguments(cc_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
     add_executable(${TARGET_NAME} ${cc_test_SRCS})
-    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
+    target_link_libraries(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog ${OpenCV_LIBS})
     add_dependencies(${TARGET_NAME} ${cc_test_DEPS} paddle_gtest_main lod_tensor memory gtest gflags glog)
     add_test(NAME ${TARGET_NAME}
              COMMAND ${TARGET_NAME} ${cc_test_ARGS}
