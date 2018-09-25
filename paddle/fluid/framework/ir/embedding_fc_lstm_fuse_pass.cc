@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/embedding_fc_lstm_fuse_pass.h"
+#include <algorithm>
 #include <string>
 #include "paddle/fluid/framework/lod_tensor.h"
 
@@ -98,17 +99,17 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
 
     // Copy only gate biases values (only actual bias data, not peephole
     // weights)
-    std::vector<float> combined_biases(n, 0.0f);
-    memcpy(&combined_biases[0], lstm_bias_tensor.data<float>(),
-           n * sizeof(float));
+    std::vector<float> combined_biases;
+    combined_biases.reserve(n);
+    std::copy_n(lstm_bias_tensor.data<float>(), n,
+                std::back_inserter(combined_biases));
 
     if (with_fc_bias) {
       // Add FC-bias with LSTM-bias (into GEMM result to be)
       auto* fc_bias_var = scope->FindVar(fc_bias->Name());
       const auto& fc_bias_tensor = fc_bias_var->Get<framework::LoDTensor>();
       for (int i = 0; i < fc_bias_tensor.numel(); i++) {
-        combined_biases[i] =
-            lstm_bias_tensor.data<float>()[i] + fc_bias_tensor.data<float>()[i];
+        combined_biases[i] += fc_bias_tensor.data<float>()[i];
       }
     }
 
