@@ -253,22 +253,26 @@ class TestDistBase(unittest.TestCase):
         envs.update(env_local)
 
         if not check_error_log:
-            local_proc = subprocess.Popen(
-                cmd.split(" "),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                env=envs)
-        else:
             err_log = open("/tmp/trainer.err.log", "wb")
             local_proc = subprocess.Popen(
                 cmd.split(" "),
                 stdout=subprocess.PIPE,
                 stderr=err_log,
                 env=envs)
+        else:
+            local_proc = subprocess.Popen(
+                cmd.split(" "),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=envs)
 
         local_proc.wait()
         local_out, local_err = local_proc.communicate()
         local_ret = cpt.to_text(local_out)
+
+        if check_error_log:
+            err_log.close()
+
         sys.stderr.write('local_stdout: %s\n' % local_ret)
         sys.stderr.write('local_stderr: %s\n' % local_err)
 
@@ -391,7 +395,8 @@ class TestDistBase(unittest.TestCase):
             required_envs["GLOG_v"] = "7"
             required_envs["GLOG_logtostderr"] = "1"
 
-        local_losses = self._run_local(model_file, required_envs,
+        local_losses\
+            = self._run_local(model_file, required_envs,
                                        check_error_log)
         tr0_losses, tr1_losses = self._run_cluster(model_file, required_envs,
                                                    check_error_log)
