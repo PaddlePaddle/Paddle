@@ -661,22 +661,25 @@ class TestLoadSliceVar(TranspilerTest):
 
 class TestNCCL2Transpile(TranspilerTest):
     def test_nccl2_transpile(self):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            self.net_conf()
+        if fluid.core.is_compiled_with_cuda():  #test nccl2 only with cuda
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.program_guard(main, startup):
+                self.net_conf()
 
-        config = fluid.DistributeTranspilerConfig()
-        config.mode = "nccl2"
-        t = fluid.DistributeTranspiler(config=config)
-        t.transpile(
-            0,
-            trainers="127.0.0.1:6174,127.0.0.1:6175",
-            current_endpoint="127.0.0.1:6174",
-            startup_program=startup)
-        print([op.type for op in startup.global_block().ops])
-        self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
-        self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+            config = fluid.DistributeTranspilerConfig()
+            config.mode = "nccl2"
+            t = fluid.DistributeTranspiler(config=config)
+            t.transpile(
+                0,
+                trainers="127.0.0.1:6174,127.0.0.1:6175",
+                current_endpoint="127.0.0.1:6174",
+                startup_program=startup)
+            print([op.type for op in startup.global_block().ops])
+            self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
+            self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+        else:
+            pass
 
 
 if __name__ == "__main__":
