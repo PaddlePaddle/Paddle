@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,7 +29,6 @@ DECLARE_bool(profile);
 
 namespace paddle {
 
-#ifdef PADDLE_WITH_MKLDNN
 // Check environment flag whether MKL-DNN should be used
 static bool IsMKLDNNSetOn() {
   const char* flag = std::getenv("FLAGS_use_mkldnn");
@@ -41,7 +41,6 @@ static bool IsMKLDNNSetOn() {
   }
   return false;
 }
-#endif
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope>& parent_scope) {
@@ -91,20 +90,14 @@ bool AnalysisPredictor::Init(
   }
 
 #ifdef PADDLE_WITH_MKLDNN
-  bool mkldnn_enabled = IsMKLDNNSetOn();
-  if (mkldnn_enabled) {
+  if (IsMKLDNNSetOn() || config_.use_mkldnn) {
     LOG(INFO) << "MKL-DNN enabled";
     config_.use_mkldnn = true;
   }
 #endif
   OptimizeInferenceProgram();
-#ifdef PADDLE_WITH_MKLDNN
-  if (mkldnn_enabled) {
-    executor_->EnableMKLDNN(*inference_program_);
-  }
-#endif
   ctx_ = executor_->Prepare(*inference_program_, 0);
-  if (config_._use_mkldnn) {
+  if (config_.use_mkldnn) {
     executor_->EnableMKLDNN(*inference_program_);
   }
 
@@ -141,7 +134,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   bool mkldnn_enabled = IsMKLDNNSetOn();
 #endif
   switch (config_.ir_mode) {
-    case AnalysisConfig::IrPassMode::kExclude:
+    case contrib::AnalysisConfig::IrPassMode::kExclude:
       Analyzer()
           .IncludeAllIrPasses()
 #ifdef PADDLE_WITH_MKLDNN
@@ -152,7 +145,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 #endif
           .Run(&argument_);
       break;
-    case AnalysisConfig::IrPassMode::kInclude:
+    case contrib::AnalysisConfig::IrPassMode::kInclude:
       Analyzer()
 #ifdef PADDLE_WITH_MKLDNN
           .IncludeIrPasses(mkldnn_enabled ? config_.ir_mkldnn_passes

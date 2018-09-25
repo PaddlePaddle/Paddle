@@ -190,7 +190,7 @@ void Main(int batch_size) {
   }
 
   // create predictor
-  AnalysisConfig config;
+  contrib::AnalysisConfig config;
   // MKLDNNAnalysisConfig config;
   config.model_dir = FLAGS_infer_model;
   // include mode: define which passes to include
@@ -211,9 +211,8 @@ void Main(int batch_size) {
     config.ir_mkldnn_passes.push_back("fc_fuse_pass");
 #endif
   }
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto predictor = CreatePaddlePredictor<contrib::AnalysisConfig,
+                                         PaddleEngineKind::kAnalysis>(config);
 
   // define output
   std::vector<PaddleTensor> output_slots;

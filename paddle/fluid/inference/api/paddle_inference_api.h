@@ -217,29 +217,15 @@ struct AnalysisConfig : public NativeConfig {
   // passes to be excluded/included
   // attention lstm fuse works only on some specific models, disable as default.
   std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
-
 #ifdef PADDLE_WITH_MKLDNN
   // when PaddlePadde is built with MKL-DNN the passes from ir_passes are
   // excluded/included only when MKL-DNN is disabled
   //
   // passes to be excluded/included when MKL-DNN is enabled
   std::vector<std::string> ir_mkldnn_passes{"infer_clean_graph_pass"};
-  // state of the FLAGS_use_mkldnn flag
-  bool use_mkldnn{false};
 #endif
-};
 
-struct MKLDNNAnalysisConfig : public AnalysisConfig {
-  // Define passes to be execute in a given order, depending also on MKLDNN
-  // enablement.
-  // Add passes to be executed, do not exclude.
-  IrPassMode ir_mode{IrPassMode::kInclude};
-  // the 'infer_clean_graph_pass' always has to be executed first
-  // passes to be executed without MKL-DNN
-  std::vector<std::string> ir_passes{"infer_clean_graph_pass"};
-  // passes to be executed with MKL-DNN
-  std::vector<std::string> ir_mkldnn_passes{"infer_clean_graph_pass"};
-  // state of the FLAGS_use_mkldnn flag
+  // NOTE this is just for internal development, please not use it.
   bool use_mkldnn{false};
 };
 
