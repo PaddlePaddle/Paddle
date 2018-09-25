@@ -37,16 +37,14 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Apply op fusion.
     if (strategy.fuse_elewise_add_act_ops_) {
-      auto fuse_elewise_add_act_pass =
-          ir::PassRegistry::Instance().Get("fuse_elewise_add_act_pass");
-      graph = fuse_elewise_add_act_pass->Apply(std::move(graph));
+      auto fuse_elewise_add_act_pass = AppendPass("fuse_elewise_add_act_pass");
       // Apply a graph viz pass to record a graph.
       if (!strategy.debug_graphviz_path_.empty()) {
-        auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+        auto viz_pass = AppendPass("graph_viz_pass");
         const std::string graph_path = string::Sprintf(
             "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
-        viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
-        graph = viz_pass->Apply(std::move(graph));
+        viz_pass->Set<std::string>("graph_viz_path",
+                                   new std::string(graph_path));
       }
     }
 
