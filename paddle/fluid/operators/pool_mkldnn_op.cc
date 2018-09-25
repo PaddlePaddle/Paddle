@@ -46,18 +46,17 @@ static std::string gethash(const memory::dims& input_dims,
          dims2str(paddings) + pooling_type + suffix;
 }
 
-static int ComputeCeiledOutput(int input_size, int kernel_size, int padding,
-                               int stride) {
+static inline int ComputeCeiledOutput(int input_size, int kernel_size,
+                                      int padding, int stride) {
   return (input_size - kernel_size + 2 * padding) / stride + 1;
 }
 
-static void CorrectOutputSize(const std::vector<int>& src_tz,
-                              const std::vector<int>& dst_tz,
-                              const std::vector<int>& kernel_size,
-                              const std::vector<int>& paddings,
-                              const std::vector<int>& strides,
-                              std::vector<int>& right_bot_padding) {
-  for (int i = 0; i < right_bot_padding.size(); i++) {
+static inline void CorrectOutputSize(
+    const std::vector<int>& src_tz, const std::vector<int>& dst_tz,
+    const std::vector<int>& kernel_size, const std::vector<int>& paddings,
+    const std::vector<int>& strides,
+    std::vector<int>& right_bot_padding) {  // NOLINT
+  for (size_t i = 0; i < right_bot_padding.size(); i++) {
     int desired_size = ComputeCeiledOutput(src_tz[i + 2], kernel_size[i],
                                            paddings[i], strides[i]);
     if (desired_size != dst_tz[i + 2]) {
