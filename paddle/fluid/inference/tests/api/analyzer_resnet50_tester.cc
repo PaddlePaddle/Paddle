@@ -41,27 +41,45 @@ DEFINE_bool(debug_display_images, false, "Show images in windows for debug.");
 namespace paddle {
 
 struct DataReader {
-  explicit DataReader(const std::string& path)
-      : file(new std::ifstream(path)) {}
+  explicit DataReader(const std::string& data_list_path,
+                      const std::string& data_dir_path, int resize_width,
+                      int resize_height)
+      : data_list_path(data_list_path),
+        data_dir_path(data_dir_path),
+        file(std::ifstream(data_list_path)),
+        width(resize_width),
+        height(resize_height) {
+    if (!file.is_open()) {
+      throw std::invalid_argument("Cannot open data list file " +
+                                  data_list_path);
+    }
+    if (data_dir_path.empty()) {
+      throw std::invalid_argument(
+          "Data directory must be set to use imagenet.");
+    }
+  }
 
-  bool NextBatch(float* input, int64_t* label) {
+  bool NextBatch(float* input, int64_t* label, char sep, int batch_size,
+                 int channels, bool debug_display_images) {
+    if (channels != 3) {
+      throw std::invalid_argument("Only 3 channel image loading supported");
+    }
+
     std::string line;
 
-    if (!file->is_open()) {
-      throw std::invalid_argument("Cannot open FLAGS_data_list file " +
-                                  FLAGS_data_list);
-    }
-    if (FLAGS_data_dir.empty()) {
-      throw std::invalid_argument(
-          "FLAGS_data_dir must be set to use imagenet.");
-    }
-
-    for (int i = 0; i < FLAGS_batch_size; i++) {
-      if (!std::getline(*file, line)) return false;
+    for (int i = 0; i < batch_size; i++) {
+      if (!std::getline(file, line)) return false;
 
       std::vector<std::string> pieces;
-      inference::split(line, '\t', &pieces);
-      auto filename = FLAGS_data_dir + pieces.at(0);
+      inference::split(line, sep, &pieces);
+      if (pieces.size() != 2) {
+        std::stringstream ss;
+        ss << "invalid number of separators '" << sep << "' found in line " << i
+           << ":'" << line << "' of file " << data_list_path;
+        throw std::runtime_error(ss.str());
+      }
+
+      auto filename = data_dir_path + pieces.at(0);
       label[i] = std::stoi(pieces.at(1));
 
       cv::Mat image = cv::imread(filename, cv::IMREAD_COLOR);
@@ -69,10 +87,12 @@ struct DataReader {
         std::string error_msg = "Couldn't open file " + filename;
         throw std::runtime_error(error_msg);
       }
-      if (FLAGS_debug_display_images)
+
+      if (debug_display_images)
         cv::imshow(std::to_string(i) + " input image", image);
+
       cv::Mat image2;
-      cv::resize(image, image2, cv::Size(FLAGS_width, FLAGS_height));
+      cv::resize(image, image2, cv::Size(width, height));
 
       cv::Mat fimage;
       image2.convertTo(fimage, CV_32FC3);
@@ -84,7 +104,7 @@ struct DataReader {
       std::vector<cv::Mat> fimage_channels;
       cv::split(fimage, fimage_channels);
 
-      for (int c = 0; c < FLAGS_channels; c++) {
+      for (int c = 0; c < channels; c++) {
         fimage_channels[c] -= mean[c];
         fimage_channels[c] /= std[c];
         for (int row = 0; row < fimage.rows; ++row) {
@@ -99,7 +119,11 @@ struct DataReader {
     return true;
   }
 
-  std::unique_ptr<std::ifstream> file;
+  std::string data_list_path;
+  std::string data_dir_path;
+  std::ifstream file;
+  int width;
+  int height;
 };
 
 template <typename T>
@@ -179,10 +203,25 @@ void Main(int batch_size) {
     input.data.Resize(count(shape) * sizeof(float));
     input.dtype = PaddleDType::FLOAT32;
 
-    DataReader reader(FLAGS_data_list);
+    DataReader reader(FLAGS_data_list, FLAGS_data_dir, FLAGS_width,
+                      FLAGS_height);
 
-    reader.NextBatch(static_cast<float*>(input.data.data()),
-                     static_cast<int64_t*>(input_label.data.data()));
+    try {
+      reader.NextBatch(static_cast<float*>(input.data.data()),
+                       static_cast<int64_t*>(input_label.data.data()), '\t',
+                       FLAGS_batch_size, FLAGS_channels,
+                       FLAGS_debug_display_images);
+    } catch (std::runtime_error& e) {
+      if (std::string(e.what()).find("separator") != std::string::npos) {
+        // try again with a different separator
+        reader.NextBatch(static_cast<float*>(input.data.data()),
+                         static_cast<int64_t*>(input_label.data.data()), ' ',
+                         FLAGS_batch_size, FLAGS_channels,
+                         FLAGS_debug_display_images);
+      } else {
+        throw;
+      }
+    }
   }
 
   if (FLAGS_debug_display_images) {
