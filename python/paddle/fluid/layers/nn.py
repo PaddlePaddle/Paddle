@@ -4025,7 +4025,6 @@ def nce(input,
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
-    assert isinstance(custom_dist, Variable)
     dim = input.shape[1]
     assert isinstance(label, Variable)
     num_true_class = label.shape[1]
@@ -4062,6 +4061,7 @@ def nce(input,
         sampler = 1
     elif sampler == "custom_dist":
         assert custom_dist is not None
+        assert isinstance(custom_dist, Variable)
         inputs['CustomDist'] = custom_dist
         sampler = 2
     else:
