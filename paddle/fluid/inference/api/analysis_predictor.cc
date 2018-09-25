@@ -35,7 +35,8 @@ namespace paddle {
 using contrib::AnalysisConfig;
 
 bool AnalysisPredictor::Init(
-    const std::shared_ptr<framework::Scope> &parent_scope) {
+    const std::shared_ptr<framework::Scope> &parent_scope,
+    const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
 #if !defined(_WIN32)
   if (FLAGS_profile) {
@@ -65,9 +66,12 @@ bool AnalysisPredictor::Init(
 
   executor_.reset(new paddle::framework::NaiveExecutor(place_));
 
-  if (!LoadProgramDesc()) return false;
-
-  OptimizeInferenceProgram();
+  if (!program) {
+    if (!LoadProgramDesc()) return false;
+    OptimizeInferenceProgram();
+  } else {
+    inference_program_ = program;
+  }
   executor_->Prepare(scope_.get(), *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
@@ -296,6 +300,37 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
   return true;
+}
+
+bool AnalysisPredictor::LoadProgramDesc() {
+  // Initialize the inference program
+  std::unique_ptr<framework::Executor> tmp_exe(
+      new framework::Executor(platform::CPUPlace()));
+  if (!config_.model_dir.empty()) {
+    // Parameters are saved in separate files sited in
+    // the specified `dirname`.
+    inference_program_ = paddle::inference::Load(
+        static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
+        config_.model_dir);
+  } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
+    // All parameters are saved in a single file.
+    // The file names should be consistent with that used
+    // in Python API `fluid.io.save_inference_model`.
+    inference_program_ = paddle::inference::Load(
+        static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
+        config_.prog_file, config_.param_file);
+  } else {
+    LOG(ERROR) << string::Sprintf(
+        "not valid model path '%s' or program path '%s'.", config_.model_dir,
+        config_.param_file);
+    return false;
+  }
+  return true;
+}
+std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
+  auto *x = new AnalysisPredictor(config_);
+  x->Init(scope_, inference_program_);
+  return std::unique_ptr<PaddlePredictor>(x);
 }
 
 template <>

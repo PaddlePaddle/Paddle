@@ -37,7 +37,8 @@ class AnalysisPredictor : public PaddlePredictor {
  public:
   explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {}
 
-  bool Init(const std::shared_ptr<framework::Scope> &parent_scope);
+  bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
+            const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
 
   bool Run(const std::vector<PaddleTensor> &inputs,
            std::vector<PaddleTensor> *output_data,
@@ -47,6 +48,7 @@ class AnalysisPredictor : public PaddlePredictor {
       const std::string &name) override;
   std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
       const std::string &name) override;
+
   bool ZeroCopyRun() override;
 
   void PrepareFeedFetch();
@@ -55,39 +57,13 @@ class AnalysisPredictor : public PaddlePredictor {
 
   Argument &analysis_argument() { return argument_; }
 
-  std::unique_ptr<PaddlePredictor> Clone() override {
-    PADDLE_THROW("Not Implemented");
-  }
+  std::unique_ptr<PaddlePredictor> Clone() override;
 
   framework::Scope *scope() { return executor_->scope(); }
   framework::ProgramDesc &program() { return *inference_program_; }
 
  protected:
-  bool LoadProgramDesc() {
-    // Initialize the inference program
-    std::unique_ptr<framework::Executor> tmp_exe(
-        new framework::Executor(platform::CPUPlace()));
-    if (!config_.model_dir.empty()) {
-      // Parameters are saved in separate files sited in
-      // the specified `dirname`.
-      inference_program_ = paddle::inference::Load(
-          static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
-          config_.model_dir);
-    } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
-      // All parameters are saved in a single file.
-      // The file names should be consistent with that used
-      // in Python API `fluid.io.save_inference_model`.
-      inference_program_ = paddle::inference::Load(
-          static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
-          config_.prog_file, config_.param_file);
-    } else {
-      LOG(ERROR) << string::Sprintf(
-          "not valid model path '%s' or program path '%s'.", config_.model_dir,
-          config_.param_file);
-      return false;
-    }
-    return true;
-  }
+  bool LoadProgramDesc();
 
   bool SetFeed(const std::vector<PaddleTensor> &input_datas,
                framework::Scope *scope);
@@ -104,7 +80,7 @@ class AnalysisPredictor : public PaddlePredictor {
   platform::Place place_;
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
-  std::unique_ptr<framework::ProgramDesc> inference_program_;
+  std::shared_ptr<framework::ProgramDesc> inference_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   std::vector<framework::OpDesc *> fetchs_;

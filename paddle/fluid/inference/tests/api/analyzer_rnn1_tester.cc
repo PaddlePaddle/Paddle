@@ -429,5 +429,68 @@ TEST(Analyzer_rnn1, ZeroCopy) {
             << native_total_time / (FLAGS_repeat * FLAGS_batch_size);
 }
 
+TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
+  AnalysisConfig config;
+  SetConfig(&config);
+  config.use_feed_fetch_ops = false;
+
+#define NEW_TENSOR(name__) \
+  auto name__##_tensor = predictor->GetInputTensor(#name__);
+
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
+  /*
+    for (int i = 0; i < FLAGS_num_threads; i++) {
+      predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
+    }
+    */
+
+  auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  double total_time_of_threads{0};
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
+    threads.emplace_back(
+        [config, &total_time_of_threads, &predictors, &base_predictor, tid] {
+
+          // auto &predictor = predictors.at(tid);
+          auto predictor = base_predictor->Clone();
+          // PaddlePlace place;
+          // int output_size{0};
+          NEW_TENSOR(data_lod_attention);
+          NEW_TENSOR(cell_init);
+          NEW_TENSOR(data);
+          NEW_TENSOR(week);
+          NEW_TENSOR(minute);
+          NEW_TENSOR(hidden_init);
+
+          // Prepare data for AnalysisPredictor
+          DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+          PrepareZeroCopyInputs(data_lod_attention_tensor.get(),
+                                cell_init_tensor.get(), data_tensor.get(),
+                                hidden_init_tensor.get(), week_tensor.get(),
+                                minute_tensor.get(), &data, FLAGS_batch_size);
+
+          Timer timer;
+          double total_time{0};
+
+          for (int i = 0; i < FLAGS_repeat; i++) {
+            timer.tic();
+            predictor->ZeroCopyRun();
+            total_time += timer.toc();
+          }
+
+          total_time_of_threads += total_time;
+
+          LOG(INFO) << "thread time: " << total_time / FLAGS_repeat;
+        });
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
+
+  LOG(INFO) << "average time: "
+            << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
+}
+
 }  // namespace inference
 }  // namespace paddle
