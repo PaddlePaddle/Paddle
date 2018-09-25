@@ -461,8 +461,6 @@ class DistributeTranspiler(object):
                                                         pserver_endpoints)
             self._split_table_grad_and_add_send_vars(program, pserver_endpoints)
 
-        self._append_distributed_metric()
-
     def get_trainer_program(self, wait_port=True):
         """
         Get transpiled trainer side program.
@@ -745,11 +743,6 @@ in a single call.")
             prefetch_var_name_to_block_id.extend(
                 lookup_table_var_name_to_block_id)
 
-        if self.has_distributed_metrics:
-            metrics_var_name_to_block_id = self._create_distributed_metrics_block(
-                pserver_program)
-            prefetch_var_name_to_block_id.extend(metrics_var_name_to_block_id)
-
         attrs = {
             "optimize_blocks": optimize_blocks,
             "endpoint": endpoint,
@@ -962,76 +955,6 @@ to transpile() call.")
                     for index in range(len(self.pserver_endpoints))
                 ]
         return param_list, grad_list
-
-    def _append_distributed_metric(self):
-        support_distributed_metric_ops = ['auc']
-        self.distributed_metric_ops = []
-        for op in self.origin_program.global_block().ops:
-            if op.type in support_distributed_metric_ops and op.attr(
-                    'is_distributed') is True:
-                self.distributed_metric_ops.append(op)
-
-        if len(self.distributed_metric_ops) == 0:
-            self.has_distributed_metrics = False
-            return
-
-        self.has_distributed_metrics = True
-
-        for op in self.distributed_metric_ops:
-            if op.type == "auc":
-                self._append_distributed_auc(op)
-
-    def _append_distributed_auc(self, auc_op):
-        def print_k(k_name, k):
-            print("{}: {}, SHAPE: {}".format(k_name, k, k.shape))
-
-        predict = self.origin_program.global_block().var(
-            auc_op.input("Predict")[0])
-        label = self.origin_program.global_block().var(auc_op.input("Label")[0])
-        auc_out = self.origin_program.global_block().var(
-            auc_op.output("AUC")[0])
-
-        all_ops = self.origin_program.global_block().ops
-        auc_op_idx = list(all_ops).index(auc_op)
-
-        label_cast = self.origin_program.global_block().create_var(
-            name="label_cast_tmp.0",
-            persistable=False,
-            dtype="float32",
-            shape=label.shape)
-
-        prev_label_concat = self.origin_program.global_block().create_var(
-            name="distributed_auc.pserver_%d" % 0,
-            persistable=False,
-            dtype="float32",
-            shape=(-1, 3))
-
-        self.origin_program.global_block()._insert_op(
-            index=auc_op_idx + 1,
-            type="cast",
-            inputs={"X": label},
-            attrs={"in_dtype": 3,
-                   "out_dtype": 5},
-            outputs={"Out": label_cast})
-
-        self.origin_program.global_block()._insert_op(
-            index=auc_op_idx + 2,
-            type="concat",
-            inputs={"X": [predict, label_cast]},
-            attrs={"axis": 1},
-            outputs={"Out": [prev_label_concat]})
-
-        self.origin_program.global_block()._insert_op(
-            index=auc_op_idx + 3,
-            type="prefetch",
-            inputs={'X': prev_label_concat},
-            attrs={
-                "epmap": self.pserver_endpoints[:1],
-                # FIXME(qiao) temporarily disable this config because prefetch
-                # is not act as other rpc op, it's more like a forward op
-                # RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
-            },
-            outputs={"Out": auc_out})
 
     def _init_splited_vars(self):
         # update these mappings for further transpile:
@@ -1362,78 +1285,6 @@ to transpile() call.")
             attrs={'file_path': "none"})
 
         return checkpoint_save_block.idx
-
-    def _create_distributed_metrics_block(self, pserver_program):
-        metrics_var_name_to_block_id = []
-        distributed_metrics_block = pserver_program.create_block()
-
-        for auc_op in self.distributed_metric_ops:
-            predict = self._clone_var(pserver_program.global_block(),
-                                      self.origin_program.global_block().var(
-                                          auc_op.input("Predict")[0]))
-            label = self._clone_var(pserver_program.global_block(),
-                                    self.origin_program.global_block().var(
-                                        auc_op.input("Label")[0]))
-            auc_out = self._clone_var(pserver_program.global_block(),
-                                      self.origin_program.global_block().var(
-                                          auc_op.output("AUC")[0]))
-
-            num_thresholds = auc_op.attr("num_thresholds")
-            curve = auc_op.attr("curve")
-
-            stat_pos = pserver_program.global_block().create_var(
-                persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
-            stat_neg = pserver_program.global_block().create_var(
-                persistable=True, dtype='int64', shape=[1, num_thresholds + 1])
-
-            distributed_auc = pserver_program.global_block().create_var(
-                name="%s.pserver_%d" % ("distributed_auc", 0),
-                shape=(-1, 3),
-                dtype="float32")
-
-            label_cast = pserver_program.global_block().create_var(
-                name="label_cast_tmp.0",
-                persistable=False,
-                dtype="int64",
-                shape=label.shape)
-
-            metrics_var_name_to_block_id.append(
-                distributed_auc.name + ":" + str(distributed_metrics_block.idx))
-
-            distributed_metrics_block.append_op(
-                type="split",
-                inputs={"X": distributed_auc},
-                attrs={'axis': 1,
-                       'sections': [2, 1]},
-                outputs={"Out": [predict, label]})
-
-            distributed_metrics_block.append_op(
-                type="cast",
-                inputs={"X": label},
-                attrs={"in_dtype": 5,
-                       "out_dtype": 3},
-                outputs={"Out": label_cast})
-
-            distributed_metrics_block.append_op(
-                type="auc",
-                inputs={
-                    "Predict": [predict],
-                    "Label": [label_cast],
-                    "StatPos": [stat_pos],
-                    "StatNeg": [stat_neg]
-                },
-                attrs={
-                    "curve": curve,
-                    "num_thresholds": num_thresholds,
-                    "is_distributed": True,
-                    "slide_steps": 0
-                },
-                outputs={
-                    "AUC": [auc_out],
-                    "StatPosOut": [stat_pos],
-                    "StatNegOut": [stat_neg]
-                })
-        return metrics_var_name_to_block_id
 
     def _create_vars_from_blocklist(self,
                                     program,

@@ -88,10 +88,6 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault((2 << 12) - 1);
     AddAttr<int>("slide_steps", "Use slide steps to calc batch auc.")
         .SetDefault(1);
-
-    AddAttr<bool>("is_distributed", "Use distributed auc calc.")
-        .SetDefault(false);
-
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.
 

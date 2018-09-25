@@ -83,8 +83,7 @@ def auc(input,
         curve='ROC',
         num_thresholds=2**12 - 1,
         slide_steps=1,
-        topk=1,
-        is_distributed=False):
+        topk=1):
     """
     **Area Under the Curve (AUC) Layer**
 
@@ -112,7 +111,6 @@ def auc(input,
                              the roc curve. Default 200.
         slide_steps: when calc batch auc, we can not only use step currently but the previous steps can be used. slide_steps=1 means use the current step, slide_steps=3 means use current step and the previous second steps, slide_steps=0 use all of the steps.
         topk(int): only topk number of prediction output will be used for auc.
-        is_distributed(bool): distributed auc calc, it can be used in distributed training.
 
 
     Returns:
@@ -163,8 +161,7 @@ def auc(input,
         attrs={
             "curve": curve,
             "num_thresholds": num_thresholds,
-            "slide_steps": slide_steps,
-            "is_distributed": False
+            "slide_steps": slide_steps
         },
         outputs={
             "AUC": [batch_auc_out],
@@ -183,8 +180,7 @@ def auc(input,
         attrs={
             "curve": curve,
             "num_thresholds": num_thresholds,
-            "slide_steps": 0,
-            "is_distributed": is_distributed
+            "slide_steps": 0
         },
         outputs={
             "AUC": [auc_out],
