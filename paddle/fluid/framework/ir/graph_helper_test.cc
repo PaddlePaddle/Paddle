@@ -49,6 +49,19 @@ void BuildCircleGraph2(Graph* g) {
   v2->outputs.push_back(o1);
 }
 
+void BuildDisconnectedGraph(Graph* g) {
+  ir::Node* o1 = g->CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g->CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* v1 = g->CreateEmptyNode("var1", Node::Type::kVariable);
+  ir::Node* v2 = g->CreateEmptyNode("var2", Node::Type::kVariable);
+
+  o1->outputs.push_back(v1);
+  v1->inputs.push_back(o1);
+
+  o2->outputs.push_back(v2);
+  v2->inputs.push_back(o2);
+}
+
 void BuildNoCircleGraph(Graph* g) {
   ir::Node* o1 = g->CreateEmptyNode("op1", Node::Type::kOperation);
   ir::Node* o2 = g->CreateEmptyNode("op2", Node::Type::kOperation);
@@ -120,6 +133,18 @@ TEST(GraphHelperTest, Basic) {
   ASSERT_EQ(node_map.at("op2"), 1UL);
   ASSERT_TRUE(node_map.at("op3") < node_map.at("op5"));
 }
+
+TEST(GraphHelperTest, IsFullyConnected) {
+  ProgramDesc prog;
+  Graph g(prog);
+  BuildDisconnectedGraph(&g);
+  ASSERT_FALSE(IsFullyConnected(g));
+
+  Graph g2(prog);
+  BuildNoCircleGraph(&g2);
+  ASSERT_TRUE(IsFullyConnected(g2));
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

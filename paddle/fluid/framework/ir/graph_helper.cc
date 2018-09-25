@@ -71,6 +71,21 @@ bool HasCircleInternal(
   }
   return false;
 }
+
+void IsFullyConnectedInternal(const ir::Node *node,
+                              std::unordered_set<const ir::Node *> *visited) {
+  visited->insert(node);
+  for (const ir::Node *in : node->inputs) {
+    if (visited->find(in) == visited->end()) {
+      IsFullyConnectedInternal(in, visited);
+    }
+  }
+  for (const ir::Node *out : node->outputs) {
+    if (visited->find(out) == visited->end()) {
+      IsFullyConnectedInternal(out, visited);
+    }
+  }
+}
 }  // namespace
 
 bool HasCircle(const Graph &graph) {
@@ -111,6 +126,14 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     }
   }
   return adj_list;
+}
+
+bool IsFullyConnected(const Graph &graph) {
+  if (graph.Nodes().empty()) return true;
+
+  std::unordered_set<const ir::Node *> visited;
+  IsFullyConnectedInternal(*graph.Nodes().begin(), &visited);
+  return visited.size() == graph.Nodes().size();
 }
 
 }  // namespace ir
