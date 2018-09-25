@@ -134,9 +134,9 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
 
       const int c_out_start = c_in * filter_multiplier;
 
-      int h_out_start =
-          (h_in - filter_height + padding_height + stride_height) /
-          stride_height;
+      int h_out_start = (h_in - filter_height * dilate_height + padding_height +
+                         stride_height) /
+                        stride_height;
       int _h_out_start = 0 > h_out_start ? 0 : h_out_start;
 
       int h_out_end = (h_in + padding_height) / stride_height;
@@ -144,7 +144,8 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
           output_height - 1 < h_out_end ? output_height - 1 : h_out_end;
 
       int w_out_start =
-          (w_in - filter_width + padding_width + stride_width) / stride_width;
+          (w_in - filter_width * dilate_width + padding_width + stride_width) /
+          stride_width;
       int _w_out_start = 0 > w_out_start ? 0 : w_out_start;
 
       int w_out_end = (w_in + padding_width) / stride_width;
@@ -161,8 +162,8 @@ __device__ __inline__ void KernelDepthwiseConvInputGrad(
           for (int w_out = w_out_start; w_out <= w_out_end;
                w_out += dilate_width) {
             filter_offset--;
-            if (h_out >= _h_out_start && h_out < _h_out_end &&
-                w_out >= _w_out_start && w_out < _w_out_end) {
+            if (h_out >= _h_out_start && h_out <= _h_out_end &&
+                w_out >= _w_out_start && w_out <= _w_out_end) {
               const int output_grad_offset =
                   ((batch * output_channels + c_out) * output_height + h_out) *
                       output_width +
