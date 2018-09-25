@@ -6569,21 +6569,61 @@ for func in [
 @templatedoc()
 def maxout(x, groups, name=None):
     """
-    ${comment}
+    A layer to do maxout on convolutional layer output(a tensor with data
+    format :attr:`NCHW`) and the output of this layer has the same shape as
+    :attr:`x` except with a new channel number :math:`C \\div groups`. When
+    viewing the number of channels :math:`C` as :math:`k \\times o_c` and
+    image size :math:`HW` as :math:`s`, the formula is as follows:
+
+    .. math::
+
+       & out = \max_k (in[n, k, o_c , s])
+
+       & out_{i * s + j} = \max_k in_{  k * o_{c} * s + i * s + j}
+
+       & s = \\frac{image_size}{ num\_channels}
+
+       & o_{c} = \\frac{num\_channels}{groups}
+
+       & 0 \le i < o_{c}
+
+       & 0 \le j < s
+
+       & 0 \le k < groups
+    
+    Please refer to the following papers for more details:
+      - Maxout Networks: \
+        http://www.jmlr.org/proceedings/papers/v28/goodfellow13.pdf
+      - Multi-digit Number Recognition from Street View \
+        Imagery using Deep Convolutional Neural Networks: \
+        https://arxiv.org/pdf/1312.6082v4.pdf
+
     Args:
-        x(${x_type}): ${x_comment}
-        groups(${groups_type}): ${groups_comment}
+        x(Variable): The input Tensor variable with shape :attr:`[N, C, H, W]`.
+        groups(int): Take the maximum across :attr:`groups` feature maps. So 
+                     :attr:`groups` should be larger than 1, and the number of
+                     channels should be able to be devided by :attr:`groups`.
         name(str|None): A name for this layer(optional). If set None, the layer
                         will be named automatically.
 
     Returns:
-        output(${out_type}): ${out_comment}
+        output(Variable): A Tensor variable which has the same shape as :attr:`x` \
+                          except with a new channel number \
+                          :math:`x.shape[1] \\div groups`.
+    
+    Examples:
+        .. code-block:: python
+
+            maxout = fluid.layers.maxout(x, groups=4)
     """
-    helper = LayerHelper('maxout', **locals())
+    assert len(x.shape) == 4, "The shape of x should [N, C, H, W]."
+    assert x.shape[1] % groups == 0, ("The number of channels should be able "
+                                      "to be devided by groups.")
+    helper = LayerHelper("maxout", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
     helper.append_op(
-        type='maxout',
-        inputs={'X': x},
-        outputs={'Out': out},
-        attrs={'groups': groups})
+        type="maxout",
+        inputs={"X": x},
+        outputs={"Out": out},
+        attrs={"groups": groups})
     return out
