@@ -35,6 +35,9 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
 std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     const Graph &graph);
 
+// Test if the graph is fully connected (A single connected graph).
+bool IsFullyConnected(const Graph &graph);
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
