@@ -298,4 +298,11 @@ bool AnalysisPredictor::ZeroCopyRun() {
   return true;
 }
 
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
+    const contrib::AnalysisConfig &config) {
+  return CreatePaddlePredictor<contrib::AnalysisConfig,
+                               PaddleEngineKind::kAnalysis>(config);
+}
+
 }  // namespace paddle

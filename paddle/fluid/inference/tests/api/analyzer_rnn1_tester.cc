@@ -412,7 +412,6 @@ TEST(Analyzer_rnn1, ZeroCopy) {
                                        ->FindVar("final_output.tmp_1")
                                        ->Get<framework::LoDTensor>());
 
-    return;
     for (int i = 0; i < output_size; i++) {
       LOG(INFO) << output_data[i] << " "
                 << static_cast<float *>(native_outputs.front().data.data())[i]
