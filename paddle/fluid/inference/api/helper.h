@@ -89,7 +89,7 @@ static void TensorAssignData(PaddleTensor *tensor,
   }
 }
 
-std::string DescribeTensor(const PaddleTensor &tensor) {
+static std::string DescribeTensor(const PaddleTensor &tensor) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";
@@ -122,8 +122,13 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   return os.str();
 }
 
-void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-               double latency, int epoch = 1) {
+template <typename T>
+int VecReduceToInt(const std::vector<T> &v) {
+  return std::accumulate(v.begin(), v.end(), 1, [](T a, T b) { return a * b; });
+}
+
+static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+                      double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
             << ", latency: " << latency << "ms ======";
