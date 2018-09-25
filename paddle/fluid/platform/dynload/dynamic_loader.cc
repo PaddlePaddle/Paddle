@@ -130,6 +130,12 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     if (nullptr == dso_handle) {
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
                    << errorno << ")";
+      if (dlPath.find("nccl") != std::string::npos) {
+        std::cout
+            << "You may need to install 'nccl2' from NVIDIA official website: "
+            << "https://developer.nvidia.com/nccl/nccl-download"
+            << "before install PaddlePaddle" << std::endl;
+      }
       dlPath = dso_name;
       dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
     }

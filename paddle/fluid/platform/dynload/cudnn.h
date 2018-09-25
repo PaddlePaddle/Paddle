@@ -54,7 +54,6 @@ extern void EnforceCUDNNLoaded(const char* fn_name);
   struct DynLoad__##__name {                        \
     template <typename... Args>                     \
     inline cudnnStatus_t operator()(Args... args) { \
-      VLOG(3) << "cudnn call";                      \
       return ::__name(args...);                     \
     }                                               \
   };                                                \
