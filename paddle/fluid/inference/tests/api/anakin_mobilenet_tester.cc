@@ -22,10 +22,10 @@ DEFINE_string(model, "", "Directory of the inference model(mobile_v2).");
 
 namespace paddle {
 
-AnakinConfig GetConfig() {
-  AnakinConfig config;
+contrib::AnakinConfig GetConfig() {
+  contrib::AnakinConfig config;
   // using AnakinConfig::X86 if you need to use cpu to do inference
-  config.target_type = AnakinConfig::NVGPU;
+  config.target_type = contrib::AnakinConfig::NVGPU;
   config.model_file = FLAGS_model;
   config.device = 0;
   config.max_batch_size = 1;
@@ -33,9 +33,10 @@ AnakinConfig GetConfig() {
 }
 
 TEST(inference, anakin) {
-  AnakinConfig config = GetConfig();
+  auto config = GetConfig();
   auto predictor =
-      CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
+      CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
+          config);
 
   float data[1 * 3 * 224 * 224] = {1.0f};
   PaddleTensor tensor;

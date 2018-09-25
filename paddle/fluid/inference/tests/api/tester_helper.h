@@ -38,6 +38,8 @@ DEFINE_bool(use_analysis, true,
 namespace paddle {
 namespace inference {
 
+using contrib::AnalysisConfig;
+
 void CompareResult(const std::vector<PaddleTensor> &outputs,
                    const std::vector<PaddleTensor> &ref_outputs) {
   EXPECT_GT(outputs.size(), 0UL);
@@ -77,8 +79,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
 std::unique_ptr<PaddlePredictor> CreateTestPredictor(
     const AnalysisConfig &config, bool use_analysis = true) {
   if (use_analysis) {
-    return CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-        config);
+    return CreatePaddlePredictor<contrib::AnalysisConfig,
+                                 PaddleEngineKind::kAnalysis>(config);
   } else {
     return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(
         config);

@@ -758,6 +758,14 @@ class TestBook(unittest.TestCase):
             out = layers.expand(x, [1, 2])
         print(str(program))
 
+    def test_softshrink(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[16], dtype="float32")
+            out = layers.softshrink(input, name='softshrink')
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
