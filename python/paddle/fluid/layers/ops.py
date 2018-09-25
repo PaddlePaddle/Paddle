@@ -56,6 +56,8 @@ for _OP in set(__all__):
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
 
+globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
+
 __all__ += __activations_noattr__
 
 for _OP in set(__activations_noattr__):
