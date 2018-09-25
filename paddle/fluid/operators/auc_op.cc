@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/auc_op.h"
-#include <string>
 
 namespace paddle {
 namespace operators {
@@ -24,26 +23,31 @@ class AucOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Out"), "Input of Out should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Indices"),
-                   "Input of Indices should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Predict"),
+                   "Input of Out should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("Label"),
                    "Input of Label should not be null.");
-    auto inference_height = ctx->GetInputDim("Out")[0];
+    auto predict_width = ctx->GetInputDim("Predict")[1];
+    PADDLE_ENFORCE_EQ(predict_width, 2, "Only support binary classification");
+    auto predict_height = ctx->GetInputDim("Predict")[0];
     auto label_height = ctx->GetInputDim("Label")[0];
 
-    PADDLE_ENFORCE_EQ(inference_height, label_height,
+    PADDLE_ENFORCE_EQ(predict_height, label_height,
                       "Out and Label should have same height.");
 
+    int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
+
     ctx->SetOutputDim("AUC", {1});
-    ctx->ShareLoD("Out", /*->*/ "AUC");
+    ctx->SetOutputDim("BatchAUC", {1});
+    ctx->SetOutputDim("StatPosOut", {num_pred_buckets});
+    ctx->SetOutputDim("StatNegOut", {num_pred_buckets});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
-        framework::ToDataType(ctx.Input<Tensor>("Out")->type()),
+        framework::ToDataType(ctx.Input<Tensor>("Predict")->type()),
         ctx.device_context());
   }
 };
@@ -51,29 +55,31 @@ class AucOp : public framework::OperatorWithKernel {
 class AucOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Out",
-             "A floating point 2D tensor, values are in the range [0, 1]."
-             "Each row is sorted in descending order. This input should be the"
-             "output of topk."
+    AddInput("Predict",
+             "A floating point 2D tensor with shape [batch_size, 2], values "
+             "are in the range [0, 1]."
              "Typically, this tensor indicates the probability of each label");
-    AddInput("Indices",
-             "An int 2D tensor, indicating the indices of original"
-             "tensor before sorting. Typically, this tensor indicates which "
-             "label the probability stands for.");
     AddInput("Label",
-             "A 2D int tensor indicating the label of the training data."
-             "The height is batch size and width is always 1.");
+             "A 2D int tensor indicating the label of the training data. "
+             "shape: [batch_size, 1]");
     // TODO(typhoonzero): support weight input
+    AddInput("StatPos", "Statistic value when label = 1");
+    AddInput("StatNeg", "Statistic value when label = 0");
+
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
+    AddOutput("BatchAUC", "The AUC for current batch");
+    AddOutput("StatPosOut", "Statistic value when label = 1");
+    AddOutput("StatNegOut", "Statistic value when label = 0");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
+
     AddAttr<int>("num_thresholds",
                  "The number of thresholds to use when discretizing the"
                  " roc curve.")
-        .SetDefault(200);
+        .SetDefault((2 << 12) - 1);
 
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.

@@ -40,5 +40,3 @@ RUN mkdir -p ${ANDROID_TOOLCHAINS_DIR} && \
     unzip -q android-ndk-r14b-linux-x86_64.zip && \
     mv android-ndk-r14b ${ANDROID_NDK_HOME} && \
     rm -rf /opt/android-ndk-tmp
-
-CMD ["bash", "/paddle/paddle/scripts/docker/build_android.sh"]

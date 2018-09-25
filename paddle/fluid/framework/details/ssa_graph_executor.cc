@@ -17,11 +17,20 @@
 namespace paddle {
 namespace framework {
 namespace details {
-
-SSAGraphExecutor::SSAGraphExecutor(std::unique_ptr<SSAGraph> &&graph)
-    : graph_(std::move(graph)) {}
-
 SSAGraphExecutor::~SSAGraphExecutor() {}
+
+void ClearFetchOp(ir::Graph* graph,
+                  std::vector<std::unique_ptr<FetchOpHandle>>* fetch_ops) {
+  if (fetch_ops->empty()) return;
+
+  for (auto& op : *fetch_ops) {
+    for (auto& out_var : op->Node()->outputs) {
+      graph->RemoveNode(out_var);
+    }
+    graph->RemoveNode(op->Node());
+  }
+  fetch_ops->clear();
+}
 
 }  // namespace details
 }  // namespace framework

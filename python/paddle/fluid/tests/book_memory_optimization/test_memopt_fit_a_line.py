@@ -12,11 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
-import paddle
-import paddle.fluid as fluid
+from __future__ import print_function
+
 import math
 import sys
+
+import paddle
+import paddle.fluid as fluid
+from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 
 # need to fix random seed and training data to compare the loss
 # value accurately calculated by the default and the memory optimization
@@ -34,8 +38,8 @@ if fluid.core.is_compiled_with_cuda():
     use_nccl = False
     place = fluid.CUDAPlace(0)
 
-places = fluid.layers.get_places(device_count=0, device_type=device_type)
-pd = fluid.layers.ParallelDo(places, use_nccl=use_nccl)
+places = get_places(device_count=0, device_type=device_type)
+pd = ParallelDo(places, use_nccl=use_nccl)
 with pd.do():
     x_ = pd.read_input(x)
     y_ = pd.read_input(y)
@@ -56,7 +60,7 @@ BATCH_SIZE = 200
 
 # fix the order of training data
 train_reader = paddle.batch(
-    paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE)
+    paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE, drop_last=False)
 
 # train_reader = paddle.batch(
 #     paddle.reader.shuffle(
@@ -77,7 +81,7 @@ for pass_id in range(PASS_NUM):
 
         if avg_loss_value[0] < 10.0:
             exit(0)  # if avg cost less than 10.0, we think our code is good.
-        print avg_loss_value[0]
+        print(avg_loss_value[0])
         if math.isnan(float(avg_loss_value)):
             sys.exit("got NaN loss, training failed.")
 exit(1)

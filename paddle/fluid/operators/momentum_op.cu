@@ -30,7 +30,7 @@ __global__ void MomentumKernel(const T* p, const T* g, const T* v,
       T g_val = g[i];
       T v_new = v[i] * mu + g_val;
       v_out[i] = v_new;
-      p_out[i] = p[i] - (g_val - v_new * mu) * lr;
+      p_out[i] = p[i] - (g_val + v_new * mu) * lr;
     }
   } else {
     for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < num;

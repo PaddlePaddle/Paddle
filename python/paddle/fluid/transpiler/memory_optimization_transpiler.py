@@ -12,10 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections import defaultdict
+from __future__ import print_function
+
+from collections import defaultdict, OrderedDict, Callable
 from .. import core
+from ... import compat as cpt
 from ..framework import Program, default_main_program, Parameter, Variable
 from ..backward import _rename_arg_
+from functools import reduce
+from six.moves import range
 
 dtype_to_size = {
     core.VarDesc.VarType.FP16: 2,
@@ -24,7 +29,8 @@ dtype_to_size = {
     core.VarDesc.VarType.INT16: 2,
     core.VarDesc.VarType.INT32: 4,
     core.VarDesc.VarType.INT64: 8,
-    core.VarDesc.VarType.BOOL: 1
+    core.VarDesc.VarType.BOOL: 1,
+    core.VarDesc.VarType.UINT8: 1,
 }
 
 SUB_BLOCK_OPS = [
@@ -50,6 +56,7 @@ class ControlFlowGraph(object):
         self._live_in = defaultdict(set)
         self._live_out = defaultdict(set)
         self._skip_opt = skip_opt
+        self.pool = []
 
     def _add_connections(self, connections):
         """Populates _successors and _presuccessors for two neighbor nodes."""
@@ -71,6 +78,7 @@ class ControlFlowGraph(object):
         for i in range(self.op_size):
             self._uses[i].update(self._ops[i].input_arg_names())
             self._defs[i].update(self._ops[i].output_arg_names())
+            self._live_in[i] = self._uses[i]
 
     def _update_graph(self, old_name, new_name, begin_idx=0):
         for i in range(begin_idx, self.op_size):
@@ -82,39 +90,41 @@ class ControlFlowGraph(object):
                 self._defs[i].add(new_name)
             if old_name in self._live_in[i]:
                 self._live_in[i].remove(old_name)
-                self._live_out[i].add(new_name)
+                self._live_in[i].add(new_name)
             if old_name in self._live_out[i]:
                 self._live_out[i].remove(old_name)
                 self._live_out[i].add(new_name)
 
-    def _reach_fixed_point(self, live_in, live_out):
-        """Check if the liveness set has stablized."""
-        if len(live_in) != len(self._live_in):
-            return False
-        if len(live_out) != len(self._live_out):
-            return False
-        for i in range(self.op_size):
-            if (live_in[i] != self._live_in[i] or
-                    live_out[i] != self._live_out[i]):
-                return False
-        return True
-
     def _dataflow_analyze(self):
         self._build_graph()
         live_in = defaultdict(set)
-        live_out = defaultdict(set)
-        # Repeatedly apply liveness updates until the algorithm stablize
-        # on a complete set live input vars and live output vars.
-        while True:
-            for i in range(self.op_size, 0, -1):
-                live_in[i] = set(self._live_in[i])
-                live_out[i] = set(self._live_out[i])
-                for s in self._successors[i]:
-                    self._live_out[i] |= self._live_in[s]
-                self._live_in[i] = self._uses[i] | (
-                    self._live_out[i] - self._defs[i])
-            if self._reach_fixed_point(live_in, live_out):
-                break
+        worklist = list(range(len(self._ops) - 1, -1, -1))
+        while worklist:
+            i = worklist.pop(0)
+            live_in[i] = set(self._live_in[i])
+            for s in self._successors[i]:
+                self._live_out[i] |= self._live_in[s]
+            self._live_in[i] = self._uses[i] | (
+                self._live_out[i] - self._defs[i])
+            if live_in[i] != self._live_in[i]:
+                for d in self._presuccessors[i]:
+                    worklist.append(d)
+
+    def _fill_pool(self, i, is_forward):
+        block_desc = self._ops[i].block()
+        in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
+        # NOTE: must sort the in_diff set for cases that get different cache var.
+        # FIXME(typhoonzero): maybe use a "sorted set" is better than this.
+        can_optimize = [
+            x for x in sorted(list(in_diff))
+            if self._check_var_validity(block_desc, x, is_forward)
+        ]
+        if can_optimize:
+            for var_name in can_optimize:
+                cache = (var_name, self._find_var(block_desc, var_name,
+                                                  is_forward).shape())
+                if cache not in self.pool:
+                    self.pool.append(cache)
 
     def _get_diff(self, a, b):
         u = a & b
@@ -122,15 +132,15 @@ class ControlFlowGraph(object):
 
     def _has_var(self, block_desc, var_name, is_forward):
         if is_forward:
-            return block_desc.has_var(str(var_name))
+            return block_desc.has_var(cpt.to_bytes(var_name))
         else:
-            return block_desc.has_var_recursive(str(var_name))
+            return block_desc.has_var_recursive(cpt.to_bytes(var_name))
 
     def _find_var(self, block_desc, var_name, is_forward):
         if is_forward:
-            return block_desc.find_var(str(var_name))
+            return block_desc.find_var(cpt.to_bytes(var_name))
         else:
-            return block_desc.find_var_recursive(str(var_name))
+            return block_desc.find_var_recursive(cpt.to_bytes(var_name))
 
     def _check_var_validity(self, block_desc, x, is_forward):
         if str(x) == "@EMPTY@":
@@ -156,9 +166,11 @@ class ControlFlowGraph(object):
             if op.type() == "fill_constant" and op.attr("force_cpu") == True:
                 self._skip_opt.update(op.output_arg_names())
 
-    def release_memory(self):
+    def release_memory(self, skip_opt_set=None):
         self._dataflow_analyze()
         self._update_skip_opt_set()
+        if skip_opt_set:
+            self._skip_opt.update(skip_opt_set)
         fwd_id = 0
         bwd_id = 0
         for i in range(self.op_size):
@@ -169,12 +181,13 @@ class ControlFlowGraph(object):
             is_forward = i < self._forward_num
             in_diff, out_diff = self._get_diff(self._live_in[i],
                                                self._live_out[i])
-            can_optimize = filter(
-                lambda x: self._check_var_validity(block_desc, x, is_forward),
-                in_diff)
+            can_optimize = [
+                x for x in in_diff
+                if self._check_var_validity(block_desc, x, is_forward)
+            ]
             if can_optimize:
                 index = i + fwd_id + 1 if is_forward else i - self._forward_num + bwd_id + 1
-                delete_op = block_desc.insert_op(index)
+                delete_op = block_desc._insert_op(index)
                 delete_op.set_type("delete_var")
                 delete_op.set_input("X", can_optimize)
                 if is_forward:
@@ -182,7 +195,7 @@ class ControlFlowGraph(object):
                 else:
                     bwd_id += 1
 
-    def memory_optimize(self, level=0):
+    def memory_optimize(self, skip_opt_set=None, level=0):
         def compare_shape(x_shape, cache_shape, opt_level):
             if opt_level == 0:
                 return x_shape == cache_shape
@@ -199,7 +212,9 @@ class ControlFlowGraph(object):
 
         self._dataflow_analyze()
         self._update_skip_opt_set()
-        self.pool = []
+        # update skip set to meet users' demand
+        if skip_opt_set:
+            self._skip_opt.update(skip_opt_set)
         for i in range(self.op_size):
             op = self._ops[i]
             if op.type() in SUB_BLOCK_OPS:
@@ -207,9 +222,11 @@ class ControlFlowGraph(object):
             block_desc = op.block()
             is_forward = i < self._forward_num
             if self.pool:
-                defs_can_optimize = filter(
-                    lambda x: self._check_var_validity(block_desc, x, is_forward),
-                    self._defs[i])
+                # NOTE: must sort the in_diff set for cases that get different cache var.
+                defs_can_optimize = [
+                    x for x in sorted(list(self._defs[i]))
+                    if self._check_var_validity(block_desc, x, is_forward)
+                ]
                 out_pair = [
                     (x, self._find_var(block_desc, x, is_forward).shape())
                     for x in defs_can_optimize
@@ -221,16 +238,24 @@ class ControlFlowGraph(object):
                     for index, cache_pair in enumerate(self.pool):
                         cache_var = cache_pair[0]
                         cache_shape = cache_pair[1]
-                        if not compare_shape(x_shape, cache_shape, level):
-                            continue
-
                         if not self._has_var(block_desc, cache_var, is_forward):
+                            if PRINT_LOG:
+                                print("cache %s not exists!" %
+                                      (cpt.to_text(cache_var)))
                             continue
+                        if x == cache_var:
+                            if PRINT_LOG:
+                                print("x : ", cpt.to_text(x), " cache : ",
+                                      cpt.to_text(cache_var), " is same var!")
+                            break
 
                         x_dtype = self._find_var(block_desc, x,
                                                  is_forward).dtype()
                         cache_dtype = self._find_var(block_desc, cache_var,
                                                      is_forward).dtype()
+
+                        if not compare_shape(x_shape, cache_shape, level):
+                            continue
                         # TODO(qijun): actually, we should compare
                         # dtype_to_size[x_dtype] and dtype_to_size[cache_dtype]
                         if x_dtype != cache_dtype:
@@ -243,25 +268,17 @@ class ControlFlowGraph(object):
                                    "var shape is %s ") % (index, x, cache_var,
                                                           str(cache_shape)))
                         self.pool.pop(index)
-                        if x == cache_var:
-                            break
                         # Rename the var to the cache var already with
                         # memory allocated in order to reuse the memory.
                         _rename_arg_(self._ops, x, cache_var, begin_idx=i)
-                        self._program.block(block_desc.id).var(str(
+                        self._program.block(block_desc.id).var(cpt.to_text(
                             x)).desc = self._find_var(block_desc, cache_var,
                                                       is_forward)
+                        self._program.block(block_desc.id).vars[cpt.to_text(x)] = \
+                            Variable(self._program.block(block_desc.id), name=cpt.to_text(x))
                         self._update_graph(x, cache_var, begin_idx=i)
                         break
-
-            in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
-            can_optimize = filter(
-                lambda x: self._check_var_validity(block_desc, x, is_forward),
-                in_diff)
-            if can_optimize:
-                for var_name in can_optimize:
-                    self.pool.append((var_name, self._find_var(
-                        block_desc, var_name, is_forward).shape()))
+            self._fill_pool(i, is_forward)
 
 
 def _process_sub_block_pair(pdesc, sub_block_pair):
@@ -318,6 +335,8 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
             sub_op_output.update(sub_op_dict[grad_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
+            sub_op_output.update(sub_op_dict[grad_id].input_arg_names())
             ops_list.append((sub_block_ops, block_op_size, sub_op_output))
 
         # Process rest fwd_op block ops
@@ -329,6 +348,7 @@ def _process_sub_block_pair(pdesc, sub_block_pair):
                 sub_block_ops.append(sub_block.op(i))
             sub_op_output = set()
             sub_op_output.update(sub_op_dict[fwd_id].output_arg_names())
+            sub_op_output.update(sub_op_dict[fwd_id].input_arg_names())
             ops_list.append((sub_block_ops, sub_block_op_size, sub_op_output))
     return ops_list
 
@@ -340,16 +360,20 @@ def _get_cfgs(input_program):
     :return: A list of ControlFlowGraph, each corresponds to a block.
     """
     ops_list = []
-    pdesc = input_program.get_desc()
+    pdesc = input_program._get_desc()
     block_desc = pdesc.block(0)
     op_size = block_desc.op_size()
-    # Get global block ops
-    ops_list.append(
-        ([block_desc.op(i) for i in range(op_size)], op_size, set()))
 
     # Only process one level of nested subblock.
     ops_list.extend(_process_sub_block_pair(pdesc, SUB_BLOCK_PAIR))
 
+    skip_opt_set = set()
+    for _, _, skip_opt in ops_list:
+        skip_opt_set.update(skip_opt)
+
+    # Get global block ops
+    ops_list.insert(
+        0, ([block_desc.op(i) for i in range(op_size)], op_size, skip_opt_set))
     cfgs = [
         ControlFlowGraph(input_program, ops, forward_num, skip_opt)
         for ops, forward_num, skip_opt in ops_list
@@ -357,15 +381,18 @@ def _get_cfgs(input_program):
     return cfgs
 
 
-def memory_optimize(input_program, print_log=False, level=0):
+def memory_optimize(input_program, skip_opt_set=None, print_log=False, level=0):
     """Optimize memory by reusing var memory.
 
       Note: it doesn't not support subblock nested in subblock.
 
-    :param input_program: Input Program
-    :param print_log: whether to print debug log.
-    :param level: If level=0, reuse if the shape is completely equal, o
-    :return:
+    Args:
+        input_program(str): Input Program
+        skip_opt_set(set): vars wil be skipped in memory optimze
+        print_log(bool): whether to print debug log.
+        level(int): If level=0, reuse if the shape is completely equal, o
+    Returns:
+        None
     """
     if level != 0 and level != 1:
         raise ValueError("only support opt_level 0 or 1.")
@@ -373,10 +400,23 @@ def memory_optimize(input_program, print_log=False, level=0):
     PRINT_LOG = print_log
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.memory_optimize(level)
+        cfg.memory_optimize(skip_opt_set=skip_opt_set, level=level)
 
 
-def release_memory(input_program):
+def release_memory(input_program, skip_opt_set=None):
+    """
+    Modify the input program and insert :code:`delete_op` to early drop not used
+    variables. The modification will be performed inplace.
+
+    Notes: This is an experimental API and could be removed in next few
+    releases. Users should not use this API.
+
+    Args:
+        input_program(Program): The program will be inserted :code:`delete_op`.
+        skip_opt_set(set): vars wil be skipped in memory optimze
+    Returns:
+        None
+    """
     cfgs = _get_cfgs(input_program)
     for cfg in cfgs:
-        cfg.release_memory()
+        cfg.release_memory(skip_opt_set=skip_opt_set)

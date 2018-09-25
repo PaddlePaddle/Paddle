@@ -69,11 +69,13 @@ void PushEvent(const std::string& name, const DeviceContext* dev_ctx);
 
 void PopEvent(const std::string& name, const DeviceContext* dev_ctx);
 
+#if !defined(_WIN32)
 struct RecordEvent {
   RecordEvent(const std::string& name, const DeviceContext* dev_ctx);
 
   ~RecordEvent();
 
+  bool is_enabled_;
   uint64_t start_ns_;
   // The device context is used by Event to get the current cuda stream.
   const DeviceContext* dev_ctx_;
@@ -89,14 +91,19 @@ struct RecordBlock {
   ~RecordBlock();
 
  private:
+  bool is_enabled_;
   std::string name_;
   uint64_t start_ns_;
 };
-
-struct RecordThread {
-  explicit RecordThread(int thread_id);
-  ~RecordThread();
+#else
+// windows do not support profiler temporarily.
+struct RecordEvent {
+  RecordEvent(const std::string& name, const DeviceContext* dev_ctx) {}
 };
+struct RecordBlock {
+  explicit RecordBlock(int block_id) {}
+};
+#endif
 
 // Return the event list of all threads. Assumed the returned value calls
 // event_lists, event_lists[i][j] represents the j-th Event of i-th thread.
@@ -114,6 +121,8 @@ void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
 
+const int kEnableProfiler = 1;
+const int kDisableProfiler = 2;
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.

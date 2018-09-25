@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <memory>
 #include <mutex>  // NOLINT
 #include <set>
 #include <tuple>
@@ -32,8 +33,8 @@ namespace detail {
 
 class BuddyAllocator {
  public:
-  BuddyAllocator(SystemAllocator* system_allocator, size_t min_chunk_size,
-                 size_t max_chunk_size);
+  BuddyAllocator(std::unique_ptr<SystemAllocator> system_allocator,
+                 size_t min_chunk_size, size_t max_chunk_size);
 
   ~BuddyAllocator();
 
@@ -41,6 +42,8 @@ class BuddyAllocator {
   void* Alloc(size_t unaligned_size);
   void Free(void* ptr);
   size_t Used();
+  size_t GetMinChunkSize();
+  size_t GetMaxChunkSize();
 
  public:
   // Disable copy and assignment
@@ -103,7 +106,7 @@ class BuddyAllocator {
 
  private:
   /*! Allocate CPU/GPU memory from system */
-  SystemAllocator* system_allocator_;
+  std::unique_ptr<SystemAllocator> system_allocator_;
   std::mutex mutex_;
 };
 

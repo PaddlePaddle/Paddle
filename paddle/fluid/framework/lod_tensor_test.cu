@@ -17,9 +17,9 @@
 #include <stdio.h>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/platform/assert.h"
+#include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/place.h"
 
 __global__ void test(size_t* a, int size) {

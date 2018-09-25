@@ -52,7 +52,7 @@ In `trainer_internal.cpp:L93 trainOneBatch`:
 
 When doing actual network forward and backward, at the beginning of each batch, the trainer will try to download one row of data from pserver.
 
-In `trainer/RemoteParameterUpdater.cpp`: `parameterUpdater_->getParametersRemote();`:
+In `legacy/trainer/RemoteParameterUpdater.cpp`: `parameterUpdater_->getParametersRemote();`:
 
 ```c++
 if (fullSize) {

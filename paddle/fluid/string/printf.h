@@ -84,6 +84,13 @@ void Fprintf(std::ostream& out, const char* fmt, const Args&... args) {
 }
 
 template <typename... Args>
+std::string Sprintf(const Args&... args) {
+  std::ostringstream oss;
+  Fprintf(oss, "");
+  return oss.str();
+}
+
+template <typename... Args>
 std::string Sprintf(const char* fmt, const Args&... args) {
   std::ostringstream oss;
   Fprintf(oss, fmt, args...);

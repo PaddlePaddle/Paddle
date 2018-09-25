@@ -146,6 +146,6 @@ REGISTER_UNARY_LOGICAL_OP(logical_not, "$$Out = !X$$");
 REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CPU,
                               paddle::operators::LogicalNotFunctor);
 REGISTER_BINARY_LOGICAL_OP(logical_xor,
-                           "$$Out = (X || Y) \\, \\&\\& \\, !(X \\&\\& Y)$$");
+                           "$$Out = (X || Y) \\&\\& !(X \\&\\& Y)$$");
 REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CPU,
                                paddle::operators::LogicalXorFunctor);

@@ -14,26 +14,46 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include <unordered_set>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/framework.pb.h"
 namespace paddle {
 namespace framework {
 
+enum class OpRole {
+  kForward = 0x0000,
+  kBackward = 0x0001,
+  kOptimize = 0x0002,
+  // RPC role is for send/recv releated op
+  kRPC = 0x0003,
+  // Dist role is for split_byref/split_selected_rows/concat
+  // used for distributed training.
+  kDist = 0x0004,
+  // Tag all learning rate scheduler operators.
+  kLRSched = 0x0005,
+
+  kLoss = 0x0100,
+  // The default value of op's role. This should be only used for unittests and
+  // CreateOp inside a operator.
+  kNotSpecified = 0x1000,
+};
+
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
+  static const char *OpRoleAttrName() { return "op_role"; }
+  static const char *OpRoleVarAttrName() { return "op_role_var"; }
+  static const char *OpNamescopeAttrName() { return "op_namescope"; }
+
+  void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
+
   virtual void Make() = 0;
 
   virtual ~OpProtoAndCheckerMaker() {
     CHECK(validated_) << "should call Validate after build";
   }
-
-  void SetProto(proto::OpProto *proto) { proto_ = proto; }
-
-  void SetChecker(OpAttrChecker *attr_checker) { op_checker_ = attr_checker; }
-
-  void Validate();
 
  protected:
   struct VariableBuilder {
@@ -53,12 +73,19 @@ class OpProtoAndCheckerMaker {
       var_->set_dispensable(true);
       return *this;
     }
+
+    VariableBuilder &Reuse(const std::string &name) {
+      var_->set_reuse(name);
+      return *this;
+    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);
 
   VariableBuilder AddOutput(const std::string &name,
                             const std::string &comment);
+
+  void Reuse(const std::string &name, const std::string &reused_name);
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,
@@ -76,6 +103,9 @@ class OpProtoAndCheckerMaker {
 
  private:
   void CheckNoDuplicatedInOutAttrs();
+  void Validate();
+
+  void CheckReuseVars();
 
   proto::OpProto *proto_;
   OpAttrChecker *op_checker_;

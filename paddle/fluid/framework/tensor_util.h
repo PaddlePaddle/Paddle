@@ -23,10 +23,25 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+// NOTE(zcd): Because TensorCopy is an async operation, when the src_place
+// and dst_place are two different GPU, to ensure that the operation can
+// be carried out correctly, there is a src_ctx wait operation in TensorCopy.
+// If ctx_place and src_place are the same, src_ctx.Wait() is added
+// after memory::Copy; if ctx_place and dst_place are the same,
+// src_ctx.Wait() is added before memory::Copy.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst);
+
+// NOTE(zcd): If the src.place() and dst_place are two different GPU,
+// the copy operation is carried out on the dst_place's stream. This is
+// very important, because TensorCopy is an async operator, and in most
+// case, once this copy operator returns, dst is to be used in dst_place's
+// stream, if this copy operation is carried out on the src_place's stream,
+// when dst is used in dst_place's stream the copy operation may be
+// not completed.
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 Tensor* dst);
+
 void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
                     Tensor* dst);
 

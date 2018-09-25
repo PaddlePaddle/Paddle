@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 
-#include <dlfcn.h>
-
 #include <memory>
 #include <mutex>  // NOLINT
 #include <string>
@@ -23,6 +21,7 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "paddle/fluid/platform/dynload/cupti_lib_path.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/port.h"
 
 DEFINE_string(cudnn_dir, "",
               "Specify path for loading libcudnn.so. For instance, "
@@ -36,8 +35,6 @@ DEFINE_string(cuda_dir, "",
 
 DEFINE_string(warpctc_dir, "", "Specify path for loading libwarpctc.so.");
 
-DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
-
 DEFINE_string(nccl_dir, "",
               "Specify path for loading nccl library, such as libcublas, "
               "libcurand. For instance, /usr/local/cuda/lib64. If default, "
@@ -48,6 +45,8 @@ DEFINE_string(cupti_dir, "", "Specify path for loading cupti.so.");
 DEFINE_string(
     tensorrt_dir, "",
     "Specify path for loading tensorrt library, such as libnvinfer.so.");
+
+DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
 namespace paddle {
 namespace platform {
@@ -76,6 +75,7 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   VLOG(3) << "Try to find library: " << dso_path
           << " from default system path.";
   // default search from LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
+  // and /usr/local/lib path
   void* dso_handle = dlopen(dso_path.c_str(), dynload_flags);
 
 // DYLD_LIBRARY_PATH is disabled after Mac OS 10.11 to
@@ -97,6 +97,10 @@ static inline void* GetDsoHandleFromDefaultPath(const std::string& dso_path,
   }
 #endif
 
+  if (nullptr == dso_handle) {
+    LOG(WARNING) << "Can not find library: " << dso_path
+                 << ". Please try to add the lib path to LD_LIBRARY_PATH.";
+  }
   return dso_handle;
 }
 
@@ -117,6 +121,12 @@ static inline void* GetDsoHandleFromSearchPath(const std::string& search_root,
     if (nullptr == dso_handle) {
       LOG(WARNING) << "Failed to find dynamic library: " << dlPath << " ("
                    << dlerror() << ")";
+      if (dlPath.find("nccl") != std::string::npos) {
+        std::cout
+            << "You may need to install 'nccl2' from NVIDIA official website: "
+            << "https://developer.nvidia.com/nccl/nccl-download"
+            << "before install PaddlePaddle" << std::endl;
+      }
       dlPath = dso_name;
       dso_handle = GetDsoHandleFromDefaultPath(dlPath, dynload_flags);
     }
@@ -182,14 +192,6 @@ void* GetWarpCTCDsoHandle() {
 #endif
 }
 
-void* GetLapackDsoHandle() {
-#if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.dylib");
-#else
-  return GetDsoHandleFromSearchPath(FLAGS_lapack_dir, "liblapacke.so");
-#endif
-}
-
 void* GetNCCLDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_nccl_dir, "libnccl.dylib");
@@ -203,6 +205,14 @@ void* GetTensorRtDsoHandle() {
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.dylib");
 #else
   return GetDsoHandleFromSearchPath(FLAGS_tensorrt_dir, "libnvinfer.so");
+#endif
+}
+
+void* GetMKLMLDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_mklml_dir, "libmklml_intel.so");
 #endif
 }
 

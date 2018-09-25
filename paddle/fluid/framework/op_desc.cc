@@ -20,6 +20,7 @@ limitations under the License. */
 #include <unordered_map>
 #include "glog/logging.h"
 #include "paddle/fluid/framework/block_desc.h"
+#include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/shape_inference.h"
@@ -53,6 +54,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                 size_t j = 0) const override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
+    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", in, i);
+    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
+                   "The %s[%d] is @EMPTY@", out, j);
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
     if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
@@ -62,6 +67,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     PADDLE_ENFORCE_EQ(in_var->GetType(), proto::VarType::LOD_TENSOR,
                       "The %d-th output of Output(%s) must be LoDTensor.", j,
                       out);
+
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
@@ -94,6 +100,12 @@ OpDesc::OpDesc(const std::string &type, const VariableNameMap &inputs,
   need_update_ = true;
 }
 
+OpDesc::OpDesc(const OpDesc &other, BlockDesc *block) {
+  CopyFrom(other);
+  block_ = block;
+  need_update_ = true;
+}
+
 void OpDesc::CopyFrom(const OpDesc &op_desc) {
   desc_.set_type(op_desc.Type());
   inputs_ = op_desc.inputs_;
@@ -102,7 +114,7 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   need_update_ = true;
 }
 
-OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
+OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
     : desc_(desc), need_update_(false) {
   // restore inputs_
   int input_size = desc_.inputs_size();
@@ -130,8 +142,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, ProgramDesc *prog, BlockDesc *block)
   for (const proto::OpDesc::Attr &attr : desc_.attrs()) {
     std::string attr_name = attr.name();
     // The sub_block referred to by the BLOCK attr hasn't been added
-    // to ProgramDesc class yet, we skip setting BLOCK attr here.
-    if (attr.type() != proto::AttrType::BLOCK) {
+    // to ProgramDesc class yet, we skip setting BLOCK/BLOCKS attr here.
+    if (attr.type() != proto::AttrType::BLOCK &&
+        attr.type() != proto::AttrType::BLOCKS) {
       attrs_[attr_name] = GetAttrValue(attr);
     }
   }
@@ -201,12 +214,64 @@ std::vector<std::string> OpDesc::AttrNames() const {
 }
 
 void OpDesc::SetAttr(const std::string &name, const Attribute &v) {
+  // NOTICE(minqiyang): pybind11 will take the empty list in python as
+  // the std::vector<int> type in C++; so we have to change the attr's type
+  // here if we meet this issue
+  proto::AttrType attr_type = static_cast<proto::AttrType>(v.which() - 1);
+  if (attr_type == proto::AttrType::INTS &&
+      boost::get<std::vector<int>>(v).size() == 0u) {
+    // Find current attr via attr name and set the correct attribute value
+    const proto::OpProto::Attr &attr = GetProtoAttr(name);
+    switch (attr.type()) {
+      case proto::AttrType::BOOLEANS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BOOLEANS";
+        this->attrs_[name] = std::vector<bool>();
+        break;
+      }
+      case proto::AttrType::INTS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to INTS";
+        this->attrs_[name] = std::vector<int>();
+        break;
+      }
+      case proto::AttrType::FLOATS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to FLOATS";
+        this->attrs_[name] = std::vector<float>();
+        break;
+      }
+      case proto::AttrType::STRINGS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to STRINGS";
+        this->attrs_[name] = std::vector<std::string>();
+        break;
+      }
+      case proto::AttrType::BLOCKS: {
+        VLOG(11) << "SetAttr: " << Type() << ", " << name
+                 << " from INTS to BLOCKS";
+        this->SetBlocksAttr(name, std::vector<BlockDesc *>());
+        return;
+      }
+      default:
+        PADDLE_THROW("Wrong attr type %d", attr.type());
+    }
+    need_update_ = true;
+    return;
+  }
+
   this->attrs_[name] = v;
   need_update_ = true;
 }
 
 void OpDesc::SetBlockAttr(const std::string &name, BlockDesc *block) {
   this->attrs_[name] = block;
+  need_update_ = true;
+}
+
+void OpDesc::SetBlocksAttr(const std::string &name,
+                           std::vector<BlockDesc *> blocks) {
+  this->attrs_[name] = blocks;
   need_update_ = true;
 }
 
@@ -222,7 +287,42 @@ Attribute OpDesc::GetAttr(const std::string &name) const {
   return it->second;
 }
 
-int OpDesc::GetBlockAttr(const std::string &name) const {
+const proto::OpProto::Attr &OpDesc::GetProtoAttr(
+    const std::string &name) const {
+  const proto::OpProto &proto = OpInfoMap::Instance().Get(Type()).Proto();
+  for (int i = 0; i != proto.attrs_size(); ++i) {
+    const proto::OpProto::Attr &attr = proto.attrs(i);
+    if (attr.name() == name) {
+      return attr;
+    }
+  }
+
+  PADDLE_THROW("Attribute %s is not found in proto %s", name, proto.type());
+}
+
+Attribute OpDesc::GetNullableAttr(const std::string &name) const {
+  auto it = attrs_.find(name);
+  if (it != attrs_.end()) {
+    return it->second;
+  } else {
+    return Attribute();
+  }
+}
+
+std::vector<int> OpDesc::GetBlocksAttrIds(const std::string &name) const {
+  auto it = attrs_.find(name);
+  PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
+  auto blocks = boost::get<std::vector<BlockDesc *>>(it->second);
+
+  std::vector<int> ids;
+  for (auto n : blocks) {
+    ids.push_back(n->ID());
+  }
+
+  return ids;
+}
+
+int OpDesc::GetBlockAttrId(const std::string &name) const {
   auto it = attrs_.find(name);
   PADDLE_ENFORCE(it != attrs_.end(), "Attribute %s is not found", name);
   return boost::get<BlockDesc *>(it->second)->ID();
@@ -233,13 +333,8 @@ const std::unordered_map<std::string, Attribute> &OpDesc::GetAttrMap() const {
 }
 
 void OpDesc::Rename(const std::string &old_name, const std::string &new_name) {
-  for (auto &input : inputs_) {
-    std::replace(input.second.begin(), input.second.end(), old_name, new_name);
-  }
-  for (auto &output : outputs_) {
-    std::replace(output.second.begin(), output.second.end(), old_name,
-                 new_name);
-  }
+  RenameInput(old_name, new_name);
+  RenameOutput(old_name, new_name);
   need_update_ = true;
 }
 
@@ -249,6 +344,13 @@ void OpDesc::RenameOutput(const std::string &old_name,
     std::replace(output.second.begin(), output.second.end(), old_name,
                  new_name);
   }
+
+  auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (it != attrs_.end()) {
+    auto &op_vars = boost::get<std::vector<std::string>>(it->second);
+    std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
+  }
+
   need_update_ = true;
 }
 
@@ -257,6 +359,13 @@ void OpDesc::RenameInput(const std::string &old_name,
   for (auto &input : inputs_) {
     std::replace(input.second.begin(), input.second.end(), old_name, new_name);
   }
+
+  auto it = attrs_.find(framework::OpProtoAndCheckerMaker::OpRoleVarAttrName());
+  if (it != attrs_.end()) {
+    auto &op_vars = boost::get<std::vector<std::string>>(it->second);
+    std::replace(op_vars.begin(), op_vars.end(), old_name, new_name);
+  }
+
   need_update_ = true;
 }
 
@@ -285,6 +394,13 @@ struct SetAttrDescVisitor : public boost::static_visitor<void> {
   }
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
+  }
+  void operator()(const std::vector<BlockDesc *> &v) const {
+    std::vector<int> blocks_idx;
+    for (auto blk : v) {
+      blocks_idx.push_back(blk->ID());
+    }
+    VectorToRepeated(blocks_idx, attr_->mutable_blocks_idx());
   }
   void operator()(BlockDesc *desc) const { attr_->set_block_idx(desc->ID()); }
   void operator()(int64_t v) const { attr_->set_l(v); }
@@ -330,7 +446,10 @@ static void InitInferShapeFuncs() {
 
     for (auto &kern_pair : OperatorWithKernel::AllOpKernels()) {
       auto op_type = kern_pair.first;
-      auto &op_info = info_map.at(op_type);
+      auto it = info_map.find(op_type);
+      PADDLE_ENFORCE(it != info_map.end(), "%s has not been registered",
+                     op_type);
+      auto &op_info = it->second;
       auto op = static_cast<OperatorWithKernel *>(op_info.Creator()(
           "", VariableNameMap{}, VariableNameMap{}, AttributeMap{}));
       if (op_info.infer_shape_) {  // infer_shape has been registered.
