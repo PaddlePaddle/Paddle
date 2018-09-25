@@ -38,7 +38,8 @@ def read_data(file_name):
         if member.name.endswith(file_name):
             tar_info = member
     f = tar.extractfile(tar_info)
-    return f.readlines()
+    ret_lines = [_.decode('utf-8') for _ in f.readlines()]
+    return ret_lines
 
 
 class TaskMode:
@@ -94,7 +95,7 @@ class ModelType:
 
 
 def load_dnn_input_record(sent):
-    return map(int, sent.split())
+    return list(map(int, sent.split()))
 
 
 def load_lr_input_record(sent):
@@ -162,9 +163,10 @@ def load_data_meta():
     lines = read_data('data.meta.txt')
     err_info = "wrong meta format"
     assert len(lines) == 2, err_info
-    assert b'dnn_input_dim:' in lines[0] and b'lr_input_dim:' in lines[
+    assert 'dnn_input_dim:' in lines[0] and 'lr_input_dim:' in lines[
         1], err_info
     res = map(int, [_.split(':')[1] for _ in lines])
+    res = list(res)
     logger.info('dnn input dim: %d' % res[0])
     logger.info('lr input dim: %d' % res[1])
     return res
