@@ -399,8 +399,8 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
                         "Output and elementwise parameter need to have the "
                         "same dimension sizes");
 
-      output_data = output->mutable_data<T>(ctx.GetPlace());
       output->ShareDataWith(*residual_param);
+      output_data = output->mutable_data<T>(ctx.GetPlace());
     } else {
       output_data =
           output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
