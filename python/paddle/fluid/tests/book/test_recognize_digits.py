@@ -146,9 +146,7 @@ def train(nn_type,
                                 params_filename=params_filename)
                         if save_full_dirname is not None:
                             fluid.io.save_inference_model(
-                                save_full_dirname,
-                                None,
-                                None,
+                                save_full_dirname, [], [],
                                 exe,
                                 model_filename=model_filename,
                                 params_filename=params_filename,
