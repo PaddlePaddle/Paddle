@@ -69,12 +69,11 @@ struct BuildStrategy {
 
   bool enable_data_balance_{false};
 
-  // The PassBuilder assembles passes based on the configs defined above.
-  // For example, if fuse_elewise_add_act_ops_ is true, the corresponding
-  // fuse pass will be added.
+  // User normally doesn't need to call this API.
   // The PassBuilder allows for more customized insert, remove of passes
-  // from python.
-  // A new PassBuilder is created and passes are owned by the PassBuilder.
+  // from python side.
+  // A new PassBuilder is created based on configs defined above and
+  // passes are owned by the PassBuilder.
   std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy() const;
 
   // Apply the passes built by the pass_builder_. The passes will be

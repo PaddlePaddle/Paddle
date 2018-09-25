@@ -702,7 +702,7 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, bool b) {
                       self.fuse_elewise_add_act_ops_ = b;
                     })
-      .def("create_passes_from_srategy",
+      .def("create_passes_from_strategy",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy();
            });
