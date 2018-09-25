@@ -30,14 +30,6 @@ TEST(COWPtr, all) {
   ASSERT_EQ(ptr2.Data(), 10);
 }
 
-TEST(COWPtr, change_old) {
-  COWPtr<int> ptr(new int{0});
-  COWPtr<int> ptr2 = ptr;
-  *ptr.MutableData() = 10;
-  ASSERT_EQ(ptr2.Data(), 0);
-  ASSERT_EQ(ptr.Data(), 10);
-}
-
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

@@ -51,12 +51,6 @@ class MultiDevSSAGraphBuilder : public ir::Pass {
   int CreateRPCOp(ir::Graph *result, ir::Node *node) const;
   int CreateDistTrainOp(ir::Graph *result, ir::Node *node) const;
 
-  /**
-   * Is this operator as the end-point operator before/after send operator.
-   */
-  bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
-                     const std::vector<std::string> &recv_vars) const;
-
   std::vector<std::string> FindDistTrainSendVars(
       const std::vector<ir::Node *> &nodes) const;
 
