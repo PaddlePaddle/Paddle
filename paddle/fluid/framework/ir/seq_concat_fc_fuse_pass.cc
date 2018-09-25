@@ -24,226 +24,164 @@ namespace ir {
 
 struct FuseExpr {};
 
-// sequence expand, concat fuse pattern, return concat's output
-PDNode* BuildSeqExpandConcatPattern(PDPattern* pattern) {
-  // The following operators will be fused:
-  // concat
-  // sequence_expand
-  // sequence_expand
+namespace patterns {
 
-  // The following variables will be treat as inputs:
-  // concat mid input, 0th input for fused op
-  // sequence_expand input, 1th input for fused op
-  // sequence_expand input, 2th input for fused op
-
-  // The following variables will be treat as outputs:
-  // concat output
-
-  // So the following variables will be removed:
-  // sequence-expand output
-  // sequence-expand output
-
-  // Three operators
-  auto* sequence_expand0 = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "sequence_expand";
-      },
-      "sequence_expand0");
-
-  auto* sequence_expand1 = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "sequence_expand";
-      },
-      "sequence_expand1");
-
-  auto* concat = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "concat" &&  // basic check
-               x->Op()->Input("X").size() == 3;                  // Special case
-      },
-      "concat");
-
-  auto* sequence_expand0_in = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() && VarLinksToOp(x, "sequence_expand");
-      },
-      "sequence_expand0_in");
-  auto* sequence_expand1_in = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() && VarLinksToOp(x, "sequence_expand");
-      },
-      "sequence_expand1_in");
-
-  // The variables
-  auto* sequence_expand0_out = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&
-               VarLinksFromOp(x, "sequence_expand") &&  // basic check
-               VarLinksToOp(x, "concat") &&             // is concat's input
-               IsNthInput(x, x->outputs[0], "X", 1);    // X[0]
-      },
-      "sequence_expand0_out");
-
-  auto* sequence_expand1_out = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&
-               VarLinksFromOp(x, "sequence_expand") &&  // basic check
-               VarLinksToOp(x, "concat") &&             // is concat's input
-               IsNthInput(x, x->outputs[0], "X", 2);    // x[2]
-      },
-      "sequence_expand1_out");
-
-  auto* concat_in0 = pattern->NewNode(
-      [](Node* x) { return x && x->IsVar() && VarLinksToOp(x, "concat"); },
-      "concat_in0");
-
-  auto* concat_out = pattern->NewNode(
-      [](Node* x) { return x && x->IsVar() && VarLinksFromOp(x, "concat"); },
-      "concat_out");
-
-  // Links
-  sequence_expand0->LinksFrom({sequence_expand0_in})
-      .LinksTo({sequence_expand0_out});
-  sequence_expand1->LinksFrom({sequence_expand1_in})
-      .LinksTo({sequence_expand1_out});
-  concat->LinksFrom({sequence_expand0_out, sequence_expand1_out, concat_in0})
+// sequence expand and concat fusion pattern, return concat's output
+PDNode* SeqConcatFCPattern::BuildSeqExpandConcatPattern(PDPattern* pattern,
+                                                        PDNode* x0, PDNode* x1,
+                                                        PDNode* y) {
+  // assert input
+  x0->assert_is_op_input("sequence_expand");
+  x1->assert_is_op_input("sequence_expand");
+  y->assert_is_op_input("concat");
+  // nodes of three operators
+  auto* seq_expand0_op =
+      pattern->NewNode(seq_expand0_repr())->assert_is_op("sequence_expand");
+  auto* seq_expand1_op =
+      pattern->NewNode(seq_expand1_repr())->assert_is_op("sequence_expand");
+  auto* concat_op = pattern->NewNode(concat_repr())->assert_is_op("concat");
+  // nodes of sequence_expand op output
+  auto* seq_expand0_out = pattern->NewNode(seq_expand0_out_repr())
+                              ->AsOutput()
+                              ->AsIntermediate()
+                              ->assert_is_op_output("sequence_expand")
+                              ->assert_is_op_input("concat");
+  auto* seq_expand1_out = pattern->NewNode(seq_expand1_out_repr())
+                              ->AsOutput()
+                              ->AsIntermediate()
+                              ->assert_is_op_output("sequence_expand")
+                              ->assert_is_op_input("concat");
+  // node of concat output
+  auto* concat_out = pattern->NewNode(concat_out_repr())
+                         ->AsOutput()
+                         ->AsIntermediate()
+                         ->assert_is_op_output("concat");
+  // create SeqExpandConcat pattern graph
+  seq_expand0_op->LinksFrom({x0}).LinksTo({seq_expand0_out});
+  seq_expand1_op->LinksFrom({x1}).LinksTo({seq_expand1_out});
+  concat_op->LinksFrom({seq_expand0_out, seq_expand1_out, y})
       .LinksTo({concat_out});
   return concat_out;
 }
+// generate patten dynamically for input node x.
+// return final output node of current pattern.
+PDNode* SeqConcatFCPattern::operator()(PDNode* x0, PDNode* x1, PDNode* y) {
+  // create sequence_expand and concat pattern
+  auto* concat_out = BuildSeqExpandConcatPattern(pattern, x0, x1, y);
+  concat_out->assert_is_op_input("mul");
 
-PDNode* BuildFCPattern(PDPattern* pattern, PDNode* fc_x) {
-  PDNode* fc_w = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&                 // basic
-               VarLinksToOp(x, "mul") &&          // link
-               x->Var()->Proto()->persistable();  // is a parameter
-      },
-      "fc_w");
+  // create fc operators
+  auto* mul_op = pattern->NewNode(mul_repr())->assert_is_op("mul");
+  auto* elementwise_add_op =
+      pattern->NewNode(elementwise_add_repr())->assert_is_op("elementwise_add");
 
-  PDNode* mul_out = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&                     // basic
-               VarLinksFromOp(x, "mul") &&            // link
-               VarLinksToOp(x, "elementwise_add") &&  //
-               !x->Var()->Proto()->persistable();     // is a parameter
-      },
-      "mul_out");
+  std::unordered_set<std::string> activation_types(
+      {"sigmoid", "tanh", "relu", "identity"});
+  auto* activation_op =
+      pattern->NewNode(activation_repr())->assert_is_any_op(activation_types);
 
-  PDNode* fc_mul = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "mul";  // basic
-      },
-      "fc_mul");
+  // create variables
+  auto* weight = pattern->NewNode(weight_repr())
+                     ->AsInput()
+                     ->assert_is_persistable_var()
+                     ->assert_is_op_input("mul", "Y");
 
-  PDNode* fc_bias = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&                     // basic
-               VarLinksToOp(x, "elementwise_add") &&  // link
-               x->Var()->Proto()->persistable();      // is a parameter
-      },
-      "fc_bias");
+  auto* bias = pattern->NewNode(bias_repr())
+                   ->AsInput()
+                   ->assert_is_persistable_var()
+                   ->assert_is_op_input("elementwise_add");
 
-  PDNode* elementwise_add = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsOp() && x->Op()->Type() == "elementwise_add";
-      },
-      "elementwise_add");
+  auto* mul_out = pattern->NewNode(mul_out_repr())
+                      ->AsOutput()
+                      ->AsIntermediate()
+                      ->assert_is_op_output("mul")
+                      ->assert_is_op_input("elementwise_add");
 
-  PDNode* add_out = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&                       // basic
-               VarLinksFromOp(x, "elementwise_add") &&  // link
-               !x->Var()->Proto()->persistable();       // is a parameter
-      },
-      "add_out");
+  auto* elementwise_add_out = pattern->NewNode(elementwise_add_out_repr())
+                                  ->AsOutput()
+                                  ->AsIntermediate()
+                                  ->assert_is_op_output("elementwise_add")
+                                  ->assert_is_any_op_input(activation_types);
 
-  std::set<std::string> acts({"sigmoid", "tanh", "relu", "identity"});
-  PDNode* act = pattern->NewNode(
-      [=](Node* x) {
-        return x && x->IsOp() && acts.count(x->Op()->Type());
+  auto* activation_out = pattern->NewNode(activation_out_repr())
+                             ->AsOutput()
+                             ->assert_is_any_op_output(activation_types);
 
-      },
-      "act");
-
-  PDNode* fc_out = pattern->NewNode(
-      [](Node* x) {
-        return x && x->IsVar() &&                  // basic
-               !x->Var()->Proto()->persistable();  // is a parameter
-      },
-      "fc_out");
-
-  fc_mul->LinksFrom({fc_w, fc_x}).LinksTo({mul_out});
-  elementwise_add->LinksFrom({mul_out, fc_bias}).LinksTo({add_out});
-  act->LinksFrom({add_out}).LinksTo({fc_out});
-  return fc_out;
+  // create pattern graph
+  mul_op->LinksFrom({concat_out, weight}).LinksTo({mul_out});
+  elementwise_add_op->LinksFrom({mul_out, bias}).LinksTo({elementwise_add_out});
+  activation_op->LinksFrom({elementwise_add_out}).LinksTo({activation_out});
+  // return activation output node
+  return activation_out;
 }
+
+}  // namespace patterns
 
 std::unique_ptr<ir::Graph> SeqConcatFcFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   FusePassBase::Init("seq_concat_fc_fuse", graph.get());
   GraphPatternDetector detector;
   auto* pattern = detector.mutable_pattern();
-  auto* concat_out = BuildSeqExpandConcatPattern(pattern);
-  BuildFCPattern(pattern, concat_out);
+  auto* x0 = pattern->NewNode("seq_concat_fc_fuse/x0")->AsInput();
+  auto* x1 = pattern->NewNode("seq_concat_fc_fuse/x1")->AsInput();
+  auto* y = pattern->NewNode("seq_concat_fc_fuse/y")->AsInput();
+  patterns::SeqConcatFCPattern fuse_pattern(pattern, "seq_concat_fc_fuse");
+  fuse_pattern(x0, x1, y);
 
-#define GET_NODE(id, pattern)                               \
-  PADDLE_ENFORCE(subgraph.count(pattern.RetrieveNode(#id)), \
-                 "pattern has no Node called %s", #id);     \
-  auto* id = subgraph.at(pattern.RetrieveNode(#id));        \
-  PADDLE_ENFORCE_NOT_NULL(id, "subgraph has no node %s", #id);
+  int fuse_count = 0;
 
-  int fuse_count{0};
+  detector(graph.get(),
+           [&](const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
+             VLOG(4) << "get one seq_concat_fc pattern";
+             // declare persistable vars
+             GET_IR_NODE_FROM_SUBGRAPH(weight, weight, fuse_pattern);
+             GET_IR_NODE_FROM_SUBGRAPH(bias, bias, fuse_pattern);
+             // used to get activation type
+             GET_IR_NODE_FROM_SUBGRAPH(act, activation, fuse_pattern);
+             // declare output
+             GET_IR_NODE_FROM_SUBGRAPH(out, activation_out, fuse_pattern);
+             // declare inputs
+             auto* seq_expand0_in = subgraph.at(x0);
+             auto* seq_expand1_in = subgraph.at(x1);
+             auto* concat_in0 = subgraph.at(y);
 
-  detector(graph.get(), [&](const GraphPatternDetector::subgraph_t& subgraph,
-                            Graph* graph) {
-    VLOG(4) << "get one concat pattern";
-    // fc
-    GET_NODE(fc_w, detector.pattern());
-    GET_NODE(fc_bias, detector.pattern());
-    GET_NODE(act, detector.pattern());
-    GET_NODE(fc_out, detector.pattern());
+             OpDesc op_desc;
+             op_desc.SetType("fusion_seqexpand_concat_fc");
+             op_desc.SetInput("X", {concat_in0->Name(), seq_expand0_in->Name(),
+                                    seq_expand1_in->Name()});
+             op_desc.SetInput("FCWeight", {weight->Name()});
+             op_desc.SetInput("FCBias", {bias->Name()});
 
-    // concat
-    GET_NODE(concat_in0, detector.pattern());
-    GET_NODE(sequence_expand0_in, detector.pattern());
-    GET_NODE(sequence_expand1_in, detector.pattern());
+             const std::string fc_out_tmp = out->Name() + ".tmp";
+             param_scope()->Var(fc_out_tmp)->GetMutable<framework::LoDTensor>();
+             op_desc.SetOutput("FCOut", {fc_out_tmp});
+             op_desc.SetOutput("Out", {out->Name()});
+             op_desc.SetAttr("fc_activation", act->Op()->Type());
 
-    OpDesc op_desc;
-    op_desc.SetType("fusion_seqexpand_concat_fc");
-    op_desc.SetInput("X", {concat_in0->Name(), sequence_expand0_in->Name(),
-                           sequence_expand1_in->Name()});
-    op_desc.SetInput("FCWeight", {fc_w->Name()});
-    op_desc.SetInput("FCBias", {fc_bias->Name()});
-    const std::string fc_out_tmp = fc_out->Name() + ".tmp";
-    param_scope()->Var(fc_out_tmp)->GetMutable<framework::LoDTensor>();
-    op_desc.SetOutput("FCOut", {fc_out_tmp});
-    op_desc.SetOutput("Out", {fc_out->Name()});
-    op_desc.SetAttr("fc_activation", act->Op()->Type());
+             auto* op_node = graph->CreateOpNode(&op_desc);
+             // Add links
+             IR_NODE_LINK_TO(weight, op_node);
+             IR_NODE_LINK_TO(bias, op_node);
+             IR_NODE_LINK_TO(concat_in0, op_node);
+             IR_NODE_LINK_TO(seq_expand0_in, op_node);
+             IR_NODE_LINK_TO(seq_expand1_in, op_node);
+             IR_NODE_LINK_TO(op_node, out);
 
-    auto* op_node = graph->CreateOpNode(&op_desc);
-    // Add links
-    IR_NODE_LINK_TO(fc_w, op_node);
-    IR_NODE_LINK_TO(fc_bias, op_node);
-    IR_NODE_LINK_TO(concat_in0, op_node);
-    IR_NODE_LINK_TO(sequence_expand0_in, op_node);
-    IR_NODE_LINK_TO(sequence_expand1_in, op_node);
-    IR_NODE_LINK_TO(op_node, fc_out);
+             // Clean nodes
+             std::unordered_set<const Node*> marked_nodes;
+             for (auto& item : subgraph) {
+               marked_nodes.insert(item.second);
+             }
+             marked_nodes.erase(weight);
+             marked_nodes.erase(bias);
+             marked_nodes.erase(concat_in0);
+             marked_nodes.erase(seq_expand0_in);
+             marked_nodes.erase(seq_expand1_in);
+             marked_nodes.erase(out);
+             GraphSafeRemoveNodes(graph, marked_nodes);
 
-    // Clean nodes.
-    std::unordered_set<const Node*> marked_nodes;
-    for (auto& item : subgraph) {
-      marked_nodes.insert(item.second);
-    }
-    marked_nodes.erase(fc_w);
-    marked_nodes.erase(fc_bias);
-    marked_nodes.erase(concat_in0);
-    marked_nodes.erase(sequence_expand0_in);
-    marked_nodes.erase(sequence_expand1_in);
-    marked_nodes.erase(fc_out);
-    GraphSafeRemoveNodes(graph, marked_nodes);
-
-    ++fuse_count;
-  });
+             ++fuse_count;
+           });
 
   AddStatis(fuse_count);
 

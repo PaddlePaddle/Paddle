@@ -103,7 +103,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseActElewiseAdd(
   auto *x = gpd.mutable_pattern()
                 ->NewNode("act_elewise_add/x")
                 ->AsInput()
-                ->assert_is_ops_input(act_types, "X");
+                ->assert_is_any_op_input(act_types, "X");
   patterns::ActElewiseAdd act_elewise_add_pattern(gpd.mutable_pattern(),
                                                   "act_elewise_add");
 
@@ -156,7 +156,7 @@ std::unique_ptr<ir::Graph> FuseElewiseAddActPass::FuseElewiseAddActInplaceGrad(
   auto *d_act_out = gpd.mutable_pattern()
                         ->NewNode("elewise_add_act_grad_inplace/x")
                         ->AsInput()
-                        ->assert_is_ops_input(act_types, GradVarName("Out"));
+                        ->assert_is_any_op_input(act_types, GradVarName("Out"));
   patterns::ElewiseAddActInplaceGrad elewise_add_act_grad_pattern(
       gpd.mutable_pattern(), "elewise_add_act_grad_inplace");
   elewise_add_act_grad_pattern(d_act_out, act_types);

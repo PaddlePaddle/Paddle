@@ -114,17 +114,26 @@ struct PDNode {
   PDNode* assert_op_has_n_outputs(const std::string& op_type, size_t n);
   PDNode* assert_more(teller_t&& teller);
 
-  PDNode* assert_is_ops_output(const std::unordered_set<std::string>& op_types);
-  PDNode* assert_is_ops(const std::unordered_set<std::string>& op_types);
-  PDNode* assert_is_ops_output(const std::unordered_set<std::string>& op_types,
-                               const std::string& argument);
-  PDNode* assert_is_ops_nth_input(
+  PDNode* assert_is_any_op(const std::unordered_set<std::string>& op_types);
+  PDNode* assert_is_any_op_input(
+      const std::unordered_set<std::string>& op_types);
+
+  PDNode* assert_is_any_op_input(
+      const std::unordered_set<std::string>& op_types,
+      const std::string& argument);
+
+  PDNode* assert_is_any_op_output(
+      const std::unordered_set<std::string>& op_types);
+
+  PDNode* assert_is_any_op_output(
+      const std::unordered_set<std::string>& op_types,
+      const std::string& argument);
+
+  PDNode* assert_is_any_op_nth_input(
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
-  PDNode* assert_is_ops_input(const std::unordered_set<std::string>& op_types);
-  PDNode* assert_is_ops_input(const std::unordered_set<std::string>& op_types,
-                              const std::string& argument);
-  PDNode* assert_is_ops_nth_output(
+
+  PDNode* assert_is_any_op_nth_output(
       const std::unordered_set<std::string>& op_types,
       const std::string& argument, int nth);
 
@@ -409,7 +418,6 @@ struct FC : public PatternBase {
   PDNode* operator()(PDNode* x, bool with_bias);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(fc);
   PATTERN_DECL_NODE(mul);
   PATTERN_DECL_NODE(elementwise_add);
   // declare variable node's name

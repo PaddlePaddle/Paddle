@@ -489,18 +489,19 @@ PDNode *PDNode::assert_more(PDNode::teller_t &&teller) {
   return this;
 }
 
-PDNode *PDNode::assert_is_ops(const std::unordered_set<std::string> &op_types) {
+PDNode *PDNode::assert_is_any_op(
+    const std::unordered_set<std::string> &op_types) {
   asserts_.emplace_back([op_types](Node *x) {
     return x && x->IsOp() && op_types.count(x->Op()->Type());
   });
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_nth_input(
+PDNode *PDNode::assert_is_any_op_nth_input(
     const std::unordered_set<std::string> &op_types,
     const std::string &argument, int nth) {
   assert_is_var();
-  assert_is_ops_input(op_types);
+  assert_is_any_op_input(op_types);
   asserts_.emplace_back([=](Node *x) {
     for (auto *op : x->outputs) {
       if (op->IsOp() && op_types.count(op->Op()->Type()) &&
@@ -512,7 +513,7 @@ PDNode *PDNode::assert_is_ops_nth_input(
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_nth_output(
+PDNode *PDNode::assert_is_any_op_nth_output(
     const std::unordered_set<std::string> &op_types,
     const std::string &argument, int nth) {
   assert_is_var();
@@ -526,7 +527,8 @@ PDNode *PDNode::assert_is_ops_nth_output(
   });
   return this;
 }
-PDNode *PDNode::assert_is_ops_output(
+
+PDNode *PDNode::assert_is_any_op_output(
     const std::unordered_set<std::string> &op_types) {
   assert_is_var();
   asserts_.emplace_back([=](Node *x) {
@@ -540,15 +542,15 @@ PDNode *PDNode::assert_is_ops_output(
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_output(
+PDNode *PDNode::assert_is_any_op_output(
     const std::unordered_set<std::string> &op_types,
     const std::string &argument) {
   assert_is_var();
-  assert_is_ops_nth_output(op_types, argument, 0);
+  assert_is_any_op_nth_output(op_types, argument, 0);
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_input(
+PDNode *PDNode::assert_is_any_op_input(
     const std::unordered_set<std::string> &op_types) {
   assert_is_var();
   asserts_.emplace_back([=](Node *x) {
@@ -562,11 +564,11 @@ PDNode *PDNode::assert_is_ops_input(
   return this;
 }
 
-PDNode *PDNode::assert_is_ops_input(
+PDNode *PDNode::assert_is_any_op_input(
     const std::unordered_set<std::string> &op_types,
     const std::string &argument) {
   assert_is_var();
-  assert_is_ops_nth_input(op_types, argument, 0);
+  assert_is_any_op_nth_input(op_types, argument, 0);
   return this;
 }
 
@@ -755,12 +757,12 @@ PDNode *patterns::GRU::operator()(PDNode *x) {
 PDNode *patterns::ActElewiseAdd::operator()(
     paddle::framework::ir::PDNode *in_var,
     std::unordered_set<std::string> act_types) {
-  in_var->assert_is_ops_input(act_types, "X");
+  in_var->assert_is_any_op_input(act_types, "X");
 
-  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+  auto *act = pattern->NewNode(act_repr())->assert_is_any_op(act_types);
   auto *act_out_var = pattern->NewNode(act_out_repr())
                           ->assert_is_not_ctrl_var()
-                          ->assert_is_ops_output(act_types);
+                          ->assert_is_any_op_output(act_types);
   act_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
 
   auto *ele_x_var = pattern->NewNode(ele_x_repr())
@@ -793,12 +795,12 @@ PDNode *patterns::ElewiseAddAct::operator()(
   auto *ele_out_var = pattern->NewNode(elewise_add_out_repr())
                           ->assert_is_op_output("elementwise_add", "Out");
 
-  ele_out_var->AsIntermediate()->assert_is_ops_input(act_types);
+  ele_out_var->AsIntermediate()->assert_is_any_op_input(act_types);
 
-  auto *act = pattern->NewNode(act_repr())->assert_is_ops(act_types);
+  auto *act = pattern->NewNode(act_repr())->assert_is_any_op(act_types);
 
-  auto *act_out_var =
-      pattern->NewNode(act_out_repr())->assert_is_ops_output(act_types, "Out");
+  auto *act_out_var = pattern->NewNode(act_out_repr())
+                          ->assert_is_any_op_output(act_types, "Out");
 
   ele_add->LinksFrom({ele_x_var, ele_y_var}).LinksTo({ele_out_var});
   act->LinksFrom({ele_out_var}).LinksTo({act_out_var});
@@ -811,14 +813,15 @@ PDNode *patterns::ElewiseAddActInplaceGrad::operator()(
     std::unordered_set<std::string> act_types) {
   // act_grad: in["Out", "Out@GRAD"], out["X@GRAD"]
   // ele_add_grad: in["Y", "Out@GRAD"], out["X@GRAD", "Y@GRAD"]
-  auto *act_grad = pattern->NewNode(act_grad_repr())->assert_is_ops(act_types);
+  auto *act_grad =
+      pattern->NewNode(act_grad_repr())->assert_is_any_op(act_types);
 
-  auto *act_out_var =
-      pattern->NewNode(act_out_repr())->assert_is_ops_input(act_types, "Out");
+  auto *act_out_var = pattern->NewNode(act_out_repr())
+                          ->assert_is_any_op_input(act_types, "Out");
 
   auto *d_intermediate_var =
       pattern->NewNode(d_itermediate_out_repr())
-          ->assert_is_ops_output(act_types, GradVarName("X"));
+          ->assert_is_any_op_output(act_types, GradVarName("X"));
 
   act_grad->LinksFrom({d_act_out_var, act_out_var})
       .LinksTo({d_intermediate_var});
