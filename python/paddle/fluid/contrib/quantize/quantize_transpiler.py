@@ -388,7 +388,8 @@ class QuantizeTranspiler(object):
                 args += op.input_arg_names
                 args += op.output_arg_names
             args = list(set(args))
-            for var in block.vars.keys():
+            var_names = block.vars.keys()
+            for var in var_names:
                 if var not in args:
                     block._remove_var(var)
 
