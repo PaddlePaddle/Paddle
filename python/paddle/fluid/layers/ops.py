@@ -21,6 +21,7 @@ __activations_noattr__ = [
     'exp',
     'tanh',
     'tanh_shrink',
+    'softshrink',
     'sqrt',
     'abs',
     'ceil',
@@ -52,7 +53,6 @@ __all__ = [
     'slice',
     'shape',
     'maxout',
-    'softshrink',
 ]
 
 for _OP in set(__all__):
