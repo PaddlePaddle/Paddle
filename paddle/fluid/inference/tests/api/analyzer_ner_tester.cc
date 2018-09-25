@@ -95,7 +95,7 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void SetConfig(AnalysisConfig *cfg) {
+void SetConfig(contrib::AnalysisConfig *cfg) {
   cfg->prog_file = FLAGS_infer_model + "/__model__";
   cfg->param_file = FLAGS_infer_model + "/param";
   cfg->use_gpu = false;
@@ -117,7 +117,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 
 // Easy for profiling independently.
 TEST(Analyzer_Chinese_ner, profile) {
-  AnalysisConfig cfg;
+  contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
 
@@ -141,7 +141,7 @@ TEST(Analyzer_Chinese_ner, profile) {
 
 // Check the fuse status
 TEST(Analyzer_Chinese_ner, fuse_statis) {
-  AnalysisConfig cfg;
+  contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
 
   int num_ops;
@@ -155,7 +155,7 @@ TEST(Analyzer_Chinese_ner, fuse_statis) {
 
 // Compare result of NativeConfig and AnalysisConfig
 TEST(Analyzer_Chinese_ner, compare) {
-  AnalysisConfig cfg;
+  contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
