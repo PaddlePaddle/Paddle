@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/api/timer.h"
@@ -30,6 +31,8 @@
 DECLARE_bool(profile);
 
 namespace paddle {
+
+using contrib::AnalysisConfig;
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope> &parent_scope) {
@@ -144,57 +147,20 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
 template <typename T>
 void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
                                     PaddleTensor *output) {
-  std::vector<int> shape;
-  auto dims_i = fetch.dims();
-  auto lod = fetch.lod();
-  const T *output_ptr = fetch.data<T>();
-  auto num = fetch.numel();
-  std::vector<T> data;
-  if (0 == lod.size()) {
-    std::copy(output_ptr, output_ptr + num, std::back_inserter(data));
-    for (int j = 0; j < dims_i.size(); ++j) {
-      shape.push_back(dims_i[j]);
-    }
-  } else {
-    // for batch detection
-    // image[0] -> output[0] shape {145, 6}
-    // image[1] -> output[1] shape {176, 6}
-    // then,
-    // the batch output shape {321, 6}
-    // the lod {{0, 145, 321}}
-    // so we should append output[0] to {176, 6}
-    size_t max_dim = 0;
-    for (size_t j = 1; j < lod[0].size(); j++) {
-      max_dim = std::max(max_dim, lod[0][j] - lod[0][j - 1]);
-    }
-    size_t common_dim = lod[0].back() == 0 ? 0 : num / lod[0].back();
-    if (max_dim > 0) {
-      data.resize((lod[0].size() - 1) * max_dim * common_dim, 0);
-    }
-    for (size_t j = 1; j < lod[0].size(); j++) {
-      size_t start = lod[0][j - 1] * common_dim;
-      size_t end = lod[0][j] * common_dim;
-      if (end > start) {
-        std::copy(output_ptr + start, output_ptr + end,
-                  data.begin() + (j - 1) * max_dim * common_dim);
-      }
-    }
-    shape.push_back(lod[0].size() - 1);
-    shape.push_back(max_dim);
-    for (int j = 1; j < dims_i.size(); ++j) {
-      shape.push_back(dims_i[j]);
-    }
-  }
-
-  output->shape = shape;
-  auto &buffer = output->data;
-  if (buffer.empty() || buffer.length() < sizeof(T) * data.size()) {
-    buffer.Resize(sizeof(T) * data.size());
-  }
-  std::memcpy(buffer.data(), data.data(), buffer.length());
-  // copy LoD
-  for (const auto &level : fetch.lod()) {
-    output->lod.emplace_back(level);
+  // set shape.
+  auto shape = framework::vectorize(fetch.dims());
+  output->shape.assign(shape.begin(), shape.end());
+  // set data.
+  const T *data = fetch.data<T>();
+  int num_elems = inference::VecReduceToInt(shape);
+  output->data.Resize(num_elems * sizeof(T));
+  // The fetched tensor output by fetch op, should always in CPU memory, so just
+  // copy.
+  memcpy(output->data.data(), data, num_elems * sizeof(T));
+  // set lod
+  output->lod.clear();
+  for (auto &level : fetch.lod()) {
+    output->lod.emplace_back(level.begin(), level.end());
   }
 }
 
@@ -242,8 +208,9 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(config_.ir_mode == AnalysisConfig::IrPassMode::kExclude,
-                 "Only kExclude is supported yet.");
+  PADDLE_ENFORCE(
+      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
+      "Only kExclude is supported yet.");
   Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
 
   CHECK(argument_.transformed_program_desc);
@@ -328,7 +295,6 @@ std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
 
 bool AnalysisPredictor::ZeroCopyRun() {
   executor_->Run();
-
   return true;
 }
 
