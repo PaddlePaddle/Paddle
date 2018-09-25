@@ -77,7 +77,7 @@ def download(url, module_name, md5sum, save_name=None):
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
         if os.path.exists(filename):
-            sys.stderr.write("file md5", md5file(filename), md5sum)
+            sys.stderr.write("file %s  md5 %s" % (md5file(filename), md5sum))
         if retry < retry_limit:
             retry += 1
         else:
