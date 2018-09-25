@@ -38,7 +38,7 @@ class MaxOutOpMaker : public framework::OpProtoAndCheckerMaker {
         "groups",
         R"DOC("Specifies how many groups the input tensor will be split"
         "in the channel dimension. And the number of output channel is "
-        "the number of channels divided by groups.."
+        "the number of channels divided by groups."
         )DOC");
     AddComment(R"DOC(
 MaxOut Operator.
