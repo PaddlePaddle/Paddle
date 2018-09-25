@@ -35,7 +35,9 @@ ExternalProject_Add(
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+                    -DCMAKE_CXX_FLAGS_RELEASE=${CMAKE_CXX_FLAGS_RELEASE}
                     -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+                    -DBUILD_STATIC_LIBS=ON
                     -DCMAKE_INSTALL_PREFIX=${GFLAGS_INSTALL_DIR}
                     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                     -DBUILD_TESTING=OFF
@@ -45,6 +47,10 @@ ExternalProject_Add(
                      -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                      -DCMAKE_BUILD_TYPE:STRING=${THIRD_PARTY_BUILD_TYPE}
 )
+
+ADD_LIBRARY(gflags STATIC IMPORTED GLOBAL)
+SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
+ADD_DEPENDENCIES(gflags extern_gflags)
 IF(WIN32)
   IF(NOT EXISTS "${GFLAGS_INSTALL_DIR}/lib/libgflags.lib")
     add_custom_command(TARGET extern_gflags POST_BUILD
@@ -52,9 +58,6 @@ IF(WIN32)
   )
   ENDIF()
 ENDIF(WIN32)
-ADD_LIBRARY(gflags STATIC IMPORTED GLOBAL)
-SET_PROPERTY(TARGET gflags PROPERTY IMPORTED_LOCATION ${GFLAGS_LIBRARIES})
-ADD_DEPENDENCIES(gflags extern_gflags)
 
 LIST(APPEND external_project_dependencies gflags)
 
