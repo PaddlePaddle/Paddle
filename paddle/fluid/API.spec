@@ -22,9 +22,6 @@ paddle.fluid.Operator.rename_input ArgSpec(args=['self', 'old_name', 'new_name']
 paddle.fluid.Operator.rename_output ArgSpec(args=['self', 'old_name', 'new_name'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Operator.set_attr ArgSpec(args=['self', 'name', 'val'], varargs=None, keywords=None, defaults=None)
 paddle.fluid.Operator.to_string ArgSpec(args=['self', 'throw_on_error'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.Parameter.__init__ ArgSpec(args=['self', 'block', 'shape', 'dtype'], varargs=None, keywords='kwargs', defaults=None)
-paddle.fluid.Parameter.astype ArgSpec(args=['self', 'dtype'], varargs=None, keywords=None, defaults=None)
-paddle.fluid.Parameter.to_string ArgSpec(args=['self', 'throw_on_error', 'with_details'], varargs=None, keywords=None, defaults=(False,))
 paddle.fluid.default_startup_program ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.default_main_program ArgSpec(args=[], varargs=None, keywords=None, defaults=None)
 paddle.fluid.program_guard ArgSpec(args=[], varargs='args', keywords='kwds', defaults=None)
@@ -44,7 +41,7 @@ paddle.fluid.DistributeTranspiler.transpile ArgSpec(args=['self', 'trainer_id', 
 paddle.fluid.memory_optimize ArgSpec(args=['input_program', 'skip_opt_set', 'print_log', 'level'], varargs=None, keywords=None, defaults=(None, False, 0))
 paddle.fluid.release_memory ArgSpec(args=['input_program', 'skip_opt_set'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.DistributeTranspilerConfig.__init__ 
-paddle.fluid.ParallelExecutor.__init__ ArgSpec(args=['self', 'use_cuda', 'loss_name', 'main_program', 'share_vars_from', 'exec_strategy', 'build_strategy', 'num_trainers', 'trainer_id', 'scope'], varargs=None, keywords='kwargs', defaults=(None, None, None, None, None, 1, 0, None))
+paddle.fluid.ParallelExecutor.__init__ ArgSpec(args=['self', 'use_cuda', 'loss_name', 'main_program', 'share_vars_from', 'exec_strategy', 'build_strategy', 'num_trainers', 'trainer_id', 'scope'], varargs=None, keywords=None, defaults=(None, None, None, None, None, 1, 0, None))
 paddle.fluid.ParallelExecutor.run ArgSpec(args=['self', 'fetch_list', 'feed', 'feed_dict', 'return_numpy'], varargs=None, keywords=None, defaults=(None, None, True))
 paddle.fluid.ExecutionStrategy.__init__ __init__(self: paddle.fluid.core.ExecutionStrategy) -> None
 paddle.fluid.BuildStrategy.GradientScaleStrategy.__init__ __init__(self: paddle.fluid.core.GradientScaleStrategy, arg0: int) -> None
@@ -180,6 +177,14 @@ paddle.fluid.layers.elementwise_mul ArgSpec(args=['x', 'y', 'axis', 'use_mkldnn'
 paddle.fluid.layers.elementwise_max ArgSpec(args=['x', 'y', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, False, None, None))
 paddle.fluid.layers.elementwise_min ArgSpec(args=['x', 'y', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, False, None, None))
 paddle.fluid.layers.elementwise_pow ArgSpec(args=['x', 'y', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(-1, False, None, None))
+paddle.fluid.layers.scale ArgSpec(args=['x', 'scale', 'bias', 'bias_after_scale', 'out', 'act', 'name'], varargs=None, keywords=None, defaults=(1.0, 0.0, True, None, None, None))
+paddle.fluid.layers.elementwise_add ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
+paddle.fluid.layers.elementwise_div ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
+paddle.fluid.layers.elementwise_sub ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
+paddle.fluid.layers.elementwise_mul ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
+paddle.fluid.layers.elementwise_max ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
+paddle.fluid.layers.elementwise_min ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
+paddle.fluid.layers.elementwise_pow ArgSpec(args=['x', 'y', 'out', 'axis', 'use_mkldnn', 'act', 'name'], varargs=None, keywords=None, defaults=(None, -1, False, None, None))
 paddle.fluid.layers.data ArgSpec(args=['name', 'shape', 'append_batch_size', 'dtype', 'lod_level', 'type', 'stop_gradient'], varargs=None, keywords=None, defaults=(True, 'float32', 0, VarType.LOD_TENSOR, True))
 paddle.fluid.layers.open_files ArgSpec(args=['filenames', 'shapes', 'lod_levels', 'dtypes', 'thread_num', 'buffer_size', 'pass_num', 'is_test'], varargs=None, keywords=None, defaults=(None, None, 1, None))
 paddle.fluid.layers.read_file ArgSpec(args=['reader'], varargs=None, keywords=None, defaults=None)
@@ -377,7 +382,7 @@ paddle.fluid.CPUPlace.__init__ __init__(self: paddle.fluid.core.CPUPlace) -> Non
 paddle.fluid.CUDAPlace.__init__ __init__(self: paddle.fluid.core.CUDAPlace, arg0: int) -> None
 paddle.fluid.CUDAPinnedPlace.__init__ __init__(self: paddle.fluid.core.CUDAPinnedPlace) -> None
 paddle.fluid.ParamAttr.__init__ ArgSpec(args=['self', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, 1.0, None, True, None, False))
-paddle.fluid.WeightNormParamAttr.__init__ ArgSpec(args=['self', 'dim'], varargs=None, keywords='kwargs', defaults=(None,))
+paddle.fluid.WeightNormParamAttr.__init__ ArgSpec(args=['self', 'dim', 'name', 'initializer', 'learning_rate', 'regularizer', 'trainable', 'gradient_clip', 'do_model_average'], varargs=None, keywords=None, defaults=(None, None, None, 1.0, None, True, None, False))
 paddle.fluid.DataFeeder.__init__ ArgSpec(args=['self', 'feed_list', 'place', 'program'], varargs=None, keywords=None, defaults=(None,))
 paddle.fluid.DataFeeder.decorate_reader ArgSpec(args=['self', 'reader', 'multi_devices', 'num_places', 'drop_last'], varargs=None, keywords=None, defaults=(None, True))
 paddle.fluid.DataFeeder.feed ArgSpec(args=['self', 'iterable'], varargs=None, keywords=None, defaults=None)

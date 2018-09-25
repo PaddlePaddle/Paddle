@@ -47,11 +47,8 @@ void CompareResult(const std::vector<PaddleTensor> &outputs,
   for (size_t i = 0; i < outputs.size(); i++) {
     auto &out = outputs[i];
     auto &ref_out = ref_outputs[i];
-    size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                  [](int a, int b) { return a * b; });
-    size_t ref_size =
-        std::accumulate(ref_out.shape.begin(), ref_out.shape.end(), 1,
-                        [](int a, int b) { return a * b; });
+    size_t size = VecReduceToInt(out.shape);
+    size_t ref_size = VecReduceToInt(ref_out.shape);
     EXPECT_GT(size, 0);
     EXPECT_EQ(size, ref_size);
     EXPECT_EQ(out.dtype, ref_out.dtype);
@@ -87,10 +84,7 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
   }
 }
 
-size_t GetSize(const PaddleTensor &out) {
-  return std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                         [](int a, int b) { return a * b; });
-}
+size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
 
 std::unordered_map<std::string, int> GetFuseStatis(AnalysisConfig config,
                                                    int *num_ops) {
