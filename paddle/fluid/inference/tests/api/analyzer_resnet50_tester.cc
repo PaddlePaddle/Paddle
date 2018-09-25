@@ -17,6 +17,7 @@
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <gtest/gtest.h>
 #include <opencv2/opencv.hpp>
+#include <random>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -105,6 +106,18 @@ template <typename T>
 void fill_data(T* data, unsigned int count) {
   for (unsigned int i = 0; i < count; ++i) {
     *(data + i) = i;
+  }
+}
+
+template <>
+void fill_data<float>(float* data, unsigned int count) {
+  static unsigned int seed = std::random_device()();
+  static std::minstd_rand engine(seed);
+  float mean = 0;
+  float std = 1;
+  std::normal_distribution<float> dist(mean, std);
+  for (unsigned int i = 0; i < count; ++i) {
+    data[i] = dist(engine);
   }
 }
 
