@@ -101,14 +101,11 @@ bool NativePaddlePredictor::Init(
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
   } else {
-    LOG(ERROR) << "fail to load inference model.";
+    LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
     return false;
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);
-  if (config_._use_mkldnn) {
-    executor_->EnableMKLDNN(*inference_program_);
-  }
   executor_->CreateVariables(*inference_program_,
                              sub_scope_ ? sub_scope_ : scope_.get(), 0);
 
@@ -328,6 +325,12 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
 #else
   return std::move(predictor);
 #endif
+}
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
+    const NativeConfig &config) {
+  return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
 }
 
 }  // namespace paddle
