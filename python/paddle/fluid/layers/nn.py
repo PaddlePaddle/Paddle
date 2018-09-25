@@ -4464,8 +4464,7 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
     helper.append_op(
         type="reshape2",
         inputs=inputs,
-        attrs={"shape": shape,
-               "inplace": inplace},
+        attrs={"shape": shape},
         outputs={"Out": out,
                  "XShape": x_shape})
 
@@ -4522,7 +4521,7 @@ def squeeze(input, axes, name=None):
     return out
 
 
-def unsqueeze(input, axes, name=None, stop_gradient=False):
+def unsqueeze(input, axes, name=None, stop_gradient=False, inplace=False):
     """
     Insert single-dimensional entries to the shape of a tensor. Takes one
     required argument axes, a list of dimensions that will be inserted.
@@ -4547,7 +4546,7 @@ def unsqueeze(input, axes, name=None, stop_gradient=False):
             y = layers.unsequeeze(input=x, axes=[1])
     """
     helper = LayerHelper("unsqueeze", **locals())
-    out = helper.create_tmp_variable(
+    out = input if inplace else helper.create_tmp_variable(
         dtype=input.dtype, stop_gradient=stop_gradient)
     x_shape = helper.create_tmp_variable(
         dtype=input.dtype, stop_gradient=stop_gradient)
