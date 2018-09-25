@@ -69,8 +69,16 @@ struct BuildStrategy {
 
   bool enable_data_balance_{false};
 
+  // The PassBuilder assembles passes based on the configs defined above.
+  // For example, if fuse_elewise_add_act_ops_ is true, the corresponding
+  // fuse pass will be added.
+  // The PassBuilder allows for more customized insert, remove of passes
+  // from python.
+  // A new PassBuilder is created and passes are owned by the PassBuilder.
   std::shared_ptr<ir::PassBuilder> CreatePassesFromStrategy() const;
 
+  // Apply the passes built by the pass_builder_. The passes will be
+  // applied to the Program and output an ir::Graph.
   std::unique_ptr<ir::Graph> Apply(
       const ProgramDesc &main_program,
       const std::vector<platform::Place> &places,

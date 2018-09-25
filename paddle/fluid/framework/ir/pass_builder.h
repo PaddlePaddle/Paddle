@@ -28,12 +28,16 @@ class PassBuilder {
 
   virtual ~PassBuilder() {}
 
+  // Append a new pass to the end.
   std::shared_ptr<Pass> AppendPass(const std::string& pass_type);
 
+  // Insert a new pass after `idx`.
   std::shared_ptr<Pass> InsertPass(size_t idx, const std::string& pass_type);
 
+  // Remove a new pass at `idx`.
   void RemovePass(size_t idx);
 
+  // Returns a list of all passes.
   std::vector<std::shared_ptr<Pass>> AllPasses() const { return passes_; }
 
  protected:
