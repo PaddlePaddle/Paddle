@@ -20,9 +20,9 @@ from __future__ import print_function
 import numpy as np
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat
 from . import utils
 from .. import unique_name
@@ -46,10 +46,12 @@ __all__ = [
     'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
     'gather', 'scatter', 'sequence_scatter', 'random_crop', 'mean_iou', 'relu',
     'log', 'crop', 'rank_loss', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid',
-    'swish', 'prelu', 'flatten', 'sequence_mask', 'stack', 'pad2d', 'unstack',
-    'sequence_enumerate', 'expand', 'sequence_concat',
-    'uniform_random_batch_size_like', 'gaussian_random', 'sampling_id',
-    'gaussian_random_batch_size_like', 'sum', 'slice', 'shape'
+    'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu', 'flatten',
+    'sequence_mask', 'stack', 'pad2d', 'unstack', 'sequence_enumerate',
+    'expand', 'sequence_concat', 'scale', 'elementwise_add', 'elementwise_div',
+    'elementwise_sub', 'elementwise_mul', 'elementwise_max', 'elementwise_min',
+    'elementwise_pow', 'uniform_random_batch_size_like', 'gaussian_random',
+    'sampling_id', 'gaussian_random_batch_size_like', 'sum', 'slice', 'shape'
 ]
 
 
@@ -3539,7 +3541,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
         attrs={
             'transpose_X': transpose_x,
             'transpose_Y': transpose_y,
-            'alpha': alpha,
+            'alpha': float(alpha),
         })
     return out
 
@@ -6024,6 +6026,74 @@ def prelu(x, mode, param_attr=None, name=None):
     return out
 
 
+@templatedoc()
+def brelu(x, t_min=0.0, t_max=24.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        t_min(${t_min_type}|0.0): ${t_min_comment}
+        t_max(${t_max_type}|24.0): ${t_max_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('brelu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='brelu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'t_min': t_min,
+               't_max': t_max})
+    return out
+
+
+@templatedoc()
+def leaky_relu(x, alpha=0.02, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|0.02): ${alpha_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('leaky_relu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='leaky_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
+@templatedoc()
+def soft_relu(x, threshold=40.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        threshold(${threshold_type}|40.0): ${threshold_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('soft_relu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='soft_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
+
+
 def flatten(x, axis=1, name=None):
     """
     **Flatten layer**
@@ -6589,3 +6659,105 @@ def shape(input):
         type='shape', inputs={'Input': input}, outputs={'Out': out})
 
     return out
+
+
+def _elementwise_op(helper):
+    op_type = helper.layer_type
+    x = helper.kwargs.get('x', None)
+    y = helper.kwargs.get('y', None)
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert y is not None, 'y cannot be None in {}'.format(op_type)
+    axis = helper.kwargs.get('axis', -1)
+    use_mkldnn = helper.kwargs.get('use_mkldnn', False)
+    name = helper.kwargs.get('name', None)
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'axis': axis,
+               'use_mkldnn': use_mkldnn})
+    return helper.append_activation(out)
+
+
+@templatedoc()
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        scale(${scale_type}): ${scale_comment}
+        bias(${bias_type}): ${bias_comment}
+        bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
+        act(basestring|None): Activation applied to the output.
+        name(basestring|None): Name of the output. 
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper('scale', **locals())
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type='scale',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={
+            'scale': float(scale),
+            'bias': float(bias),
+            'bias_after_scale': bias_after_scale
+        })
+    return helper.append_activation(out)
+
+
+def elementwise_add(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+
+
+def elementwise_div(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_div', **locals()))
+
+
+def elementwise_sub(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
+
+
+def elementwise_mul(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
+
+
+def elementwise_max(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_max', **locals()))
+
+
+def elementwise_min(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_min', **locals()))
+
+
+def elementwise_pow(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+    return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
+
+
+for func in [
+        elementwise_add, elementwise_div, elementwise_sub, elementwise_mul,
+        elementwise_max, elementwise_min, elementwise_pow
+]:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "act (basestring|None): Activation applied to the output.",
+            "name (basestring|None): Name of the output."
+        ])

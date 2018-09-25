@@ -46,6 +46,16 @@ std::vector<DDim> InferShapeContext::GetReaderDims(
   return this->GetRepeatedDims(arg_names[0]);
 }
 
+void InferShapeContext::ShareLoDs(const std::string &in,
+                                  const std::string &out) const {
+  PADDLE_ENFORCE_EQ(Inputs(in).size(), Outputs(out).size(),
+                    "The number of arguments in %s and %s is not equal.", in,
+                    out);
+  for (size_t i = 0; i < in.size(); ++i) {
+    ShareLoD(in, out, i, i);
+  }
+}
+
 DDim InferShapeContext::GetInputsElementDim(const std::string &name,
                                             int idx) const {
   const std::vector<std::string> &names = Inputs(name);

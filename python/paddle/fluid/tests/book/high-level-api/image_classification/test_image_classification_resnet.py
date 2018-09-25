@@ -14,11 +14,22 @@
 
 from __future__ import print_function
 
+import sys
+
 import paddle
 import paddle.fluid as fluid
+
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import paddle.fluid.core as core
 import numpy
-import six
 import os
 import cifar10_small_test_set
 
@@ -106,7 +117,7 @@ def train(use_cuda, train_program, parallel, params_dirname):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE, drop_last=False)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, EndStepEvent):
             avg_cost, accuracy = trainer.test(
                 reader=test_reader, feed_order=['pixel', 'label'])
 
@@ -118,7 +129,7 @@ def train(use_cuda, train_program, parallel, params_dirname):
                 return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program,
         optimizer_func=optimizer_func,
         place=place,
@@ -133,7 +144,7 @@ def train(use_cuda, train_program, parallel, params_dirname):
 
 def infer(use_cuda, inference_program, parallel, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         infer_func=inference_program,
         param_path=params_dirname,
         place=place,
