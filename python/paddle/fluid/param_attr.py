@@ -185,7 +185,17 @@ class WeightNormParamAttr(ParamAttr):
 
     Args:
         dim(list): The parameter's name. Default None.
-        kwargs: Any field in ParamAttr. Default None.
+        name(str): The parameter's name. Default None.
+        initializer(Initializer): The method to initial this parameter. Default None.
+        learning_rate(float): The parameter's learning rate. The learning rate when
+            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
+            Default 1.0.
+        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
+        trainable(bool): Whether this parameter is trainable. Default True.
+        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
+            gradient. Default None.
+        do_model_average(bool): Whether this parameter should do model average.
+            Default False.
 
     Examples:
         .. code-block:: python
@@ -204,6 +214,21 @@ class WeightNormParamAttr(ParamAttr):
     # these paramters for inference.
     params_with_weight_norm = []
 
-    def __init__(self, dim=None, **kwargs):
-        super(WeightNormParamAttr, self).__init__(**kwargs)
+    def __init__(self,
+                 dim=None,
+                 name=None,
+                 initializer=None,
+                 learning_rate=1.0,
+                 regularizer=None,
+                 trainable=True,
+                 gradient_clip=None,
+                 do_model_average=False):
+        super(WeightNormParamAttr, self).__init__(
+            name=name,
+            initializer=initializer,
+            learning_rate=learning_rate,
+            regularizer=regularizer,
+            trainable=trainable,
+            gradient_clip=gradient_clip,
+            do_model_average=do_model_average)
         self.dim = dim
