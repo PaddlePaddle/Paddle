@@ -357,7 +357,7 @@ static edge_node *build_lmt(lmt_node **lmt, sb_tree **sbtree, int *sbt_entries,
     }
   }
   return edge_table;
-}
+} // NOLINT
 
 static void add_edge_to_aet(edge_node **aet, edge_node *edge, edge_node *prev) {
   if (!*aet) {
@@ -1491,7 +1491,7 @@ void gpc_polygon_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   gpc_free<edge_node>(c_heap);
   gpc_free<edge_node>(s_heap);
   gpc_free<double>(sbt);
-}
+} // NOLINT
 
 void gpc_free_tristrip(gpc_tristrip *t) {
   int s = 0;
@@ -2186,7 +2186,7 @@ void gpc_tristrip_clip(gpc_op op, gpc_polygon *subj, gpc_polygon *clip,
   gpc_free<edge_node>(c_heap);
   gpc_free<edge_node>(s_heap);
   gpc_free<double>(sbt);
-}
+} // NOLINT
 
 }  // namespace gpc
 
