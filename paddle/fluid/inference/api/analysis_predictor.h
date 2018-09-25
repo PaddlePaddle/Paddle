@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
@@ -26,6 +27,7 @@ using inference::analysis::Argument;
 using inference::analysis::Analyzer;
 using framework::proto::ProgramDesc;
 using framework::NaiveExecutor;
+using contrib::AnalysisConfig;
 
 /* This predictor is based on the original native predictor with IR and Analysis
  * support. It will optimize IR and Parameters in the runtime.
@@ -56,6 +58,9 @@ class AnalysisPredictor : public PaddlePredictor {
   std::unique_ptr<PaddlePredictor> Clone() override {
     PADDLE_THROW("Not Implemented");
   }
+
+  framework::Scope *scope() { return executor_->scope(); }
+  framework::ProgramDesc &program() { return *inference_program_; }
 
  protected:
   bool LoadProgramDesc() {
@@ -93,7 +98,7 @@ class AnalysisPredictor : public PaddlePredictor {
                    PaddleTensor *output_data);
 
  private:
-  AnalysisConfig config_;
+  contrib::AnalysisConfig config_;
   Argument argument_;
   std::unique_ptr<NaiveExecutor> executor_;
   platform::Place place_;

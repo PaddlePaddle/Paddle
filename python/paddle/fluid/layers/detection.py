@@ -39,6 +39,7 @@ __all__ = [
     'detection_map',
     'rpn_target_assign',
     'anchor_generator',
+    'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
 ]
@@ -723,11 +724,10 @@ def ssd_loss(location,
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
+    actual_shape = ops.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape.stop_gradient = True
     conf_loss = nn.reshape(
-        x=conf_loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+        x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
     conf_loss.stop_gradient = True
     neg_indices = helper.create_tmp_variable(dtype='int32')
     dtype = matched_indices.dtype
@@ -796,11 +796,7 @@ def ssd_loss(location,
     # 5.3 Compute overall weighted loss.
     loss = conf_loss_weight * conf_loss + loc_loss_weight * loc_loss
     # reshape to [N, Np], N is the batch size and Np is the prior box number.
-    loss = nn.reshape(
-        x=loss,
-        shape=(num, num_prior),
-        actual_shape=ops.slice(
-            conf_shape, axes=[0], starts=[0], ends=[2]))
+    loss = nn.reshape(x=loss, shape=(num, num_prior), actual_shape=actual_shape)
     loss = nn.reduce_sum(loss, dim=1, keep_dim=True)
     if normalize:
         normalizer = nn.reduce_sum(target_loc_weight)
@@ -1265,6 +1261,54 @@ def anchor_generator(input,
     anchor.stop_gradient = True
     var.stop_gradient = True
     return anchor, var
+
+
+def roi_perspective_transform(input,
+                              rois,
+                              transformed_height,
+                              transformed_width,
+                              spatial_scale=1.0):
+    """
+    ROI perspective transform op.
+
+    Args:
+        input (Variable): The input of ROIPerspectiveTransformOp. The format of 
+                          input tensor is NCHW. Where N is batch size, C is the
+                          number of input channels, H is the height of the feature,
+                          and W is the width of the feature.
+        rois (Variable):  ROIs (Regions of Interest) to be transformed. It should be
+                          a 2-D LoDTensor of shape (num_rois, 8). Given as 
+                          [[x1, y1, x2, y2, x3, y3, x4, y4], ...], (x1, y1) is the 
+                          top left coordinates, and (x2, y2) is the top right 
+                          coordinates, and (x3, y3) is the bottom right coordinates, 
+                          and (x4, y4) is the bottom left coordinates.
+        transformed_height (integer): The height of transformed output.
+        transformed_height (integer): The width of transformed output.
+        spatial_scale (float): Spatial scale factor to scale ROI coords. Default: 1.0
+
+    Returns:
+        Variable: The output of ROIPerspectiveTransformOp which is a 4-D tensor with shape 
+                  (num_rois, channels, transformed_h, transformed_w).
+
+    Examples:
+        .. code-block:: python
+
+            out = fluid.layers.roi_perspective_transform(input, rois, 7, 7, 1.0)
+    """
+    helper = LayerHelper('roi_perspective_transform', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="roi_perspective_transform",
+        inputs={"X": input,
+                "ROIs": rois},
+        outputs={"Out": out},
+        attrs={
+            "transformed_height": transformed_height,
+            "transformed_width": transformed_width,
+            "spatial_scale": spatial_scale
+        })
+    return out
 
 
 def generate_proposal_labels(rpn_rois,

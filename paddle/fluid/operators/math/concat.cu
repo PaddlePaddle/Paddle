@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -118,7 +119,7 @@ template <typename T>
 class ConcatFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
     // TODO(zcd): Add input data validity checking
     int in_num = input.size();
@@ -192,8 +193,8 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
-                  const std::vector<const framework::LoDTensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  const std::vector<const framework::Tensor*>& ref_inputs,
+                  int axis, std::vector<framework::Tensor*>* outputs) {
     // TODO(zcd): Add input data validity checking
     int o_num = outputs->size();
     int out_row = 1;
@@ -261,15 +262,11 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
   }
 };
 
-template class ConcatFunctor<platform::CUDADeviceContext, int>;
-template class ConcatFunctor<platform::CUDADeviceContext, int64_t>;
-template class ConcatFunctor<platform::CUDADeviceContext, float>;
-template class ConcatFunctor<platform::CUDADeviceContext, double>;
+#define DEFINE_FUNCTOR(type)                                       \
+  template class ConcatFunctor<platform::CUDADeviceContext, type>; \
+  template class ConcatGradFunctor<platform::CUDADeviceContext, type>
 
-template class ConcatGradFunctor<platform::CUDADeviceContext, int>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, int64_t>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, float>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, double>;
+FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 }  // namespace math
 }  // namespace operators

@@ -29,6 +29,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
 
   auto in_dims = ctx->GetInputDim("Input");
   auto filter_dims = ctx->GetInputDim("Filter");
+  std::vector<int> output_size =
+      ctx->Attrs().Get<std::vector<int>>("output_size");
   std::vector<int> strides = ctx->Attrs().Get<std::vector<int>>("strides");
   std::vector<int> paddings = ctx->Attrs().Get<std::vector<int>>("paddings");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
@@ -42,6 +44,10 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE(in_dims.size() - strides.size() == 2U,
                  "ConvTransposeOp input dimension and strides dimension should "
                  "be consistent.");
+  if (output_size.size())
+    PADDLE_ENFORCE_EQ(output_size.size(), strides.size(),
+                      "ConvTransposeOp output_size dimension and strides "
+                      "dimension should be the same.");
   PADDLE_ENFORCE_EQ(paddings.size(), strides.size(),
                     "ConvTransposeOp paddings dimension and strides "
                     "dimension should be the same.");
@@ -55,8 +61,17 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
   std::vector<int64_t> output_shape({in_dims[0], filter_dims[1] * groups});
   for (size_t i = 0; i < strides.size(); ++i) {
     auto filter_extent = dilations[i] * (filter_dims[i + 2] - 1) + 1;
-    output_shape.push_back((in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] +
-                           filter_extent);
+    auto infer_shape =
+        (in_dims[i + 2] - 1) * strides[i] - 2 * paddings[i] + filter_extent;
+    if (output_size.size()) {
+      PADDLE_ENFORCE((output_size[i] >= infer_shape &&
+                      output_size[i] < infer_shape + strides[i]),
+                     "ConvTransposeOp output_size should be "
+                     "in appropriate range.");
+      output_shape.push_back(output_size[i]);
+    } else {
+      output_shape.push_back(infer_shape);
+    }
   }
   ctx->SetOutputDim("Output", framework::make_ddim(output_shape));
 }
@@ -103,6 +118,10 @@ void Conv2DTransposeOpMaker::Make() {
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is also NCHW.");
+  AddAttr<std::vector<int>>("output_size",
+                            "(vector<int> default: []), the "
+                            "size of the output tensor")
+      .SetDefault({});
   AddAttr<int>("groups",
                "(int default:1), the groups number of the convolution "
                "transpose operator. ")
@@ -192,7 +211,10 @@ void Conv3DTransposeOpMaker::Make() {
             "Where N is batch size, C is "
             "the number of channels, D is the depth of the feature, H is the "
             "height of the feature, and W is the width of the feature.");
-
+  AddAttr<std::vector<int>>("output_size",
+                            "(vector<int> default: []), the "
+                            "size of the output tensor")
+      .SetDefault({});
   AddAttr<std::vector<int>>(
       "dilations",
       "(vector<int> default:{1, 1, 1}), the "
@@ -247,7 +269,7 @@ Parameters(strides, paddings) are three elements. These three elements represent
 depth, height and width, respectively.
 The input(X) size and output(Out) size may be different.
 
-Example:   
+Example:
   Input:
        Input shape: $(N, C_{in}, D_{in}, H_{in}, W_{in})$
        Filter shape: $(C_{in}, C_{out}, D_f, H_f, W_f)$
