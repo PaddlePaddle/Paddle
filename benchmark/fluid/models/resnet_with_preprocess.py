@@ -224,11 +224,6 @@ def get_model(args, is_train, main_prog, startup_prog):
             # configure optimize
             optimizer = None
             if is_train:
-                if args.use_lars:
-                    lars_decay = 1.0
-                else:
-                    lars_decay = 0.0
-
                 total_images = 1281167 / trainer_count
 
                 step = int(total_images / args.batch_size + 1)

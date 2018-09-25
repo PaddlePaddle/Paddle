@@ -20,6 +20,8 @@ limitations under the License. */
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
 
 #include "glog/logging.h"  // For VLOG
 #include "paddle/fluid/framework/attribute.h"

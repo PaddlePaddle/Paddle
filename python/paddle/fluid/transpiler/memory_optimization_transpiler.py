@@ -14,10 +14,10 @@
 
 from __future__ import print_function
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict, Callable
 from .. import core
 from ... import compat as cpt
-from ..framework import Program, default_main_program, Parameter
+from ..framework import Program, default_main_program, Parameter, Variable
 from ..backward import _rename_arg_
 from functools import reduce
 from six.moves import range
@@ -113,8 +113,10 @@ class ControlFlowGraph(object):
     def _fill_pool(self, i, is_forward):
         block_desc = self._ops[i].block()
         in_diff, _ = self._get_diff(self._live_in[i], self._live_out[i])
+        # NOTE: must sort the in_diff set for cases that get different cache var.
+        # FIXME(typhoonzero): maybe use a "sorted set" is better than this.
         can_optimize = [
-            x for x in in_diff
+            x for x in sorted(list(in_diff))
             if self._check_var_validity(block_desc, x, is_forward)
         ]
         if can_optimize:
@@ -220,8 +222,9 @@ class ControlFlowGraph(object):
             block_desc = op.block()
             is_forward = i < self._forward_num
             if self.pool:
+                # NOTE: must sort the in_diff set for cases that get different cache var.
                 defs_can_optimize = [
-                    x for x in self._defs[i]
+                    x for x in sorted(list(self._defs[i]))
                     if self._check_var_validity(block_desc, x, is_forward)
                 ]
                 out_pair = [
@@ -271,6 +274,8 @@ class ControlFlowGraph(object):
                         self._program.block(block_desc.id).var(cpt.to_text(
                             x)).desc = self._find_var(block_desc, cache_var,
                                                       is_forward)
+                        self._program.block(block_desc.id).vars[cpt.to_text(x)] = \
+                            Variable(self._program.block(block_desc.id), name=cpt.to_text(x))
                         self._update_graph(x, cache_var, begin_idx=i)
                         break
             self._fill_pool(i, is_forward)

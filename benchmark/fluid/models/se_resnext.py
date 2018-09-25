@@ -244,11 +244,6 @@ def get_model(args, is_train, main_prog, startup_prog):
 
             optimizer = None
             if is_train:
-                if args.use_lars:
-                    lars_decay = 1.0
-                else:
-                    lars_decay = 0.0
-
                 total_images = 1281167 / trainer_count
 
                 step = int(total_images / args.batch_size + 1)
@@ -262,8 +257,7 @@ def get_model(args, is_train, main_prog, startup_prog):
                     learning_rate=fluid.layers.piecewise_decay(
                         boundaries=bd, values=lr),
                     momentum=0.9,
-                    regularization=fluid.regularizer.L2Decay(1e-4),
-                    LARS_weight_decay=lars_decay)
+                    regularization=fluid.regularizer.L2Decay(1e-4))
                 optimizer.minimize(avg_cost)
 
                 if args.memory_optimize:

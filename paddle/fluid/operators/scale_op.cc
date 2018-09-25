@@ -46,9 +46,15 @@ class ScaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
 **Scale operator**
 
-Multiply the input tensor with a float scalar to scale the input tensor.
+Apply scaling and bias addition to the input tensor.
 
-$$Out = scale*X$$
+if bias_after_scale=True:
+
+$$Out = scale*X + bias$$
+
+else:
+
+$$Out = scale*(X + bias)$$
 )DOC");
     AddAttr<float>("scale", "The scaling factor of the scale operator.")
         .SetDefault(1.0);

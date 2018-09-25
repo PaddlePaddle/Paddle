@@ -38,7 +38,6 @@ from . import unique_name
 __all__ = [
     'Program',
     'Operator',
-    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
@@ -489,7 +488,8 @@ class OpProtoHolder(object):
     def generated_op_attr_names():
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
-            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
         }
 
 
@@ -1509,6 +1509,30 @@ class Program(object):
         self._op_role_var = []
         self._current_role = OpRole.Forward
 
+    @contextlib.contextmanager
+    def _lr_schedule_guard(self):
+        """
+        A with guard to set :code:`LRSched` :code:`OpRole` and
+        :code:`OpRoleVar` automatically. The :code:`OpRoleVar` is
+        set to the target learning rate.
+
+        Notes: This is a very low level API. Users should not use it directly.
+
+
+        Examples:
+
+            >>> p, g = backward(...)
+            >>> with program.lr_schedule_guard():
+            >>>     lr = lr * decay
+        """
+        OpRole = core.op_proto_and_checker_maker.OpRole
+        self._current_role = OpRole.LRSched
+        # TODO(typhoonzero): how to set target learning rate var
+        self._op_role_var = []
+        yield
+        self._op_role_var = []
+        self._current_role = OpRole.Forward
+
     def __str__(self):
         """
         Get the protobuf debug string of this Program.
@@ -1647,7 +1671,7 @@ class Program(object):
             The two code snippets above will generate same programs.
         """
         if for_test:
-            p = self._inference_optimize(export_for_deployment=False)
+            p = self._inference_optimize(prune_read_op=False)
         else:
             p = Program()
             p.current_block_idx = self.current_block_idx
@@ -1717,7 +1741,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def _inference_optimize(self, export_for_deployment=True):
+    def _inference_optimize(self, prune_read_op=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all reader variables and their creator ops if exist.
@@ -1729,8 +1753,8 @@ class Program(object):
         information will be lost.
 
         Args:
-            export_for_deployment(bool): remove the read ops that are added by py_reader
-                                        for cpp inference library
+            prune_read_op(bool): remove the read ops that are added by py_reader
+                                 for cpp inference library
 
         Notes: This API is a very low level API. Use
         :code:`Program.clone(for_test=True)` instead.
@@ -1738,15 +1762,13 @@ class Program(object):
         Returns:
             Program: The new program.
         """
-        # this is an alternative implement before
-        # core.inference_optimize being fixed.
         res = Program()
         res.desc = core.ProgramDesc(self.desc)
 
         # remove all readers and the read_op if exist
         read_op_idx = 0
         root_block = res.desc.block(0)
-        if export_for_deployment:
+        if prune_read_op:
             while True:
                 if read_op_idx >= root_block.op_size() or root_block.op(
                         read_op_idx).type() == 'read':

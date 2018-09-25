@@ -31,5 +31,6 @@ polygon_box_transform_op.cu)
 detection_library(rpn_target_assign_op SRCS rpn_target_assign_op.cc)
 detection_library(generate_proposal_labels_op SRCS generate_proposal_labels_op.cc)
 detection_library(generate_proposals_op SRCS generate_proposals_op.cc)
+detection_library(roi_perspective_transform_op SRCS roi_perspective_transform_op.cc roi_perspective_transform_op.cu)
 #Export local libraries to parent
 set(DETECTION_LIBRARY ${LOCAL_DETECTION_LIBS} PARENT_SCOPE)
