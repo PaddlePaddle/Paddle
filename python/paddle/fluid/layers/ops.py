@@ -39,8 +39,6 @@ __all__ = [
     'mean',
     'mul',
     'sigmoid_cross_entropy_with_logits',
-    'clip',
-    'clip_by_norm',
     'uniform_random_batch_size_like',
     'gaussian_random',
     'sampling_id',

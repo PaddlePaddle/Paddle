@@ -29,114 +29,29 @@ from .. import unique_name
 from functools import reduce
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'hsigmoid',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'squeeze',
-    'unsqueeze',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'scatter',
-    'sequence_scatter',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'log',
-    'crop',
-    'rank_loss',
-    'elu',
-    'relu6',
-    'pow',
-    'stanh',
-    'hard_sigmoid',
-    'swish',
-    'prelu',
-    'brelu',
-    'leaky_relu',
-    'soft_relu',
-    'flatten',
-    'sequence_mask',
-    'stack',
-    'pad2d',
-    'unstack',
-    'sequence_enumerate',
-    'expand',
-    'sequence_concat',
-    'scale',
-    'elementwise_add',
-    'elementwise_div',
-    'elementwise_sub',
-    'elementwise_mul',
-    'elementwise_max',
-    'elementwise_min',
-    'elementwise_pow',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'sequence_expand_as', 'sequence_pad', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'hsigmoid', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
+    'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth', 'roi_pool',
+    'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
+    'gather', 'scatter', 'sequence_scatter', 'random_crop', 'mean_iou', 'relu',
+    'log', 'crop', 'rank_loss', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid',
+    'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu', 'flatten',
+    'sequence_mask', 'stack', 'pad2d', 'unstack', 'sequence_enumerate',
+    'expand', 'sequence_concat', 'scale', 'elementwise_add', 'elementwise_div',
+    'elementwise_sub', 'elementwise_mul', 'elementwise_max', 'elementwise_min',
+    'elementwise_pow', 'logical_and', 'logical_or', 'logical_xor',
+    'logical_not', 'clip', 'clip_by_norm'
 ]
 
 
@@ -6622,7 +6537,7 @@ for func in [
         ])
 
 
-def _logical_op(op_name, x, y, name=None, out=None, binary_op=True):
+def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     helper = LayerHelper(op_name, **locals())
 
     assert x.dtype == y.dtype
@@ -6645,7 +6560,7 @@ def _logical_op(op_name, x, y, name=None, out=None, binary_op=True):
 
 
 @templatedoc()
-def logical_and(x, y, name=None, out=None):
+def logical_and(x, y, out=None, name=None):
     """
     ${comment}
 
@@ -6664,7 +6579,7 @@ def logical_and(x, y, name=None, out=None):
 
 
 @templatedoc()
-def logical_or(x, y, name=None, out=None):
+def logical_or(x, y, out=None, name=None):
     """
     ${comment}
 
@@ -6683,7 +6598,7 @@ def logical_or(x, y, name=None, out=None):
 
 
 @templatedoc()
-def logical_xor(x, y, name=None, out=None):
+def logical_xor(x, y, out=None, name=None):
     """
     ${comment}
 
@@ -6702,7 +6617,7 @@ def logical_xor(x, y, name=None, out=None):
 
 
 @templatedoc()
-def logical_not(x, name=None, out=None):
+def logical_not(x, out=None, name=None):
     """
     ${comment}
 
@@ -6717,3 +6632,67 @@ def logical_not(x, name=None, out=None):
 
     return _logical_op(
         op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
+
+
+@templatedoc()
+def clip(x, min, max, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        min(${min_type}): ${min_comment}
+        max(${max_type}): ${max_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("clip", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="clip",
+        inputs={"X": x},
+        attrs={"min": min,
+               "max": max},
+        outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def clip_by_norm(x, max_norm, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        max_norm(${max_norm_type}): ${max_norm_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("clip_by_norm", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="clip_by_norm",
+        inputs={"X": x},
+        attrs={"max_norm": max_norm},
+        outputs={"Out": out})
+
+    return out
