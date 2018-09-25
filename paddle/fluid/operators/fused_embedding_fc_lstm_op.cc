@@ -63,10 +63,6 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   auto embeddings_dims = ctx->GetInputDim("Embeddings");
   PADDLE_ENFORCE_EQ(embeddings_dims.size(), 2,
                     "The rank of Input(Embeddings) should be 2.");
-  //  PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
-  //                    "The first dimension of Input(Embeddings) "
-  //                    "should be %d.",
-  //                    x_dims[1]);
 
   auto wh_dims = ctx->GetInputDim("WeightH");
   int frame_size = wh_dims[1] / 4;
