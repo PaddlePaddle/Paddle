@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include <algorithm>
+#include <deque>
+#include <unordered_set>
 
 namespace paddle {
 namespace framework {
@@ -111,6 +111,42 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     }
   }
   return adj_list;
+}
+
+size_t GraphNum(const Graph &graph) {
+  std::unordered_set<ir::Node *> nodes = graph.Nodes();
+  std::unordered_set<ir::Node *> visited_nodes;
+  std::deque<ir::Node *> q_nodes;
+  size_t graph_count = 0;
+
+  while (visited_nodes.size() != nodes.size()) {
+    if (!q_nodes.empty()) {
+      auto cur_node = q_nodes.front();
+      q_nodes.pop_front();
+      visited_nodes.insert(cur_node);
+
+      std::copy_if(cur_node->inputs.begin(), cur_node->inputs.end(),
+                   std::back_inserter(q_nodes), [&visited_nodes](Node *node) {
+                     return !visited_nodes.count(node);
+                   });
+      std::copy_if(cur_node->outputs.begin(), cur_node->outputs.end(),
+                   std::back_inserter(q_nodes), [&visited_nodes](Node *node) {
+                     return !visited_nodes.count(node);
+                   });
+    } else {
+      ++graph_count;
+      for (auto &n : nodes) {
+        if (visited_nodes.count(n) == 0) {
+          q_nodes.push_back(n);
+          break;
+        }
+      }
+      if (q_nodes.empty()) {
+        PADDLE_ENFORCE("This should not happen.");
+      }
+    }
+  }
+  return graph_count;
 }
 
 }  // namespace ir
