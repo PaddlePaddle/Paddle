@@ -136,6 +136,8 @@ class DistributeTranspilerConfig(object):
     slice_var_up = True
     split_method = None
     min_block_size = 8192
+    # supported modes: pserver, nccl2
+    mode = "pserver"
     print_log = False
 
 
@@ -144,27 +146,30 @@ class DistributeTranspiler(object):
     **DistributeTranspiler**
 
     Convert the fluid program to distributed data-parallelism programs.
+    Supports two modes: pserver mode and nccl2 mode.
 
-    The main_program will be transformed to use a remote parameter server
-    to do parameter optimization. And the optimization graph will be put
-    into a parameter server program.
+    In pserver mode, the main_program will be transformed to use a remote
+    parameter server to do parameter optimization. And the optimization
+    graph will be put into a parameter server program.
+
+    In nccl2 mode, the transpiler will append a NCCL_ID broadcasting
+    op in startup_program to share the NCCL_ID across the job nodes.
+    After transpile_nccl2 called, you ***must*** pass trainer_id and
+    num_trainers argument to ParallelExecutor to enable NCCL2 distributed
+    mode.
 
     Examples:
         .. code-block:: python
 
-           # Define your model before these codes.
-           port = os.getenv("PADDLE_PSERVER_PORT", "6174")
-           pserver_ips = os.getenv("PADDLE_PSERVER_IPS", "")
-           eplist = []
-           for ip in pserver_ips.split(","):
-                eplist.append(':'.join([ip, port]))
-           pserver_endpoints = ",".join(eplist)
-           trainers = int(os.getenv("PADDLE_TRAINERS"))
-           current_endpoint = os.getenv("PADDLE_CURRENT_IP", "") + ":" + port
-           trainer_id = int(os.getenv("PADDLE_TRAINER_ID", "0"))
+           # for pserver mode
+           pserver_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+           trainer_endpoints = "192.168.0.1:6174,192.168.0.2:6174"
+           current_endpoint = "192.168.0.1:6174"
+           trainer_id = 0
+           trainers = 4
            role = os.getenv("PADDLE_TRAINING_ROLE")
 
-           t = distribute_transpiler.DistributeTranspiler()
+           t = fluid.DistributeTranspiler()
            t.transpile(
                 trainer_id, pservers=pserver_endpoints, trainers=trainers)
            if role == "PSERVER":
@@ -173,6 +178,18 @@ class DistributeTranspiler(object):
                                                                 pserver_program)
            elif role == "TRAINER":
                 trainer_program = t.get_trainer_program()
+           
+           # for nccl2 mode
+           config = fluid.DistributeTranspilerConfig()
+           config.mode = "nccl2"
+           t = fluid.DistributeTranspiler(config=config)
+           t.transpile(trainer_id, workers=workers, current_endpoint=curr_ep)
+           exe = fluid.ParallelExecutor(
+               use_cuda,
+               loss_name=loss_var.name,
+               num_trainers=len(trainers.split(",)),
+               trainer_id=trainer_id
+           )
     """
 
     def __init__(self, config=None):
@@ -190,13 +207,41 @@ class DistributeTranspiler(object):
         assert (self.config.min_block_size >= 8192)
         assert (self.config.split_method.__bases__[0] == PSDispatcher)
 
+    def _transpile_nccl2(self,
+                         trainer_id,
+                         trainers,
+                         current_endpoint,
+                         startup_program=None):
+        if not startup_program:
+            startup_program = default_startup_program()
+        if trainer_id >= 0:
+            worker_endpoints = trainers.split(",")
+            # send NCCL_ID to others or recv from trainer 0
+            worker_endpoints.remove(current_endpoint)
+
+            nccl_id_var = startup_program.global_block().create_var(
+                name="NCCLID", persistable=True, type=core.VarDesc.VarType.RAW)
+            startup_program.global_block().append_op(
+                type="gen_nccl_id",
+                inputs={},
+                outputs={"NCCLID": nccl_id_var},
+                attrs={
+                    "endpoint": current_endpoint,
+                    "endpoint_list": worker_endpoints,
+                    "trainer_id": trainer_id
+                })
+            return nccl_id_var
+        else:
+            raise ValueError("must set trainer_id > 0")
+
     def transpile(self,
                   trainer_id,
                   program=None,
                   pservers="127.0.0.1:6174",
                   trainers=1,
                   sync_mode=True,
-                  startup_program=None):
+                  startup_program=None,
+                  current_endpoint="127.0.0.1:6174"):
         """
         Run the transpiler.
 
@@ -207,10 +252,15 @@ class DistributeTranspiler(object):
                 default is fluid.default_main_program().
             pservers (str): comma separated ip:port string for the pserver
                 list.
-            trainers (int): number of trainers in the distributed job.
+            trainers (int|str): in pserver mode this is the number of
+                trainers, in nccl2 mode this is a string of trainer
+                endpoints.
             sync_mode (bool): Do sync training or not, default is True.
             startup_program (Program|None): startup_program to transpile,
                 default is fluid.default_main_program().
+            current_endpoint (str): need pass current endpoint when
+                transpile as nccl2 distributed mode. In pserver mode
+                this argument is not used.
         """
         if program is None:
             program = default_main_program()
@@ -219,6 +269,15 @@ class DistributeTranspiler(object):
         self.origin_program = program
         self.startup_program = startup_program
         self.origin_startup_program = self.startup_program.clone()
+
+        if self.config.mode == "nccl2":
+            assert (isinstance(trainers, str))
+            self._transpile_nccl2(
+                trainer_id,
+                trainers,
+                current_endpoint,
+                startup_program=startup_program)
+            return
 
         self.trainer_num = trainers
         self.sync_mode = sync_mode
@@ -1082,7 +1141,7 @@ to transpile() call.")
                         if self.sync_mode else []
                     },
                     attrs={
-                        "sync_mode": False,
+                        "sync_mode": self.sync_mode,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME: [

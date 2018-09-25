@@ -31,21 +31,24 @@
 
 namespace paddle {
 
+using paddle::contrib::AnakinConfig;
+
 template <typename Target>
 PaddleInferenceAnakinPredictor<Target>::PaddleInferenceAnakinPredictor(
-    const AnakinConfig &config) {
+    const contrib::AnakinConfig &config) {
   CHECK(Init(config));
 }
 template <>
 PaddleInferenceAnakinPredictor<anakin::X86>::PaddleInferenceAnakinPredictor(
-    const AnakinConfig &config) {
+    const contrib::AnakinConfig &config) {
   omp_set_dynamic(0);
   omp_set_num_threads(1);
   mkl_set_num_threads(1);
   CHECK(Init(config));
 }
 template <typename Target>
-bool PaddleInferenceAnakinPredictor<Target>::Init(const AnakinConfig &config) {
+bool PaddleInferenceAnakinPredictor<Target>::Init(
+    const contrib::AnakinConfig &config) {
   if (!(graph_.load(config.model_file))) {
     VLOG(3) << "fail to load graph from " << config.model_file;
     return false;
@@ -200,10 +203,11 @@ template class PaddleInferenceAnakinPredictor<anakin::X86>;
 
 // A factory to help create difference predictor.
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    AnakinConfig, PaddleEngineKind::kAnakin>(const AnakinConfig &config) {
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
+    const contrib::AnakinConfig &config) {
   VLOG(3) << "Anakin Predictor create.";
-  if (config.target_type == AnakinConfig::NVGPU) {
+  if (config.target_type == contrib::AnakinConfig::NVGPU) {
 #ifdef PADDLE_WITH_CUDA
     VLOG(3) << "Anakin Predictor create on [ NVIDIA GPU ].";
     std::unique_ptr<PaddlePredictor> x(
@@ -213,7 +217,7 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     LOG(ERROR) << "AnakinConfig::NVGPU could not used in ONLY-CPU environment";
     return nullptr;
 #endif
-  } else if (config.target_type == AnakinConfig::X86) {
+  } else if (config.target_type == contrib::AnakinConfig::X86) {
     VLOG(3) << "Anakin Predictor create on [ Intel X86 ].";
     std::unique_ptr<PaddlePredictor> x(
         new PaddleInferenceAnakinPredictor<anakin::X86>(config));
