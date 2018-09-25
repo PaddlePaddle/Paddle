@@ -32,6 +32,7 @@ class AucKernel : public framework::OpKernel<T> {
 
     std::string curve = ctx.Attr<std::string>("curve");
     int num_thresholds = ctx.Attr<int>("num_thresholds");
+    // buckets contain numbers from 0 to num_thresholds
     int num_pred_buckets = num_thresholds + 1;
     int slide_steps = ctx.Attr<int>("slide_steps");
 
