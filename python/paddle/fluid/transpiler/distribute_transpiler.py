@@ -1141,7 +1141,7 @@ to transpile() call.")
                         if self.sync_mode else []
                     },
                     attrs={
-                        "sync_mode": False,
+                        "sync_mode": self.sync_mode,
                         "epmap": pserver_endpoints,
                         RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE,
                         OP_ROLE_VAR_ATTR_NAME: [
