@@ -38,7 +38,6 @@ from . import unique_name
 __all__ = [
     'Program',
     'Operator',
-    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
@@ -489,7 +488,8 @@ class OpProtoHolder(object):
     def generated_op_attr_names():
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
-            core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+            core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
         }
 
 
