@@ -11,13 +11,16 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+#define GOOGLE_GLOG_DLL_DECL
+
 #include "paddle/fluid/framework/operator.h"
+#include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <algorithm>
 #include <sstream>
 #include <string>
 #include <vector>
-#include "gflags/gflags.h"
-#include "glog/logging.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -495,35 +498,35 @@ class RuntimeInferShapeContext : public InferShapeContext {
       : op_(op), scope_(scope) {}
 
   bool HasInput(const std::string& name) const override {
-    if (!op_.HasInputs(name)) {
+    // has only one input
+    const auto& ins = op_.Inputs();
+    auto it = ins.find(name);
+    if (it == ins.end()) {
       return false;
     }
-    auto& ins = Inputs(name);
-    size_t length = ins.size();
-    if (length == 0) {
+    const auto& in = it->second;
+    if (in.size() == 0 || in[0] == kEmptyVarName) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
+    PADDLE_ENFORCE_EQ(in.size(), 1UL,
                       "Input %s should not have more than one inputs", name);
-    auto ipt = ins[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    return scope_.FindVar(in[0]) != nullptr;
   }
 
   bool HasOutput(const std::string& name) const override {
-    if (!op_.HasOutputs(name)) {
+    // has only one output
+    const auto& outs = op_.Outputs();
+    auto it = outs.find(name);
+    if (it == outs.end()) {
       return false;
     }
-    auto& outs = Outputs(name);
-    size_t length = outs.size();
-    if (length == 0) {
+    const auto& out = it->second;
+    if (out.size() == 0 || out[0] == kEmptyVarName) {
       return false;
     }
-    PADDLE_ENFORCE_EQ(length, 1UL,
-                      "Output %s should not have more than one inputs", name);
-    auto ipt = outs[0];
-    auto* var = ipt == kEmptyVarName ? nullptr : scope_.FindVar(ipt);
-    return var != nullptr;
+    PADDLE_ENFORCE_EQ(out.size(), 1UL,
+                      "Output %s should not have more than one outputs", name);
+    return scope_.FindVar(out[0]) != nullptr;
   }
 
   bool HasInputs(const std::string& name) const override {

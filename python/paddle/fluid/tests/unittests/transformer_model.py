@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle.fluid as fluid
 import paddle.fluid.layers as layers
+from paddle.fluid.layers.io import open_recordio_file
 
 pos_enc_param_names = (
     "src_pos_enc_table",
@@ -405,7 +406,7 @@ def transformer(
         src_pad_idx,
         trg_pad_idx,
         pos_pad_idx, ):
-    file_obj = fluid.layers.open_recordio_file(
+    file_obj = open_recordio_file(
         filename='/tmp/wmt16.recordio',
         shapes=[
             [batch_size * max_length, 1],

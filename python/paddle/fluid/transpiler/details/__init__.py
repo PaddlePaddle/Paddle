@@ -16,3 +16,4 @@ from __future__ import print_function
 
 from .program_utils import *
 from .ufind import *
+from .checkport import *

@@ -26,7 +26,7 @@ main_program = default_startup_program()
 
 class TestOperator(unittest.TestCase):
     def test_error_type(self):
-        block = main_program.create_block()
+        block = main_program._create_block()
         try:
             block.append_op()
             self.assertFail()
