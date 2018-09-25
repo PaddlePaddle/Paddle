@@ -19,17 +19,8 @@ from .framework import *
 # import all class inside executor into fluid module
 from . import executor
 from .executor import *
-
 from . import trainer
-from .trainer import Trainer
-from .trainer import BeginEpochEvent
-from .trainer import EndEpochEvent
-from .trainer import BeginStepEvent
-from .trainer import EndStepEvent
-from .trainer import CheckpointConfig
-
 from . import inferencer
-from .inferencer import Inferencer
 
 from . import io
 from . import evaluator
@@ -46,7 +37,7 @@ from . import transpiler
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
-from .transpiler import DistributeTranspiler, InferenceTranspiler, \
+from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
