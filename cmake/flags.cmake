@@ -26,7 +26,7 @@ function(CheckCompilerCXX11Flag)
 endfunction()
 
 CheckCompilerCXX11Flag()
-
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -148,10 +148,8 @@ set(GPU_COMMON_FLAGS
 else(NOT WIN32)
 set(COMMON_FLAGS
     "/w") #disable all warnings.
-
 set(GPU_COMMON_FLAGS
     "/w") #disable all warnings
-
 endif(NOT WIN32)
 
 if (APPLE)
@@ -185,6 +183,7 @@ foreach(flag ${GPU_COMMON_FLAGS})
 endforeach()
 
 if(WIN32)
+# windows build turn off warnings.
 safe_set_static_flag()
     foreach(flag_var
         CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
