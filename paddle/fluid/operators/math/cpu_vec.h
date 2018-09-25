@@ -17,6 +17,7 @@ limitations under the License. */
 #include <functional>
 #include <string>
 #include "paddle/fluid/platform/cpu_info.h"
+#include "paddle/fluid/platform/enforce.h"
 #ifdef __AVX__
 #include <immintrin.h>
 #endif
@@ -476,7 +477,7 @@ class VecActivations {
     } else if (type == "identity" || type == "") {
       return vec_identity<T, isa>;
     }
-    LOG(FATAL) << "Not support type: " << type;
+    PADDLE_THROW("Not support type: %s", type);
   }
 };
 

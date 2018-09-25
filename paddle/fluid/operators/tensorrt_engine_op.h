@@ -36,7 +36,7 @@ namespace operators {
 using FluidDT = framework::proto::VarType_Type;
 using TRT_DT = nvinfer1::DataType;
 
-namespace {
+namespace {  // NOLINT
 
 TRT_DT FluidDataType2TRT(FluidDT type) {
   switch (type) {
@@ -160,11 +160,7 @@ class TensorRTEngineKernel : public framework::OpKernel<T> {
           fluid_t->mutable_data<float>(platform::CUDAPlace(
               boost::get<platform::CUDAPlace>(context.GetPlace()).device)),
           size * sizeof(float));
-      //} else {
-      // engine->GetOutputInGPU(
-      // y, fluid_t->mutable_data<float>(platform::CUDAPlace()),
-      // size * sizeof(float));
-      //}
+
       output_index += 1;
     }
 

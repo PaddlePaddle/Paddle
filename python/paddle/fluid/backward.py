@@ -347,7 +347,7 @@ def _append_backward_ops_(block,
         # If the op has its own sub-block, deal with the sub-block first
         if op.has_attr("sub_block"):
             sub_block = program.block(op.block_attr_id("sub_block"))
-            grad_sub_block = program.create_block()
+            grad_sub_block = program._create_block()
             grad_sub_block._set_forward_block_idx(sub_block.idx)
             cb = _callback_lookup_(op)
             if cb is not None:
@@ -361,7 +361,7 @@ def _append_backward_ops_(block,
                 _append_backward_ops_(sub_block, sub_block.ops, grad_sub_block,
                                       no_grad_dict, grad_to_var, callbacks)
 
-            program.rollback()
+            program._rollback()
             grad_sub_block_list.append(grad_sub_block.desc)
 
         # Getting op's corresponding grad_op

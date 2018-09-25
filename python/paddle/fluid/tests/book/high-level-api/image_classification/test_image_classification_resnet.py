@@ -18,6 +18,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import numpy
+import six
 import os
 import cifar10_small_test_set
 

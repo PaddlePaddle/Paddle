@@ -46,7 +46,7 @@ from . import transpiler
 from .param_attr import ParamAttr, WeightNormParamAttr
 from .data_feeder import DataFeeder
 from .core import LoDTensor, LoDTensorArray, CPUPlace, CUDAPlace, CUDAPinnedPlace, Scope
-from .transpiler import DistributeTranspiler, InferenceTranspiler, \
+from .transpiler import DistributeTranspiler, \
     memory_optimize, release_memory, DistributeTranspilerConfig
 from .lod_tensor import create_lod_tensor, create_random_int_lodtensor
 from . import clip
@@ -122,7 +122,7 @@ def __bootstrap__():
         'use_pinned_memory', 'check_nan_inf', 'benchmark', 'warpctc_dir',
         'eager_delete_scope', 'use_mkldnn', 'initial_cpu_memory_in_mb',
         'init_allocated_mem', 'free_idle_memory', 'paddle_num_threads',
-        "dist_threadpool_size", 'cpu_deterministic'
+        "dist_threadpool_size", 'cpu_deterministic', 'eager_delete_tensor_gb'
     ]
     if core.is_compiled_with_dist():
         read_env_flags.append('rpc_deadline')

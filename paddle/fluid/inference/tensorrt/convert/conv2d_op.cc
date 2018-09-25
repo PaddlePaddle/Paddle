@@ -78,8 +78,10 @@ class Conv2dOpConverter : public OpConverter {
     layer->setNbGroups(groups);
 
     auto output_name = op_desc.Output("Output").front();
+    layer->setName(("conv2d (Output: " + output_name + ")").c_str());
     engine_->weight_map[op_desc.Input("Filter").front()] =
         std::move(weight_tensor);
+    layer->getOutput(0)->setName(output_name.c_str());
     engine_->SetITensor(output_name, layer->getOutput(0));
     if (test_mode) {
       engine_->DeclareOutput(output_name);

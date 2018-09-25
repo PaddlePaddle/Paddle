@@ -47,7 +47,7 @@ def append_regularization_ops(parameters_and_grads, regularization=None):
         if grad is None:
             params_and_grads.append((param, grad))
             continue
-        with param.block.program.optimized_guard([param, grad]):
+        with param.block.program._optimized_guard([param, grad]):
             regularization_term = None
             if param.regularizer is not None:
                 # Add variable for regularization term in grad block
@@ -190,14 +190,11 @@ class L1DecayRegularizer(WeightDecayRegularizer):
     Examples:
         .. code-block:: python
 
-            program = fluid.framework.Program()
-            block = program.global_block()
-            mul_x = block.create_parameter(
-                dtype="float32",
-                shape=[5, 10],
-                lod_level=0,
-                name="mul.x",
-                regularizer=fluid.regularizer.L1DecayRegularizer(0.5))
+            optimizer = fluid.optimizer.Adagrad(
+                learning_rate=1e-4,
+                regularization=fluid.regularizer.L1DecayRegularizer(
+                    regularization_coeff=0.1))
+            optimizer.minimize(avg_cost)
     """
 
     def __init__(self, regularization_coeff=0.0):

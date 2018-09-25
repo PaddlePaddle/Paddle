@@ -280,7 +280,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
-            layers.sqrt(x=group_norm_var, out=group_norm_var)
+            group_norm_var = layers.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,
@@ -331,7 +331,7 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program.optimized_guard([p, g]):
+        with p.block.program._optimized_guard([p, g]):
             clip_attr = getattr(p, 'gradient_clip_attr', NullGradientClipAttr())
             if clip_attr is None:
                 clip_attr = NullGradientClipAttr()
@@ -346,7 +346,7 @@ def append_gradient_clip_ops(param_grads):
     for p, g in param_grads:
         if g is None:
             continue
-        with p.block.program.optimized_guard([p, g]):
+        with p.block.program._optimized_guard([p, g]):
             res.append(clip_attr._create_operators(param=p, grad=g))
 
     return res
