@@ -14,6 +14,12 @@
 
 #pragma once
 
+// logging.h and windows.h conflict
+#define GLOG_NO_ABBREVIATED_SEVERITIES
+// solve static linking error in windows
+// https://github.com/google/glog/issues/301
+#define GOOGLE_GLOG_DLL_DECL
+
 #include <glog/logging.h>
 #include <map>
 #include <memory>

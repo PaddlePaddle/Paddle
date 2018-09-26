@@ -23,8 +23,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-static constexpr int kROISize = 4;
-
 template <typename T>
 bool GT_E(T a, T b) {
   return (a > b) || fabs(a - b) < 1e-4;

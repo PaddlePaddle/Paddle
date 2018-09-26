@@ -38,27 +38,31 @@ struct OpInfo {
   OpAttrChecker* checker_{nullptr};
   InferVarTypeFN infer_var_type_;
   InferShapeFN infer_shape_;
+  std::string op_type_;
 
   bool HasOpProtoAndChecker() const {
     return proto_ != nullptr && checker_ != nullptr;
   }
 
   const proto::OpProto& Proto() const {
-    PADDLE_ENFORCE_NOT_NULL(proto_, "Operator Proto has not been registered");
+    PADDLE_ENFORCE_NOT_NULL(proto_, "Operator %s Proto has not been registered",
+                            op_type_);
     PADDLE_ENFORCE(proto_->IsInitialized(),
-                   "Operator Proto must be initialized in op info");
+                   "Operator %s Proto must be initialized in op info",
+                   op_type_);
     return *proto_;
   }
 
   const OpCreator& Creator() const {
-    PADDLE_ENFORCE_NOT_NULL(creator_,
-                            "Operator Creator has not been registered");
+    PADDLE_ENFORCE_NOT_NULL(
+        creator_, "Operator %s Creator has not been registered", op_type_);
     return creator_;
   }
 
   const GradOpMakerFN& GradOpMaker() const {
     PADDLE_ENFORCE_NOT_NULL(grad_op_maker_,
-                            "Operator GradOpMaker has not been registered.");
+                            "Operator %s GradOpMaker has not been registered.",
+                            op_type_);
     return grad_op_maker_;
   }
 
@@ -73,8 +77,9 @@ class OpInfoMap {
     return map_.find(op_type) != map_.end();
   }
 
-  void Insert(const std::string& type, const OpInfo& info) {
+  void Insert(const std::string& type, OpInfo info) {
     PADDLE_ENFORCE(!Has(type), "Operator %s has been registered", type);
+    info.op_type_ = type;
     map_.insert({type, info});
   }
 
