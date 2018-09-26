@@ -207,7 +207,7 @@ struct AnalysisConfig : public NativeConfig {
   // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;
   // Manually determine the IR passes to run.
-  IrPassMode ir_mode{IrPassMode::kSystem};
+  IrPassMode ir_mode{IrPassMode::kExclude};
   std::vector<std::string> ir_passes;
 
   // NOTE this is just for internal development, please not use it.
