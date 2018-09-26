@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
+#include <vector>
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
@@ -28,7 +30,7 @@ using framework::proto::ProgramDesc;
  */
 class AnalysisPredictor : public NativePaddlePredictor {
  public:
-  explicit AnalysisPredictor(const NativeConfig& config)
+  explicit AnalysisPredictor(const contrib::AnalysisConfig& config)
       : NativePaddlePredictor(config), config_(config) {}
 
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope);
@@ -44,7 +46,7 @@ class AnalysisPredictor : public NativePaddlePredictor {
   Argument& analysis_argument() { return argument_; }
 
  private:
-  NativeConfig config_;
+  contrib::AnalysisConfig config_;
   Argument argument_;
 };
 

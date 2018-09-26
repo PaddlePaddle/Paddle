@@ -33,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -395,11 +396,6 @@ All parameter, weight, gradient are variables in Paddle.
     Prune(*prog_with_targets.Proto(), &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
-  m.def("inference_optimize", [](ProgramDesc &origin) {
-    proto::ProgramDesc pruned_desc;
-    InferenceOptimize(*(origin.Proto()), &pruned_desc);
-    return new ProgramDesc(pruned_desc);
-  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -529,6 +525,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+
+  m.def("_is_program_version_supported", IsProgramVersionSupported);
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);
@@ -672,7 +670,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+      .def_property("fuse_elewise_add_act_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_elewise_add_act_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.fuse_elewise_add_act_ops_ = b;
+                    });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -680,7 +685,6 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("_bcast_params", &ParallelExecutor::BCastParamsToDevices)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

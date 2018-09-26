@@ -20,10 +20,10 @@ import contextlib
 from .core import VarDesc
 
 __all__ = [
-    'Constant', 'Uniform', 'Normal', 'Xavier', 'Bilinear', 'MSRA',
-    'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
-    'UniformInitializer', 'NormalInitializer', 'XavierInitializer',
-    'BilinearInitializer', 'MSRAInitializer'
+    'Constant', 'Uniform', 'Normal', 'TruncatedNormal', 'Xavier', 'Bilinear',
+    'MSRA', 'force_init_on_cpu', 'init_on_cpu', 'ConstantInitializer',
+    'UniformInitializer', 'NormalInitializer', 'TruncatedNormalInitializer',
+    'XavierInitializer', 'BilinearInitializer', 'MSRAInitializer'
 ]
 
 _force_init_on_cpu_ = False
@@ -32,6 +32,8 @@ _force_init_on_cpu_ = False
 def force_init_on_cpu():
     """
     The flag of whether force to init variables on CPU.
+
+    Returns::
 
     Examples:
         .. code-block:: python
@@ -72,7 +74,7 @@ class Initializer(object):
     directly, but need to use one of its implementations.
     """
 
-    def __init_(self):
+    def __init__(self):
         pass
 
     def __call__(self, param, block):
@@ -267,6 +269,60 @@ class NormalInitializer(Initializer):
                 "std": self._std_dev,
                 "seed": self._seed,
                 "use_mkldnn": False
+            })
+        var.op = op
+        return op
+
+
+class TruncatedNormalInitializer(Initializer):
+    """Implements the Random TruncatedNormal(Gaussian) distribution initializer
+
+    Args:
+        loc (float): mean of the normal distribution
+        scale (float): standard deviation of the normal distribution
+        seed (int): random seed
+
+    Examples:
+        .. code-block:: python
+
+            fc = fluid.layers.fc(input=x, size=10,
+                param_attr=fluid.initializer.TruncatedNormal(loc=0.0, scale=2.0))
+    """
+
+    def __init__(self, loc=0.0, scale=1.0, seed=0):
+        assert loc is not None
+        assert scale is not None
+        assert seed is not None
+        super(TruncatedNormalInitializer, self).__init__()
+        self._mean = loc
+        self._std_dev = scale
+        self._seed = seed
+
+    def __call__(self, var, block):
+        """Add truncated normal distribution initialization ops for a variable
+
+        Args:
+            var: Variable that needs to be initialized
+            block: The block in which initialization ops
+                   should be added
+
+        Returns:
+            the initialization op
+        """
+        assert isinstance(var, framework.Variable)
+        assert isinstance(block, framework.Block)
+        # Initialization Ops should be prepended and not appended
+        if self._seed == 0:
+            self._seed = block.program.random_seed
+        op = block._prepend_op(
+            type="truncated_gaussian_random",
+            outputs={"Out": var},
+            attrs={
+                "shape": var.shape,
+                "dtype": int(var.dtype),
+                "mean": self._mean,
+                "std": self._std_dev,
+                "seed": self._seed
             })
         var.op = op
         return op
@@ -583,6 +639,7 @@ class BilinearInitializer(Initializer):
 Constant = ConstantInitializer
 Uniform = UniformInitializer
 Normal = NormalInitializer
+TruncatedNormal = TruncatedNormalInitializer
 Xavier = XavierInitializer
 MSRA = MSRAInitializer
 Bilinear = BilinearInitializer

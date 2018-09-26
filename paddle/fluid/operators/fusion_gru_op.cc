@@ -25,21 +25,14 @@ namespace paddle {
 namespace operators {
 
 void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of GRU should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Assert only one Input(X) of GRU.");
   PADDLE_ENFORCE(ctx->HasInput("WeightX"),
-                 "Input(WeightX) of GRU should not be null.");
+                 "Assert only one Input(WeightX) of GRU.");
   PADDLE_ENFORCE(ctx->HasInput("WeightH"),
-                 "Input(WeightH) of GRU should not be null.");
-
-  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Output(XX) of GRU should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
-                 "Output(ReorderedH0) of GRU should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
-                 "Output(BatchedInput) of GRU should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchedOut"),
-                 "Output(BatchedOut) of GRU should not be null.");
+                 "Assert only one Input(WeightH) of GRU.");
+  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Assert only one Output(XX) of GRU.");
   PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                 "Output(Hidden) of GRU should not be null.");
+                 "Assert only one Output(Hidden) of GRU.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
@@ -80,15 +73,20 @@ void FusionGRUOp::InferShape(framework::InferShapeContext* ctx) const {
   }
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
-  ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
-  ctx->SetOutputDim("BatchedOut", out_dims);
   ctx->ShareLoD("X", "Hidden");
-
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
+    PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
+                   "Assert only one Output(ReorderedH0) of GRU.");
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
+                   "Assert only one Output(BatchedInput) of GRU.");
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedOut"),
+                   "Assert only one Output(BatchedOut) of GRU.");
+    ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
+    ctx->SetOutputDim("BatchedOut", out_dims);
   }
   ctx->SetOutputDim("XX", {x_dims[0], xx_width});
   ctx->ShareLoD("X", "XX");
