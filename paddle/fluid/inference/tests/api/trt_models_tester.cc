@@ -19,6 +19,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
 namespace paddle {
+using paddle::contrib::MixedRTConfig;
 
 DEFINE_string(dirname, "", "Directory of the inference model.");
 
@@ -32,8 +33,8 @@ NativeConfig GetConfigNative() {
   return config;
 }
 
-TensorRTConfig GetConfigTRT() {
-  TensorRTConfig config;
+MixedRTConfig GetConfigTRT() {
+  MixedRTConfig config;
   config.model_dir = FLAGS_dirname;
   config.use_gpu = true;
   config.fraction_of_gpu_memory = 0.2;
@@ -46,14 +47,14 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   NativeConfig config0 = GetConfigNative();
   config0.model_dir = model_dirname;
 
-  TensorRTConfig config1 = GetConfigTRT();
+  MixedRTConfig config1 = GetConfigTRT();
   config1.model_dir = model_dirname;
   config1.max_batch_size = batch_size;
 
   auto predictor0 =
       CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
   auto predictor1 =
-      CreatePaddlePredictor<TensorRTConfig,
+      CreatePaddlePredictor<MixedRTConfig,
                             PaddleEngineKind::kAutoMixedTensorRT>(config1);
   // Prepare inputs
   int height = 224;
