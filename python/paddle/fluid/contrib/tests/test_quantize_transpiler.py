@@ -194,7 +194,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
         startup = fluid.Program()
         test_program = fluid.Program()
 
-        feeds, loss = build_program(main, startup, True)
+        feeds, loss = build_program(main, startup, False)
         build_program(test_program, startup, True)
         test_program = test_program.clone(for_test=True)
 
