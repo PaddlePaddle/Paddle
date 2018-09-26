@@ -600,7 +600,7 @@ def save_inference_model(dirname,
     """
     if isinstance(feeded_var_names, six.string_types):
         feeded_var_names = [feeded_var_names]
-    else:
+    elif export_for_deployment:
         if len(feeded_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
             if not (bool(feeded_var_names) and all(
@@ -610,54 +610,13 @@ def save_inference_model(dirname,
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
-    else:
+    elif export_for_deployment:
         if not (bool(target_vars) and all(
                 isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
     if main_program is None:
         main_program = default_main_program()
-    copy_program = main_program.clone()
-
-    if not os.path.isdir(dirname):
-        os.makedirs(dirname)
-
-    # When export_for_deployment is true, we modify the program online so that
-    # it can only be loaded for inference directly. If it's false, the whole
-    # original program and related meta are saved so that future usage can be
-    # more flexible.
-    if export_for_deployment:
-        global_block = copy_program.global_block()
-        for i, op in enumerate(global_block.ops):
-            op.desc.set_is_target(False)
-            if op.type == "feed" or op.type == "fetch":
-                global_block._remove_op(i)
-        copy_program.desc.flush()
-
-        pruned_program = copy_program._prune(targets=target_vars)
-        saved_program = pruned_program._inference_optimize(prune_read_op=True)
-        fetch_var_names = [v.name for v in target_vars]
-
-        prepend_feed_ops(saved_program, feeded_var_names)
-        append_fetch_ops(saved_program, fetch_var_names)
-    else:
-        # TODO(panyx0718): Save more information so that it can also be used
-        # for training and more flexible post-processing.
-        saved_program = copy_program
-
-    if model_filename is not None:
-        model_filename = os.path.basename(model_filename)
-    else:
-        model_filename = "__model__"
-    model_filename = os.path.join(dirname, model_filename)
-
-    if params_filename is not None:
-        params_filename = os.path.basename(params_filename)
-
-    with open(model_filename, "wb") as f:
-        f.write(saved_program.desc.serialize_to_string())
-
-    save_persistables(executor, dirname, saved_program, params_filename)
 
     # if there is lookup table, the trainer 0 will notify all pserver to save.
     if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
@@ -665,6 +624,46 @@ def save_inference_model(dirname,
         _save_lookup_tables_by_notify(executor, lookup_table_filename,
                                       main_program._distributed_lookup_table,
                                       main_program._endpoints)
+
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+    if model_filename is not None:
+        model_basename = os.path.basename(model_filename)
+    else:
+        model_basename = "__model__"
+    model_basename = os.path.join(dirname, model_basename)
+
+    # When export_for_deployment is true, we modify the program online so that
+    # it can only be loaded for inference directly. If it's false, the whole
+    # original program and related meta are saved so that future usage can be
+    # more flexible.
+    if export_for_deployment:
+        main_program = main_program.clone()
+        global_block = main_program.global_block()
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                global_block._remove_op(i)
+        main_program.desc.flush()
+
+        main_program = main_program._prune(targets=target_vars)
+        main_program = main_program._inference_optimize(prune_read_op=True)
+        fetch_var_names = [v.name for v in target_vars]
+
+        prepend_feed_ops(main_program, feeded_var_names)
+        append_fetch_ops(main_program, fetch_var_names)
+
+        with open(model_basename, "wb") as f:
+            f.write(main_program.desc.serialize_to_string())
+    else:
+        # TODO(panyx0718): Save more information so that it can also be used
+        # for training and more flexible post-processing.
+        with open(model_basename + ".main_program", "wb") as f:
+            f.write(main_program.desc.serialize_to_string())
+
+    if params_filename is not None:
+        params_filename = os.path.basename(params_filename)
+    save_persistables(executor, dirname, main_program, params_filename)
 
 
 def load_inference_model(dirname,
