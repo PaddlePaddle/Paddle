@@ -1409,6 +1409,7 @@ def conv2d(input,
            act=None,
            name=None):
     """
+    test test test 
     The convolution2D layer calculates the output based on the input, filter
     and strides, paddings, dilations, groups parameters. Input and
     Output are in NCHW format, where N is batch size, C is the number of
@@ -1423,6 +1424,9 @@ def conv2d(input,
     If bias attribution and activation type are provided, bias is added to the
     output of the convolution, and the corresponding activation function is
     applied to the final result.
+    test test test 
+    test test test 
+    test test test 
 
     For each input :math:`X`, the equation is:
 
