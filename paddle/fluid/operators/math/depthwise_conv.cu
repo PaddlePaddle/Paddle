@@ -228,11 +228,11 @@ __global__ void KernelDepthwiseConvFilterGrad(
       for (int image_h = threadIdx.y; image_h < output_height;
            image_h += blockDim.y) {
         int kernel_id = blockIdx.z;
-        int kernel_h = blockIdx.y - padding_height;
-        int kernel_w = blockIdx.x - padding_width;
+        int kernel_h = blockIdx.y * dilate_height - padding_height;
+        int kernel_w = blockIdx.x * dilate_width - padding_width;
 
-        int image_hk = image_h * stride_height + kernel_h * dilate_height;
-        int image_wk = image_w * stride_width + kernel_w * dilate_width;
+        int image_hk = image_h * stride_height + kernel_h;
+        int image_wk = image_w * stride_width + kernel_w;
         if (image_hk < 0 || image_hk >= input_height) continue;
         if (image_wk < 0 || image_wk >= input_width) continue;
 #define gaid(N, C, H, W) \
