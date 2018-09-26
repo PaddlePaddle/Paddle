@@ -49,9 +49,7 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 }
 
 struct NaiveAllocator {
-  void* Alloc(size_t size) {
-    return malloc(size);
-  }
+  void* Alloc(size_t size) { return malloc(size); }
 
   void Free(void* p) {
     PADDLE_ENFORCE(p);

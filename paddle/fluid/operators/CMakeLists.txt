@@ -212,7 +212,7 @@ if(WITH_DISTRIBUTE)
         set(DISTRIBUTE_DEPS sendrecvop_brpc brpc leveldb snappystream snappy protobuf ssl crypto zlib node)
         if(WITH_BRPC_RDMA)
             find_library(IBVERBS_LIBRARY NAMES ibverbs)
-            ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL ../framework/naive_executor_test.cc)
+            ADD_LIBRARY(ibverbs SHARED IMPORTED GLOBAL)
             SET_PROPERTY(TARGET ibverbs PROPERTY IMPORTED_LOCATION ${IBVERBS_LIBRARY})
 
 
