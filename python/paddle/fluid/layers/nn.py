@@ -6689,6 +6689,7 @@ def clip_by_norm(x, max_norm, name=None):
         out = helper.create_variable(
             name=name, dtype=x.dtype, persistable=False)
 
+    # max_norm should always be set
     helper.append_op(
         type="clip_by_norm",
         inputs={"X": x},
