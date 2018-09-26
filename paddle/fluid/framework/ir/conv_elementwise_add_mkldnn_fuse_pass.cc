@@ -22,11 +22,6 @@ namespace framework {
 namespace ir {
 namespace patterns {
 
-static void LinkNodes(Node* from, Node* to) {
-  from->outputs.push_back(to);
-  to->inputs.push_back(from);
-}
-
 template <typename IT, typename FindFunc, typename ReplaceFunc>
 static void ReplaceAllOccurances(IT s, IT e, FindFunc f, ReplaceFunc r) {
   if (s == e) return;
@@ -47,7 +42,7 @@ static void CorrectGraphEdges(Graph* graph, Node* from, Node* to) {
                              [from](Node* n) { return n == from; });
 
     if (same != std::end(node.inputs)) {
-      LinkNodes(to, &node);
+      IR_NODE_LINK_TO(to, (&node));
 
       auto inputs = node.Op()->Inputs();
 
