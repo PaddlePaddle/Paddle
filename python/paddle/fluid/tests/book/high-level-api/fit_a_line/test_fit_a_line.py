@@ -16,6 +16,16 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import sys
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import contextlib
 import numpy
 import unittest
@@ -57,11 +67,11 @@ def optimizer_func():
 def train(use_cuda, train_program, params_dirname, inference_model_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, EndStepEvent):
             if event.step == 10:
                 test_metrics = trainer.test(
                     reader=test_reader, feed_order=['x', 'y'])
@@ -91,7 +101,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
         return
 
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         infer_func=inference_program, param_path=params_dirname, place=place)
 
     batch_size = 10

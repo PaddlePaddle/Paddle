@@ -132,7 +132,9 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
 
   AddAttr<std::string>(OpNamescopeAttrName(), "Operator name with namesope.")
       .SetDefault("");
-
+  AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
+                                    "Callstack for Op Creatation.")
+      .SetDefault({});
   Validate();
 }
 

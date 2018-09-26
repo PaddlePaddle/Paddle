@@ -18,6 +18,8 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
+#include <algorithm>
 #include <memory>
 #include <thread>  //NOLINT
 #include "paddle/fluid/inference/paddle_inference_api.h"
@@ -67,7 +69,8 @@ void Main(bool use_gpu) {
                        0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
-    for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
+    for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
+         i++) {
       PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
                      result[i]);
     }
@@ -113,7 +116,8 @@ void MainThreads(int num_threads, bool use_gpu) {
         const size_t num_elements =
             outputs.front().data.length() / sizeof(float);
         // The outputs' buffers are in CPU memory.
-        for (size_t i = 0; i < std::min(5UL, num_elements); i++) {
+        for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
+             i++) {
           PADDLE_ENFORCE(static_cast<float*>(outputs.front().data.data())[i],
                          result[i]);
         }

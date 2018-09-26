@@ -18,6 +18,7 @@ import collections
 import contextlib
 import re
 import six
+import traceback
 
 import numpy as np
 
@@ -34,11 +35,12 @@ except ImportError as e:
 except Exception as e:
     raise e
 from . import unique_name
+import os
+PADDLE_ON_MODEL_CE = os.environ.get('PADDLE_ON_MODEL_CE', None) is not None
 
 __all__ = [
     'Program',
     'Operator',
-    'Parameter',
     'default_startup_program',
     'default_main_program',
     'program_guard',
@@ -490,7 +492,8 @@ class OpProtoHolder(object):
         return {
             core.op_proto_and_checker_maker.kOpRoleAttrName(),
             core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
-            core.op_proto_and_checker_maker.kOpNameScopeAttrName()
+            core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
+            core.op_proto_and_checker_maker.kOpCreationCallstackAttrName()
         }
 
 
@@ -572,6 +575,11 @@ class Operator(object):
 
         if role_var_name in op_attrs and len(op_attrs[role_var_name]) == 0:
             del op_attrs[role_var_name]
+
+        if not PADDLE_ON_MODEL_CE:
+            callstack_var_name = op_maker.kOpCreationCallstackAttrName()
+            op_attrs[callstack_var_name] = list(
+                reversed(traceback.format_stack()))[1:]
 
         if len(self.desc.type()) != 0:
             return
