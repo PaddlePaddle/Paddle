@@ -52,7 +52,7 @@ def load_vocab(filename):
         with open(filename, 'r', encoding="utf-8") as f:
             for idx, line in enumerate(f):
                 vocab[line.strip()] = idx
-     return vocab
+    return vocab
 
 
 def get_worddict(dict_path):
