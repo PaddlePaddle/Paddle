@@ -16,6 +16,16 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import sys
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 from functools import partial
 import numpy as np
 
@@ -87,13 +97,13 @@ def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
     word_dict = paddle.dataset.imdb.word_dict()
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=partial(train_program, word_dict),
         place=place,
         optimizer_func=optimizer_func)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
+        if isinstance(event, EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.imdb.test(word_dict), batch_size=BATCH_SIZE)
             avg_cost, acc = trainer.test(
@@ -111,7 +121,7 @@ def train(use_cuda, train_program, params_dirname):
                     event.epoch + 1, avg_cost, acc))
                 if math.isnan(avg_cost):
                     sys.exit("got NaN loss, training failed.")
-        elif isinstance(event, fluid.EndStepEvent):
+        elif isinstance(event, EndStepEvent):
             print("Step {0}, Epoch {1} Metrics {2}".format(
                 event.step, event.epoch, list(map(np.array, event.metrics))))
             if event.step == 1:  # Run 2 iterations to speed CI
@@ -134,7 +144,7 @@ def infer(use_cuda, inference_program, params_dirname=None):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
     word_dict = paddle.dataset.imdb.word_dict()
 
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         infer_func=partial(inference_program, word_dict),
         param_path=params_dirname,
         place=place)
