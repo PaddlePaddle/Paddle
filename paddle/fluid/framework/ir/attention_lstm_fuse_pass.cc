@@ -257,6 +257,22 @@ std::unique_ptr<ir::Graph> AttentionLSTMFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PDPattern external_pattern, subblock_pattern;
 
+  // Use the following variables to tell whether this model is RNN1.
+  // This fuse can only works on the RNN1 model.
+  std::unordered_set<std::string> specified_vars({"data_lod_attention",
+                                                  "cell_init", "hidden_init",
+                                                  "data", "week", "minute"});
+  int count = 0;
+  for (auto* node : graph->Nodes()) {
+    if (node->IsVar() && specified_vars.count(node->Name())) {
+      ++count;
+    }
+  }
+  if (count < specified_vars.size()) {
+    return graph;
+  }
+
+  // Continue to fuse.
   FindWhileOp(graph.get());
   return graph;
 }
