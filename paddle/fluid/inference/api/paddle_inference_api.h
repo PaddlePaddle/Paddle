@@ -258,8 +258,9 @@ struct AnalysisConfig : public NativeConfig {
 
   // NOT stable yet.
   bool use_feed_fetch_ops{true};
-  
-  // NOTE this is just for internal development, please not use it.	NOT stable yet.
+
+  // NOTE this is just for internal development, please not use it.	NOT stable
+  // yet.
   bool _use_mkldnn{false};
 };
 
