@@ -6540,7 +6540,8 @@ for func in [
 def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
     helper = LayerHelper(op_name, **locals())
 
-    assert x.dtype == y.dtype
+    if binary_op:
+        assert x.dtype == y.dtype
 
     if out is None:
         if name is None:
