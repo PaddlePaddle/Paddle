@@ -29,6 +29,8 @@ limitations under the License. */
 
 namespace paddle {
 
+using contrib::AnakinConfig;
+
 template <typename Target>
 class PaddleInferenceAnakinPredictor : public PaddlePredictor {
  public:

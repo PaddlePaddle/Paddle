@@ -27,7 +27,6 @@ endfunction()
 
 CheckCompilerCXX11Flag()
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-
 # safe_set_flag
 #
 # Set a compile flag only if compiler is support
@@ -71,6 +70,20 @@ macro(safe_set_nvflag flag_name)
     endif()
 endmacro()
 
+macro(safe_set_static_flag) # set c_flags and cxx_flags to static or shared
+    if (BUILD_SHARED_LIBS) 
+        return() # if build shared libs, the flags keep same with '/MD'
+    endif(BUILD_SHARED_LIBS)
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+      if(${flag_var} MATCHES "/MD")
+        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+      endif(${flag_var} MATCHES "/MD")
+    endforeach(flag_var)
+endmacro()
 
 CHECK_CXX_SYMBOL_EXISTS(UINT64_MAX "stdint.h" UINT64_MAX_EXISTS)
 if(NOT UINT64_MAX_EXISTS)
@@ -97,9 +110,13 @@ SET(CMAKE_EXTRA_INCLUDE_FILES "")
 
 # Common flags. the compiler flag used for C/C++ sources whenever release or debug
 # Do not care if this flag is support for gcc.
+
+# https://github.com/PaddlePaddle/Paddle/issues/12773
+if (NOT WIN32)
 set(COMMON_FLAGS
     -fPIC
     -fno-omit-frame-pointer
+    -Werror
     -Wall
     -Wextra
     -Wnon-virtual-dtor
@@ -113,11 +130,6 @@ set(COMMON_FLAGS
     -Wno-error=ignored-attributes  # Warnings in Eigen, gcc 6.3
     -Wno-error=terminate  # Warning in PADDLE_ENFORCE
 )
-
-# https://github.com/PaddlePaddle/Paddle/issues/12773
-if (NOT WIN32)
-list(APPEND COMMON_FLAGS -Werror)
-endif()
 
 set(GPU_COMMON_FLAGS
     -fPIC
@@ -133,30 +145,53 @@ set(GPU_COMMON_FLAGS
     -Wno-error=array-bounds # Warnings in Eigen::array
 )
 
+else(NOT WIN32)
+set(COMMON_FLAGS
+    "/w") #disable all warnings.
+set(GPU_COMMON_FLAGS
+    "/w") #disable all warnings
+endif(NOT WIN32)
+
 if (APPLE)
     if(NOT CMAKE_CROSSCOMPILING)
         # On Mac OS X build fat binaries with x86_64 architectures by default.
         set (CMAKE_OSX_ARCHITECTURES "x86_64" CACHE STRING "Build architectures for OSX" FORCE)
     endif()
-else()
+endif(APPLE)
+
+if(LINUX)
     set(GPU_COMMON_FLAGS
         -Wall
         -Wextra
         -Werror
         ${GPU_COMMON_FLAGS})
-endif()
+endif(LINUX)
 
 if(UNIX AND NOT APPLE)
   # except apple from nix*Os family
   set(LINUX TRUE)
 endif(UNIX AND NOT APPLE)
 
-
 foreach(flag ${COMMON_FLAGS})
     safe_set_cflag(CMAKE_C_FLAGS ${flag})
     safe_set_cxxflag(CMAKE_CXX_FLAGS ${flag})
+
 endforeach()
 
 foreach(flag ${GPU_COMMON_FLAGS})
     safe_set_nvflag(${flag})
 endforeach()
+
+if(WIN32)
+# windows build turn off warnings.
+safe_set_static_flag()
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO
+        CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
+        CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
+      if(${flag_var} MATCHES "/W3")
+        string(REGEX REPLACE "/W3" "/w" ${flag_var} "${${flag_var}}")
+      endif(${flag_var} MATCHES "/W3")
+    endforeach(flag_var)
+endif(WIN32)
