@@ -41,7 +41,7 @@ DATA_URL = 'http://paddle-dist-ce-data.bj.bcebos.com/text_classification.tar.gz'
 DATA_MD5 = '29ebfc94f11aea9362bbb7f5e9d86b8a'
 
 
-# Load the dictionary.
+# Load dictionary.
 def load_vocab(filename):
     vocab = {}
     if six.PY2:
