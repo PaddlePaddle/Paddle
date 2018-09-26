@@ -15,6 +15,8 @@
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
+DEFINE_bool(with_precision_check, true, "turn on test");
+
 namespace paddle {
 namespace inference {
 
@@ -275,7 +277,6 @@ TEST(Analyzer_rnn1, multi_thread) {
 
 bool CompareTensors(framework::Scope &a_scope, framework::Scope &b_scope,
                     const std::vector<std::string> &tensors) {
-  return true;
   for (auto &x : tensors) {
     auto *a_var = a_scope.FindVar(x);
     auto *b_var = b_scope.FindVar(x);
@@ -364,67 +365,69 @@ TEST(Analyzer_rnn1, ZeroCopy) {
     timer.tic();
     predictor->ZeroCopyRun();
     total_time += timer.toc();
+  }
 
-    auto *output_data = output_tensor->data<float>(&place, &output_size);
-    ASSERT_GT(output_size, 0);  // more than one output!
+  auto *output_data = output_tensor->data<float>(&place, &output_size);
+  ASSERT_GT(output_size, 0);  // more than one output!
 
+  for (int i = 0; i < FLAGS_repeat; i++) {
     // Run native predictor.
     timer.tic();
     ASSERT_TRUE(native_predictor->Run(native_inputs.front(), &native_outputs));
     native_total_time += timer.toc();
+  }
 
+  for (int i = 0; i < FLAGS_repeat; i++) {
     timer.tic();
     ASSERT_TRUE(
         analysis_predictor->Run(native_inputs.front(), &analysis_outputs));
     analysis_total_time += timer.toc();
-    continue;
+  }
 
-    int native_output_size = VecReduceToInt(native_outputs.front().shape);
+  if (!FLAGS_with_precision_check) {
+    return;
+  }
+  int native_output_size = VecReduceToInt(native_outputs.front().shape);
 
-    EXPECT_EQ(native_output_size, output_size);
+  EXPECT_EQ(native_output_size, output_size);
 
-    // Compare tensors between analysis and zerocopy
-    auto *p0 = static_cast<AnalysisPredictor *>(predictor.get());
-    auto *p1 = static_cast<AnalysisPredictor *>(analysis_predictor.get());
-    auto *p2 = static_cast<NativePaddlePredictor *>(native_predictor.get());
+  // Compare tensors between analysis and zerocopy
+  auto *p0 = static_cast<AnalysisPredictor *>(predictor.get());
+  auto *p1 = static_cast<AnalysisPredictor *>(analysis_predictor.get());
+  auto *p2 = static_cast<NativePaddlePredictor *>(native_predictor.get());
 
-    std::vector<std::string> tensor_names;
-    for (auto &var_desc : p0->program().Block(0).AllVars()) {
-      tensor_names.push_back(var_desc->Name());
-    }
+  std::vector<std::string> tensor_names;
+  for (auto &var_desc : p0->program().Block(0).AllVars()) {
+    tensor_names.push_back(var_desc->Name());
+  }
 
-    LOG(INFO) << "Comparing tensors";
-    // ASSERT_TRUE(CompareTensors(*p0->scope(), *p1->scope(), tensor_names));
-    // ASSERT_TRUE(CompareTensors(*p0->scope(), *p2->scope(), tensor_names));
-    ASSERT_TRUE(
-        CompareTensors(*p0->scope(), *p1->scope(), {"final_output.tmp_1"}));
-    ASSERT_TRUE(
-        CompareTensors(*p0->scope(), *p2->scope(), {"final_output.tmp_1"}));
+  LOG(INFO) << "Comparing tensors";
+  ASSERT_TRUE(
+      CompareTensors(*p0->scope(), *p1->scope(), {"final_output.tmp_1"}));
+  ASSERT_TRUE(
+      CompareTensors(*p0->scope(), *p2->scope(), {"final_output.tmp_1"}));
 
-    /*
-    LOG(INFO) << "output1 " << inference::LoDTensorSummary<float>(
-                                   p0->scope()
-                                       ->FindVar("final_output.tmp_1")
-                                       ->Get<framework::LoDTensor>());
-    LOG(INFO) << "output2 " << inference::LoDTensorSummary<float>(
-                                   p1->scope()
-                                       ->FindVar("final_output.tmp_1")
-                                       ->Get<framework::LoDTensor>());
-    LOG(INFO) << "output3 " << inference::LoDTensorSummary<float>(
-                                   p2->scope()
-                                       ->FindVar("final_output.tmp_1")
-                                       ->Get<framework::LoDTensor>());
-                                       */
+  LOG(INFO) << "output1 " << inference::LoDTensorSummary<float>(
+                                 p0->scope()
+                                     ->FindVar("final_output.tmp_1")
+                                     ->Get<framework::LoDTensor>());
+  LOG(INFO) << "output2 " << inference::LoDTensorSummary<float>(
+                                 p1->scope()
+                                     ->FindVar("final_output.tmp_1")
+                                     ->Get<framework::LoDTensor>());
+  LOG(INFO) << "output3 " << inference::LoDTensorSummary<float>(
+                                 p2->scope()
+                                     ->FindVar("final_output.tmp_1")
+                                     ->Get<framework::LoDTensor>());
 
-    for (int i = 0; i < output_size; i++) {
-      LOG(INFO) << output_data[i] << " "
-                << static_cast<float *>(native_outputs.front().data.data())[i]
-                << " " << static_cast<float *>(
-                              analysis_outputs.front().data.data())[i];
-      EXPECT_NEAR(output_data[i],
-                  static_cast<float *>(native_outputs.front().data.data())[i],
-                  1e-3);
-    }
+  for (int i = 0; i < output_size; i++) {
+    LOG(INFO) << output_data[i] << " "
+              << static_cast<float *>(native_outputs.front().data.data())[i]
+              << " "
+              << static_cast<float *>(analysis_outputs.front().data.data())[i];
+    EXPECT_NEAR(output_data[i],
+                static_cast<float *>(native_outputs.front().data.data())[i],
+                1e-3);
   }
 
   LOG(INFO) << "batch_size: " << FLAGS_batch_size;
