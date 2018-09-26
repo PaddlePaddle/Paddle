@@ -36,7 +36,7 @@ namespace jitkernel {
 #define AVX512_FLOAT_BLOCK 16
 #define AVX512_DOUBLE_BLOCK 8
 
-typedef enum { kLT8, kEQ8, kEQ16, kGT16 } jit_block;
+typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
 class Kernel {
  public:

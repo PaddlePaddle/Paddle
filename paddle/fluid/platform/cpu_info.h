@@ -43,7 +43,7 @@ typedef enum {
   sse42,
   avx,
   avx2,
-  avx512_common,
+  avx512f,
   avx512_core,
   avx512_core_vnni,
   avx512_mic,
