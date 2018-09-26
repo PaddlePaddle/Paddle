@@ -140,6 +140,19 @@ ParallelExecutor::ParallelExecutor(
     const ExecutionStrategy &exec_strategy, const BuildStrategy &build_strategy,
     size_t num_trainers, size_t trainer_id)
     : member_(new ParallelExecutorPrivate(places)) {
+  std::unordered_map<std::string, int64_t> op_count;
+  for (size_t i = 0; i < main_program.Size(); ++i) {
+    auto &block = main_program.Block(i);
+    for (auto &op : block.AllOps()) {
+      op_count[op->Type()] += 1;
+    }
+  }
+  LOG(ERROR) << "*****op stats*****";
+  for (auto it : op_count) {
+    LOG(ERROR) << it.first << ": " << it.second;
+  }
+  LOG(ERROR) << "*****op stats done*****";
+
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
   member_->use_all_reduce_ =
