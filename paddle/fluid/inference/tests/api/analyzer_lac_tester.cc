@@ -78,6 +78,7 @@ struct DataRecord {
       }
     }
   }
+
   DataRecord NextBatch() {
     DataRecord data;
     data.data = batched_datas[batch_iter];
@@ -101,6 +102,13 @@ void GetOneBatch(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   TensorAssignData<int64_t>(&input_tensor, {one_batch.data});
   PADDLE_ENFORCE_EQ(batch_size, static_cast<int>(one_batch.lod.size() - 1));
   input_slots->assign({input_tensor});
+}
+
+void GetOneBatchForZero(DataRecord *data, ZeroCopyTensor *word) {
+  auto one_batch = data->NextBatch();
+  word->Reshape({static_cast<int>(one_batch.data.size()), 1});
+  word->SetLoD({one_batch.lod});
+  ZeroCopyTensorAssignData(word, {one_batch.data});
 }
 
 void SetConfig(AnalysisConfig *cfg) {
@@ -171,6 +179,54 @@ TEST(Analyzer_LAC, compare) {
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
   CompareNativeAndAnalysis(cfg, input_slots_all);
+}
+
+TEST(Analyzer_LAC, ZeroCopyMultiThread) {
+  AnalysisConfig config;
+  SetConfig(&config);
+  config.use_feed_fetch_ops = false;
+
+#define NEW_TENSOR(name__) \
+  auto name__##_tensor = predictor->GetInputTensor(#name__);
+
+  auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
+  double total_time_of_threads{0};
+  std::vector<std::thread> threads;
+  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
+    threads.emplace_back(
+        [config, &total_time_of_threads, &base_predictor, tid] {
+          auto predictor = base_predictor->Clone();
+          NEW_TENSOR(word);
+
+          // Prepare data for AnalysisPredictor
+          DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+          // PrepareZeroCopyInputs(data_lod_attention_tensor.get(),
+          //                       cell_init_tensor.get(), data_tensor.get(),
+          //                       hidden_init_tensor.get(), week_tensor.get(),
+          //                       minute_tensor.get(), &data,
+          //                       FLAGS_batch_size);
+
+          Timer timer;
+          double total_time{0};
+
+          for (int i = 0; i < FLAGS_repeat; i++) {
+            timer.tic();
+            predictor->ZeroCopyRun();
+            total_time += timer.toc();
+          }
+
+          total_time_of_threads += total_time;
+
+          LOG(INFO) << "thread time: " << total_time / FLAGS_repeat;
+        });
+  }
+
+  for (auto &t : threads) {
+    t.join();
+  }
+
+  LOG(INFO) << "average time: "
+            << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
 }
 
 }  // namespace analysis

@@ -36,8 +36,8 @@ namespace memory {
 using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
-  static std::once_flag init_flag;
-  static detail::BuddyAllocator* a = nullptr;
+  static thread_local std::once_flag init_flag;
+  static thread_local detail::BuddyAllocator* a = nullptr;
 
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
@@ -48,10 +48,33 @@ BuddyAllocator* GetCPUBuddyAllocator() {
   return a;
 }
 
+struct NaiveAllocator {
+  void* Alloc(size_t size) {
+    std::lock_guard<std::mutex> l(lock_);
+    return malloc(size);
+  }
+
+  void Free(void* p) {
+    std::lock_guard<std::mutex> l(lock_);
+    PADDLE_ENFORCE(p);
+    free(p);
+  }
+
+  static NaiveAllocator* Instance() {
+    // static thread_local NaiveAllocator x;
+    static NaiveAllocator x;
+    return &x;
+  }
+
+ private:
+  std::mutex lock_;
+};
+
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
+  // void* p = NaiveAllocator::Instance()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -63,6 +86,7 @@ template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
+  // NaiveAllocator::Instance()->Free(p);
 }
 
 template <>
