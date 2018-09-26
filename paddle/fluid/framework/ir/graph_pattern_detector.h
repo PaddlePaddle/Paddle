@@ -379,7 +379,7 @@ struct PatternBase {
 // op: conv + relu
 // named nodes:
 // conv_input, conv_weight,
-// conv_bias, conv_out, conv,
+// conv_out, conv,
 // relu_out, relu
 struct ConvReLU : public PatternBase {
   ConvReLU(PDPattern* pattern, const std::string& name_scope)
@@ -392,7 +392,6 @@ struct ConvReLU : public PatternBase {
   PATTERN_DECL_NODE(relu);
   // declare variable node's name
   PATTERN_DECL_NODE(conv_weight);
-  PATTERN_DECL_NODE(conv_bias);
   PATTERN_DECL_NODE(conv_out);
   PATTERN_DECL_NODE(relu_out);
 };
