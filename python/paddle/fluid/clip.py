@@ -75,8 +75,8 @@ class ErrorClipByValue(BaseErrorClipAttr):
         clip_op_desc.set_type("clip")
         clip_op_desc.set_input("X", [grad_name])
         clip_op_desc.set_output("Out", [grad_name])
-        clip_op_desc.set_attr("min", self.min)
-        clip_op_desc.set_attr("max", self.max)
+        clip_op_desc._set_attr("min", self.min)
+        clip_op_desc._set_attr("max", self.max)
 
 
 def error_clip_callback(block, context):
@@ -280,7 +280,7 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
-            layers.sqrt(x=group_norm_var, out=group_norm_var)
+            group_norm_var = layers.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,

@@ -75,12 +75,16 @@ std::string to_string<std::vector<std::vector<float>>>(
     const std::vector<std::vector<std::vector<float>>> &vec);
 
 template <typename T>
+int VecReduceToInt(const std::vector<T> &v) {
+  return std::accumulate(v.begin(), v.end(), 1, [](T a, T b) { return a * b; });
+}
+
+template <typename T>
 static void TensorAssignData(PaddleTensor *tensor,
                              const std::vector<std::vector<T>> &data) {
   // Assign buffer
-  int dim = std::accumulate(tensor->shape.begin(), tensor->shape.end(), 1,
-                            [](int a, int b) { return a * b; });
-  tensor->data.Resize(sizeof(T) * dim);
+  int num_elems = VecReduceToInt(tensor->shape);
+  tensor->data.Resize(sizeof(T) * num_elems);
   int c = 0;
   for (const auto &f : data) {
     for (T v : f) {
@@ -89,7 +93,7 @@ static void TensorAssignData(PaddleTensor *tensor,
   }
 }
 
-std::string DescribeTensor(const PaddleTensor &tensor) {
+static std::string DescribeTensor(const PaddleTensor &tensor) {
   std::stringstream os;
   os << "Tensor [" << tensor.name << "]\n";
   os << " - type: ";
@@ -113,8 +117,7 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   os << "\n";
   os << " - data: ";
 
-  int dim = std::accumulate(tensor.shape.begin(), tensor.shape.end(), 1,
-                            [](int a, int b) { return a * b; });
+  int dim = VecReduceToInt(tensor.shape);
   for (int i = 0; i < dim; i++) {
     os << static_cast<float *>(tensor.data.data())[i] << " ";
   }
@@ -122,8 +125,8 @@ std::string DescribeTensor(const PaddleTensor &tensor) {
   return os.str();
 }
 
-void PrintTime(int batch_size, int repeat, int num_threads, int tid,
-               double latency, int epoch = 1) {
+static void PrintTime(int batch_size, int repeat, int num_threads, int tid,
+                      double latency, int epoch = 1) {
   LOG(INFO) << "====== batch_size: " << batch_size << ", repeat: " << repeat
             << ", threads: " << num_threads << ", thread id: " << tid
             << ", latency: " << latency << "ms ======";

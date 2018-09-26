@@ -25,6 +25,7 @@ struct DataRecord {
   std::vector<size_t> lod1, lod2, lod3;
   std::vector<std::vector<float>> rnn_link_data, rnn_week_datas,
       rnn_minute_datas;
+  size_t num_samples;  // total number of samples
   size_t batch_iter{0};
   size_t batch_size{1};
   DataRecord() = default;
@@ -97,6 +98,7 @@ struct DataRecord {
       week_data_all.push_back(std::move(week_data));
       minute_data_all.push_back(std::move(minute_data));
     }
+    num_samples = num_lines;
   }
 };
 void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
@@ -147,89 +149,72 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-// Test with a really complicate model.
-void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
-  AnalysisConfig config;
-  config.prog_file = FLAGS_infer_model + "/__model__";
-  config.param_file = FLAGS_infer_model + "/param";
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-  config.enable_ir_optim = activate_ir;
-  PADDLE_ENFORCE(config.ir_mode ==
-                 AnalysisConfig::IrPassMode::kExclude);  // default
-  config.ir_passes.clear();  // Do not exclude any pass.
+void SetConfig(contrib::AnalysisConfig *cfg) {
+  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->param_file = FLAGS_infer_model + "/param";
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
+  cfg->ir_passes.clear();  // Do not exclude any pass.
+}
 
-  int batch_size = FLAGS_batch_size;
-
-  auto base_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
-  DataRecord data(FLAGS_infer_data, batch_size);
-  // Prepare inputs.
-  PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs, base_outputs;
-
-  base_predictor->Run(input_slots, &base_outputs);
-
-  std::vector<std::vector<PaddleTensor>> input_slots_all;
-  input_slots_all.emplace_back(input_slots);
-  if (num_threads == 1) {
-    TestOneThreadPrediction(config, input_slots_all, &outputs);
-    CompareResult(outputs, base_outputs);
-  } else {
-    // only return the output of first thread
-    TestMultiThreadPrediction(config, input_slots_all, &outputs, num_threads);
-  }
-
-  if (use_analysis && activate_ir) {
-    AnalysisPredictor *analysis_predictor =
-        dynamic_cast<AnalysisPredictor *>(predictor.get());
-    auto &fuse_statis = analysis_predictor->analysis_argument()
-                            .Get<std::unordered_map<std::string, int>>(
-                                framework::ir::kFuseStatisAttr);
-    for (auto &item : fuse_statis) {
-      LOG(INFO) << "fused " << item.first << " " << item.second;
-    }
-
-    int num_ops = 0;
-    for (auto &node :
-         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
-      if (node->IsFunction()) {
-        ++num_ops;
-      }
-    }
-    LOG(INFO) << "has num ops: " << num_ops;
-
-    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
-    EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
-    EXPECT_EQ(num_ops,
-              13);  // After graph optimization, only 13 operators exists.
+  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
+  for (int bid = 0; bid < epoch; ++bid) {
+    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    (*inputs).emplace_back(input_slots);
   }
 }
 
-// Inference with analysis and IR, easy for profiling independently.
-TEST(Analyzer, rnn1) { TestRNN1Prediction(true, true, FLAGS_num_threads); }
+// Easy for profiling independently.
+TEST(Analyzer_rnn1, profile) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
 
-// Other unit-tests of RNN1, test different options of use_analysis,
-// activate_ir and multi-threads.
-TEST(Analyzer, RNN_tests) {
-  int num_threads[2] = {1, 4};
-  for (auto i : num_threads) {
-    // Directly infer with the original model.
-    TestRNN1Prediction(false, false, i);
-    // Inference with the original model with the analysis turned on, the
-    // analysis module will transform the program to a data flow graph.
-    TestRNN1Prediction(true, false, i);
-    // Inference with analysis and IR. The IR module will fuse some large
-    // kernels.
-    TestRNN1Prediction(true, true, i);
-  }
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+}
+
+// Check the fuse status
+TEST(Analyzer_rnn1, fuse_statis) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  int num_ops;
+  auto fuse_statis = GetFuseStatis(cfg, &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+  EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+  EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
+  EXPECT_EQ(num_ops,
+            13);  // After graph optimization, only 13 operators exists.
+}
+
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_rnn1, compare) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
+
+// Test Multi-Thread.
+TEST(Analyzer_rnn1, multi_thread) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, 4 /* num_threads */);
 }
 
 }  // namespace inference

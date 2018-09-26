@@ -48,35 +48,54 @@ __global__ static void ForRangeElemwiseOpGridIsOne(Function func) {
 }
 
 template <typename Function>
-__global__ static void ForRangeElemwiseOp(Function func, int limit) {
+__global__ static void ForRangeElemwiseOp(Function func, size_t limit) {
   size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
   if (idx < limit) {
     func(idx);
   }
 }
 
+template <typename Function>
+__global__ static void ForRangeElemwiseOpGridLarge(Function func, size_t limit,
+                                                   int grid_dim) {
+  size_t idx = static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
+  while (idx < limit) {
+    func(idx);
+    idx += grid_dim;
+  }
+}
+
 template <>
 struct ForRange<CUDADeviceContext> {
   ForRange(const CUDADeviceContext& dev_ctx, size_t limit)
-      : dev_ctx_(dev_ctx), limit_(static_cast<int>(limit)) {}
+      : dev_ctx_(dev_ctx), limit_(limit) {}
 
   template <typename Function>
   inline void operator()(Function func) const {
     constexpr int num_threads = 1024;
     int block_size = limit_ <= num_threads ? limit_ : num_threads;
-    int grid_size = (limit_ + num_threads - 1) / num_threads;
+    size_t grid_size = (limit_ + num_threads - 1) / num_threads;
 
-    if (grid_size == 1) {
-      ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
-          func);
+    int max_grid_dim = std::get<0>(dev_ctx_.GetMaxGridDims());
+
+    if (grid_size < max_grid_dim) {
+      int grid_size_int = static_cast<int>(grid_size);
+      if (grid_size == 1) {
+        ForRangeElemwiseOpGridIsOne<<<1, block_size, 0, dev_ctx_.stream()>>>(
+            func);
+      } else {
+        ForRangeElemwiseOp<<<grid_size_int, block_size, 0, dev_ctx_.stream()>>>(
+            func, limit_);
+      }
     } else {
-      ForRangeElemwiseOp<<<grid_size, block_size, 0, dev_ctx_.stream()>>>(
-          func, limit_);
+      ForRangeElemwiseOpGridLarge<<<max_grid_dim, block_size, 0,
+                                    dev_ctx_.stream()>>>(func, limit_,
+                                                         max_grid_dim);
     }
   }
 
   const CUDADeviceContext& dev_ctx_;
-  int limit_;
+  size_t limit_;
 };
 
 #endif
