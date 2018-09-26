@@ -38,7 +38,6 @@ function(copy TARGET)
         file(GLOB static_lib_files ${src} "*.lib")
         file(GLOB dll_lib_files ${src} "*.dll")
         set(src_files ${header_files} ${static_lib_files} ${dll_lib_files})
-
         if (NOT "${src_files}" STREQUAL "")
         list(REMOVE_DUPLICATES src_files)
         endif()
