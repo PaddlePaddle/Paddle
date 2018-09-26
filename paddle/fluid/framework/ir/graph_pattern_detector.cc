@@ -638,11 +638,6 @@ PDNode *patterns::ConvReLU::operator()(
                               ->AsInput()
                               ->assert_is_persistable_var()
                               ->assert_is_op_input("conv2d", "Filter");
-  // Bias
-  auto *conv_bias_var = pattern->NewNode(conv_bias_repr())
-                            ->AsInput()
-                            ->assert_is_persistable_var()
-                            ->assert_is_op_input("conv2d", "Bias");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
@@ -653,8 +648,7 @@ PDNode *patterns::ConvReLU::operator()(
                            ->AsOutput()
                            ->assert_is_op_output("relu");
 
-  conv_op->LinksFrom({conv_input, conv_weight_var, conv_bias_var})
-      .LinksTo({conv_out_var});
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
   relu_op->LinksFrom({conv_out_var}).LinksTo({relu_out_var});
   return relu_out_var;
 }
