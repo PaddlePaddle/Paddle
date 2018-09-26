@@ -1430,6 +1430,9 @@ to transpile() call.")
         elif op_type == "rmsprop":
             if varkey in ["Moment", "MeanSquare"]:
                 return param_shape
+        elif op_type == "decayed_adagrad":
+            if varkey == "Moment":
+                return param_shape
         elif op_type == "sgd":
             pass
         return orig_shape
