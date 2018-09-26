@@ -25,24 +25,6 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-void Print(std::ostream &os, const Tensor &tt) {
-  os << "dim: " << tt.dims() << " \n";
-
-  // int64_t size = 120;
-  int64_t size = tt.numel();
-  for (int64_t i = 0; i < size; ++i) {
-    if (framework::IsType<float>(tt.type())) {
-      os << tt.data<float>()[i] << " ";
-    } else if (framework::IsType<int64_t>(tt.type())) {
-      os << tt.data<int64_t>()[i] << " ";
-    } else if (framework::IsType<int>(tt.type())) {
-      os << tt.data<int>()[i] << " ";
-    } else {
-      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
-    }
-  }
-}
-
 struct AppendProposalsFunctor {
   LoDTensor *out_;
   int64_t offset_;
@@ -201,7 +183,6 @@ void FilterBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
       keep_data[keep_len++] = i;
     }
   }
-  LOG(ERROR) << " keep_len " << keep_len;
   keep->Resize({keep_len});
 }
 
@@ -441,11 +422,9 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     BoxCoder<T>(ctx, &anchor_sel, &bbox_sel, &var_sel, &proposals);
 
     ClipTiledBoxes<T>(ctx, im_info_slice, &proposals);
-    Print(LOG(ERROR), proposals);
 
     Tensor keep;
     FilterBoxes<T>(ctx, &proposals, min_size, im_info_slice, &keep);
-    Print(LOG(ERROR), keep);
 
     Tensor scores_filter;
     bbox_sel.mutable_data<T>({keep.numel(), 4}, ctx.GetPlace());
@@ -461,7 +440,6 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
     if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
       keep_nms.Resize({post_nms_top_n});
     }
-    Print(LOG(ERROR), keep_nms);
 
     proposals.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
     scores_sel.mutable_data<T>({keep_nms.numel(), 1}, ctx.GetPlace());

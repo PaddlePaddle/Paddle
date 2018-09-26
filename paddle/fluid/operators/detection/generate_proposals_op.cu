@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdio.h>
+#include <fstream>
+
 #include <string>
 #include <vector>
 #include "cub/cub.cuh"
@@ -28,42 +30,13 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-std::ostream &operator<<(std::ostream &os, const Tensor &t) {
-  Tensor tt;
-  framework::TensorCopySync(t, platform::CPUPlace(), &tt);
-
-  os << "dim: " << t.dims() << " \n";
-
-  int64_t size = t.numel();
-  // int64_t size = 120;
-  for (int64_t i = 0; i < size; ++i) {
-    if (framework::IsType<float>(t.type())) {
-      os << tt.data<float>()[i] << " ";
-    } else if (framework::IsType<int64_t>(t.type())) {
-      os << tt.data<int64_t>()[i] << " ";
-    } else if (framework::IsType<int>(t.type())) {
-      os << tt.data<int>()[i] << " ";
-    } else {
-      PADDLE_THROW("LoDTensor data type not in [float, int64_t]");
-    }
-  }
-  return os;
-}
-
-#ifndef DIVUP
-#define DIVUP(x, y) (((x) + (y)-1) / (y))
-#endif
+#define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
 
-// const float kBBoxClipDefault = std::log(1000.0 / 16.0);
-// const int kThreadsPerBlock = sizeof(uint64_t) * 8;
-
-// #define kBBoxClipDefault std::log(1000.0 / 16.0)
-// #define kBBoxClipDefault 1.79588
-#define kThreadsPerBlock sizeof(uint64_t) * 8
+int const kThreadsPerBlock = sizeof(uint64_t) * 8;
 
 template <typename T>
 __global__ void RangeInitKernel(const T start, const T delta, const int size,
@@ -210,18 +183,18 @@ __global__ void FilterBBoxes(const T *bboxes, const T *im_info,
   }
 }
 
-__device__ inline float IoU(float const *const a, float const *const b) {
+__device__ inline float IoU(const float *a, const float *b) {
   float left = max(a[0], b[0]), right = min(a[2], b[2]);
   float top = max(a[1], b[1]), bottom = min(a[3], b[3]);
   float width = max(right - left + 1, 0.f), height = max(bottom - top + 1, 0.f);
-  float interS = width * height;
-  float Sa = (a[2] - a[0] + 1) * (a[3] - a[1] + 1);
-  float Sb = (b[2] - b[0] + 1) * (b[3] - b[1] + 1);
-  return interS / (Sa + Sb - interS);
+  float inter_s = width * height;
+  float s_a = (a[2] - a[0] + 1) * (a[3] - a[1] + 1);
+  float s_b = (b[2] - b[0] + 1) * (b[3] - b[1] + 1);
+  return inter_s / (s_a + s_b - inter_s);
 }
 
 __global__ void NMSKernel(const int n_boxes, const float nms_overlap_thresh,
-                          const float *boxes, uint64_t *mask) {
+                          const float *dev_boxes, uint64_t *dev_mask) {
   const int row_start = blockIdx.y;
   const int col_start = blockIdx.x;
 
@@ -230,24 +203,22 @@ __global__ void NMSKernel(const int n_boxes, const float nms_overlap_thresh,
   const int col_size =
       min(n_boxes - col_start * kThreadsPerBlock, kThreadsPerBlock);
 
-  __shared__ float block_boxes[kThreadsPerBlock * 5];
+  __shared__ float block_boxes[kThreadsPerBlock * 4];
   if (threadIdx.x < col_size) {
-    block_boxes[threadIdx.x * 5 + 0] =
-        boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 5 + 0];
-    block_boxes[threadIdx.x * 5 + 1] =
-        boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 5 + 1];
-    block_boxes[threadIdx.x * 5 + 2] =
-        boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 5 + 2];
-    block_boxes[threadIdx.x * 5 + 3] =
-        boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 5 + 3];
-    block_boxes[threadIdx.x * 5 + 4] =
-        boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 5 + 4];
+    block_boxes[threadIdx.x * 4 + 0] =
+        dev_boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 4 + 0];
+    block_boxes[threadIdx.x * 4 + 1] =
+        dev_boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 4 + 1];
+    block_boxes[threadIdx.x * 4 + 2] =
+        dev_boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 4 + 2];
+    block_boxes[threadIdx.x * 4 + 3] =
+        dev_boxes[(kThreadsPerBlock * col_start + threadIdx.x) * 4 + 3];
   }
   __syncthreads();
 
   if (threadIdx.x < row_size) {
     const int cur_box_idx = kThreadsPerBlock * row_start + threadIdx.x;
-    const float *cur_box = boxes + cur_box_idx * 5;
+    const float *cur_box = dev_boxes + cur_box_idx * 4;
     int i = 0;
     uint64_t t = 0;
     int start = 0;
@@ -255,12 +226,12 @@ __global__ void NMSKernel(const int n_boxes, const float nms_overlap_thresh,
       start = threadIdx.x + 1;
     }
     for (i = start; i < col_size; i++) {
-      if (IoU(cur_box, block_boxes + i * 5) > nms_overlap_thresh) {
+      if (IoU(cur_box, block_boxes + i * 4) > nms_overlap_thresh) {
         t |= 1ULL << i;
       }
     }
     const int col_blocks = DIVUP(n_boxes, kThreadsPerBlock);
-    mask[cur_box_idx * col_blocks + col_start] = t;
+    dev_mask[cur_box_idx * col_blocks + col_start] = t;
   }
 }
 
@@ -277,44 +248,38 @@ void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   dim3 threads(kThreadsPerBlock);
 
   const T *boxes = proposals.data<T>();
-  Tensor d_mask;
-  uint64_t *d_mask_data =
-      d_mask.mutable_data<uint64_t>({boxes_num * col_blocks}, ctx.GetPlace());
-  LOG(ERROR) << "========= NMS Kernel =======";
-  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes, d_mask_data);
-
-  Tensor h_mask;
-  uint64_t *h_mask_data =
-      d_mask.mutable_data<uint64_t>({boxes_num * col_blocks}, ctx.GetPlace());
-  TensorCopySync(d_mask, platform::CPUPlace(), &h_mask);
-  LOG(ERROR) << "========= NMS Kernel end =======";
+  auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
+  int size_bytes = boxes_num * col_blocks * sizeof(uint64_t);
+  uint64_t *d_mask =
+      reinterpret_cast<uint64_t *>(memory::Alloc(place, size_bytes));
+  NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes, d_mask);
+  uint64_t *h_mask = reinterpret_cast<uint64_t *>(
+      memory::Alloc(platform::CPUPlace(), size_bytes));
+  memory::Copy(platform::CPUPlace(), h_mask, place, d_mask, size_bytes, 0);
 
   std::vector<uint64_t> remv(col_blocks);
   memset(&remv[0], 0, sizeof(uint64_t) * col_blocks);
-
-  LOG(ERROR) << "========= NMS remove 0 =======";
 
   std::vector<int> keep_vec;
   int num_to_keep = 0;
   for (int i = 0; i < boxes_num; i++) {
     int nblock = i / kThreadsPerBlock;
     int inblock = i % kThreadsPerBlock;
-    // if (!(remv[nblock] & (1ULL << inblock))) {
-    if (!(remv[nblock] & (1 << inblock))) {
+
+    if (!(remv[nblock] & (1ULL << inblock))) {
       ++num_to_keep;
       keep_vec.push_back(i);
-      uint64_t *p = &h_mask_data[0] + i * col_blocks;
+      uint64_t *p = &h_mask[0] + i * col_blocks;
       for (int j = nblock; j < col_blocks; j++) {
         remv[j] |= p[j];
       }
     }
   }
-  LOG(ERROR) << "========= NMS remove =======";
-
   int *keep = keep_out->mutable_data<int>({num_to_keep}, ctx.GetPlace());
-  auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
   memory::Copy(place, keep, platform::CPUPlace(), keep_vec.data(),
                sizeof(int) * num_to_keep, 0);
+  memory::Free(place, d_mask);
+  memory::Free(platform::CPUPlace(), h_mask);
 }
 
 template <typename T>
@@ -326,7 +291,6 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
     int pre_nms_top_n, int post_nms_top_n, float nms_thresh, float min_size,
     float eta) {
   // 1. pre nms
-  LOG(ERROR) << "============= sort 0 =======";
   Tensor scores_sort, index_sort;
   SortDescending<T>(ctx, scores, &scores_sort, &index_sort);
   int num = scores.numel();
@@ -334,7 +298,6 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
                                                                 : pre_nms_top_n;
   scores_sort.Resize({pre_nms_num, 1});
   index_sort.Resize({pre_nms_num, 1});
-  // LOG(ERROR) << index_sort;
 
   // 2. box decode and clipping
   Tensor proposals;
@@ -345,9 +308,6 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
       anchors.data<T>(), bbox_deltas.data<T>(), variances.data<T>(),
       index_sort.data<int>(), im_info.data<T>(), pre_nms_num,
       proposals.data<T>());
-  LOG(ERROR) << "============= BoxDecodeAndClipKernel ======= " << pre_nms_num;
-  ctx.Wait();
-  // LOG(ERROR) << proposals;
 
   // 3. filter
   Tensor keep_index, keep_num_t;
@@ -357,18 +317,11 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
   FilterBBoxes<T, 256><<<1, 256, 0, stream>>>(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
       keep_num_t.data<int>(), keep_index.data<int>());
-  ctx.Wait();
   int keep_num;
   const auto gpu_place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
   memory::Copy(platform::CPUPlace(), &keep_num, gpu_place,
                keep_num_t.data<int>(), sizeof(int), 0);
-  ctx.Wait();
-
-  LOG(ERROR) << "============= FilterBBoxes ======= " << keep_num;
-
   keep_index.Resize({keep_num});
-
-  LOG(ERROR) << keep_index;
 
   Tensor scores_filter, proposals_filter;
   proposals_filter.mutable_data<T>({keep_num, 4}, ctx.GetPlace());
@@ -382,12 +335,10 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
 
   // 4. nms
   Tensor keep_nms;
-  NMS<T>(ctx, proposals_filter, scores_filter, nms_thresh, &keep_nms);
+  NMS<T>(ctx, proposals_filter, keep_index, nms_thresh, &keep_nms);
   if (post_nms_top_n > 0 && post_nms_top_n < keep_nms.numel()) {
     keep_nms.Resize({post_nms_top_n});
   }
-  LOG(ERROR) << "==== NMS == " << keep_nms.dims() << " " << post_nms_top_n;
-  LOG(ERROR) << keep_nms;
 
   Tensor scores_nms, proposals_nms;
   proposals_nms.mutable_data<T>({keep_nms.numel(), 4}, ctx.GetPlace());
@@ -465,7 +416,6 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       bbox_deltas_slice.Resize({h_bbox * w_bbox * c_bbox / 4, 4});
       scores_slice.Resize({h_score * w_score * c_score, 1});
 
-      LOG(ERROR) << "================ before ProposalForOneImage =======";
       std::pair<Tensor, Tensor> box_score_pair =
           ProposalForOneImage<T>(dev_ctx, im_info_slice, *anchor, *var,
                                  bbox_deltas_slice, scores_slice, pre_nms_top_n,
@@ -475,9 +425,9 @@ class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
       Tensor scores = box_score_pair.second;
 
       memory::Copy(place, rpn_rois_data + num_proposals * 4, place,
-                   proposals.data<T>(), sizeof(T) * num_proposals, 0);
+                   proposals.data<T>(), sizeof(T) * proposals.numel(), 0);
       memory::Copy(place, rpn_roi_probs_data + num_proposals, place,
-                   scores.data<T>(), sizeof(T) * num_proposals, 0);
+                   scores.data<T>(), sizeof(T) * scores.numel(), 0);
       num_proposals += proposals.dims()[0];
       offset.emplace_back(num_proposals);
     }
