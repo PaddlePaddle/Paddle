@@ -152,5 +152,22 @@ void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream) {
   PADDLE_ENFORCE(cudaMemsetAsync(dst, value, count, stream),
                  "cudaMemsetAsync failed in paddle::platform::GpuMemsetAsync");
 }
+
+std::tuple<int, int, int> GpuMaxGridDim(int id) {
+  std::tuple<int, int, int> result;
+  PADDLE_ENFORCE(
+      cudaDeviceGetAttribute(&std::get<0>(result), cudaDevAttrMaxBlockDimX, id),
+      "cudaDeviceGetAttribute failed in "
+      "cudaDevAttrMaxBlockDim");
+  PADDLE_ENFORCE(
+      cudaDeviceGetAttribute(&std::get<1>(result), cudaDevAttrMaxBlockDimY, id),
+      "cudaDeviceGetAttribute failed in "
+      "cudaDevAttrMaxBlockDim");
+  PADDLE_ENFORCE(
+      cudaDeviceGetAttribute(&std::get<2>(result), cudaDevAttrMaxBlockDimZ, id),
+      "cudaDeviceGetAttribute failed in "
+      "cudaDevAttrMaxBlockDim");
+  return result;
+}
 }  // namespace platform
 }  // namespace paddle
