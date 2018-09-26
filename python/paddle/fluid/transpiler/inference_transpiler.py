@@ -455,11 +455,15 @@ class InferenceTranspiler(object):
         :type eltwise_op: Operator
         '''
 
-        residual_var = self.block.var(eltwise_op.input("X")[0])
-        out_var = self.block.var(eltwise_op.output("Out")[0])
-        filter_var = self.block.var(conv_op.input("Filter")[0])
-        in_var = self.block.var(conv_op.input("Input")[0])
-        bias_var = self.block.var(conv_op.input("Bias")[0])
+        eltwise_input = "X"
+        if eltwise_op.input("X")[0] == conv_op.output("Output")[0]:
+            eltwise_input = "Y"
+
+        residual_var = self.block.vars[eltwise_op.input(eltwise_input)[0]]
+        out_var = self.block.vars[eltwise_op.output("Out")[0]]
+        filter_var = self.block.vars[conv_op.input("Filter")[0]]
+        in_var = self.block.vars[conv_op.input("Input")[0]]
+        bias_var = self.block.vars[conv_op.input("Bias")[0]]
 
         conv_op.set_attr("fuse_eltwise", True)
         attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
