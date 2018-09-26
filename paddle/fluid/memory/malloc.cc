@@ -48,6 +48,25 @@ BuddyAllocator* GetCPUBuddyAllocator() {
   return a;
 }
 
+struct NaiveAllocator {
+  void* Alloc(size_t size) {
+    return malloc(size);
+  }
+
+  void Free(void* p) {
+    PADDLE_ENFORCE(p);
+    free(p);
+  }
+
+  static NaiveAllocator* Instance() {
+    static NaiveAllocator x;
+    return &x;
+  }
+
+ private:
+  std::mutex lock_;
+};
+
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);

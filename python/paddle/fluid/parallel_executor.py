@@ -74,28 +74,7 @@ class ParallelExecutor(object):
                  build_strategy=None,
                  num_trainers=1,
                  trainer_id=0,
-                 scope=None,
-                 **kwargs):
-        if len(kwargs) != 0:
-            err_msg = ""
-            for key in kwargs:
-                if key in dir(ExecutionStrategy):
-                    err_msg += \
-                        "Setting {0} by constructor is deprecated. Use " \
-                        "strategy=ExecutionStrategy(); strategy.{0}=xxx; " \
-                        "pe=ParallelExecutor(exec_strategy=strategy) " \
-                        "instead.\n ".format(key)
-                elif key in dir(BuildStrategy):
-                    err_msg += \
-                        "Setting {0} by constructor is deprecated. Use " \
-                        "strategy=BuildStrategy(); See help(" \
-                        "paddle.fluid.ParallelExecutor.BuildStrategy) \n".format(
-                            key)
-                else:
-                    err_msg += "Setting {0} by constructor is deprecated. Use strategy.\n".format(
-                        key)
-            raise ValueError(err_msg)
-
+                 scope=None):
         self._places = []
         self._act_places = []
         if use_cuda:

@@ -20,6 +20,7 @@ DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
 namespace inference {
+using contrib::AnalysisConfig;
 
 TEST(AnalysisPredictor, ZeroCopy) {
   AnalysisConfig config;

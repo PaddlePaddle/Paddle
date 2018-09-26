@@ -21,6 +21,7 @@ limitations under the License. */
 #if defined(_WIN32)
 #define NOMINMAX  // msvc max/min macro conflict with std::min/max
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
 #endif
 
 #ifdef PADDLE_WITH_CUDA
@@ -47,7 +48,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/curand.h"
-#if !defined(__APPLE__) and !defined(_WIN32)
+#if !defined(__APPLE__) && !defined(_WIN32)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif  // __APPLE__
 #endif  // PADDLE_WITH_CUDA
@@ -216,7 +217,7 @@ inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
 #endif
 }
 
-#if !defined(__APPLE__) and !defined(_WIN32)
+#if !defined(__APPLE__) && !defined(_WIN32)
 template <typename... Args>
 inline typename std::enable_if<sizeof...(Args) != 0, void>::type throw_on_error(
     ncclResult_t stat, const Args&... args) {
@@ -260,14 +261,8 @@ inline void throw_on_error(T e) {
     }                                                                   \
   } while (false)
 
-#define PADDLE_THROW_EOF()                                                     \
-  do {                                                                         \
-    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
-                                           __LINE__);                          \
-  } while (false)
-
 #else
-#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__)
+#define PADDLE_ENFORCE(...) ::paddle::platform::throw_on_error(__VA_ARGS__);
 #endif  // REPLACE_ENFORCE_GLOG
 
 #else  // !_WIN32
@@ -280,6 +275,12 @@ inline void throw_on_error(T e) {
 
 #define PADDLE_ENFORCE(x, ...) x
 #endif  // !_WIN32
+
+#define PADDLE_THROW_EOF()                                                     \
+  do {                                                                         \
+    throw ::paddle::platform::EOFException("There is no next data.", __FILE__, \
+                                           __LINE__);                          \
+  } while (false)
 
 /*
  * Some enforce helpers here, usage:
@@ -294,7 +295,7 @@ inline void throw_on_error(T e) {
  *    extra messages is also supported, for example:
  *    PADDLE_ENFORCE(a, b, "some simple enforce failed between %d numbers", 2)
  */
-
+#if !defined(_WIN32)
 #define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, ==, !=, __VA_ARGS__)
 #define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) \
@@ -307,6 +308,7 @@ inline void throw_on_error(T e) {
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <, >=, __VA_ARGS__)
 #define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) \
   __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, <=, >, __VA_ARGS__)
+
 #define PADDLE_ENFORCE_NOT_NULL(__VAL, ...)                  \
   do {                                                       \
     if (UNLIKELY(nullptr == (__VAL))) {                      \
@@ -326,6 +328,27 @@ inline void throw_on_error(T e) {
                    paddle::string::Sprintf("" __VA_ARGS__));            \
     }                                                                   \
   } while (0)
+#else
+#define PADDLE_ENFORCE_EQ(__VAL0, __VAL1, ...) ((__VAL0) == (__VAL1))
+#define PADDLE_ENFORCE_NE(__VAL0, __VAL1, ...) ((__VAL0) != (__VAL1))
+#define PADDLE_ENFORCE_GT(__VAL0, __VAL1, ...) ((__VAL0) > (__VAL1))
+#define PADDLE_ENFORCE_GE(__VAL0, __VAL1, ...) ((__VAL0) >= (__VAL1))
+#define PADDLE_ENFORCE_LT(__VAL0, __VAL1, ...) ((__VAL0) < (__VAL1))
+#define PADDLE_ENFORCE_LE(__VAL0, __VAL1, ...) ((__VAL0) <= (__VAL1))
+
+#define __PADDLE_BINARY_COMPARE(__VAL0, __VAL1, __CMP, __INV_CMP, ...) \
+  do {                                                                 \
+    if (!((__VAL0)__CMP(__VAL1))) {                                    \
+      PADDLE_THROW("Windows disable the enforce. Enforce failed.");    \
+    }                                                                  \
+  } while (0)
+#define PADDLE_ENFORCE_NOT_NULL(__VAL1, ...)                       \
+  do {                                                             \
+    if (nullptr == (__VAL1)) {                                     \
+      PADDLE_THROW("Windows disable the enforce. Enforce failed"); \
+    }                                                              \
+  } while (0)
+#endif  // !_WIN32
 
 }  // namespace platform
 }  // namespace paddle

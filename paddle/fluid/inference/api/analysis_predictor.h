@@ -84,6 +84,9 @@ class AnalysisPredictor : public PaddlePredictor {
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   std::vector<framework::OpDesc *> fetchs_;
+  // Memory buffer for feed inputs. The temporary LoDTensor will cause serious
+  // concurrency problems, so cache them.
+  std::vector<framework::LoDTensor> feed_tensors_;
 };
 
 }  // namespace paddle
