@@ -70,8 +70,8 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
+        echo "using python abi: $1"
         if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
-            echo "using python abi: $1"
             if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
@@ -82,7 +82,17 @@ function cmake_gen() {
             else
                 exit 1
             fi
-        # TODO: qiyang add python3 part here 
+        elif [ "$1" == "cp35-cp35m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
+            else
+                exit 1
+            fi
         fi
     else 
         if [ "$1" != "" ]; then
