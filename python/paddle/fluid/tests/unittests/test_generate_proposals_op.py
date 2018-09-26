@@ -277,7 +277,6 @@ class TestGenerateProposalsOp(OpTest):
             'eta': self.eta
         }
 
-        print("lod = ", self.lod)
         self.outputs = {
             'RpnRois': (self.rpn_rois[0], [self.lod]),
             'RpnRoiProbs': (self.rpn_roi_probs[0], [self.lod])

@@ -71,7 +71,6 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Anchors")->type()),
         ctx.device_context());
-    // platform::CPUPlace());
   }
 };
 
@@ -465,7 +464,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("post_nms_topN", "post_nms_topN");
     AddAttr<float>("nms_thresh", "nms_thres");
     AddAttr<float>("min_size", "min size");
-    AddAttr<float>("eta", "eta");
+    AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddComment(R"DOC(
 Generate Proposals OP
 
