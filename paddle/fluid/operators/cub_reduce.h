@@ -202,9 +202,13 @@ static void TensorReduceImpl(
         x_data, y_data, reducer, transformer, init, reduce_num);
     return;
   }
+  /*
   if (rank == 3 && reduce_rank == 1 && reduce_dim[0] == 1) {
-    // TODO(liangdun): we have to optimize 3d case which the 2nd axis is reduced
+    // TODO(liangdun): we can optimize 3d case which the 2nd axis is reduced.
+    // Currently, it is handled by code below, but inefficient
+    return;
   }
+  */
 
   switch (rank) {
     CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
@@ -263,9 +267,7 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
     }
   }
   x_dim = new_x_dim;
-  // for (auto e : x_dim) VLOG(10) << "newdim " << e;
   origin_reduce_dims = new_reduce_dims;
-  // for (auto e : origin_reduce_dims) VLOG(10) << "newrdim " << e;
   int x_rank = static_cast<int>(x_dim.size());
   std::set<int> left_set, reduce_set;
   for (int i = 0; i < x_rank; ++i) left_set.insert(i);
@@ -290,7 +292,6 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
     y_dim[i] = x_dim[left_dim[i]];
   }
   auto x_data = x.data<Tx>();
-  // auto y_data = y->mutable_data<Ty>(framework::make_ddim(y_dim), x.place());
   auto y_data = y->mutable_data<Ty>(x.place());
   if (reduce_num == 1) return;
 

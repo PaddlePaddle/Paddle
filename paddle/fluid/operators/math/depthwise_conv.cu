@@ -220,7 +220,6 @@ __global__ void KernelDepthwiseConvFilterGrad(
   T s = 0;
 
   int gbid = ((blockIdx.z * gridDim.y) + blockIdx.y) * gridDim.x + blockIdx.x;
-  // int gtid = threadIdx.y * blockDim.x + threadIdx.x;
   int lid = lane_id();
 
   for (int image_w = threadIdx.x; image_w < output_width;
