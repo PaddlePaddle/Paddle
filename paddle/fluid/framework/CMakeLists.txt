@@ -21,12 +21,12 @@ function(windows_symbolic TARGET)
   endif()
   endif()
   if (copy_flag)
-  add_custom_command(OUTPUT .${src}.cu 
+  add_custom_command(OUTPUT .${src}.cu
           COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu
           COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/${src}.cc" "${CMAKE_CURRENT_SOURCE_DIR}/.${src}.cu"
           COMMENT "create hidden file of ${src}.cu")
   endif(copy_flag)
-  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)  
+  add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
   endforeach()
 endfunction()
 
