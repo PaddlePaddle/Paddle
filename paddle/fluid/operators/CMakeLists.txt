@@ -82,10 +82,8 @@ function(op_library TARGET)
     if (${cc_srcs_len} EQUAL 0)
         message(FATAL_ERROR "The op library ${TARGET} should contains at least one .cc file")
     endif()
-
-    #remove windows unsupported op
     if (WIN32)
-    # no nccl, no avx instructions ops.
+    # remove windows unsupported op, because windows has no nccl, no warpctc such ops.
     foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
      "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "fusion_gru_op" "lstm_op" "fusion_lstm_op" "cumsum_op"
      "channel_send_op" "channel_create_op" "channel_close_op" "channel_recv_op")
