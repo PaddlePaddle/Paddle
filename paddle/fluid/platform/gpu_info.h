@@ -19,6 +19,7 @@ limitations under the License. */
 #include <cuda_runtime.h>
 #include <stddef.h>
 #include <string>
+#include <tuple>
 
 namespace paddle {
 namespace platform {
@@ -71,6 +72,8 @@ void GpuMemcpyPeerSync(void *dst, int dst_device, const void *src,
 
 //! Set memory dst with value count size asynchronously
 void GpuMemsetAsync(void *dst, int value, size_t count, cudaStream_t stream);
+
+std::tuple<int, int, int> GpuMaxGridDim(int id);
 
 }  // namespace platform
 }  // namespace paddle
