@@ -31,8 +31,7 @@ class TestDistseResnXt2x2WithMemopt(TestDistBase):
         self._mem_opt = True
 
     def test_dist_train(self):
-        self.check_with_place(
-            "dist_se_resnext.py", delta=1e-7, check_error_log=True)
+        self.check_with_place("dist_se_resnext.py", delta=1e-7)
 
 
 class TestDistSeResneXt2x2Async(TestDistBase):
