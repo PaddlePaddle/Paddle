@@ -40,8 +40,6 @@ class Point_ {
   // bool inside(const Rect_<T>& r) const;
   T x;  //!< x coordinate of the point
   T y;  //!< y coordinate of the point
-
-  // Point_() {}
 };
 
 template <class T>
