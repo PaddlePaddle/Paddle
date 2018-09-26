@@ -115,8 +115,11 @@ bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     return false;
   }
 
+  // Cache the inputs memory for better concurrency performance.
+  feed_tensors_.resize(inputs.size());
+
   for (size_t i = 0; i < inputs.size(); ++i) {
-    framework::LoDTensor input;
+    auto &input = feed_tensors_[i];
     framework::DDim ddim = framework::make_ddim(inputs[i].shape);
     void *input_ptr;
     if (inputs[i].dtype == PaddleDType::INT64) {

@@ -381,7 +381,7 @@ function run_mac_test() {
 EOF
 
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j8     
+        ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
         make install -j 8
         pip install /usr/local/opt/paddle/share/wheels/*.whl
@@ -729,7 +729,7 @@ function main() {
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
-        run_mac_test
+        run_mac_test ${PROC_RUN:-1}
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}

@@ -49,19 +49,14 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 }
 
 struct NaiveAllocator {
-  void* Alloc(size_t size) {
-    std::lock_guard<std::mutex> l(lock_);
-    return malloc(size);
-  }
+  void* Alloc(size_t size) { return malloc(size); }
 
   void Free(void* p) {
-    std::lock_guard<std::mutex> l(lock_);
     PADDLE_ENFORCE(p);
     free(p);
   }
 
   static NaiveAllocator* Instance() {
-    // static thread_local NaiveAllocator x;
     static NaiveAllocator x;
     return &x;
   }

@@ -18,6 +18,8 @@ namespace paddle {
 namespace inference {
 namespace analysis {
 
+using contrib::AnalysisConfig;
+
 struct DataRecord {
   std::vector<int64_t> data;
   std::vector<size_t> lod;
@@ -163,7 +165,9 @@ TEST(Analyzer_LAC, fuse_statis) {
   SetConfig(&cfg);
 
   int num_ops;
-  auto fuse_statis = GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
   ASSERT_TRUE(fuse_statis.count("fc_fuse"));
   ASSERT_TRUE(fuse_statis.count("fc_gru_fuse"));
   EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
