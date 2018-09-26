@@ -13,17 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
-#include <functional>
 #include <string>
-#include "paddle/fluid/operators/math/cpu_vec.h"
-
-#ifdef PADDLE_WITH_MKLML
-#include "paddle/fluid/platform/dynload/mklml.h"
-#endif
-
-#ifdef __AVX__
-#include <immintrin.h>
-#endif
 
 namespace paddle {
 namespace operators {
@@ -35,115 +25,6 @@ namespace jit = platform::jit;
 KernelPool& KernelPool::Instance() {
   static KernelPool g_jit_kernels;
   return g_jit_kernels;
-}
-#define SEARCH_BLOCK(src, t, isa)                             \
-  if (d < AVX_FLOAT_BLOCK) {                                  \
-    Compute = src<t, isa, kLT8>;                              \
-  } else if (d == AVX_FLOAT_BLOCK) {                          \
-    Compute = src<t, isa, kEQ8>;                              \
-  } else if (d > AVX_FLOAT_BLOCK && d < AVX512_FLOAT_BLOCK) { \
-    Compute = src<t, isa, kGT8LT16>;                          \
-  } else if (d == AVX512_FLOAT_BLOCK) {                       \
-    Compute = src<t, isa, kEQ16>;                             \
-  } else {                                                    \
-    Compute = src<t, isa, kGT16>;                             \
-  }
-
-#define SEARCH_ISA_BLOCK(src, t)        \
-  if (jit::MayIUse(jit::avx512f)) {     \
-    SEARCH_BLOCK(src, t, jit::avx512f); \
-  } else if (jit::MayIUse(jit::avx2)) { \
-    SEARCH_BLOCK(src, t, jit::avx2);    \
-  } else if (jit::MayIUse(jit::avx)) {  \
-    SEARCH_BLOCK(src, t, jit::avx);     \
-  } else {                              \
-    SEARCH_BLOCK(src, t, jit::isa_any); \
-  }
-
-// do not include lt8, eq8, eq16
-#define FOR_EACH_COMMON_BLOCK(macro_, isa) \
-  macro_(isa, kGT8LT16) macro_(isa, kGT16)
-
-#define FOR_EACH_ISA_COMMON_BLOCK(macro_) \
-  FOR_EACH_BLOCK(macro_, jit::avx512f)    \
-  FOR_EACH_BLOCK(macro_, jit::avx2)       \
-  FOR_EACH_BLOCK(macro_, jit::avx)        \
-  FOR_EACH_BLOCK(macro_, jit::any)
-
-#define VMUL_ANY                \
-  for (int i = 0; i < n; ++i) { \
-    z[i] = x[i] * y[i];         \
-  }
-
-template <typename T, platform::jit::cpu_isa_t isa, jit_block>
-static void VMulCompute(const int n, const T* x, const T* y, T* z) {
-  VMUL_ANY
-}
-
-#ifdef PADDLE_USE_MKLML
-#define DEFINE_VMUL_COMPUTE_FLOAT(isa, block)                      \
-  template <>                                                      \
-  void VMulCompute<float, isa, block>(const int n, const float* x, \
-                                      const float* y, float* z) {  \
-    platform::dynload::vsMul(n, x, y, z);                          \
-  }
-
-#define DEFINE_VMUL_COMPUTE_DOUBLE(isa, block)                       \
-  template <>                                                        \
-  void VMulCompute<double, isa, block>(const int n, const double* x, \
-                                       const double* y, float* z) {  \
-    platform::dynload::vdMul(n, x, y, z);                            \
-  }
-
-FOR_EACH_ISA_COMMON_BLOCK(DEFINE_VMUL_COMPUTE_FLOAT)
-FOR_EACH_ISA_COMMON_BLOCK(DEFINE_VMUL_COMPUTE_DOUBLE)
-DEFINE_VMUL_COMPUTE_FLOAT(jit::avx, kLT8)
-DEFINE_VMUL_COMPUTE_FLOAT(jit::avx, kEQ16)
-#endif
-
-// mkl > avx > for, ">" means better
-#ifdef PADDLE_USE_MKLML
-DEFINE_VMUL_COMPUTE_FLOAT(jit::avx, kEQ8)
-#elif defined __AVX__
-template <>
-void VMulCompute<float, jit::avx, kEQ8>(const int n, const float* x,
-                                        const float* y, float* z) {
-  __m256 tmpx, tmpy;
-  tmpx = _mm256_loadu_ps(x);
-  tmpy = _mm256_loadu_ps(y);
-  tmpx = _mm256_mul_ps(tmpx, tmpy);
-  _mm256_storeu_ps(z, tmpx);
-}
-#endif
-
-// avx2 > mkl > for
-#ifdef __AVX2__
-template <>
-void VMulCompute<float, jit::avx2, kEQ8>(const int n, const float* x,
-                                         const float* y, float* z) {
-  __m256 tmpx, tmpy;
-  tmpx = _mm256_loadu_ps(x);
-  tmpy = _mm256_loadu_ps(y);
-  tmpx = _mm256_mul_ps(tmpx, tmpy);
-  _mm256_storeu_ps(z, tmpx);
-}
-#elif defined PADDLE_USE_MKLML
-DEFINE_VMUL_COMPUTE_FLOAT(jit::avx2, kEQ8)
-#endif
-// TODO(TJ): test and complete avx512
-
-#undef DEFINE_VMUL_COMPUTE_FLOAT
-#undef DEFINE_VMUL_COMPUTE_DOUBLE
-#undef VMUL_ANY
-
-template <>
-VMulKernel<float>::VMulKernel(int d) {
-  SEARCH_ISA_BLOCK(VMulCompute, float);
-}
-
-template <>
-VMulKernel<double>::VMulKernel(int d) {
-  SEARCH_ISA_BLOCK(VMulCompute, double);
 }
 
 template <>
@@ -168,52 +49,6 @@ const std::shared_ptr<VMulKernel<double>> KernelPool::Get<VMulKernel<double>>(
     return p;
   }
   return std::dynamic_pointer_cast<VMulKernel<double>>(kers_.at(key));
-}
-
-template <>
-LSTMKernel<float>::LSTMKernel(int d, const std::string& act_gate_str,
-                              const std::string& act_cand_str,
-                              const std::string& act_cell_str)
-    : Kernel(), d_(d) {
-  d2_ = d * 2;
-  d3_ = d * 3;
-  if (platform::jit::MayIUse(platform::jit::avx512f)) {
-    math::VecActivations<float, platform::jit::avx512f> act_functor;
-    act_gate_ = act_functor(act_gate_str);
-    act_cell_ = act_functor(act_cell_str);
-    act_cand_ = act_functor(act_cand_str);
-  } else if (platform::jit::MayIUse(platform::jit::avx2)) {
-    math::VecActivations<float, platform::jit::avx2> act_functor;
-    act_gate_ = act_functor(act_gate_str);
-    act_cell_ = act_functor(act_cell_str);
-    act_cand_ = act_functor(act_cand_str);
-  } else if (platform::jit::MayIUse(platform::jit::avx)) {
-    math::VecActivations<float, platform::jit::avx> act_functor;
-    act_gate_ = act_functor(act_gate_str);
-    act_cell_ = act_functor(act_cell_str);
-    act_cand_ = act_functor(act_cand_str);
-    //   ComputeCtHt = [&](float*gates,const float*ct_1,float*ct, float*ht) {
-    // // gates: W_ch, W_ih, W_fh, W_oh
-    // act_gate(d3_, gates + d_, gates + d_);
-
-    // /* C_t = C_t-1 * fgated + cand_gated * igated */
-    // act_cand(d_, gates, gates);
-    // blas.VMUL(d_, gates, gates + d_, gates + d_);
-    // blas.VMUL(d_, ct_1, gates + d2_, gates + d2_);
-    // blas.VADD(d_, gates + d_, gates + d2_, ct);
-
-    // /* H_t = act_cell(C_t) * ogated */
-    // act_cell(d_, ct, gates + d2_);
-    // blas.VMUL(d_, gates + d2_, gates + d3_, ht)
-    // GET_Ct(ct_1, gates, ct);
-    // GET_Ht(ct, gates, ht);
-    //   };
-  } else {
-    math::VecActivations<float, platform::jit::isa_any> act_functor;
-    act_gate_ = act_functor(act_gate_str);
-    act_cell_ = act_functor(act_cell_str);
-    act_cand_ = act_functor(act_cand_str);
-  }
 }
 
 template <>

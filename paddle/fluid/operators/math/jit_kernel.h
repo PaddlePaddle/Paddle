@@ -87,5 +87,3 @@ class LSTMKernel : public Kernel {
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
-
-#include "paddle/fluid/operators/math/jit_kernel_impl.h"
