@@ -24,6 +24,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_model, "", "Directory of the inference model.");
 DEFINE_string(data_list, "", "Path to a file with a list of image files.");
@@ -37,6 +38,7 @@ DEFINE_int32(channels, 3, "Width of the image.");
 DEFINE_bool(use_fake_data, false, "Use fake data (1,2,...).");
 DEFINE_bool(skip_passes, false, "Skip running passes.");
 DEFINE_bool(debug_display_images, false, "Show images in windows for debug.");
+DECLARE_bool(profile);
 
 namespace paddle {
 
@@ -270,12 +272,20 @@ void Main(int batch_size) {
   std::vector<PaddleTensor> output_slots;
 
   // run prediction
+  if (FLAGS_profile) {
+    auto pf_state = paddle::platform::ProfilerState::kCPU;
+    paddle::platform::EnableProfiler(pf_state);
+  }
   inference::Timer timer;
   double sum = 0;
   for (int i = 0; i < FLAGS_iterations; i++) {
     timer.tic();
     CHECK(predictor->Run({input, input_label}, &output_slots));
     sum += timer.toc();
+  }
+  if (FLAGS_profile) {
+    paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
+                                      "/tmp/profiler");
   }
 
   // handle output
