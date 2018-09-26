@@ -31,10 +31,12 @@ struct DataRecord {
   size_t batch_iter{0};
   size_t batch_size{1};
   DataRecord() = default;
+
   explicit DataRecord(const std::string &path, int batch_size = 1)
       : batch_size(batch_size) {
     Load(path);
   }
+
   DataRecord NextBatch() {
     DataRecord data;
     size_t batch_end = batch_iter + batch_size;
@@ -103,6 +105,7 @@ struct DataRecord {
     num_samples = num_lines;
   }
 };
+
 void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
                    int batch_size) {
   PaddleTensor lod_attention_tensor, init_zero_tensor, lod_tensor_tensor,
@@ -265,7 +268,7 @@ TEST(Analyzer_rnn1, multi_thread) {
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);
-  TestPrediction(cfg, input_slots_all, &outputs, 4 /* num_threads */);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
 }
 
 bool CompareTensors(framework::Scope &a_scope, framework::Scope &b_scope,
@@ -437,51 +440,45 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
 #define NEW_TENSOR(name__) \
   auto name__##_tensor = predictor->GetInputTensor(#name__);
 
-  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-  /*
-    for (int i = 0; i < FLAGS_num_threads; i++) {
-      predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
-    }
-    */
-
   auto base_predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   double total_time_of_threads{0};
   std::vector<std::thread> threads;
+  std::vector<std::unique_ptr<PaddlePredictor>> predictors;
   for (int tid = 0; tid < FLAGS_num_threads; tid++) {
-    threads.emplace_back(
-        [config, &total_time_of_threads, &predictors, &base_predictor, tid] {
+    predictors.emplace_back(CreatePaddlePredictor<AnalysisConfig>(config));
+  }
 
-          // auto &predictor = predictors.at(tid);
-          auto predictor = base_predictor->Clone();
-          // PaddlePlace place;
-          // int output_size{0};
-          NEW_TENSOR(data_lod_attention);
-          NEW_TENSOR(cell_init);
-          NEW_TENSOR(data);
-          NEW_TENSOR(week);
-          NEW_TENSOR(minute);
-          NEW_TENSOR(hidden_init);
+  for (int tid = 0; tid < FLAGS_num_threads; tid++) {
+    threads.emplace_back([config, &total_time_of_threads, &predictors, tid] {
+      // auto predictor = base_predictor->Clone();
+      auto &predictor = predictors[tid];
+      NEW_TENSOR(data_lod_attention);
+      NEW_TENSOR(cell_init);
+      NEW_TENSOR(data);
+      NEW_TENSOR(week);
+      NEW_TENSOR(minute);
+      NEW_TENSOR(hidden_init);
 
-          // Prepare data for AnalysisPredictor
-          DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-          PrepareZeroCopyInputs(data_lod_attention_tensor.get(),
-                                cell_init_tensor.get(), data_tensor.get(),
-                                hidden_init_tensor.get(), week_tensor.get(),
-                                minute_tensor.get(), &data, FLAGS_batch_size);
+      // Prepare data for AnalysisPredictor
+      DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
+      Timer timer;
+      double total_time{0};
 
-          Timer timer;
-          double total_time{0};
+      for (int i = 0; i < FLAGS_repeat; i++) {
+        PrepareZeroCopyInputs(data_lod_attention_tensor.get(),
+                              cell_init_tensor.get(), data_tensor.get(),
+                              hidden_init_tensor.get(), week_tensor.get(),
+                              minute_tensor.get(), &data, FLAGS_batch_size);
 
-          for (int i = 0; i < FLAGS_repeat; i++) {
-            timer.tic();
-            predictor->ZeroCopyRun();
-            total_time += timer.toc();
-          }
+        timer.tic();
+        predictor->ZeroCopyRun();
+        total_time += timer.toc();
+      }
 
-          total_time_of_threads += total_time;
+      total_time_of_threads += total_time;
 
-          LOG(INFO) << "thread time: " << total_time / FLAGS_repeat;
-        });
+      LOG(INFO) << "thread time: " << total_time / FLAGS_repeat;
+    });
   }
 
   for (auto &t : threads) {
