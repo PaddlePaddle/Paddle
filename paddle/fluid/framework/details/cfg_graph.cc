@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/cfg_graph.h"
+
 #include <algorithm>
 #include "paddle/fluid/framework/ir/graph_helper.h"
 
@@ -67,6 +68,7 @@ void ControlFlowGraph::DataAnalysis() {
 
   std::unordered_set<ir::Node*> node_live_in;
   std::list<ir::Node*> worklist(ops_.begin(), ops_.end());
+  std::reverse(worklist.begin(), worklist.end());
   auto set_equal = [](const std::unordered_set<ir::Node*>& lhs,
                       const std::unordered_set<ir::Node*>& rhs) -> bool {
     if (lhs.size() != rhs.size()) return false;

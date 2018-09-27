@@ -38,8 +38,9 @@ class TestParallelExecutorBase(unittest.TestCase):
                                   seed=None,
                                   use_parallel_executor=True,
                                   use_reduce=False,
+                                  use_ir_memory_optimize=False,
                                   fuse_elewise_add_act_ops=False,
-                                  optimizer=fluid.optimizer.Adam,
+                                  optimizer=fluid.optimizer.Adam(),
                                   use_fast_executor=False):
         def run_executor(exe, feed, fetch_list, program=None):
             if isinstance(exe, fluid.ParallelExecutor):
@@ -63,7 +64,7 @@ class TestParallelExecutorBase(unittest.TestCase):
 
             loss = method(use_feed=feed_dict is not None)
 
-            optimizer().minimize(loss)
+            optimizer.minimize(loss)
 
             if memory_opt:
                 fluid.memory_optimize(main)
@@ -80,6 +81,7 @@ class TestParallelExecutorBase(unittest.TestCase):
             build_strategy.reduce_strategy = fluid.BuildStrategy.ReduceStrategy.Reduce \
                 if use_reduce else fluid.BuildStrategy.ReduceStrategy.AllReduce
             build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
+            build_strategy.memory_optimize = use_ir_memory_optimize
 
             if use_parallel_executor:
                 exe = fluid.ParallelExecutor(

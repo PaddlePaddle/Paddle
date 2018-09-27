@@ -49,14 +49,22 @@ struct BuildStrategy {
     kCustomized = 2,
   };
 
+  enum class OptimizeStrategy {
+    kBruteForce = 0,
+    kControlFlowGraph = 1,
+  };
+
   ReduceStrategy reduce_{ReduceStrategy::kAllReduce};
   GradientScaleStrategy gradient_scale_{GradientScaleStrategy::kCoeffNumDevice};
+  OptimizeStrategy strategy_{OptimizeStrategy::kBruteForce};
 
   std::string debug_graphviz_path_{""};
 
   bool fuse_elewise_add_act_ops_{false};
 
   bool enable_data_balance_{false};
+
+  bool memory_optimize_{false};
 };
 
 }  // namespace details

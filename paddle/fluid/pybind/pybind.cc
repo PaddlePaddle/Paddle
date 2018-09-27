@@ -677,7 +677,11 @@ All parameter, weight, gradient are variables in Paddle.
                     },
                     [](BuildStrategy &self, bool b) {
                       self.fuse_elewise_add_act_ops_ = b;
-                    });
+                    })
+      .def_property(
+          "memory_optimize",
+          [](const BuildStrategy &self) { return self.memory_optimize_; },
+          [](BuildStrategy &self, bool b) { self.memory_optimize_ = b; });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,

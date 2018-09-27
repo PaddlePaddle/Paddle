@@ -24,10 +24,6 @@ namespace details {
 
 class MemoryOptimizePass : public ir::Pass {
  public:
-  enum class OptimizeStrategy {
-    kBruteForce = 0,
-    kControlFlowGraph = 1,
-  };
   bool IsValidVar(ir::Node* node) const;
   ir::Node* SearchMatch(ir::Node* var) const;
   const std::string DebugString(ir::Node* var) const;
@@ -37,7 +33,6 @@ class MemoryOptimizePass : public ir::Pass {
       std::unique_ptr<ir::Graph> graph) const override;
 
  private:
-  OptimizeStrategy strategy_{OptimizeStrategy::kBruteForce};
   // std::unique_ptr<ir::Graph> graph_;
   mutable std::unique_ptr<ControlFlowGraph> cfg_;
   mutable std::set<ir::Node*> pool_;  // order matters

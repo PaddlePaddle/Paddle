@@ -35,6 +35,35 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::unique_ptr<ir::Graph> ApplyMemoryOptimizePass(
+    const BuildStrategy &strategy, std::unique_ptr<ir::Graph> graph) {
+  // Apply a graph viz pass
+  if (!strategy.debug_graphviz_path_.empty()) {
+    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+    const std::string graph_path =
+        string::Sprintf("%s%s", strategy.debug_graphviz_path_.c_str(),
+                        "_before_optimize_graph");
+    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+    graph = viz_pass->Apply(std::move(graph));
+  }
+
+  // Apply memory optimize
+  if (!strategy.memory_optimize_) {
+    auto mem_opt_pass =
+        ir::PassRegistry::Instance().Get("memory_optimize_pass");
+    graph = mem_opt_pass->Apply(std::move(graph));
+    if (!strategy.debug_graphviz_path_.empty()) {
+      auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
+      const std::string graph_path =
+          string::Sprintf("%s%s", strategy.debug_graphviz_path_.c_str(),
+                          "_after_optimize_graph");
+      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
+      graph = viz_pass->Apply(std::move(graph));
+    }
+  }
+  return graph;
+}
+
 std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
     const ProgramDesc &main_program, const std::vector<platform::Place> &places,
     const std::string &loss_var_name,
@@ -232,8 +261,8 @@ ParallelExecutor::ParallelExecutor(
       main_program, member_->places_, loss_var_name, params,
       member_->local_scopes_, member_->use_cuda_, build_strategy);
 #endif
-  auto mem_opt_pass = ir::PassRegistry::Instance().Get("memory_optimize_pass");
-  graph = mem_opt_pass->Apply(std::move(graph));
+
+  graph = ApplyMemoryOptimizePass(build_strategy, std::move(graph));
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
@@ -381,6 +410,7 @@ USE_PASS(graph_viz_pass);
 USE_PASS(multi_devices_pass);
 USE_PASS(multi_devices_check_pass);
 USE_PASS(multi_devices_print_pass);
+USE_PASS(memory_optimize_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 #endif

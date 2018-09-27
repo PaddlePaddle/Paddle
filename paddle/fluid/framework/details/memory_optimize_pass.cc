@@ -18,6 +18,7 @@
 #include <iterator>
 #include <sstream>
 #include <vector>
+#include "glog/logging.h"
 
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/op_desc.h"
@@ -38,9 +39,9 @@ static const std::unordered_set<std::string> kSUB_BLOCK_OPS = {
 bool MemoryOptimizePass::IsValidVar(ir::Node* node) const {
   PADDLE_ENFORCE(node->IsVar(), "Expect Variable");
   // TODO(dzhwinter): ir node maybe empty
-  if (node->Var() == nullptr || node->Op() == nullptr) {
-    return false;
-  }
+  // if (node->Var() == nullptr || node->Op() == nullptr) {
+  //   return false;
+  // }
   VarDesc* desc = node->Var();
   // only LoDTensor can be reused
   if (desc->Name() == "@EMPTY@" || desc->Persistable() ||
@@ -98,12 +99,39 @@ const std::string MemoryOptimizePass::DebugString(ir::Node* var) const {
   return ss.str();
 }
 
+// template<typename Container>
+std::string ToString(const std::set<ir::Node*>& pool) {
+  std::stringstream ss;
+  for (auto& var : pool) {
+    ss << var->Name() << ",";
+  }
+  return ss.str();
+}
+
+std::string ToString(const std::unordered_set<ir::Node*>& pool) {
+  std::stringstream ss;
+  for (auto& var : pool) {
+    ss << var->Name() << ",";
+  }
+  return ss.str();
+}
+
 std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   cfg_.reset(new ControlFlowGraph(*graph));
   cfg_->DataAnalysis();
 
-  for (auto& op : cfg_->Ops()) {
+  for (size_t i = 0; i < cfg_->Ops().size(); ++i) {
+    auto op = cfg_->Ops()[i];
+    VLOG(3) << op->Name() << " " << i << " live_in "
+            << ToString(cfg_->LiveIn(op));
+    VLOG(3) << op->Name() << " " << i << " live_out "
+            << ToString(cfg_->LiveOut(op));
+  }
+
+  // for (auto& op : cfg_->Ops()) {
+  for (size_t i = 0; i < cfg_->Ops().size(); ++i) {
+    auto op = cfg_->Ops()[i];
     if (kSUB_BLOCK_OPS.find(op->Name()) != kSUB_BLOCK_OPS.end()) {
       continue;
     }
@@ -115,6 +143,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
         }
       }
     }
+    VLOG(3) << op->Name() << " " << i << " " << ToString(pool_);
     // 2. reuse var matching
     for (auto& output_var : cfg_->Def(op)) {
       if (IsValidVar(output_var)) {
@@ -131,6 +160,7 @@ std::unique_ptr<ir::Graph> MemoryOptimizePass::ApplyImpl(
         }
       }
     }
+    VLOG(3) << "after " << op->Name() << " " << i << " " << ToString(pool_);
   }
   return graph;
 }
