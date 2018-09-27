@@ -246,6 +246,7 @@ def prepare_encoder(src_word,
         padding_idx=pos_pad_idx,
         param_attr=fluid.ParamAttr(
             name=pos_enc_param_name, trainable=False))
+    src_pos_enc.stop_gradient = True
     enc_input = src_word_emb + src_pos_enc
 
     # FIXME(guosheng): Decouple the program desc with batch_size.

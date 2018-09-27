@@ -13,10 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
-
 #include <string>
 #include <tuple>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 #include "paddle/fluid/framework/ir/graph.h"
 
@@ -155,6 +155,12 @@ ParallelExecutor::ParallelExecutor(
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
+
+  // If the loss_var_name is given, the number of graph should be only one.
+  if (loss_var_name.size()) {
+    PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                      "The number of graph should be only one");
+  }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
