@@ -70,7 +70,7 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
-        echo "using python abi: $1"
+        echo "Using python abi: $1"
         if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
             if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
