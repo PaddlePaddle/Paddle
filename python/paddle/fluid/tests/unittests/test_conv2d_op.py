@@ -336,7 +336,6 @@ class TestDepthwiseConv(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [3, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
-        # input grad error, stride
 
 
 class TestDepthwiseConv2(TestConv2dOp):
@@ -363,7 +362,6 @@ class TestDepthwiseConv3(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
-        # filter grad error?
 
 
 class TestDepthwiseConvWithDilation(TestConv2dOp):
@@ -378,7 +376,6 @@ class TestDepthwiseConvWithDilation(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
-        # grad error
 
 
 class TestDepthwiseConvWithDilation2(TestConv2dOp):
@@ -393,14 +390,13 @@ class TestDepthwiseConvWithDilation2(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
-        # filter error
 
-    # Please Don't remove the following code.
-    # Currently, CI use cudnn V5.0 which not support dilation conv.
-    # class TestCUDNNWithDilation(TestWithDilation):
-    #     def init_op_type(self):
-    #         self.op_type = "conv_cudnn"
 
+# Please Don't remove the following code.
+# Currently, CI use cudnn V5.0 which not support dilation conv.
+# class TestCUDNNWithDilation(TestWithDilation):
+#     def init_op_type(self):
+#         self.op_type = "conv_cudnn"
 
 if __name__ == '__main__':
     unittest.main()
