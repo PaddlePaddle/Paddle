@@ -54,6 +54,8 @@ class KernelPool {
   template <typename Ker, typename... ARGS>
   const std::shared_ptr<Ker> Get(ARGS... args);
 
+  const std::shared_ptr<Kernel> Get(const std::string &key) const;
+
  private:
   KernelPool() = default;
   std::unordered_map<std::string, std::shared_ptr<Kernel>> kers_;
@@ -65,6 +67,13 @@ template <typename T>
 class VMulKernel : public Kernel {
  public:
   explicit VMulKernel(int n);
+  void (*Compute)(const int n, const T *, const T *, T *);
+};
+
+template <typename T>
+class VAddKernel : public Kernel {
+ public:
+  explicit VAddKernel(int n);
   void (*Compute)(const int n, const T *, const T *, T *);
 };
 

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
+#include <iostream>
 #include <string>
 
 namespace paddle {
@@ -27,29 +28,35 @@ KernelPool& KernelPool::Instance() {
   return g_jit_kernels;
 }
 
-template <>
-const std::shared_ptr<VMulKernel<float>> KernelPool::Get<VMulKernel<float>>(
-    int d) {
-  std::string key = "f" + std::to_string(d);
+const std::shared_ptr<Kernel> KernelPool::Get(const std::string& key) const {
   if (kers_.find(key) == kers_.end()) {
-    auto p = std::make_shared<VMulKernel<float>>(d);
-    kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});
-    return p;
+    return nullptr;
   }
-  return std::dynamic_pointer_cast<VMulKernel<float>>(kers_.at(key));
+  return kers_.at(key);
 }
 
-template <>
-const std::shared_ptr<VMulKernel<double>> KernelPool::Get<VMulKernel<double>>(
-    int d) {
-  std::string key = "d" + std::to_string(d);
-  if (kers_.find(key) == kers_.end()) {
-    auto p = std::make_shared<VMulKernel<double>>(d);
-    kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});
-    return p;
+#define DEFINE_WITH_DTYPE(ker_key, ker_class, ker_dtype, dtype_key)        \
+  template <>                                                              \
+  const std::shared_ptr<ker_class<ker_dtype>>                              \
+  KernelPool::Get<ker_class<ker_dtype>>(int d) {                           \
+    std::string key = #ker_key #dtype_key + std::to_string(d);             \
+    if (kers_.find(key) == kers_.end()) {                                  \
+      auto p = std::make_shared<ker_class<ker_dtype>>(d);                  \
+      kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});           \
+      return p;                                                            \
+    }                                                                      \
+    return std::dynamic_pointer_cast<ker_class<ker_dtype>>(kers_.at(key)); \
   }
-  return std::dynamic_pointer_cast<VMulKernel<double>>(kers_.at(key));
-}
+
+#define REGISTER_BLAS_JITKERNEL(ker_key, ker_class) \
+  DEFINE_WITH_DTYPE(ker_key, ker_class, float, f);  \
+  DEFINE_WITH_DTYPE(ker_key, ker_class, double, d)
+
+REGISTER_BLAS_JITKERNEL(vmul, VMulKernel);
+REGISTER_BLAS_JITKERNEL(vadd, VAddKernel);
+
+#undef REGISTER_BLAS_JITKERNEL
+#undef DEFINE_WITH_DTYPE
 
 template <>
 const std::shared_ptr<LSTMKernel<float>>
@@ -57,7 +64,8 @@ KernelPool::Get<LSTMKernel<float>, int, const std::string&, const std::string&,
                 const std::string&>(int d, const std::string& act_gate,
                                     const std::string& act_cand,
                                     const std::string& act_cell) {
-  std::string key = "f" + std::to_string(d) + act_gate + act_cand + act_cell;
+  std::string key =
+      "lstmf" + std::to_string(d) + act_gate + act_cand + act_cell;
   if (kers_.find(key) == kers_.end()) {
     auto p =
         std::make_shared<LSTMKernel<float>>(d, act_gate, act_cand, act_cell);
