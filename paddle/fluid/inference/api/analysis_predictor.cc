@@ -14,24 +14,40 @@
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(profile);
 
 namespace paddle {
 
 bool AnalysisPredictor::Init(
     const std::shared_ptr<framework::Scope>& parent_scope) {
   VLOG(3) << "Predictor::init()";
+#if !defined(_WIN32)
+  if (FLAGS_profile) {
+    LOG(WARNING) << "Profiler is actived, might affect the performance";
+    LOG(INFO) << "You can turn off by set gflags '-profile false'";
+    auto tracking_device = config_.use_gpu ? platform::ProfilerState::kAll
+                                           : platform::ProfilerState::kCPU;
+    platform::EnableProfiler(tracking_device);
+  }
+#endif
+
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
+    LOG(WARNING) << "ir optimize only supports CPU currently";
+    config_.enable_ir_optim = false;
   } else {
     place_ = paddle::platform::CPUPlace();
   }
-  PADDLE_ENFORCE(!parent_scope);
   if (parent_scope) {
     scope_ = parent_scope;
     sub_scope_ = &(parent_scope->NewScope());
@@ -55,11 +71,14 @@ bool AnalysisPredictor::Init(
     inference_program_ = paddle::inference::Load(
         executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
   } else {
-    LOG(ERROR) << "fail to load inference model.";
+    LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
     return false;
   }
 
   OptimizeInferenceProgram();
+  if (config_._use_mkldnn) {
+    executor_->EnableMKLDNN(*inference_program_);
+  }
   ctx_ = executor_->Prepare(*inference_program_, 0);
 
   VLOG(5) << "to create variables";
@@ -73,7 +92,7 @@ bool AnalysisPredictor::Init(
 
 void AnalysisPredictor::OptimizeInferenceProgram() {
   LOG(INFO) << "optimize begin";
-  FLAGS_IA_enable_ir = true;
+  FLAGS_IA_enable_ir = config_.enable_ir_optim;
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "";  // Don't output the model.
   // Analyze inference_program
@@ -90,24 +109,28 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   }
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  Analyzer().Run(&argument_);
+  PADDLE_ENFORCE(
+      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
+      "Only kExclude is supported yet.");
+  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
-  // LOG(INFO) << "transformed_parogram_desc " <<
-  // argument.transformed_program_desc->DebugString();
   inference_program_.reset(
       new framework::ProgramDesc(*argument_.transformed_program_desc));
-  PADDLE_ENFORCE(argument_.Has(framework::ir::kParamScopeAttr));
-  // Update scope.
-  scope_.reset(
-      argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
-  LOG(INFO) << "optimize end ==";
+  if (argument_.Has(framework::ir::kParamScopeAttr)) {
+    // Update scope.
+    scope_.reset(
+        argument_.Release<framework::Scope>(framework::ir::kParamScopeAttr));
+  }
+  LOG(INFO) << "== optimize end ==";
 }
 
 template <>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
-    NativeConfig, PaddleEngineKind::kAnalysis>(const NativeConfig& config) {
-  VLOG(3) << "create NativePredictor";
+std::unique_ptr<PaddlePredictor>
+CreatePaddlePredictor<contrib::AnalysisConfig, PaddleEngineKind::kAnalysis>(
+    const contrib::AnalysisConfig& config) {
+  VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
     PADDLE_ENFORCE_GT(
@@ -131,6 +154,13 @@ std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
     return nullptr;
   }
   return predictor;
+}
+
+template <>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
+    const contrib::AnalysisConfig& config) {
+  return CreatePaddlePredictor<contrib::AnalysisConfig,
+                               PaddleEngineKind::kAnalysis>(config);
 }
 
 }  // namespace paddle

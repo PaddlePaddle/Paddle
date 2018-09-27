@@ -26,7 +26,7 @@ main_program = default_startup_program()
 
 class TestOperator(unittest.TestCase):
     def test_error_type(self):
-        block = main_program.create_block()
+        block = main_program._create_block()
         try:
             block.append_op()
             self.assertFail()
@@ -69,7 +69,7 @@ class TestOperator(unittest.TestCase):
             set(mul_op.attr_names),
             set([
                 "x_num_col_dims", "y_num_col_dims", "op_role", "op_role_var",
-                "op_namescope"
+                "op_namescope", "op_callstack"
             ]))
         self.assertEqual(mul_op.has_attr("x_num_col_dims"), True)
         self.assertEqual(mul_op.attr_type("x_num_col_dims"), core.AttrType.INT)

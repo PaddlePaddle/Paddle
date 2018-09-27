@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -69,7 +70,7 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Anchors")->type()),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 
@@ -89,12 +90,11 @@ void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
   }
 
   for (int64_t i = 0; i < row; ++i) {
-    T anchor_width = anchor_data[i * len + 2] - anchor_data[i * len];
-    T anchor_height = anchor_data[i * len + 3] - anchor_data[i * len + 1];
+    T anchor_width = anchor_data[i * len + 2] - anchor_data[i * len] + 1.0;
+    T anchor_height = anchor_data[i * len + 3] - anchor_data[i * len + 1] + 1.0;
 
-    T anchor_center_x = (anchor_data[i * len + 2] + anchor_data[i * len]) / 2;
-    T anchor_center_y =
-        (anchor_data[i * len + 3] + anchor_data[i * len + 1]) / 2;
+    T anchor_center_x = anchor_data[i * len] + 0.5 * anchor_width;
+    T anchor_center_y = anchor_data[i * len + 1] + 0.5 * anchor_height;
 
     T bbox_center_x = 0, bbox_center_y = 0;
     T bbox_width = 0, bbox_height = 0;
@@ -106,25 +106,31 @@ void BoxCoder(const platform::DeviceContext &ctx, Tensor *all_anchors,
       bbox_center_y = variances_data[i * len + 1] *
                           bbox_deltas_data[i * len + 1] * anchor_height +
                       anchor_center_y;
-      bbox_width = std::exp(variances_data[i * len + 2] *
-                            bbox_deltas_data[i * len + 2]) *
+      bbox_width = std::exp(std::min<T>(variances_data[i * len + 2] *
+                                            bbox_deltas_data[i * len + 2],
+                                        std::log(1000.0 / 16.0))) *
                    anchor_width;
-      bbox_height = std::exp(variances_data[i * len + 3] *
-                             bbox_deltas_data[i * len + 3]) *
+      bbox_height = std::exp(std::min<T>(variances_data[i * len + 3] *
+                                             bbox_deltas_data[i * len + 3],
+                                         std::log(1000.0 / 16.0))) *
                     anchor_height;
     } else {
       bbox_center_x =
           bbox_deltas_data[i * len] * anchor_width + anchor_center_x;
       bbox_center_y =
           bbox_deltas_data[i * len + 1] * anchor_height + anchor_center_y;
-      bbox_width = std::exp(bbox_deltas_data[i * len + 2]) * anchor_width;
-      bbox_height = std::exp(bbox_deltas_data[i * len + 3]) * anchor_height;
+      bbox_width = std::exp(std::min<T>(bbox_deltas_data[i * len + 2],
+                                        std::log(1000.0 / 16.0))) *
+                   anchor_width;
+      bbox_height = std::exp(std::min<T>(bbox_deltas_data[i * len + 3],
+                                         std::log(1000.0 / 16.0))) *
+                    anchor_height;
     }
 
     proposals_data[i * len] = bbox_center_x - bbox_width / 2;
     proposals_data[i * len + 1] = bbox_center_y - bbox_height / 2;
-    proposals_data[i * len + 2] = bbox_center_x + bbox_width / 2;
-    proposals_data[i * len + 3] = bbox_center_y + bbox_height / 2;
+    proposals_data[i * len + 2] = bbox_center_x + bbox_width / 2 - 1;
+    proposals_data[i * len + 3] = bbox_center_y + bbox_height / 2 - 1;
   }
   // return proposals;
 }
@@ -156,18 +162,23 @@ void FilterBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
                  float min_size, const Tensor &im_info, Tensor *keep) {
   const T *im_info_data = im_info.data<T>();
   T *boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
-  min_size *= im_info_data[2];
-  keep->Resize({boxes->dims()[0], 1});
+  T im_scale = im_info_data[2];
+  keep->Resize({boxes->dims()[0]});
+  min_size = std::max(min_size, 1.0f);
   int *keep_data = keep->mutable_data<int>(ctx.GetPlace());
 
   int keep_len = 0;
   for (int i = 0; i < boxes->dims()[0]; ++i) {
     T ws = boxes_data[4 * i + 2] - boxes_data[4 * i] + 1;
     T hs = boxes_data[4 * i + 3] - boxes_data[4 * i + 1] + 1;
+    T ws_origin_scale =
+        (boxes_data[4 * i + 2] - boxes_data[4 * i]) / im_scale + 1;
+    T hs_origin_scale =
+        (boxes_data[4 * i + 3] - boxes_data[4 * i + 1]) / im_scale + 1;
     T x_ctr = boxes_data[4 * i] + ws / 2;
     T y_ctr = boxes_data[4 * i + 1] + hs / 2;
-    if (ws >= min_size && hs >= min_size && x_ctr <= im_info_data[1] &&
-        y_ctr <= im_info_data[0]) {
+    if (ws_origin_scale >= min_size && hs_origin_scale >= min_size &&
+        x_ctr <= im_info_data[1] && y_ctr <= im_info_data[0]) {
       keep_data[keep_len++] = i;
     }
   }
@@ -218,8 +229,8 @@ T JaccardOverlap(const T *box1, const T *box2, const bool normalized) {
     const T inter_ymin = std::max(box1[1], box2[1]);
     const T inter_xmax = std::min(box1[2], box2[2]);
     const T inter_ymax = std::min(box1[3], box2[3]);
-    const T inter_w = inter_xmax - inter_xmin;
-    const T inter_h = inter_ymax - inter_ymin;
+    const T inter_w = std::max(0.0f, inter_xmax - inter_xmin + 1);
+    const T inter_h = std::max(0.0f, inter_ymax - inter_ymin + 1);
     const T inter_area = inter_w * inter_h;
     const T bbox1_area = BBoxArea<T>(box1, normalized);
     const T bbox2_area = BBoxArea<T>(box2, normalized);
@@ -453,7 +464,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("post_nms_topN", "post_nms_topN");
     AddAttr<float>("nms_thresh", "nms_thres");
     AddAttr<float>("min_size", "min size");
-    AddAttr<float>("eta", "eta");
+    AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddComment(R"DOC(
 Generate Proposals OP
 

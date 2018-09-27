@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/cpu_lstm_compute.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
@@ -24,30 +25,17 @@ namespace paddle {
 namespace operators {
 
 void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Input(X) of LSTM should not be null.");
+  PADDLE_ENFORCE(ctx->HasInput("X"), "Assert only one Input(X) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("WeightX"),
-                 "Input(WeightX) of LSTM should not be null.");
+                 "Assert only one Input(WeightX) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("WeightH"),
-                 "Input(WeightH) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasInput("Bias"),
-                 "Input(Bias) of LSTM should not be null.");
-
-  PADDLE_ENFORCE(ctx->HasOutput("XX"),
-                 "Output(XX) of LSTM should not be null.");
+                 "Assert only one Input(WeightH) of LSTM.");
+  PADDLE_ENFORCE(ctx->HasInput("Bias"), "Assert only one Input(Bias) of LSTM.");
+  PADDLE_ENFORCE(ctx->HasOutput("XX"), "Assert only one Output(XX) of LSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("Hidden"),
-                 "Output(Hidden) of LSTM should not be null.");
+                 "Assert only one Output(Hidden) of LSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
-                 "Output(Cell) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
-                 "Output(BatchedInput) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
-                 "Output(BatchedHidden) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("BatchedCell"),
-                 "Output(BatchedCell) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
-                 "Output(ReorderedH0) of LSTM should not be null.");
-  PADDLE_ENFORCE(ctx->HasOutput("ReorderedC0"),
-                 "Output(ReorderedC0) of LSTM should not be null.");
+                 "Assert only one Output(Cell) of LSTM.");
 
   auto x_dims = ctx->GetInputDim("X");
   PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
@@ -88,28 +76,42 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
                     "The first dimension of Input(Bias) should be 1.");
-
-  PADDLE_ENFORCE(!ctx->Attrs().Get<bool>("use_peepholes"),
-                 "Do not support peephole yet.");
-  PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                    "The second dimension of Input(Bias) should be "
-                    "4 * %d if disable peepholes connection",
-                    frame_size);
+  if (ctx->Attrs().Get<bool>("use_peepholes")) {
+    PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
+                      "The second dimension of Input(Bias) should be "
+                      "7 * %d if enable peepholes connection",
+                      frame_size);
+    ctx->SetOutputDim("CheckedCell", {2, frame_size});
+  } else {
+    PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
+                      "The second dimension of Input(Bias) should be "
+                      "4 * %d if disable peepholes",
+                      frame_size);
+  }
 
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
-  ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
-  ctx->SetOutputDim("BatchedHidden", out_dims);
-  ctx->SetOutputDim("BatchedCell", out_dims);
   ctx->ShareLoD("X", "Hidden");
   ctx->ShareLoD("X", "Cell");
-
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = wx_dims[1];
   } else {
     xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
+                   "Assert only one Output(BatchedInput) of LSTM.");
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
+                   "Assert only one Output(BatchedHidden) of LSTM.");
+    PADDLE_ENFORCE(ctx->HasOutput("BatchedCell"),
+                   "Assert only one Output(BatchedCell) of LSTM.");
+    PADDLE_ENFORCE(ctx->HasOutput("ReorderedH0"),
+                   "Assert only one Output(ReorderedH0) of LSTM");
+    PADDLE_ENFORCE(ctx->HasOutput("ReorderedC0"),
+                   "Assert only one Output(ReorderedC0) of LSTM.");
+    ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
+    ctx->SetOutputDim("BatchedHidden", out_dims);
+    ctx->SetOutputDim("BatchedCell", out_dims);
   }
   ctx->SetOutputDim("XX", {x_dims[0], xx_width});
   ctx->ShareLoD("X", "XX");
@@ -177,6 +179,8 @@ void FusionLSTMOpMaker::Make() {
   AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
   AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
   AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
+  AddOutput("CheckedCell", "(Tensor) (2 x D) only for peephole.")
+      .AsIntermediate();
   AddAttr<bool>("use_peepholes",
                 "(bool, defalut: True) "
                 "whether to enable diagonal/peephole connections.")
@@ -242,7 +246,8 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   auto* xx = ctx.Output<LoDTensor>("XX");             \
   auto* hidden_out = ctx.Output<LoDTensor>("Hidden"); \
   auto* cell_out = ctx.Output<LoDTensor>("Cell");     \
-  bool is_reverse = ctx.Attr<bool>("is_reverse");
+  bool is_reverse = ctx.Attr<bool>("is_reverse");     \
+  bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
 #define INIT_BASE_SIZES                  \
   auto x_dims = x->dims();   /* T x M*/  \
@@ -253,99 +258,175 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   const int D3 = D * 3;                  \
   const int D4 = wh_dims[1];
 
+#define INIT_BASE_INPUT_DATAS                                 \
+  const T* x_data = x->data<T>();                             \
+  const T* wx_data = wx->data<T>();                           \
+  const T* wh_data = wh->data<T>();                           \
+  /* diagonal weight*/                                        \
+  const T* wc_data = bias->data<T>() + D4;                    \
+  /* for peephole only*/                                      \
+  T* checked_cell_data = nullptr;                             \
+  auto place = ctx.GetPlace();                                \
+  if (use_peepholes) {                                        \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/          \
+    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");   \
+    checked_cell_data = checked_cell->mutable_data<T>(place); \
+  }
+
+/// Compute LSTM
+#define GEMM_WH_ADDON(bs, prev, out)                                           \
+  blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
+            wh_data, D4, static_cast<T>(1), out, D4)
+
+#define GET_Ct(ct_1, gates, ct)                   \
+  /* C_t = C_t-1 * fgated + cand_gated * igated*/ \
+  act_cand(D, gates, gates);                      \
+  blas.VMUL(D, gates, gates + D, gates + D);      \
+  blas.VMUL(D, ct_1, gates + D2, gates + D2);     \
+  blas.VADD(D, gates + D, gates + D2, ct)
+
+#define GET_Ht(ct, gates, ht)        \
+  /* H_t = act_cell(C_t) * ogated */ \
+  act_cell(D, ct, gates + D2);       \
+  blas.VMUL(D, gates + D2, gates + D3, ht)
+
+#define GET_Ct_NOH0C0(gates, ct)     \
+  /* C_t = igated * cgated*/         \
+  act_gate(D, gates + D, gates + D); \
+  act_cand(D, gates, gates);         \
+  blas.VMUL(D, gates, gates + D, ct)
+
+#define COMPUTE_CtHt_NOH0C0(gates, ct, ht) \
+  GET_Ct_NOH0C0(gates, ct);                \
+  act_gate(D, gates + D3, gates + D3);     \
+  GET_Ht(ct, gates, ht)
+
+#define COMPUTE_CtHt_PEEPHOLE_NOH0C0(gates, ct, ht) \
+  GET_Ct_NOH0C0(gates, ct);                         \
+  /* get outgated, put W_oc * C_t on igated */      \
+  blas.VMUL(D, wc_data + D2, ct, gates + D);        \
+  blas.VADD(D, gates + D, gates + D3, gates + D3);  \
+  act_gate(D, gates + D3, gates + D3);              \
+  GET_Ht(ct, gates, ht)
+
+#define COMPUTE_CtHt(gates, ct_1, ct, ht) \
+  act_gate(D3, gates + D, gates + D);     \
+  GET_Ct(ct_1, gates, ct);                \
+  GET_Ht(ct, gates, ht)
+
+#define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)        \
+  /* get fgated and igated*/                              \
+  blas.VMUL(D, wc_data, ct_1, checked_cell_data);         \
+  blas.VMUL(D, wc_data + D, ct_1, checked_cell_data + D); \
+  blas.VADD(D2, checked_cell_data, gates + D, gates + D); \
+  act_gate(D2, gates + D, gates + D);                     \
+  GET_Ct(ct_1, gates, ct);                                \
+  /* get ogated*/                                         \
+  blas.VMUL(D, wc_data + D2, ct, gates + D);              \
+  blas.VADD(D, gates + D, gates + D3, gates + D3);        \
+  act_gate(D, gates + D3, gates + D3);                    \
+  GET_Ht(ct, gates, ht)
+
   void SeqCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
     INIT_BASE_INPUT_OUTPUT
     INIT_BASE_SIZES
     INIT_VEC_FUNC
+    INIT_BASE_INPUT_DATAS
 
     auto x_lod = x->lod();
     const int total_T = x_dims[0];
-    const int N = x_lod[0].size() - 1;  // batch size
-
-    const T* x_data = x->data<T>();
+    const int N = x_lod[0].size() - 1;
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
-    const T* wx_data = wx->data<T>();
-    const T* wh_data = wh->data<T>();
-    T* xx_data = xx->mutable_data<T>(ctx.GetPlace());
-    T* hidden_out_data = hidden_out->mutable_data<T>(ctx.GetPlace());
-    T* cell_out_data = cell_out->mutable_data<T>(ctx.GetPlace());
-
+    T* xx_data = xx->mutable_data<T>(place);
+    T* h_out_data = hidden_out->mutable_data<T>(place);
+    T* c_out_data = cell_out->mutable_data<T>(place);
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
     math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
                                       xx_data, bias->data<T>());
+
     int xx_offset = D4;
     int gate_offset = D;
     if (is_reverse) {
       const int offset = (total_T - 1) * D;
       xx_data = xx_data + offset * 4;
-      hidden_out_data = hidden_out_data + offset;
-      cell_out_data = cell_out_data + offset;
+      h_out_data = h_out_data + offset;
+      c_out_data = c_out_data + offset;
       xx_offset = -D4;
       gate_offset = -D;
     }
 
-    auto move_step = [&]() {
-      xx_data = xx_data + xx_offset;
-      hidden_out_data = hidden_out_data + gate_offset;
-      cell_out_data = cell_out_data + gate_offset;
-    };
+#define MOVE_ONE_STEP                    \
+  prev_h_data = h_out_data;              \
+  prev_c_data = c_out_data;              \
+  xx_data = xx_data + xx_offset;         \
+  h_out_data = h_out_data + gate_offset; \
+  c_out_data = c_out_data + gate_offset
 
-    for (int i = 0; i < N; ++i) {
-      int bid = is_reverse ? N - 1 - i : i;
-      int seq_len = x_lod[0][bid + 1] - x_lod[0][bid];
-      const T* prev_c_data = nullptr;
-      const T* prev_h_data = nullptr;
-      int tstart = 0;
-      if (h0_data) {
-        prev_h_data = h0_data + bid * D;
-        prev_c_data = c0_data + bid * D;
-      } else {
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
-        act_cand(D, xx_data, xx_data);
-        // cell out= input*tilde
-        blas.VMUL(D, xx_data, xx_data + D, cell_out_data);
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cell_out_data, xx_data + D2);
-        blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
+#define PROCESS_H0C0_DEFINES                       \
+  int bid = is_reverse ? N - 1 - i : i;            \
+  int seq_len = x_lod[0][bid + 1] - x_lod[0][bid]; \
+  const T* prev_c_data = nullptr;                  \
+  const T* prev_h_data = nullptr;                  \
+  int tstart = 0
 
-        // prev
-        prev_h_data = hidden_out_data;
-        prev_c_data = cell_out_data;
-        tstart = 1;
+#define PROCESS_H0C0_PEEPHOLE                                      \
+  PROCESS_H0C0_DEFINES;                                            \
+  if (h0_data) {                                                   \
+    prev_h_data = h0_data + bid * D;                               \
+    prev_c_data = c0_data + bid * D;                               \
+  } else {                                                         \
+    COMPUTE_CtHt_PEEPHOLE_NOH0C0(xx_data, c_out_data, h_out_data); \
+    MOVE_ONE_STEP;                                                 \
+    tstart = 1;                                                    \
+  }
 
-        move_step();
+#define PROCESS_H0C0                                      \
+  PROCESS_H0C0_DEFINES;                                   \
+  if (h0_data) {                                          \
+    prev_h_data = h0_data + bid * D;                      \
+    prev_c_data = c0_data + bid * D;                      \
+  } else {                                                \
+    COMPUTE_CtHt_NOH0C0(xx_data, c_out_data, h_out_data); \
+    MOVE_ONE_STEP;                                        \
+    tstart = 1;                                           \
+  }
+
+    if (use_peepholes) {
+      for (int i = 0; i < N; ++i) {
+        PROCESS_H0C0_PEEPHOLE
+        for (int step = tstart; step < seq_len; ++step) {
+          GEMM_WH_ADDON(1, prev_h_data, xx_data);
+          COMPUTE_CtHt_PEEPHOLE(xx_data, prev_c_data, c_out_data, h_out_data);
+          MOVE_ONE_STEP;
+        }
       }
-      for (int step = tstart; step < seq_len; ++step) {
-        blas.GEMM(CblasNoTrans, CblasNoTrans, 1, D4, D, static_cast<T>(1),
-                  prev_h_data, D, wh_data, D4, static_cast<T>(1), xx_data, D4);
-
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, xx_data + D, xx_data + D);
-        act_cand(D, xx_data, xx_data);
-
-        // a = forget * prev_cell
-        blas.VMUL(D, xx_data + D2, prev_c_data, xx_data + D2);
-
-        // b = input * tilde
-        blas.VMUL(D, xx_data, xx_data + D, xx_data + D);
-
-        // cell out= a+b
-        blas.VADD(D, xx_data + D, xx_data + D2, cell_out_data);
-
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cell_out_data, xx_data + D2);
-        blas.VMUL(D, xx_data + D2, xx_data + D3, hidden_out_data);
-
-        // prev
-        prev_h_data = hidden_out_data;
-        prev_c_data = cell_out_data;
-
-        move_step();
+    } else {
+      // TODO(TJ): unly workaround, clean me
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
+      if (platform::jit::MayIUse(platform::jit::avx) &&
+          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
+          act_cell_str == "tanh" && D == 8) {
+        compute_ctht = math::lstm_compute_ctht<T>;
+      } else {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
+          COMPUTE_CtHt(gates, ct_1, ct, ht);
+        };
+      }
+      for (int i = 0; i < N; ++i) {
+        PROCESS_H0C0
+        for (int step = tstart; step < seq_len; ++step) {
+          GEMM_WH_ADDON(1, prev_h_data, xx_data);
+          compute_ctht(xx_data, prev_c_data, c_out_data, h_out_data);
+          MOVE_ONE_STEP;
+        }
       }
     }
+#undef PROCESS_H0C0_DEFINES
+#undef PROCESS_H0C0_PEEPHOLE
+#undef PROCESS_H0C0
+#undef MOVE_ONE_STEP
   }
 
   void BatchCompute(const framework::ExecutionContext& ctx) const {
@@ -357,17 +438,13 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     }
     INIT_BASE_SIZES
     INIT_VEC_FUNC
+    INIT_BASE_INPUT_DATAS
 
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
     auto* batched_c_out = ctx.Output<LoDTensor>("BatchedCell");
     auto* batched_h_out = ctx.Output<LoDTensor>("BatchedHidden");
-
-    const T* x_data = x->data<T>();
-    const T* wx_data = wx->data<T>();
-    const T* wh_data = wh->data<T>();
-    auto place = ctx.GetPlace();
     T* xx_data = xx->mutable_data<T>(place);
     T* batched_input_data = batched_input->mutable_data<T>(place);
     T* batched_c_out_data = batched_c_out->mutable_data<T>(place);
@@ -419,17 +496,14 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       T* cur_in_data = batched_input_data;
       T* cur_h_out_data = batched_h_out_data;
       T* cur_c_out_data = batched_c_out_data;
-      // W_ch, W_ih, W_fh, W_oh
       for (int i = 0; i < max_bs; ++i) {
-        act_gate(D3, cur_in_data + D, cur_in_data + D);
-        act_cand(D, cur_in_data, cur_in_data);
-        // cell out= input*tilde
-        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_c_out_data);
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cur_c_out_data, cur_in_data + D2);
-        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
-
-        // add offset
+        GET_Ct_NOH0C0(cur_in_data, cur_c_out_data);
+        if (use_peepholes) {
+          blas.VMUL(D, wc_data + D2, cur_c_out_data, cur_in_data + D);
+          blas.VADD(D, cur_in_data + D, cur_in_data + D3, cur_in_data + D3);
+        }
+        act_gate(D, cur_in_data + D3, cur_in_data + D3);
+        GET_Ht(cur_c_out_data, cur_in_data, cur_h_out_data);
         cur_in_data += D4;
         cur_c_out_data += D;
         cur_h_out_data += D;
@@ -438,49 +512,71 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       prev_h_data = batched_h_out_data;
       prev_c_data = batched_c_out_data;
     }
-    // Then start from next
     const auto& batch_starts = batched_lod[0];
     const int max_seq_len = batch_starts.size() - 1;
     const int offset = tstart * max_bs * D;
     batched_input_data = batched_input_data + offset * 4;
     batched_h_out_data = batched_h_out_data + offset;
     batched_c_out_data = batched_c_out_data + offset;
-    for (int step = tstart; step < max_seq_len; ++step) {
-      const int cur_bs = batch_starts[step + 1] - batch_starts[step];
-      blas.GEMM(CblasNoTrans, CblasNoTrans, cur_bs, D4, D, static_cast<T>(1),
-                prev_h_data, D, wh_data, D4, static_cast<T>(1),
-                batched_input_data, D4);
 
-      T* cur_in_data = batched_input_data;
-      T* cur_prev_c_data = prev_c_data;
-      T* cur_c_out_data = batched_c_out_data;
-      T* cur_h_out_data = batched_h_out_data;
-      for (int i = 0; i < cur_bs; ++i) {
-        // W_ch, W_ih, W_fh, W_oh
-        act_gate(D3, cur_in_data + D, cur_in_data + D);
-        act_cand(D, cur_in_data, cur_in_data);
-        // a = forget * prev_cell
-        blas.VMUL(D, cur_in_data + D2, cur_prev_c_data, cur_in_data + D2);
-        // b = input * tilde
-        blas.VMUL(D, cur_in_data, cur_in_data + D, cur_in_data + D);
-        // cell out= a+b
-        blas.VADD(D, cur_in_data + D, cur_in_data + D2, cur_c_out_data);
-        // hidden out= act_state(cellout) * outgate
-        act_cell(D, cur_c_out_data, cur_in_data + D2);
-        blas.VMUL(D, cur_in_data + D2, cur_in_data + D3, cur_h_out_data);
+#define DEFINE_CUR                        \
+  T* cur_in_data = batched_input_data;    \
+  T* cur_prev_c_data = prev_c_data;       \
+  T* cur_c_out_data = batched_c_out_data; \
+  T* cur_h_out_data = batched_h_out_data
 
-        cur_in_data += D4;
-        cur_prev_c_data += D;
-        cur_c_out_data += D;
-        cur_h_out_data += D;
+#define MOVE_ONE_BATCH  \
+  cur_in_data += D4;    \
+  cur_prev_c_data += D; \
+  cur_c_out_data += D;  \
+  cur_h_out_data += D
+
+#define MOVE_ONE_STEP                  \
+  prev_c_data = batched_c_out_data;    \
+  prev_h_data = batched_h_out_data;    \
+  batched_c_out_data = cur_c_out_data; \
+  batched_h_out_data = cur_h_out_data; \
+  batched_input_data = cur_in_data
+
+    if (use_peepholes) {
+      for (int step = tstart; step < max_seq_len; ++step) {
+        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+        GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
+        DEFINE_CUR;
+        for (int i = 0; i < cur_bs; ++i) {
+          COMPUTE_CtHt_PEEPHOLE(cur_in_data, cur_prev_c_data, cur_c_out_data,
+                                cur_h_out_data);
+          MOVE_ONE_BATCH;
+        }
+        MOVE_ONE_STEP;
       }
-
-      prev_c_data = batched_c_out_data;
-      prev_h_data = batched_h_out_data;
-      batched_c_out_data = cur_c_out_data;
-      batched_h_out_data = cur_h_out_data;
-      batched_input_data = cur_in_data;
+    } else {
+      // TODO(TJ): unly workaround, clean me
+      std::function<void(T*, const T*, T*, T*)> compute_ctht;
+      if (platform::jit::MayIUse(platform::jit::avx) &&
+          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
+          act_cell_str == "tanh" && D == 8) {
+        compute_ctht = math::lstm_compute_ctht<T>;
+      } else {
+        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
+          COMPUTE_CtHt(gates, ct_1, ct, ht);
+        };
+      }
+      for (int step = tstart; step < max_seq_len; ++step) {
+        const int cur_bs = batch_starts[step + 1] - batch_starts[step];
+        GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
+        DEFINE_CUR;
+        for (int i = 0; i < cur_bs; ++i) {
+          compute_ctht(cur_in_data, cur_prev_c_data, cur_c_out_data,
+                       cur_h_out_data);
+          MOVE_ONE_BATCH;
+        }
+        MOVE_ONE_STEP;
+      }
     }
+#undef MOVE_ONE_STEP
+#undef MOVE_ONE_BATCH
+#undef DEFINE_CUR
 
     math::Batch2LoDTensorFunctor<DeviceContext, T> to_seq;
     batched_h_out->set_lod(batched_lod);
@@ -496,6 +592,16 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
       BatchCompute(ctx);
     }
   }
+
+#undef COMPUTE_CtHt_PEEPHOLE
+#undef COMPUTE_CtHt
+#undef GET_Ct_NOH0C0
+#undef COMPUTE_CtHt_NOH0C0
+#undef COMPUTE_CtHt_PEEPHOLE_NOH0C0
+#undef GET_Ht
+#undef GET_Ct
+#undef GEMM_WH_ADDON
+#undef INIT_BASE_INPUT_DATAS
 #undef INIT_BASE_SIZES
 #undef INIT_BASE_INPUT_OUTPUT
 #undef INIT_VEC_FUNC

@@ -44,8 +44,7 @@ function(inference_api_test TARGET_NAME)
 endfunction(inference_api_test)
 
 cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor)
-cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api)
-
+cc_library(analysis_predictor SRCS analysis_predictor.cc DEPS paddle_inference_api analysis)
 cc_test(test_paddle_inference_api
         SRCS api_tester.cc
         DEPS paddle_inference_api)
@@ -61,7 +60,7 @@ cc_library(paddle_inference_tensorrt_subgraph_engine
 inference_api_test(test_api_tensorrt_subgraph_engine SRC api_tensorrt_subgraph_engine_tester.cc ARGS test_word2vec)
 endif()
 
-if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
+if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
     # compile the libinference_anakin_api.a and anakin.so.
     cc_library(inference_anakin_api SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber mklml)
     cc_library(inference_anakin_api_shared SHARED SRCS api.cc api_anakin_engine.cc DEPS anakin_shared anakin_saber)
@@ -70,13 +69,4 @@ if (WITH_ANAKIN AND WITH_GPU) # only needed in CI
     endfunction()
     anakin_target(inference_anakin_api)
     anakin_target(inference_anakin_api_shared)
-    if (WITH_TESTING)
-        cc_test(api_anakin_engine_tester SRCS api_anakin_engine_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/mobilenet_v2.anakin.bin
-                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-        cc_test(api_anakin_engine_rnn_tester SRCS api_anakin_engine_rnn_tester.cc 
-                ARGS --model=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn.anakin2.model.bin 
-                     --datapath=${ANAKIN_SOURCE_DIR}/anakin_test%2Fditu_rnn_data.txt
-                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
-    endif(WITH_TESTING)
 endif()

@@ -33,6 +33,7 @@ function print_usage() {
     ${BLUE}single_test${NONE}: run a single unit test
     ${BLUE}bind_test${NONE}: parallel tests bind to different GPU
     ${BLUE}doc${NONE}: generate paddle documents
+    ${BLUE}gen_doc_lib${NONE}: generate paddle documents library
     ${BLUE}html${NONE}: convert C++ source code into HTML
     ${BLUE}dockerfile${NONE}: generate paddle release dockerfile
     ${BLUE}capi${NONE}: generate paddle CAPI package
@@ -67,29 +68,55 @@ function cmake_gen() {
     # Support build for all python versions, currently
     # including cp27-cp27m and cp27-cp27mu.
     PYTHON_FLAGS=""
-    if [ "$1" != "" ]; then
-        echo "using python abi: $1"
-        if [ "$1" == "cp27-cp27m" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
-            export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
-            PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
-        elif [ "$1" == "cp27-cp27mu" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
-            export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
-            PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
-        -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
-        -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
-        elif [ "$1" == "cp35-cp35m" ]; then
-            export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
-            export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
-            export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
+    SYSTEM=`uname -s`
+    if [ "$SYSTEM" == "Darwin" ]; then
+        if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
+            echo "using python abi: $1"
+            if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
+                export PATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/bin/python2.7
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/2.7/include/python2.7
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/2.7/lib/libpython2.7.dylib"
+            else
+                exit 1
+            fi
+        # TODO: qiyang add python3 part here 
+        fi
+    else 
+        if [ "$1" != "" ]; then
+            echo "using python abi: $1"     
+            if [ "$1" == "cp27-cp27m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs2/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs4/lib:}
+                export PATH=/opt/python/cp27-cp27m/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27m/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27m/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs2/lib/libpython2.7.so"
+            elif [ "$1" == "cp27-cp27mu" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-2.7.11-ucs4/lib:${LD_LIBRARY_PATH#/opt/_internal/cpython-2.7.11-ucs2/lib:}
+                export PATH=/opt/python/cp27-cp27mu/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/python/cp27-cp27mu/bin/python
+            -DPYTHON_INCLUDE_DIR:PATH=/opt/python/cp27-cp27mu/include/python2.7
+            -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-2.7.11-ucs4/lib/libpython2.7.so"
+            elif [ "$1" == "cp35-cp35m" ]; then
+                export LD_LIBRARY_PATH=/opt/_internal/cpython-3.5.1/lib/:${LD_LIBRARY_PATH}
+                export PATH=/opt/_internal/cpython-3.5.1/bin/:${PATH}
+                export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/_internal/cpython-3.5.1/bin/python3
             -DPYTHON_INCLUDE_DIR:PATH=/opt/_internal/cpython-3.5.1/include/python3.5m
             -DPYTHON_LIBRARIES:FILEPATH=/opt/_internal/cpython-3.5.1/lib/libpython3.so"
+           fi
         fi
     fi
-
+    
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_AVX=${WITH_AVX:-ON}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+    
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -115,8 +142,12 @@ function cmake_gen() {
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF}
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
+        -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DPY_VERSION=${PY_VERSION:-2.7}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -144,8 +175,13 @@ EOF
         -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
+        -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
+        -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DPY_VERSION=${PY_VERSION:-2.7}
+        -DPY_VERSION=${PY_VERSION:-2.7} \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+
 }
 
 function abort(){
@@ -196,6 +232,19 @@ EOF
     make clean
     make -j `nproc`
     make install -j `nproc`
+}
+
+function build_mac() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ============================================
+    Building in /paddle/build ...
+    ============================================
+EOF
+    make clean
+    make -j 8
+    make install -j 8
 }
 
 function build_android() {
@@ -314,6 +363,27 @@ EOF
         ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
+        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
+            paddle version
+        fi
+    fi
+}
+
+function run_mac_test() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit tests ...
+    ========================================
+EOF
+
+        # TODO: jiabin need to refine this part when these tests fixed on mac
+        ctest --output-on-failure -j $1     
+        # make install should also be test when unittest 
+        make install -j 8
         pip install /usr/local/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
@@ -429,24 +499,42 @@ EOF
     linkchecker doc/v2/cn/html/index.html
     linkchecker doc/v2/api/en/html/index.html
 
-    if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then exit 0; fi;
+}
 
-    # Deploy to the the content server if its a "develop" or "release/version" branch
-    # The "develop_doc" branch is reserved to test full deploy process without impacting the real content.
-    if [ "$TRAVIS_BRANCH" == "develop_doc" ]; then
-        PPO_SCRIPT_BRANCH=develop
-    elif [[ "$TRAVIS_BRANCH" == "develop"  ||  "$TRAVIS_BRANCH" =~ ^v|release/[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?(-\S*)?$ ]]; then
-        PPO_SCRIPT_BRANCH=master
-    else
-        # Early exit, this branch doesn't require documentation build
-        return 0;
-    fi
-     # Fetch the paddlepaddle.org deploy_docs.sh from the appopriate branch
-    export DEPLOY_DOCS_SH=https://raw.githubusercontent.com/PaddlePaddle/PaddlePaddle.org/$PPO_SCRIPT_BRANCH/scripts/deploy/deploy_docs.sh
-    export PYTHONPATH=$PYTHONPATH:${PADDLE_ROOT}/build/python:/paddle/build/python
-    cd ..
-    curl $DEPLOY_DOCS_SH | bash -s $CONTENT_DEC_PASSWD $TRAVIS_BRANCH ${PADDLE_ROOT} ${PADDLE_ROOT}/build/doc/ ${PPO_SCRIPT_BRANCH}
-    cd -
+function gen_doc_lib() {
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build
+    cat <<EOF
+    ========================================
+    Building documentation library ...
+    In /paddle/build
+    ========================================
+EOF
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DWITH_DOC=ON \
+        -DWITH_GPU=OFF \
+        -DWITH_MKL=OFF \
+        -DWITH_FLUID_ONLY=ON
+
+    local LIB_TYPE=$1
+    case $LIB_TYPE in
+      full)
+        # Build full Paddle Python module. Will timeout without caching 'copy_paddle_pybind' first
+        make -j `nproc` gen_proto_py framework_py_proto copy_paddle_pybind paddle_python
+        ;;
+      pybind)
+        # Build paddle pybind library. Takes 49 minutes to build. Might timeout
+        make -j `nproc` copy_paddle_pybind
+        ;;
+      proto)
+        # Even smaller library.
+        make -j `nproc` framework_py_proto
+        ;;
+      *)
+        exit 0
+        ;;
+      esac
 }
 
 function gen_html() {
@@ -498,7 +586,7 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.1.2-1+cuda${CUDA_MAJOR} libnccl-dev=2.1.2-1+cuda${CUDA_MAJOR} &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} &&"
     else
         NCCL_DEPS=""
     fi
@@ -541,18 +629,18 @@ EOF
 
 function gen_capi_package() {
     if [[ ${WITH_C_API} == "ON" ]]; then
-        install_prefix="${PADDLE_ROOT}/build/capi_output"
-        rm -rf $install_prefix
-        make DESTDIR="$install_prefix" install
-        cd $install_prefix/usr/local
-        ls | egrep -v "^Found.*item$" | xargs tar -cf ${PADDLE_ROOT}/build/paddle.tgz
+        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
+        rm -rf $capi_install_prefix
+        make DESTDIR="$capi_install_prefix" install
+        cd $capi_install_prefix/
+        ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
     fi
 }
 
 function gen_fluid_inference_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
-    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
     Deploying fluid inference library ...
@@ -567,7 +655,7 @@ EOF
 }
 
 function test_fluid_inference_lib() {
-    if [ ${WITH_C_API:-OFF} == "OFF" ] ; then
+    if [[ ${WITH_C_API:-OFF} == "OFF" && ${WITH_INFERENCE:-ON} == "ON" ]] ; then
         cat <<EOF
     ========================================
     Testing fluid inference library ...
@@ -606,6 +694,9 @@ function main() {
       doc)
         gen_docs
         ;;
+      gen_doc_lib)
+        gen_doc_lib $2
+        ;;
       html)
         gen_html
         ;;
@@ -634,6 +725,17 @@ function main() {
         gen_fluid_inference_lib
         test_fluid_inference_lib
         assert_api_spec_approvals
+        ;;
+      maccheck)
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        run_mac_test ${PROC_RUN:-1}
+        ;;
+      cicheck_py35)
+        cmake_gen ${PYTHON_ABI:-""}
+        build
+        run_test
+        assert_api_not_changed
         ;;
       *)
         print_usage

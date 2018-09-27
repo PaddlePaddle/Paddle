@@ -440,6 +440,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
     }
     return false;
   };
+
   for (auto &node : graph) {
     for (auto *in : node->inlinks) {
       // The Value that is written by nodes inside a sub-graph shouldn't be the
@@ -459,6 +460,7 @@ ExtractInputAndOutputOfSubGraph(std::vector<Node *> &graph) {  // NOLINT
                         std::vector<Node *>(outputs.begin(), outputs.end()));
 }
 
+// Filter the Intermediate results of the subgraph node.
 void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph) {
   std::vector<Node *> op_nodes;
   for (auto &node : GraphTraits<DataFlowGraph>(*graph).nodes_in_TS()) {
@@ -480,9 +482,11 @@ void FilterRedundantOutputOfSubGraph(DataFlowGraph *graph) {
     for (auto *out : op_nodes[i]->outlinks) {
       if (follow_up_input_names.count(out->name())) {
         filtered_subgraph_outlinks.push_back(out);
+      } else {
+        out->SetDeleted();
       }
     }
-    PADDLE_ENFORCE_GE(filtered_subgraph_outlinks.size(), 1UL);
+    // The filtered_subgraph_outlinks may be empty.
     op_nodes[i]->outlinks = filtered_subgraph_outlinks;
   }
 }

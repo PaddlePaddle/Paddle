@@ -97,8 +97,10 @@ void DataFlowGraphToFluidPass::AddFluidOp(Node *node) {
   }
 }
 
-void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
+void CreateTrtEngineOp(Node *node, Argument *argument,
                        framework::proto::BlockDesc *block) {
+  PADDLE_ENFORCE(argument->main_dfg.get());
+  const DataFlowGraph &graph = *(argument->main_dfg);
   static int counter{0};
   PADDLE_ENFORCE(node->IsFunctionBlock());
   framework::OpDesc desc;
@@ -106,20 +108,23 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
 
   // collect inputs
   std::unordered_set<std::string> input_names;
+  std::unordered_set<std::string> input_names_with_id;
   for (auto *x : func->inlinks) {
     input_names.insert(x->name());
+    input_names_with_id.insert(x->name() + std::to_string(x->id()));
   }
   desc.SetInput(
       "Xs", std::vector<std::string>(input_names.begin(), input_names.end()));
 
   std::unordered_set<std::string> output_names;
+  std::unordered_set<std::string> output_names_with_id;
   for (auto *x : func->outlinks) {
     output_names.insert(x->name());
+    output_names_with_id.insert(x->name() + std::to_string(x->id()));
   }
 
-  std::vector<std::string> output_temp(output_names.begin(),
-                                       output_names.end());
-  desc.SetOutput("Ys", output_temp);
+  desc.SetOutput(
+      "Ys", std::vector<std::string>(output_names.begin(), output_names.end()));
   desc.SetType("tensorrt_engine");
 
   std::unordered_map<std::string, std::string> output_name_map;
@@ -153,11 +158,12 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
       std::vector<std::string> replaced_names;
       for (int k = 0; k < in_var->arguments_size(); k++) {
         std::string arg_value = in_var->arguments(k);
-        if (input_names.count(arg_value)) {
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (input_names_with_id.count(arg_value_with_id)) {
           replaced_names.push_back(arg_value);
         } else {
-          replaced_names.push_back(arg_value +
-                                   std::to_string(var2id[arg_value]));
+          replaced_names.push_back(arg_value_with_id);
         }
       }
       in_var->clear_arguments();
@@ -176,11 +182,12 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
       std::vector<std::string> replaced_names;
       for (int k = 0; k < out_var->arguments_size(); k++) {
         std::string arg_value = out_var->arguments(k);
-        if (output_names.count(arg_value)) {
-          output_name_map[arg_value] =
-              arg_value + std::to_string(var2id[arg_value]);
+        std::string arg_value_with_id =
+            arg_value + std::to_string(var2id[arg_value]);
+        if (output_names_with_id.count(arg_value_with_id)) {
+          output_name_map[arg_value] = arg_value_with_id;
         }
-        replaced_names.push_back(arg_value + std::to_string(var2id[arg_value]));
+        replaced_names.push_back(arg_value_with_id);
       }
       out_var->clear_arguments();
       for (size_t k = 0; k < replaced_names.size(); k++) {
@@ -199,7 +206,10 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
 
   PADDLE_ENFORCE(!block->vars().empty(), "the block has no var-desc");
   // Set attrs
+
   SetAttr(desc.Proto(), "subgraph", block->SerializeAsString());
+  SetAttr(desc.Proto(), "max_batch_size", argument->Get<int>("max_batch_size"));
+  SetAttr(desc.Proto(), "workspace_size", argument->Get<int>("workspace_size"));
   SetAttr(desc.Proto(), "engine_uniq_key", "trt-" + std::to_string(counter++));
   SetAttr(desc.Proto(), "parameters", ExtractParameters(graph.nodes.nodes()));
   SetAttr(desc.Proto(), "output_name_mapping", output_mapping);
@@ -243,7 +253,7 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   *block_desc.Proto()->mutable_vars() =
       argument_->origin_program_desc->blocks(0).vars();
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty());
-  CreateTrtEngineOp(node, *argument_->main_dfg, block_desc.Proto());
+  CreateTrtEngineOp(node, argument_, block_desc.Proto());
   auto *main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto *op = main_block->add_ops();
   PADDLE_ENFORCE(!node->pb_msg().empty(), "failed to set desc for block");
@@ -263,7 +273,7 @@ class DFG_DebuggerPass : public DFG_GraphvizDrawPass {
 };
 }  // namespace
 
-Pass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
+AnalysisPass *DataFlowGraphToFluidPass::CreateGraphvizDebugerPass() const {
   return new DFG_DebuggerPass(DFG_GraphvizDrawPass::Config(
       FLAGS_IA_graphviz_log_root,
       "data_flow_graph_to_fluid_graphviz_debugger"));

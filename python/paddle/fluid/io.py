@@ -20,14 +20,14 @@ import time
 import shutil
 import six
 
+from paddle.fluid.executor import Executor
 from paddle.fluid.evaluator import Evaluator
 from paddle.fluid.framework import Program, Parameter, default_main_program, default_startup_program, Variable
 from . import core
 
 __all__ = [
     'save_vars', 'save_params', 'save_persistables', 'load_vars', 'load_params',
-    'load_persistables', 'save_inference_model', 'load_inference_model',
-    'get_inference_program'
+    'load_persistables', 'save_inference_model', 'load_inference_model'
 ]
 
 
@@ -503,23 +503,6 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
         filename=filename)
 
 
-def get_inference_program(target_vars, main_program=None):
-    if main_program is None:
-        main_program = default_main_program()
-    if not isinstance(target_vars, list):
-        target_vars = [target_vars]
-    vars = []
-    for var in target_vars:
-        if isinstance(var, Evaluator):
-            vars.extend(var.states)
-            vars.extend(var.metrics)
-        else:
-            vars.append(var)
-    pruned_program = main_program.prune(targets=vars)
-    inference_program = pruned_program.inference_optimize()
-    return inference_program
-
-
 def prepend_feed_ops(inference_program,
                      feed_target_names,
                      feed_holder_name='feed'):
@@ -587,8 +570,11 @@ def save_inference_model(dirname,
         params_filename(str|None): The name of file to save all related parameters.
                                    If it is setted None, parameters will be saved
                                    in separate files .
-        export_for_deployment(bool): remove the read ops that are added by py_reader
-                                    for cpp inference lib. Default True
+        export_for_deployment(bool): If True, programs are modified to only support
+                                     direct inference deployment. Otherwise,
+                                     more information will be stored for flexible
+                                     optimization and re-training. Currently, only
+                                     True is supported.
 
     Returns:
         None
@@ -614,7 +600,7 @@ def save_inference_model(dirname,
     """
     if isinstance(feeded_var_names, six.string_types):
         feeded_var_names = [feeded_var_names]
-    else:
+    elif export_for_deployment:
         if len(feeded_var_names) > 0:
             # TODO(paddle-dev): polish these code blocks
             if not (bool(feeded_var_names) and all(
@@ -624,47 +610,13 @@ def save_inference_model(dirname,
 
     if isinstance(target_vars, Variable):
         target_vars = [target_vars]
-    else:
+    elif export_for_deployment:
         if not (bool(target_vars) and all(
                 isinstance(var, Variable) for var in target_vars)):
             raise ValueError("'target_vars' should be a list of Variable.")
 
     if main_program is None:
         main_program = default_main_program()
-    copy_program = main_program.clone()
-
-    if not os.path.isdir(dirname):
-        os.makedirs(dirname)
-
-    # Clear the is_target information and remove the existed feed and fetch op
-    global_block = copy_program.global_block()
-    for i, op in enumerate(global_block.ops):
-        op.desc.set_is_target(False)
-        if op.type == "feed" or op.type == "fetch":
-            global_block._remove_op(i)
-    copy_program.desc.flush()
-
-    pruned_program = copy_program.prune(targets=target_vars)
-    inference_program = pruned_program.inference_optimize(
-        export_for_deployment=export_for_deployment)
-    fetch_var_names = [v.name for v in target_vars]
-
-    prepend_feed_ops(inference_program, feeded_var_names)
-    append_fetch_ops(inference_program, fetch_var_names)
-
-    if model_filename is not None:
-        model_filename = os.path.basename(model_filename)
-    else:
-        model_filename = "__model__"
-    model_filename = os.path.join(dirname, model_filename)
-
-    if params_filename is not None:
-        params_filename = os.path.basename(params_filename)
-
-    with open(model_filename, "wb") as f:
-        f.write(inference_program.desc.serialize_to_string())
-
-    save_persistables(executor, dirname, inference_program, params_filename)
 
     # if there is lookup table, the trainer 0 will notify all pserver to save.
     if main_program._is_distributed and main_program._is_chief and main_program._distributed_lookup_table:
@@ -672,6 +624,46 @@ def save_inference_model(dirname,
         _save_lookup_tables_by_notify(executor, lookup_table_filename,
                                       main_program._distributed_lookup_table,
                                       main_program._endpoints)
+
+    if not os.path.isdir(dirname):
+        os.makedirs(dirname)
+    if model_filename is not None:
+        model_basename = os.path.basename(model_filename)
+    else:
+        model_basename = "__model__"
+    model_basename = os.path.join(dirname, model_basename)
+
+    # When export_for_deployment is true, we modify the program online so that
+    # it can only be loaded for inference directly. If it's false, the whole
+    # original program and related meta are saved so that future usage can be
+    # more flexible.
+    if export_for_deployment:
+        main_program = main_program.clone()
+        global_block = main_program.global_block()
+        for i, op in enumerate(global_block.ops):
+            op.desc.set_is_target(False)
+            if op.type == "feed" or op.type == "fetch":
+                global_block._remove_op(i)
+        main_program.desc.flush()
+
+        main_program = main_program._prune(targets=target_vars)
+        main_program = main_program._inference_optimize(prune_read_op=True)
+        fetch_var_names = [v.name for v in target_vars]
+
+        prepend_feed_ops(main_program, feeded_var_names)
+        append_fetch_ops(main_program, fetch_var_names)
+
+        with open(model_basename, "wb") as f:
+            f.write(main_program.desc.serialize_to_string())
+    else:
+        # TODO(panyx0718): Save more information so that it can also be used
+        # for training and more flexible post-processing.
+        with open(model_basename + ".main_program", "wb") as f:
+            f.write(main_program.desc.serialize_to_string())
+
+    if params_filename is not None:
+        params_filename = os.path.basename(params_filename)
+    save_persistables(executor, dirname, main_program, params_filename)
 
 
 def load_inference_model(dirname,
@@ -750,6 +742,10 @@ def load_inference_model(dirname,
         program_desc_str = f.read()
 
     program = Program.parse_from_string(program_desc_str)
+    if not core._is_program_version_supported(program._version()):
+        raise ValueError("Unsupported program version: %d\n" %
+                         program._version())
+    # Binary data also need versioning.
     load_persistables(executor, dirname, program, params_filename)
 
     if pserver_endpoints:
