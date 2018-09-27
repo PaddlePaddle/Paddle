@@ -135,7 +135,7 @@ void Conv2DOpMaker::Make() {
   AddInput("ResidualData",
            "(Tensor) Tensor with residual data "
            "to which convolution output will be added."
-           "Used on with fuse_eltwise fusion.")
+           "Used with fuse_residual_connection fusion.")
       .AsDispensable();
   AddAttr<std::vector<int>>("strides",
                             "(vector<int> default:{1, 1}), the "
@@ -169,10 +169,10 @@ void Conv2DOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
       .SetDefault(false);
-  AddAttr<bool>("fuse_eltwise",
+  AddAttr<bool>("fuse_residual_connection",
                 "(bool, default false) Only used in mkldnn kernel. Used "
-                "whenever convolution output is connected via skip connection "
-                "to a previous layer.")
+                "whenever convolution output is as an input to residual "
+                "connection.")
       .SetDefault(false);
   AddAttr<std::string>(
       "data_format",
