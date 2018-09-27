@@ -529,7 +529,6 @@ def _py_reader(capacity,
         })
 
     startup_var.desc.set_dtypes(dtypes)
-    startup_var.desc.set_lod_levels(lod_levels)
     startup_var.persistable = True
 
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
