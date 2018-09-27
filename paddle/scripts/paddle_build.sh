@@ -147,6 +147,7 @@ function cmake_gen() {
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DPY_VERSION=${PY_VERSION:-2.7}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -178,7 +179,8 @@ EOF
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
         -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DPY_VERSION=${PY_VERSION:-2.7}
+        -DPY_VERSION=${PY_VERSION:-2.7} \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
 
 }
 
@@ -361,7 +363,7 @@ EOF
         ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
-        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
@@ -379,7 +381,7 @@ function run_mac_test() {
 EOF
 
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j8     
+        ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
         make install -j 8
         pip install /usr/local/opt/paddle/share/wheels/*.whl
@@ -627,10 +629,10 @@ EOF
 
 function gen_capi_package() {
     if [[ ${WITH_C_API} == "ON" ]]; then
-        install_prefix="${PADDLE_ROOT}/build/capi_output"
-        rm -rf $install_prefix
-        make DESTDIR="$install_prefix" install
-        cd $install_prefix/usr/local
+        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
+        rm -rf $capi_install_prefix
+        make DESTDIR="$capi_install_prefix" install
+        cd $capi_install_prefix/
         ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
     fi
 }
@@ -727,7 +729,7 @@ function main() {
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
-        run_mac_test
+        run_mac_test ${PROC_RUN:-1}
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}

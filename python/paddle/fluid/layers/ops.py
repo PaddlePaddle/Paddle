@@ -21,6 +21,7 @@ __activations_noattr__ = [
     'exp',
     'tanh',
     'tanh_shrink',
+    'softshrink',
     'sqrt',
     'abs',
     'ceil',
@@ -52,7 +53,6 @@ __all__ = [
     'slice',
     'shape',
     'maxout',
-    'softshrink',
 ]
 
 for _OP in set(__all__):
@@ -62,6 +62,8 @@ for _OP in set(__all__):
 #   fluid.layers.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
+
+globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
 __all__ += __activations_noattr__
 
