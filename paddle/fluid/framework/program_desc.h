@@ -57,7 +57,7 @@ class ProgramDesc {
 
   proto::ProgramDesc *MutableProto();
 
-  const proto::ProgramDesc& Proto() const { return desc_; }
+  const proto::ProgramDesc &Proto() const { return desc_; }
 
   int64_t Version() const;
 

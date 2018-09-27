@@ -24,6 +24,7 @@ import numpy as np
 import math
 import sys
 
+
 def save_program_desc(dir):
 
     startup_program = framework.default_startup_program()
@@ -129,9 +130,12 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
                                       fetch_list=[avg_cost])
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None:
-                        fluid.io.save_inference_model(save_dirname, [
-                            'firstw', 'secondw', 'thirdw', 'forthw'
-                        ], [predict_word], exe, params_filename="param")
+                        fluid.io.save_inference_model(
+                            save_dirname,
+                            ['firstw', 'secondw', 'thirdw',
+                             'forthw'], [predict_word],
+                            exe,
+                            params_filename="param")
                         save_program_desc(save_dirname)
 
                         # save the whole program desc.

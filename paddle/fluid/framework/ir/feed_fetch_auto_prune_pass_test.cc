@@ -40,7 +40,7 @@ TEST(FeedFetchAutoPrunePass, Basic) {
   ProgramDesc program_desc(program);
   std::unique_ptr<Graph> graph(new Graph(program_desc));
   graph->Set(kFeedsAttr, new std::vector<std::string>(
-                            {"firstw", "secondw", "thirdw", "forthw"}));
+                             {"firstw", "secondw", "thirdw", "forthw"}));
   graph->Set(kFetchesAttr, new std::vector<std::string>({"fc_1.tmp_0"}));
 
   auto pass = PassRegistry::Instance().Get("feed_fetch_auto_prune_pass");
