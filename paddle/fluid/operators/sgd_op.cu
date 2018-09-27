@@ -88,7 +88,7 @@ class SGDOpCUDAKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_EQ(in_height, out_dims[0]);
 
       auto& in_value = grad->value();
-      framework::Vector<int64_t> in_rows(grad->rows());
+      auto& in_rows = grad->rows();
 
       int64_t in_row_numel = in_value.numel() / in_rows.size();
       PADDLE_ENFORCE_EQ(in_row_numel, param_out->numel() / in_height);
