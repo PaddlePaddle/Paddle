@@ -31,7 +31,11 @@ ThreadedSSAGraphExecutor::ThreadedSSAGraphExecutor(
       places_(places),
       fetch_ctxs_(places),
       running_ops_(0),
-      strategy_(strategy) {}
+      strategy_(strategy) {
+  for (auto &p : places_) {
+    dev_mtxs_[p];
+  }
+}
 
 FeedFetchList ThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors) {
@@ -208,6 +212,15 @@ void ThreadedSSAGraphExecutor::InsertPendingVar(
 void ThreadedSSAGraphExecutor::RunOp(
     BlockingQueue<VarHandleBase *> *ready_var_q, details::OpHandleBase *op) {
   auto op_run = [ready_var_q, op, this] {
+    std::vector<std::unique_ptr<std::lock_guard<std::mutex>>> guards;
+
+    for (auto &pair : op->DevCtxs()) {
+      if (platform::is_gpu_place(pair.first)) {
+        auto &mtx = this->dev_mtxs_[pair.first];
+        guards.emplace_back(new std::lock_guard<std::mutex>(mtx));
+      }
+    }
+
     try {
       if (VLOG_IS_ON(10)) {
         VLOG(10) << op << " " << op->Name() << " : " << op->DebugString();

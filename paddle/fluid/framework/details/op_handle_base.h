@@ -71,6 +71,10 @@ class OpHandleBase {
     dev_ctxes_[place] = ctx_;
   }
 
+  const std::map<platform::Place, platform::DeviceContext *> &DevCtxs() const {
+    return dev_ctxes_;
+  }
+
   const std::vector<VarHandleBase *> &Inputs() const { return inputs_; }
 
   size_t NoDupInputSize() const {

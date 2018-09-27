@@ -16,6 +16,7 @@
 
 #include <deque>
 #include <list>
+#include <map>
 #include <string>
 #include <unordered_set>
 #include <utility>
@@ -82,6 +83,7 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ExecutionStrategy strategy_;
   // use std::list because clear(), push_back, and for_each are O(1)
   std::list<std::future<void>> run_op_futures_;
+  std::map<platform::Place, std::mutex> dev_mtxs_;
 };
 
 }  // namespace details
