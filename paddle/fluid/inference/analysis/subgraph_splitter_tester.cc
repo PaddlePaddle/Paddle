@@ -66,10 +66,12 @@ TEST(SubGraphSplitter, Split) {
 TEST(SubGraphSplitter, Fuse) {
   auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
+  Argument argument;
+  argument.Set<int>("minimum_subgraph_size", new int(3));
 
   size_t count0 = dfg.nodes.size();
 
-  SubGraphFuse fuse(&dfg, teller);
+  SubGraphFuse fuse(&dfg, teller, &argument);
   fuse();
 
   int count1 = 0;

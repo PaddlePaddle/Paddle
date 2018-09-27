@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/ir/graph_traits.h"
 
+#include <vector>
+
 namespace paddle {
 namespace framework {
 namespace ir {
