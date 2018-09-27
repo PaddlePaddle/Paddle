@@ -23,25 +23,30 @@ TEST(JitKernel, pool) {
   namespace jit = paddle::operators::math::jitkernel;
   const int frame_size = 4;
   std::string act_gate = "sigmoid", act_cand = "tanh", act_cell = "tanh";
-  const auto& p1 =
+  const auto& plstm1 =
       jit::KernelPool::Instance()
           .template Get<jit::LSTMKernel<float>, int, const std::string&,
                         const std::string&, const std::string&>(
               frame_size, act_gate, act_cand, act_cell);
-  const auto& p2 =
+  const auto& plstm2 =
       jit::KernelPool::Instance()
           .template Get<jit::LSTMKernel<float>, int, const std::string&,
                         const std::string&, const std::string&>(
               frame_size, act_gate, act_cand, act_cell);
-  EXPECT_EQ(p1, p2);
+  EXPECT_EQ(plstm1, plstm2);
 
-  const auto& p3 =
+  const auto& pvmul_f =
       jit::KernelPool::Instance().template Get<jit::VMulKernel<float>>(4);
-  EXPECT_TRUE(std::dynamic_pointer_cast<jit::Kernel>(p2) !=
-              std::dynamic_pointer_cast<jit::Kernel>(p3));
+  EXPECT_TRUE(std::dynamic_pointer_cast<jit::Kernel>(plstm2) !=
+              std::dynamic_pointer_cast<jit::Kernel>(pvmul_f));
 
-  const auto& p4 =
+  const auto& pvmul_d =
       jit::KernelPool::Instance().template Get<jit::VMulKernel<double>>(4);
-  EXPECT_TRUE(std::dynamic_pointer_cast<jit::Kernel>(p3) !=
-              std::dynamic_pointer_cast<jit::Kernel>(p4));
+  EXPECT_TRUE(std::dynamic_pointer_cast<jit::Kernel>(pvmul_f) !=
+              std::dynamic_pointer_cast<jit::Kernel>(pvmul_d));
+
+  const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulf4");
+  EXPECT_TRUE(pvmul_f == pvmul_from_key);
+  const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulf5");
+  EXPECT_TRUE(pvmul_from_key2 == nullptr);
 }
