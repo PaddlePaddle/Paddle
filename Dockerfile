@@ -25,6 +25,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 RUN apt-get update && \
     apt-get install -y --allow-downgrades patchelf \
     git python-pip python-dev python-opencv openssh-server bison \
+    python3 python3-dev python3-pip \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
@@ -73,22 +74,32 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 RUN easy_install -U pip && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
-    pip install sphinx-rtd-theme==0.1.9 recommonmark
+    pip install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip3 install --upgrade pip && \
+    pip3 install -U wheel && \
+    pip3 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3 install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip install opencv-python
+    pip install opencv-python && \
+    pip3 install pre-commit 'ipython==5.3.0' && \
+    pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3 install opencv-python
 
 #For docstring checker
 RUN pip install pylint pytest astroid isort LinkChecker
+RUN pip3 install pylint pytest astroid isort
 
 COPY ./python/requirements.txt /root/
 RUN pip install -r /root/requirements.txt
+RUN pip3 install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
 RUN pip install certifi urllib3[secure]
+RUN pip3 install certifi urllib3[secure]
 
 
 # Install woboq_codebrowser to /woboq
