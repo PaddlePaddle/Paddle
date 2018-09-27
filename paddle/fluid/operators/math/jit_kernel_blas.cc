@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <string>
-
 #ifdef PADDLE_WITH_MKLML
 #include "paddle/fluid/platform/dynload/mklml.h"
 #endif
@@ -62,7 +61,7 @@ namespace jit = platform::jit;
   FOR_EACH_COMMON_BLOCK(macro_, jit::avx512f) \
   FOR_EACH_COMMON_BLOCK(macro_, jit::avx2)    \
   FOR_EACH_COMMON_BLOCK(macro_, jit::avx)     \
-  FOR_EACH_COMMON_BLOCK(macro_, jit::any)
+  FOR_EACH_COMMON_BLOCK(macro_, jit::isa_any)
 
 #define FOR_EACH_ALL_BLOCK(macro_, isa)                                        \
   macro_(isa, kLT8) macro_(isa, kEQ8) macro_(isa, kGT8LT16) macro_(isa, kEQ16) \
@@ -72,7 +71,7 @@ namespace jit = platform::jit;
   FOR_EACH_ALL_BLOCK(macro_, jit::avx512f) \
   FOR_EACH_ALL_BLOCK(macro_, jit::avx2)    \
   FOR_EACH_ALL_BLOCK(macro_, jit::avx)     \
-  FOR_EACH_ALL_BLOCK(macro_, jit::any)
+  FOR_EACH_ALL_BLOCK(macro_, jit::isa_any)
 
 #define BIND_KERNEL_WITH_DTYPE(ker_class, ker_func, ker_dtype) \
   template <>                                                  \
@@ -92,7 +91,7 @@ static void VMulCompute(const int n, const T* x, const T* y, T* z) {
   }
 }
 
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 #define VMUL_MKL_FLOAT(isa, block)                                 \
   template <>                                                      \
   void VMulCompute<float, isa, block>(const int n, const float* x, \
@@ -103,7 +102,7 @@ static void VMulCompute(const int n, const T* x, const T* y, T* z) {
 #define VMUL_MKL_DOUBLE(isa, block)                                  \
   template <>                                                        \
   void VMulCompute<double, isa, block>(const int n, const double* x, \
-                                       const double* y, float* z) {  \
+                                       const double* y, double* z) { \
     platform::dynload::vdMul(n, x, y, z);                            \
   }
 
@@ -112,7 +111,7 @@ FOR_EACH_ISA_ALL_BLOCK(VMUL_MKL_DOUBLE)
 #endif
 
 /// lt8
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 VMUL_MKL_FLOAT(jit::avx2, kLT8)
 VMUL_MKL_FLOAT(jit::avx512f, kLT8)
 #endif
@@ -130,21 +129,21 @@ VMUL_MKL_FLOAT(jit::avx512f, kLT8)
   }
 
 // mkl > avx > for, ">" means better
-#ifdef PADDLE_USE_MKLML
-VMUL_MKL_FLOAT(jit::avx, kEQ8)
+#ifdef PADDLE_WITH_MKLML
+VMUL_MKL_FLOAT(jit::avx, kEQ8);
 #elif defined __AVX__
-VMUL_INTRI8_FLOAT(jit::avx)
+VMUL_INTRI8_FLOAT(jit::avx);
 #endif
 // avx2 > mkl > for
 #ifdef __AVX2__
 VMUL_INTRI8_FLOAT(jit::avx2)
-#elif defined PADDLE_USE_MKLML
+#elif defined PADDLE_WITH_MKLML
 VMUL_MKL_FLOAT(jit::avx2, kEQ8)
 #endif
 // TODO(TJ): test and complete avx512
 
 /// eq16
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 // TODO(TJ): test and complete me
 VMUL_MKL_FLOAT(jit::avx, kEQ16)
 VMUL_MKL_FLOAT(jit::avx2, kEQ16)
@@ -163,7 +162,7 @@ static void VAddCompute(const int n, const T* x, const T* y, T* z) {
   }
 }
 
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 #define VADD_MKL_FLOAT(isa, block)                                 \
   template <>                                                      \
   void VAddCompute<float, isa, block>(const int n, const float* x, \
@@ -174,7 +173,7 @@ static void VAddCompute(const int n, const T* x, const T* y, T* z) {
 #define VADD_MKL_DOUBLE(isa, block)                                  \
   template <>                                                        \
   void VAddCompute<double, isa, block>(const int n, const double* x, \
-                                       const double* y, float* z) {  \
+                                       const double* y, double* z) { \
     platform::dynload::vdAdd(n, x, y, z);                            \
   }
 
@@ -183,7 +182,7 @@ FOR_EACH_ISA_ALL_BLOCK(VADD_MKL_DOUBLE)
 #endif
 
 /// lt8
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 VADD_MKL_FLOAT(jit::avx, kLT8)
 VADD_MKL_FLOAT(jit::avx2, kLT8)
 VADD_MKL_FLOAT(jit::avx512f, kLT8)
@@ -210,13 +209,13 @@ VADD_INTRI8_FLOAT(jit::avx)
 // avx2 > mkl > for
 #ifdef __AVX2__
 VADD_INTRI8_FLOAT(jit::avx2)
-#elif defined PADDLE_USE_MKLML
+#elif defined PADDLE_WITH_MKLML
 VADD_MKL_FLOAT(jit::avx2, kEQ8)
 #endif
 // TODO(TJ): test and complete avx512
 
 /// eq16
-#ifdef PADDLE_USE_MKLML
+#ifdef PADDLE_WITH_MKLML
 // TODO(TJ): test and complete me
 VADD_MKL_FLOAT(jit::avx, kEQ16)
 VADD_MKL_FLOAT(jit::avx2, kEQ16)
