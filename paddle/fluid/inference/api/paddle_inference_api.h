@@ -123,6 +123,9 @@ struct NativeConfig : public PaddlePredictor::Config {
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
   // Specify the variable's name of each input.
   bool specify_input_name{false};
+  // set feed_names and fetch_names to prune the program in the runtime.
+  std::vector<std::string> feed_names;
+  std::vector<std::string> fetch_names;
 
   std::string prog_file;
   std::string param_file;

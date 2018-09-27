@@ -43,7 +43,30 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
 
 NativeConfig GetConfig() {
   NativeConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  auto model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.model_dir = model_dir;  // to work with the TestPrediction function.
+  config.param_file = model_dir + "/param";
+  config.prog_file = model_dir + "/__model__";
+  config.fraction_of_gpu_memory = 0.15;
+#ifdef PADDLE_WITH_CUDA
+  config.use_gpu = true;
+#else
+  config.use_gpu = false;
+#endif
+  config.device = 0;
+  return config;
+}
+
+// Enable the auto program pruning feature.
+NativeConfig GetPruneConfig() {
+  NativeConfig config;
+  std::string model_dir = FLAGS_dirname + "/word2vec.inference.model";
+  config.model_dir = model_dir;
+  config.prog_file = model_dir + "/__model__";
+  config.param_file = model_dir + "/param";
+  config.feed_names.assign({"firstw", "secondw", "thirdw", "forthw"});
+  config.fetch_names.assign({"fc_1.tmp_0"});
+
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
 #ifdef PADDLE_WITH_CUDA
@@ -55,8 +78,8 @@ NativeConfig GetConfig() {
   return config;
 }
 
-void MainWord2Vec(bool use_gpu) {
-  NativeConfig config = GetConfig();
+void MainWord2Vec(bool use_gpu, bool auto_prune = false) {
+  NativeConfig config = auto_prune ? GetPruneConfig() : GetConfig();
   auto predictor = CreatePaddlePredictor<NativeConfig>(config);
   config.use_gpu = use_gpu;
 
@@ -148,8 +171,8 @@ void MainImageClassification(bool use_gpu) {
   }
 }
 
-void MainThreadsWord2Vec(bool use_gpu) {
-  NativeConfig config = GetConfig();
+void MainThreadsWord2Vec(bool use_gpu, bool use_prune = false) {
+  NativeConfig config = use_prune ? GetPruneConfig() : GetConfig();
   config.use_gpu = use_gpu;
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
@@ -263,6 +286,9 @@ void MainThreadsImageClassification(bool use_gpu) {
 TEST(inference_api_native, word2vec_cpu) { MainWord2Vec(false /*use_gpu*/); }
 TEST(inference_api_native, word2vec_cpu_threads) {
   MainThreadsWord2Vec(false /*use_gpu*/);
+}
+TEST(inference_api_native, word2vec_cpu_auto_prune) {
+  MainWord2Vec(false /*use_gpu*/, true /*auto prune*/);
 }
 TEST(inference_api_native, image_classification_cpu) {
   MainThreadsImageClassification(false /*use_gpu*/);

@@ -25,7 +25,6 @@ namespace framework {
 namespace ir {
 using inference::analysis::Dot;
 namespace {
-const char kGraphVizPath[] = "graph_viz_path";
 
 std::string FormatName(const Node* node) {
   if (!node->IsOp() || !node->Op() ||

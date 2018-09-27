@@ -104,7 +104,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
           new std::string(config_.param_file));
     }
     argument.origin_program_desc.reset(
-        new ProgramDesc(*inference_program_->Proto()));
+        new ProgramDesc(inference_program_->Proto()));
     Singleton<Analyzer>::Global().Run(&argument);
     CHECK(argument.transformed_program_desc);
     VLOG(5) << "transformed program:\n"

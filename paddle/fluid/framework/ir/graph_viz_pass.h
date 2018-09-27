@@ -28,6 +28,7 @@ namespace framework {
 namespace ir {
 
 const char kGraphvizMarkedNodeAttr[] = "__graphviz__marked_node__";
+const char kGraphVizPath[] = "graph_viz_path";
 
 class GraphVizPass : public Pass {
  public:

@@ -24,16 +24,14 @@ import numpy as np
 import math
 import sys
 
-def save_program_desc(network_func):
-    startup_program = framework.Program()
-    train_program = framework.Program()
+def save_program_desc(dir):
 
-    with framework.program_guard(train_program, startup_program):
-        network_func(with_optimize=False)
+    startup_program = framework.default_startup_program()
+    train_program = framework.default_main_program()
 
-    with open("startup_program", "w") as f:
+    with open(os.path.join(dir, "startup_program"), "w") as f:
         f.write(startup_program.desc.serialize_to_string())
-    with open("main_program", "w") as f:
+    with open(os.path.join(dir, "main_program"), "w") as f:
         f.write(train_program.desc.serialize_to_string())
 
 
@@ -133,7 +131,8 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
                     if save_dirname is not None:
                         fluid.io.save_inference_model(save_dirname, [
                             'firstw', 'secondw', 'thirdw', 'forthw'
-                        ], [predict_word], exe)
+                        ], [predict_word], exe, params_filename="param")
+                        save_program_desc(save_dirname)
 
                         # save the whole program desc.
 

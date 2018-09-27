@@ -55,7 +55,9 @@ class ProgramDesc {
 
   void CopyFrom(const proto::ProgramDesc &desc);
 
-  proto::ProgramDesc *Proto();
+  proto::ProgramDesc *MutableProto();
+
+  const proto::ProgramDesc& Proto() const { return desc_; }
 
   int64_t Version() const;
 

@@ -138,7 +138,7 @@ TEST(ProgramDescBind, serialize_and_deserialize) {
   op->SetOutput("Y", {out->Name()});
 
   std::string binary_str;
-  program_origin.Proto()->SerializeToString(&binary_str);
+  program_origin.Proto().SerializeToString(&binary_str);
 
   ProgramDesc program_restored(binary_str);
   auto* global_block_restored = program_restored.MutableBlock(0);

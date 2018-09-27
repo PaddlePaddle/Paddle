@@ -34,7 +34,7 @@ void ProgramDesc::Flush() {
   }
 }
 
-proto::ProgramDesc *ProgramDesc::Proto() {
+proto::ProgramDesc *ProgramDesc::MutableProto() {
   Flush();
   return &desc_;
 }

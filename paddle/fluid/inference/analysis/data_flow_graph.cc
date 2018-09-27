@@ -145,7 +145,6 @@ void DataFlowGraph::Build(const framework::ir::Graph &graph) {
       x = nodes.Create(Node::Type::kValue);
       x->attr("ir_node").Pointer() = ir_node;
       x->SetName(ir_node->Name());
-      // x->SetPbMsg(ir_node->Var()->Proto()->SerializeAsString());
     } else {
       PADDLE_THROW("Failed to create an Node from IR, unknown type");
     }

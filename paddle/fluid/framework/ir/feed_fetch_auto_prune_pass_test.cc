@@ -39,17 +39,21 @@ TEST(FeedFetchAutoPrunePass, Basic) {
 
   ProgramDesc program_desc(program);
   std::unique_ptr<Graph> graph(new Graph(program_desc));
-  graph->Set(kFeedAttr, new std::vector<std::string>(
+  graph->Set(kFeedsAttr, new std::vector<std::string>(
                             {"firstw", "secondw", "thirdw", "forthw"}));
-  graph->Set(kFetchAttr, new std::vector<std::string>({"fc_1.tmp_0"}));
+  graph->Set(kFetchesAttr, new std::vector<std::string>({"fc_1.tmp_0"}));
 
   auto pass = PassRegistry::Instance().Get("feed_fetch_auto_prune_pass");
   auto clean_pass = PassRegistry::Instance().Get("infer_clean_graph_pass");
   auto graph_viz_pass = PassRegistry::Instance().Get("graph_viz_pass");
+  auto graph_viz_pass1 = PassRegistry::Instance().Get("graph_viz_pass");
+
+  graph_viz_pass->Set("graph_viz_path", new std::string("0.dot"));
   graph = clean_pass->Apply(std::move(graph));
-  graph = pass->Apply(std::move(graph));
-  graph_viz_pass->Set("graph_viz_path", new std::string("1.dot"));
   graph = graph_viz_pass->Apply(std::move(graph));
+  graph = pass->Apply(std::move(graph));
+  graph_viz_pass1->Set("graph_viz_path", new std::string("1.dot"));
+  graph = graph_viz_pass1->Apply(std::move(graph));
 }
 
 }  // namespace ir

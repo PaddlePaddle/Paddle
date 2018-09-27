@@ -56,7 +56,7 @@ TEST(Prune, one_operator) {
   AddOp("one_one", {{"input", {"a"}}}, {{"output", {"b"}}}, f::AttributeMap{},
         block);
 
-  f::proto::ProgramDesc *pdesc = program.Proto();
+  f::proto::ProgramDesc *pdesc = program.MutableProto();
   f::proto::ProgramDesc pruned;
 
   f::Prune(*pdesc, &pruned);
@@ -80,7 +80,7 @@ TEST(Prune, forward) {
   AddOp("one_one", {{"input", {"d"}}}, {{"output", {"e"}}}, f::AttributeMap{},
         block);
 
-  f::proto::ProgramDesc *pdesc = program.Proto();
+  f::proto::ProgramDesc *pdesc = program.MutableProto();
 
   for (int i = 0; i < pdesc->blocks(0).ops_size(); ++i) {
     f::proto::ProgramDesc pruned;
@@ -103,7 +103,7 @@ TEST(Prune, multi_input_op) {
   AddOp("three_one", {{"input", {"b0", "b1", "b2"}}}, {{"output", {"c"}}},
         f::AttributeMap{}, block);
 
-  f::proto::ProgramDesc *pdesc = program.Proto();
+  f::proto::ProgramDesc *pdesc = program.MutableProto();
   pdesc->mutable_blocks(0)->mutable_ops(3)->set_is_target(true);
 
   f::proto::ProgramDesc pruned;
@@ -122,7 +122,7 @@ TEST(Prune, multi_output_op) {
   AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, f::AttributeMap{},
         block);
 
-  f::proto::ProgramDesc *pdesc = program.Proto();
+  f::proto::ProgramDesc *pdesc = program.MutableProto();
   pdesc->mutable_blocks(0)->mutable_ops(2)->set_is_target(true);
 
   f::proto::ProgramDesc pruned;
@@ -141,7 +141,7 @@ TEST(Prune, multi_target) {
   AddOp("one_one", {{"input", {"c"}}}, {{"output", {"c1"}}}, f::AttributeMap{},
         block);
 
-  f::proto::ProgramDesc *pdesc = program.Proto();
+  f::proto::ProgramDesc *pdesc = program.MutableProto();
   pdesc->mutable_blocks(0)->mutable_ops(1)->set_is_target(true);
   pdesc->mutable_blocks(0)->mutable_ops(2)->set_is_target(true);
 

@@ -105,7 +105,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
     argument_.fluid_model_param_path.reset(new std::string(config_.param_file));
   }
   argument_.origin_program_desc.reset(
-      new ProgramDesc(*inference_program_->Proto()));
+      new ProgramDesc(inference_program_->Proto()));
   PADDLE_ENFORCE(config_.ir_mode == AnalysisConfig::IrPassMode::kExclude,
                  "Only kExclude is supported yet.");
   Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);

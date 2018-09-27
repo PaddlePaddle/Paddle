@@ -32,7 +32,7 @@ std::unique_ptr<Graph> GraphToProgramPass::ApplyImpl(
   ProgramDesc& program = Get<ProgramDesc>("program");
 
   std::unique_ptr<proto::ProgramDesc> program_pb(
-      new proto::ProgramDesc(*program.Proto()));
+      new proto::ProgramDesc(program.Proto()));
 
   auto block = program_pb->mutable_blocks(kRootBlockIndex);
   block->clear_vars();

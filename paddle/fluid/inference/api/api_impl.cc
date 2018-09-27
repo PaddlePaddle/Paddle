@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/inference/api/api_impl.h"
 #include <algorithm>
 #include <map>
 #include <set>
@@ -19,9 +20,12 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/framework/feed_fetch_method.h"
-#include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/feed_fetch_auto_prune_pass.h"
+#include "paddle/fluid/framework/ir/graph_to_program_pass.h"
+#include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include "paddle/fluid/framework/ir/infer_clean_graph_pass.h"
 #include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -37,6 +41,36 @@ std::string num2str(T a) {
   istr << a;
   return istr.str();
 }
+
+void AutoPrune(const std::vector<std::string> &feeds,
+               const std::vector<std::string> &fetches,
+               const framework::ProgramDesc &program,
+               framework::proto::ProgramDesc *program_out) {
+  PADDLE_ENFORCE(!feeds.empty());
+  PADDLE_ENFORCE(!fetches.empty());
+
+  framework::ProgramDesc desc;
+  framework::ir::FeedFetchAutoPrunePass prune_pass;
+  framework::ir::GraphToProgramPass program_pass;
+  framework::ir::InferCleanGraphPass clean_pass;
+  framework::ir::GraphVizPass graphviz_pass;
+
+  graphviz_pass.Set(framework::ir::kGraphVizPath, new std::string("1.dot"));
+  program_pass.SetNotOwned("program", &desc);
+  std::unique_ptr<framework::ir::Graph> graph(
+      new framework::ir::Graph(program));
+  graph->Set(framework::ir::kFeedsAttr, new std::vector<std::string>(feeds));
+  graph->Set(framework::ir::kFetchesAttr,
+             new std::vector<std::string>(fetches));
+
+  graph = graphviz_pass.Apply(std::move(graph));
+  graph = clean_pass.Apply(std::move(graph));
+  graph = prune_pass.Apply(std::move(graph));
+  graph = program_pass.Apply(std::move(graph));
+  const auto &out = program_pass.Get<framework::ProgramDesc>("program");
+  *program_out = out.Proto();
+}
+
 }  // namespace
 
 void NativePaddlePredictor::PrepareFeedFetch() {
@@ -90,11 +124,14 @@ bool NativePaddlePredictor::Init(
 
   // Initialize the inference program
   if (!config_.model_dir.empty()) {
+    LOG(INFO) << "Loading model and parameters from " << config_.model_dir;
     // Parameters are saved in separate files sited in
     // the specified `dirname`.
     inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
                                                  config_.model_dir);
   } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
+    LOG(INFO) << "Loading model from " << config_.prog_file;
+    LOG(INFO) << "Loading parameters from " << config_.param_file;
     // All parameters are saved in a single file.
     // The file names should be consistent with that used
     // in Python API `fluid.io.save_inference_model`.
@@ -103,6 +140,25 @@ bool NativePaddlePredictor::Init(
   } else {
     LOG(ERROR) << "fail to load inference model.";
     return false;
+  }
+
+  if (!config_.feed_names.empty() || !config_.fetch_names.empty()) {
+    if (config_.feed_names.empty()) {
+      LOG(ERROR)
+          << "config.feed_names is empty, fill it to support program pruning.";
+      return false;
+    }
+    if (config_.fetch_names.empty()) {
+      LOG(ERROR)
+          << "config.fetch_names is empty, fill it to support program pruning.";
+      return false;
+    }
+    framework::proto::ProgramDesc desc;
+    LOG(INFO) << "begin to prune";
+    AutoPrune(config_.feed_names, config_.fetch_names, *inference_program_,
+              &desc);
+    LOG(INFO) << "prune done";
+    inference_program_.reset(new framework::ProgramDesc(desc));
   }
 
   ctx_ = executor_->Prepare(*inference_program_, 0);
