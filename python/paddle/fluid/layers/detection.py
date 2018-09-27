@@ -284,7 +284,7 @@ def detection_output(loc,
         target_box=loc,
         code_type='decode_center_size')
     compile_shape = scores.shape
-    run_shape = ops.shape(scores)
+    run_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
     scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
@@ -697,7 +697,7 @@ def ssd_loss(location,
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
-    conf_shape = ops.shape(confidence)
+    conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
         return nn.flatten(x=var, axis=2)
@@ -724,7 +724,7 @@ def ssd_loss(location,
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
-    actual_shape = ops.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     conf_loss = nn.reshape(
         x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)
