@@ -104,7 +104,6 @@ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
  * a31 = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) / (w - 1)
  * a32 = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) / (h - 1)
  * a33 = 1
- *
  */
 template <typename T>
 void get_transform_matrix(const int transformed_width,
