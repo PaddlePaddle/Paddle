@@ -36,8 +36,10 @@ namespace memory {
 using BuddyAllocator = detail::BuddyAllocator;
 
 BuddyAllocator* GetCPUBuddyAllocator() {
-  static thread_local std::once_flag init_flag;
-  static thread_local detail::BuddyAllocator* a = nullptr;
+  // We tried thread_local for inference::RNN1 model, but that not works much
+  // for multi-thread test.
+  static std::once_flag init_flag;
+  static detail::BuddyAllocator* a = nullptr;
 
   std::call_once(init_flag, []() {
     a = new detail::BuddyAllocator(
@@ -48,6 +50,8 @@ BuddyAllocator* GetCPUBuddyAllocator() {
   return a;
 }
 
+// We compared the NaiveAllocator with BuddyAllocator in CPU memory allocation,
+// seems they are almost the same overhead.
 struct NaiveAllocator {
   void* Alloc(size_t size) { return malloc(size); }
 
@@ -69,7 +73,6 @@ template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
-  // void* p = NaiveAllocator::Instance()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
     memset(p, 0xEF, size);
   }
@@ -81,7 +84,6 @@ template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
-  // NaiveAllocator::Instance()->Free(p);
 }
 
 template <>
