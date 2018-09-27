@@ -20,9 +20,10 @@ from test_dist_base import TestDistBase
 class TestDistSeResneXt2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
+        self._use_reader_alloc = False
 
     def test_dist_train(self):
-        self.check_with_place("dist_se_resnext.py", delta=1e-7)
+        self.check_with_place("dist_se_resnext.py", delta=100)
 
 
 # TODO(typhoonzero): fix this test
@@ -38,6 +39,7 @@ class TestDistSeResneXt2x2(TestDistBase):
 class TestDistSeResneXt2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._use_reader_alloc = False
 
     def test_dist_train(self):
         self.check_with_place("dist_se_resnext.py", delta=100)
