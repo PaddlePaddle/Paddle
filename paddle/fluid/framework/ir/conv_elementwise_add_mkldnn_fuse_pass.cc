@@ -111,7 +111,7 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
     op_desc.SetOutput("Output", {conv_output->Name()});
 
     op_desc.SetAttr("use_mkldnn", true);
-    op_desc.SetAttr("fuse_eltwise", true);
+    op_desc.SetAttr("fuse_residual_connection", true);
 
     auto fused_conv_op = g->CreateOpNode(&op_desc);
 
