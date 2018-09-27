@@ -37,7 +37,7 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
 
     // Add op fusion.
     if (strategy.fuse_elewise_add_act_ops_) {
-      auto fuse_elewise_add_act_pass = AppendPass("fuse_elewise_add_act_pass");
+      AppendPass("fuse_elewise_add_act_pass");
       // Add a graph viz pass to record a graph.
       if (!strategy.debug_graphviz_path_.empty()) {
         auto viz_pass = AppendPass("graph_viz_pass");
