@@ -755,6 +755,10 @@ def py_reader(capacity,
 
 
 def py_reader_by_data(capacity, feed_list, name=None, use_double_buffer=True):
+    """
+    Works much like py_reader except that it's input is feed_list
+    instead of shapes, dtypes, lod_levels
+    """
     return _py_reader(
         capacity=capacity,
         shapes=None,
