@@ -39,13 +39,6 @@ __all__ = [
     'mean',
     'mul',
     'sigmoid_cross_entropy_with_logits',
-    'uniform_random_batch_size_like',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'shape',
     'maxout',
 ]
 
@@ -56,6 +49,8 @@ for _OP in set(__all__):
 #   fluid.layers.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
+
+globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
 __all__ += __activations_noattr__
 
