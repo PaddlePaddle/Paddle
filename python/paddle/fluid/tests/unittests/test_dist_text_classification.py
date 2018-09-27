@@ -13,33 +13,27 @@
 # limitations under the License.
 
 from __future__ import print_function
+import os
 import unittest
 from test_dist_base import TestDistBase
 
 
-class TestDistW2V2x2(TestDistBase):
+class TestDistTextClassification2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
+        self._use_cuda = False
 
-    def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
-
-
-class TestDistW2V2x2WithMemOpt(TestDistBase):
-    def _setup_config(self):
-        self._sync_mode = True
-        self._mem_opt = True
-
-    def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1e-4)
+    def test_text_classification(self):
+        self.check_with_place("dist_text_classification.py", delta=1e-6)
 
 
-class TestDistW2V2x2Async(TestDistBase):
+class TestDistTextClassification2x2Async(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
+        self._use_cuda = False
 
-    def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=100)
+    def test_se_resnext(self):
+        self.check_with_place("dist_text_classification.py", delta=100)
 
 
 if __name__ == "__main__":

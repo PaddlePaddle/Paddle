@@ -470,7 +470,10 @@ class DistributeTranspiler(object):
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
+        lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
+        delete_ops(self.origin_program.global_block(), lr_ops)
+
         self.origin_program.__str__()
 
         if wait_port:
@@ -1487,7 +1490,6 @@ to transpile() call.")
                 per_trainer_name = "%s.trainer_%d" % \
                                    (merged_var_name, i)
                 vars2merge.append(pserver_block.vars[per_trainer_name])
-
             optimize_block.append_op(
                 type="sum",
                 inputs={"X": vars2merge},
