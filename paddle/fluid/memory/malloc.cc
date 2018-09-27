@@ -50,6 +50,7 @@ BuddyAllocator* GetCPUBuddyAllocator() {
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
+  //return malloc(size);
   VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
   void* p = GetCPUBuddyAllocator()->Alloc(size);
   if (FLAGS_init_allocated_mem) {
@@ -61,6 +62,8 @@ void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
 
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
+  //free(p);
+  //return;
   VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
   GetCPUBuddyAllocator()->Free(p);
 }

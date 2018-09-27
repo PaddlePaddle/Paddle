@@ -300,6 +300,10 @@ TEST(Analyzer, RNN_tests) {
     // kernels.
     TestRNN1Prediction(true, true, i);
   }
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads, true,
+                 false);
 }
 
 }  // namespace inference
