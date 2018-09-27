@@ -20,6 +20,14 @@ limitations under the License. */
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef __AVX__
+#include <immintrin.h>
+#endif
+
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, NULL);
@@ -38,17 +46,26 @@ void RandomVec(const int n, T* a) {
   }
 }
 
-constexpr int repeat = 10000;
+constexpr int repeat = 20000;
+
+#if defined __AVX__ || defined __AVX2__
+void vmul_intri(const int n, const float* x, const float* y, float* z) {
+  __m256 tmpx, tmpy;
+  tmpx = _mm256_loadu_ps(x);
+  tmpy = _mm256_loadu_ps(y);
+  tmpx = _mm256_mul_ps(tmpx, tmpy);
+  _mm256_storeu_ps(z, tmpx);
+}
+#endif
+
+void vmul_ref(const int n, const float* x, const float* y, float* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] * y[i];
+  }
+}
 
 TEST(JitKernel, vmul) {
   namespace jit = paddle::operators::math::jitkernel;
-
-  auto ref = [](const int n, const float* x, const float* y, float* z) {
-    for (int i = 0; i < n; ++i) {
-      z[i] = x[i] * y[i];
-    }
-  };
-
   for (int d : {7, 8, 15, 16, 30, 256}) {
     std::vector<float> x(d), y(d);
     std::vector<float> zref(d), ztgt(d);
@@ -61,18 +78,42 @@ TEST(JitKernel, vmul) {
     const float* y_data = y.data();
     float* ztgt_data = ztgt.data();
     float* zref_data = zref.data();
+
+#ifdef PADDLE_WITH_MKLML
+    auto s0 = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      paddle::platform::dynload::vsMul(d, x_data, y_data, zref_data);
+    }
+#endif
+
     auto st = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
       ker->Compute(d, x_data, y_data, ztgt_data);
     }
     auto mt = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ref(d, x_data, y_data, zref_data);
+      vmul_ref(d, x_data, y_data, zref_data);
     }
     auto et = GetCurrentUS();
 
+#if defined __AVX__ || defined __AVX2__
+    if (d == 8) {
+      auto si0 = GetCurrentUS();
+      for (int i = 0; i < repeat; ++i) {
+        vmul_intri(d, x_data, y_data, zref_data);
+      }
+      auto si1 = GetCurrentUS();
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+    }
+#endif
+
     VLOG(3) << "Vec size " << d << ": refer takes: " << (et - mt) / repeat
-            << " us, tgt takes: " << (mt - st) / repeat;
+            << " us, tgt takes: " << (mt - st) / repeat
+#ifdef PADDLE_WITH_MKLML
+            << " us, mkl takes: " << (st - s0) / repeat << " us";
+#else
+            << " us";
+#endif
     for (int i = 0; i < d; ++i) {
       EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
     }
