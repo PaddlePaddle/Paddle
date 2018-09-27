@@ -65,7 +65,7 @@ class InferenceTranspiler(object):
         if use_mkldnn:
             self._fuse_conv_bias_mkldnn(program)
             self._fuse_conv_relu_mkldnn(program)
-            self._fuse_conv_eltwise_mkldnn(program)
+            #self._fuse_conv_eltwise_mkldnn(program)
             self._fuse_conv_relu_mkldnn(
                 program)  # ResNet residual block merging
             self._fuse_bn_relu_mkldnn(program)
