@@ -74,7 +74,7 @@ class InferenceTranspiler(object):
         '''
         Transpile the program fusing elementwise_add into conv for MKLDNN
         program. Elementwise add following convolution OP can be fused by adding
-        'fuse_eltwise' attribute to convolution OP and replacing its output
+        'fuse_residual_connection' attribute to convolution OP and replacing its output
         Tensor with second parameter of elementwise_add.
         The result of fuse is:
             - before:
@@ -465,7 +465,7 @@ class InferenceTranspiler(object):
         in_var = self.block.vars[conv_op.input("Input")[0]]
         bias_var = self.block.vars[conv_op.input("Bias")[0]]
 
-        conv_op.set_attr("fuse_eltwise", True)
+        conv_op.set_attr("fuse_residual_connection", True)
         attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
 
         self.block._insert_op(
