@@ -731,6 +731,10 @@ function main() {
         build_mac
         run_mac_test ${PROC_RUN:-1}
         ;;
+      macbuild)
+        cmake_gen ${PYTHON_ABI:-""}
+        build_mac
+        ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}
         build
