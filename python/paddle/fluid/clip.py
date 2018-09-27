@@ -75,8 +75,8 @@ class ErrorClipByValue(BaseErrorClipAttr):
         clip_op_desc.set_type("clip")
         clip_op_desc.set_input("X", [grad_name])
         clip_op_desc.set_output("Out", [grad_name])
-        clip_op_desc.set_attr("min", self.min)
-        clip_op_desc.set_attr("max", self.max)
+        clip_op_desc._set_attr("min", self.min)
+        clip_op_desc._set_attr("max", self.max)
 
 
 def error_clip_callback(block, context):
