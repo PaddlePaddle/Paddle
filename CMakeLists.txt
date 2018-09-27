@@ -34,6 +34,7 @@ if(NOT CMAKE_CROSSCOMPILING)
 endif(NOT CMAKE_CROSSCOMPILING)
 find_package(Git REQUIRED)
 find_package(Threads REQUIRED)
+
 include(simd)
 
 ################################ Configurations #######################################
@@ -207,6 +208,7 @@ endif()
 
 
 include(external/threadpool)
+include(flags)              # set paddle compile flags
 include(cudnn)              # set cudnn libraries, must before configure
 include(configure)          # add paddle env configuration
 
@@ -220,9 +222,6 @@ elseif()
     set(WITH_ANAKIN OFF CACHE STRING "Anakin is used in MKL only now." FORCE)
 endif()
 
-include(flags)              # set paddle compile flags
-include(cudnn)              # set cudnn libraries, must before configure
-include(configure)          # add paddle env configuration
 include(generic)            # simplify cmake module
 include(package)            # set paddle packages
 include(ccache)             # set ccache for compilation
