@@ -94,6 +94,14 @@ class Graph {
     };
   }
 
+  template <typename AttrType>
+  void SetNotOwned(const std::string &attr_name, AttrType *attr) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
+                   attr_name);
+    attrs_[attr_name] = attr;
+    attr_dels_[attr_name] = []() {};
+  }
+
   const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
 
   // Create a normal variable with non-null VarDesc.

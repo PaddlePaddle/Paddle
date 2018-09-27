@@ -29,9 +29,8 @@ from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 __all__ = [
-    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
-    'load'
+    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
+    'random_data_generator', 'py_reader', 'Preprocessor', 'load'
 ]
 
 
@@ -312,6 +311,7 @@ def _copy_reader_var_(block, var):
     new_var = block.create_var(name=var.name, type=core.VarDesc.VarType.READER)
     new_var.desc.set_shapes(var.desc.shapes())
     new_var.desc.set_dtypes(var.desc.dtypes())
+    new_var.desc.set_lod_levels(var.desc.lod_levels())
     new_var.persistable = True
     return new_var
 
@@ -633,6 +633,7 @@ def py_reader(capacity,
         })
 
     startup_var.desc.set_dtypes(dtypes)
+    startup_var.desc.set_lod_levels(lod_levels)
     startup_var.persistable = True
 
     main_prog_var = _copy_reader_var_(default_main_program().current_block(),
@@ -1008,9 +1009,9 @@ class Preprocessor(object):
     @contextlib.contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
-        self.sub_block = self.main_prog.create_block()
+        self.sub_block = self.main_prog._create_block()
         yield
-        self.main_prog.rollback()
+        self.main_prog._rollback()
         self.status = Preprocessor.AFTER_SUB_BLOCK
         if not self._is_completed():
             raise RuntimeError(

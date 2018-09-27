@@ -12,24 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/analysis/analyzer.h"
-
-#include <google/protobuf/text_format.h>
-#include <gtest/gtest.h>
-#include <thread>  // NOLINT
-#include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/analysis_predictor.h"
-#include "paddle/fluid/inference/api/helper.h"
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_pass.h"
-
-DEFINE_string(infer_model, "", "model path");
-DEFINE_string(infer_data, "", "data path");
-DEFINE_int32(batch_size, 10, "batch size.");
-DEFINE_int32(repeat, 1, "Running the inference program repeat times.");
-DEFINE_int32(num_threads, 1, "Running the inference program in multi-threads.");
+#include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 namespace paddle {
 namespace inference {
@@ -42,6 +25,7 @@ struct DataRecord {
   std::vector<size_t> lod1, lod2, lod3;
   std::vector<std::vector<float>> rnn_link_data, rnn_week_datas,
       rnn_minute_datas;
+  size_t num_samples;  // total number of samples
   size_t batch_iter{0};
   size_t batch_size{1};
   DataRecord() = default;
@@ -114,6 +98,7 @@ struct DataRecord {
       week_data_all.push_back(std::move(week_data));
       minute_data_all.push_back(std::move(minute_data));
     }
+    num_samples = num_lines;
   }
 };
 void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
@@ -164,142 +149,72 @@ void PrepareInputs(std::vector<PaddleTensor> *input_slots, DataRecord *data,
   }
 }
 
-void CompareResult(const std::vector<PaddleTensor> &outputs,
-                   const std::vector<PaddleTensor> &base_outputs) {
-  PADDLE_ENFORCE_GT(outputs.size(), 0);
-  PADDLE_ENFORCE_EQ(outputs.size(), base_outputs.size());
-  for (size_t i = 0; i < outputs.size(); i++) {
-    auto &out = outputs[i];
-    auto &base_out = base_outputs[i];
-    size_t size = std::accumulate(out.shape.begin(), out.shape.end(), 1,
-                                  [](int a, int b) { return a * b; });
-    size_t size1 = std::accumulate(base_out.shape.begin(), base_out.shape.end(),
-                                   1, [](int a, int b) { return a * b; });
-    PADDLE_ENFORCE_EQ(size, size1);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *data = static_cast<float *>(out.data.data());
-    float *base_data = static_cast<float *>(base_out.data.data());
-    for (size_t i = 0; i < size; i++) {
-      EXPECT_NEAR(data[i], base_data[i], 1e-3);
-    }
-  }
+void SetConfig(contrib::AnalysisConfig *cfg) {
+  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->param_file = FLAGS_infer_model + "/param";
+  cfg->use_gpu = false;
+  cfg->device = 0;
+  cfg->specify_input_name = true;
+  cfg->enable_ir_optim = true;
+  cfg->ir_passes.clear();  // Do not exclude any pass.
 }
-// Test with a really complicate model.
-void TestRNN1Prediction(bool use_analysis, bool activate_ir, int num_threads) {
-  AnalysisConfig config;
-  config.prog_file = FLAGS_infer_model + "/__model__";
-  config.param_file = FLAGS_infer_model + "/param";
-  config.use_gpu = false;
-  config.device = 0;
-  config.specify_input_name = true;
-  config.enable_ir_optim = activate_ir;
-  PADDLE_ENFORCE(config.ir_mode ==
-                 AnalysisConfig::IrPassMode::kExclude);  // default
-  config.ir_passes.clear();  // Do not exclude any pass.
 
-  int batch_size = FLAGS_batch_size;
-  int num_times = FLAGS_repeat;
-
-  auto base_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
+  DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
   std::vector<PaddleTensor> input_slots;
-  DataRecord data(FLAGS_infer_data, batch_size);
-  // Prepare inputs.
-  PrepareInputs(&input_slots, &data, batch_size);
-  std::vector<PaddleTensor> outputs, base_outputs;
-
-  base_predictor->Run(input_slots, &base_outputs);
-
-  if (num_threads == 1) {
-    // Prepare inputs.
-    Timer timer;
-    timer.tic();
-    for (int i = 0; i < num_times; i++) {
-      predictor->Run(input_slots, &outputs);
-    }
-    PrintTime(batch_size, num_times, 1, 0, timer.toc() / num_times);
-    CompareResult(outputs, base_outputs);
-  } else {
-    std::vector<std::thread> threads;
-    std::vector<std::unique_ptr<PaddlePredictor>> predictors;
-    // TODO(yanchunwei): Bug here, the analyzer phase can't be parallelled
-    // because AttentionLSTM's hard code nodeid will be damanged.
-    for (int tid = 0; tid < num_threads; ++tid) {
-      predictors.emplace_back(
-          CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-              config));
-    }
-    for (int tid = 0; tid < num_threads; ++tid) {
-      threads.emplace_back([&, tid]() {
-        // Each thread should have local input_slots and outputs.
-        std::vector<PaddleTensor> input_slots;
-        DataRecord data(FLAGS_infer_data, batch_size);
-        PrepareInputs(&input_slots, &data, batch_size);
-        std::vector<PaddleTensor> outputs;
-        Timer timer;
-        timer.tic();
-        for (int i = 0; i < num_times; i++) {
-          predictors[tid]->Run(input_slots, &outputs);
-        }
-        PrintTime(batch_size, num_times, num_threads, tid,
-                  timer.toc() / num_times);
-        CompareResult(outputs, base_outputs);
-      });
-    }
-    for (int i = 0; i < num_threads; ++i) {
-      threads[i].join();
-    }
-  }
-
-  if (use_analysis && activate_ir) {
-    AnalysisPredictor *analysis_predictor =
-        dynamic_cast<AnalysisPredictor *>(predictor.get());
-    auto &fuse_statis = analysis_predictor->analysis_argument()
-                            .Get<std::unordered_map<std::string, int>>(
-                                framework::ir::kFuseStatisAttr);
-    for (auto &item : fuse_statis) {
-      LOG(INFO) << "fused " << item.first << " " << item.second;
-    }
-
-    int num_ops = 0;
-    for (auto &node :
-         analysis_predictor->analysis_argument().main_dfg->nodes.nodes()) {
-      if (node->IsFunction()) {
-        ++num_ops;
-      }
-    }
-    LOG(INFO) << "has num ops: " << num_ops;
-
-    ASSERT_TRUE(fuse_statis.count("fc_fuse"));
-    EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
-    EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
-    EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
-    EXPECT_EQ(num_ops,
-              13);  // After graph optimization, only 13 operators exists.
+  int epoch = FLAGS_test_all_data ? data.num_samples / FLAGS_batch_size : 1;
+  LOG(INFO) << "number of samples: " << epoch * FLAGS_batch_size;
+  for (int bid = 0; bid < epoch; ++bid) {
+    PrepareInputs(&input_slots, &data, FLAGS_batch_size);
+    (*inputs).emplace_back(input_slots);
   }
 }
 
-// Inference with analysis and IR, easy for profiling independently.
-TEST(Analyzer, rnn1) { TestRNN1Prediction(true, true, FLAGS_num_threads); }
+// Easy for profiling independently.
+TEST(Analyzer_rnn1, profile) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
 
-// Other unit-tests of RNN1, test different options of use_analysis,
-// activate_ir and multi-threads.
-TEST(Analyzer, RNN_tests) {
-  int num_threads[2] = {1, 4};
-  for (auto i : num_threads) {
-    // Directly infer with the original model.
-    TestRNN1Prediction(false, false, i);
-    // Inference with the original model with the analysis turned on, the
-    // analysis
-    // module will transform the program to a data flow graph.
-    TestRNN1Prediction(true, false, i);
-    // Inference with analysis and IR. The IR module will fuse some large
-    // kernels.
-    TestRNN1Prediction(true, true, i);
-  }
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
+}
+
+// Check the fuse status
+TEST(Analyzer_rnn1, fuse_statis) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  int num_ops;
+  auto fuse_statis = GetFuseStatis(cfg, &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
+  EXPECT_EQ(fuse_statis.at("fc_nobias_lstm_fuse"), 2);  // bi-directional LSTM
+  EXPECT_EQ(fuse_statis.at("seq_concat_fc_fuse"), 1);
+  EXPECT_EQ(num_ops,
+            13);  // After graph optimization, only 13 operators exists.
+}
+
+// Compare result of NativeConfig and AnalysisConfig
+TEST(Analyzer_rnn1, compare) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  CompareNativeAndAnalysis(cfg, input_slots_all);
+}
+
+// Test Multi-Thread.
+TEST(Analyzer_rnn1, multi_thread) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  std::vector<PaddleTensor> outputs;
+
+  std::vector<std::vector<PaddleTensor>> input_slots_all;
+  SetInput(&input_slots_all);
+  TestPrediction(cfg, input_slots_all, &outputs, 4 /* num_threads */);
 }
 
 }  // namespace inference

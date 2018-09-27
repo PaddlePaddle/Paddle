@@ -28,34 +28,61 @@ limitations under the License. */
 
 namespace paddle {
 
+// Data type.
 enum PaddleDType {
   FLOAT32,
   INT64,
+  // TODO(Superjomn) support more data types if needed.
 };
 
+/*
+ * Memory menage for PaddleTensor.
+ * The PaddleBuf holds a buffer for data input or output. The memory can be
+ * allocated by user or by PaddleBuf itself, but in any case, the PaddleBuf
+ * should be reused for better performance.
+ *
+ * For user allocated memory, the following API can be used:
+ * - PaddleBuf(void* data, size_t length) to set an external memory by
+ * specifying
+ *   the memory address and length.
+ * - Reset(void* data, size_t length) to reset the PaddleBuf with an external
+ * memory.
+ * ATTENTION, for user allocated memory, deallocation should be done by users
+ * externally after the program finished. The PaddleBuf won't do any allocation
+ * or deallocation.
+ *
+ * To have the PaddleBuf allocate and manage the memory:
+ * - PaddleBuf(size_t length) will allocate a memory of size `length`.
+ * - Resize(size_t length) resize the memory to no less than `length`, ATTENTION
+ *   if the allocated memory is larger than `length`, nothing will done.
+ */
 class PaddleBuf {
  public:
-  PaddleBuf() = default;
-  PaddleBuf(PaddleBuf&& other);
-  // Copy only available when memory is managed externally.
-  explicit PaddleBuf(const PaddleBuf&);
-  PaddleBuf& operator=(const PaddleBuf&);
-  PaddleBuf& operator=(PaddleBuf&&);
-  // Do not own the memory.
+  // PaddleBuf allocate memory internally, and manage it.
+  explicit PaddleBuf(size_t length)
+      : data_(new char[length]), length_(length), memory_owned_(true) {}
+  // Set external memory, the PaddleBuf won't manage it.
   PaddleBuf(void* data, size_t length)
       : data_(data), length_(length), memory_owned_{false} {}
-  // Own memory.
-  PaddleBuf(size_t length)
-      : data_(new char[length]), length_(length), memory_owned_(true) {}
-  // Resize to `length` bytes.
+  // Copy only available when memory is managed externally.
+  explicit PaddleBuf(const PaddleBuf&);
+
+  // Resize the memory.
   void Resize(size_t length);
-  // Reset to external memory.
+  // Reset to external memory, with address and length set.
   void Reset(void* data, size_t length);
+  // Tell whether the buffer is empty.
   bool empty() const { return length_ == 0; }
+  // Get the memory address.
   void* data() const { return data_; }
+  // Get the memory length.
   size_t length() const { return length_; }
 
   ~PaddleBuf() { Free(); }
+  PaddleBuf& operator=(const PaddleBuf&);
+  PaddleBuf& operator=(PaddleBuf&&);
+  PaddleBuf() = default;
+  PaddleBuf(PaddleBuf&& other);
 
  private:
   void Free();
@@ -64,6 +91,7 @@ class PaddleBuf {
   bool memory_owned_{true};
 };
 
+// Basic input and output data structure for PaddlePredictor.
 struct PaddleTensor {
   PaddleTensor() = default;
   std::string name;  // variable name.
@@ -73,19 +101,8 @@ struct PaddleTensor {
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
-enum class PaddleEngineKind {
-  kNative = 0,         // Use the native Fluid facility.
-  kAnakin,             // Use Anakin for inference.
-  kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
-  kAnalysis
-  // TODO(Superjomn) support following engines latter.
-  // kTensorRT,           // Use TensorRT for inference.
-  // kAutoMixedAnakin,    // Automatically mix Fluid with Anakin.
-};
-
 /*
- * A simple Inference API for Paddle. Currently this API can be used by
- * non-sequence scenerios.
+ * A simple Inference API for Paddle.
  */
 class PaddlePredictor {
  public:
@@ -121,14 +138,93 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Negative to notify initialization.
+
   // Specify the variable's name of each input.
   bool specify_input_name{false};
   // set feed_names and fetch_names to prune the program in the runtime.
   std::vector<std::string> feed_names;
   std::vector<std::string> fetch_names;
 
+  // Specify the exact path of program and parameter files.
   std::string prog_file;
   std::string param_file;
+
+  // Specify the variable's name of each input if input tensors don't follow the
+  // `feeds` and `fetches` of the phase `save_inference_model`.
+  bool specify_input_name{false};
+};
+
+// A factory to help create different predictors.
+//
+// Usage:
+//
+// NativeConfig config;
+// ... // change the configs.
+// auto native_predictor = CreatePaddlePredictor(config);
+//
+// FOR EXTENSION DEVELOPER:
+// Different predictors are designated by config type. Similar configs can be
+// merged, but there shouldn't be a huge config containing different fields for
+// more than one kind of predictors.
+template <typename ConfigT>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+
+// NOTE The following APIs are too trivial, we will discard it in the following
+// versions.
+enum class PaddleEngineKind {
+  kNative = 0,         // Use the native Fluid facility.
+  kAutoMixedTensorRT,  // Automatically mix Fluid with TensorRT.
+  kAnalysis,           // More optimization.
+  kAnakin              // Use Anakin for inference, not mature yet.
+};
+
+template <typename ConfigT, PaddleEngineKind engine>
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+
+// ==
+//
+// -----------------------------------------------------------------------------------
+// NOTE: The following APIs are not mature yet, we are still working on them.
+
+namespace contrib {
+
+// Accelerate GPU computation with TensorRT engine.
+struct MixedRTConfig : public NativeConfig {
+  // Determine whether a subgraph will be executed by TRT.
+  int min_subgraph_size{1};
+  // While TensorRT allows an engine optimized for a given max batch size
+  // to run at any smaller size, the performance for those smaller
+  // sizes may not be as well-optimized. Therefore, Max batch is best
+  // equivalent to the runtime batch size.
+  int max_batch_size{1};
+  // For workspace_size, refer it from here:
+  // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
+  int workspace_size{1 << 30};
+  //  We transform the Ops that can be converted into TRT layer in the model,
+  //  and aggregate these Ops into subgraphs for TRT execution.
+  //  We set this variable to control the minimum number of nodes in the
+  //  subgraph, 3 as default value.
+  int minimum_subgraph_size = 3;
+  // Reserved configuration
+  // We just support "FP32" now, "FP16" and "INT8" will be supported.
+  std::string precision_mode = "FP32";
+};
+
+// NOTE WIP, not stable yet.
+struct AnalysisConfig : public NativeConfig {
+  enum class IrPassMode {
+    kSystem,   // Use system default passes, not customize.
+    kInclude,  // Specify the passes in `ir_passes`.
+    kExclude   // Specify the disabled passes in `ir_passes`.
+  };
+
+  bool enable_ir_optim = true;
+  IrPassMode ir_mode{IrPassMode::kExclude};
+  // attention lstm fuse works only on some specific models, disable as default.
+  std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
+
+  // NOTE this is just for internal development, please not use it.
+  bool _use_mkldnn{false};
 };
 
 // Configurations for Anakin engine.
@@ -140,44 +236,7 @@ struct AnakinConfig : public PaddlePredictor::Config {
   TargetType target_type;
 };
 
-struct TensorRTConfig : public NativeConfig {
-  // Determine whether a subgraph will be executed by TRT.
-  int min_subgraph_size{1};
-  // While TensorRT allows an engine optimized for a given max batch size
-  // to run at any smaller size, the performance for those smaller
-  // sizes may not be as well-optimized. Therefore, Max batch is best
-  // equivalent to the runtime batch size.
-  int max_batch_size{1};
-  // For workspace_size, refer it from here:
-  // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
-  int workspace_size{1 << 30};
-};
-
-// NOTE WIP, not stable yet.
-struct AnalysisConfig : public NativeConfig {
-  //
-  enum class IrPassMode {
-    kSystem,   // Use system default passes, not customize.
-    kInclude,  // Specify the passes in `ir_passes`.
-    kExclude   // Specify the disabled passes in `ir_passes`.
-  };
-
-  bool enable_ir_optim = true;
-  IrPassMode ir_mode{IrPassMode::kExclude};
-  // attention lstm fuse works only on some specific models, disable as default.
-  std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
-};
-
-// A factory to help create different predictors.
-//
-// FOR EXTENSION DEVELOPER:
-// Different predictors are designated by config type and engine kind. Similar
-// configs can be merged, but there shouldn't be a huge config containing
-// different fields for more than one kind of predictors.
-//
-// Similarly, each engine kind should map to a unique predictor implementation.
-template <typename ConfigT, PaddleEngineKind engine = PaddleEngineKind::kNative>
-std::unique_ptr<PaddlePredictor> CreatePaddlePredictor(const ConfigT& config);
+}  // namespace contrib
 
 int PaddleDtypeSize(PaddleDType dtype);
 
