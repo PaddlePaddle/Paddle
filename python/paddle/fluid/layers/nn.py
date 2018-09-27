@@ -6559,7 +6559,6 @@ def sum(x, use_mkldnn=False):
 
     Returns:
         out (Variable): ${out_comment}
-
     """
 
     helper = LayerHelper('sum', **locals())
