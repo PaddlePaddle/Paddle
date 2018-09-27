@@ -67,6 +67,7 @@ class TestConv2dOp(OpTest):
     def setUp(self):
         self.op_type = "conv2d"
         self.use_cudnn = False
+        self.use_cuda = False
         self.use_mkldnn = False
         self.data_format = "AnyLayout"
         self.dtype = np.float32
@@ -101,24 +102,25 @@ class TestConv2dOp(OpTest):
         }
         self.outputs = {'Output': output}
 
-    def testcudnn(self):
-        return core.is_compiled_with_cuda() and self.use_cudnn
+    def testcuda(self):
+        return core.is_compiled_with_cuda() and (self.use_cudnn or
+                                                 self.use_cuda)
 
     def test_check_output(self):
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
         self.check_output_with_place(place, atol=1e-5)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
         self.check_grad_with_place(
             place, set(['Input', 'Filter']), 'Output', max_relative_error=0.02)
 
     def test_check_grad_no_filter(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
         self.check_grad_with_place(
             place, ['Input'],
             'Output',
@@ -128,7 +130,7 @@ class TestConv2dOp(OpTest):
     def test_check_grad_no_input(self):
         if self.dtype == np.float16:
             return
-        place = core.CUDAPlace(0) if self.testcudnn() else core.CPUPlace()
+        place = core.CUDAPlace(0) if self.testcuda() else core.CPUPlace()
         self.check_grad_with_place(
             place, ['Filter'],
             'Output',
@@ -325,18 +327,34 @@ class TestFP16CUDNNWithInput1x1Filter1x1(TestWithInput1x1Filter1x1):
 
 class TestDepthwiseConv(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 5, 5]  # NCHW
         self.groups = 3
         assert np.mod(self.input_size[1], self.groups) == 0
         f_c = self.input_size[1] // self.groups
-        self.filter_size = [6, f_c, 3, 3]
+        self.filter_size = [3, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        # input grad error, stride
 
 
 class TestDepthwiseConv2(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
+        self.pad = [1, 1]
+        self.stride = [1, 1]
+        self.input_size = [2, 3, 5, 5]  # NCHW
+        self.groups = 3
+        assert np.mod(self.input_size[1], self.groups) == 0
+        f_c = self.input_size[1] // self.groups
+        self.filter_size = [3, f_c, 3, 3]
+        self.op_type = "depthwise_conv2d"
+
+
+class TestDepthwiseConv3(TestConv2dOp):
+    def init_test_case(self):
+        self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -345,10 +363,12 @@ class TestDepthwiseConv2(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        # filter grad error?
 
 
 class TestDepthwiseConvWithDilation(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [2, 2]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -358,10 +378,12 @@ class TestDepthwiseConvWithDilation(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        # grad error
 
 
 class TestDepthwiseConvWithDilation2(TestConv2dOp):
     def init_test_case(self):
+        self.use_cuda = True
         self.pad = [1, 1]
         self.stride = [1, 1]
         self.input_size = [2, 3, 5, 5]  # NCHW
@@ -371,13 +393,14 @@ class TestDepthwiseConvWithDilation2(TestConv2dOp):
         f_c = self.input_size[1] // self.groups
         self.filter_size = [6, f_c, 3, 3]
         self.op_type = "depthwise_conv2d"
+        # filter error
 
+    # Please Don't remove the following code.
+    # Currently, CI use cudnn V5.0 which not support dilation conv.
+    # class TestCUDNNWithDilation(TestWithDilation):
+    #     def init_op_type(self):
+    #         self.op_type = "conv_cudnn"
 
-# Please Don't remove the following code.
-# Currently, CI use cudnn V5.0 which not support dilation conv.
-# class TestCUDNNWithDilation(TestWithDilation):
-#     def init_op_type(self):
-#         self.op_type = "conv_cudnn"
 
 if __name__ == '__main__':
     unittest.main()
