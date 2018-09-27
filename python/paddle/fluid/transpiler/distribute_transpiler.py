@@ -470,7 +470,10 @@ class DistributeTranspiler(object):
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
+        lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
+        delete_ops(self.origin_program.global_block(), lr_ops)
+
         self.origin_program.__str__()
 
         if wait_port:

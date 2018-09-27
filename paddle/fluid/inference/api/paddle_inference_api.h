@@ -212,10 +212,11 @@ struct AnalysisConfig : public NativeConfig {
     kExclude   // Specify the disabled passes in `ir_passes`.
   };
 
+  // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;
+  // Manually determine the IR passes to run.
   IrPassMode ir_mode{IrPassMode::kExclude};
-  // attention lstm fuse works only on some specific models, disable as default.
-  std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
+  std::vector<std::string> ir_passes;
 
   // NOTE this is just for internal development, please not use it.
   bool _use_mkldnn{false};
