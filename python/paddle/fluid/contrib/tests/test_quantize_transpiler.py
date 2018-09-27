@@ -226,27 +226,19 @@ class TestQuantizeTranspiler(unittest.TestCase):
 
         with fluid.program_guard(test_program):
             test_data = next(test_reader())
-            f_var = fluid.framework.get_var('conv2d_1.tmp_0', test_program)
-            w_var = fluid.framework.get_var('conv2d_1.w_0.quantized',
-                                            test_program)
+            w_var = fluid.framework._get_var('conv2d_1.w_0.quantized',
+                                             test_program)
             # Testing during training
-            test_loss1, f_v1, w_quant = exe.run(
-                program=test_program,
-                feed=feeder.feed(test_data),
-                fetch_list=[loss, f_var, w_var])
+            test_loss1, w_quant = exe.run(program=test_program,
+                                          feed=feeder.feed(test_data),
+                                          fetch_list=[loss, w_var])
 
             # Freeze program for inference, but the weight of fc/conv is still float type.
             quant_transpiler.freeze_program(test_program, place)
-            fv2 = fluid.framework.get_var('conv2d_1.tmp_0.dequantized',
-                                          test_program)
-            test_loss2, f_v2 = exe.run(program=test_program,
-                                       feed=feeder.feed(test_data),
-                                       fetch_list=[loss, fv2])
+            test_loss2, = exe.run(program=test_program,
+                                  feed=feeder.feed(test_data),
+                                  fetch_list=[loss])
             self.assertAlmostEqual(test_loss1, test_loss2, delta=1e-3)
-            self.assertTrue(
-                np.allclose(
-                    f_v1, f_v2, rtol=1e-03, atol=1e-03),
-                "There is diff: " + str(f_v1) + "\n" + str(f_v2))
             w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
                                 .get_tensor())
             self.assertEqual(np.sum(w_freeze), np.sum(w_quant))
