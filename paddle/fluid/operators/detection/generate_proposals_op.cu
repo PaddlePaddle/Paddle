@@ -13,13 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <stdio.h>
-#include <fstream>
-
 #include <string>
 #include <vector>
 #include "cub/cub.cuh"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -30,8 +27,9 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-#define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
+namespace {
 
+#define DIVUP(m, n) ((m) / (n) + ((m) % (n) > 0))
 #define CUDA_1D_KERNEL_LOOP(i, n)                              \
   for (int i = blockIdx.x * blockDim.x + threadIdx.x; i < (n); \
        i += blockDim.x * gridDim.x)
@@ -314,7 +312,7 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
   keep_index.mutable_data<int>({pre_nms_num}, ctx.GetPlace());
   keep_num_t.mutable_data<int>({1}, ctx.GetPlace());
   min_size = std::max(min_size, 1.0f);
-  FilterBBoxes<T, 256><<<1, 256, 0, stream>>>(
+  FilterBBoxes<T, 512><<<1, 512, 0, stream>>>(
       proposals.data<T>(), im_info.data<T>(), min_size, pre_nms_num,
       keep_num_t.data<int>(), keep_index.data<int>());
   int keep_num;
@@ -348,6 +346,7 @@ std::pair<Tensor, Tensor> ProposalForOneImage(
 
   return std::make_pair(proposals_nms, scores_nms);
 }
+}  // namespace
 
 template <typename DeviceContext, typename T>
 class CUDAGenerateProposalsKernel : public framework::OpKernel<T> {
