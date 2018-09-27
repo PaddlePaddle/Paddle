@@ -1699,10 +1699,9 @@ class DistTransformer2x2(TestDistRunnerBase):
         exe.run(startup_prog)
         exe.run(pserver_prog)
 
-    def run_trainer(self, use_cuda, args):
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        TrainTaskConfig.use_gpu = use_cuda
-        sum_cost, avg_cost, predict, token_num, local_lr_scheduler, test_program = get_model(
+    def run_trainer(self, args):
+        TrainTaskConfig.use_gpu = args.use_cuda
+        sum_cost, avg_cost, predict, token_num, local_lr_scheduler = get_model(
             args.is_dist, not args.sync_mode)
 
         if args.is_dist:
@@ -1717,6 +1716,11 @@ class DistTransformer2x2(TestDistRunnerBase):
         else:
             TrainTaskConfig.batch_size = 20
             trainer_prog = fluid.default_main_program()
+
+        if args.use_cuda:
+            place = fluid.CUDAPlace(0)
+        else:
+            place = fluid.CPUPlace()
 
         startup_exe = fluid.Executor(place)
 
