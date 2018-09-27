@@ -6401,7 +6401,7 @@ def uniform_random_batch_size_like(input,
         input (Variable): ${input_comment}
         shape (tuple|list): ${shape_comment}
         input_dim_idx (Int): ${input_dim_idx_comment}
-        output_dim_idx (Int): ${output_dim_idx}
+        output_dim_idx (Int): ${output_dim_idx_comment}
         min (Float): ${min_comment}
         max (Float): ${max_comment}
         seed (Int): ${seed_comment}
@@ -6517,7 +6517,7 @@ def gaussian_random_batch_size_like(input,
     Args:
         input (Variable): ${input_comment}
         shape (tuple|list): ${shape_comment}
-        input_dim_idx (Int): ${input_dim_idx}
+        input_dim_idx (Int): ${input_dim_idx_comment}
         output_dim_idx (Int): ${output_dim_idx_comment}
         mean (Float): ${mean_comment}
         std (Float): ${std_comment}
@@ -6584,7 +6584,7 @@ def slice(input, axes, starts, ends):
         ends (List): ${ends_comment}
 
     Returns:
-        out (Variable): ${output_comment}
+        out (Variable): ${out_comment}
 
     """
 
