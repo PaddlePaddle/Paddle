@@ -160,17 +160,12 @@ class FeedFetchAutoPrunePass final : public Pass {
     std::set<Node *> common_deps(common_deps_vec.begin(),
                                  common_deps_vec.end());
     // Check the start points and end points are within the common dependencies.
-    bool all_in = true;
     for (auto *x : start_points) {
       if (!common_deps.count(x)) {
-        all_in = false;
-        break;
+        LOG(FATAL) << string::Sprintf(
+            "Wrong feeds for the target fetches, might need other inputs as "
+            "feeds.");
       }
-    }
-    if (!all_in) {
-      LOG(FATAL) << string::Sprintf(
-          "Wrong feeds for the target fetches, might need other inputs as "
-          "feeds.");
     }
 
     for (auto *x : end_points) {
