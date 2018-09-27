@@ -58,6 +58,11 @@ set(TEXT_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/text_classifi
 download_model_and_data(${TEXT_CLASSIFICATION_INSTALL_DIR} "text-classification-Senta.tar.gz" "text_classification_data.txt.tar.gz")
 inference_analysis_api_test(test_analyzer_text_classification ${TEXT_CLASSIFICATION_INSTALL_DIR} analyzer_text_classification_tester.cc)
 
+# seq_conv1
+set(SEQ_CONV1_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/seq_conv1")
+download_model_and_data(${SEQ_CONV1_INSTALL_DIR} "seq_conv1_model.tar.gz" "seq_conv1_data.txt.tar.gz")
+inference_analysis_api_test(test_analyzer_seq_conv1 ${SEQ_CONV1_INSTALL_DIR} analyzer_seq_conv1_tester.cc)
+
 # ocr
 set(OCR_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/ocr")
 if (NOT EXISTS ${OCR_INSTALL_DIR})
@@ -84,4 +89,14 @@ if (WITH_ANAKIN AND WITH_MKL) # only needed in CI
                ARGS --model=${ANAKIN_MOBILENET_INSTALL_DIR}/mobilenet_v2.anakin.bin
                DEPS inference_anakin_api_shared dynload_cuda SERIAL)
    endif()
+endif()
+
+if(WITH_GPU AND TENSORRT_FOUND)
+   set(TRT_MODEL_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/trt")
+   if (NOT EXISTS ${TRT_MODEL_INSTALL_DIR})
+       inference_download_and_uncompress(${TRT_MODEL_INSTALL_DIR} ${INFERENCE_URL}/tensorrt_test "trt_test_models.tar.gz")
+   endif()
+   cc_test(test_trt_models SRCS trt_models_tester.cc  
+     ARGS --dirname=${TRT_MODEL_INSTALL_DIR}/trt_test_models
+     DEPS paddle_inference_tensorrt_subgraph_engine)
 endif()
