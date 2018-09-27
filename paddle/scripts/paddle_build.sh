@@ -83,7 +83,7 @@ function cmake_gen() {
                 exit 1
             fi
         elif [ "$1" == "cp35-cp35m" ]; then
-            if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.5" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
                 export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
