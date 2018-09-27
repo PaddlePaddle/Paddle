@@ -13,11 +13,71 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
+#include <sys/time.h>
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
+}
+
+template <typename T>
+void RandomVec(const int n, T* a) {
+  static unsigned int seed = 100;
+  std::mt19937 rng(seed++);
+  std::uniform_real_distribution<double> uniform_dist(0, 1);
+  const T lower = static_cast<T>(-20.f);
+  const T upper = static_cast<T>(20.f);
+  for (int i = 0; i < n; ++i) {
+    a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
+  }
+}
+
+constexpr int repeat = 10000;
+
+TEST(JitKernel, vmul) {
+  namespace jit = paddle::operators::math::jitkernel;
+
+  auto ref = [](const int n, const float* x, const float* y, float* z) {
+    for (int i = 0; i < n; ++i) {
+      z[i] = x[i] * y[i];
+    }
+  };
+
+  for (int d : {7, 8, 15, 16, 30, 256}) {
+    std::vector<float> x(d), y(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data());
+    RandomVec<float>(d, y.data());
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VMulKernel<float>>(d);
+
+    const float* x_data = x.data();
+    const float* y_data = y.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto st = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(d, x_data, y_data, ztgt_data);
+    }
+    auto mt = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ref(d, x_data, y_data, zref_data);
+    }
+    auto et = GetCurrentUS();
+
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (et - mt) / repeat
+            << " us, tgt takes: " << (mt - st) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
+  }
+}
 
 TEST(JitKernel, pool) {
   namespace jit = paddle::operators::math::jitkernel;
