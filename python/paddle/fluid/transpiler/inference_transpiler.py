@@ -125,7 +125,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op.set_attr("fuse_relu", True)
+                    current_op._set_attr("fuse_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
@@ -164,7 +164,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op.set_attr("fuse_with_relu", True)
+                    current_op._set_attr("fuse_with_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
@@ -465,7 +465,7 @@ class InferenceTranspiler(object):
         in_var = self.block.vars[conv_op.input("Input")[0]]
         bias_var = self.block.vars[conv_op.input("Bias")[0]]
 
-        conv_op.set_attr("fuse_residual_connection", True)
+        conv_op._set_attr("fuse_residual_connection", True)
         attrs = {name: conv_op.attr(name) for name in conv_op.attr_names}
 
         self.block._insert_op(
