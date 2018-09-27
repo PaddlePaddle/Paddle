@@ -70,8 +70,8 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
+        echo "Using python abi: $1"
         if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
-            echo "using python abi: $1"
             if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
@@ -82,7 +82,18 @@ function cmake_gen() {
             else
                 exit 1
             fi
-        # TODO: qiyang add python3 part here 
+        elif [ "$1" == "cp35-cp35m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.5" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
+                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+            else
+                exit 1
+            fi
         fi
     else 
         if [ "$1" != "" ]; then
@@ -108,7 +119,15 @@ function cmake_gen() {
            fi
         fi
     fi
-
+    
+    if [ "$SYSTEM" == "Darwin" ]; then
+        WITH_DISTRIBUTE=${WITH_DISTRIBUTE:-ON}
+        WITH_AVX=${WITH_AVX:-ON}
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-~/.cache/inference_demo}
+    else
+        INFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+    fi
+    
     cat <<EOF
     ========================================
     Configuring cmake in /paddle/build ...
@@ -136,9 +155,10 @@ function cmake_gen() {
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON}
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON}
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON}
-        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo}
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR}
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF}
         -DPY_VERSION=${PY_VERSION:-2.7}
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -168,9 +188,11 @@ EOF
         -DWITH_CONTRIB=${WITH_CONTRIB:-ON} \
         -DWITH_INFERENCE=${WITH_INFERENCE:-ON} \
         -DWITH_INFERENCE_API_TEST=${WITH_INFERENCE_API_TEST:-ON} \
-        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR:-/root/.cache/inference_demo} \
+        -DINFERENCE_DEMO_INSTALL_DIR=${INFERENCE_DEMO_INSTALL_DIR} \
         -DWITH_ANAKIN=${WITH_ANAKIN:-OFF} \
-        -DPY_VERSION=${PY_VERSION:-2.7}
+        -DPY_VERSION=${PY_VERSION:-2.7} \
+        -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
+
 }
 
 function abort(){
@@ -232,8 +254,8 @@ function build_mac() {
     ============================================
 EOF
     make clean
-    sudo make -j 8
-    sudo make install -j 8
+    make -j 8
+    make install -j 8
 }
 
 function build_android() {
@@ -352,7 +374,7 @@ EOF
         ctest --output-on-failure
         # make install should also be test when unittest
         make install -j `nproc`
-        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
@@ -370,7 +392,7 @@ function run_mac_test() {
 EOF
 
         # TODO: jiabin need to refine this part when these tests fixed on mac
-        ctest --output-on-failure -j8     
+        ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
         make install -j 8
         pip install /usr/local/opt/paddle/share/wheels/*.whl
@@ -618,10 +640,10 @@ EOF
 
 function gen_capi_package() {
     if [[ ${WITH_C_API} == "ON" ]]; then
-        install_prefix="${PADDLE_ROOT}/build/capi_output"
-        rm -rf $install_prefix
-        make DESTDIR="$install_prefix" install
-        cd $install_prefix/usr/local
+        capi_install_prefix=${INSTALL_PREFIX:-/paddle/build}/capi_output
+        rm -rf $capi_install_prefix
+        make DESTDIR="$capi_install_prefix" install
+        cd $capi_install_prefix/
         ls | egrep -v "^Found.*item$" | xargs tar -czf ${PADDLE_ROOT}/build/paddle.tgz
     fi
 }
@@ -718,7 +740,7 @@ function main() {
       maccheck)
         cmake_gen ${PYTHON_ABI:-""}
         build_mac
-        run_mac_test
+        run_mac_test ${PROC_RUN:-1}
         ;;
       cicheck_py35)
         cmake_gen ${PYTHON_ABI:-""}

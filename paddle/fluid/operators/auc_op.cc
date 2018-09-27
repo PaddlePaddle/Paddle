@@ -36,11 +36,16 @@ class AucOp : public framework::OperatorWithKernel {
                       "Out and Label should have same height.");
 
     int num_pred_buckets = ctx->Attrs().Get<int>("num_thresholds") + 1;
+    int slide_steps = ctx->Attrs().Get<int>("slide_steps");
+
+    PADDLE_ENFORCE_GE(num_pred_buckets, 1, "num_thresholds must larger than 1");
+    PADDLE_ENFORCE_GE(slide_steps, 0, "slide_steps must be natural number");
 
     ctx->SetOutputDim("AUC", {1});
-    ctx->SetOutputDim("BatchAUC", {1});
-    ctx->SetOutputDim("StatPosOut", {num_pred_buckets});
-    ctx->SetOutputDim("StatNegOut", {num_pred_buckets});
+
+    slide_steps = slide_steps == 0 ? 1 : slide_steps;
+    ctx->SetOutputDim("StatPosOut", {slide_steps, num_pred_buckets});
+    ctx->SetOutputDim("StatNegOut", {slide_steps, num_pred_buckets});
   }
 
  protected:
@@ -62,6 +67,7 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Label",
              "A 2D int tensor indicating the label of the training data. "
              "shape: [batch_size, 1]");
+
     // TODO(typhoonzero): support weight input
     AddInput("StatPos", "Statistic value when label = 1");
     AddInput("StatNeg", "Statistic value when label = 0");
@@ -69,18 +75,19 @@ class AucOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AUC",
               "A scalar representing the "
               "current area-under-the-curve.");
-    AddOutput("BatchAUC", "The AUC for current batch");
+
     AddOutput("StatPosOut", "Statistic value when label = 1");
     AddOutput("StatNegOut", "Statistic value when label = 0");
 
     AddAttr<std::string>("curve", "Curve type, can be 'ROC' or 'PR'.")
         .SetDefault("ROC");
 
-    AddAttr<int>("num_thresholds",
-                 "The number of thresholds to use when discretizing the"
-                 " roc curve.")
+    AddAttr<int>(
+        "num_thresholds",
+        "The number of thresholds to use when discretizing the roc curve.")
         .SetDefault((2 << 12) - 1);
-
+    AddAttr<int>("slide_steps", "Use slide steps to calc batch auc.")
+        .SetDefault(1);
     AddComment(R"DOC(
 Area Under The Curve (AUC) Operator.
 

@@ -28,31 +28,27 @@ class COWPtr {
  private:
   RefPtr m_sp;
 
-  void detach() {
-    T* tmp = m_sp.get();
-    if (!(tmp == nullptr || m_sp.unique())) {
-      m_sp = RefPtr(new T(*tmp));
-    }
-  }
-
  public:
   COWPtr() : m_sp(nullptr) {}
   explicit COWPtr(T* t) : m_sp(t) {}
-  explicit COWPtr(const RefPtr& refptr) : m_sp(refptr) {}
 
-  const T& Data() const { return operator*(); }
+  const T& Data() const { return *m_sp; }
 
-  T* MutableData() { return operator->(); }
-
-  const T& operator*() const { return *m_sp; }
-  T& operator*() {
-    detach();
-    return *m_sp;
+  T* MutableData() {
+    DetachIfNotUnique();
+    return m_sp.get();
   }
-  const T* operator->() const { return m_sp.operator->(); }
-  T* operator->() {
-    detach();
-    return m_sp.operator->();
+
+  void DetachIfNotUnique() {
+    T* tmp = m_sp.get();
+    if (!(tmp == nullptr || m_sp.unique())) {
+      Detach();
+    }
+  }
+
+  void Detach() {
+    T* tmp = m_sp.get();
+    m_sp = RefPtr(new T(*tmp));
   }
 };
 }  // namespace details

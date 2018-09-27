@@ -21,13 +21,12 @@ import paddle
 
 
 def delete_ops(block, ops):
-    try:
-        start = list(block.ops).index(ops[0])
-        end = list(block.ops).index(ops[-1])
-        [block._remove_op(start) for _ in six.moves.range(end - start + 1)]
-    except Exception as e:
-        raise e
-    block.program._sync_with_cpp()
+    for op in ops:
+        try:
+            idx = list(block.ops).index(op)
+            block._remove_op(idx)
+        except Exception as e:
+            print(e)
 
 
 def find_op_by_input_arg(block, arg_name):
@@ -37,10 +36,18 @@ def find_op_by_input_arg(block, arg_name):
     return -1
 
 
-def find_op_by_output_arg(block, arg_name):
-    for index, op in enumerate(block.ops):
-        if arg_name in op.output_arg_names:
-            return index
+def find_op_by_output_arg(block, arg_name, reverse=False):
+    if reverse:
+        pos = len(block.ops) - 1
+        while pos >= 0:
+            op = block.ops[pos]
+            if arg_name in op.output_arg_names:
+                return pos
+            pos -= 1
+    else:
+        for index, op in enumerate(block.ops):
+            if arg_name in op.output_arg_names:
+                return index
     return -1
 
 
@@ -121,7 +128,7 @@ def op_to_code(op):
         attr_type = op.desc.attr_type(name)
         if attr_type == core.AttrType.BLOCK:
             a = "{name} = block[{value}]".format(
-                name=name, type=attr_type, value=op.block_attr_id(name))
+                name=name, type=attr_type, value=op._block_attr_id(name))
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "
@@ -129,7 +136,7 @@ def op_to_code(op):
 
         if attr_type == core.AttrType.BLOCKS:
             a = "{name} = blocks{value}".format(
-                name=name, type=attr_type, value=op.blocks_attr_ids(name))
+                name=name, type=attr_type, value=op._blocks_attr_ids(name))
             attrs_str += a
             if i != len(attr_names) - 1:
                 attrs_str += ", "

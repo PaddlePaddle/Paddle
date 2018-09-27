@@ -20,100 +20,38 @@ from __future__ import print_function
 import numpy as np
 from ..layer_helper import LayerHelper
 from ..initializer import Normal, Constant
-from ..framework import Variable
+from ..framework import Variable, OpProtoHolder
 from ..param_attr import ParamAttr
-from .layer_function_generator import autodoc, templatedoc
+from .layer_function_generator import autodoc, templatedoc, _generate_doc_string_
 from .tensor import concat
 from . import utils
 from .. import unique_name
 from functools import reduce
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'sequence_expand_as',
-    'sequence_pad',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'hsigmoid',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'squeeze',
-    'unsqueeze',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'pad_constant_like',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'scatter',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'log',
-    'crop',
-    'rank_loss',
-    'prelu',
-    'flatten',
-    'sequence_mask',
-    'stack',
-    'pad2d',
-    'unstack',
-    'sequence_enumerate',
-    'sequence_concat',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'sequence_expand_as', 'sequence_pad', 'lstm_unit',
+    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
+    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
+    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
+    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
+    'hsigmoid', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
+    'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth', 'roi_pool',
+    'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
+    'gather', 'scatter', 'sequence_scatter', 'random_crop', 'mean_iou', 'relu',
+    'log', 'crop', 'rank_loss', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid',
+    'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu', 'flatten',
+    'sequence_mask', 'stack', 'pad2d', 'unstack', 'sequence_enumerate',
+    'expand', 'sequence_concat', 'scale', 'elementwise_add', 'elementwise_div',
+    'elementwise_sub', 'elementwise_mul', 'elementwise_max', 'elementwise_min',
+    'elementwise_pow', 'uniform_random_batch_size_like', 'gaussian_random',
+    'sampling_id', 'gaussian_random_batch_size_like', 'sum', 'slice', 'shape'
 ]
 
 
@@ -2342,16 +2280,20 @@ def conv2d_transpose(input,
 
         .. math::
 
-           H_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
-           W_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1
+           H^\prime_{out} &= (H_{in} - 1) * strides[0] - 2 * paddings[0] + dilations[0] * (H_f - 1) + 1 \\\\
+           W^\prime_{out} &= (W_{in} - 1) * strides[1] - 2 * paddings[1] + dilations[1] * (W_f - 1) + 1 \\\\
+           H_{out} \in [ H^\prime_{out}, H^\prime_{out} + strides[0] ) \\\\
+           W_{out} \in [ W^\prime_{out}, W^\prime_{out} + strides[1] )
 
     Args:
         input(Variable): The input image with [N, C, H, W] format.
         num_filters(int): The number of the filter. It is as same as the output
             image channel.
         output_size(int|tuple|None): The output image size. If output size is a
-            tuple, it must contain two integers, (image_H, image_W). This
-            parameter only works when filter_size is None.
+            tuple, it must contain two integers, (image_H, image_W). None if use
+            filter_size, padding, and stride to calculate output_size.
+            if output_size and filter_size are specified at the same time, They
+            should follow the formula above.
         filter_size(int|tuple|None): The filter size. If filter_size is a tuple,
             it must contain two integers, (filter_size_H, filter_size_W).
             Otherwise, the filter will be a square. None if use output size to
@@ -2429,7 +2371,13 @@ def conv2d_transpose(input,
     else:
         filter_size = utils.convert_to_list(filter_size, 2,
                                             'conv2d_transpose.filter_size')
-
+    if output_size is None:
+        output_size = []
+    elif isinstance(output_size, list) or isinstance(output_size, int):
+        output_size = utils.convert_to_list(output_size, 2, 'output_size')
+    else:
+        raise ValueError("output_size should be list or int")
+    padding = utils.convert_to_list(padding, 2, 'padding')
     groups = 1 if groups is None else groups
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
@@ -2442,6 +2390,7 @@ def conv2d_transpose(input,
                 'Filter': [img_filter]},
         outputs={'Output': pre_bias},
         attrs={
+            'output_size': output_size,
             'strides': stride,
             'paddings': padding,
             'dilations': dilation,
@@ -3487,7 +3436,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     return out
 
 
-def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
+def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
     """
     Applies matrix multiplication to two tensors.
 
@@ -3521,6 +3470,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         y (Variable): The input variable which is a Tensor or LoDTensor.
         transpose_x (bool): Whether to transpose :math:`x` before multiplication.
         transpose_y (bool): Whether to transpose :math:`y` before multiplication.
+        alpha (float): The scale of output. Default 1.0.
         name(str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -3588,8 +3538,11 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
         inputs={'X': x,
                 'Y': y},
         outputs={'Out': out},
-        attrs={'transpose_X': transpose_x,
-               'transpose_Y': transpose_y})
+        attrs={
+            'transpose_X': transpose_x,
+            'transpose_Y': transpose_y,
+            'alpha': float(alpha),
+        })
     return out
 
 
@@ -5409,6 +5362,66 @@ def scatter(input, index, updates, name=None):
     return out
 
 
+def sequence_scatter(input, index, updates, name=None):
+    """
+    **Sequence Scatter Layer**
+
+    This operator scatters the Updates tensor to the input X. It uses the LoD
+    information of Ids to select the rows to update, and use the values in Ids as
+    the columns to update in each row of X.
+
+    Here is an example:
+    Given the following input:
+    .. code-block:: text
+        input.data = [[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+                      [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]]
+        input.dims = [3, 6]
+
+        index.data = [[0], [1], [2], [5], [4], [3], [2], [1], [3], [2], [5], [4]]
+        index.lod =  [[0,        3,                       8,                 12]]
+
+        updates.data = [[0.3], [0.3], [0.4], [0.1], [0.2], [0.3], [0.4], [0.0], [0.2], [0.3], [0.1], [0.4]]
+        updates.lod =  [[  0,            3,                                 8,                         12]]
+
+    Then we have the output:
+    .. code-block:: text
+        out.data = [[1.3, 1.3, 1.4, 1.0, 1.0, 1.0],
+                    [1.0, 1.0, 1.4, 1.3, 1.2, 1.1],
+                    [1.0, 1.0, 1.3, 1.2, 1.4, 1.1]]
+        out.dims = X.dims = [3, 6]
+
+    Args:
+        input (Variable): The source input with rank>=1.
+        index (Variable): A LoD Tensor. The index input of sequence scatter op
+            where input will be  updated. The index input with rank=1. Its dtype
+            should be int32 or int64 as it is used as indexes.
+        updates (Variable): A LoD Tensor. The values to scatter to the input
+            tensor X, must be a LoDTensor with the same LoD information as index.
+        name (str|None): The output variable name. Default None.
+
+    Returns:
+        output (Variable): The output is a tensor with the same shape as input.
+
+    Examples:
+
+        .. code-block:: python
+
+            output = fluid.layers.sequence_scatter(input, index, updates)
+
+    """
+    helper = LayerHelper('sequence_scatter', **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type="sequence_scatter",
+        inputs={"X": input,
+                "Ids": index,
+                "Updates": updates},
+        outputs={"Out": out})
+    return out
+
+
 @templatedoc()
 def random_crop(x, shape, seed=None):
     """
@@ -5818,6 +5831,148 @@ def pad2d(input,
     return out
 
 
+@templatedoc()
+def elu(x, alpha=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|1.0): ${alpha_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('elu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='elu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
+@templatedoc()
+def relu6(x, threshold=6.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        threshold(${threshold_type}|6.0): ${threshold_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('relu6', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='relu6',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
+    return out
+
+
+@templatedoc()
+def pow(x, factor=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        factor(${factor_type}|1.0): ${factor_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('pow', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='pow',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'factor': factor})
+    return out
+
+
+@templatedoc()
+def stanh(x, scale_a=2.0 / 3.0, scale_b=1.7159, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        scale_a(${scale_a_type}|2.0 / 3.0): ${scale_a_comment}
+        scale_b(${scale_b_type}|1.7159): ${scale_b_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('stanh', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='stanh',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'scale_a': scale_a,
+               'scale_b': scale_b})
+    return out
+
+
+@templatedoc()
+def hard_sigmoid(x, slope=0.2, offset=0.5, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        slope(${slope_type}|0.2): ${slope_comment}
+        offset(${offset_type}|0.5): ${offset_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('hard_sigmoid', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='hard_sigmoid',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': slope,
+               'offset': offset})
+    return out
+
+
+@templatedoc()
+def swish(x, beta=1.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        beta(${beta_type}|1.0): ${beta_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+
+    Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('swish', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='swish',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'slope': beta})
+    return out
+
+
 def prelu(x, mode, param_attr=None, name=None):
     """
     Equation:
@@ -5868,6 +6023,74 @@ def prelu(x, mode, param_attr=None, name=None):
                 'Alpha': alpha},
         attrs={"mode": mode},
         outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def brelu(x, t_min=0.0, t_max=24.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        t_min(${t_min_type}|0.0): ${t_min_comment}
+        t_max(${t_max_type}|24.0): ${t_max_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('brelu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='brelu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'t_min': t_min,
+               't_max': t_max})
+    return out
+
+
+@templatedoc()
+def leaky_relu(x, alpha=0.02, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        alpha(${alpha_type}|0.02): ${alpha_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('leaky_relu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='leaky_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'alpha': alpha})
+    return out
+
+
+@templatedoc()
+def soft_relu(x, threshold=40.0, name=None):
+    """
+    ${comment}
+    Args:
+        x(${x_type}): ${x_comment}
+        threshold(${threshold_type}|40.0): ${threshold_comment}
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        output(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper('soft_relu', **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(
+        type='soft_relu',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'threshold': threshold})
     return out
 
 
@@ -6107,3 +6330,448 @@ def unstack(x, axis=0, num=None):
         attrs={'axis': axis,
                'num': num})
     return outs
+
+
+def expand(x, expand_times, name=None):
+    """Expand operator tiles the input by given times number. You should set times
+    number for each dimension by providing attribute 'expand_times'. The rank of X
+    should be in [1, 6]. Please note that size of 'expand_times' must be the same
+    with X's rank. Following is a using case:
+
+
+    .. code-block:: text
+
+        Input(X) is a 3-D tensor with shape [2, 3, 1]:
+        
+                [
+                   [[1], [2], [3]],
+                   [[4], [5], [6]]
+                ]
+        
+        Attr(expand_times):  [1, 2, 2]
+        
+        Output(Out) is a 3-D tensor with shape [2, 6, 2]:
+        
+                [
+                    [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
+                    [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
+                ]
+        
+    Args:
+        x (Variable): A tensor with rank in [1, 6].
+        expand_times (list|tuple): Expand times number for each dimension.
+
+    Returns:
+        Variable: The expanded variable which is a LoDTensor. After expanding, size of each dimension of Output(Out) is equal to ithe size of the corresponding dimension of Input(X) multiplying the corresponding value given by expand_times.
+
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10], dtype='float32')
+            out = fluid.layers.expand(x=x, expand_times=[1, 2, 2])
+    """
+    helper = LayerHelper('expand', input=x, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='expand',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'expand_times': expand_times})
+    return out
+
+
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+
+
+@templatedoc()
+def uniform_random_batch_size_like(input,
+                                   shape,
+                                   dtype='float32',
+                                   input_dim_idx=0,
+                                   output_dim_idx=0,
+                                   min=-1.0,
+                                   max=1.0,
+                                   seed=0):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}
+        shape (tuple|list): ${shape_comment}
+        input_dim_idx (Int): ${input_dim_idx_comment}
+        output_dim_idx (Int): ${output_dim_idx_comment}
+        min (Float): ${min_comment}
+        max (Float): ${max_comment}
+        seed (Int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('uniform_random_batch_size_like', **locals())
+    out = helper.create_tmp_variable(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='uniform_random_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={
+            'shape': shape,
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx,
+            'min': min,
+            'max': max,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    return out
+
+
+@templatedoc()
+def gaussian_random(shape,
+                    mean=0.0,
+                    std=1.0,
+                    seed=0,
+                    dtype='float32',
+                    use_mkldnn=False):
+    """
+    ${comment}
+
+    Args:
+        shape (tuple|list): ${shape_comment}
+        mean (Float): ${mean_comment}
+        std (Float): ${std_comment}
+        seed (Int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): Output data type.
+        use_mkldnn (Bool): Only used in mkldnn kernel.
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('gaussian_random', **locals())
+    out = helper.create_tmp_variable(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='gaussian_random',
+        outputs={'Out': out},
+        attrs={
+            'shape': shape,
+            'mean': mean,
+            'std': std,
+            'seed': seed,
+            'dtype': c_dtype,
+            'use_mkldnn': use_mkldnn
+        })
+
+    return out
+
+
+@templatedoc()
+def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        min (Float): ${min_comment}
+        max (Float): ${max_comment}
+        seed (Float): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('sampling_id', **locals())
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sampling_id',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'min': min,
+               'max': max,
+               'seed': seed})
+
+    return out
+
+
+@templatedoc()
+def gaussian_random_batch_size_like(input,
+                                    shape,
+                                    input_dim_idx=0,
+                                    output_dim_idx=0,
+                                    mean=0.0,
+                                    std=1.0,
+                                    seed=0,
+                                    dtype='float32'):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}
+        shape (tuple|list): ${shape_comment}
+        input_dim_idx (Int): ${input_dim_idx_comment}
+        output_dim_idx (Int): ${output_dim_idx_comment}
+        mean (Float): ${mean_comment}
+        std (Float): ${std_comment}
+        seed (Int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
+
+    Returns:
+        out (Variable): ${out_comment}
+    """
+
+    helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    out = helper.create_tmp_variable(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='gaussian_random_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={
+            'shape': shape,
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx,
+            'mean': mean,
+            'std': std,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    return out
+
+
+@templatedoc()
+def sum(x, use_mkldnn=False):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        use_mkldnn (Bool): ${use_mkldnn_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+    """
+
+    helper = LayerHelper('sum', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('x'))
+    helper.append_op(
+        type='sum',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'use_mkldnn': use_mkldnn})
+
+    return out
+
+
+@templatedoc()
+def slice(input, axes, starts, ends):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}.
+        axes (List): ${axes_comment}
+        starts (List): ${starts_comment}
+        ends (List): ${ends_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('slice', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='slice',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={'axes': axes,
+               'starts': starts,
+               'ends': ends})
+
+    return out
+
+
+@templatedoc()
+def shape(input):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('shape', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='shape', inputs={'Input': input}, outputs={'Out': out})
+
+    return out
+
+
+def _elementwise_op(helper):
+    op_type = helper.layer_type
+    x = helper.kwargs.get('x', None)
+    y = helper.kwargs.get('y', None)
+    assert x is not None, 'x cannot be None in {}'.format(op_type)
+    assert y is not None, 'y cannot be None in {}'.format(op_type)
+    axis = helper.kwargs.get('axis', -1)
+    use_mkldnn = helper.kwargs.get('use_mkldnn', False)
+    out = helper.kwargs.get('out', None)
+    if out is None:
+        name = helper.kwargs.get('name', None)
+        if name is None:
+            out = helper.create_tmp_variable(dtype=x.dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type=op_type,
+        inputs={'X': x,
+                'Y': y},
+        outputs={'Out': out},
+        attrs={'axis': axis,
+               'use_mkldnn': use_mkldnn})
+    return helper.append_activation(out)
+
+
+@templatedoc()
+def scale(x,
+          scale=1.0,
+          bias=0.0,
+          bias_after_scale=True,
+          out=None,
+          act=None,
+          name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        scale(${scale_type}): ${scale_comment}
+        bias(${bias_type}): ${bias_comment}
+        bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
+        out(Tensor): Output tensor.
+        act(basestring|None): Activation applied to the output.
+        name(basestring|None): Name of the output. 
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper('scale', **locals())
+    if out is None:
+        if name is None:
+            out = helper.create_tmp_variable(dtype=x.dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type='scale',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={
+            'scale': float(scale),
+            'bias': float(bias),
+            'bias_after_scale': bias_after_scale
+        })
+    return helper.append_activation(out)
+
+
+def elementwise_add(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_add', **locals()))
+
+
+def elementwise_div(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_div', **locals()))
+
+
+def elementwise_sub(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
+
+
+def elementwise_mul(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
+
+
+def elementwise_max(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_max', **locals()))
+
+
+def elementwise_min(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_min', **locals()))
+
+
+def elementwise_pow(x,
+                    y,
+                    out=None,
+                    axis=-1,
+                    use_mkldnn=False,
+                    act=None,
+                    name=None):
+    return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
+
+
+for func in [
+        elementwise_add, elementwise_div, elementwise_sub, elementwise_mul,
+        elementwise_max, elementwise_min, elementwise_pow
+]:
+    op_proto = OpProtoHolder.instance().get_op_proto(func.__name__)
+    func.__doc__ = _generate_doc_string_(
+        op_proto,
+        additional_args_lines=[
+            "out (Tensor): The output tensor of elementwise op.",
+            "act (basestring|None): Activation applied to the output.",
+            "name (basestring|None): Name of the output."
+        ])

@@ -309,6 +309,8 @@ void SubGraphFuse::operator()() { ReplaceNodesWithSubGraphs(); }
 void SubGraphFuse::ReplaceNodesWithSubGraphs() {
   auto subgraphs = SubGraphSplitter(graph_, node_inside_subgraph_teller_)();
   for (auto &subgraph : subgraphs) {
+    if (subgraph.size() <= argument_->Get<int>("minimum_subgraph_size"))
+      continue;
     std::unordered_set<Node *> subgraph_uniq(subgraph.begin(), subgraph.end());
     // replace this sub-graph with the first node. Two steps: 1. Create a Block
     // Node that contains this subgraph 2. Mark the nodes inside the sub-graph

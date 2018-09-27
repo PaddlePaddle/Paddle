@@ -23,6 +23,11 @@ limitations under the License. */
 #include <unordered_map>
 #include <unordered_set>
 
+#if defined(_WIN32)
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+#define GOOGLE_GLOG_DLL_DECL
+#endif
+
 #include "glog/logging.h"  // For VLOG()
 #include "paddle/fluid/framework/attribute.h"
 #include "paddle/fluid/framework/details/op_registry.h"
@@ -241,22 +246,20 @@ struct OpKernelRegistrarFunctorEx<PlaceType, false, I,
  * we will use and tell the compiler to
  * link them into target.
  */
-#define USE_OP_ITSELF(op_type)                                    \
-  STATIC_ASSERT_GLOBAL_NAMESPACE(                                 \
-      __use_op_itself_##op_type,                                  \
-      "USE_OP_ITSELF must be called in global namespace");        \
-  extern int TouchOpRegistrar_##op_type();                        \
-  static int use_op_itself_##op_type##_ __attribute__((unused)) = \
-      TouchOpRegistrar_##op_type()
+#define USE_OP_ITSELF(op_type)                             \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                          \
+      __use_op_itself_##op_type,                           \
+      "USE_OP_ITSELF must be called in global namespace"); \
+  extern int TouchOpRegistrar_##op_type();                 \
+  UNUSED static int use_op_itself_##op_type##_ = TouchOpRegistrar_##op_type()
 
 #define USE_OP_DEVICE_KERNEL(op_type, LIBRARY_TYPE)               \
   STATIC_ASSERT_GLOBAL_NAMESPACE(                                 \
       __use_op_kernel_##op_type##_##LIBRARY_TYPE##__,             \
       "USE_OP_DEVICE_KERNEL must be in global namespace");        \
   extern int TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE(); \
-  static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_          \
-      __attribute__((unused)) =                                   \
-          TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE()
+  UNUSED static int use_op_kernel_##op_type##_##LIBRARY_TYPE##_ = \
+      TouchOpKernelRegistrar_##op_type##_##LIBRARY_TYPE()
 
 // TODO(fengjiayi): The following macros
 // seems ugly, do we have better method?

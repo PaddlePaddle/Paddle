@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/activation_op.h"
 #include <string>
 #include "paddle/fluid/operators/mkldnn_activation_op.h"
+#include "paddle/fluid/platform/port.h"
 
 namespace paddle {
 namespace operators {
@@ -105,105 +106,105 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   }
 };
 
-__attribute__((unused)) constexpr char SigmoidDoc[] = R"DOC(
+UNUSED constexpr char SigmoidDoc[] = R"DOC(
 Sigmoid Activation Operator
 
 $$out = \frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char LogSigmoidDoc[] = R"DOC(
+UNUSED constexpr char LogSigmoidDoc[] = R"DOC(
 Logsigmoid Activation Operator
 
 $$out = \\log \\frac{1}{1 + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char ExpDoc[] = R"DOC(
+UNUSED constexpr char ExpDoc[] = R"DOC(
 Exp Activation Operator.
 
 $out = e^x$
 
 )DOC";
 
-__attribute__((unused)) constexpr char ReluDoc[] = R"DOC(
+UNUSED constexpr char ReluDoc[] = R"DOC(
 Relu Activation Operator.
 
 $out = \max(x, 0)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char TanhDoc[] = R"DOC(
+UNUSED constexpr char TanhDoc[] = R"DOC(
 Tanh Activation Operator.
 
 $$out = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char TanhShrinkDoc[] = R"DOC(
+UNUSED constexpr char TanhShrinkDoc[] = R"DOC(
 TanhShrink Activation Operator.
 
 $$out = x - \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SqrtDoc[] = R"DOC(
+UNUSED constexpr char SqrtDoc[] = R"DOC(
 Sqrt Activation Operator.
 
 $out = \sqrt{x}$
 
 )DOC";
 
-__attribute__((unused)) constexpr char AbsDoc[] = R"DOC(
+UNUSED constexpr char AbsDoc[] = R"DOC(
 Abs Activation Operator.
 
 $out = |x|$
 
 )DOC";
 
-__attribute__((unused)) constexpr char CeilDoc[] = R"DOC(
+UNUSED constexpr char CeilDoc[] = R"DOC(
 Ceil Activation Operator.
 
 $out = ceil(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char FloorDoc[] = R"DOC(
+UNUSED constexpr char FloorDoc[] = R"DOC(
 Floor Activation Operator.
 
 $out = floor(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char CosDoc[] = R"DOC(
+UNUSED constexpr char CosDoc[] = R"DOC(
 Cosine Activation Operator.
 
 $out = cos(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SinDoc[] = R"DOC(
+UNUSED constexpr char SinDoc[] = R"DOC(
 Sine Activation Operator.
 
 $out = sin(x)$
 
 )DOC";
 
-__attribute__((unused)) constexpr char RoundDoc[] = R"DOC(
+UNUSED constexpr char RoundDoc[] = R"DOC(
 Round Activation Operator.
 
 $out = [x]$
 
 )DOC";
 
-__attribute__((unused)) constexpr char ReciprocalDoc[] = R"DOC(
+UNUSED constexpr char ReciprocalDoc[] = R"DOC(
 Reciprocal Activation Operator.
 
 $$out = \\frac{1}{x}$$
 
 )DOC";
 
-__attribute__((unused)) constexpr char LogDoc[] = R"DOC(
+UNUSED constexpr char LogDoc[] = R"DOC(
 Log Activation Operator.
 
 $out = \ln(x)$
@@ -212,21 +213,21 @@ Natural logarithm of x.
 
 )DOC";
 
-__attribute__((unused)) constexpr char SquareDoc[] = R"DOC(
+UNUSED constexpr char SquareDoc[] = R"DOC(
 Square Activation Operator.
 
 $out = x^2$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SoftplusDoc[] = R"DOC(
+UNUSED constexpr char SoftplusDoc[] = R"DOC(
 Softplus Activation Operator.
 
 $out = \ln(1 + e^{x})$
 
 )DOC";
 
-__attribute__((unused)) constexpr char SoftsignDoc[] = R"DOC(
+UNUSED constexpr char SoftsignDoc[] = R"DOC(
 Softsign Activation Operator.
 
 $$out = \frac{x}{1 + |x|}$$
