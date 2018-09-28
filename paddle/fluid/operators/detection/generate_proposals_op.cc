@@ -15,6 +15,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/math_function.h"
 
@@ -69,7 +70,7 @@ class GenerateProposalsOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext &ctx) const override {
     return framework::OpKernelType(
         framework::ToDataType(ctx.Input<Tensor>("Anchors")->type()),
-        platform::CPUPlace());
+        ctx.device_context());
   }
 };
 
@@ -162,7 +163,7 @@ void FilterBoxes(const platform::DeviceContext &ctx, Tensor *boxes,
   const T *im_info_data = im_info.data<T>();
   T *boxes_data = boxes->mutable_data<T>(ctx.GetPlace());
   T im_scale = im_info_data[2];
-  keep->Resize({boxes->dims()[0], 1});
+  keep->Resize({boxes->dims()[0]});
   min_size = std::max(min_size, 1.0f);
   int *keep_data = keep->mutable_data<int>(ctx.GetPlace());
 
@@ -463,7 +464,7 @@ class GenerateProposalsOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("post_nms_topN", "post_nms_topN");
     AddAttr<float>("nms_thresh", "nms_thres");
     AddAttr<float>("min_size", "min size");
-    AddAttr<float>("eta", "eta");
+    AddAttr<float>("eta", "The parameter for adaptive NMS.");
     AddComment(R"DOC(
 Generate Proposals OP
 

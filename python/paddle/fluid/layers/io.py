@@ -507,7 +507,6 @@ def py_reader(capacity,
 
         1. The basic usage of :code:`py_reader` is as follows:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
@@ -515,7 +514,7 @@ def py_reader(capacity,
         >>>                                 shapes=[(-1,3,224,224), (-1,1)],
         >>>                                 dtypes=['float32', 'int64'])
         >>> reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> img, label = fluid.layers.read_file(reader)
         >>> loss = network(img, label) # some network definition
@@ -534,7 +533,6 @@ def py_reader(capacity,
         2. When training and testing are both performed, two different
         :code:`py_reader` should be created with different names, e.g.:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
@@ -548,7 +546,7 @@ def py_reader(capacity,
         >>>                                       dtypes=['float32', 'int64'],
         >>>                                       name='train_reader')
         >>> train_reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> test_reader = fluid.layers.py_reader(capacity=32,
         >>>                                      shapes=[(-1,3,224,224), (-1,1)],

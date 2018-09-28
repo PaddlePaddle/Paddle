@@ -35,8 +35,6 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   bool Init(const std::shared_ptr<framework::Scope>& parent_scope) {
     FLAGS_IA_enable_tensorrt_subgraph_engine = true;
     VLOG(3) << "Predictor::init()";
-    FLAGS_tensorrt_max_batch_size = config_.max_batch_size;
-    FLAGS_tensorrt_workspace_size = config_.workspace_size;
     if (config_.use_gpu) {
       place_ = paddle::platform::CUDAPlace(config_.device);
     } else {
@@ -92,6 +90,14 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
   void OptimizeInferenceProgram() {
     // Analyze inference_program
     Argument argument;
+
+    argument.Set<int>("minimum_subgraph_size",
+                      new int(config_.minimum_subgraph_size));
+    argument.Set<int>("max_batch_size", new int(config_.max_batch_size));
+    argument.Set<int>("workspace_size", new int(config_.workspace_size));
+    argument.Set<std::string>("precision_mode",
+                              new std::string(config_.precision_mode));
+
     if (!config_.model_dir.empty()) {
       argument.fluid_model_dir.reset(new std::string(config_.model_dir));
     } else {
