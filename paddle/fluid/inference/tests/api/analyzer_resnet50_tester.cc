@@ -16,10 +16,10 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <gtest/gtest.h>
+#include <algorithm>
+#include <cmath>
 #include <opencv2/opencv.hpp>
 #include <random>
-#include <cmath>
-#include <algorithm>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -70,7 +70,24 @@ struct DataReader {
     }
   }
 
-  bool NextBatch(float* input, int64_t* label, char sep, int batch_size,
+  // return true if separator works or false otherwise
+  bool SetSeparator(char separator) {
+    sep = separator;
+
+    std::string line;
+    auto position = file.tellg();
+    std::getline(file, line);
+    file.clear();
+    file.seekg(position);
+
+    // test out
+    std::vector<std::string> pieces;
+    inference::split(line, separator, &pieces);
+
+    return (pieces.size() == 2);
+  }
+
+  bool NextBatch(float* input, int64_t* label, int batch_size,
                  bool debug_display_images) {
     std::string line;
 
@@ -132,7 +149,27 @@ struct DataReader {
   int width;
   int height;
   int channels;
+  char sep = '\t';
 };
+
+void drawImages(float* input) {
+  if (FLAGS_debug_display_images) {
+    for (int b = 0; b < FLAGS_batch_size; b++) {
+      std::vector<cv::Mat> fimage_channels;
+      for (int c = 0; c < FLAGS_channels; c++) {
+        fimage_channels.emplace_back(
+            cv::Size(FLAGS_width, FLAGS_height), CV_32FC1,
+            input + FLAGS_width * FLAGS_height * c +
+                FLAGS_width * FLAGS_height * FLAGS_channels * b);
+      }
+      cv::Mat mat;
+      cv::merge(fimage_channels, mat);
+      cv::imshow(std::to_string(b) + " output image", mat);
+    }
+    std::cout << "Press any key in image window or close it to continue" << std::endl;
+    cv::waitKey(0);
+  }
+}
 
 template <typename T>
 void fill_data(T* data, unsigned int count) {
@@ -154,42 +191,42 @@ void fill_data<float>(float* data, unsigned int count) {
 }
 
 template <typename T>
-void SkipFirstNData(std::vector<T> &v, int n) {
+void SkipFirstNData(std::vector<T>& v, int n) {
   std::vector<T>(v.begin() + FLAGS_skip_batch_num, v.end()).swap(v);
 }
 
 template <typename T>
-T FindAverage(const std::vector<T> &v) {
-	CHECK_GE(v.size(), 0);
-	return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
+T FindAverage(const std::vector<T>& v) {
+  CHECK_GE(v.size(), 0);
+  return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
 }
 
 template <typename T>
 T FindPercentile(std::vector<T> v, int p) {
-	CHECK_GE(v.size(), 0);
-	std::sort(v.begin(), v.end());
-	if (p == 100)
-		return v.back();
-	int i = v.size() * p / 100;
-	return v[i];
+  CHECK_GE(v.size(), 0);
+  std::sort(v.begin(), v.end());
+  if (p == 100) return v.back();
+  int i = v.size() * p / 100;
+  return v[i];
 }
 
 template <typename T>
 T FindStandardDev(std::vector<T> v) {
-	CHECK_GE(v.size(), 0);
-	T mean = FindAverage(v);
-	T var = 0;
-	for (size_t i = 0; i < v.size(); ++i) {
-		var += (v[i] - mean) * (v[i] - mean);
-	}
-	var /= v.size();
-	T std = sqrt(var);
-	return std;
+  CHECK_GE(v.size(), 0);
+  T mean = FindAverage(v);
+  T var = 0;
+  for (size_t i = 0; i < v.size(); ++i) {
+    var += (v[i] - mean) * (v[i] - mean);
+  }
+  var /= v.size();
+  T std = sqrt(var);
+  return std;
 }
 
 void PostprocessBenchmarkData(std::vector<double> latencies,
-      std::vector<float> infer_accs, std::vector<double> fpses,
-      double total_time_sec, int total_samples) {
+                              std::vector<float> infer_accs,
+                              std::vector<double> fpses, double total_time_sec,
+                              int total_samples) {
   // get rid of the first FLAGS_skip_batch_num data
   SkipFirstNData(latencies, FLAGS_skip_batch_num);
   SkipFirstNData(infer_accs, FLAGS_skip_batch_num);
@@ -208,11 +245,11 @@ void PostprocessBenchmarkData(std::vector<double> latencies,
   float examples_per_sec = total_samples / total_time_sec;
 
   printf("\nAvg fps: %.5f, std fps: %.5f, fps for 99pc latency: %.5f\n",
-		  fps_avg, fps_std, fps_pc01);
+         fps_avg, fps_std, fps_pc01);
   printf("Avg latency: %.5f ms, std latency: %.5f ms, 99pc latency: %.5f ms\n",
-		  lat_avg, lat_std, lat_pc99);
+         lat_avg, lat_std, lat_pc99);
   printf("Total examples: %d, total time: %.5f sec, total examples/sec: %.5f\n",
-		  total_samples, total_time_sec, examples_per_sec);
+         total_samples, total_time_sec, examples_per_sec);
   printf("Avg accuracy: %f\n\n", acc_avg);
 }
 
@@ -246,8 +283,10 @@ void Main() {
   CHECK_GE(FLAGS_iterations, 0);
   CHECK_GE(FLAGS_skip_batch_num, 0);
 
-  // image list separator is tab by default
-  char separator = '\t';
+  // reader instance for not fake data
+  DataReader reader(FLAGS_data_list, FLAGS_data_dir, FLAGS_width, FLAGS_height,
+                    FLAGS_channels);
+  if (!reader.SetSeparator('\t')) reader.SetSeparator(' ');
 
   // Read first batch
   if (FLAGS_use_fake_data) {
@@ -272,43 +311,9 @@ void Main() {
     input.data.Resize(count(shape) * sizeof(float));
     input.dtype = PaddleDType::FLOAT32;
 
-    DataReader reader(FLAGS_data_list, FLAGS_data_dir, FLAGS_width,
-                      FLAGS_height);
-
-    try {
-      reader.NextBatch(static_cast<float*>(input.data.data()),
-                       static_cast<int64_t*>(input_label.data.data()),
-                       separator, FLAGS_batch_size, FLAGS_channels,
-                       FLAGS_debug_display_images);
-    } catch (std::runtime_error& e) {
-      if (std::string(e.what()).find("separator") != std::string::npos) {
-        // try again with a different separator
-        separator = ' ';
-        reader.NextBatch(static_cast<float*>(input.data.data()),
-                         static_cast<int64_t*>(input_label.data.data()),
-                         separator, FLAGS_batch_size, FLAGS_channels,
-                         FLAGS_debug_display_images);
-      } else {
-        throw;
-      }
-    }
-  }
-
-  if (FLAGS_debug_display_images) {
-    for (int b = 0; b < FLAGS_batch_size; b++) {
-      std::vector<cv::Mat> fimage_channels;
-      for (int c = 0; c < FLAGS_channels; c++) {
-        fimage_channels.emplace_back(
-            cv::Size(FLAGS_width, FLAGS_height), CV_32FC1,
-            static_cast<float*>(input.data.data()) +
-                FLAGS_width * FLAGS_height * c +
-                FLAGS_width * FLAGS_height * FLAGS_channels * b);
-      }
-      cv::Mat mat;
-      cv::merge(fimage_channels, mat);
-      cv::imshow(std::to_string(b) + " output image", mat);
-    }
-    cv::waitKey(0);
+    reader.NextBatch(static_cast<float*>(input.data.data()),
+                     static_cast<int64_t*>(input_label.data.data()),
+                     FLAGS_batch_size, FLAGS_debug_display_images);
   }
 
   // create predictor
@@ -332,7 +337,6 @@ void Main() {
     config.ir_mkldnn_passes.push_back("conv_relu_mkldnn_fuse_pass");
     config.ir_mkldnn_passes.push_back("fc_fuse_pass");
 #endif
-
   }
   auto predictor = CreatePaddlePredictor<contrib::AnalysisConfig,
                                          PaddleEngineKind::kAnalysis>(config);
@@ -347,6 +351,23 @@ void Main() {
   std::vector<double> batch_times;
   std::vector<double> fpses;
   for (int i = 0; i < FLAGS_iterations + FLAGS_skip_batch_num; i++) {
+    if (i > 0) {
+      if (FLAGS_use_fake_data) {
+        fill_data<float>(static_cast<float*>(input.data.data()), count(shape));
+        fill_data<int64_t>(static_cast<int64_t*>(input_label.data.data()),
+                           label_size);
+      } else {
+        if (!reader.NextBatch(static_cast<float*>(input.data.data()),
+                              static_cast<int64_t*>(input_label.data.data()),
+                              FLAGS_batch_size, FLAGS_debug_display_images)) {
+          std::cout << "No more full batches. stopping.";
+          break;
+        }
+      }
+    }
+
+    drawImages(static_cast<float*>(input.data.data()));
+
     if (i == FLAGS_skip_batch_num) {
       timer_total.tic();
       if (FLAGS_profile) {
@@ -367,9 +388,9 @@ void Main() {
     fpses.push_back(fps);
     std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
     std::cout << "Iteration: " << appx << i << ", "
-	    << "accuracy: " << *acc1 << ", "
-	    << "latency: " << batch_time << " ms, "
-	    << "fps: " << fps << std::endl;
+              << "accuracy: " << *acc1 << ", "
+              << "latency: " << batch_time << " ms, "
+              << "fps: " << fps << std::endl;
   }
 
   if (FLAGS_profile) {
@@ -380,7 +401,7 @@ void Main() {
   double total_samples = FLAGS_iterations * FLAGS_batch_size;
   double total_time = timer_total.toc() / 1000;
   PostprocessBenchmarkData(batch_times, infer_accs, fpses, total_time,
-		  total_samples);
+                           total_samples);
 }
 
 TEST(resnet50, basic) { Main(); }
