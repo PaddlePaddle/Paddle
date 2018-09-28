@@ -103,18 +103,26 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
   }
 };
 
-framework::OpKernelType DeQuantOp::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
+framework::OpKernelType DeQuantOp::GetExpectedKernelType(const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+  }
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),
-      ctx.device_context());
+      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
 }
-
 
 void DeQuantOpMaker::Make() {
   AddInput("Input","input");
   AddInput("Scale","scale...");
   AddOutput("Output","output");
+AddComment(R"DOC(
+This op will quantize data from INT8 to FP32
+)DOC");
 }
 
 }  // namespace operators

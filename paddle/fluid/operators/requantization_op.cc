@@ -80,18 +80,26 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
   }
 };
 
-framework::OpKernelType ReQuantOp::GetExpectedKernelType(
-    const framework::ExecutionContext& ctx) const {
+framework::OpKernelType ReQuantOp::GetExpectedKernelType(const framework::ExecutionContext& ctx) const {
+  framework::LibraryType library_{framework::LibraryType::kPlain};
+  std::string data_format = ctx.Attr<std::string>("data_format");
+  framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+  if (library_ == framework::LibraryType::kPlain &&
+      platform::CanMKLDNNBeUsed(ctx)) {
+    library_ = framework::LibraryType::kMKLDNN;
+    layout_ = framework::DataLayout::kMKLDNN;
+  }
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),
-      ctx.device_context());
+      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
 }
-
 
 void ReQuantOpMaker::Make() {
   AddInput("Input","input");
   AddInput("Scale","scale...");
   AddOutput("Output","output");
+AddComment(R"DOC(
+This op will requantize data from INT8 to INT8
+)DOC");
 }
 
 }  // namespace operators
