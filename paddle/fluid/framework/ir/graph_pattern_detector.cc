@@ -975,6 +975,7 @@ PDNode *patterns::ConvBias::operator()(
   eltiwse_op->LinksFrom({conv_out_var, eltwise_bias_var})
       .LinksTo({eltwise_out_var});
   return eltwise_out_var;
+}
 
 PDNode *patterns::Conv::operator()() {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
