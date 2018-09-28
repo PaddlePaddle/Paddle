@@ -264,6 +264,25 @@ class TestLRDecay(TranspilerTest):
         ])
 
 
+class TestDecayedAdagrad(TranspilerTest):
+    def net_conf(self):
+        x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
+        y_predict = fluid.layers.fc(input=x,
+                                    size=1000,
+                                    act=None,
+                                    param_attr=fluid.ParamAttr(name='fc_w'),
+                                    bias_attr=fluid.ParamAttr(name='fc_b'))
+        y = fluid.layers.data(name='y', shape=[1], dtype='float32')
+        cost = fluid.layers.square_error_cost(input=y_predict, label=y)
+        avg_cost = fluid.layers.mean(cost)
+        opt = fluid.optimizer.DecayedAdagrad(learning_rate=0.1)
+        opt.minimize(avg_cost)
+
+    def transpiler_test_impl(self):
+        pserver, startup = self.get_pserver(self.pserver1_ep)
+        trainer, _ = self.get_trainer()
+
+
 class TestLRDecayConditional(TranspilerTest):
     def net_conf(self):
         x = fluid.layers.data(name='x', shape=[1000], dtype='float32')
@@ -661,22 +680,25 @@ class TestLoadSliceVar(TranspilerTest):
 
 class TestNCCL2Transpile(TranspilerTest):
     def test_nccl2_transpile(self):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
-            self.net_conf()
+        if fluid.core.is_compiled_with_cuda():  #test nccl2 only with cuda
+            main = fluid.Program()
+            startup = fluid.Program()
+            with fluid.program_guard(main, startup):
+                self.net_conf()
 
-        config = fluid.DistributeTranspilerConfig()
-        config.mode = "nccl2"
-        t = fluid.DistributeTranspiler(config=config)
-        t.transpile(
-            0,
-            trainers="127.0.0.1:6174,127.0.0.1:6175",
-            current_endpoint="127.0.0.1:6174",
-            startup_program=startup)
-        print([op.type for op in startup.global_block().ops])
-        self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
-        self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+            config = fluid.DistributeTranspilerConfig()
+            config.mode = "nccl2"
+            t = fluid.DistributeTranspiler(config=config)
+            t.transpile(
+                0,
+                trainers="127.0.0.1:6174,127.0.0.1:6175",
+                current_endpoint="127.0.0.1:6174",
+                startup_program=startup)
+            print([op.type for op in startup.global_block().ops])
+            self.assertEqual(startup.global_block().ops[-1].type, "gen_nccl_id")
+            self.assertIsNotNone(startup.global_block().vars.get("NCCLID"))
+        else:
+            pass
 
 
 if __name__ == "__main__":

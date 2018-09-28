@@ -28,9 +28,9 @@ cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph grap
 pass_library(graph_to_program_pass base)
 pass_library(graph_viz_pass base)
 pass_library(fc_fuse_pass inference)
-if(WITH_MKLDNN)
-  pass_library(conv_relu_mkldnn_fuse_pass inference)
-endif()
+if (WITH_MKLDNN)
+    pass_library(conv_relu_mkldnn_fuse_pass inference)
+endif ()
 pass_library(attention_lstm_fuse_pass inference)
 pass_library(infer_clean_graph_pass inference)
 pass_library(fc_lstm_fuse_pass inference)
@@ -40,6 +40,8 @@ pass_library(seq_concat_fc_fuse_pass inference)
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
 
 set(GLOB_PASS_LIB ${PASS_LIBRARY} CACHE INTERNAL "Global PASS library")
+
+cc_library(pass_builder SRCS pass_builder.cc DEPS pass)
 
 cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)
