@@ -39,12 +39,6 @@ __all__ = [
     'mean',
     'mul',
     'sigmoid_cross_entropy_with_logits',
-    'clip',
-    'clip_by_norm',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
     'maxout',
 ]
 
