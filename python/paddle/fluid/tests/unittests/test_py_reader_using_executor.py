@@ -58,7 +58,7 @@ def simple_fc_net(in_size,
     if use_feed_list:
         data = fluid.layers.data(name="data", dtype='float32', shape=[in_size])
         label = fluid.layers.data(name='label', dtype='int64', shape=[1])
-        reader = fluid.layers.py_reader_by_data(
+        reader = fluid.layers.create_py_reader_by_data(
             capacity=queue_capacity,
             use_double_buffer=False,
             feed_list=[data, label])
@@ -114,7 +114,8 @@ class TestPyReaderUsingExecutor(unittest.TestCase):
                         print({
                             'use_cuda': use_cuda,
                             'use_parallel_executor': use_parallel_executor,
-                            'use_double_buffer': use_double_buffer
+                            'use_double_buffer': use_double_buffer,
+                            'use_feed_list': use_feed_list
                         })
                         self.main(use_cuda, use_parallel_executor,
                                   use_double_buffer, use_feed_list)
