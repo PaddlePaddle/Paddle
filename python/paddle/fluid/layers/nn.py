@@ -158,7 +158,6 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
-       use_mkldnn=False,
        act=None,
        is_test=False,
        name=None):
@@ -210,8 +209,6 @@ def fc(input,
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
-        use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
-            library is installed. Default: False
         name (str, default None): The name of this layer.
 
     Returns:
@@ -258,7 +255,7 @@ def fc(input,
             type="sum",
             inputs={"X": mul_results},
             outputs={"Out": pre_bias},
-            attrs={"use_mkldnn": use_mkldnn})
+            attrs={"use_mkldnn": False})
     # add bias
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
@@ -1422,7 +1419,6 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
-           use_mkldnn=False,
            act=None,
            name=None):
     """
@@ -1500,8 +1496,6 @@ def conv2d(input,
         bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not, it is valid only when compiled
-            with mkldnn library. Default: False
         act (str): Activation type. Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -1574,7 +1568,7 @@ def conv2d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn
+            'use_mkldnn': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -1592,7 +1586,6 @@ def conv3d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
-           use_mkldnn=False,
            act=None,
            name=None):
     """
@@ -1666,7 +1659,6 @@ def conv3d(input,
         bias_attr (ParamAttr): Bias parameter for the Conv3d layer. Default: None
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not.
         act (str): Activation type. Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -1736,7 +1728,7 @@ def conv3d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn
+            'use_mkldnn': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -1918,7 +1910,6 @@ def pool2d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           use_mkldnn=False,
            name=None):
     """
     ${comment}
@@ -1936,7 +1927,6 @@ def pool2d(input,
         global_pooling: ${global_pooling_comment}
         use_cudnn: ${use_cudnn_comment}
         ceil_mode: ${ceil_mode_comment}
-        use_mkldnn: ${use_mkldnn_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -1996,7 +1986,7 @@ def pool2d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": False
         })
 
     return pool_out
@@ -2010,7 +2000,6 @@ def pool3d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           use_mkldnn=False,
            name=None):
     """
     This function adds the operator for pooling in 3-dimensions, using the
@@ -2025,7 +2014,6 @@ def pool3d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-        use_mkldnn (bool): ${use_mkldnn_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -2066,7 +2054,7 @@ def pool3d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": False
         })
 
     return pool_out
@@ -2081,7 +2069,6 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
-               use_mkldnn=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -2123,7 +2110,6 @@ def batch_norm(input,
         bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
@@ -2215,7 +2201,7 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
-            "use_mkldnn": use_mkldnn,
+            "use_mkldnn": False,
             "fuse_with_relu": fuse_with_relu
         })
 
@@ -6530,12 +6516,7 @@ def uniform_random_batch_size_like(input,
 
 
 @templatedoc()
-def gaussian_random(shape,
-                    mean=0.0,
-                    std=1.0,
-                    seed=0,
-                    dtype='float32',
-                    use_mkldnn=False):
+def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
     """
     ${comment}
 
@@ -6545,7 +6526,6 @@ def gaussian_random(shape,
         std (Float): ${std_comment}
         seed (Int): ${seed_comment}
         dtype(np.dtype|core.VarDesc.VarType|str): Output data type.
-        use_mkldnn (Bool): Only used in mkldnn kernel.
 
     Returns:
         out (Variable): ${out_comment}
@@ -6564,7 +6544,7 @@ def gaussian_random(shape,
             'std': std,
             'seed': seed,
             'dtype': c_dtype,
-            'use_mkldnn': use_mkldnn
+            'use_mkldnn': False
         })
 
     return out
@@ -6647,13 +6627,12 @@ def gaussian_random_batch_size_like(input,
 
 
 @templatedoc()
-def sum(x, use_mkldnn=False):
+def sum(x):
     """
     ${comment}
 
     Args:
         x (Variable): ${x_comment}
-        use_mkldnn (Bool): ${use_mkldnn_comment}
 
     Returns:
         out (Variable): ${out_comment}
@@ -6665,7 +6644,7 @@ def sum(x, use_mkldnn=False):
         type='sum',
         inputs={'X': x},
         outputs={'Out': out},
-        attrs={'use_mkldnn': use_mkldnn})
+        attrs={'use_mkldnn': False})
 
     return out
 
@@ -6781,31 +6760,31 @@ def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     return helper.append_activation(out)
 
 
-def elementwise_add(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_add(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
-def elementwise_div(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_div(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
-def elementwise_sub(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_sub(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
-def elementwise_mul(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_max(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_max(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-def elementwise_min(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_min(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
-def elementwise_pow(x, y, axis=-1, use_mkldnn=False, act=None, name=None):
+def elementwise_pow(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
