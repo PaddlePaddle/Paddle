@@ -103,7 +103,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, ConvolutionWithElementwiseAddRelu) {
              {"a", "b", "bias", "weights", "c", "d", "e", "f"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
-      if (v == "weights") {
+      if (v == "weights" || v == "bias") {
         var->SetPersistable(true);
       }
     }
