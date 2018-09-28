@@ -87,10 +87,10 @@ graph_ptr ConvElementwiseAddMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {
     op_desc.SetInput("ResidualData", {elementwise_add_x->Name()});
     op_desc.SetOutput("Output", {conv_output->Name()});
 
-    for (auto& attr : conv_op->Op()->GetAttrMap()) {
+    for (const auto& attr : conv_op->Op()->GetAttrMap()) {
       op_desc.SetAttr(attr.first, attr.second);
     }
-    op_desc.SetAttr("use_mkldnn", true);
+
     op_desc.SetAttr("fuse_residual_connection", true);
 
     auto fused_conv_op = g->CreateOpNode(&op_desc);
