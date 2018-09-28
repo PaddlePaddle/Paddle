@@ -79,12 +79,10 @@ TEST(JitKernel, vmul) {
     RandomVec<float>(d, y.data());
     const auto& ker =
         jit::KernelPool::Instance().template Get<jit::VMulKernel<float>>(d);
-
     const float* x_data = x.data();
     const float* y_data = y.data();
     float* ztgt_data = ztgt.data();
     float* zref_data = zref.data();
-
     auto trefs = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
       vmul_ref(d, x_data, y_data, zref_data);
@@ -104,6 +102,85 @@ TEST(JitKernel, vmul) {
       auto si0 = GetCurrentUS();
       for (int i = 0; i < repeat; ++i) {
         vmul_intri8(d, x_data, y_data, zref_data);
+      }
+      auto si1 = GetCurrentUS();
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+    }
+#endif
+
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(d, x_data, y_data, ztgt_data);
+    }
+    auto ttgte = GetCurrentUS();
+
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+#ifdef PADDLE_WITH_MKLML
+            << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
+#else
+            << " us, "
+#endif
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
+  }
+}
+
+void vadd_ref(const int n, const float* x, const float* y, float* z) {
+  for (int i = 0; i < n; ++i) {
+    z[i] = x[i] + y[i];
+  }
+}
+
+#if defined __AVX__ || defined __AVX2__
+void vadd_intri8(const int n, const float* x, const float* y, float* z) {
+  __m256 tmpx, tmpy;
+  tmpx = _mm256_loadu_ps(x);
+  tmpy = _mm256_loadu_ps(y);
+  tmpx = _mm256_add_ps(tmpx, tmpy);
+  _mm256_storeu_ps(z, tmpx);
+}
+#endif
+
+#ifdef PADDLE_WITH_MKLML
+void vadd_mkl(const int n, const float* x, const float* y, float* z) {
+  paddle::platform::dynload::vsAdd(n, x, y, z);
+}
+#endif
+
+TEST(JitKernel, vadd) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 256, 512}) {
+    std::vector<float> x(d), y(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data());
+    RandomVec<float>(d, y.data());
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VAddKernel<float>>(d);
+    const float* x_data = x.data();
+    const float* y_data = y.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vadd_ref(d, x_data, y_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+
+#ifdef PADDLE_WITH_MKLML
+    auto tmkls = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vadd_mkl(d, x_data, y_data, zref_data);
+    }
+    auto tmkle = GetCurrentUS();
+#endif
+
+#if defined __AVX__ || defined __AVX2__
+    if (d == 8) {
+      auto si0 = GetCurrentUS();
+      for (int i = 0; i < repeat; ++i) {
+        vadd_intri8(d, x_data, y_data, zref_data);
       }
       auto si1 = GetCurrentUS();
       VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
