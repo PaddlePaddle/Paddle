@@ -1452,6 +1452,20 @@ class Program(object):
         self._slice_vars_and_attrs = []
         self._endpoints = []
         self._distributed_lookup_table = None
+        self._current_op_place = ""
+        self._op_place_stack = []
+
+    @property
+    def op_place_stack(self):
+        return self._op_place_stack
+
+    @property
+    def op_place(self):
+        return self._current_op_place
+
+    @op_place.setter
+    def op_place(self, place):
+        self._current_op_place = place
 
     @property
     def op_role(self):
@@ -2185,3 +2199,14 @@ def _get_var(name, program=None):
     assert isinstance(program, Program)
 
     return program.global_block().var(name)
+
+
+@contextlib.contextmanager
+def place_guard(place):
+    _main_program_.op_place_stack.append(_main_program_.op_place)
+    _main_program_.op_place = place
+    _startup_program_.op_place_stack.append(_main_program_.op_place)
+    _startup_program_.op_place = place
+    yield
+    _main_program_.op_place = _main_program_.op_place_stack.pop()
+    _startup_program_.op_place = _startup_program_.op_place_stack.pop()

@@ -135,6 +135,7 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   AddAttr<std::vector<std::string>>(OpCreationCallstackAttrName(),
                                     "Callstack for Op Creatation.")
       .SetDefault({});
+  AddAttr<std::string>(OpPlaceAttrName(), "Operator placement.").SetDefault("");
   Validate();
 }
 
