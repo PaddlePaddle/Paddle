@@ -169,15 +169,8 @@ cc_test(selected_rows_test SRCS selected_rows_test.cc DEPS selected_rows)
 cc_test(op_kernel_type_test SRCS op_kernel_type_test.cc DEPS place device_context framework_proto)
 cc_test(cow_ptr_tests SRCS details/cow_ptr_test.cc)
 
-# cc_test(channel_test SRCS channel_test.cc)
 cc_test(tuple_test SRCS tuple_test.cc )
 
 if (NOT WIN32)
 cc_test(rw_lock_test SRCS rw_lock_test.cc)
 endif (NOT WIN32)
-
-# disable test temporarily.
-# TODO https://github.com/PaddlePaddle/Paddle/issues/11971
-# cc_test(concurrency_test SRCS concurrency_test.cc DEPS go_op channel_close_op channel_create_op
-#         channel_send_op channel_recv_op sum_op select_op elementwise_add_op compare_op
-#         conditional_block_op while_op assign_op print_op executor proto_desc)
