@@ -48,28 +48,30 @@ namespace paddle {
 struct DataReader {
   explicit DataReader(const std::string& data_list_path,
                       const std::string& data_dir_path, int resize_width,
-                      int resize_height)
+                      int resize_height, int channels)
       : data_list_path(data_list_path),
         data_dir_path(data_dir_path),
         file(std::ifstream(data_list_path)),
         width(resize_width),
-        height(resize_height) {
+        height(resize_height),
+        channels(channels) {
     if (!file.is_open()) {
       throw std::invalid_argument("Cannot open data list file " +
                                   data_list_path);
     }
+
     if (data_dir_path.empty()) {
       throw std::invalid_argument(
           "Data directory must be set to use imagenet.");
     }
-  }
 
-  bool NextBatch(float* input, int64_t* label, char sep, int batch_size,
-                 int channels, bool debug_display_images) {
     if (channels != 3) {
       throw std::invalid_argument("Only 3 channel image loading supported");
     }
+  }
 
+  bool NextBatch(float* input, int64_t* label, char sep, int batch_size,
+                 bool debug_display_images) {
     std::string line;
 
     for (int i = 0; i < batch_size; i++) {
@@ -129,6 +131,7 @@ struct DataReader {
   std::ifstream file;
   int width;
   int height;
+  int channels;
 };
 
 template <typename T>
@@ -191,7 +194,7 @@ void PostprocessBenchmarkData(std::vector<double> latencies,
   SkipFirstNData(latencies, FLAGS_skip_batch_num);
   SkipFirstNData(infer_accs, FLAGS_skip_batch_num);
   SkipFirstNData(fpses, FLAGS_skip_batch_num);
-  
+
   double lat_avg = FindAverage(latencies);
   float acc_avg = FindAverage(infer_accs);
   double fps_avg = FindAverage(fpses);
@@ -243,6 +246,10 @@ void Main() {
   CHECK_GE(FLAGS_iterations, 0);
   CHECK_GE(FLAGS_skip_batch_num, 0);
 
+  // image list separator is tab by default
+  char separator = '\t';
+
+  // Read first batch
   if (FLAGS_use_fake_data) {
     // create fake data
     input.data.Resize(count(shape) * sizeof(float));
@@ -270,15 +277,16 @@ void Main() {
 
     try {
       reader.NextBatch(static_cast<float*>(input.data.data()),
-                       static_cast<int64_t*>(input_label.data.data()), '\t',
-                       FLAGS_batch_size, FLAGS_channels,
+                       static_cast<int64_t*>(input_label.data.data()),
+                       separator, FLAGS_batch_size, FLAGS_channels,
                        FLAGS_debug_display_images);
     } catch (std::runtime_error& e) {
       if (std::string(e.what()).find("separator") != std::string::npos) {
         // try again with a different separator
+        separator = ' ';
         reader.NextBatch(static_cast<float*>(input.data.data()),
-                         static_cast<int64_t*>(input_label.data.data()), ' ',
-                         FLAGS_batch_size, FLAGS_channels,
+                         static_cast<int64_t*>(input_label.data.data()),
+                         separator, FLAGS_batch_size, FLAGS_channels,
                          FLAGS_debug_display_images);
       } else {
         throw;
