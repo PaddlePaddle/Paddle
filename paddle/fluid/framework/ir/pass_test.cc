@@ -82,12 +82,10 @@ TEST(PassTest, TestPassAttrCheck) {
   ASSERT_EQ(graph->Get<int>("copy_test_pass_attr"), 2);
   ASSERT_EQ(graph->Get<int>("copy_test_graph_attr"), 2);
 
-  try {
-    graph = pass->Apply(std::move(graph));
-  } catch (paddle::platform::EnforceNotMet e) {
-    exception = std::string(e.what());
-  }
-  ASSERT_TRUE(exception.find("Pass can only Apply() once") != exception.npos);
+  // Allow apply more than once.
+  graph.reset(new Graph(prog));
+  graph->Set<int>("test_graph_attr", new int);
+  graph = pass->Apply(std::move(graph));
 
   pass = PassRegistry::Instance().Get("test_pass");
   pass->SetNotOwned<int>("test_pass_attr", &val);

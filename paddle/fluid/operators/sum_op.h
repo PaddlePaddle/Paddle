@@ -124,7 +124,6 @@ class SumKernel : public framework::OpKernel<T> {
 
       out_value->Resize(framework::make_ddim(in_dim));
       out_value->mutable_data<T>(context.GetPlace());
-
       // if all the input sparse vars are empty, no need to
       // merge these vars.
       if (first_dim == 0UL) {
