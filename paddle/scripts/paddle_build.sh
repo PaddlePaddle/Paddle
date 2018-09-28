@@ -395,7 +395,7 @@ EOF
         ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
         make install -j 8
-        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
@@ -750,7 +750,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         run_test
-        assert_api_not_changed
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       *)
         print_usage

@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
+using contrib::AnalysisConfig;
 
 struct Record {
   std::vector<float> data;
@@ -114,7 +115,8 @@ TEST(Analyzer_vis, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   int num_ops;
-  GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  GetFuseStatis(predictor.get(), &num_ops);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
