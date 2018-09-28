@@ -341,7 +341,7 @@ set(GLOB_OP_LIB ${OP_LIBRARY} CACHE INTERNAL "Global OP library")
 set(GLOB_DISTRIBUTE_DEPS ${DISTRIBUTE_DEPS} CACHE INTERNAL "distributed dependency")
 
 cc_test(gather_test SRCS gather_test.cc DEPS tensor)
-cc_test(scatter_test SRCS scatter_test.cc DEPS tensor)
+cc_test(scatter_test SRCS scatter_test.cc DEPS tensor math_function)
 cc_test(beam_search_decode_op_test SRCS beam_search_decode_op_test.cc DEPS lod_tensor)
 cc_test(beam_search_op_test SRCS beam_search_op_test.cc DEPS lod_tensor beam_search_op)
 cc_test(strided_memcpy_test SRCS strided_memcpy_test.cc DEPS tensor memory)
