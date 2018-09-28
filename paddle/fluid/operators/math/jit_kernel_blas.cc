@@ -206,8 +206,84 @@ VADD_INTRI8_FLOAT(jit::avx512f);
 #undef VADD_MKL_FLOAT
 #undef VADD_MKL_DOUBLE
 
+/* VSCAL JitKernel */
+template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+class VScalKernelImpl : public VScalKernel<T> {
+ public:
+  void Compute(const int n, const T a, const T* x, T* y) override {
+    for (int i = 0; i < n; ++i) {
+      y[i] = a * x[i];
+    }
+  }
+  void Compute(const int n, const T a, T* x) override {
+    for (int i = 0; i < n; ++i) {
+      x[i] = a * x[i];
+    }
+  }
+};
+
+#ifdef PADDLE_WITH_MKLML
+#define VSCAL_MKL_FLOAT(isa, block)                                            \
+  template <>                                                                  \
+  void VScalKernelImpl<float, isa, block>::Compute(const int n, const float a, \
+                                                   float* x) {                 \
+    platform::dynload::cblas_sscal(n, a, x, 1);                                \
+  }
+
+#define VSCAL_MKL_DOUBLE(isa, block)                 \
+  template <>                                        \
+  void VScalKernelImpl<double, isa, block>::Compute( \
+      const int n, const double a, double* x) {      \
+    platform::dynload::cblas_dscal(n, a, x, 1);      \
+  }
+
+FOR_EACH_ISA(VSCAL_MKL_FLOAT, kGT16);
+FOR_EACH_ISA_BLOCK(VSCAL_MKL_DOUBLE);
+#endif
+
+#define VSCAL_INTRI8(isa)                                                     \
+  template <>                                                                 \
+  void VScalKernelImpl<float, isa, kEQ8>::Compute(const int n, const float a, \
+                                                  const float* x, float* y) { \
+    __m256 tmp;                                                               \
+    __m256 scalar = _mm256_set1_ps(a);                                        \
+    tmp = _mm256_loadu_ps(x);                                                 \
+    tmp = _mm256_mul_ps(tmp, scalar);                                         \
+    _mm256_storeu_ps(y, tmp);                                                 \
+  }
+#define VSCAL_INTRI8_INPLACE(isa)                                             \
+  template <>                                                                 \
+  void VScalKernelImpl<float, isa, kEQ8>::Compute(const int n, const float a, \
+                                                  float* x) {                 \
+    __m256 tmp;                                                               \
+    __m256 scalar = _mm256_set1_ps(a);                                        \
+    tmp = _mm256_loadu_ps(x);                                                 \
+    tmp = _mm256_mul_ps(tmp, scalar);                                         \
+    _mm256_storeu_ps(x, tmp);                                                 \
+  }
+
+#ifdef __AVX__
+VSCAL_INTRI8(jit::avx);
+VSCAL_INTRI8_INPLACE(jit::avx);
+#endif
+#ifdef __AVX2__
+VSCAL_INTRI8(jit::avx2);
+VSCAL_INTRI8_INPLACE(jit::avx2);
+#endif
+#ifdef __AVX512F__
+VSCAL_INTRI8(jit::avx512f);
+VSCAL_INTRI8_INPLACE(jit::avx512f);
+#endif
+// TODO(TJ): eq16 test and complete avx512
+
+#undef VSCAL_INTRI8
+#undef VSCAL_INTRI8_INPLACE
+#undef VSCAL_MKL_FLOAT
+#undef VSCAL_MKL_DOUBLE
+
 REGISTER_BLAS_JITKERNEL(vmul, VMulKernel);
 REGISTER_BLAS_JITKERNEL(vadd, VAddKernel);
+REGISTER_BLAS_JITKERNEL(vscal, VScalKernel);
 
 #undef FOR_EACH_ISA
 #undef FOR_EACH_BLOCK
