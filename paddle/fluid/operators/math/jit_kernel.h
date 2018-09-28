@@ -40,7 +40,7 @@ typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
 class Kernel {
  public:
-  Kernel() {}
+  Kernel() = default;
   virtual ~Kernel() = default;
 
  private:
@@ -66,15 +66,13 @@ class KernelPool {
 template <typename T>
 class VMulKernel : public Kernel {
  public:
-  explicit VMulKernel(int n);
-  void (*Compute)(const int n, const T *, const T *, T *);
+  virtual void Compute(const int n, const T *x, const T *y, T *z) = 0;
 };
 
 template <typename T>
 class VAddKernel : public Kernel {
  public:
-  explicit VAddKernel(int n);
-  void (*Compute)(const int n, const T *, const T *, T *);
+  virtual void Compute(const int n, const T *x, const T *y, T *z) = 0;
 };
 
 template <typename T>
