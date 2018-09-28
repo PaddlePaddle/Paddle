@@ -166,6 +166,17 @@ class TestDistBase(unittest.TestCase):
     def _setup_config(self):
         raise NotImplementedError("tests should have _setup_config implemented")
 
+    def _after_setup_config(self):
+        if self._enforce_place == "CPU":
+            self.__use_cuda = False
+        elif self._enforce_place == "GPU":
+            self.__use_cuda = True
+        else:
+            if fluid.core.is_compiled_with_cuda():
+                self.__use_cuda = True
+            else:
+                self.__use_cuda = False
+
     def setUp(self):
         self._trainers = 2
         self._pservers = 2
@@ -173,11 +184,12 @@ class TestDistBase(unittest.TestCase):
             self._find_free_port(), self._find_free_port())
         self._python_interp = "python"
         self._sync_mode = True
-        self._use_cuda = True
+        self._enforce_place = None
         self._mem_opt = False
         self._use_reduce = False
         self._use_reader_alloc = True
         self._setup_config()
+        self._after_setup_config()
 
     def _find_free_port(self):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
@@ -244,7 +256,7 @@ class TestDistBase(unittest.TestCase):
 
         cmd = "%s %s --role trainer" % (self._python_interp, model)
 
-        if self._use_cuda:
+        if self.__use_cuda:
             cmd += " --use_cuda"
             env_local = {"CUDA_VISIBLE_DEVICES": "0"}
         else:
@@ -252,7 +264,7 @@ class TestDistBase(unittest.TestCase):
 
         envs.update(env_local)
 
-        if not check_error_log:
+        if check_error_log:
             err_log = open("/tmp/trainer.err.log", "wb")
             local_proc = subprocess.Popen(
                 cmd.split(" "),
@@ -307,7 +319,7 @@ class TestDistBase(unittest.TestCase):
         if self._use_reader_alloc:
             tr0_cmd += " --use_reader_alloc"
             tr1_cmd += " --use_reader_alloc"
-        if self._use_cuda:
+        if self.__use_cuda:
             tr0_cmd += " --use_cuda"
             tr1_cmd += " --use_cuda"
             env0 = {"CUDA_VISIBLE_DEVICES": "0"}
