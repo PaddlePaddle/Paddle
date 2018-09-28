@@ -83,6 +83,12 @@ class VScalKernel : public Kernel {
 };
 
 template <typename T>
+class VExpKernel : public Kernel {
+ public:
+  virtual void Compute(const int n, const T *x, T *y) = 0;
+};
+
+template <typename T>
 class LSTMKernel : public Kernel {
  public:
   explicit LSTMKernel(int d, const std::string &act_gate,

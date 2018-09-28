@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <sys/time.h>
-#include <cstring>
+#include <cstring>  // for memcpy
 #include <string>
 #include <vector>
 #include "gflags/gflags.h"
@@ -38,14 +38,69 @@ inline double GetCurrentUS() {
 }
 
 template <typename T>
-void RandomVec(const int n, T* a) {
+void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
+               const T upper = static_cast<T>(20.f)) {
   static unsigned int seed = 100;
   std::mt19937 rng(seed++);
   std::uniform_real_distribution<double> uniform_dist(0, 1);
-  const T lower = static_cast<T>(-20.f);
-  const T upper = static_cast<T>(20.f);
   for (int i = 0; i < n; ++i) {
     a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
+  }
+}
+
+void vexp_ref(const int n, const float* x, float* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = std::exp(x[i]);
+  }
+}
+
+#ifdef PADDLE_WITH_MKLML
+void vexp_mkl(const int n, const float* x, float* y) {
+  paddle::platform::dynload::vsExp(n, x, y);
+}
+#endif
+
+TEST(JitKernel, vexp) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 128}) {
+    std::vector<float> x(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data(), -2.f, 2.f);
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VExpKernel<float>>(d);
+    const float* x_data = x.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vexp_ref(d, x_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+
+#ifdef PADDLE_WITH_MKLML
+    auto tmkls = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vexp_mkl(d, x_data, zref_data);
+    }
+    auto tmkle = GetCurrentUS();
+#endif
+
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(d, x_data, ztgt_data);
+    }
+    auto ttgte = GetCurrentUS();
+
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+#ifdef PADDLE_WITH_MKLML
+            << " us, mkl takes: " << (tmkle - tmkls) / repeat << " us, "
+#else
+            << " us, "
+#endif
+            << "tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
   }
 }
 
