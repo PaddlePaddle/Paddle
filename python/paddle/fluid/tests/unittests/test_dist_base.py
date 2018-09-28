@@ -278,7 +278,6 @@ class TestDistBase(unittest.TestCase):
                 stderr=subprocess.PIPE,
                 env=envs)
 
-        local_proc.wait()
         local_out, local_err = local_proc.communicate()
         local_ret = cpt.to_text(local_out)
 
@@ -352,9 +351,6 @@ class TestDistBase(unittest.TestCase):
             stderr=tr1_pipe,
             env=env1)
 
-        tr0_proc.wait()
-        tr1_proc.wait()
-
         tr0_out, tr0_err = tr0_proc.communicate()
         tr0_loss_text = cpt.to_text(tr0_out)
         tr1_out, tr1_err = tr1_proc.communicate()
@@ -372,8 +368,6 @@ class TestDistBase(unittest.TestCase):
         os.kill(ps1.pid, signal.SIGKILL)
         ps0.terminate()
         ps1.terminate()
-        ps0.wait()
-        ps1.wait()
         FNULL.close()
 
         # print log
