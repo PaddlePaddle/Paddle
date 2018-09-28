@@ -1003,15 +1003,19 @@ PDNode *patterns::Conv::operator()() {
   auto conv_op = pattern->NewNode(conv_op_repr())->assert_is_op("conv2d");
 
   auto input_var = pattern->NewNode(conv_input_repr())
+                       ->AsInput()
                        ->assert_is_op_input("conv2d", "Input");
 
-  auto bias_var =
-      pattern->NewNode(conv_bias_repr())->assert_is_op_input("conv2d", "Bias");
+  auto bias_var = pattern->NewNode(conv_bias_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("conv2d", "Bias");
 
   auto filter_var = pattern->NewNode(conv_filter_repr())
+                        ->AsInput()
                         ->assert_is_op_input("conv2d", "Filter");
 
   auto output_var = pattern->NewNode(conv_output_repr())
+                        ->AsOutput()
                         ->assert_is_op_output("conv2d", "Output");
 
   conv_op->LinksFrom({input_var, bias_var, filter_var});
@@ -1025,6 +1029,7 @@ PDNode *patterns::ElementwiseAdd::operator()(PDNode *y_var) {
                                 ->assert_is_op("elementwise_add");
 
   auto x_var = pattern->NewNode(elementwise_add_x_repr())
+                   ->AsInput()
                    ->assert_is_op_input("elementwise_add", "X");
 
   y_var->assert_is_op_input("elementwise_add", "Y");
