@@ -750,7 +750,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         run_test
-        assert_api_not_changed
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       *)
         print_usage
