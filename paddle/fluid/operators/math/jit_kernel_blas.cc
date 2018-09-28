@@ -110,12 +110,6 @@ FOR_EACH_ISA_COMMON_BLOCK(VMUL_MKL_FLOAT)
 FOR_EACH_ISA_ALL_BLOCK(VMUL_MKL_DOUBLE)
 #endif
 
-/// lt8
-#ifdef PADDLE_WITH_MKLML
-VMUL_MKL_FLOAT(jit::avx2, kLT8)
-VMUL_MKL_FLOAT(jit::avx512f, kLT8)
-#endif
-
 /// eq8
 #define VMUL_INTRI8_FLOAT(isa)                                    \
   template <>                                                     \
@@ -128,27 +122,16 @@ VMUL_MKL_FLOAT(jit::avx512f, kLT8)
     _mm256_storeu_ps(z, tmpx);                                    \
   }
 
-// mkl > avx > for, ">" means better
-#ifdef PADDLE_WITH_MKLML
-VMUL_MKL_FLOAT(jit::avx, kEQ8);
-#elif defined __AVX__
+// avx > for > mkl
+#ifdef __AVX__
 VMUL_INTRI8_FLOAT(jit::avx);
 #endif
-// avx2 > mkl > for
+
+// avx2 > for > mkl
 #ifdef __AVX2__
 VMUL_INTRI8_FLOAT(jit::avx2)
-#elif defined PADDLE_WITH_MKLML
-VMUL_MKL_FLOAT(jit::avx2, kEQ8)
 #endif
 // TODO(TJ): test and complete avx512
-
-/// eq16
-#ifdef PADDLE_WITH_MKLML
-// TODO(TJ): test and complete me
-VMUL_MKL_FLOAT(jit::avx, kEQ16)
-VMUL_MKL_FLOAT(jit::avx2, kEQ16)
-VMUL_MKL_FLOAT(jit::avx512f, kEQ16)
-#endif
 
 #undef VMUL_INTRI8_FLOAT
 #undef VMUL_MKL_FLOAT
@@ -181,13 +164,6 @@ FOR_EACH_ISA_COMMON_BLOCK(VADD_MKL_FLOAT)
 FOR_EACH_ISA_ALL_BLOCK(VADD_MKL_DOUBLE)
 #endif
 
-/// lt8
-#ifdef PADDLE_WITH_MKLML
-VADD_MKL_FLOAT(jit::avx, kLT8)
-VADD_MKL_FLOAT(jit::avx2, kLT8)
-VADD_MKL_FLOAT(jit::avx512f, kLT8)
-#endif
-
 /// eq8
 #define VADD_INTRI8_FLOAT(isa)                                    \
   template <>                                                     \
@@ -200,27 +176,13 @@ VADD_MKL_FLOAT(jit::avx512f, kLT8)
     _mm256_storeu_ps(z, tmpx);                                    \
   }
 
-// mkl > avx > for, ">" means better
-#ifdef PADDLE_USE_MKLML
-VADD_MKL_FLOAT(jit::avx, kEQ8)
-#elif defined __AVX__
+#ifdef __AVX__
 VADD_INTRI8_FLOAT(jit::avx)
 #endif
-// avx2 > mkl > for
 #ifdef __AVX2__
 VADD_INTRI8_FLOAT(jit::avx2)
-#elif defined PADDLE_WITH_MKLML
-VADD_MKL_FLOAT(jit::avx2, kEQ8)
 #endif
 // TODO(TJ): test and complete avx512
-
-/// eq16
-#ifdef PADDLE_WITH_MKLML
-// TODO(TJ): test and complete me
-VADD_MKL_FLOAT(jit::avx, kEQ16)
-VADD_MKL_FLOAT(jit::avx2, kEQ16)
-VADD_MKL_FLOAT(jit::avx512f, kEQ16)
-#endif
 
 #undef VADD_INTRI8_FLOAT
 #undef VADD_MKL_FLOAT
