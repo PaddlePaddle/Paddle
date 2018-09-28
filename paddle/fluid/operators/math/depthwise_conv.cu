@@ -23,10 +23,16 @@ namespace math {
 
 template <typename T>
 __inline__ __device__ T warpReduceSum(T val) {
+#if CUDA_VERSION < 9000
+  for (int offset = 16; offset > 0; offset /= 2)
+    val += __shfl_down(val, offset);
+  return val;
+#else
 #define FULL_MASK 0xffffffff
   for (int offset = 16; offset > 0; offset /= 2)
     val += __shfl_down_sync(FULL_MASK, val, offset);
   return val;
+#endif
 }
 __forceinline__ __device__ unsigned lane_id() {
   unsigned ret;
@@ -246,8 +252,12 @@ __device__ __inline__ void KernelDepthwiseConvFilterGrad(
       }
     }
   }
+#if __CUDA_ARCH__ >= 530
   s = warpReduceSum<T>(s);
   if (lid == 0) paddle::platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
+#else
+  paddle::platform::CudaAtomicAdd(&filter_grad_data[gbid], s);
+#endif
 }
 
 template <typename T, int c_filter_multiplier>
