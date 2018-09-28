@@ -18,8 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/hostdevice.h"
 #include "paddle/fluid/platform/transform.h"
 
-namespace {
-
 template <typename T>
 class Scale {
  public:
@@ -35,8 +33,6 @@ class Multiply {
  public:
   HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
 };
-
-}  // namespace
 
 using paddle::memory::Alloc;
 using paddle::memory::Copy;
