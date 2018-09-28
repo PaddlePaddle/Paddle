@@ -33,9 +33,7 @@ size_t Tensor::memory_size() const {
 
 void* Tensor::mutable_data(platform::Place place, std::type_index type,
                            size_t requested_size) {
-  if (holder_ != nullptr) {
-    holder_->set_type(type);
-  }
+  type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
                     "When calling this method, the Tensor's numel must be "
                     "equal or larger than zero. "
@@ -48,25 +46,7 @@ void* Tensor::mutable_data(platform::Place place, std::type_index type,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
-    if (platform::is_cpu_place(place)) {
-      holder_.reset(new PlaceholderImpl<platform::CPUPlace>(
-          boost::get<platform::CPUPlace>(place), size, type));
-    } else if (platform::is_gpu_place(place) ||
-               platform::is_cuda_pinned_place(place)) {
-#ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW(
-          "CUDAPlace or CUDAPinnedPlace is not supported in CPU-only mode.");
-    }
-#else
-      if (platform::is_gpu_place(place)) {
-        holder_.reset(new PlaceholderImpl<platform::CUDAPlace>(
-            boost::get<platform::CUDAPlace>(place), size, type));
-      } else if (platform::is_cuda_pinned_place(place)) {
-        holder_.reset(new PlaceholderImpl<platform::CUDAPinnedPlace>(
-            boost::get<platform::CUDAPinnedPlace>(place), size, type));
-      }
-    }
-#endif
+    holder_ = memory::AllocShared(place, size);
     offset_ = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
@@ -76,7 +56,7 @@ void* Tensor::mutable_data(platform::Place place, std::type_index type,
 void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing.");
-  return mutable_data(place, holder_->type(), requested_size);
+  return mutable_data(place, type_, requested_size);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {
@@ -101,6 +81,7 @@ Tensor Tensor::Slice(int begin_idx, int end_idx) const {
     Tensor dst;
     dst.holder_ = holder_;
     dst.set_layout(layout_);
+    dst.type_ = type_;
     DDim dst_dims = dims_;
     dst_dims[0] = end_idx - begin_idx;
     dst.Resize(dst_dims);

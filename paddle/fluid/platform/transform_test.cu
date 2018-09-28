@@ -39,7 +39,6 @@ class Multiply {
 }  // namespace
 
 using paddle::memory::Alloc;
-using paddle::memory::Free;
 using paddle::memory::Copy;
 
 using paddle::platform::CPUPlace;
@@ -63,13 +62,13 @@ TEST(Transform, GPUUnary) {
   CUDAPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
   float cpu_buf[4] = {0.1, 0.2, 0.3, 0.4};
-  float* gpu_buf = static_cast<float*>(Alloc(gpu0, sizeof(float) * 4));
+  auto gpu_allocation = Alloc(gpu0, sizeof(float) * 4);
+  float* gpu_buf = static_cast<float*>(gpu_allocation->ptr());
   Copy(gpu0, gpu_buf, CPUPlace(), cpu_buf, sizeof(cpu_buf), ctx.stream());
   Transform<CUDADeviceContext> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, Scale<float>(10));
   ctx.Wait();
   Copy(CPUPlace(), cpu_buf, gpu0, gpu_buf, sizeof(cpu_buf), ctx.stream());
-  Free(gpu0, gpu_buf);
   for (int i = 0; i < 4; ++i) {
     ASSERT_NEAR(cpu_buf[i], static_cast<float>(i + 1), 1e-5);
   }
@@ -89,13 +88,13 @@ TEST(Transform, GPUBinary) {
   int buf[4] = {1, 2, 3, 4};
   CUDAPlace gpu0(0);
   CUDADeviceContext ctx(gpu0);
-  int* gpu_buf = static_cast<int*>(Alloc(gpu0, sizeof(buf)));
+  auto gpu_allocation = Alloc(gpu0, sizeof(buf));
+  int* gpu_buf = static_cast<int*>(gpu_allocation->ptr());
   Copy(gpu0, gpu_buf, CPUPlace(), buf, sizeof(buf), ctx.stream());
   Transform<CUDADeviceContext> trans;
   trans(ctx, gpu_buf, gpu_buf + 4, gpu_buf, gpu_buf, Multiply<int>());
   ctx.Wait();
   Copy(CPUPlace(), buf, gpu0, gpu_buf, sizeof(buf), ctx.stream());
-  Free(gpu0, gpu_buf);
   for (int i = 0; i < 4; ++i) {
     ASSERT_EQ((i + 1) * (i + 1), buf[i]);
   }
