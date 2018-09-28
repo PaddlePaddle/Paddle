@@ -43,7 +43,7 @@ PaddleTensor LodTensorToPaddleTensor(framework::LoDTensor* t) {
 
 NativeConfig GetConfig() {
   NativeConfig config;
-  config.model_dir = FLAGS_dirname + "word2vec.inference.model";
+  config.model_dir = FLAGS_dirname + "/word2vec.inference.model";
   LOG(INFO) << "dirname  " << config.model_dir;
   config.fraction_of_gpu_memory = 0.15;
 #ifdef PADDLE_WITH_CUDA
@@ -110,7 +110,7 @@ void MainImageClassification(bool use_gpu) {
   NativeConfig config = GetConfig();
   config.use_gpu = use_gpu;
   config.model_dir =
-      FLAGS_dirname + "image_classification_resnet.inference.model";
+      FLAGS_dirname + "/image_classification_resnet.inference.model";
 
   const bool is_combined = false;
   std::vector<std::vector<int64_t>> feed_target_shapes =
@@ -214,7 +214,7 @@ void MainThreadsImageClassification(bool use_gpu) {
   NativeConfig config = GetConfig();
   config.use_gpu = use_gpu;
   config.model_dir =
-      FLAGS_dirname + "image_classification_resnet.inference.model";
+      FLAGS_dirname + "/image_classification_resnet.inference.model";
 
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
   std::vector<framework::LoDTensor> jobs(num_jobs);
