@@ -18,6 +18,8 @@
 #include <gtest/gtest.h>
 #include <opencv2/opencv.hpp>
 #include <random>
+#include <cmath>
+#include <algorithm>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
 #include "paddle/fluid/inference/api/helper.h"
@@ -31,6 +33,7 @@ DEFINE_string(data_list, "", "Path to a file with a list of image files.");
 DEFINE_string(data_dir, "", "Path to a directory with image files.");
 DEFINE_int32(batch_size, 1, "Batch size.");
 DEFINE_int32(iterations, 1, "How many times to repeat run.");
+DEFINE_int32(skip_batch_num, 0, "How many minibatches to skip in statistics.");
 // dimensions of imagenet images are assumed as default:
 DEFINE_int32(height, 224, "Height of the image.");
 DEFINE_int32(width, 224, "Width of the image.");
@@ -147,16 +150,70 @@ void fill_data<float>(float* data, unsigned int count) {
   }
 }
 
-void PrintResults(int bs, int iterations, double lat_avg, float acc_avg) {
-  LOG(INFO) << "===========profile result===========";
-  LOG(INFO) << "batch_size: " << bs << ", iterations: " << iterations
-            << ", avg latency: " << lat_avg << "ms"
-            << ", avg fps: " << bs * 1000 / lat_avg
-            << ", avg accuracy: " << acc_avg;
-  LOG(INFO) << "=====================================";
+template <typename T>
+void SkipFirstNData(std::vector<T> &v, int n) {
+  std::vector<T>(v.begin() + FLAGS_skip_batch_num, v.end()).swap(v);
 }
 
-void Main(int batch_size) {
+template <typename T>
+T FindAverage(const std::vector<T> &v) {
+	CHECK_GE(v.size(), 0);
+	return std::accumulate(v.begin(), v.end(), 0.0) / v.size();
+}
+
+template <typename T>
+T FindPercentile(std::vector<T> v, int p) {
+	CHECK_GE(v.size(), 0);
+	std::sort(v.begin(), v.end());
+	if (p == 100)
+		return v.back();
+	int i = v.size() * p / 100;
+	return v[i];
+}
+
+template <typename T>
+T FindStandardDev(std::vector<T> v) {
+	CHECK_GE(v.size(), 0);
+	T mean = FindAverage(v);
+	T var = 0;
+	for (size_t i = 0; i < v.size(); ++i) {
+		var += (v[i] - mean) * (v[i] - mean);
+	}
+	var /= v.size();
+	T std = sqrt(var);
+	return std;
+}
+
+void PostprocessBenchmarkData(std::vector<double> latencies,
+      std::vector<float> infer_accs, std::vector<double> fpses,
+      double total_time_sec, int total_samples) {
+  // get rid of the first FLAGS_skip_batch_num data
+  SkipFirstNData(latencies, FLAGS_skip_batch_num);
+  SkipFirstNData(infer_accs, FLAGS_skip_batch_num);
+  SkipFirstNData(fpses, FLAGS_skip_batch_num);
+  
+  double lat_avg = FindAverage(latencies);
+  float acc_avg = FindAverage(infer_accs);
+  double fps_avg = FindAverage(fpses);
+
+  double lat_pc99 = FindPercentile(latencies, 99);
+  double fps_pc01 = FindPercentile(fpses, 1);
+
+  double lat_std = FindStandardDev(latencies);
+  double fps_std = FindStandardDev(fpses);
+
+  float examples_per_sec = total_samples / total_time_sec;
+
+  printf("\nAvg fps: %.5f, std fps: %.5f, fps for 99pc latency: %.5f\n",
+		  fps_avg, fps_std, fps_pc01);
+  printf("Avg latency: %.5f ms, std latency: %.5f ms, 99pc latency: %.5f ms\n",
+		  lat_avg, lat_std, lat_pc99);
+  printf("Total examples: %d, total time: %.5f sec, total examples/sec: %.5f\n",
+		  total_samples, total_time_sec, examples_per_sec);
+  printf("Avg accuracy: %f\n\n", acc_avg);
+}
+
+void Main() {
   auto count = [](std::vector<int>& shapevec) {
     auto sum = shapevec.size() > 0 ? 1 : 0;
     for (unsigned int i = 0; i < shapevec.size(); ++i) {
@@ -182,6 +239,9 @@ void Main(int batch_size) {
   input_label.name = "yy";
   input_label.shape = std::vector<int>({label_size, 1});
   input_label.dtype = paddle::PaddleDType::INT64;
+
+  CHECK_GE(FLAGS_iterations, 0);
+  CHECK_GE(FLAGS_skip_batch_num, 0);
 
   if (FLAGS_use_fake_data) {
     // create fake data
@@ -264,6 +324,7 @@ void Main(int batch_size) {
     config.ir_mkldnn_passes.push_back("conv_relu_mkldnn_fuse_pass");
     config.ir_mkldnn_passes.push_back("fc_fuse_pass");
 #endif
+
   }
   auto predictor = CreatePaddlePredictor<contrib::AnalysisConfig,
                                          PaddleEngineKind::kAnalysis>(config);
@@ -272,35 +333,48 @@ void Main(int batch_size) {
   std::vector<PaddleTensor> output_slots;
 
   // run prediction
-  if (FLAGS_profile) {
-    auto pf_state = paddle::platform::ProfilerState::kCPU;
-    paddle::platform::EnableProfiler(pf_state);
-  }
   inference::Timer timer;
-  double sum = 0;
-  for (int i = 0; i < FLAGS_iterations; i++) {
+  inference::Timer timer_total;
+  std::vector<float> infer_accs;
+  std::vector<double> batch_times;
+  std::vector<double> fpses;
+  for (int i = 0; i < FLAGS_iterations + FLAGS_skip_batch_num; i++) {
+    if (i == FLAGS_skip_batch_num) {
+      timer_total.tic();
+      if (FLAGS_profile) {
+        auto pf_state = paddle::platform::ProfilerState::kCPU;
+        paddle::platform::EnableProfiler(pf_state);
+      }
+    }
     timer.tic();
     CHECK(predictor->Run({input, input_label}, &output_slots));
-    sum += timer.toc();
+    double batch_time = timer.toc();
+    CHECK_GE(output_slots.size(), 3UL);
+    CHECK_EQ(output_slots[1].lod.size(), 0UL);
+    CHECK_EQ(output_slots[1].dtype, paddle::PaddleDType::FLOAT32);
+    batch_times.push_back(batch_time);
+    float* acc1 = static_cast<float*>(output_slots[1].data.data());
+    infer_accs.push_back(*acc1);
+    double fps = FLAGS_batch_size * 1000 / batch_time;
+    fpses.push_back(fps);
+    std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
+    std::cout << "Iteration: " << appx << i << ", "
+	    << "accuracy: " << *acc1 << ", "
+	    << "latency: " << batch_time << " ms, "
+	    << "fps: " << fps << std::endl;
   }
+
   if (FLAGS_profile) {
     paddle::platform::DisableProfiler(paddle::platform::EventSortingKey::kTotal,
                                       "/tmp/profiler");
   }
 
-  // handle output
-  CHECK_GE(output_slots.size(), 1UL);
-  PaddleTensor output = output_slots[0];
-  CHECK_EQ(output.lod.size(), 0UL);
-  CHECK_EQ(output.dtype, paddle::PaddleDType::FLOAT32);
-  float* odata = static_cast<float*>(output.data.data());
-  size_t olen = output.data.length() / sizeof(FLOAT32);
-  float acc_avg = std::accumulate(odata, odata + olen, 0.0) / olen;
-  double lat_avg = sum / FLAGS_iterations;
-
-  PrintResults(batch_size, FLAGS_iterations, lat_avg, acc_avg);
+  double total_samples = FLAGS_iterations * FLAGS_batch_size;
+  double total_time = timer_total.toc() / 1000;
+  PostprocessBenchmarkData(batch_times, infer_accs, fpses, total_time,
+		  total_samples);
 }
 
-TEST(resnet50, basic) { Main(FLAGS_batch_size); }
+TEST(resnet50, basic) { Main(); }
 
 }  // namespace paddle
