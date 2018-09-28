@@ -119,7 +119,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
         CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, 1, alpha, &ones[0], 1,
         &combined_biases[0], n, 0.0f, embeddings_data, n);
 
-    // Wx*embeddings
+    // Wx*embeddings + biases
     paddle::operators::math::CBlas<float>::GEMM(
         CblasRowMajor, CblasNoTrans, CblasNoTrans, m, n, k, alpha,
         embedding_data, k, weightx_data, n, beta, embeddings_data, n);
