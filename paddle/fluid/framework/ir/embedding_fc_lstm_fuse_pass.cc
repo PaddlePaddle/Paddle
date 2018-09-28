@@ -199,7 +199,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       embedding_lstm_creator(lookup_table, W, lstm, subgraph.at(x), w, Weight,
                              Bias, Hidden, Cell, fc_out, fc_bias);
       // Remove unneeded nodes.
-      // TODO(jczaja): Proper removing of loopup table
+      // TODO(jczaja): Proper removing of lookup table
       std::unordered_set<const Node*> marked_nodes(
           //{lookup_table, mul, lstm, elementwise_add, fc_bias, W});
           {mul, lstm, elementwise_add, fc_bias});
@@ -209,7 +209,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope,
       embedding_lstm_creator(lookup_table, W, lstm, subgraph.at(x), w, Weight,
                              Bias, Hidden, Cell, fc_out, nullptr);
       // Remove unneeded nodes.
-      // TODO(jczaja): Proper removing of loopup table
+      // TODO(jczaja): Proper removing of lookup table
       // std::unordered_set<const Node*> marked_nodes({lookup_table, W, mul,
       // lstm});
       std::unordered_set<const Node*> marked_nodes({mul, lstm});
