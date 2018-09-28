@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -33,6 +34,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -403,11 +405,6 @@ All parameter, weight, gradient are variables in Paddle.
     Prune(*prog_with_targets.Proto(), &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
-  m.def("inference_optimize", [](ProgramDesc &origin) {
-    proto::ProgramDesc pruned_desc;
-    InferenceOptimize(*(origin.Proto()), &pruned_desc);
-    return new ProgramDesc(pruned_desc);
-  });
   m.def("empty_var_name",
         []() { return std::string(framework::kEmptyVarName); });
   m.def("grad_var_suffix",
@@ -539,6 +536,8 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
 
+  m.def("_is_program_version_supported", IsProgramVersionSupported);
+
   BindProgramDesc(&m);
   BindBlockDesc(&m);
   BindVarDsec(&m);
@@ -605,6 +604,29 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
+
+  py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
+  pass.def(py::init())
+      .def("set_str", [](ir::Pass &self, const std::string &name,
+                         const std::string &attr) {
+        self.Set<std::string>(name, new std::string(attr));
+      });
+
+  py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
+      m, "PassBuilder");
+  pb.def(py::init())
+      .def("append_pass",
+           [](ir::PassBuilder &self,
+              const std::string &pass_type) -> std::shared_ptr<ir::Pass> {
+             return self.AppendPass(pass_type);
+           })
+      .def("all_passes", [](ir::PassBuilder &self) { return self.AllPasses(); })
+      .def("insert_pass",
+           [](ir::PassBuilder &self, size_t idx, const std::string &pass_type) {
+             return self.InsertPass(idx, pass_type);
+           })
+      .def("remove_pass",
+           [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
@@ -681,7 +703,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+      .def_property("fuse_elewise_add_act_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_elewise_add_act_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.fuse_elewise_add_act_ops_ = b;
+                    })
+      .def("_create_passes_from_strategy",
+           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
+             return self.CreatePassesFromStrategy();
+           });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -689,7 +722,6 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("_bcast_params", &ParallelExecutor::BCastParamsToDevices)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

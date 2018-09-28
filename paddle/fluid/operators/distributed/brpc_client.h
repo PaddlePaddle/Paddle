@@ -55,61 +55,62 @@ class BRPCClient : public RPCClient {
   BRPCClient() {}
   virtual ~BRPCClient();
 
-  bool AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
+  VarHandlePtr AsyncSendVar(const std::string& ep, const platform::DeviceContext& ctx,
                     const framework::Scope& scope, const std::string& var_name,
                     int64_t time_out = FLAGS_rpc_deadline) override;
 
-  bool AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
+  VarHandlePtr AsyncGetVar(const std::string& ep, const platform::DeviceContext& ctx,
                    const framework::Scope& scope, const std::string& var_name,
                    int64_t time_out = FLAGS_rpc_deadline) override;
 
-  bool AsyncPrefetchVar(const std::string& ep,
+  VarHandlePtr AsyncPrefetchVar(const std::string& ep,
                         const platform::DeviceContext& ctx,
                         const framework::Scope& scope,
                         const std::string& in_var_name,
                         const std::string& out_var_name,
                         int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncSendBatchBarrier(const std::string& ep,
+  VarHandlePtr AsyncSendBatchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncSendFetchBarrier(const std::string& ep,
+  VarHandlePtr AsyncSendFetchBarrier(const std::string& ep,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
-  void AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
+  VarHandlePtr AsyncCheckpointNotify(const std::string& ep, const std::string& dir,
                              int64_t time_out = FLAGS_rpc_deadline) override;
 
   bool Wait() override;
 
-  void SendComplete() override { assert(false); }
+  void SendComplete() override; 
 
  private:
   void Proceed();
   ChannelQueuePtr GetChannel(const std::string& ep);
 
-  void AsyncSendComplete(const std::string& ep,
+  VarHandlePtr AsyncSendComplete(const std::string& ep,
                          int64_t time_out = FLAGS_rpc_deadline);
 
-  void AsyncSendMessage(const std::string& ep, const std::string& message,
+  VarHandlePtr AsyncSendMessage(const std::string& ep, const std::string& method_name, const std::string& message,
                         int64_t time_out);
 
-  void AsyncSendVarMessage(const std::string& ep,
+  VarHandlePtr AsyncSendVarMessage(const std::string& ep,
+                           const std::string& method_name,
                            const sendrecv::VariableMessage& req,
                            int64_t time_out);
 
   friend void HandleSendResponse(brpc::Controller* cntl,
                                  sendrecv::VoidMessage* response,
-                                 VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                 VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
                                  ChannelContextPtr ch_ctx, BRPCClient* cls);
 
   friend void HandleGetResponse(brpc::Controller* cntl,
                                 sendrecv::VariableMessage* response,
-                                VarHandle var_h, ChannelQueuePtr ch_ptr,
+                                VarHandlePtr var_h, ChannelQueuePtr ch_ptr,
                                 ChannelContextPtr ch_ctx, BRPCClient* cls);
 
   friend void HandleFetchBarrierResponse(brpc::Controller* cntl,
                                          sendrecv::VariableMessage* response,
-                                         VarHandle var_h,
+                                         VarHandlePtr var_h,
                                          ChannelQueuePtr ch_ptr,
                                          ChannelContextPtr ch_ctx,
                                          BRPCClient* cls);

@@ -56,9 +56,9 @@ else()
   cc_test(mixed_vector_test SRCS mixed_vector_test.cc DEPS place memory device_context tensor)
 endif()
 if (NOT WIN32)
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio)
+  cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto recordio version)
 else()
-cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto)
+  cc_library(lod_tensor SRCS lod_tensor.cc DEPS ddim place tensor framework_proto version)
 endif (NOT WIN32)
 
 cc_test(lod_tensor_test SRCS lod_tensor_test.cc DEPS lod_tensor memory)
@@ -116,7 +116,11 @@ cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope gl
 endif(NOT WIN32)
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog)
+
+cc_library(version SRCS version.cc)
+cc_test(version_test SRCS version_test.cc DEPS version)
+
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
@@ -137,6 +141,8 @@ cc_library(lod_rank_table SRCS lod_rank_table.cc DEPS lod_tensor)
 
 cc_library(feed_fetch_method SRCS feed_fetch_method.cc DEPS lod_tensor scope glog)
 
+cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
+
 if(WITH_DISTRIBUTE)
   if(WITH_GRPC)
       cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method ${GLOB_DISTRIBUTE_DEPS} gpr graph_to_program_pass)
@@ -147,13 +153,13 @@ if(WITH_DISTRIBUTE)
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
+  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass elementwise_add_op)
 endif()
-
+ 
 if (NOT WIN32)
 cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         threaded_ssa_graph_executor scope_buffered_ssa_graph_executor
-        graph graph_viz_pass multi_devices_graph_pass
-        multi_devices_graph_print_pass multi_devices_graph_check_pass
+        graph build_strategy
         fast_threaded_ssa_graph_executor)
 endif() # NOT WIN32
 
