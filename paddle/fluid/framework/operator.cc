@@ -140,16 +140,16 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-    try {
-          if (VLOG_IS_ON(4)) {
-          VLOG(4) << place << " " << DebugStringEx(&scope);
-          }
-  if (platform::is_gpu_place(place)) {
+  try {
+    if (VLOG_IS_ON(4)) {
+      VLOG(4) << place << " " << DebugStringEx(&scope);
+    }
+    if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-    PADDLE_THROW("Cannot run operator on place %s", place);
+      PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-    platform::SetDeviceId(dev_id);
+      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+      platform::SetDeviceId(dev_id);
 #endif
     }
 
