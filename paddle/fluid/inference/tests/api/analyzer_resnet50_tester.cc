@@ -74,7 +74,11 @@ TEST(Analyzer_resnet50, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   int num_ops;
-  GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
