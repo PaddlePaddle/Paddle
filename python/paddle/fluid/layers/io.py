@@ -478,8 +478,11 @@ def _py_reader(capacity,
                name=None,
                use_double_buffer=True,
                feed_list=None):
+
     if feed_list is not None:
-        assert isinstance(feed_list, list)
+        if isinstance(feed_list, list):
+            raise TypeError("feed_list should be a list of Variable"
+                            " instead of " + str(type(feed_list)))
         lod_levels = []
         dtypes = []
         shape_concat = []
@@ -577,12 +580,13 @@ def _py_reader(capacity,
 
     def __set_paddle_reader__(paddle_reader):
         with program_guard(Program(), Program()):
-            if feed_list is None:
-                feed_list = []
+            actual_feed_list = feed_list
+            if actual_feed_list is None:
+                actual_feed_list = []
                 counter = 0
                 for dtype, shape, lod_level in zip(dtypes, shapes, lod_levels):
                     name = str(counter)
-                    feed_list.append(
+                    actual_feed_list.append(
                         data(
                             name=name,
                             dtype=dtype,
@@ -590,7 +594,8 @@ def _py_reader(capacity,
                             lod_level=lod_level))
                     counter += 1
 
-            feeder = DataFeeder(feed_list=feed_list, place=core.CPUPlace())
+            feeder = DataFeeder(
+                feed_list=actual_feed_list, place=core.CPUPlace())
             paddle_reader = feeder.decorate_reader(
                 paddle_reader, multi_devices=False)
 
@@ -755,8 +760,50 @@ def py_reader(capacity,
 
 def py_reader_by_data(capacity, feed_list, name=None, use_double_buffer=True):
     """
+    Create a Python reader for data feeding in Python
+
+    This layer returns a Reader Variable.
+
     Works much like py_reader except that it's input is feed_list
-    instead of shapes, dtypes, lod_levels
+    instead of shapes, dtypes and lod_levels
+
+    Args:
+       capacity(int): The buffer capacity maintained by :code:`py_reader`.
+       feed_list(list(Variable)): The data feed list.
+       name(basestring): The prefix Python queue name and Reader name. None will
+            be generated automatically.
+       use_double_buffer(bool): Whether use double buffer or not.
+
+    Returns:
+       Variable: A Reader from which we can get feeding data.
+
+    Examples:
+
+        1. The basic usage of :code:`py_reader` is as follows:
+
+        >>> import paddle.v2
+        >>> import paddle.fluid as fluid
+        >>> import paddle.dataset.mnist as mnist
+        >>>
+        >>> image = fluid.layers.data(name='image', shape=[3,224,224], dtypes='float32')
+        >>> label = fluid.layers.data(name='label', shape=[1], dtypes='int64')
+        >>> reader = fluid.layers.py_reader(capacity=64, feed_list=[image, label])
+        >>> reader.decorate_paddle_reader(
+        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>
+        >>> img, label = fluid.layers.read_file(reader)
+        >>> loss = network(img, label) # some network definition
+        >>>
+        >>> fluid.Executor(fluid.CUDAPlace(0)).run(fluid.default_startup_program())
+        >>>
+        >>> exe = fluid.ParallelExecutor(use_cuda=True, loss_name=loss.name)
+        >>> for epoch_id in range(10):
+        >>>     reader.start()
+        >>>     try:
+        >>>         while True:
+        >>>             exe.run(fetch_list=[loss.name])
+        >>>     except fluid.core.EOFException:
+        >>>         reader.reset()
     """
     return _py_reader(
         capacity=capacity,
