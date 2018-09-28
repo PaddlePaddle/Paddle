@@ -140,7 +140,10 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  VLOG(4) << place << " " << DebugStringEx(&scope);
+    try {
+          if (VLOG_IS_ON(4)) {
+          VLOG(4) << place << " " << DebugStringEx(&scope);
+          }
   if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
     PADDLE_THROW("Cannot run operator on place %s", place);
@@ -148,6 +151,42 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     auto dev_id = boost::get<platform::CUDAPlace>(place).device;
     platform::SetDeviceId(dev_id);
 #endif
+    }
+
+    if (platform::IsProfileEnabled()) {
+      platform::DeviceContextPool& pool =
+          platform::DeviceContextPool::Instance();
+      platform::RecordEvent record_event(Type(), pool.Get(place));
+    }
+
+    RunImpl(scope, place);
+
+    if (VLOG_IS_ON(3)) {
+      VLOG(3) << place << " " << DebugStringEx(&scope);
+    }
+  } catch (platform::EnforceNotMet exception) {
+    if (Attrs().count("sub_block") != 0) {
+      throw exception;
+    }
+
+    auto& callstack = Attr<std::vector<std::string>>(
+        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+
+    if (callstack.empty()) {
+      throw exception;
+    }
+    std::ostringstream sout;
+    sout << "Invoke operator " << Type() << " error.\n";
+    sout << "Python Callstacks: \n";
+    for (auto& line : callstack) {
+      sout << line;
+    }
+    sout << "C++ Callstacks: \n";
+    sout << exception.err_str_;
+    exception.err_str_ = sout.str();
+    throw exception;
+  } catch (...) {
+    std::rethrow_exception(std::current_exception());
   }
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   platform::RecordEvent record_event(Type(), pool.Get(place));
