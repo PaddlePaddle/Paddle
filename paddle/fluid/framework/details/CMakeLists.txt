@@ -54,3 +54,8 @@ cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_execu
 #        device_context reduce_op_handle )
 cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc
         DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool device_context)
+
+cc_library(build_strategy SRCS build_strategy.cc DEPS
+        graph_viz_pass multi_devices_graph_pass
+        multi_devices_graph_print_pass multi_devices_graph_check_pass
+        fuse_elewise_add_act_pass)

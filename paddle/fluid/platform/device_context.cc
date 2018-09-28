@@ -201,7 +201,6 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   compute_capability = GetCUDAComputeCapability(place_.device);
   multi_process = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);
-  grid_max_dims_ = GpuMaxGridDim(place_.device);
   PADDLE_ENFORCE(cudaStreamCreate(&stream_));
   eigen_stream_.reset(new EigenCudaStreamDevice());
   eigen_stream_->Reinitialize(&stream_, place);
@@ -238,10 +237,6 @@ int CUDADeviceContext::GetComputeCapability() const {
 
 int CUDADeviceContext::GetMaxPhysicalThreadCount() const {
   return multi_process * max_threads_per_mp;
-}
-
-std::tuple<int, int, int> CUDADeviceContext::GetMaxGridDims() const {
-  return grid_max_dims_;
 }
 
 Eigen::GpuDevice* CUDADeviceContext::eigen_device() const {

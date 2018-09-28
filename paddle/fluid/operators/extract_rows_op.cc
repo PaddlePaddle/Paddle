@@ -50,7 +50,7 @@ class ExtractRowsOp : public framework::OperatorBase {
     auto &in = scope.FindVar(Input("X"))->Get<framework::SelectedRows>();
     auto out = scope.FindVar(Output("Out"))->GetMutable<framework::LoDTensor>();
 
-    auto in_rows = in.rows();
+    auto &in_rows = in.rows();
     auto out_dim = framework::make_ddim(
         std::vector<int64_t>{static_cast<int64_t>(in_rows.size()), 1});
     auto dst_ptr = out->mutable_data<int64_t>(out_dim, in.place());
