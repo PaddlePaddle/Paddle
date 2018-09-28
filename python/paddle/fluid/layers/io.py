@@ -30,8 +30,8 @@ from ..unique_name import generate as unique_name
 
 __all__ = [
     'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
-    'random_data_generator', 'py_reader', 'py_reader_by_data', 'Preprocessor',
-    'load'
+    'random_data_generator', 'py_reader', 'create_py_reader_by_data',
+    'Preprocessor', 'load'
 ]
 
 
@@ -480,7 +480,7 @@ def _py_reader(capacity,
                feed_list=None):
 
     if feed_list is not None:
-        if isinstance(feed_list, list):
+        if not isinstance(feed_list, list):
             raise TypeError("feed_list should be a list of Variable"
                             " instead of " + str(type(feed_list)))
         lod_levels = []
@@ -758,7 +758,10 @@ def py_reader(capacity,
         use_double_buffer=use_double_buffer)
 
 
-def py_reader_by_data(capacity, feed_list, name=None, use_double_buffer=True):
+def create_py_reader_by_data(capacity,
+                             feed_list,
+                             name=None,
+                             use_double_buffer=True):
     """
     Create a Python reader for data feeding in Python
 
@@ -781,7 +784,6 @@ def py_reader_by_data(capacity, feed_list, name=None, use_double_buffer=True):
 
         1. The basic usage of :code:`py_reader` is as follows:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
