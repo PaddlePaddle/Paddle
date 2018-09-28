@@ -112,11 +112,15 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    return paddle::memory::Alloc(place_, num_bytes);
+    auto buf =
+        paddle::memory::Alloc(place_, num_bytes, memory::Allocator::kTiny);
+    void* retv = buf->ptr();
+    allocations_[buf->ptr()] = std::move(buf);
+    return retv;
   }
 
   void deallocate(void* buffer) const override {
-    paddle::memory::Free(place_, buffer);
+    allocations_.erase(allocations_.find(buffer));
   }
 
   void* scratchpad() const override {
@@ -143,12 +147,14 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   const cudaDeviceProp* device_prop_;  // not owned;
   mutable void* scratch_;
   mutable unsigned int* semaphore_;
+  mutable std::unordered_map<void*, std::unique_ptr<memory::Allocation>>
+      allocations_;
 };
 
 class CudnnHolder {
  public:
   CudnnHolder(const cudaStream_t* stream, const CUDAPlace& place)
-      : workspace_(nullptr), workspace_len_(0), stream_(stream), place_(place) {
+      : workspace_(nullptr), stream_(stream), place_(place) {
     PADDLE_ENFORCE(dynload::cudnnCreate(&cudnn_handle_));
     PADDLE_ENFORCE(dynload::cudnnSetStream(cudnn_handle_, *stream_));
   }
@@ -158,36 +164,38 @@ class CudnnHolder {
   void RunFunc(const std::function<void(void*)>& cudnn_func,
                size_t required_workspace_len) {
     std::lock_guard<std::mutex> lock(mtx_);
-    if (required_workspace_len > workspace_len_) {
+    if (required_workspace_len > WorkspaceSize()) {
       ReallocateWorkspace(required_workspace_len);
     }
-    cudnn_func(workspace_);
+    cudnn_func(workspace_->ptr());
   }
 
-  ~CudnnHolder() {
-    PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_));
-    if (workspace_ != nullptr) {
-      paddle::memory::Free(place_, workspace_);
+  ~CudnnHolder() { PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_)); }
+
+ private:
+  size_t WorkspaceSize() const {
+    if (workspace_ == nullptr) {
+      return 0;
+    } else {
+      return workspace_->size();
     }
   }
 
- private:
   void ReallocateWorkspace(size_t required_workspace_len) {
-    if (required_workspace_len <= workspace_len_) {
+    if (required_workspace_len <= WorkspaceSize()) {
       return;
     }
     if (workspace_ != nullptr) {
       // Maybe someone is using the current workspace
       PADDLE_ENFORCE(cudaStreamSynchronize(*stream_));
-      paddle::memory::Free(place_, workspace_);
+      workspace_.reset();
     }
-    workspace_ = paddle::memory::Alloc(place_, required_workspace_len);
-    workspace_len_ = required_workspace_len;
+    workspace_ = paddle::memory::Alloc(place_, required_workspace_len,
+                                       memory::Allocator::kFluxHuge);
   }
 
   cudnnHandle_t cudnn_handle_;
-  void* workspace_;
-  size_t workspace_len_;
+  std::unique_ptr<memory::Allocation> workspace_;
 
   const cudaStream_t* stream_;  // not owned;
   const CUDAPlace place_;

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <string>
 #include <vector>
 #include "cub/cub.cuh"
+#include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/gather.cu.h"
@@ -57,22 +58,18 @@ void SortDescending(const platform::CUDADeviceContext &ctx, const Tensor &value,
   T *keys_out = value_out->mutable_data<T>({num}, ctx.GetPlace());
 
   // Determine temporary device storage requirements
-  void *d_temp_storage = NULL;
   size_t temp_storage_bytes = 0;
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out,
-      num);
-
+      nullptr, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out, num);
   // Allocate temporary storage
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
-  d_temp_storage = memory::Alloc(place, temp_storage_bytes);
+  auto d_temp_storage =
+      memory::Alloc(place, temp_storage_bytes, memory::Allocator::kTmp);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(
-      d_temp_storage, temp_storage_bytes, keys_in, keys_out, idx_in, idx_out,
-      num);
-
-  memory::Free(place, d_temp_storage);
+      d_temp_storage->ptr(), temp_storage_bytes, keys_in, keys_out, idx_in,
+      idx_out, num);
 }
 
 template <typename T>
@@ -248,11 +245,12 @@ void NMS(const platform::CUDADeviceContext &ctx, const Tensor &proposals,
   const T *boxes = proposals.data<T>();
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
   int size_bytes = boxes_num * col_blocks * sizeof(uint64_t);
-  uint64_t *d_mask =
-      reinterpret_cast<uint64_t *>(memory::Alloc(place, size_bytes));
+  auto d_mask_allocation = memory::Alloc(place, size_bytes);
+  uint64_t *d_mask = reinterpret_cast<uint64_t *>(d_mask_allocation->ptr());
   NMSKernel<<<blocks, threads>>>(boxes_num, nms_threshold, boxes, d_mask);
-  uint64_t *h_mask = reinterpret_cast<uint64_t *>(
-      memory::Alloc(platform::CPUPlace(), size_bytes));
+
+  auto h_mask_allocation = memory::Alloc(platform::CPUPlace(), size_bytes);
+  uint64_t *h_mask = reinterpret_cast<uint64_t *>(h_mask_allocation->ptr());
   memory::Copy(platform::CPUPlace(), h_mask, place, d_mask, size_bytes, 0);
 
   std::vector<uint64_t> remv(col_blocks);
