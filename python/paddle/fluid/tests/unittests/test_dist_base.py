@@ -47,8 +47,7 @@ class TestDistRunnerBase(object):
         import paddle
         import paddle.fluid as fluid
         self.get_model(batch_size=2)
-        if args.mem_opt:
-            fluid.memory_optimize(fluid.default_main_program())
+        # NOTE: pserver should not call memory optimize
         t = self.get_transpiler(args.trainer_id,
                                 fluid.default_main_program(), args.endpoints,
                                 args.trainers, args.sync_mode)
@@ -68,7 +67,7 @@ class TestDistRunnerBase(object):
         test_program, avg_cost, train_reader, test_reader, batch_acc, predict = \
             self.get_model(batch_size=2)
         if args.mem_opt:
-            fluid.memory_optimize(fluid.default_main_program())
+            fluid.memory_optimize(fluid.default_main_program(), skip_grads=True)
         if args.is_dist:
             t = self.get_transpiler(args.trainer_id,
                                     fluid.default_main_program(),
