@@ -14,28 +14,35 @@ limitations under the License. */
 
 #pragma once
 
-#include <map>
-#include <memory>
+#include <string>
 #include <vector>
-
-#include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/node.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
-// Test if the graph contains circle.
-bool HasCircle(const Graph &graph);
 
-size_t GraphNum(const Graph &graph);
+class PassBuilder {
+ public:
+  PassBuilder() {}
 
-// Topology Sort the operations in the graph from inputs to outputs.
-// `graph` cannot contain circle.
-std::vector<ir::Node *> TopologySortOperations(const Graph &graph);
+  virtual ~PassBuilder() {}
 
-// Build an adjacency list of operations for the `graph`.
-std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
-    const Graph &graph);
+  // Append a new pass to the end.
+  std::shared_ptr<Pass> AppendPass(const std::string& pass_type);
+
+  // Insert a new pass after `idx`.
+  std::shared_ptr<Pass> InsertPass(size_t idx, const std::string& pass_type);
+
+  // Remove a new pass at `idx`.
+  void RemovePass(size_t idx);
+
+  // Returns a list of all passes.
+  std::vector<std::shared_ptr<Pass>> AllPasses() const { return passes_; }
+
+ protected:
+  std::vector<std::shared_ptr<Pass>> passes_;
+};
 
 }  // namespace ir
 }  // namespace framework

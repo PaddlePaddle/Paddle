@@ -12,10 +12,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <unordered_set>
-
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include <algorithm>
+#include <deque>
+#include <unordered_set>
 
 namespace paddle {
 namespace framework {
@@ -111,6 +111,74 @@ std::map<ir::Node *, std::unordered_set<ir::Node *>> BuildOperationAdjList(
     }
   }
   return adj_list;
+}
+
+size_t GraphNum(const Graph &graph) {
+  std::unordered_set<ir::Node *> nodes = graph.Nodes();
+  std::unordered_set<ir::Node *> visited_nodes;
+  visited_nodes.reserve(nodes.size());
+  std::deque<ir::Node *> q_nodes;
+  std::vector<std::unordered_set<ir::Node *>> graph_nodes;
+  std::unordered_set<ir::Node *> g_nodes;
+  size_t graph_count = 0;
+
+  auto traverse_nodes = [&visited_nodes,
+                         &q_nodes](const std::vector<ir::Node *> &nodes) {
+    std::copy_if(
+        nodes.begin(), nodes.end(), std::back_inserter(q_nodes),
+        [&visited_nodes](Node *node) { return !visited_nodes.count(node); });
+  };
+
+  while (visited_nodes.size() != nodes.size()) {
+    if (!q_nodes.empty()) {
+      auto cur_node = q_nodes.front();
+      q_nodes.pop_front();
+      visited_nodes.insert(cur_node);
+      g_nodes.insert(cur_node);
+      traverse_nodes(cur_node->inputs);
+      traverse_nodes(cur_node->outputs);
+    } else {
+      ++graph_count;
+      if (g_nodes.size()) {
+        graph_nodes.emplace_back(g_nodes);
+      }
+      g_nodes.clear();
+      for (auto &n : nodes) {
+        if (visited_nodes.count(n) == 0) {
+          q_nodes.push_back(n);
+          break;
+        }
+      }
+    }
+  }
+
+  if (g_nodes.size()) {
+    graph_nodes.emplace_back(g_nodes);
+  }
+
+  if (VLOG_IS_ON(10)) {
+    VLOG(10) << "graph_num: " << graph_nodes.size();
+    for (auto &g_n : graph_nodes) {
+      VLOG(10) << "graph_nodes: " << g_n.size();
+      if (g_n.size() < 10) {
+        std::stringstream out;
+        for (auto &node : g_n) {
+          out << "\nNode: " << node->Name() << " in [";
+          for (auto &n : node->inputs) {
+            out << n->Name() << ", ";
+          }
+          out << "], out[";
+          for (auto &n : node->outputs) {
+            out << n->Name() << ", ";
+          }
+          out << "]";
+        }
+        VLOG(10) << out.str();
+      }
+    }
+  }
+
+  return graph_count;
 }
 
 }  // namespace ir
