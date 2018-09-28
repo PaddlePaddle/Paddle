@@ -17,7 +17,7 @@ function(train_test TARGET_NAME)
         string(REGEX REPLACE "^_$" "" arg "${arg}")
         cc_test(test_train_${TARGET_NAME}${arg}
                 SRCS test_train_${TARGET_NAME}.cc
-                DEPS paddle_fluid_origin
+                DEPS paddle_fluid_origin ${GLOB_DISTRIBUTE_DEPS}
                 ARGS --dirname=${PYTHON_TESTS_DIR}/book/${TARGET_NAME}${arg}.train.model/)
         set_tests_properties(test_train_${TARGET_NAME}${arg}
                 PROPERTIES DEPENDS test_${TARGET_NAME})
