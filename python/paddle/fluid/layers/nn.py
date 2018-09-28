@@ -29,31 +29,127 @@ from .. import unique_name
 from functools import reduce
 
 __all__ = [
-    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
-    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
-    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
-    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
-    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
-    'sequence_expand', 'sequence_expand_as', 'sequence_pad', 'lstm_unit',
-    'reduce_sum', 'reduce_mean', 'reduce_max', 'reduce_min', 'reduce_prod',
-    'sequence_first_step', 'sequence_last_step', 'dropout', 'split',
-    'ctc_greedy_decoder', 'edit_distance', 'l2_normalize', 'matmul', 'topk',
-    'warpctc', 'sequence_reshape', 'transpose', 'im2sequence', 'nce',
-    'hsigmoid', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
-    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
-    'autoincreased_step_counter', 'reshape', 'squeeze', 'unsqueeze',
-    'lod_reset', 'lrn', 'pad', 'pad_constant_like', 'label_smooth', 'roi_pool',
-    'dice_loss', 'image_resize', 'image_resize_short', 'resize_bilinear',
-    'gather', 'scatter', 'sequence_scatter', 'random_crop', 'mean_iou', 'relu',
-    'log', 'crop', 'rank_loss', 'elu', 'relu6', 'pow', 'stanh', 'hard_sigmoid',
-    'swish', 'prelu', 'brelu', 'leaky_relu', 'soft_relu', 'flatten',
-    'sequence_mask', 'stack', 'pad2d', 'unstack', 'sequence_enumerate',
-    'expand', 'sequence_concat', 'scale', 'elementwise_add', 'elementwise_div',
-    'elementwise_sub', 'elementwise_mul', 'elementwise_max', 'elementwise_min',
-    'elementwise_pow', 'uniform_random_batch_size_like', 'gaussian_random',
-    'sampling_id', 'gaussian_random_batch_size_like', 'sum', 'slice', 'shape',
-    'logical_and', 'logical_or', 'logical_xor', 'logical_not', 'clip',
-    'clip_by_norm'
+    'fc',
+    'embedding',
+    'dynamic_lstm',
+    'dynamic_lstmp',
+    'dynamic_gru',
+    'gru_unit',
+    'linear_chain_crf',
+    'crf_decoding',
+    'cos_sim',
+    'cross_entropy',
+    'square_error_cost',
+    'chunk_eval',
+    'sequence_conv',
+    'conv2d',
+    'conv3d',
+    'sequence_pool',
+    'sequence_softmax',
+    'softmax',
+    'pool2d',
+    'pool3d',
+    'batch_norm',
+    'beam_search_decode',
+    'conv2d_transpose',
+    'conv3d_transpose',
+    'sequence_expand',
+    'sequence_expand_as',
+    'sequence_pad',
+    'lstm_unit',
+    'reduce_sum',
+    'reduce_mean',
+    'reduce_max',
+    'reduce_min',
+    'reduce_prod',
+    'sequence_first_step',
+    'sequence_last_step',
+    'dropout',
+    'split',
+    'ctc_greedy_decoder',
+    'edit_distance',
+    'l2_normalize',
+    'matmul',
+    'topk',
+    'warpctc',
+    'sequence_reshape',
+    'transpose',
+    'im2sequence',
+    'nce',
+    'hsigmoid',
+    'beam_search',
+    'row_conv',
+    'multiplex',
+    'layer_norm',
+    'softmax_with_cross_entropy',
+    'smooth_l1',
+    'one_hot',
+    'autoincreased_step_counter',
+    'reshape',
+    'squeeze',
+    'unsqueeze',
+    'lod_reset',
+    'lrn',
+    'pad',
+    'pad_constant_like',
+    'label_smooth',
+    'roi_pool',
+    'dice_loss',
+    'image_resize',
+    'image_resize_short',
+    'resize_bilinear',
+    'gather',
+    'scatter',
+    'sequence_scatter',
+    'random_crop',
+    'mean_iou',
+    'relu',
+    'log',
+    'crop',
+    'rank_loss',
+    'elu',
+    'relu6',
+    'pow',
+    'stanh',
+    'hard_sigmoid',
+    'swish',
+    'prelu',
+    'brelu',
+    'leaky_relu',
+    'soft_relu',
+    'flatten',
+    'sequence_mask',
+    'stack',
+    'pad2d',
+    'unstack',
+    'sequence_enumerate',
+    'expand',
+    'sequence_concat',
+    'scale',
+    'elementwise_add',
+    'elementwise_div',
+    'elementwise_sub',
+    'elementwise_mul',
+    'elementwise_max',
+    'elementwise_min',
+    'elementwise_pow',
+    'uniform_random_batch_size_like',
+    'gaussian_random',
+    'sampling_id',
+    'gaussian_random_batch_size_like',
+    'sum',
+    'slice',
+    'shape',
+    'logical_and',
+    'logical_or',
+    'logical_xor',
+    'logical_not',
+    'clip',
+    'clip_by_norm',
+    'mean',
+    'mul',
+    'sigmoid_cross_entropy_with_logits',
+    'maxout',
 ]
 
 
@@ -6885,4 +6981,126 @@ def clip_by_norm(x, max_norm, name=None):
         attrs={"max_norm": max_norm},
         outputs={"Out": out})
 
+    return out
+
+
+@templatedoc()
+def mean(x, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("mean", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="mean", inputs={"X": x}, attrs={}, outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+        x_num_col_dims(${x_num_col_dims_type}): ${x_num_col_dims_comment}
+        y_num_col_dims(${y_num_col_dims_type}): ${y_num_col_dims_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("mul", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="mul",
+        inputs={"X": x,
+                "Y": y},
+        attrs={
+            "x_num_col_dims", x_num_col_dims, "y_num_col_dims", y_num_col_dims
+        },
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def sigmoid_cross_entropy_with_logits(x, label, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        label(${label_type}): ${label_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="sigmoid_cross_entropy_with_logits",
+        inputs={"X": x,
+                "Label": label},
+        attrs={},
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def maxout(x, groups, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        groups(${groups_type}): ${groups_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper("maxout", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="maxout",
+        inputs={"X": x},
+        attrs={"groups": groups},
+        outputs={"Out": out})
     return out
