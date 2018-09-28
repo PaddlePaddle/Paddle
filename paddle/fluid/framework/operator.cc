@@ -156,6 +156,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     if (platform::IsProfileEnabled()) {
+      // There are some mutexes called here, cause concurrency performance issue
       platform::DeviceContextPool& pool =
           platform::DeviceContextPool::Instance();
       platform::RecordEvent record_event(Type(), pool.Get(place));
