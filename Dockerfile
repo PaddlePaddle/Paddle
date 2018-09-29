@@ -22,7 +22,7 @@ ENV HOME /root
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
-RUN apt-get update || \
+RUN apt-get update && \
     apt-get install -y --allow-downgrades patchelf \
     git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
