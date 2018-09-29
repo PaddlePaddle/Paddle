@@ -42,18 +42,10 @@ __all__ = [
     'roi_perspective_transform',
     'generate_proposal_labels',
     'generate_proposals',
-]
-
-__auto__ = [
     'iou_similarity',
     'box_coder',
     'polygon_box_transform',
 ]
-
-__all__ += __auto__
-
-for _OP in set(__auto__):
-    globals()[_OP] = generate_layer_fn(_OP)
 
 
 def rpn_target_assign(bbox_pred,
@@ -284,7 +276,7 @@ def detection_output(loc,
         target_box=loc,
         code_type='decode_center_size')
     compile_shape = scores.shape
-    run_shape = ops.shape(scores)
+    run_shape = nn.shape(scores)
     scores = nn.flatten(x=scores, axis=2)
     scores = nn.softmax(input=scores)
     scores = nn.reshape(x=scores, shape=compile_shape, actual_shape=run_shape)
@@ -306,6 +298,101 @@ def detection_output(loc,
         })
     nmsed_outs.stop_gradient = True
     return nmsed_outs
+
+
+@templatedoc()
+def iou_similarity(x, y, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper("iou_similarity", **locals())
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="iou_similarity",
+        inputs={"X": x,
+                "Y": y},
+        attrs={},
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def box_coder(prior_box,
+              prior_box_var,
+              target_box,
+              code_type="encode_center_size",
+              box_normalized=True,
+              name=None):
+    """
+    ${comment}
+
+    Args:
+        prior_box(${prior_box_type}): ${prior_box_comment}
+        prior_box_var(${prior_box_var_type}): ${prior_box_var_comment}
+        target_box(${target_box_type}): ${target_box_comment}
+        code_type(${code_type_type}): ${code_type_comment}
+        box_normalized(${box_normalized_type}): ${box_normalized_comment}
+
+    Returns:
+        output_box(${output_box_type}): ${output_box_comment}
+    """
+    helper = LayerHelper("box_coder", **locals())
+
+    if name is None:
+        output_box = helper.create_tmp_variable(dtype=prior_box.dtype)
+    else:
+        output_box = helper.create_variable(
+            name=name, dtype=prior_box.dtype, persistable=False)
+
+    helper.append_op(
+        type="box_coder",
+        inputs={
+            "PriorBox": prior_box,
+            "PriorBoxVar": prior_box_var,
+            "TargetBox": target_box
+        },
+        attrs={"code_type": code_type,
+               "box_normalized": box_normalized},
+        outputs={"OutputBox": output_box})
+    return output_box
+
+
+@templatedoc()
+def polygon_box_transform(input, name=None):
+    """
+    ${comment}
+
+    Args:
+        input(${input_type}): ${input_comment}
+
+    Returns:
+        output(${output_type}): ${output_comment}
+    """
+    helper = LayerHelper("polygon_box_transform", **locals())
+    if name is None:
+        output = helper.create_tmp_variable(dtype=input.dtype)
+    else:
+        output = helper.create_variable(
+            name=name, dtype=prior_box.input, persistable=False)
+
+    helper.append_op(
+        type="polygon_box_transform",
+        inputs={"Input": input},
+        attrs={},
+        outputs={"Output": output})
+    return output
 
 
 @templatedoc()
@@ -697,7 +784,7 @@ def ssd_loss(location,
         raise ValueError("Only support mining_type == max_negative now.")
 
     num, num_prior, num_class = confidence.shape
-    conf_shape = ops.shape(confidence)
+    conf_shape = nn.shape(confidence)
 
     def __reshape_to_2d(var):
         return nn.flatten(x=var, axis=2)
@@ -724,7 +811,7 @@ def ssd_loss(location,
     target_label.stop_gradient = True
     conf_loss = nn.softmax_with_cross_entropy(confidence, target_label)
     # 3. Mining hard examples
-    actual_shape = ops.slice(conf_shape, axes=[0], starts=[0], ends=[2])
+    actual_shape = nn.slice(conf_shape, axes=[0], starts=[0], ends=[2])
     actual_shape.stop_gradient = True
     conf_loss = nn.reshape(
         x=conf_loss, shape=(num, num_prior), actual_shape=actual_shape)

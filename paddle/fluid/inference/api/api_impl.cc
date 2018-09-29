@@ -145,7 +145,7 @@ bool NativePaddlePredictor::Run(const std::vector<PaddleTensor> &inputs,
   VLOG(4) << "Run prepared context";
   executor_->RunPreparedContext(ctx_.get(), scope,
                                 false, /* don't create local scope each time*/
-                                false /* don't create variable eatch time */);
+                                false /* don't create variable each time */);
   VLOG(4) << "Finish prepared context";
   // get fetch variable
   if (!GetFetch(output_data, scope)) {

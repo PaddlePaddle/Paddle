@@ -541,7 +541,7 @@ class TestBook(unittest.TestCase):
         with program_guard(program):
             input = layers.data(
                 name="input", shape=[3, 100, 100], dtype="float32")
-            out = layers.shape(input, name="shape")
+            out = layers.shape(input)
             self.assertIsNotNone(out)
         print(str(program))
 
@@ -758,11 +758,79 @@ class TestBook(unittest.TestCase):
             out = layers.expand(x, [1, 2])
         print(str(program))
 
+    def test_uniform_random_batch_size_like(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+            out = layers.uniform_random_batch_size_like(input, [-1, 11])
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_gaussian_random(self):
+        program = Program()
+        with program_guard(program):
+            out = layers.gaussian_random(shape=[20, 30])
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sampling_id(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(
+                name="X",
+                shape=[13, 11],
+                dtype='float32',
+                append_batch_size=False)
+
+            out = layers.sampling_id(x)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_gaussian_random_batch_size_like(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.gaussian_random_batch_size_like(
+                input, shape=[-1, 11], mean=1.0, std=2.0)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_sum(self):
+        program = Program()
+        with program_guard(program):
+            input = layers.data(name="input", shape=[13, 11], dtype='float32')
+
+            out = layers.sum(input)
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def test_slice(self):
+        starts = [1, 0, 2]
+        ends = [3, 3, 4]
+        axes = [0, 1, 2]
+
+        program = Program()
+        with program_guard(program):
+            input = layers.data(
+                name="input", shape=[3, 4, 5, 6], dtype='float32')
+
+            out = layers.slice(input, axes=axes, starts=starts, ends=ends)
+
     def test_softshrink(self):
         program = Program()
         with program_guard(program):
             input = layers.data(name="input", shape=[16], dtype="float32")
             out = layers.softshrink(input, name='softshrink')
+            self.assertIsNotNone(out)
+        print(str(program))
+
+    def iou_similarity(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[16], dtype="float32")
+            y = layers.data(name="y", shape=[16], dtype="float32")
+            out = layers.iou_similarity(x, y, name='iou_similarity')
             self.assertIsNotNone(out)
         print(str(program))
 
