@@ -87,6 +87,7 @@ if (WITH_TESTING)
     endif()
   endif()
   add_subdirectory(paddle/fluid/tests)
+  add_subdirectory(paddle/fluid/contrib/tests)
 endif()
 install(DIRECTORY ${PADDLE_PYTHON_PACKAGE_DIR}
     DESTINATION opt/paddle/share/wheels
