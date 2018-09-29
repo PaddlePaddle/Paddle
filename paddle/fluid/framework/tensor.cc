@@ -32,6 +32,7 @@ size_t Tensor::memory_size() const {
 }
 
 void* Tensor::mutable_data(platform::Place place, std::type_index type,
+                           memory::Allocator::Attr attr,
                            size_t requested_size) {
   type_ = type;
   PADDLE_ENFORCE_GE(numel(), 0,
@@ -46,17 +47,18 @@ void* Tensor::mutable_data(platform::Place place, std::type_index type,
   /* some versions of boost::variant don't have operator!= */
   if (holder_ == nullptr || !(holder_->place() == place) ||
       holder_->size() < size + offset_) {
-    holder_ = memory::AllocShared(place, size);
+    holder_ = memory::AllocShared(place, size, attr);
     offset_ = 0;
   }
   return reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(holder_->ptr()) +
                                  offset_);
 }
 
-void* Tensor::mutable_data(platform::Place place, size_t requested_size) {
+void* Tensor::mutable_data(platform::Place place, memory::Allocator::Attr attr,
+                           size_t requested_size) {
   PADDLE_ENFORCE(this->holder_ != nullptr,
                  "Cannot invoke mutable data if current hold nothing.");
-  return mutable_data(place, type_, requested_size);
+  return mutable_data(place, type_, attr, requested_size);
 }
 
 Tensor& Tensor::ShareDataWith(const Tensor& src) {

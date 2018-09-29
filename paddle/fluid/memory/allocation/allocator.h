@@ -60,7 +60,8 @@ class Allocator {
     kFixedHuge = 2,
     kFluxHuge = 3,
     kTmp = 4,
-    NumOfAttrs = 5
+    kCommunication = 5,
+    NumOfAttrs = 6
   };
 
   virtual ~Allocator();
