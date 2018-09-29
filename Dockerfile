@@ -22,11 +22,12 @@ ENV HOME /root
 # Add bash enhancements
 COPY ./paddle/scripts/docker/root/ /root/
 
-RUN apt-get update && \
-    apt-get install -y --allow-downgrades patchelf \
+RUN apt-get update || \
+    apt-get install -y --allow-unauthenticated libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0
+
+RUN apt-get install -y --allow-downgrades patchelf \
     git python-pip python-dev python-opencv openssh-server bison \
     python3 python3-pip python3-dev \
-    libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
