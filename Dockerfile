@@ -23,11 +23,9 @@ ENV HOME /root
 COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update || \
-    apt-get install -y --allow-unauthenticated libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0
-
-RUN apt-get install -y --allow-downgrades patchelf \
+    apt-get install -y --allow-downgrades patchelf \
     git python-pip python-dev python-opencv openssh-server bison \
-    python3 python3-pip python3-dev \
+    libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib gcc-4.8 g++-4.8 \
@@ -66,6 +64,8 @@ RUN git config --global credential.helper store
 # Fix locales to en_US.UTF-8
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
+RUN apt-get install -y python3 python3-dev python3-pip
+
 # FIXME: due to temporary ipykernel dependency issue, specify ipykernel jupyter
 # version util jupyter fixes this issue.
 
@@ -76,7 +76,6 @@ RUN easy_install -U pip && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark && \
-    pip3 install --upgrade pip && \
     pip3 install -U wheel && \
     pip3 install -U docopt PyYAML sphinx==1.5.6 && \
     pip3 install sphinx-rtd-theme==0.1.9 recommonmark
