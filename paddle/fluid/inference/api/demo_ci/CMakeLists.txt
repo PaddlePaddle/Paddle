@@ -1,13 +1,32 @@
 cmake_minimum_required(VERSION 3.0)
-
 project(cpp_inference_demo CXX C)
+option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
+option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
+option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+macro(safe_set_static_flag)
+    foreach(flag_var
+        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+      if(${flag_var} MATCHES "/MD")
+        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+      endif(${flag_var} MATCHES "/MD")
+    endforeach(flag_var)
+endmacro()
+
 if (WIN32)
-set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
+  if (WITH_STATIC_LIB)
+    safe_set_static_flag()
+    add_definitions(-DSTATIC_LIB)
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "/w")
+    set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} "/w")
+  endif()
+  set(CMAKE_STATIC_LIBRARY_PREFIX "lib")
 else()
-set(CMAKE_STATIC_LIBRARY_PREFIX "")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  set(CMAKE_STATIC_LIBRARY_PREFIX "")
 endif()
+message("flags" ${CMAKE_CXX_FLAGS})
 
 if(NOT DEFINED PADDLE_LIB)
   message(FATAL_ERROR "please set PADDLE_LIB with -DPADDLE_LIB=/path/paddle/lib")
@@ -16,14 +35,18 @@ if(NOT DEFINED DEMO_NAME)
   message(FATAL_ERROR "please set DEMO_NAME with -DDEMO_NAME=demo_name")
 endif()
 
-option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       ON)
-option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
-option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
 
 if(WITH_GPU)
-  set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
+  if(NOT WIN32)
+    set(CUDA_LIB "/usr/local/cuda/lib64/" CACHE STRING "CUDA Library")
+  else()
+    if(CUDA_LIB STREQUAL "")
+    set(CUDA_LIB "C:\\Program\ Files\\NVIDIA GPU Computing Toolkit\\CUDA\\v8.0\\lib\\x64")
+    endif()
+  endif(NOT WIN32)
 endif()
 
+include_directories("D:/Paddle/")
 include_directories("${PADDLE_LIB}")
 include_directories("${PADDLE_LIB}/third_party/install/protobuf/include")
 include_directories("${PADDLE_LIB}/third_party/install/glog/include")
@@ -83,10 +106,18 @@ set(DEPS ${DEPS}
     ${MATH_LIB} ${MKLDNN_LIB}
     ${CMAKE_STATIC_LIBRARY_PREFIX}glog  ${CMAKE_STATIC_LIBRARY_PREFIX}gflags  ${CMAKE_STATIC_LIBRARY_PREFIX}protobuf
     ${EXTERNAL_LIB})
+# NOTE(dzhwinter) shlwapi is deprecated.
+set(DEPS ${DEPS} libcmt shlwapi)
 endif(NOT WIN32)
 
 if(WITH_GPU)
-  set(DEPS ${DEPS} ${CUDA_LIB}/libcudart${CMAKE_SHARED_LIBRARY_SUFFIX})
+  if(NOT WIN32)
+    set(DEPS ${DEPS} ${CUDA_LIB}/libcudart${CMAKE_SHARED_LIBRARY_SUFFIX})
+  else()
+    set(DEPS ${DEPS} ${CUDA_LIB}/cudart${CMAKE_STATIC_LIBRARY_SUFFIX} )
+  set(DEPS ${DEPS} ${CUDA_LIB}/cublas${CMAKE_STATIC_LIBRARY_SUFFIX} )
+  set(DEPS ${DEPS} ${CUDA_LIB}/cudnn${CMAKE_STATIC_LIBRARY_SUFFIX} )
+  endif()
 endif()
 
 target_link_libraries(${DEMO_NAME} ${DEPS})
