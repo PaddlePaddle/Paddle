@@ -25,7 +25,7 @@ class TestDistCTR2x2(TestDistBase):
 
 
 def test_dist_ctr(self):
-    self.check_with_place("dist_ctr.py", delta=1e-7, check_error_log=False)
+    self.check_with_place("dist_ctr.py", delta=1e-7)
 
 
 if __name__ == "__main__":
