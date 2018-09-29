@@ -154,7 +154,6 @@ struct AnyDTypeVisitor {
     auto o = EigenScalar<bool>::From(*out_);
     // return any of predicate_(t) is true.
     o.device(*ctx_.eigen_device()) = predicate_(t).any();
-    // o.device(*ctx_.eigen_device()) = predicate_(t).all();
   }
 };
 
