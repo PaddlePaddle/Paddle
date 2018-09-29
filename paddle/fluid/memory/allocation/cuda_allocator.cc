@@ -31,7 +31,6 @@ std::unique_ptr<Allocation> CUDAAllocator::Allocate(size_t size, Attr attr) {
         "Cannot allocate %d on GPU %d, cuda status %d, %s", size, place_.device,
         status, cudaGetErrorString(status)));
   }
-
   return std::unique_ptr<Allocation>(
       new CUDAAllocation(ptr, size, platform::Place(place_)));
 }

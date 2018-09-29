@@ -46,7 +46,6 @@ class AllocatorFacadePrivate {
   }
 
   AllocatorFacadePrivate() {
-    std::cout << "Init Allocator Facade" << std::endl;
     InitCPUAllocator();
     InitCUDAAllocator();
   }

@@ -9,11 +9,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
-
 #include <set>
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include "paddle/fluid/platform/cuda_device_guard.h"
 
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
@@ -205,7 +205,7 @@ class CudnnHolder {
 
 CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
     : place_(place), cudnn_holder_(nullptr) {
-  SetDeviceId(place_.device);
+  CUDADeviceGuard guard(place_.device);
   compute_capability = GetCUDAComputeCapability(place_.device);
   multi_process = GetCUDAMultiProcessors(place_.device);
   max_threads_per_mp = GetCUDAMaxThreadsPerMultiProcessor(place_.device);

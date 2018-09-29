@@ -42,3 +42,5 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         naive_managed_allocator
         aligned_allocator
         cuda_device_guard)
+
+nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
