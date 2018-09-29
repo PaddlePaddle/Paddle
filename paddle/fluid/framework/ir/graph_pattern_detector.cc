@@ -122,7 +122,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
   }
   VLOG(3) << pdnodes2nodes_.size() << " nodes marked";
 
-  return !pdnodes2nodes_.empty();
+  return pdnodes2nodes_.size() == pattern_.nodes().size();
 }
 
 // The intermediate Nodes can only link to the nodes inside the pattern, or this
@@ -191,13 +191,38 @@ bool IsNodesLink(Node *a, Node *b) {
   return false;
 }
 
+struct PDEdgeSorter {
+  using edge_t = PDPattern::edge_t;
+  PDEdgeSorter(const std::unordered_map<const PDNode *,
+                                        std::unordered_set<Node *>> &roles)
+      : roles_(roles) {}
+
+  bool operator()(const edge_t &a, const edge_t b) {
+    // The role with less nodes prefer to sort to the front, so that it will
+    // prune more cases in the beginning of the search.
+    PADDLE_ENFORCE(roles_.count(a.first));
+    PADDLE_ENFORCE(roles_.count(a.second));
+    PADDLE_ENFORCE(roles_.count(b.first));
+    PADDLE_ENFORCE(roles_.count(b.second));
+    int a_count = roles_.at(a.first).size() + roles_.at(a.second).size();
+    int b_count = roles_.at(b.first).size() + roles_.at(b.second).size();
+    return a_count < b_count;
+  }
+
+ private:
+  const std::unordered_map<const PDNode *, std::unordered_set<Node *>> &roles_;
+};
+
 std::vector<GraphPatternDetector::subgraph_t>
 GraphPatternDetector::DetectPatterns() {
+  // Sort the edge, the role with less Nodes in the front, so that it will prune
+  // more other cases.
+  PDEdgeSorter edge_sorter(pdnodes2nodes_);
+  pattern_.SortEdgesBy(edge_sorter);
   // Init empty subgraphs.
   std::vector<GraphPatternDetector::subgraph_t> result;
   std::vector<HitGroup> init_groups;
   std::array<std::vector<HitGroup>, 2> bi_records;
-  // PADDLE_ENFORCE(!pattern_.edges().empty(), "At least one edge is needed");
   auto *first_pnode = pattern_.edges().empty() ? pattern().nodes().front().get()
                                                : pattern_.edges().front().first;
   if (!pdnodes2nodes_.count(first_pnode)) return result;
@@ -210,7 +235,7 @@ GraphPatternDetector::DetectPatterns() {
   int step = 0;
   bi_records[0] = std::move(init_groups);
 
-  // Extend a PDNode to subgraphs by deducing the connection relations defined
+  // Extend a PDNode to sub-graphs by deducing the connection relations defined
   // in edges of PDNodes.
   for (const auto &edge : pattern_.edges()) {
     VLOG(4) << "check " << edge.first->name() << " -> " << edge.second->name();

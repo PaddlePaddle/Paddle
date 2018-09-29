@@ -18,6 +18,7 @@
 #include <gtest/gtest_prod.h>
 #endif
 
+#include <algorithm>
 #include <numeric>
 #include <string>
 #include <utility>
@@ -196,6 +197,10 @@ class PDPattern {
 
   const std::vector<std::unique_ptr<PDNode>>& nodes() const { return nodes_; }
   const std::vector<edge_t>& edges() const { return edges_; }
+  template <typename Compare>
+  void SortEdgesBy(const Compare& comp) {
+    std::sort(edges_.begin(), edges_.end(), comp);
+  }
 
   std::string DotString() const;
 
