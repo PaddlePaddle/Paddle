@@ -19,6 +19,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using Tensor = framework::Tensor;
+
 template <typename T>
 class MomentumOpKernel : public framework::OpKernel<T> {
  public:
@@ -35,9 +37,6 @@ class MomentumOpKernel : public framework::OpKernel<T> {
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
-    bool use_lars = ctx.Attr<bool>("use_lars");
-    T lars_coeff = ctx.Attr<float>("lars_coeff");
-    T lars_weight_decay = ctx.Attr<float>("lars_weight_decay");
 
     auto p_out = framework::EigenVector<T>::Flatten(*param_out);
     auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
@@ -47,32 +46,53 @@ class MomentumOpKernel : public framework::OpKernel<T> {
     auto g = framework::EigenVector<T>::Flatten(*grad);
     auto* lr = learning_rate->data<T>();
 
-    if (!use_lars) {
-      v_out = v * mu + g;
-      if (use_nesterov) {
-        p_out = p - (g + v_out * mu) * lr[0];
-      } else {
-        p_out = p - lr[0] * v_out;
-      }
+    v_out = v * mu + g;
+    if (use_nesterov) {
+      p_out = p - (g + v_out * mu) * lr[0];
     } else {
-      framework::Tensor p_norm_t, g_norm_t;
-      p_norm_t.Resize({1});
-      g_norm_t.Resize({1});
-      p_norm_t.mutable_data<T>(ctx.GetPlace());
-      g_norm_t.mutable_data<T>(ctx.GetPlace());
-      auto ep_norm = framework::EigenScalar<T>::From(p_norm_t);
-      auto eg_norm = framework::EigenScalar<T>::From(g_norm_t);
-
-      ep_norm = p.square().sum().sqrt();
-      eg_norm = g.square().sum().sqrt();
-      T local_lr = lr[0];
-      if (ep_norm(0) > 0 && eg_norm(0) > 0) {
-        local_lr = lr[0] * lars_coeff * ep_norm(0) /
-                   (eg_norm(0) + lars_weight_decay * ep_norm(0));
-      }
-      v_out = v * mu + local_lr * (g + lars_weight_decay * p);
-      p_out = p - v_out;
+      p_out = p - lr[0] * v_out;
     }
+  }
+};
+
+class MomentumOp : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    PADDLE_ENFORCE(ctx->HasInput("Param"),
+                   "Input(param) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Grad"),
+                   "Input(grad) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("Velocity"),
+                   "Input(velocity) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
+                   "Input(LearningRate) of Momentum should not be null.");
+
+    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
+                   "Output(ParamOut) of Momentum should not be null.");
+    PADDLE_ENFORCE(ctx->HasOutput("VelocityOut"),
+                   "Output(VelocityOut) of Momentum should not be null.");
+
+    auto param_dim = ctx->GetInputDim("Param");
+    PADDLE_ENFORCE_EQ(
+        param_dim, ctx->GetInputDim("Grad"),
+        "Param and Grad input of MomentumOp should have the same dimension.");
+    PADDLE_ENFORCE_EQ(
+        param_dim, ctx->GetInputDim("Velocity"),
+        "Param and Velocity of MomentumOp should have the same dimension.");
+    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
+                      "Learning_rate should be a scalar");
+
+    ctx->SetOutputDim("ParamOut", param_dim);
+    ctx->SetOutputDim("VelocityOut", param_dim);
+  }
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto input_data_type =
+        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 

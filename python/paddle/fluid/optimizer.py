@@ -333,17 +333,6 @@ class MomentumOptimizer(Optimizer):
         & else:
 
         &\quad   param = param - learning\_rate * velocity
-    
-    If use_lars is set to True, the update will use:
-
-    .. math::
-
-        & learning\_rate = learning\_rate * lars\_coeff * \\
-          \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
-
-        & velocity = mu * velocity + (gradient + lars\_weight\_decay * param)
-
-        & param = param - learning\_rate * velocity
 
     Args:
         learning_rate (float|Variable): the learning rate used to update parameters. \
@@ -353,10 +342,6 @@ class MomentumOptimizer(Optimizer):
         regularization: A Regularizer, such as
                         fluid.regularizer.L2DecayRegularizer.
         name: A optional name prefix.
-        use_lars (bool): enables LARS for each layer, lars_coeff and \
-                         lars_weight_decay is not used when this is false.
-        lars_coeff (float): defines how much we trust the layer to change its weights.
-        lars_weight_decay (float): weight decay coefficient for decaying using LARS.
 
     Examples:
         .. code-block:: python
@@ -371,10 +356,7 @@ class MomentumOptimizer(Optimizer):
                  momentum,
                  use_nesterov=False,
                  regularization=None,
-                 name=None,
-                 use_lars=False,
-                 lars_coeff=0.001,
-                 lars_weight_decay=0.0005):
+                 name=None):
         assert learning_rate is not None
         assert momentum is not None
         super(MomentumOptimizer, self).__init__(
@@ -384,7 +366,86 @@ class MomentumOptimizer(Optimizer):
         self.type = "momentum"
         self._momentum = momentum
         self._use_nesterov = bool(use_nesterov)
-        self._use_lars = bool(use_lars)
+
+    def _create_accumulators(self, block, parameters):
+        assert isinstance(block, framework.Block)
+
+        for p in parameters:
+            self._add_accumulator(self._velocity_acc_str, p)
+
+    def _append_optimize_op(self, block, param_and_grad):
+        assert isinstance(block, framework.Block)
+
+        velocity_acc = self._get_accumulator(self._velocity_acc_str,
+                                             param_and_grad[0])
+        # create the momentum optimize op
+        momentum_op = block.append_op(
+            type=self.type,
+            inputs={
+                "Param": param_and_grad[0],
+                "Grad": param_and_grad[1],
+                "Velocity": velocity_acc,
+                "LearningRate": self._create_param_lr(param_and_grad)
+            },
+            outputs={
+                "ParamOut": param_and_grad[0],
+                "VelocityOut": velocity_acc
+            },
+            attrs={"mu": self._momentum,
+                   "use_nesterov": self._use_nesterov})
+
+        return momentum_op
+
+
+class LarsMomentumOptimizer(Optimizer):
+    """
+    Momentum optimizer with LARS support
+
+    The update equations are as follows:
+
+    .. math::
+
+        & learning\_rate = learning\_rate * lars\_coeff * \\
+          \\frac{||param||}{||gradient|| + lars\_weight\_decay * ||param||}
+
+        & velocity = mu * velocity + (gradient + lars\_weight\_decay * param)
+
+        & param = param - learning\_rate * velocity
+
+    Args:
+        learning_rate (float|Variable): the learning rate used to update parameters. \
+        Can be a float value or a Variable with one float value as data element.
+        momentum (float): momentum factor
+        lars_coeff (float): defines how much we trust the layer to change its weights.
+        lars_weight_decay (float): weight decay coefficient for decaying using LARS.
+        regularization: A Regularizer, such as
+                        fluid.regularizer.L2DecayRegularizer.
+        name: A optional name prefix.
+        
+
+    Examples:
+        .. code-block:: python
+
+            optimizer = fluid.optimizer.Momentum(learning_rate=0.2, momentum=0.1)
+            optimizer.minimize(cost)
+    """
+    _velocity_acc_str = "velocity"
+
+    def __init__(self,
+                 learning_rate,
+                 momentum,
+                 lars_coeff=0.001,
+                 lars_weight_decay=0.0005,
+                 regularization=None,
+                 name=None):
+        assert learning_rate is not None
+        assert momentum is not None
+        super(LarsMomentumOptimizer, self).__init__(
+            learning_rate=learning_rate,
+            regularization=regularization,
+            name=name)
+        self.type = "lars_momentum"
+        self._momentum = momentum
         self._lars_coeff = float(lars_coeff)
         self._lars_weight_decay = float(lars_weight_decay)
 
@@ -414,8 +475,6 @@ class MomentumOptimizer(Optimizer):
             },
             attrs={
                 "mu": self._momentum,
-                "use_nesterov": self._use_nesterov,
-                "use_lars": self._use_lars,
                 "lars_coeff": self._lars_coeff,
                 "lars_weight_decay": self._lars_weight_decay
             })
@@ -1230,6 +1289,7 @@ DecayedAdagrad = DecayedAdagradOptimizer
 Adadelta = AdadeltaOptimizer
 RMSProp = RMSPropOptimizer
 Ftrl = FtrlOptimizer
+LarsMomentum = LarsMomentumOptimizer
 
 
 class ModelAverage(Optimizer):

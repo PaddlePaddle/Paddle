@@ -19,47 +19,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-class MomentumOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-
- protected:
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Param"),
-                   "Input(param) of Momentum should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Grad"),
-                   "Input(grad) of Momentum should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Velocity"),
-                   "Input(velocity) of Momentum should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
-                   "Input(LearningRate) of Momentum should not be null.");
-
-    PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
-                   "Output(ParamOut) of Momentum should not be null.");
-    PADDLE_ENFORCE(ctx->HasOutput("VelocityOut"),
-                   "Output(VelocityOut) of Momentum should not be null.");
-
-    auto param_dim = ctx->GetInputDim("Param");
-    PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Grad"),
-        "Param and Grad input of MomentumOp should have the same dimension.");
-    PADDLE_ENFORCE_EQ(
-        param_dim, ctx->GetInputDim("Velocity"),
-        "Param and Velocity of MomentumOp should have the same dimension.");
-    PADDLE_ENFORCE_EQ(framework::product(ctx->GetInputDim("LearningRate")), 1,
-                      "Learning_rate should be a scalar");
-
-    ctx->SetOutputDim("ParamOut", param_dim);
-    ctx->SetOutputDim("VelocityOut", param_dim);
-  }
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    auto input_data_type =
-        framework::ToDataType(ctx.Input<Tensor>("Param")->type());
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-};
-
 class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -89,15 +48,6 @@ class MomentumOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Use Nesterov Momentum")
         .SetDefault(false);
-    AddAttr<bool>("use_lars", "(bool, default false)",
-                  "whether to use LARS local lr for each parameter.")
-        .SetDefault(false);
-    AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
-        .SetDefault(0.001);
-    AddAttr<float>("lars_weight_decay",
-                   "(float, default 0.0005) LARS weight decay")
-        .SetDefault(0.0005);
-
     AddComment(R"DOC(
 Momentum Optimizer.
 
@@ -111,22 +61,6 @@ if (use\_nesterov):   \\
 else:   \\
   param = param - learning\_rate * velocity. \\
 $$
-
-You may set "use_lars" to true to use LARS (https://arxiv.org/abs/1708.03888) 
-for some cases to speed up large batch size training. If LARS is enabled, this
-op will run:
-
-$$
-learning\_rate *= lars_coeff * sqrt(sumsq(param)) 
-    / (sqrt(sumsq(gradient))+ lars\_weight\_decay * sqrt(sumsq(param))) \\
-velocity = mu * velocity + 
-    (gradient + lars\_weight\_decay * param) \\
-param = param - learning\_rate * velocity. \\
-$$
-
-Note that we use lars_weight_decay here to decay weights, because if we use
-L2 regularization, weight will be decayed before momentum op, the lars local
-learning rate will be calculated by updated gradient.
 
 )DOC");
   }
