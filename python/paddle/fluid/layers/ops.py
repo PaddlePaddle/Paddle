@@ -35,12 +35,7 @@ __activations_noattr__ = [
     'softsign',
 ]
 
-__all__ = [
-    'mean',
-    'mul',
-    'sigmoid_cross_entropy_with_logits',
-    'maxout',
-]
+__all__ = []
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
