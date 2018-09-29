@@ -16,34 +16,14 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <string>
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
 namespace paddle {
 namespace memory {
 namespace allocation {
-
-class CUDADeviceGuard {
- public:
-  explicit CUDADeviceGuard(int dev_id) {
-    int prev_id = platform::GetCurrentDeviceId();
-    if (prev_id != dev_id) {
-      prev_id_ = prev_id;
-      platform::SetDeviceId(dev_id);
-    }
-  }
-
-  ~CUDADeviceGuard() {
-    if (prev_id_ != -1) {
-      platform::SetDeviceId(prev_id_);
-    }
-  }
-
- private:
-  int prev_id_{-1};
-};
-
 std::unique_ptr<Allocation> CUDAAllocator::Allocate(size_t size, Attr attr) {
-  CUDADeviceGuard guard(place_.device);
+  platform::CUDADeviceGuard guard(place_.device);
   void* ptr;
   auto status = cudaMalloc(&ptr, size);
   if (UNLIKELY(status != cudaSuccess)) {
@@ -57,6 +37,7 @@ std::unique_ptr<Allocation> CUDAAllocator::Allocate(size_t size, Attr attr) {
 }
 
 void CUDAAllocator::Free(Allocation* allocation) {
+  platform::CUDADeviceGuard guard(place_.device);
   auto* cuda_allocation = dynamic_cast<CUDAAllocation*>(allocation);
   PADDLE_ENFORCE_NOT_NULL(cuda_allocation);
   PADDLE_ENFORCE_EQ(boost::get<platform::CUDAPlace>(cuda_allocation->place()),
