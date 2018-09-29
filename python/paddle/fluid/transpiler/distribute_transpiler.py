@@ -470,7 +470,10 @@ class DistributeTranspiler(object):
         """
         # remove optimize ops and add a send op to main_program
         # FIXME(typhoonzero): Also ops like clip_gradient, lrn_decay?
+        lr_ops = self._get_lr_ops()
         delete_ops(self.origin_program.global_block(), self.optimize_ops)
+        delete_ops(self.origin_program.global_block(), lr_ops)
+
         self.origin_program.__str__()
 
         if wait_port:
@@ -668,7 +671,7 @@ in a single call.")
                 __clone_lr_op_sub_block__(cloned_op, program, new_sub_block)
 
             # reset the block of op
-            op.set_attr('sub_block', new_sub_block)
+            op._set_attr('sub_block', new_sub_block)
 
         # append lr decay ops to the child block if exists
         lr_ops = self._get_lr_ops()
@@ -862,7 +865,7 @@ to transpile() call.")
                 if op.type in [
                         "gaussian_random", "fill_constant", "uniform_random"
                 ]:
-                    op.set_attr("shape", list(new_outputs["Out"].shape))
+                    op._set_attr("shape", list(new_outputs["Out"].shape))
                 s_prog.global_block().append_op(
                     type=op.type,
                     inputs=new_inputs,
@@ -1427,6 +1430,9 @@ to transpile() call.")
                 return param_shape
         elif op_type == "rmsprop":
             if varkey in ["Moment", "MeanSquare"]:
+                return param_shape
+        elif op_type == "decayed_adagrad":
+            if varkey == "Moment":
                 return param_shape
         elif op_type == "sgd":
             pass
