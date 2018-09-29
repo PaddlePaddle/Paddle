@@ -104,6 +104,73 @@ TEST(JitKernel, vexp) {
   }
 }
 
+inline float _sigmoid(float x) {
+  const float min = SIGMOID_THRESHOLD_MIN;
+  const float max = SIGMOID_THRESHOLD_MAX;
+  float tmp = (x < min) ? min : ((x > max) ? max : x);
+  return 1.f / (1.f + std::exp(-tmp));
+}
+
+void vsigmoid_ref(const int n, const float* x, float* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = _sigmoid(x[i]);
+  }
+}
+
+void vsigmoid_better(
+    const std::shared_ptr<
+        const paddle::operators::math::jitkernel::VExpKernel<float>>& vexp,
+    const int n, const float* x, float* y) {
+  const float min = SIGMOID_THRESHOLD_MIN;
+  const float max = SIGMOID_THRESHOLD_MAX;
+  for (int i = 0; i < n; ++i) {
+    y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+    y[i] = 0.f - y[i];
+  }
+  vexp->Compute(n, y, y);
+  for (int i = 0; i < n; ++i) {
+    y[i] = 1.f / (1.f + y[i]);
+  }
+}
+
+TEST(JitKernel, vsigmoid) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 128}) {
+    std::vector<float> x(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data(), -2.f, 2.f);
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VSigmoidKernel<float>>(d);
+    const auto& vexp =
+        jit::KernelPool::Instance().template Get<jit::VExpKernel<float>>(d);
+    const float* x_data = x.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto tmkls = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vsigmoid_better(vexp, d, x_data, zref_data);
+    }
+    auto tmkle = GetCurrentUS();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vsigmoid_ref(d, x_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(d, x_data, ztgt_data);
+    }
+    auto ttgte = GetCurrentUS();
+
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
+  }
+}
+
 void vscal_ref(const int n, const float a, const float* x, float* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a * x[i];
