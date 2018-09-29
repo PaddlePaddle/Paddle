@@ -24,37 +24,11 @@ namespace operators {
 namespace {
 
 template <typename T, int block_size>
-__global__ void MergeGradKernel(const T* grad, const int64_t* grad_rows,
-                                T* grad_merge, const int64_t* grad_merge_rows,
-                                size_t grad_merge_rows_size,
-                                int64_t row_numel) {
-  const int ty = blockIdx.y;
-  int tid = threadIdx.x;
-  __shared__ size_t grad_merge_idx;
-
-  if (tid == 0) {
-    for (size_t i = 0; i < grad_merge_rows_size; i++) {
-      if (grad_rows[ty] == grad_merge_rows[i]) {
-        grad_merge_idx = i;
-      }
-    }
-  }
-
-  __syncthreads();
-
-  grad += ty * row_numel;
-  grad_merge += grad_merge_idx * row_numel;
-  for (int index = tid; index < row_numel; index += block_size) {
-    paddle::platform::CudaAtomicAdd(grad_merge + index, grad[index]);
-  }
-}
-
-template <typename T, int block_size>
 __global__ void SparseAdagradFunctorKernel(const T* grad, const int64_t* rows,
                                            const T* learning_rate, T* param,
                                            T* moment, int64_t row_numel,
                                            T epsilon) {
-  const int ty = blockIdx.y;
+  const int ty = blockIdx.x;
   int tid = threadIdx.x;
 
   grad += ty * row_numel;
@@ -97,11 +71,9 @@ struct SparseAdagradFunctor<platform::CUDADeviceContext, T> {
 
     const int block_size = 256;
     dim3 threads(block_size, 1);
-    dim3 grid2(1, merge_rows.size());
+    dim3 grid2(merge_rows.size(), 1);
     SparseAdagradFunctorKernel<
-        T, 256><<<grid2, threads, 0,
-                  reinterpret_cast<const platform::CUDADeviceContext&>(context)
-                      .stream()>>>(
+        T, block_size><<<grid2, threads, 0, context.stream()>>>(
         grad_merge_data, merge_rows.CUDAMutableData(context.GetPlace()), lr,
         param_data, moment_data, grad_width, epsilon);
   }
