@@ -303,7 +303,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     bool fuse_eltwise = ctx.Attr<bool>("fuse_eltwise");
     int groups = ctx.Attr<int>("groups");
 
-    // TODO: add support for dilation
+    // TODO: add support for dilation  // NOLINT
     PADDLE_ENFORCE(
         dilations.size() == 2 && dilations[0] == 1 && dilations[1] == 1,
         "dilation in convolution is not implemented yet");
@@ -386,8 +386,9 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_weights_memory_p = handler.AcquireWeightsMemory(
         user_weights_md, to_void_cast<T>(filter_data));
 
-    T* output_data =
-        output->mutable_data<T>(ctx.GetPlace(), handler.GetDstMemorySize());
+    T* output_data = output->mutable_data<T>(
+        ctx.GetPlace(), paddle::memory::Allocator::kDefault,
+        handler.GetDstMemorySize());
     // create reorder primitive if the input format is not the preferred one
     auto src_memory_p =
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
@@ -626,7 +627,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
               user_diff_dst_memory_p, pipeline);
 
       const size_t size = handler.GetDiffWeightsMemorySize();
-      filter_grad_data = filter_grad->mutable_data<T>(ctx.GetPlace(), size);
+      filter_grad_data = filter_grad->mutable_data<T>(
+          ctx.GetPlace(), paddle::memory::Allocator::kDefault, size);
 
       auto diff_weights_memory_p =
           handler.AcquireDiffWeightsMemoryFromWeightsPrimitive(
@@ -651,7 +653,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
                                                         pipeline);
 
       const size_t size = handler.GetDiffSourceMemorySize();
-      input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace(), size);
+      input_grad_data = input_grad->mutable_data<T>(
+          ctx.GetPlace(), paddle::memory::Allocator::kDefault, size);
 
       auto diff_src_memory_p = handler.AcquireDiffSrcMemoryFromDataPrimitive(
           reinterpret_cast<void*>(input_grad_data));

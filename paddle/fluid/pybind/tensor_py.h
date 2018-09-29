@@ -112,17 +112,16 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   }
 }
 
-// TODO(dzhwinter) : fix the redundent Tensor allocate and free
+// TODO(dzhwinter) : fix the redundant Tensor allocate and free
 template <typename T>
 void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   if (platform::is_gpu_place(self->place())) {
-    std::shared_ptr<framework::Tensor> dst(new framework::Tensor);
-    framework::TensorCopySync(*self, platform::CPUPlace(), dst.get());
-    dst->data<T>()[offset] = elem;
-    framework::TensorCopySync(*dst.get(), self->place(), self);
-
+    framework::Tensor dst;
+    framework::TensorCopySync(*self, platform::CPUPlace(), &dst);
+    dst.mutable_data<T>(platform::CPUPlace())[offset] = elem;
+    framework::TensorCopySync(dst, self->place(), self);
   } else if (platform::is_cpu_place(self->place())) {
-    self->data<T>()[offset] = elem;
+    self->mutable_data<T>(self->place())[offset] = elem;
   }
 }
 

@@ -21,6 +21,7 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
+#include "paddle/fluid/memory/allocation/pinned_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -31,6 +32,35 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
+
+class CPUManagedAllocator : public ManagedAllocator {
+ public:
+  CPUManagedAllocator()
+      : normal_allocator_(NaiveManagedAllocator::Create(
+            std::unique_ptr<Allocator>(new CPUAllocator()))),
+        communication_allocator_(NaiveManagedAllocator::Create(
+            std::unique_ptr<Allocator>(new CPUPinnedAllocator()))) {}
+
+  std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
+    if (attr == kCommunication) {
+      return communication_allocator_->Allocate(size, attr);
+    } else {
+      return normal_allocator_->Allocate(size, attr);
+    }
+  }
+
+  std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override {
+    if (attr == kCommunication) {
+      return communication_allocator_->AllocateShared(size, attr);
+    } else {
+      return normal_allocator_->AllocateShared(size, attr);
+    }
+  }
+
+ private:
+  std::shared_ptr<ManagedAllocator> normal_allocator_;
+  std::shared_ptr<ManagedAllocator> communication_allocator_;
+};
 
 class AllocatorFacadePrivate {
  public:
@@ -52,10 +82,7 @@ class AllocatorFacadePrivate {
 
  private:
   void InitCPUAllocator() {
-    auto all = NaiveManagedAllocator::Create(
-        std::unique_ptr<Allocator>(new CPUAllocator()));
-
-    allocators_[platform::CPUPlace()] = all;
+    allocators_[platform::CPUPlace()] = std::make_shared<CPUManagedAllocator>();
   }
 
   void InitCUDAAllocator() {

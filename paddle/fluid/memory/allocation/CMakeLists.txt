@@ -25,9 +25,9 @@ endif()
 
 cc_library(naive_managed_allocator SRCS naive_managed_allocator.cc DEPS allocator)
 cc_test(naive_managed_allocator_test SRCS naive_managed_allocator_test.cc DEPS naive_managed_allocator)
-
+nv_library(pinned_allocator SRCS pinned_allocator.cc DEPS allocator)
 if (WITH_GPU)
-    set(AllocatorFacadeDeps gpu_info cuda_allocator)
+    set(AllocatorFacadeDeps gpu_info cuda_allocator pinned_allocator)
 else ()
     set(AllocatorFacadeDeps)
 endif()
