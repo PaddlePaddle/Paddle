@@ -211,13 +211,10 @@ class TestDistBase(unittest.TestCase):
             ps0_cmd += " --mem_opt"
             ps1_cmd += " --mem_opt"
 
-        ps0_pipe = subprocess.PIPE
-        ps1_pipe = subprocess.PIPE
-        if check_error_log:
-            print(ps0_cmd)
-            print(ps1_cmd)
-            ps0_pipe = open("/tmp/ps0_err.log", "wb")
-            ps1_pipe = open("/tmp/ps1_err.log", "wb")
+        print(ps0_cmd)
+        print(ps1_cmd)
+        ps0_pipe = open("/tmp/ps0_err.log", "wb")
+        ps1_pipe = open("/tmp/ps1_err.log", "wb")
 
         ps0_proc = subprocess.Popen(
             ps0_cmd.strip().split(" "),
@@ -230,10 +227,7 @@ class TestDistBase(unittest.TestCase):
             stderr=ps1_pipe,
             env=required_envs)
 
-        if not check_error_log:
-            return ps0_proc, ps1_proc, None, None
-        else:
-            return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
+        return ps0_proc, ps1_proc, ps0_pipe, ps1_pipe
 
     def _wait_ps_ready(self, pid):
         retry_times = 50
@@ -328,15 +322,10 @@ class TestDistBase(unittest.TestCase):
         env0.update(envs)
         env1.update(envs)
 
-        FNULL = open(os.devnull, 'w')
-
-        tr0_pipe = subprocess.PIPE
-        tr1_pipe = subprocess.PIPE
-        if check_error_log:
-            print("tr0_cmd:{}, env0: {}".format(tr0_cmd, env0))
-            print("tr1_cmd:{}, env1: {}".format(tr1_cmd, env1))
-            tr0_pipe = open("/tmp/tr0_err.log", "wb")
-            tr1_pipe = open("/tmp/tr1_err.log", "wb")
+        print("tr0_cmd:{}, env0: {}".format(tr0_cmd, env0))
+        print("tr1_cmd:{}, env1: {}".format(tr1_cmd, env1))
+        tr0_pipe = open("/tmp/tr0_err.log", "wb")
+        tr1_pipe = open("/tmp/tr1_err.log", "wb")
 
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(" "),
@@ -355,18 +344,16 @@ class TestDistBase(unittest.TestCase):
         tr1_loss_text = cpt.to_text(tr1_out)
 
         # close trainer file
-        if check_error_log:
-            tr0_pipe.close()
-            tr1_pipe.close()
+        tr0_pipe.close()
+        tr1_pipe.close()
 
-            ps0_pipe.close()
-            ps1_pipe.close()
+        ps0_pipe.close()
+        ps1_pipe.close()
         # FIXME: use terminate() instead of sigkill.
         os.kill(ps0.pid, signal.SIGKILL)
         os.kill(ps1.pid, signal.SIGKILL)
         ps0.terminate()
         ps1.terminate()
-        FNULL.close()
 
         # print log
         sys.stderr.write('trainer 0 stdout:\n %s\n' % tr0_loss_text)
@@ -391,6 +378,7 @@ class TestDistBase(unittest.TestCase):
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_fraction_of_gpu_memory_to_use": "0.15",
             "FLAGS_cudnn_deterministic": "1",
+            "http_proxy": ""
         }
 
         required_envs.update(need_envs)
