@@ -83,6 +83,12 @@ class VScalKernel : public Kernel {
 };
 
 template <typename T>
+class VAddBiasKernel : public Kernel {
+ public:
+  virtual void Compute(const int n, const T a, const T *x, T *y) const = 0;
+};
+
+template <typename T>
 class VExpKernel : public Kernel {
  public:
   virtual void Compute(const int n, const T *x, T *y) const = 0;

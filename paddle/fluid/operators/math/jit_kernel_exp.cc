@@ -221,16 +221,15 @@ INTRI_GT16_FLOAT(jit::avx);
 #ifdef __AVX2__
 INTRI8_FLOAT(jit::avx2);
 INTRI16_FLOAT(jit::avx2);
-INTRI_GT8LT16_FLOAT(jit::avx2);
-INTRI_GT16_FLOAT(jit::avx2);
+// INTRI_GT8LT16_FLOAT(jit::avx2);
+// INTRI_GT16_FLOAT(jit::avx2);
 #endif
 #ifdef __AVX512F__
 INTRI8_FLOAT(jit::avx512f);
 INTRI16_FLOAT(jit::avx512f);
-INTRI_GT8LT16_FLOAT(jit::avx512f);
-INTRI_GT16_FLOAT(jit::avx512f);
+// INTRI_GT8LT16_FLOAT(jit::avx512f);
+// INTRI_GT16_FLOAT(jit::avx512f);
 #endif
-// TODO(TJ): eq16 test and complete avx512
 
 #undef INTRI8_FLOAT
 #undef INTRI16_FLOAT
