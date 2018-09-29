@@ -21,6 +21,7 @@
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
+#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
@@ -45,6 +46,7 @@ class AllocatorFacadePrivate {
   }
 
   AllocatorFacadePrivate() {
+    std::cout << "Init Allocator Facade" << std::endl;
     InitCPUAllocator();
     InitCUDAAllocator();
   }
@@ -60,10 +62,10 @@ class AllocatorFacadePrivate {
   void InitCUDAAllocator() {
 #ifdef PADDLE_WITH_CUDA
     for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+      platform::CUDADeviceGuard guard(dev_id);
       auto cuda_allocator =
           NaiveManagedAllocator::Create(std::unique_ptr<Allocator>(
               new CUDAAllocator(platform::CUDAPlace(dev_id))));
-
       auto allocation = cuda_allocator->Allocate(platform::GpuMaxChunkSize());
       auto allocator = NaiveManagedAllocator::Create(std::unique_ptr<Allocator>(
           new LockedAllocator(std::unique_ptr<Allocator>(
