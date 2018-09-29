@@ -106,6 +106,7 @@ packages=['paddle',
           'paddle.fluid.layers',
           'paddle.fluid.contrib',
           'paddle.fluid.contrib.decoder',
+          'paddle.fluid.contrib.quantize',
           'paddle.fluid.transpiler',
           'paddle.fluid.transpiler.details']
 
