@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/detail/safe_ref.h"
+#include "paddle/fluid/operators/math/algorithm.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -199,23 +200,9 @@ struct SparseAdamFunctor {
         row_numel_(row_numel),
         row_count_(row_count) {}
 
-  inline HOSTDEVICE int64_t BinarySearchInRows(int64_t row) const {
-    int64_t beg = 0, end = row_count_ - 1;
-    while (beg <= end) {
-      auto mid = ((beg + end) >> 1);
-      if (rows_[mid] == row)
-        return mid;
-      else if (rows_[mid] < row)
-        beg = mid + 1;
-      else
-        end = mid - 1;
-    }
-    return -1;
-  }
-
   inline HOSTDEVICE void operator()(size_t i) const {
-    int64_t row = i / row_numel_;
-    auto row_idx = BinarySearchInRows(row);
+    auto row_idx =
+        math::BinarySearch<int64_t>(rows_, row_count_, i / row_numel_);
     T g = row_idx >= 0 ? grad_[row_idx * row_numel_ + i % row_numel_] : 0;
 
     // The following code is the same as dense
