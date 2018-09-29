@@ -208,6 +208,72 @@ TEST(JitKernel, vsigmoid) {
   }
 }
 
+inline float _tanh(float x) { return 2.f * _sigmoid(2.f * x) - 1.f; }
+
+void vtanh_ref(const int n, const float* x, float* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = _tanh(x[i]);
+  }
+}
+
+void vtanh_better(
+    const std::shared_ptr<
+        const paddle::operators::math::jitkernel::VScalKernel<float>>& vscal,
+    const std::shared_ptr<
+        const paddle::operators::math::jitkernel::VSigmoidKernel<float>>&
+        vsigmoid,
+    const std::shared_ptr<
+        const paddle::operators::math::jitkernel::VAddBiasKernel<float>>&
+        vaddbias,
+    const int n, const float* x, float* y) {
+  vscal->Compute(n, 2.f, x, y);
+  vsigmoid->Compute(n, y, y);
+  vscal->Compute(n, 2.f, y);
+  vaddbias->Compute(n, -1.f, y, y);
+}
+
+TEST(JitKernel, vtanh) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
+    std::vector<float> x(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data(), -2.f, 2.f);
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VTanhKernel<float>>(d);
+    const auto& vscal =
+        jit::KernelPool::Instance().template Get<jit::VScalKernel<float>>(d);
+    const auto& vsigmoid =
+        jit::KernelPool::Instance().template Get<jit::VSigmoidKernel<float>>(d);
+    const auto& vaddbias =
+        jit::KernelPool::Instance().template Get<jit::VAddBiasKernel<float>>(d);
+    const float* x_data = x.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto tmkls = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vtanh_better(vscal, vsigmoid, vaddbias, d, x_data, zref_data);
+    }
+    auto tmkle = GetCurrentUS();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vtanh_ref(d, x_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(d, x_data, ztgt_data);
+    }
+    auto ttgte = GetCurrentUS();
+
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, better(jit exp) takes: " << (tmkle - tmkls) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
+  }
+}
+
 void vscal_ref(const int n, const float a, const float* x, float* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = a * x[i];
