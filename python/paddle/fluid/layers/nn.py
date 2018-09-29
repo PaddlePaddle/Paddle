@@ -133,6 +133,23 @@ __all__ = [
     'elementwise_max',
     'elementwise_min',
     'elementwise_pow',
+    'uniform_random_batch_size_like',
+    'gaussian_random',
+    'sampling_id',
+    'gaussian_random_batch_size_like',
+    'sum',
+    'slice',
+    'shape',
+    'logical_and',
+    'logical_or',
+    'logical_xor',
+    'logical_not',
+    'clip',
+    'clip_by_norm',
+    'mean',
+    'mul',
+    'sigmoid_cross_entropy_with_logits',
+    'maxout',
 ]
 
 
@@ -141,7 +158,6 @@ def fc(input,
        num_flatten_dims=1,
        param_attr=None,
        bias_attr=None,
-       use_mkldnn=False,
        act=None,
        is_test=False,
        name=None):
@@ -193,8 +209,6 @@ def fc(input,
             If it is set to None, the bias is initialized zero. Default: None.
         act (str, default None): Activation to be applied to the output of this layer.
         is_test(bool): A flag indicating whether execution is in test phase.
-        use_mkldnn(bool): Use mkldnn kernel or not, it is valid only when the mkldnn
-            library is installed. Default: False
         name (str, default None): The name of this layer.
 
     Returns:
@@ -241,7 +255,7 @@ def fc(input,
             type="sum",
             inputs={"X": mul_results},
             outputs={"Out": pre_bias},
-            attrs={"use_mkldnn": use_mkldnn})
+            attrs={"use_mkldnn": False})
     # add bias
     pre_activation = helper.append_bias_op(pre_bias, dim_start=num_flatten_dims)
     # add activation
@@ -1034,8 +1048,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=-100):
         soft_label (bool): a flag indicating whether to
                                            interpretate the given labels as soft
                                            labels. Default: `False`.
-        ignore_index (int): Specifies a target value that is ignored and does 
-                            not contribute to the input gradient. Only valid 
+        ignore_index (int): Specifies a target value that is ignored and does
+                            not contribute to the input gradient. Only valid
                             if soft_label is set to False. Default: -100
 
     Returns:
@@ -1405,7 +1419,6 @@ def conv2d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
-           use_mkldnn=False,
            act=None,
            name=None):
     """
@@ -1483,8 +1496,6 @@ def conv2d(input,
         bias_attr (ParamAttr): Bias parameter for the Conv2d layer. Default: None
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not, it is valid only when compiled
-            with mkldnn library. Default: False
         act (str): Activation type. Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -1557,7 +1568,7 @@ def conv2d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn
+            'use_mkldnn': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -1575,7 +1586,6 @@ def conv3d(input,
            param_attr=None,
            bias_attr=None,
            use_cudnn=True,
-           use_mkldnn=False,
            act=None,
            name=None):
     """
@@ -1649,7 +1659,6 @@ def conv3d(input,
         bias_attr (ParamAttr): Bias parameter for the Conv3d layer. Default: None
         use_cudnn (bool): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True
-        use_mkldnn (bool): Use mkldnn kernels or not.
         act (str): Activation type. Default: None
         name (str|None): A name for this layer(optional). If set None, the layer
             will be named automatically.
@@ -1719,7 +1728,7 @@ def conv3d(input,
             'dilations': dilation,
             'groups': groups,
             'use_cudnn': use_cudnn,
-            'use_mkldnn': use_mkldnn
+            'use_mkldnn': False
         })
 
     pre_act = helper.append_bias_op(pre_bias, dim_start=1, dim_end=2)
@@ -1901,7 +1910,6 @@ def pool2d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           use_mkldnn=False,
            name=None):
     """
     ${comment}
@@ -1919,7 +1927,6 @@ def pool2d(input,
         global_pooling: ${global_pooling_comment}
         use_cudnn: ${use_cudnn_comment}
         ceil_mode: ${ceil_mode_comment}
-        use_mkldnn: ${use_mkldnn_comment}
         name (str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
@@ -1979,7 +1986,7 @@ def pool2d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": False
         })
 
     return pool_out
@@ -1993,7 +2000,6 @@ def pool3d(input,
            global_pooling=False,
            use_cudnn=True,
            ceil_mode=False,
-           use_mkldnn=False,
            name=None):
     """
     This function adds the operator for pooling in 3-dimensions, using the
@@ -2008,7 +2014,6 @@ def pool3d(input,
         global_pooling (bool): ${global_pooling_comment}
         use_cudnn (bool): ${use_cudnn_comment}
         ceil_mode (bool): ${ceil_mode_comment}
-        use_mkldnn (bool): ${use_mkldnn_comment}
         name (str): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -2049,7 +2054,7 @@ def pool3d(input,
             "paddings": pool_padding,
             "use_cudnn": use_cudnn,
             "ceil_mode": ceil_mode,
-            "use_mkldnn": use_mkldnn
+            "use_mkldnn": False
         })
 
     return pool_out
@@ -2064,7 +2069,6 @@ def batch_norm(input,
                bias_attr=None,
                data_layout='NCHW',
                in_place=False,
-               use_mkldnn=False,
                name=None,
                moving_mean_name=None,
                moving_variance_name=None,
@@ -2106,7 +2110,6 @@ def batch_norm(input,
         bias_attr(ParamAttr): The parameter attribute for Parameter `bias`.
         data_layout(string, default NCHW): NCHW|NHWC
         in_place(bool, Default False): Make the input and output of batch norm reuse memory.
-        use_mkldnn(bool, Default false): ${use_mkldnn_comment}
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
         moving_mean_name(string, Default None): The name of moving_mean which store the global Mean.
@@ -2198,7 +2201,7 @@ def batch_norm(input,
             "momentum": momentum,
             "epsilon": epsilon,
             "is_test": is_test,
-            "use_mkldnn": use_mkldnn,
+            "use_mkldnn": False,
             "fuse_with_relu": fuse_with_relu
         })
 
@@ -2795,20 +2798,20 @@ def sequence_pad(x, pad_value, maxlen=None):
 
     Args:
         x(Variable): Input variable which should contain lod information.
-        pad_value(Variable): The Variable that holds values that will be fill 
-            into padded steps. It can be a scalar or a tensor whose shape 
-            equals to time steps in sequences. If it's a scalar, it will be 
+        pad_value(Variable): The Variable that holds values that will be fill
+            into padded steps. It can be a scalar or a tensor whose shape
+            equals to time steps in sequences. If it's a scalar, it will be
             automatically broadcasted to the shape of time step.
-        maxlen(int, default None): The length of padded sequences. It can be 
-            None or any positive int. When it is None, all sequences will be 
-            padded up to the length of the longest one among them; when it a 
-            certain positive value, it must be greater than the length of the 
+        maxlen(int, default None): The length of padded sequences. It can be
+            None or any positive int. When it is None, all sequences will be
+            padded up to the length of the longest one among them; when it a
+            certain positive value, it must be greater than the length of the
             longest original sequence."
-    
+
     Returns:
-        Variable: The padded sequence batch and the original lengths before 
+        Variable: The padded sequence batch and the original lengths before
                   padding. All sequences has the same length.
-    
+
     Examples:
         .. code-block:: python
 
@@ -4424,8 +4427,8 @@ def softmax_with_cross_entropy(logits,
             soft_label is set to true, Label is a Tensor<float/double> with
         soft_label (bool): A flag to indicate whether to interpretate the given
             labels as soft labels. By default, `soft_label` is set to False.
-        ignore_index (int): Specifies a target value that is ignored and does 
-                            not contribute to the input gradient. Only valid 
+        ignore_index (int): Specifies a target value that is ignored and does
+                            not contribute to the input gradient. Only valid
                             if soft_label is set to False. Default: -100
 
     Returns:
@@ -4682,14 +4685,14 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=True, name=None):
 
 def squeeze(input, axes, name=None):
     """
-    Remove single-dimensional entries from the shape of a tensor. Takes a 
-    parameter axes with a list of axes to squeeze. If axes is not provided, all 
-    the single dimensions will be removed from the shape. If an axis is 
+    Remove single-dimensional entries from the shape of a tensor. Takes a
+    parameter axes with a list of axes to squeeze. If axes is not provided, all
+    the single dimensions will be removed from the shape. If an axis is
     selected with shape entry not equal to one, an error is raised.
-        
+
     Examples:
     Case 1:
-      Given 
+      Given
         X.shape = (1, 3, 1, 5)
       and
         axes = [0]
@@ -4698,11 +4701,11 @@ def squeeze(input, axes, name=None):
       Case 2:
         Given
           X.shape = (1, 3, 1, 5)
-        and 
+        and
           axes = []
         we get:
           Out.shape = (3, 5)
-    
+
     Args:
         input (Variable): The input variable to be squeezed.
         axes (list): List of integers, indicating the dimensions to be squeezed.
@@ -4732,14 +4735,14 @@ def squeeze(input, axes, name=None):
 
 def unsqueeze(input, axes, name=None):
     """
-    Insert single-dimensional entries to the shape of a tensor. Takes one 
-    required argument axes, a list of dimensions that will be inserted. 
-    Dimension indices in axes are as seen in the output tensor. 
+    Insert single-dimensional entries to the shape of a tensor. Takes one
+    required argument axes, a list of dimensions that will be inserted.
+    Dimension indices in axes are as seen in the output tensor.
 
-    For example: 
-      Given a tensor such that tensor with shape [3, 4, 5], 
+    For example:
+      Given a tensor such that tensor with shape [3, 4, 5],
       then Unsqueezed tensor with axes=[0, 4] has shape [1, 3, 4, 5, 1].
-    
+
     Args:
         input (Variable): The input variable to be unsqueezed.
         axes (list): List of integers, indicating the dimensions to be inserted.
@@ -5838,39 +5841,39 @@ def pad2d(input,
     Example:
 
       Given that X is a channel of image from input:
-      
+
       X = [[1, 2, 3],
            [4, 5, 6]]
-      
+
       Case 0:
-      
+
         paddings = [0, 1, 2, 3],
         mode = 'constant'
         pad_value = 0
-        
+
         Out = [[0, 0, 1, 2, 3, 0, 0, 0]
                [0, 0, 4, 5, 6, 0, 0, 0]
                [0, 0, 0, 0, 0, 0, 0, 0]]
-      
+
       Case 1:
-      
+
         paddings = [0, 1, 2, 1],
         mode = 'reflect'
-        
+
         Out = [[3, 2, 1, 2, 3, 2]
                [6, 5, 4, 5, 6, 5]
                [3, 2, 1, 2, 3, 2]]
-        
+
       Case 2:
-      
+
         paddings = [0, 1, 2, 1],
         mode = 'edge'
-        
+
         Out = [[1, 1, 1, 2, 3, 3]
                [4, 4, 4, 5, 6, 6]
                [4, 4, 4, 5, 6, 6]]
-    
-  
+
+
     Args:
         input (Variable): The input image with [N, C, H, W] format or [N, H, W, C] format.
         paddings (tuple|list): The padding size. If padding is a tuple, it must
@@ -6069,7 +6072,7 @@ def prelu(x, mode, param_attr=None, name=None):
  		       channel:elements in a channel share same weight
  		       element:each element has a weight
 	name(str|None): A name for this layer(optional). If set None, the layer
-                        will be named automatically. 
+                        will be named automatically.
 
     Returns:
         Variable: The output tensor with the same shape as input.
@@ -6247,10 +6250,10 @@ def flatten(x, axis=1, name=None):
 def sequence_enumerate(input, win_size, pad_value=0, name=None):
     """
     Generate a new sequence for the input index sequence, which enumerates all the
-    sub-sequences with length `win_size` of the input. 
+    sub-sequences with length `win_size` of the input.
     The enumerated sequence has the same 1st dimension with variable `input`, and
     the 2nd dimension is `win_size`, padded by `pad_value` if necessary in generation.
-    
+
     Examples:
     Case 1:
       Input:
@@ -6377,20 +6380,20 @@ def unstack(x, axis=0, num=None):
     **UnStack Layer**
 
     This layer unstacks input :code:`x` into several tensors along axis.
-   
+
     If :code:`axis` < 0, it would be replaced with :code:`axis+rank(x)`.
     If :code:`num` is None, it would be inferred from :code:`x.shape[axis]`,
     and if :code:`x.shape[axis]` <= 0 or is unknown, :code:`ValueError` is
-    raised. 
+    raised.
 
     Args:
-        x (Variable): Input variable. 
+        x (Variable): Input variable.
         axis (int): The axis along which the input is unstacked.
         num (int|None): The number of output variables.
-    
+
     Returns:
         list(Variable): The unstacked variables.
-    
+
     """
 
     helper = LayerHelper('unstack', **locals())
@@ -6423,21 +6426,21 @@ def expand(x, expand_times, name=None):
     .. code-block:: text
 
         Input(X) is a 3-D tensor with shape [2, 3, 1]:
-        
+
                 [
                    [[1], [2], [3]],
                    [[4], [5], [6]]
                 ]
-        
+
         Attr(expand_times):  [1, 2, 2]
-        
+
         Output(Out) is a 3-D tensor with shape [2, 6, 2]:
-        
+
                 [
                     [[1, 1], [2, 2], [3, 3], [1, 1], [2, 2], [3, 3]],
                     [[4, 4], [5, 5], [6, 6], [4, 4], [5, 5], [6, 6]]
                 ]
-        
+
     Args:
         x (Variable): A tensor with rank in [1, 6].
         expand_times (list|tuple): Expand times number for each dimension.
@@ -6463,6 +6466,239 @@ def expand(x, expand_times, name=None):
     return out
 
 
+from paddle.fluid.framework import convert_np_dtype_to_dtype_
+
+
+@templatedoc()
+def uniform_random_batch_size_like(input,
+                                   shape,
+                                   dtype='float32',
+                                   input_dim_idx=0,
+                                   output_dim_idx=0,
+                                   min=-1.0,
+                                   max=1.0,
+                                   seed=0):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}
+        shape (tuple|list): ${shape_comment}
+        input_dim_idx (Int): ${input_dim_idx_comment}
+        output_dim_idx (Int): ${output_dim_idx_comment}
+        min (Float): ${min_comment}
+        max (Float): ${max_comment}
+        seed (Int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of data : float32, float_16, int etc
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('uniform_random_batch_size_like', **locals())
+    out = helper.create_tmp_variable(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='uniform_random_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={
+            'shape': shape,
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx,
+            'min': min,
+            'max': max,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    return out
+
+
+@templatedoc()
+def gaussian_random(shape, mean=0.0, std=1.0, seed=0, dtype='float32'):
+    """
+    ${comment}
+
+    Args:
+        shape (tuple|list): ${shape_comment}
+        mean (Float): ${mean_comment}
+        std (Float): ${std_comment}
+        seed (Int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): Output data type.
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('gaussian_random', **locals())
+    out = helper.create_tmp_variable(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='gaussian_random',
+        outputs={'Out': out},
+        attrs={
+            'shape': shape,
+            'mean': mean,
+            'std': std,
+            'seed': seed,
+            'dtype': c_dtype,
+            'use_mkldnn': False
+        })
+
+    return out
+
+
+@templatedoc()
+def sampling_id(x, min=0.0, max=1.0, seed=0, dtype='float32'):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+        min (Float): ${min_comment}
+        max (Float): ${max_comment}
+        seed (Float): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('sampling_id', **locals())
+    out = helper.create_tmp_variable(dtype)
+    helper.append_op(
+        type='sampling_id',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'min': min,
+               'max': max,
+               'seed': seed})
+
+    return out
+
+
+@templatedoc()
+def gaussian_random_batch_size_like(input,
+                                    shape,
+                                    input_dim_idx=0,
+                                    output_dim_idx=0,
+                                    mean=0.0,
+                                    std=1.0,
+                                    seed=0,
+                                    dtype='float32'):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}
+        shape (tuple|list): ${shape_comment}
+        input_dim_idx (Int): ${input_dim_idx_comment}
+        output_dim_idx (Int): ${output_dim_idx_comment}
+        mean (Float): ${mean_comment}
+        std (Float): ${std_comment}
+        seed (Int): ${seed_comment}
+        dtype(np.dtype|core.VarDesc.VarType|str): The type of output data : float32, float_16, int etc
+
+    Returns:
+        out (Variable): ${out_comment}
+    """
+
+    helper = LayerHelper('gaussian_random_batch_size_like', **locals())
+    out = helper.create_tmp_variable(dtype)
+    c_dtype = convert_np_dtype_to_dtype_(dtype)
+    helper.append_op(
+        type='gaussian_random_batch_size_like',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={
+            'shape': shape,
+            'input_dim_idx': input_dim_idx,
+            'output_dim_idx': output_dim_idx,
+            'mean': mean,
+            'std': std,
+            'seed': seed,
+            'dtype': c_dtype
+        })
+
+    return out
+
+
+@templatedoc()
+def sum(x):
+    """
+    ${comment}
+
+    Args:
+        x (Variable): ${x_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+    """
+
+    helper = LayerHelper('sum', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('x'))
+    helper.append_op(
+        type='sum',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'use_mkldnn': False})
+
+    return out
+
+
+@templatedoc()
+def slice(input, axes, starts, ends):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}.
+        axes (List): ${axes_comment}
+        starts (List): ${starts_comment}
+        ends (List): ${ends_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('slice', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='slice',
+        inputs={'Input': input},
+        outputs={'Out': out},
+        attrs={'axes': axes,
+               'starts': starts,
+               'ends': ends})
+
+    return out
+
+
+@templatedoc()
+def shape(input):
+    """
+    ${comment}
+
+    Args:
+        input (Variable): ${input_comment}
+
+    Returns:
+        out (Variable): ${out_comment}
+
+    """
+
+    helper = LayerHelper('shape', **locals())
+    out = helper.create_tmp_variable(dtype=helper.input_dtype('input'))
+    helper.append_op(
+        type='shape', inputs={'Input': input}, outputs={'Out': out})
+
+    return out
+
+
 def _elementwise_op(helper):
     op_type = helper.layer_type
     x = helper.kwargs.get('x', None)
@@ -6471,14 +6707,12 @@ def _elementwise_op(helper):
     assert y is not None, 'y cannot be None in {}'.format(op_type)
     axis = helper.kwargs.get('axis', -1)
     use_mkldnn = helper.kwargs.get('use_mkldnn', False)
-    out = helper.kwargs.get('out', None)
-    if out is None:
-        name = helper.kwargs.get('name', None)
-        if name is None:
-            out = helper.create_tmp_variable(dtype=x.dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=x.dtype, persistable=False)
+    name = helper.kwargs.get('name', None)
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type=op_type,
@@ -6491,13 +6725,7 @@ def _elementwise_op(helper):
 
 
 @templatedoc()
-def scale(x,
-          scale=1.0,
-          bias=0.0,
-          bias_after_scale=True,
-          out=None,
-          act=None,
-          name=None):
+def scale(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
     """
     ${comment}
 
@@ -6506,21 +6734,19 @@ def scale(x,
         scale(${scale_type}): ${scale_comment}
         bias(${bias_type}): ${bias_comment}
         bias_after_scale(${bias_after_scale_type}): ${bias_after_scale_comment}
-        out(Tensor): Output tensor.
         act(basestring|None): Activation applied to the output.
-        name(basestring|None): Name of the output. 
+        name(basestring|None): Name of the output.
 
     Returns:
         out(${out_type}): ${out_comment}
     """
 
     helper = LayerHelper('scale', **locals())
-    if out is None:
-        if name is None:
-            out = helper.create_tmp_variable(dtype=x.dtype)
-        else:
-            out = helper.create_variable(
-                name=name, dtype=x.dtype, persistable=False)
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
 
     helper.append_op(
         type='scale',
@@ -6534,73 +6760,31 @@ def scale(x,
     return helper.append_activation(out)
 
 
-def elementwise_add(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_add(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_add', **locals()))
 
 
-def elementwise_div(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_div(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_div', **locals()))
 
 
-def elementwise_sub(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_sub(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_sub', **locals()))
 
 
-def elementwise_mul(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_mul(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_mul', **locals()))
 
 
-def elementwise_max(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_max(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
-def elementwise_min(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_min(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
-def elementwise_pow(x,
-                    y,
-                    out=None,
-                    axis=-1,
-                    use_mkldnn=False,
-                    act=None,
-                    name=None):
+def elementwise_pow(x, y, axis=-1, act=None, name=None):
     return _elementwise_op(LayerHelper('elementwise_pow', **locals()))
 
 
@@ -6612,7 +6796,291 @@ for func in [
     func.__doc__ = _generate_doc_string_(
         op_proto,
         additional_args_lines=[
-            "out (Tensor): The output tensor of elementwise op.",
             "act (basestring|None): Activation applied to the output.",
             "name (basestring|None): Name of the output."
         ])
+
+
+def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
+    helper = LayerHelper(op_name, **locals())
+
+    if binary_op:
+        assert x.dtype == y.dtype
+
+    if out is None:
+        if name is None:
+            out = helper.create_tmp_variable(dtype=x.dtype)
+        else:
+            out = helper.create_variable(
+                name=name, dtype=x.dtype, persistable=False)
+
+    if binary_op:
+        helper.append_op(
+            type=op_name, inputs={"X": x,
+                                  "Y": y}, outputs={"Out": out})
+    else:
+        helper.append_op(type=op_name, inputs={"X": x}, outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def logical_and(x, y, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+        out(Tensor): Output tensor of logical operation.
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    return _logical_op(
+        op_name="logical_and", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def logical_or(x, y, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+        out(Tensor): Output tensor of logical operation.
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    return _logical_op(
+        op_name="logical_or", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def logical_xor(x, y, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+        out(Tensor): Output tensor of logical operation.
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    return _logical_op(
+        op_name="logical_xor", x=x, y=y, name=name, out=out, binary_op=True)
+
+
+@templatedoc()
+def logical_not(x, out=None, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        out(Tensor): Output tensor of logical operation.
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    return _logical_op(
+        op_name="logical_not", x=x, y=None, name=name, out=out, binary_op=False)
+
+
+@templatedoc()
+def clip(x, min, max, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        min(${min_type}): ${min_comment}
+        max(${max_type}): ${max_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("clip", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="clip",
+        inputs={"X": x},
+        attrs={"min": min,
+               "max": max},
+        outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def clip_by_norm(x, max_norm, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        max_norm(${max_norm_type}): ${max_norm_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("clip_by_norm", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="clip_by_norm",
+        inputs={"X": x},
+        attrs={"max_norm": max_norm},
+        outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def mean(x, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("mean", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="mean", inputs={"X": x}, attrs={}, outputs={"Out": out})
+
+    return out
+
+
+@templatedoc()
+def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        y(${y_type}): ${y_comment}
+        x_num_col_dims(${x_num_col_dims_type}): ${x_num_col_dims_comment}
+        y_num_col_dims(${y_num_col_dims_type}): ${y_num_col_dims_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("mul", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="mul",
+        inputs={"X": x,
+                "Y": y},
+        attrs={
+            "x_num_col_dims": x_num_col_dims,
+            "y_num_col_dims": y_num_col_dims
+        },
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def sigmoid_cross_entropy_with_logits(x, label, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        label(${label_type}): ${label_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+
+    helper = LayerHelper("sigmoid_cross_entropy_with_logits", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="sigmoid_cross_entropy_with_logits",
+        inputs={"X": x,
+                "Label": label},
+        attrs={},
+        outputs={"Out": out})
+    return out
+
+
+@templatedoc()
+def maxout(x, groups, name=None):
+    """
+    ${comment}
+
+    Args:
+        x(${x_type}): ${x_comment}
+        groups(${groups_type}): ${groups_comment}
+        name(basestring|None): Name of the output.
+
+    Returns:
+        out(${out_type}): ${out_comment}
+    """
+    helper = LayerHelper("maxout", **locals())
+
+    if name is None:
+        out = helper.create_tmp_variable(dtype=x.dtype)
+    else:
+        out = helper.create_variable(
+            name=name, dtype=x.dtype, persistable=False)
+
+    helper.append_op(
+        type="maxout",
+        inputs={"X": x},
+        attrs={"groups": groups},
+        outputs={"Out": out})
+    return out
