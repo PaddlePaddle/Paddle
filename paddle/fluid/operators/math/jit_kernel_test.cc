@@ -48,6 +48,43 @@ void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
   }
 }
 
+void vaddbias_ref(const int n, const float a, const float* x, float* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] + a;
+  }
+}
+
+TEST(JitKernel, vaddbias) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 64, 100, 128, 256}) {
+    std::vector<float> x(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data(), -2.f, 2.f);
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VAddBiasKernel<float>>(d);
+    const float a = 2.f;
+    const float* x_data = x.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vaddbias_ref(d, a, x_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(d, a, x_data, ztgt_data);
+    }
+    auto ttgte = GetCurrentUS();
+
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
+  }
+}
+
 void vexp_ref(const int n, const float* x, float* y) {
   for (int i = 0; i < n; ++i) {
     y[i] = std::exp(x[i]);
@@ -135,7 +172,7 @@ void vsigmoid_better(
 
 TEST(JitKernel, vsigmoid) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 128}) {
+  for (int d : {7, 8, 15, 16, 30, 32, 64, 100, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);

@@ -216,9 +216,61 @@ INTRI8_INPLACE_FLOAT(jit::avx512f);
 #undef MKL_FLOAT
 #undef MKL_DOUBLE
 
+/* VAddBias JitKernel */
+template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+class VAddBiasKernelImpl : public VAddBiasKernel<T> {
+ public:
+  void Compute(const int n, const T a, const T* x, T* y) const override {
+    for (int i = 0; i < n; ++i) {
+      y[i] = x[i] + a;
+    }
+  }
+};
+
+#define INTRI8_FLOAT(isa)                                           \
+  template <>                                                       \
+  void VAddBiasKernelImpl<float, isa, kEQ8>::Compute(               \
+      const int n, const float a, const float* x, float* y) const { \
+    __m256 tmp = _mm256_loadu_ps(x);                                \
+    tmp = _mm256_add_ps(tmp, _mm256_set1_ps(a));                    \
+    _mm256_storeu_ps(y, tmp);                                       \
+  }
+
+#define INTRI16_FLOAT(isa)                                          \
+  template <>                                                       \
+  void VAddBiasKernelImpl<float, isa, kEQ16>::Compute(              \
+      const int n, const float a, const float* x, float* y) const { \
+    __m256 tmp0 = _mm256_loadu_ps(x);                               \
+    __m256 tmp1 = _mm256_loadu_ps(x + 8);                           \
+    tmp0 = _mm256_add_ps(tmp0, _mm256_set1_ps(a));                  \
+    tmp1 = _mm256_add_ps(tmp1, _mm256_set1_ps(a));                  \
+    _mm256_storeu_ps(y, tmp0);                                      \
+    _mm256_storeu_ps(y + 8, tmp1);                                  \
+  }
+
+#ifdef __AVX__
+INTRI8_FLOAT(jit::avx);
+INTRI16_FLOAT(jit::avx);
+#endif
+#ifdef __AVX2__
+INTRI8_FLOAT(jit::avx2);
+INTRI16_FLOAT(jit::avx2);
+#endif
+#ifdef __AVX512F__
+INTRI8_FLOAT(jit::avx512f);
+INTRI16_FLOAT(jit::avx512f);
+#endif
+// TODO(TJ): eq16 test and complete avx512
+
+#undef INTRI8_FLOAT
+#undef INTRI16_FLOAT
+#undef INTRI_GT8LT16_FLOAT
+#undef INTRI_GT16_FLOAT
+
 REGISTER_JITKERNEL(vmul, VMulKernel);
 REGISTER_JITKERNEL(vadd, VAddKernel);
 REGISTER_JITKERNEL(vscal, VScalKernel);
+REGISTER_JITKERNEL(vaddb, VAddBiasKernel);
 
 }  // namespace jitkernel
 }  // namespace math
