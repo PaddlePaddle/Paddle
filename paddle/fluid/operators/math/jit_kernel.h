@@ -52,13 +52,13 @@ class KernelPool {
   static KernelPool &Instance();
 
   template <typename Ker, typename... ARGS>
-  const std::shared_ptr<Ker> Get(ARGS... args);
+  std::shared_ptr<const Ker> Get(ARGS... args);
 
-  const std::shared_ptr<Kernel> Get(const std::string &key) const;
+  std::shared_ptr<const Kernel> Get(const std::string &key) const;
 
  private:
   KernelPool() = default;
-  std::unordered_map<std::string, std::shared_ptr<Kernel>> kers_;
+  std::unordered_map<std::string, std::shared_ptr<const Kernel>> kers_;
 
   DISABLE_COPY_AND_ASSIGN(KernelPool);
 };
@@ -66,26 +66,38 @@ class KernelPool {
 template <typename T>
 class VMulKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, const T *y, T *z) = 0;
+  virtual void Compute(const int n, const T *x, const T *y, T *z) const = 0;
 };
 
 template <typename T>
 class VAddKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, const T *y, T *z) = 0;
+  virtual void Compute(const int n, const T *x, const T *y, T *z) const = 0;
 };
 
 template <typename T>
 class VScalKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T a, const T *x, T *y) = 0;
-  virtual void Compute(const int n, const T a, T *x) = 0;
+  virtual void Compute(const int n, const T a, const T *x, T *y) const = 0;
+  virtual void Compute(const int n, const T a, T *x) const = 0;
 };
 
 template <typename T>
 class VExpKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, T *y) = 0;
+  virtual void Compute(const int n, const T *x, T *y) const = 0;
+};
+
+template <typename T>
+class VSigmoidKernel : public Kernel {
+ public:
+  virtual void Compute(const int n, const T *x, T *y) const = 0;
+};
+
+template <typename T>
+class VTanhKernel : public Kernel {
+ public:
+  virtual void Compute(const int n, const T *x, T *y) const = 0;
 };
 
 template <typename T>

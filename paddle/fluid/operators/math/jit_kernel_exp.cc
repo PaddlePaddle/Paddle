@@ -34,14 +34,13 @@ __m256 Exp(__m256 a);
 #endif
 
 namespace jitkernel {
-
 namespace jit = platform::jit;
 
 /* VExp JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
 class VExpKernelImpl : public VExpKernel<T> {
  public:
-  void Compute(const int n, const T* x, T* y) override {
+  void Compute(const int n, const T* x, T* y) const override {
     for (int i = 0; i < n; ++i) {
       y[i] = std::exp(x[i]);
     }
@@ -52,15 +51,15 @@ class VExpKernelImpl : public VExpKernel<T> {
 #define MKL_FLOAT(isa, block)                                                  \
   template <>                                                                  \
   void VExpKernelImpl<float, isa, block>::Compute(const int n, const float* x, \
-                                                  float* y) {                  \
+                                                  float* y) const {            \
     platform::dynload::vsExp(n, x, y);                                         \
   }
 
-#define MKL_DOUBLE(isa, block)                      \
-  template <>                                       \
-  void VExpKernelImpl<double, isa, block>::Compute( \
-      const int n, const double* x, double* y) {    \
-    platform::dynload::vdExp(n, x, y);              \
+#define MKL_DOUBLE(isa, block)                         \
+  template <>                                          \
+  void VExpKernelImpl<double, isa, block>::Compute(    \
+      const int n, const double* x, double* y) const { \
+    platform::dynload::vdExp(n, x, y);                 \
   }
 FOR_EACH_ISA(MKL_FLOAT, kLT8);
 FOR_EACH_ISA(MKL_FLOAT, kGT8LT16);
@@ -71,7 +70,7 @@ FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
 #define INTRI8_FLOAT(isa)                                                     \
   template <>                                                                 \
   void VExpKernelImpl<float, isa, kEQ8>::Compute(const int n, const float* x, \
-                                                 float* y) {                  \
+                                                 float* y) const {            \
     __m256 tmp = _mm256_loadu_ps(x);                                          \
     _mm256_storeu_ps(y, detail::Exp(tmp));                                    \
   }
@@ -79,7 +78,7 @@ FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
 #define INTRI16_FLOAT(isa)                                                     \
   template <>                                                                  \
   void VExpKernelImpl<float, isa, kEQ16>::Compute(const int n, const float* x, \
-                                                  float* y) {                  \
+                                                  float* y) const {            \
     __m256 tmp0 = _mm256_loadu_ps(x);                                          \
     __m256 tmp1 = _mm256_loadu_ps(x + 8);                                      \
     tmp0 = detail::Exp(tmp0);                                                  \
@@ -109,6 +108,38 @@ INTRI16_FLOAT(jit::avx512f);
 
 REGISTER_JITKERNEL(vexp, VExpKernel);
 
+/* VSigmoid JitKernel */
+template <typename T, jit::cpu_isa_t isa, jit_block>
+class VSigmoidKernelImpl : public VSigmoidKernel<T> {
+ public:
+  explicit VSigmoidKernelImpl(int d) : VSigmoidKernel<T>() {
+    vexp_ = KernelPool::Instance().template Get<VExpKernel<T>>(d);
+  }
+  void Compute(const int n, const T* x, T* y) const override {
+    const T min = SIGMOID_THRESHOLD_MIN;
+    const T max = SIGMOID_THRESHOLD_MAX;
+    for (int i = 0; i < n; ++i) {
+      y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
+      y[i] = static_cast<T>(0) - y[i];
+    }
+    vexp_->Compute(n, y, y);
+    for (int i = 0; i < n; ++i) {
+      y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
+    }
+  }
+
+ private:
+  std::shared_ptr<const VExpKernel<T>> vexp_;
+};
+
+#define JITKERNEL_NEW_ACT_IMPL(ker, dtype, isa, k) \
+  p = std::dynamic_pointer_cast<ker<dtype>>(       \
+      std::make_shared<ker##Impl<dtype, isa, k>>(d))
+
+REGISTER_JITKERNEL_ARGS(vsigmoid, VSigmoidKernel, JITKERNEL_DECLARE,
+                        JITKERNEL_KEY, JITKERNEL_NEW_ACT_IMPL);
+
+#undef JITKERNEL_NEW_ACT_IMPL
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators
