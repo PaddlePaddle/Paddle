@@ -21,7 +21,7 @@ from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from .ops import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_not, logical_or
 import numpy
 import warnings
 import six

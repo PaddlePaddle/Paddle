@@ -55,7 +55,7 @@ extern void *cublas_dso_handle;
   struct DynLoad__##__name {                         \
     template <typename... Args>                      \
     inline cublasStatus_t operator()(Args... args) { \
-      return __name(args...);                        \
+      return ::__name(args...);                      \
     }                                                \
   };                                                 \
   extern DynLoad__##__name __name
