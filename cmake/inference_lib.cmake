@@ -14,48 +14,48 @@
 
 # make package for paddle fluid shared and static library
 function(copy TARGET)
-    set(options "")
-    set(oneValueArgs "")
-    set(multiValueArgs SRCS DSTS DEPS)
-    cmake_parse_arguments(copy_lib "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-    set(inference_lib_dist_dep ${TARGET} ${inference_lib_dist_dep} PARENT_SCOPE)
+  set(options "")
+  set(oneValueArgs "")
+  set(multiValueArgs SRCS DSTS DEPS)
+  cmake_parse_arguments(copy_lib "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
+  set(inference_lib_dist_dep ${TARGET} ${inference_lib_dist_dep} PARENT_SCOPE)
 
-    list(LENGTH copy_lib_SRCS copy_lib_SRCS_len)
-    list(LENGTH copy_lib_DSTS copy_lib_DSTS_len)
-    if(NOT ${copy_lib_SRCS_len} EQUAL ${copy_lib_DSTS_len})
-        message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
-    endif()
-    math(EXPR len "${copy_lib_SRCS_len} - 1")
+  list(LENGTH copy_lib_SRCS copy_lib_SRCS_len)
+  list(LENGTH copy_lib_DSTS copy_lib_DSTS_len)
+  if(NOT ${copy_lib_SRCS_len} EQUAL ${copy_lib_DSTS_len})
+    message(FATAL_ERROR "${TARGET} source numbers are not equal to destination numbers")
+  endif()
+  math(EXPR len "${copy_lib_SRCS_len} - 1")
 
-    add_custom_target(${TARGET} DEPENDS ${copy_lib_DEPS})
-    foreach(index RANGE ${len})
-        list(GET copy_lib_SRCS ${index} src)
-        list(GET copy_lib_DSTS ${index} dst)
-        if (WIN32)
-        # windows cmd shell will not expand wildcard automatically.
-        # below expand the files,libs and copy them by rules.
-        file(GLOB header_files ${src} "*.h")
-        file(GLOB static_lib_files ${src} "*.lib")
-        file(GLOB dll_lib_files ${src} "*.dll")
-        set(src_files ${header_files} ${static_lib_files} ${dll_lib_files})
-        if (NOT "${src_files}" STREQUAL "")
+  add_custom_target(${TARGET} DEPENDS ${copy_lib_DEPS})
+  foreach(index RANGE ${len})
+    list(GET copy_lib_SRCS ${index} src)
+    list(GET copy_lib_DSTS ${index} dst)
+    if (WIN32)
+      # windows cmd shell will not expand wildcard automatically.
+      # below expand the files,libs and copy them by rules.
+      file(GLOB header_files ${src} "*.h")
+      file(GLOB static_lib_files ${src} "*.lib")
+      file(GLOB dll_lib_files ${src} "*.dll")
+      set(src_files ${header_files} ${static_lib_files} ${dll_lib_files})
+      if (NOT "${src_files}" STREQUAL "")
         list(REMOVE_DUPLICATES src_files)
-        endif()
-        add_custom_command(TARGET ${TARGET} PRE_BUILD 
-          COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
-          )
-        foreach(src_file ${src_files})
-          add_custom_command(TARGET ${TARGET} PRE_BUILD
+      endif()
+      add_custom_command(TARGET ${TARGET} PRE_BUILD 
+        COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
+        )
+      foreach(src_file ${src_files})
+        add_custom_command(TARGET ${TARGET} PRE_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy "${src_file}" "${dst}"
           COMMENT "copying ${src_file} -> ${dst}")
-        endforeach()
-        else() # not windows
-        add_custom_command(TARGET ${TARGET} PRE_BUILD
-          COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
-          COMMAND ${CMAKE_COMMAND} -E copy "${src_files}" "${dst}"
-          COMMENT "copying ${src} -> ${dst}")
-        endif(WIN32)
-    endforeach()
+      endforeach()
+    else(WIN32) # not windows
+      add_custom_command(TARGET ${TARGET} PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory  "${dst}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${src}" "${dst}"
+        COMMENT "copying ${src} -> ${dst}")
+    endif(WIN32)
+  endforeach()
 endfunction()
 
 # third party
