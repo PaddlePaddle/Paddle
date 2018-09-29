@@ -289,9 +289,9 @@ class TestFP16CUDNNWithGroup(TestWithGroup):
                 self.check_output_with_place(place, atol=2e-2)
 
 
-# class TestCUDNNWith1x1(TestWith1x1):
-#     def init_kernel_type(self):
-#         self.use_cudnn = True
+class TestCUDNNWith1x1(TestWith1x1):
+    def init_kernel_type(self):
+        self.use_cudnn = True
 
 
 class TestFP16CUDNNWith1x1(TestWith1x1):
