@@ -7019,7 +7019,8 @@ def mul(x, y, x_num_col_dims=1, y_num_col_dims=1, name=None):
         inputs={"X": x,
                 "Y": y},
         attrs={
-            "x_num_col_dims", x_num_col_dims, "y_num_col_dims", y_num_col_dims
+            "x_num_col_dims": x_num_col_dims,
+            "y_num_col_dims": y_num_col_dims
         },
         outputs={"Out": out})
     return out
