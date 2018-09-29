@@ -244,6 +244,7 @@ class TestQuantizeTranspiler(unittest.TestCase):
             test_loss2, = exe.run(program=test_program,
                                   feed=feeder.feed(test_data),
                                   fetch_list=[loss])
+            self.assertAlmostEqual(test_loss1, test_loss2, delta=5e-3)
             w_freeze = np.array(fluid.global_scope().find_var('conv2d_1.w_0')
                                 .get_tensor())
             # fail: -432.0 != -433.0, this is due to the calculation precision
