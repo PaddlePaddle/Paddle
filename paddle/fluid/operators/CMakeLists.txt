@@ -301,6 +301,7 @@ op_library(fusion_lstm_op DEPS cpu_lstm_compute)
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
     op_library(layer_norm_op DEPS cub)
+    op_library(reduce_mean_op DEPS cub)
 else()
     op_library(conv_op DEPS vol2col im2col)
 endif()
@@ -312,11 +313,6 @@ op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
 op_library(concat_op DEPS concat)
-
-# FIXME(thuan): Move CSP operators to paddle/fluid/framework/operators/concurrency
-add_subdirectory(concurrency)
-op_library(channel_send_op DEPS concurrency)
-op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 

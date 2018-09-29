@@ -86,11 +86,9 @@ std::unique_ptr<PaddlePredictor> CreateTestPredictor(
 
 size_t GetSize(const PaddleTensor &out) { return VecReduceToInt(out.shape); }
 
-std::unordered_map<std::string, int> GetFuseStatis(AnalysisConfig config,
+std::unordered_map<std::string, int> GetFuseStatis(PaddlePredictor *predictor,
                                                    int *num_ops) {
-  auto predictor = CreateTestPredictor(config);
-  AnalysisPredictor *analysis_predictor =
-      dynamic_cast<AnalysisPredictor *>(predictor.get());
+  auto *analysis_predictor = static_cast<AnalysisPredictor *>(predictor);
   auto &fuse_statis = analysis_predictor->analysis_argument()
                           .Get<std::unordered_map<std::string, int>>(
                               framework::ir::kFuseStatisAttr);

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <set>
 #include <string>
 #include <thread>  // NOLINT
