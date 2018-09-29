@@ -278,7 +278,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
-    bool is_INT8 = ctx.HasInput("Bias")? true : false;
+    bool is_INT8 = ctx.HasInput("Scale_in")? true : false;
     auto* scale_in = ctx.HasInput("Scale_in") ? ctx.Input<Tensor>("Scale_in") : nullptr;
     auto* scale_in_eltwise = ctx.HasInput("Scale_in_eltwise")? ctx.Input<Tensor>("Scale_in_eltwise") : nullptr;
     auto* scale_weights = ctx.HasInput("Scale_weights")? ctx.Input<Tensor>("Scale_weights") : nullptr;
@@ -478,7 +478,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       if (fuse_relu) {
         constexpr float scale = 1.0f;
         constexpr float negative_slope = 0.0f;
-        constexpr float placeholder = 0.0f;
+        constexpr float placeholder = 0.0f; //beta
         post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
                                        negative_slope, placeholder);
       }

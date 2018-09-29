@@ -16,7 +16,7 @@ limitations under the License. */
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/operators/dequantization_op.h"
+#include "paddle/fluid/operators/dequantize_op.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
@@ -36,29 +36,6 @@ template <typename DeviceContext, typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
  public:
 
- // MKLDNNDataType ToMKLDNNDataType(const std::type_index type) {
- //   static const std::map<std::type_index, MKLDNNDataType> dict{
- //       {std::type_index(typeid(float)), MKLDNNDataType::f32},  // NOLINT
- //       {std::type_index(typeid(char)), MKLDNNDataType::s8},    // NOLINT
- //       {std::type_index(typeid(unsigned char)), MKLDNNDataType::u8},
- //       {std::type_index(typeid(int16_t)), MKLDNNDataType::s16},
- //       {std::type_index(typeid(int32_t)), MKLDNNDataType::s32}};
- //   auto iter = dict.find(type);
- //   if (iter != dict.end()) return iter->second;
- //   return MKLDNNDataType::data_undef;
- // }
-  //mkldnn::memory::data_type ToMKLDNNDataType(const std::type_index type) const override{
-  //  static const std::map<std::type_index, mkldnn::memory::data_type> dict{
-  //      {std::type_index(typeid(float)), mkldnn::memory::data_type::f32},  // NOLINT
-  //      {std::type_index(typeid(char)), mkldnn::memory::data_type::s8},    // NOLINT
-  //      {std::type_index(typeid(unsigned char)), mkldnn::memory::data_type::u8},
-  //      {std::type_index(typeid(int16_t)), mkldnn::memory::data_type::s16},
-  //      {std::type_index(typeid(int32_t)), mkldnn::memory::data_type::s32}};
-  //  auto iter = dict.find(type);
-  //  if (iter != dict.end()) return iter->second;
-  //  return mkldnn::memory::data_type::data_undef;
-  //}
-
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
     auto* scale = ctx.Input<Tensor>("Scale");
@@ -77,15 +54,14 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> src_tz = paddle::framework::vectorize2int(input->dims());
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
     mkldnn::memory::data_type src_dt = paddle::framework::ToMKLDNNDataType(input->type());
-    mkldnn::memory::format src_fmt = input->format();    
+    mkldnn::memory::format src_fmt = memory::format::nhwc;//input->format();    
 
     mkldnn::primitive_attr attri;
     int mask = 0;
     attri.set_output_scales(mask, scale_data);
-    //attri.set_int_output_round_mode(round_nearest); //FIX ME
 
     auto src_md = platform::MKLDNNMemDesc(
-            {src_tz}, src_dt, src_fmt); //FIX ME WITH S8
+            {src_tz}, src_dt, src_fmt); 
     auto src_pd = mkldnn::memory::primitive_desc{src_md, engine};
     auto src_memory = std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
     std::shared_ptr<primitive::at> src_memory_p = std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
@@ -130,8 +106,8 @@ This op will quantize data from INT8 to FP32
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(dequantization, ops::DeQuantOp, ops::DeQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(dequantization, ops::DeQuantOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(dequantize, ops::DeQuantOpKernel<paddle::platform::CPUDeviceContext, float>);
 
                    

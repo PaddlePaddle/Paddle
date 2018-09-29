@@ -16,7 +16,7 @@ limitations under the License. */
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/operators/requantization_op.h"
+#include "paddle/fluid/operators/requantize_op.h"
 #include "paddle/fluid/framework/data_layout_transform.h"
 
 namespace paddle {
@@ -48,8 +48,8 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
     mkldnn::memory::data_type src_dt = paddle::framework::ToMKLDNNDataType(input->type());
     mkldnn::memory::data_type dst_dt = paddle::framework::ToMKLDNNDataType(output->type());
-    mkldnn::memory::format src_fmt = input->format();
-    mkldnn::memory::format dst_fmt = output->format();
+    mkldnn::memory::format src_fmt = memory::format::nhwc;//input->format();
+    mkldnn::memory::format dst_fmt = memory::format::nhwc;//output->format();
 
     const T* input_data = input->data<T>();
     T* output_data = output->mutable_data<T>(ctx.GetPlace());
@@ -107,7 +107,7 @@ This op will requantize data from INT8 to INT8
 
 namespace ops = paddle::operators;
 
-REGISTER_OPERATOR(requantization, ops::ReQuantOp, ops::ReQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(requantization, ops::ReQuantOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(requantize, ops::ReQuantOpKernel<paddle::platform::CPUDeviceContext, float>);
 

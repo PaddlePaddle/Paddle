@@ -16,7 +16,7 @@ limitations under the License. */
 #include "mkldnn.hpp"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/operators/quantization_op.h"
+#include "paddle/fluid/operators/quantize_op.h"
 
 namespace paddle {
 namespace operators {
@@ -53,7 +53,6 @@ class QuantOpKernel : public framework::OpKernel<T> {
     mkldnn::primitive_attr attri;
     int mask = 0;
     attri.set_output_scales(mask, scale_data);
-    //attri.set_int_output_round_mode(round_nearest); //FIX ME
 
     auto src_md = platform::MKLDNNMemDesc(
             {src_tz}, memory::data_type::f32, input->format());
@@ -102,9 +101,9 @@ This op will quantize data from FP32 to INT8
 namespace ops = paddle::operators;
 
 
-REGISTER_OPERATOR(quantization, ops::QuantOp, ops::QuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
+REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(quantization, ops::QuantOpKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CPU_KERNEL(quantize, ops::QuantOpKernel<paddle::platform::CPUDeviceContext, float>);
 
 //REGISTER_OP_KERNEL(quantization, MKLDNN, paddle::platform::CPUPlace, ops::QuantOpKernel<paddle::platform::CPUDeviceContext, float>);
 
