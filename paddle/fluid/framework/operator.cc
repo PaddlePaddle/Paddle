@@ -391,6 +391,7 @@ static const Tensor* GetTensorFromVar(Variable* var) {
   if (var->IsType<LoDTensor>()) {
     return var->GetMutable<LoDTensor>();
   } else if (var->IsType<SelectedRows>()) {
+    PADDLE_THROW("ERROR: Do not use SelectedRows as Tensor");
     return var->GetMutable<SelectedRows>()->mutable_value();
   } else {
     PADDLE_THROW("Variable type_id %s, expect LoDTensor/SelectedRows.",
