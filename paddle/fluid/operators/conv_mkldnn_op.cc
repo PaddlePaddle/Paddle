@@ -152,7 +152,8 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
     auto user_bias_pd = user_bias_memory_p->get_primitive_desc();
     auto bias_pd = conv_pd_->bias_primitive_desc();
     return this->AcquireMemory(bias_pd, user_bias_pd, user_bias_memory_p,
-                               "@bias_mem_p", pipeline);
+                               "@bias_mem_p", pipeline, 
+                               false, is_INT8, scale_data, mask);
   }
 
   std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
