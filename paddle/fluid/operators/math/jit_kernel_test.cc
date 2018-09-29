@@ -388,16 +388,16 @@ TEST(JitKernel, pool) {
 
   const auto& pvmul_f =
       jit::KernelPool::Instance().template Get<jit::VMulKernel<float>>(4);
-  EXPECT_TRUE(std::dynamic_pointer_cast<jit::Kernel>(plstm2) !=
-              std::dynamic_pointer_cast<jit::Kernel>(pvmul_f));
+  EXPECT_TRUE(std::dynamic_pointer_cast<const jit::Kernel>(plstm2) !=
+              std::dynamic_pointer_cast<const jit::Kernel>(pvmul_f));
 
   const auto& pvmul_d =
       jit::KernelPool::Instance().template Get<jit::VMulKernel<double>>(4);
-  EXPECT_TRUE(std::dynamic_pointer_cast<jit::Kernel>(pvmul_f) !=
-              std::dynamic_pointer_cast<jit::Kernel>(pvmul_d));
+  EXPECT_TRUE(std::dynamic_pointer_cast<const jit::Kernel>(pvmul_f) !=
+              std::dynamic_pointer_cast<const jit::Kernel>(pvmul_d));
 
   const auto& pvmul_from_key = jit::KernelPool::Instance().Get("vmulf4");
-  EXPECT_TRUE(pvmul_f == pvmul_from_key);
+  EXPECT_EQ(pvmul_f, pvmul_from_key);
   const auto& pvmul_from_key2 = jit::KernelPool::Instance().Get("vmulf5");
   EXPECT_TRUE(pvmul_from_key2 == nullptr);
 }

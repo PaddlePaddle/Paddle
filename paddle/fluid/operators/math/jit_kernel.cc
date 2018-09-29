@@ -28,7 +28,7 @@ KernelPool& KernelPool::Instance() {
   return g_jit_kernels;
 }
 
-const std::shared_ptr<Kernel> KernelPool::Get(const std::string& key) const {
+std::shared_ptr<const Kernel> KernelPool::Get(const std::string& key) const {
   if (kers_.find(key) == kers_.end()) {
     return nullptr;
   }
@@ -36,7 +36,7 @@ const std::shared_ptr<Kernel> KernelPool::Get(const std::string& key) const {
 }
 
 template <>
-const std::shared_ptr<LSTMKernel<float>>
+std::shared_ptr<const LSTMKernel<float>>
 KernelPool::Get<LSTMKernel<float>, int, const std::string&, const std::string&,
                 const std::string&>(int d, const std::string& act_gate,
                                     const std::string& act_cand,
@@ -49,7 +49,7 @@ KernelPool::Get<LSTMKernel<float>, int, const std::string&, const std::string&,
     kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});
     return p;
   }
-  return std::dynamic_pointer_cast<LSTMKernel<float>>(kers_.at(key));
+  return std::dynamic_pointer_cast<const LSTMKernel<float>>(kers_.at(key));
 }
 
 }  // namespace jitkernel

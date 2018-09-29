@@ -34,7 +34,7 @@ namespace jit = platform::jit;
 template <typename T, platform::jit::cpu_isa_t isa, jit_block>
 class VMulKernelImpl : public VMulKernel<T> {
  public:
-  void Compute(const int n, const T* x, const T* y, T* z) override {
+  void Compute(const int n, const T* x, const T* y, T* z) const override {
     for (int i = 0; i < n; ++i) {
       z[i] = x[i] * y[i];
     }
@@ -42,33 +42,33 @@ class VMulKernelImpl : public VMulKernel<T> {
 };
 
 #ifdef PADDLE_WITH_MKLML
-#define MKL_FLOAT(isa, block)                                                  \
-  template <>                                                                  \
-  void VMulKernelImpl<float, isa, block>::Compute(const int n, const float* x, \
-                                                  const float* y, float* z) {  \
-    platform::dynload::vsMul(n, x, y, z);                                      \
+#define MKL_FLOAT(isa, block)                                        \
+  template <>                                                        \
+  void VMulKernelImpl<float, isa, block>::Compute(                   \
+      const int n, const float* x, const float* y, float* z) const { \
+    platform::dynload::vsMul(n, x, y, z);                            \
   }
 
-#define MKL_DOUBLE(isa, block)                                    \
-  template <>                                                     \
-  void VMulKernelImpl<double, isa, block>::Compute(               \
-      const int n, const double* x, const double* y, double* z) { \
-    platform::dynload::vdMul(n, x, y, z);                         \
+#define MKL_DOUBLE(isa, block)                                          \
+  template <>                                                           \
+  void VMulKernelImpl<double, isa, block>::Compute(                     \
+      const int n, const double* x, const double* y, double* z) const { \
+    platform::dynload::vdMul(n, x, y, z);                               \
   }
 
 FOR_EACH_ISA(MKL_FLOAT, kGT16);
 FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
 #endif
 
-#define INTRI8_FLOAT(isa)                                                     \
-  template <>                                                                 \
-  void VMulKernelImpl<float, isa, kEQ8>::Compute(const int n, const float* x, \
-                                                 const float* y, float* z) {  \
-    __m256 tmpx, tmpy;                                                        \
-    tmpx = _mm256_loadu_ps(x);                                                \
-    tmpy = _mm256_loadu_ps(y);                                                \
-    tmpx = _mm256_mul_ps(tmpx, tmpy);                                         \
-    _mm256_storeu_ps(z, tmpx);                                                \
+#define INTRI8_FLOAT(isa)                                            \
+  template <>                                                        \
+  void VMulKernelImpl<float, isa, kEQ8>::Compute(                    \
+      const int n, const float* x, const float* y, float* z) const { \
+    __m256 tmpx, tmpy;                                               \
+    tmpx = _mm256_loadu_ps(x);                                       \
+    tmpy = _mm256_loadu_ps(y);                                       \
+    tmpx = _mm256_mul_ps(tmpx, tmpy);                                \
+    _mm256_storeu_ps(z, tmpx);                                       \
   }
 
 // avx > for > mkl
@@ -90,7 +90,7 @@ INTRI8_FLOAT(jit::avx512f);
 template <typename T, platform::jit::cpu_isa_t isa, jit_block>
 class VAddKernelImpl : public VAddKernel<T> {
  public:
-  void Compute(const int n, const T* x, const T* y, T* z) override {
+  void Compute(const int n, const T* x, const T* y, T* z) const override {
     for (int i = 0; i < n; ++i) {
       z[i] = x[i] + y[i];
     }
@@ -98,33 +98,33 @@ class VAddKernelImpl : public VAddKernel<T> {
 };
 
 #ifdef PADDLE_WITH_MKLML
-#define MKL_FLOAT(isa, block)                                                  \
-  template <>                                                                  \
-  void VAddKernelImpl<float, isa, block>::Compute(const int n, const float* x, \
-                                                  const float* y, float* z) {  \
-    platform::dynload::vsAdd(n, x, y, z);                                      \
+#define MKL_FLOAT(isa, block)                                        \
+  template <>                                                        \
+  void VAddKernelImpl<float, isa, block>::Compute(                   \
+      const int n, const float* x, const float* y, float* z) const { \
+    platform::dynload::vsAdd(n, x, y, z);                            \
   }
 
-#define MKL_DOUBLE(isa, block)                                    \
-  template <>                                                     \
-  void VAddKernelImpl<double, isa, block>::Compute(               \
-      const int n, const double* x, const double* y, double* z) { \
-    platform::dynload::vdAdd(n, x, y, z);                         \
+#define MKL_DOUBLE(isa, block)                                          \
+  template <>                                                           \
+  void VAddKernelImpl<double, isa, block>::Compute(                     \
+      const int n, const double* x, const double* y, double* z) const { \
+    platform::dynload::vdAdd(n, x, y, z);                               \
   }
 
 FOR_EACH_ISA(MKL_FLOAT, kGT16);
 FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
 #endif
 
-#define INTRI8_FLOAT(isa)                                                     \
-  template <>                                                                 \
-  void VAddKernelImpl<float, isa, kEQ8>::Compute(const int n, const float* x, \
-                                                 const float* y, float* z) {  \
-    __m256 tmpx, tmpy;                                                        \
-    tmpx = _mm256_loadu_ps(x);                                                \
-    tmpy = _mm256_loadu_ps(y);                                                \
-    tmpx = _mm256_add_ps(tmpx, tmpy);                                         \
-    _mm256_storeu_ps(z, tmpx);                                                \
+#define INTRI8_FLOAT(isa)                                            \
+  template <>                                                        \
+  void VAddKernelImpl<float, isa, kEQ8>::Compute(                    \
+      const int n, const float* x, const float* y, float* z) const { \
+    __m256 tmpx, tmpy;                                               \
+    tmpx = _mm256_loadu_ps(x);                                       \
+    tmpy = _mm256_loadu_ps(y);                                       \
+    tmpx = _mm256_add_ps(tmpx, tmpy);                                \
+    _mm256_storeu_ps(z, tmpx);                                       \
   }
 #ifdef __AVX__
 INTRI8_FLOAT(jit::avx);
@@ -145,12 +145,12 @@ INTRI8_FLOAT(jit::avx512f);
 template <typename T, platform::jit::cpu_isa_t isa, jit_block>
 class VScalKernelImpl : public VScalKernel<T> {
  public:
-  void Compute(const int n, const T a, const T* x, T* y) override {
+  void Compute(const int n, const T a, const T* x, T* y) const override {
     for (int i = 0; i < n; ++i) {
       y[i] = a * x[i];
     }
   }
-  void Compute(const int n, const T a, T* x) override {
+  void Compute(const int n, const T a, T* x) const override {
     for (int i = 0; i < n; ++i) {
       x[i] = a * x[i];
     }
@@ -161,35 +161,35 @@ class VScalKernelImpl : public VScalKernel<T> {
 #define MKL_FLOAT(isa, block)                                                  \
   template <>                                                                  \
   void VScalKernelImpl<float, isa, block>::Compute(const int n, const float a, \
-                                                   float* x) {                 \
+                                                   float* x) const {           \
     platform::dynload::cblas_sscal(n, a, x, 1);                                \
   }
 
-#define MKL_DOUBLE(isa, block)                       \
-  template <>                                        \
-  void VScalKernelImpl<double, isa, block>::Compute( \
-      const int n, const double a, double* x) {      \
-    platform::dynload::cblas_dscal(n, a, x, 1);      \
+#define MKL_DOUBLE(isa, block)                        \
+  template <>                                         \
+  void VScalKernelImpl<double, isa, block>::Compute(  \
+      const int n, const double a, double* x) const { \
+    platform::dynload::cblas_dscal(n, a, x, 1);       \
   }
 
 FOR_EACH_ISA(MKL_FLOAT, kGT16);
 FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
 #endif
 
-#define INTRI8_FLOAT(isa)                                                     \
-  template <>                                                                 \
-  void VScalKernelImpl<float, isa, kEQ8>::Compute(const int n, const float a, \
-                                                  const float* x, float* y) { \
-    __m256 tmp;                                                               \
-    __m256 scalar = _mm256_set1_ps(a);                                        \
-    tmp = _mm256_loadu_ps(x);                                                 \
-    tmp = _mm256_mul_ps(tmp, scalar);                                         \
-    _mm256_storeu_ps(y, tmp);                                                 \
+#define INTRI8_FLOAT(isa)                                           \
+  template <>                                                       \
+  void VScalKernelImpl<float, isa, kEQ8>::Compute(                  \
+      const int n, const float a, const float* x, float* y) const { \
+    __m256 tmp;                                                     \
+    __m256 scalar = _mm256_set1_ps(a);                              \
+    tmp = _mm256_loadu_ps(x);                                       \
+    tmp = _mm256_mul_ps(tmp, scalar);                               \
+    _mm256_storeu_ps(y, tmp);                                       \
   }
 #define INTRI8_INPLACE_FLOAT(isa)                                             \
   template <>                                                                 \
   void VScalKernelImpl<float, isa, kEQ8>::Compute(const int n, const float a, \
-                                                  float* x) {                 \
+                                                  float* x) const {           \
     __m256 tmp;                                                               \
     __m256 scalar = _mm256_set1_ps(a);                                        \
     tmp = _mm256_loadu_ps(x);                                                 \

@@ -23,51 +23,68 @@ namespace jitkernel {
 
 namespace jit = platform::jit;
 
-#define NEW_JITKERNEL_IMPL(src, t, isa, k) \
-  p = std::dynamic_pointer_cast<src<t>>(   \
-      std::make_shared<src##Impl<t, isa, k>>())
-
-#define SEARCH_BLOCK(src, t, isa)                             \
+#define SEARCH_BLOCK(macro_, ker, dtype, isa)                 \
   if (d < AVX_FLOAT_BLOCK) {                                  \
-    NEW_JITKERNEL_IMPL(src, t, isa, kLT8);                    \
+    macro_(ker, dtype, isa, kLT8);                            \
   } else if (d == AVX_FLOAT_BLOCK) {                          \
-    NEW_JITKERNEL_IMPL(src, t, isa, kEQ8);                    \
+    macro_(ker, dtype, isa, kEQ8);                            \
   } else if (d > AVX_FLOAT_BLOCK && d < AVX512_FLOAT_BLOCK) { \
-    NEW_JITKERNEL_IMPL(src, t, isa, kGT8LT16);                \
+    macro_(ker, dtype, isa, kGT8LT16);                        \
   } else if (d == AVX512_FLOAT_BLOCK) {                       \
-    NEW_JITKERNEL_IMPL(src, t, isa, kEQ16);                   \
+    macro_(ker, dtype, isa, kEQ16);                           \
   } else {                                                    \
-    NEW_JITKERNEL_IMPL(src, t, isa, kGT16);                   \
+    macro_(ker, dtype, isa, kGT16);                           \
   }
 
-#define SEARCH_ISA_BLOCK(src, t)        \
-  if (jit::MayIUse(jit::avx512f)) {     \
-    SEARCH_BLOCK(src, t, jit::avx512f); \
-  } else if (jit::MayIUse(jit::avx2)) { \
-    SEARCH_BLOCK(src, t, jit::avx2);    \
-  } else if (jit::MayIUse(jit::avx)) {  \
-    SEARCH_BLOCK(src, t, jit::avx);     \
-  } else {                              \
-    SEARCH_BLOCK(src, t, jit::isa_any); \
+#define SEARCH_ISA_BLOCK(macro_, ker, dtype)        \
+  if (jit::MayIUse(jit::avx512f)) {                 \
+    SEARCH_BLOCK(macro_, ker, dtype, jit::avx512f); \
+  } else if (jit::MayIUse(jit::avx2)) {             \
+    SEARCH_BLOCK(macro_, ker, dtype, jit::avx2);    \
+  } else if (jit::MayIUse(jit::avx)) {              \
+    SEARCH_BLOCK(macro_, ker, dtype, jit::avx);     \
+  } else {                                          \
+    SEARCH_BLOCK(macro_, ker, dtype, jit::isa_any); \
   }
 
-#define JITKERNEL_WITH_DTYPE(ker_key, ker_class, ker_dtype, dtype_key)     \
-  template <>                                                              \
-  const std::shared_ptr<ker_class<ker_dtype>>                              \
-  KernelPool::Get<ker_class<ker_dtype>>(int d) {                           \
-    std::string key = #ker_key #dtype_key + std::to_string(d);             \
-    if (kers_.find(key) == kers_.end()) {                                  \
-      std::shared_ptr<ker_class<ker_dtype>> p;                             \
-      SEARCH_ISA_BLOCK(ker_class, ker_dtype);                              \
-      kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});           \
-      return p;                                                            \
-    }                                                                      \
-    return std::dynamic_pointer_cast<ker_class<ker_dtype>>(kers_.at(key)); \
+#define JITKERNEL_DECLARE(ker_class, ker_dtype) \
+  template <>                                   \
+  std::shared_ptr<const ker_class<ker_dtype>>   \
+  KernelPool::Get<ker_class<ker_dtype>, int>(int d)
+
+#define JITKERNEL_KEY(ker_key, dtype_key) \
+  #ker_key #dtype_key + std::to_string(d)
+
+#define JITKERNEL_NEW_IMPL(ker, dtype, isa, k) \
+  p = std::dynamic_pointer_cast<ker<dtype>>(   \
+      std::make_shared<ker##Impl<dtype, isa, k>>())
+
+#define JITKERNEL_WITH_DTYPE(ker_key, ker_class, ker_dtype, dtype_key, \
+                             marco_declare, macro_key, macro_impl)     \
+  marco_declare(ker_class, ker_dtype) {                                \
+    std::string key = macro_key(ker_key, dtype_key);                   \
+    if (kers_.find(key) == kers_.end()) {                              \
+      std::shared_ptr<ker_class<ker_dtype>> p;                         \
+      SEARCH_ISA_BLOCK(macro_impl, ker_class, ker_dtype);              \
+      kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});       \
+      return p;                                                        \
+    }                                                                  \
+    return std::dynamic_pointer_cast<const ker_class<ker_dtype>>(      \
+        kers_.at(key));                                                \
   }
 
-#define REGISTER_JITKERNEL(ker_key, ker_class)        \
-  JITKERNEL_WITH_DTYPE(ker_key, ker_class, float, f); \
-  JITKERNEL_WITH_DTYPE(ker_key, ker_class, double, d)
+#define REGISTER_JITKERNEL(ker_key, ker_class)                           \
+  JITKERNEL_WITH_DTYPE(ker_key, ker_class, float, f, JITKERNEL_DECLARE,  \
+                       JITKERNEL_KEY, JITKERNEL_NEW_IMPL);               \
+  JITKERNEL_WITH_DTYPE(ker_key, ker_class, double, d, JITKERNEL_DECLARE, \
+                       JITKERNEL_KEY, JITKERNEL_NEW_IMPL)
+
+#define REGISTER_JITKERNEL_ARGS(ker_key, ker_class, marco_declare, macro_key,  \
+                                macro_impl)                                    \
+  JITKERNEL_WITH_DTYPE(ker_key, ker_class, float, f, marco_declare, macro_key, \
+                       macro_impl);                                            \
+  JITKERNEL_WITH_DTYPE(ker_key, ker_class, double, d, marco_declare,           \
+                       macro_key, macro_impl)
 
 #define FOR_EACH_ISA(macro_, block) \
   macro_(jit::avx512f, block);      \
