@@ -44,7 +44,7 @@ extern void *curand_dso_handle;
   struct DynLoad__##__name {                     \
     template <typename... Args>                  \
     curandStatus_t operator()(Args... args) {    \
-      return __name(args...);                    \
+      return ::__name(args...);                  \
     }                                            \
   };                                             \
   extern DynLoad__##__name __name
