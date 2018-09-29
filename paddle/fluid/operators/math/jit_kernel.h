@@ -28,13 +28,11 @@ namespace jitkernel {
 
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
+#define EXP_MAX_INPUT 40.0
 
 #define AVX_FLOAT_BLOCK 8
-#define AVX_DOUBLE_BLOCK 4
 #define AVX2_FLOAT_BLOCK 8
-#define AVX2_DOUBLE_BLOCK 4
 #define AVX512_FLOAT_BLOCK 16
-#define AVX512_DOUBLE_BLOCK 8
 
 typedef enum { kLT8, kEQ8, kGT8LT16, kEQ16, kGT16 } jit_block;
 
