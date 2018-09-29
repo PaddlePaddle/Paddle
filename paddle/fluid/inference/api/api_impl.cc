@@ -22,7 +22,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/inference/api/api_impl.h"
-#include "paddle/fluid/inference/api/paddle_inference_helper.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");

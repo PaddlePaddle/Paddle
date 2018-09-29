@@ -20,8 +20,8 @@ limitations under the License. */
 #include <iostream>
 #include <thread>  // NOLINT
 #include <vector>
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/paddle_inference_helper.h"
 #include "utils/logger/logger.h"
 
 DEFINE_string(model, "", "Directory of the inference model.");
