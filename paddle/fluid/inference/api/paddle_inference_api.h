@@ -263,7 +263,7 @@ struct AnalysisConfig : public NativeConfig {
   bool enable_ir_optim = true;
   // Manually determine the IR passes to run.
   IrPassMode ir_mode{IrPassMode::kExclude};
-  std::vector<std::string> ir_passes;
+  std::vector<std::string> ir_passes{"embedding_fc_lstm_fuse_pass"};
 
   // NOT stable yet.
   bool use_feed_fetch_ops{true};
