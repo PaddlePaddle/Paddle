@@ -56,6 +56,9 @@ class InferShapeContext {
   virtual const std::vector<std::string> &Outputs(
       const std::string &name) const = 0;
 
+  virtual void ShareDimInfo(const std::string &in, const std::string &out,
+                            size_t i = 0, size_t j = 0) = 0;
+
   void ShareLoDs(const std::string &in, const std::string &out) const;
 
   virtual void ShareLoD(const std::string &in, const std::string &out,
