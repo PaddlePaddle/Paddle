@@ -99,7 +99,7 @@ struct CastToPyBufferImpl<true, I, ARGS...> {
 
         py_buffer->shape = reinterpret_cast<Py_ssize_t *>(
             malloc(sizeof(Py_ssize_t) * tensor.dims().size()));
-        for (size_t i = 0; i < tensor.dims().size(); ++i) {
+        for (int i = 0; i < tensor.dims().size(); ++i) {
           py_buffer->shape[i] = tensor.dims()[i];
         }
 

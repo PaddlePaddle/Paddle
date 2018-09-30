@@ -167,7 +167,7 @@ class CudnnHolder {
     if (required_workspace_len > WorkspaceSize()) {
       ReallocateWorkspace(required_workspace_len);
     }
-    cudnn_func(workspace_->ptr());
+    cudnn_func(WorkspacePtr());
   }
 
   ~CudnnHolder() { PADDLE_ENFORCE(dynload::cudnnDestroy(cudnn_handle_)); }
@@ -178,6 +178,14 @@ class CudnnHolder {
       return 0;
     } else {
       return workspace_->size();
+    }
+  }
+
+  void* WorkspacePtr() const {
+    if (workspace_ == nullptr) {
+      return nullptr;
+    } else {
+      return workspace_->ptr();
     }
   }
 
