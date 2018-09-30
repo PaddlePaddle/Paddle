@@ -65,6 +65,7 @@ class CPUManagedAllocator : public ManagedAllocator {
   std::shared_ptr<ManagedAllocator> communication_allocator_;
 };
 
+#ifdef PADDLE_WITH_CUDA
 // TODO(yy): Dirty code here. This class should be configurable in runtime.
 class CUDAManagedAllocator : public ManagedAllocator {
  public:
@@ -94,8 +95,9 @@ class CUDAManagedAllocator : public ManagedAllocator {
   std::shared_ptr<ManagedAllocator> BestFitAllocatorCreator() {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
-    return NaiveManagedAllocator::Create(
-        std::unique_ptr<Allocator>(new BestFitAllocator(allocation)));
+    return std::make_shared<AlignedAllocator<64u>>(
+        NaiveManagedAllocator::Create(
+            std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
   }
   bool IsAllocThreadSafe() const override { return true; }
 
@@ -105,12 +107,13 @@ class CUDAManagedAllocator : public ManagedAllocator {
   std::shared_ptr<ManagedAllocator> raw_allocator_;
   std::shared_ptr<ManagedAllocator> default_allocator_;
 };
+#endif
 
 class AllocatorFacadePrivate {
  public:
   std::map<platform::Place, std::shared_ptr<ManagedAllocator>> allocators_;
 
-  ~AllocatorFacadePrivate() {}
+  ~AllocatorFacadePrivate() = default;
 
   AllocatorFacadePrivate() {
     InitCPUAllocator();
@@ -132,6 +135,7 @@ class AllocatorFacadePrivate {
   }
 };
 
+// Pimpl. Make interface clean.
 AllocatorFacade::AllocatorFacade() : m_(new AllocatorFacadePrivate()) {}
 AllocatorFacade::~AllocatorFacade() { delete m_; }
 
