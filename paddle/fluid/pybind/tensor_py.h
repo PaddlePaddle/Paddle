@@ -14,7 +14,6 @@ limitations under the License. */
 
 #pragma once
 #include <Python.h>
-#include <cmake-build-release/third_party/pybind/src/extern_pybind/include/pybind11/common.h>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -22,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/float16.h"
+#include "pybind11/common.h"
 #include "pybind11/numpy.h"
 #include "pybind11/pybind11.h"
 
