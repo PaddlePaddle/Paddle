@@ -24,7 +24,6 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
