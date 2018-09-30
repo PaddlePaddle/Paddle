@@ -70,8 +70,8 @@ function cmake_gen() {
     PYTHON_FLAGS=""
     SYSTEM=`uname -s`
     if [ "$SYSTEM" == "Darwin" ]; then
+        echo "using python abi: $1"
         if [[ "$1" == "cp27-cp27m" ]] || [[ "$1" == "" ]]; then
-            echo "using python abi: $1"
             if [ -d "/Library/Frameworks/Python.framework/Versions/2.7" ]; then
                 export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
                 export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/2.7
@@ -82,7 +82,18 @@ function cmake_gen() {
             else
                 exit 1
             fi
-        # TODO: qiyang add python3 part here 
+        elif [ "$1" == "cp35-cp35m" ]; then
+            if [ -d "/Library/Frameworks/Python.framework/Versions/3.5" ]; then
+                export LD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export DYLD_LIBRARY_PATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/
+                export PATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/:${PATH}
+                PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/bin/python3
+            -DPYTHON_INCLUDE_DIR:PATH=/Library/Frameworks/Python.framework/Versions/3.5/include/python3.5m/
+            -DPYTHON_LIBRARY:FILEPATH=/Library/Frameworks/Python.framework/Versions/3.5/lib/libpython3.5m.dylib"
+                WITH_FLUID_ONLY=${WITH_FLUID_ONLY:-ON}
+            else
+                exit 1
+            fi
         fi
     else 
         if [ "$1" != "" ]; then
@@ -384,7 +395,7 @@ EOF
         ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
         make install -j 8
-        pip install /usr/local/opt/paddle/share/wheels/*.whl
+        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
@@ -735,7 +746,7 @@ function main() {
         cmake_gen ${PYTHON_ABI:-""}
         build
         run_test
-        assert_api_not_changed
+        assert_api_not_changed ${PYTHON_ABI:-""}
         ;;
       *)
         print_usage
