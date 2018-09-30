@@ -14,9 +14,9 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/fluid/memory/malloc.h"
-
+#include <stdlib.h>
 #include "glog/logging.h"
+#include "paddle/fluid/memory/malloc.h"
 
 #include "paddle/fluid/memory/detail/buddy_allocator.h"
 #include "paddle/fluid/memory/detail/system_allocator.h"
@@ -71,19 +71,18 @@ struct NaiveAllocator {
 
 template <>
 void* Alloc<platform::CPUPlace>(platform::CPUPlace place, size_t size) {
-  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
-  void* p = GetCPUBuddyAllocator()->Alloc(size);
-  if (FLAGS_init_allocated_mem) {
-    memset(p, 0xEF, size);
-  }
-  VLOG(10) << "  pointer=" << p;
-  return p;
+  //  VLOG(10) << "Allocate " << size << " bytes on " << platform::Place(place);
+  //  void* p = GetCPUBuddyAllocator()->Alloc(size);
+  //  if (FLAGS_init_allocated_mem) {
+  //    memset(p, 0xEF, size);
+  //  }
+  //  VLOG(10) << "  pointer=" << p;
+  return malloc(size);
 }
 
 template <>
 void Free<platform::CPUPlace>(platform::CPUPlace place, void* p) {
-  VLOG(10) << "Free pointer=" << p << " on " << platform::Place(place);
-  GetCPUBuddyAllocator()->Free(p);
+  free(p);
 }
 
 template <>
