@@ -195,7 +195,7 @@ TEST(JitKernel, vsigmoid) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
 
@@ -227,7 +227,7 @@ void vtanh_better(
         vaddbias,
     const int n, const float* x, float* y) {
   vscal->Compute(n, 2.f, x, y);
-  vsigmoid->Compute(n, y, y);
+  vsigmoid->Compute(y, y);
   vscal->Compute(n, 2.f, y);
   vaddbias->Compute(n, -1.f, y, y);
 }
@@ -261,7 +261,7 @@ TEST(JitKernel, vtanh) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
 
