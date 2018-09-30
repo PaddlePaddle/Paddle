@@ -126,9 +126,9 @@ def reader_creator(data_file,
                         batch = pickle.load(f)
                     else:
                         batch = pickle.load(f, encoding='bytes')
-                data = batch['data']
-                labels = batch['label']
-                for sample, label in zip(data, batch['label']):
+                data = batch[six.b('data')]
+                labels = batch[six.b('label')]
+                for sample, label in zip(data, batch[six.b('label')]):
                     yield sample, int(label) - 1
             if not cycle:
                 break
