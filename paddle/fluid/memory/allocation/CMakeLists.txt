@@ -33,7 +33,7 @@ else ()
 endif()
 
 cc_library(aligned_allocator SRCS aligned_allocator.cc DEPS allocator)
-
+cc_library(auto_increment_allocator SRCS auto_increment_allocator.cc DEPS allocator)
 cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         ${AllocatorFacadeDeps}
         cpu_allocator
@@ -41,6 +41,7 @@ cc_library(allocator_facade SRCS allocator_facade.cc DEPS
         best_fit_allocator
         naive_managed_allocator
         aligned_allocator
+        auto_increment_allocator
         cuda_device_guard)
 
 nv_test(allocation_and_eigen_test SRCS allocation_and_eigen_test.cu DEPS allocator_facade)
