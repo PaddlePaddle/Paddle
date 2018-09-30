@@ -21,6 +21,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// Allocator Facade is the interface exposed to other modules.
+// All the configuration or dirty code under development should
+// be hidden behind this facade.
 class AllocatorFacadePrivate;
 class AllocatorFacade {
  public:
