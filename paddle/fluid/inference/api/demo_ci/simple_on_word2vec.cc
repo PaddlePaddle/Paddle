@@ -62,16 +62,16 @@ void Main(bool use_gpu) {
     CHECK(predictor->Run(slots, &outputs));
 
     //# 4. Get output.
-    CHECK(outputs.size(), 1UL);
+    CHECK_EQ(outputs.size(), 1UL);
     // Check the output buffer size and result of each tid.
-    CHECK(outputs.front().data.length(), 33168UL);
+    CHECK_EQ(outputs.front().data.length(), 33168UL);
     float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                        0.000932706};
     const size_t num_elements = outputs.front().data.length() / sizeof(float);
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
          i++) {
-      CHECK(static_cast<float*>(outputs.front().data.data())[i], result[i]);
+      CHECK_EQ(static_cast<float*>(outputs.front().data.data())[i], result[i]);
     }
   }
 }
@@ -107,9 +107,9 @@ void MainThreads(int num_threads, bool use_gpu) {
         CHECK(predictor->Run(inputs, &outputs));
 
         // 4. Get output.
-        CHECK(outputs.size(), 1UL);
+        CHECK_EQ(outputs.size(), 1UL);
         // Check the output buffer size and result of each tid.
-        CHECK(outputs.front().data.length(), 33168UL);
+        CHECK_EQ(outputs.front().data.length(), 33168UL);
         float result[5] = {0.00129761, 0.00151112, 0.000423564, 0.00108815,
                            0.000932706};
         const size_t num_elements =
@@ -117,7 +117,7 @@ void MainThreads(int num_threads, bool use_gpu) {
         // The outputs' buffers are in CPU memory.
         for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
              i++) {
-          CHECK(static_cast<float*>(outputs.front().data.data())[i], result[i]);
+          CHECK_EQ(static_cast<float*>(outputs.front().data.data())[i], result[i]);
         }
       }
     });
