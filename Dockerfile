@@ -73,18 +73,18 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # version(1.7.1 for now), which causes building documentation failed.
 RUN pip3 install -U wheel && \
     pip3 install -U docopt PyYAML sphinx==1.5.6 && \
-    pip3 install sphinx-rtd-theme==0.1.9 recommonmark
+    pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
     easy_install -U pip && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
-    pip install sphinx-rtd-theme==0.1.9 recommonmark && \
+    pip install sphinx-rtd-theme==0.1.9 recommonmark
 
 RUN pip3 install pre-commit 'ipython==5.3.0' && \
     pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip3 install opencv-python
+    pip3 install opencv-python && \
     pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
-    pip install opencv-python && \
+    pip install opencv-python
 
 #For docstring checker
 RUN pip3 install pylint pytest astroid isort
