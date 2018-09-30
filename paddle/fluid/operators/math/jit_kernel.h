@@ -29,7 +29,6 @@ namespace jitkernel {
 #define SIGMOID_THRESHOLD_MIN -40.0
 #define SIGMOID_THRESHOLD_MAX 13.0
 #define EXP_MAX_INPUT 40.0
-
 #define AVX_FLOAT_BLOCK 8
 #define AVX2_FLOAT_BLOCK 8
 #define AVX512_FLOAT_BLOCK 16
@@ -40,8 +39,9 @@ class Kernel {
  public:
   Kernel() = default;
   virtual ~Kernel() = default;
-
- private:
+  int num_{0};
+  int end_{0};
+  int rest_{0};
   DISABLE_COPY_AND_ASSIGN(Kernel);
 };
 
@@ -95,13 +95,13 @@ class VExpKernel : public Kernel {
 template <typename T>
 class VSigmoidKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, T *y) const = 0;
+  virtual void Compute(const T *x, T *y) const = 0;
 };
 
 template <typename T>
 class VTanhKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, T *y) const = 0;
+  virtual void Compute(const T *x, T *y) const = 0;
 };
 
 template <typename T>
