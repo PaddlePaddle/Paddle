@@ -121,7 +121,8 @@ struct DataReader {
         cv::imshow(std::to_string(i) + " input image", image);
 
       cv::Mat image2;
-      cv::resize(image, image2, cv::Size(width, height));
+      cv::resize(image, image2, cv::Size(width, height), 0, 0,
+                 cv::INTER_LANCZOS4);
 
       cv::Mat fimage;
       image2.convertTo(fimage, CV_32FC3);
