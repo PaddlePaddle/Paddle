@@ -166,7 +166,8 @@ void drawImages(float* input) {
       cv::merge(fimage_channels, mat);
       cv::imshow(std::to_string(b) + " output image", mat);
     }
-    std::cout << "Press any key in image window or close it to continue" << std::endl;
+    std::cout << "Press any key in image window or close it to continue"
+              << std::endl;
     cv::waitKey(0);
   }
 }
@@ -284,9 +285,7 @@ void Main() {
   CHECK_GE(FLAGS_skip_batch_num, 0);
 
   // reader instance for not fake data
-  DataReader reader(FLAGS_data_list, FLAGS_data_dir, FLAGS_width, FLAGS_height,
-                    FLAGS_channels);
-  if (!reader.SetSeparator('\t')) reader.SetSeparator(' ');
+  std::unique_ptr<DataReader> reader;
 
   // Read first batch
   if (FLAGS_use_fake_data) {
@@ -307,13 +306,16 @@ void Main() {
     fill_data<int64_t>(static_cast<int64_t*>(input_label.data.data()),
                        label_size);
   } else {
+    reader.reset(new DataReader(FLAGS_data_list, FLAGS_data_dir, FLAGS_width,
+                                FLAGS_height, FLAGS_channels));
+    if (!reader->SetSeparator('\t')) reader->SetSeparator(' ');
     // get imagenet data and label
     input.data.Resize(count(shape) * sizeof(float));
     input.dtype = PaddleDType::FLOAT32;
 
-    reader.NextBatch(static_cast<float*>(input.data.data()),
-                     static_cast<int64_t*>(input_label.data.data()),
-                     FLAGS_batch_size, FLAGS_debug_display_images);
+    reader->NextBatch(static_cast<float*>(input.data.data()),
+                      static_cast<int64_t*>(input_label.data.data()),
+                      FLAGS_batch_size, FLAGS_debug_display_images);
   }
 
   // create predictor
@@ -357,9 +359,9 @@ void Main() {
         fill_data<int64_t>(static_cast<int64_t*>(input_label.data.data()),
                            label_size);
       } else {
-        if (!reader.NextBatch(static_cast<float*>(input.data.data()),
-                              static_cast<int64_t*>(input_label.data.data()),
-                              FLAGS_batch_size, FLAGS_debug_display_images)) {
+        if (!reader->NextBatch(static_cast<float*>(input.data.data()),
+                               static_cast<int64_t*>(input_label.data.data()),
+                               FLAGS_batch_size, FLAGS_debug_display_images)) {
           std::cout << "No more full batches. stopping.";
           break;
         }
