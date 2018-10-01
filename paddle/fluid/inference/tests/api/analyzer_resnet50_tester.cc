@@ -47,13 +47,13 @@ namespace paddle {
 
 struct DataReader {
   explicit DataReader(const std::string& data_list_path,
-                      const std::string& data_dir_path, int resize_width,
-                      int resize_height, int channels, bool convert_to_rgb)
+                      const std::string& data_dir_path, int width, int height,
+                      int channels, bool convert_to_rgb)
       : data_list_path(data_list_path),
         data_dir_path(data_dir_path),
         file(std::ifstream(data_list_path)),
-        width(resize_width),
-        height(resize_height),
+        width(width),
+        height(height),
         channels(channels),
         convert_to_rgb(convert_to_rgb) {
     if (!file.is_open()) {
@@ -68,6 +68,15 @@ struct DataReader {
 
     if (channels != 3) {
       throw std::invalid_argument("Only 3 channel image loading supported");
+    }
+
+    if (!(width == height && width == 224)) {
+      std::stringstream ss;
+      ss << "Width and heigth must be both 224 because this reader is for "
+            "validation which does resize of smaller edge to 256 and "
+            "center crop of (224, 224). They are: ("
+         << width << ", " << height << ")." << std::endl;
+      throw std::invalid_argument(ss.str());
     }
   }
 
@@ -108,24 +117,24 @@ struct DataReader {
       label[i] = std::stoi(pieces.at(1));
 
       cv::Mat image = cv::imread(filename, cv::IMREAD_COLOR);
-      if (convert_to_rgb) {
-        cv::cvtColor(image, image, CV_BGR2RGB);
-      }
 
       if (image.data == nullptr) {
         std::string error_msg = "Couldn't open file " + filename;
         throw std::runtime_error(error_msg);
       }
 
+      if (convert_to_rgb) {
+        cv::cvtColor(image, image, CV_BGR2RGB);
+      }
+
       if (debug_display_images)
         cv::imshow(std::to_string(i) + " input image", image);
 
-      cv::Mat image2;
-      cv::resize(image, image2, cv::Size(width, height), 0, 0,
-                 cv::INTER_LANCZOS4);
+      cv::Mat image_resized = resize_short(image, width);
+      cv::Mat image_cropped = center_crop_image(image_resized, width, height);
 
       cv::Mat fimage;
-      image2.convertTo(fimage, CV_32FC3);
+      image_cropped.convertTo(fimage, CV_32FC3);
 
       fimage /= 255.f;
 
@@ -153,6 +162,26 @@ struct DataReader {
       }
     }
     return true;
+  }
+
+ private:
+  cv::Mat center_crop_image(cv::Mat img, int width, int height) {
+    auto w_start = (img.cols - width) / 2;
+    auto h_start = (img.rows - height) / 2;
+
+    cv::Rect roi(w_start, h_start, width, height);
+    return img(roi);
+  }
+
+  cv::Mat resize_short(cv::Mat img, int target_size) {
+    auto percent =
+        static_cast<float>(target_size) / std::min(img.cols, img.rows);
+    auto resized_width = static_cast<int>(round(img.cols * percent));
+    auto resized_height = static_cast<int>(round(img.rows * percent));
+    cv::Mat resized_img;
+    cv::resize(img, resized_img, cv::Size(resized_width, resized_height), 0, 0,
+               cv::INTER_LANCZOS4);
+    return resized_img;
   }
 
   std::string data_list_path;
@@ -263,8 +292,8 @@ void PostprocessBenchmarkData(std::vector<double> latencies,
 
   printf("\n\nAvg fps: %.5f, std fps: %.5f, fps for 99pc latency: %.5f\n",
          fps_avg, fps_std, fps_pc01);
-  printf("Avg latency: %.5f, std latency: %.5f, 99pc latency: %.5f\n",
-         lat_avg, lat_std, lat_pc99);
+  printf("Avg latency: %.5f, std latency: %.5f, 99pc latency: %.5f\n", lat_avg,
+         lat_std, lat_pc99);
   printf("Total examples: %d, total time: %.5f, total examples/sec: %.5f\n",
          total_samples, total_time_sec, examples_per_sec);
   printf("Avg accuracy: %f\n\n", acc_avg);
@@ -410,8 +439,8 @@ void Main() {
     double fps = FLAGS_batch_size * 1000 / batch_time;
     fpses.push_back(fps);
     std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
-    printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n",
-      i, appx.c_str(), *acc1, batch_time, fps);
+    printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n", i,
+           appx.c_str(), *acc1, batch_time, fps);
   }
 
   if (FLAGS_profile) {
