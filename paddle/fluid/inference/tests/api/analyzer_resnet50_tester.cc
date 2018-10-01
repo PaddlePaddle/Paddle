@@ -261,11 +261,11 @@ void PostprocessBenchmarkData(std::vector<double> latencies,
 
   float examples_per_sec = total_samples / total_time_sec;
 
-  printf("\nAvg fps: %.5f, std fps: %.5f, fps for 99pc latency: %.5f\n",
+  printf("\n\nAvg fps: %.5f, std fps: %.5f, fps for 99pc latency: %.5f\n",
          fps_avg, fps_std, fps_pc01);
-  printf("Avg latency: %.5f ms, std latency: %.5f ms, 99pc latency: %.5f ms\n",
+  printf("Avg latency: %.5f, std latency: %.5f, 99pc latency: %.5f\n",
          lat_avg, lat_std, lat_pc99);
-  printf("Total examples: %d, total time: %.5f sec, total examples/sec: %.5f\n",
+  printf("Total examples: %d, total time: %.5f, total examples/sec: %.5f\n",
          total_samples, total_time_sec, examples_per_sec);
   printf("Avg accuracy: %f\n\n", acc_avg);
 }
@@ -360,6 +360,11 @@ void Main() {
   auto predictor = CreatePaddlePredictor<contrib::AnalysisConfig,
                                          PaddleEngineKind::kAnalysis>(config);
 
+  if (FLAGS_profile) {
+    auto pf_state = paddle::platform::ProfilerState::kCPU;
+    paddle::platform::EnableProfiler(pf_state);
+  }
+
   // define output
   std::vector<PaddleTensor> output_slots;
 
@@ -390,8 +395,7 @@ void Main() {
     if (i == FLAGS_skip_batch_num) {
       timer_total.tic();
       if (FLAGS_profile) {
-        auto pf_state = paddle::platform::ProfilerState::kCPU;
-        paddle::platform::EnableProfiler(pf_state);
+        paddle::platform::ResetProfiler();
       }
     }
     timer.tic();
@@ -406,10 +410,8 @@ void Main() {
     double fps = FLAGS_batch_size * 1000 / batch_time;
     fpses.push_back(fps);
     std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
-    std::cout << "Iteration: " << appx << i << ", "
-              << "accuracy: " << *acc1 << ", "
-              << "latency: " << batch_time << " ms, "
-              << "fps: " << fps << std::endl;
+    printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n",
+      i, appx.c_str(), *acc1, batch_time, fps);
   }
 
   if (FLAGS_profile) {
