@@ -23,6 +23,7 @@
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
 #include "paddle/fluid/memory/allocation/pinned_allocator.h"
+#include "paddle/fluid/memory/allocation/zero_size_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
@@ -118,6 +119,7 @@ class AllocatorFacadePrivate {
   AllocatorFacadePrivate() {
     InitCPUAllocator();
     InitCUDAAllocator();
+    WrapZeroSizeAllocator();
   }
 
  private:
@@ -132,6 +134,13 @@ class AllocatorFacadePrivate {
           std::make_shared<CUDAManagedAllocator>(dev_id);
     }
 #endif
+  }
+
+  void WrapZeroSizeAllocator() {
+    for (auto& pair : allocators_) {
+      pair.second =
+          std::make_shared<ZeroSizeAllocator>(pair.second, pair.first);
+    }
   }
 };
 
