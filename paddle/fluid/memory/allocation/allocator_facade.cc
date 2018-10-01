@@ -19,6 +19,7 @@
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/memory/allocation/auto_increment_allocator.h"
 #include "paddle/fluid/memory/allocation/best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/conditional_allocator.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/locked_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_managed_allocator.h"
@@ -77,6 +78,18 @@ class CUDAManagedAllocator : public ManagedAllocator {
         new CUDAAllocator(platform::CUDAPlace(dev_id))));
     default_allocator_ = std::make_shared<AutoIncrementAllocator>(
         [this] { return std::move(BestFitAllocatorCreator()); });
+
+    auto* cond_allocator = new ConditionalAllocator();
+    cond_allocator
+        ->AddAllocator(
+            [this](size_t size, Attr attr) { return size < max_chunk_size_; },
+            default_allocator_)
+        .AddAllocator(
+            [](size_t size, Attr attr) {
+              return true;  // default case
+            },
+            raw_allocator_);
+    default_allocator_.reset(cond_allocator);
   }
 
   ~CUDAManagedAllocator() {
