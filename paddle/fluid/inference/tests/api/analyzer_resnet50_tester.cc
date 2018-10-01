@@ -439,7 +439,7 @@ void Main() {
     double fps = FLAGS_batch_size * 1000 / batch_time;
     fpses.push_back(fps);
     std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
-    printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n", i,
+    printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n", i + 1,
            appx.c_str(), *acc1, batch_time, fps);
   }
 
