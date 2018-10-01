@@ -436,8 +436,6 @@ class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 
-    // std::cout << "===> Batch Compute" << std::endl;
-
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
     auto* batched_input = ctx.Output<LoDTensor>("BatchedInput");
