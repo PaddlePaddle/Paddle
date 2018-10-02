@@ -290,12 +290,13 @@ class FusionGRUKernel : public framework::OpKernel<T> {
   void BatchCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = paddle::platform::CPUDeviceContext;
     auto* x = ctx.Input<LoDTensor>("X");
+    INIT_BASE_INPUT_OUTPUT
+    INIT_BASE_SIZES
     if (x->lod()[0].size() == 2) {
+      xx->Resize({total_T, D3});
       SeqCompute(ctx);
       return;
     }
-    INIT_BASE_INPUT_OUTPUT
-    INIT_BASE_SIZES
     INIT_VEC_FUNC
 
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
