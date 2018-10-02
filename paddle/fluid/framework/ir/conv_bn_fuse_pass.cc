@@ -24,32 +24,32 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-LoDTensor tensor_apply(LoDTensor* vec, float (*f)(float)) {
+LoDTensor tensor_apply(const LoDTensor& vec, float (*f)(float)) {
   LoDTensor vec_y;
-  vec_y.Resize(vec->dims());
-  float* x = vec->mutable_data<float>(platform::CPUPlace());
+  vec_y.Resize(vec.dims());
+  const float* x = vec.data<float>();
   float* y = vec_y.mutable_data<float>(platform::CPUPlace());
-  for (int i = 0; i < vec->numel(); i++) {
+  for (int i = 0; i < vec.numel(); i++) {
     y[i] = f(x[i]);
   }
   return vec_y;
 }
 
-void tensor_apply_inplace(LoDTensor* vec, float (*f)(float)) {
-  float* data = vec->mutable_data<float>(platform::CPUPlace());
-  for (int i = 0; i < vec->numel(); i++) {
+void tensor_apply_inplace(LoDTensor& vec, float (*f)(float)) {
+  float* data = vec.mutable_data<float>(platform::CPUPlace());
+  for (int i = 0; i < vec.numel(); i++) {
     data[i] = f(data[i]);
   }
 }
 
 template <typename BinaryOperation>
-LoDTensor tensor_apply_eltwise(LoDTensor vec_a, LoDTensor vec_b,
+LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
                                BinaryOperation f) {
   PADDLE_ENFORCE_EQ(vec_a.dims(), vec_b.dims());
   LoDTensor vec_y;
   vec_y.Resize(vec_a.dims());
-  float* a = vec_a.mutable_data<float>(platform::CPUPlace());
-  float* b = vec_b.mutable_data<float>(platform::CPUPlace());
+  const float* a = vec_a.data<float>();
+  const float* b = vec_b.data<float>();
   float* y = vec_y.mutable_data<float>(platform::CPUPlace());
   for (int i = 0; i < vec_a.numel(); i++) {
     y[i] = f(a[i], b[i]);
@@ -58,20 +58,38 @@ LoDTensor tensor_apply_eltwise(LoDTensor vec_a, LoDTensor vec_b,
 }
 
 template <typename BinaryOperation>
-LoDTensor tensor_apply_eltwise_broadcast(LoDTensor vec_a, LoDTensor vec_b,
+LoDTensor tensor_apply_eltwise_broadcast(const LoDTensor& vec_a,
+                                         const LoDTensor& vec_b,
                                          BinaryOperation f) {
-  PADDLE_ENFORCE_GT(vec_a.dims().size(), vec_b.dims().size());
+  PADDLE_ENFORCE_EQ(vec_a.dims().size(), 2);
+  PADDLE_ENFORCE_EQ(vec_b.dims().size(), 2);
   PADDLE_ENFORCE_EQ(vec_a.dims()[0], vec_b.dims()[0]);
+  PADDLE_ENFORCE_EQ(vec_b.dims()[1], 1);
   LoDTensor vec_y;
   vec_y.Resize(vec_a.dims());
-  float* a = vec_a.mutable_data<float>(platform::CPUPlace());
-  float* b = vec_b.mutable_data<float>(platform::CPUPlace());
+  const float* a = vec_a.data<float>();
+  const float* b = vec_b.data<float>();
   float* y = vec_y.mutable_data<float>(platform::CPUPlace());
-  size_t b_size = vec_b.dims()[0];
-  for (int i = 0; i < vec_a.numel(); ++i) {
-    y[i] = f(a[i], b[i % b_size]);
+  size_t a_height = vec_a.dims()[0];
+  size_t a_width = vec_a.dims()[1];
+  for (size_t h = 0; h < a_height; h++) {
+    for (size_t w = 0; w < a_width; ++w) {
+      *(y++) = f(*(a++), b[h]);
+    }
   }
   return vec_y;
+}
+
+// reshape to two dimensions {A, B * C * ...}
+void make_tensor_2d(LoDTensor& tensor_to_reshape) {
+  auto dims_count = tensor_to_reshape.dims().size();
+  PADDLE_ENFORCE_GT(dims_count, 0);
+
+  int size2 = 1;
+  for (int i = 1; i < dims_count; i++) {
+    size2 *= tensor_to_reshape.dims()[i];
+  }
+  tensor_to_reshape.Resize(make_ddim({tensor_to_reshape.dims()[0], size2}));
 }
 
 std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
@@ -144,9 +162,9 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     auto std_tensor = LoDTensor();
     std_tensor.Resize(bn_bias_tensor->dims());
     std_tensor =
-        tensor_apply(variance_tensor, [](float x) { return x + 1e-5f; });
+        tensor_apply(*variance_tensor, [](float x) { return x + 1e-5f; });
 
-    tensor_apply_inplace(&std_tensor, std::sqrt);
+    tensor_apply_inplace(std_tensor, std::sqrt);
     auto tmp_tensor =
         tensor_apply_eltwise(*scale_tensor, std_tensor, std::divides<float>());
     *bias_y_tensor = tensor_apply_eltwise(
@@ -160,14 +178,11 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
         scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
     // remember the weights tensor shape {A, B, C, ...}
     auto current_param_shape = current_param->dims();
-    // flatten the weights tensor shape {A, B * C * ...}
-    if (current_param->dims().size() > 1) {
-      int size2 = current_param->dims()[1];
-      for (int i = 2; i < current_param->dims().size(); i++) {
-        size2 *= current_param->dims()[i];
-      }
-      current_param->Resize(make_ddim({current_param->dims()[0], size2}));
-    }
+    // reduce the weights to 2d {A, B * C * ...}
+    make_tensor_2d(*current_param);
+    // make tmp tensor 2d by adding 1 as second dim {A, 1}
+    make_tensor_2d(tmp_tensor);
+
     *current_param = tensor_apply_eltwise_broadcast(*current_param, tmp_tensor,
                                                     std::multiplies<float>());
     // reshape weights to the original dims {A, B, C, ...}
@@ -272,9 +287,9 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
     auto std_tensor = LoDTensor();
     std_tensor.Resize(bn_bias_tensor->dims());
     std_tensor =
-        tensor_apply(variance_tensor, [](float x) { return x + 1e-5f; });
+        tensor_apply(*variance_tensor, [](float x) { return x + 1e-5f; });
 
-    tensor_apply_inplace(&std_tensor, std::sqrt);
+    tensor_apply_inplace(std_tensor, std::sqrt);
     auto tmp_tensor =
         tensor_apply_eltwise(*scale_tensor, std_tensor, std::divides<float>());
     *bias_y_tensor = tensor_apply_eltwise(
