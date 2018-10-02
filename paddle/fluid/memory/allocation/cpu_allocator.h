@@ -18,7 +18,13 @@
 namespace paddle {
 namespace memory {
 namespace allocation {
-
+// CPU system allocator and allocation.
+//
+// NOTE(yy): Should we just use `malloc` here since there is an
+// aligned_allocator.
+//
+// NOTE(yy): It is no need to use `BestFitAllocator` in CPU. We can import
+// an open-sourced allocator into Paddle.
 class CPUAllocation : public Allocation {
  public:
   CPUAllocation(void* ptr, size_t size)

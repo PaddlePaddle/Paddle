@@ -20,6 +20,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// A allocator to make underlying allocator thread safe.
 class LockedAllocator : public UnmanagedAllocator {
  public:
   explicit LockedAllocator(std::unique_ptr<Allocator>&& underlying_allocator);

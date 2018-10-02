@@ -18,6 +18,9 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
 #include "unsupported/Eigen/CXX11/Tensor"
+
+// NOTE(yy): this unittest is not important. It just used for debugging.
+// It can be removed later.
 struct FillZero {
  public:
   float* ptr_;

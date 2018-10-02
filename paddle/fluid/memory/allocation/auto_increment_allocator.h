@@ -24,12 +24,27 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// The AutoIncrementAllocator manages many underlying allocators. If none of
+// them can allocate the request memory, a new allocator will be created and
+// invoke its `allocate` method.
+//
+// NOTE(yy): The AutoIncrementAllocator will prefer to allocate memory from
+// the latest sucessful allocator.
+//
+// NOTE(yy): We may need to release an underlying allocator if it allocate
+// nothing. However, it is generally not useful, since it will make performance
+// undetermined.
+//
+// NOTE(yy): This allocator is only locked when creating new underlying
+// allocator. The allocation requests from many threads may be dispatched
+// to the same underlying allocator. So the underlying allocator must be
+// thread safe.
 class AutoIncrementAllocator : public ManagedAllocator {
  public:
+  // Creator is the method to create ManagedAllocator
   using AllocatorCreator = std::function<std::shared_ptr<ManagedAllocator>()>;
 
-  template <typename Creator>
-  explicit AutoIncrementAllocator(Creator&& creator)
+  explicit AutoIncrementAllocator(AllocatorCreator&& creator)
       : creator_(std::move(creator)), prev_success_allocator_{0} {}
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override;
   std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override;
@@ -65,6 +80,11 @@ class AutoIncrementAllocator : public ManagedAllocator {
       std::lock_guard<std::mutex> guard(mtx_);
       underlying_allocators_.emplace_back(creator_());
       prev_success_allocator_ = underlying_allocators_.size() - 1;
+      PADDLE_ENFORCE(
+          underlying_allocators_[prev_success_allocator_]->IsAllocThreadSafe(),
+          "the underlying allocator must be thread safe. This is a program "
+          "bug.");
+
       return callback(*underlying_allocators_[prev_success_allocator_]);
     }
   }

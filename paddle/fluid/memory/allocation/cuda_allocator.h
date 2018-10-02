@@ -20,6 +20,7 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// CUDA System allocator and allocation.
 // Just a flag type.
 class CUDAAllocation : public Allocation {
  public:

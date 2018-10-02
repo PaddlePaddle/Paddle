@@ -22,6 +22,22 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// A composite allocator who will dispatch the allocation request by registered
+// condition.
+//
+// For example:
+//
+// auto* cond_allocator = new ConditionalAllocator();
+// cond_allocator->AddAllocator([](size_t size, Attr attr){
+//   // if size > 10
+//   return size > 10;
+// }, allocator_a).AddAllocator([](size_t size, Attr attr){
+//   // elif attr is kDefault
+//   return attr == kDefault;
+// }, allocator_b).AddAllocator([](size_t size, Attr attr){
+//   // else
+//   return true;
+// }, allocator_c);
 class ConditionalAllocator : public ManagedAllocator {
  public:
   ConditionalAllocator() = default;

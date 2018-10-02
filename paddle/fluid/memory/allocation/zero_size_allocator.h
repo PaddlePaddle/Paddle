@@ -22,6 +22,9 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// The allocator handles the request's size is zero. Allocator will always
+// return an allocation even the request size is zero. However, the
+// allocation.ptr() is nullptr
 class ZeroSizeAllocation : public Allocation {
  public:
   explicit ZeroSizeAllocation(const platform::Place& p)
