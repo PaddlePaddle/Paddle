@@ -20,6 +20,11 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
+// An allocator to wrap an UnmanagedAllocator and make the allocation managed
+// by C++ smart ptr.
+//
+// NOTE: if the NaiveManagedAllocator is destroyed before
+// NaiveManagedAllocations, the allocation will never be released.
 class NaiveManagedAllocator;
 class NaiveManagedAllocation : public Allocation {
  public:

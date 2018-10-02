@@ -46,7 +46,7 @@ class CPUManagedAllocator : public ManagedAllocator {
             std::unique_ptr<Allocator>(new CPUPinnedAllocator()))) {}
 
   std::unique_ptr<Allocation> Allocate(size_t size, Attr attr) override {
-    if (attr == kCommunication) {
+    if (attr == kCrossDevice) {
       return communication_allocator_->Allocate(size, attr);
     } else {
       return normal_allocator_->Allocate(size, attr);
@@ -54,7 +54,7 @@ class CPUManagedAllocator : public ManagedAllocator {
   }
 
   std::shared_ptr<Allocation> AllocateShared(size_t size, Attr attr) override {
-    if (attr == kCommunication) {
+    if (attr == kCrossDevice) {
       return communication_allocator_->AllocateShared(size, attr);
     } else {
       return normal_allocator_->AllocateShared(size, attr);

@@ -23,7 +23,7 @@ namespace allocation {
 std::unique_ptr<Allocation> CPUPinnedAllocator::Allocate(size_t size,
                                                          Allocator::Attr attr) {
   PADDLE_ENFORCE_EQ(
-      attr, kCommunication,
+      attr, kCrossDevice,
       "CPUPinnedAllocator should be used for Cross-Device Communication");
 
   void* ptr;

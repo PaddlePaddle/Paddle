@@ -24,6 +24,10 @@ namespace allocation {
 // Allocator Facade is the interface exposed to other modules.
 // All the configuration or dirty code under development should
 // be hidden behind this facade.
+//
+// NOTE(yy): This class is a singleton class.
+// NOTE(yy): To create a stable ABI and make compilation faster. Here we use
+// a Pimpl trick;
 class AllocatorFacadePrivate;
 class AllocatorFacade {
  public:
@@ -33,13 +37,16 @@ class AllocatorFacade {
 
   static AllocatorFacade& Instance();
 
+  // Allocate a shared allocation.
   std::shared_ptr<Allocation> AllocShared(
       const platform::Place& place, size_t size,
       Allocator::Attr attr = Allocator::kDefault);
 
+  // Allocate a unique allocation.
   std::unique_ptr<Allocation> Alloc(const platform::Place& place, size_t size,
                                     Allocator::Attr attr = Allocator::kDefault);
 
+  // TODO(yy): Allocate a Copy-On-Write allocation?
  private:
   AllocatorFacade();
   AllocatorFacadePrivate* m_;

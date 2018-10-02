@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <paddle/fluid/memory/allocation/allocator.h>
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -70,7 +71,7 @@ static void SortDescending(const platform::CUDADeviceContext &ctx,
   // Allocate temporary storage
   auto place = boost::get<platform::CUDAPlace>(ctx.GetPlace());
   auto d_temp_storage =
-      memory::Alloc(place, temp_storage_bytes, memory::Allocator::kTmp);
+      memory::Alloc(place, temp_storage_bytes, memory::Allocator::kScratchpad);
 
   // Run sorting operation
   cub::DeviceRadixSort::SortPairsDescending<T, int>(

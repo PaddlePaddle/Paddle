@@ -112,8 +112,8 @@ class EigenCudaStreamDevice : public Eigen::StreamInterface {
   }
 
   void* allocate(size_t num_bytes) const override {
-    auto buf =
-        paddle::memory::Alloc(place_, num_bytes, memory::Allocator::kTiny);
+    auto buf = paddle::memory::Alloc(place_, num_bytes,
+                                     memory::Allocator::kScratchpad);
     void* retv = buf->ptr();
     allocations_[buf->ptr()] = std::move(buf);
     return retv;
