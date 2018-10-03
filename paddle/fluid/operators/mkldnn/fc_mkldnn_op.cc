@@ -45,8 +45,6 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
     auto w = ctx.Input<Tensor>("W");
     auto bias = ctx.Input<Tensor>("Bias");
     auto output = ctx.Output<Tensor>("Out");
-    auto in_dims = input->dims();
-    auto w_dims = w->dims();
 
     std::vector<int> fc_src_tz =
         paddle::framework::vectorize2int(input->dims());
@@ -54,6 +52,12 @@ class FCMKLDNNOpKernel : public framework::OpKernel<T> {
         paddle::framework::vectorize2int(w->dims());
     std::vector<int> fc_dst_tz =
         paddle::framework::vectorize2int(output->dims());
+
+    // MKLDNN requires weights layout to be column major.
+    // The values have already been transposed, but the shape needs to be fixed.
+    // It cannot be done during an earlier stage since InferShape verifies
+    // dimensions assuming the weights weren't transposed.
+    std::swap(fc_weights_tz[0], fc_weights_tz[1]);
 
     auto fc_src_md = platform::MKLDNNMemDesc(
         fc_src_tz, platform::MKLDNNGetDataType<T>(), input->format());
