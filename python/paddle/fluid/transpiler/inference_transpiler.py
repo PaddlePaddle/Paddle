@@ -593,6 +593,32 @@ class InferenceTranspiler(object):
                 result[name] = self.block.var(op.output(name)[0])
             return result
 
+        def _update_param(op, old_param_name, new_param):
+            # For the sake of remaining the original variables the same as before,
+            # create new variables in scope to store the new parameters.
+            old_param_name = old_param_name[0]
+            old_var = self.block.vars[old_param_name]
+            new_param_name = old_param_name + '_transposed'
+            new_var = self.block.create_parameter(
+                name=new_param_name.encode('ascii'),
+                type=old_var.type,
+                dtype=old_var.dtype,
+                shape=old_var.shape)
+            op._rename_input(old_param_name, new_param_name)
+            self.scope.var(new_param_name)
+
+            tensor = self.scope.find_var(new_param_name).get_tensor()
+            tensor.set(np.array(new_param), self.place)
+
+        def _load_param(param_name):
+            return np.array(self.scope.find_var(param_name[0]).get_tensor())
+
+        weights = _load_param(mul_op.input('Y'))
+        old_shape = weights.shape
+        weights = weights.transpose()
+        weights = weights.reshape(old_shape)
+        _update_param(mul_op, mul_op.input('Y'), weights)
+
         fc_inputs = {}
         fc_inputs['Input'] = self.block.var(mul_op.input('X')[0])
         fc_inputs['W'] = self.block.var(mul_op.input('Y')[0])
@@ -600,6 +626,7 @@ class InferenceTranspiler(object):
         fc_outputs = get_op_outputs(add_op, ['Out'])
         fc_attrs = {}
         fc_attrs['use_mkldnn'] = True
+
         fc_op_new = self.block._insert_op(
             index,
             type='fc',
