@@ -405,11 +405,7 @@ void Main() {
   std::vector<double> fpses;
   for (int i = 0; i < FLAGS_iterations + FLAGS_skip_batch_num; i++) {
     if (i > 0) {
-      if (FLAGS_use_fake_data) {
-        fill_data<float>(static_cast<float*>(input.data.data()), count(shape));
-        fill_data<int64_t>(static_cast<int64_t*>(input_label.data.data()),
-                           label_size);
-      } else {
+      if (!FLAGS_use_fake_data) {
         if (!reader->NextBatch(static_cast<float*>(input.data.data()),
                                static_cast<int64_t*>(input_label.data.data()),
                                FLAGS_batch_size, FLAGS_debug_display_images)) {
@@ -429,14 +425,14 @@ void Main() {
     }
     timer.tic();
     CHECK(predictor->Run({input, input_label}, &output_slots));
-    double batch_time = timer.toc();
+    double batch_time = timer.toc() / 1000;
     CHECK_GE(output_slots.size(), 3UL);
     CHECK_EQ(output_slots[1].lod.size(), 0UL);
     CHECK_EQ(output_slots[1].dtype, paddle::PaddleDType::FLOAT32);
     batch_times.push_back(batch_time);
     float* acc1 = static_cast<float*>(output_slots[1].data.data());
     infer_accs.push_back(*acc1);
-    double fps = FLAGS_batch_size * 1000 / batch_time;
+    double fps = FLAGS_batch_size / batch_time;
     fpses.push_back(fps);
     std::string appx = (i < FLAGS_skip_batch_num) ? " (warm-up)" : "";
     printf("Iteration: %d%s, accuracy: %f, latency: %.5f s, fps: %f\n", i + 1,
