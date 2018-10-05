@@ -432,11 +432,12 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   void BatchCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = platform::CPUDeviceContext;
     INIT_BASE_INPUT_OUTPUT
+    INIT_BASE_SIZES
     if (x->lod()[0].size() == 2) {
+      xx->Resize({x_dims[0], D4});
       SeqCompute(ctx);
       return;
     }
-    INIT_BASE_SIZES
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 

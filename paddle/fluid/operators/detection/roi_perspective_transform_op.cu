@@ -345,8 +345,8 @@ class CUDAROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(platform::CPUPlace());
     auto lod = rois->lod().back();
-    for (int i = 0; i < lod.size() - 1; ++i) {
-      for (int j = lod[i]; j < lod[i + 1]; ++j) {
+    for (size_t i = 0; i < lod.size() - 1; ++i) {
+      for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
         roi2image_data[j] = i;
       }
     }
@@ -432,7 +432,7 @@ __global__ void RoiTransformGradKernel(
 
     T gradient = 0.0;
     // Accumulate gradient over all RoIs that interpolated this element
-    for (int roi_idx = lod[n]; roi_idx < lod[n + 1]; ++roi_idx) {
+    for (size_t roi_idx = lod[n]; roi_idx < lod[n + 1]; ++roi_idx) {
       const T* rois = rois_data + roi_idx * 8;
       T roi_x[4];
       T roi_y[4];

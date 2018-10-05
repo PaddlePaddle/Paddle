@@ -104,7 +104,6 @@ bool in_quad(T x, T y, T roi_x[], T roi_y[]) {
  * a31 = (dx3 * dy2 - dx2 * dy3) / (dx1 * dy2 - dx2 * dy1) / (w - 1)
  * a32 = (dx1 * dy3 - dx3 * dy1) / (dx1 * dy2 - dx2 * dy1) / (h - 1)
  * a33 = 1
- *
  */
 template <typename T>
 void get_transform_matrix(const int transformed_width,
@@ -260,8 +259,8 @@ class CPUROIPerspectiveTransformOpKernel : public framework::OpKernel<T> {
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
-    for (int i = 0; i < lod.size() - 1; ++i) {
-      for (int j = lod[i]; j < lod[i + 1]; ++j) {
+    for (size_t i = 0; i < lod.size() - 1; ++i) {
+      for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
         roi2image_data[j] = i;
       }
     }
@@ -393,8 +392,8 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
     roi2image.Resize({rois_num});
     int* roi2image_data = roi2image.mutable_data<int>(ctx.GetPlace());
     auto lod = rois->lod().back();
-    for (int i = 0; i < lod.size() - 1; ++i) {
-      for (int j = lod[i]; j < lod[i + 1]; ++j) {
+    for (size_t i = 0; i < lod.size() - 1; ++i) {
+      for (size_t j = lod[i]; j < lod[i + 1]; ++j) {
         roi2image_data[j] = i;
       }
     }
@@ -404,7 +403,7 @@ class CPUROIPerspectiveTransformGradOpKernel : public framework::OpKernel<T> {
         for (int in_h = 0; in_h < in_height; ++in_h) {
           for (int in_w = 0; in_w < in_width; ++in_w) {
             T gradient = 0.0;
-            for (int roi_idx = lod[n]; roi_idx < lod[n + 1]; ++roi_idx) {
+            for (size_t roi_idx = lod[n]; roi_idx < lod[n + 1]; ++roi_idx) {
               const T* rois = rois_data + roi_idx * 8;
               T roi_x[4];
               T roi_y[4];

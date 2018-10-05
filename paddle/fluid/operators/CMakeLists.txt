@@ -82,10 +82,11 @@ function(op_library TARGET)
     if (${cc_srcs_len} EQUAL 0)
         message(FATAL_ERROR "The op library ${TARGET} should contains at least one .cc file")
     endif()
-
-    #remove windows unsupported op
     if (WIN32)
-    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op")
+    # remove windows unsupported op, because windows has no nccl, no warpctc such ops.
+    foreach(windows_unsupport_op "nccl_op" "gen_nccl_id_op" "warpctc_op" "hierarchical_sigmoid_op"
+     "crf_decoding_op" "select_op" "lstmp_op" "gru_op" "fusion_gru_op" "lstm_op" "fusion_lstm_op" "cumsum_op"
+     "channel_send_op" "channel_create_op" "channel_close_op" "channel_recv_op")
         if ("${TARGET}" STREQUAL "${windows_unsupport_op}")
           return()
         endif()
@@ -281,10 +282,12 @@ op_library(array_to_lod_tensor_op DEPS lod_rank_table_op)
 op_library(max_sequence_len_op DEPS lod_rank_table)
 op_library(sequence_conv_op DEPS context_project)
 op_library(sequence_pool_op DEPS sequence_pooling)
+if (NOT WIN32)
 op_library(lstm_op DEPS sequence2batch lstm_compute)
 op_library(hierarchical_sigmoid_op DEPS matrix_bit_code)
 op_library(lstmp_op DEPS sequence2batch lstm_compute)
 op_library(gru_op DEPS sequence2batch gru_compute)
+endif(NOT WIN32)
 op_library(recurrent_op DEPS executor)
 op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 op_library(cos_sim_op DEPS cos_sim_functor)
@@ -297,10 +300,10 @@ op_library(sequence_pad_op DEPS sequence_padding)
 op_library(unstack_op DEPS stack_op)
 op_library(fake_quantize_op DEPS memory)
 op_library(fusion_lstm_op DEPS cpu_lstm_compute)
-
 if (WITH_GPU)
     op_library(conv_op DEPS vol2col depthwise_conv im2col)
     op_library(layer_norm_op DEPS cub)
+    op_library(reduce_mean_op DEPS cub)
 else()
     op_library(conv_op DEPS vol2col im2col)
 endif()
@@ -312,11 +315,6 @@ op_library(load_op DEPS lod_tensor)
 op_library(save_combine_op DEPS lod_tensor)
 op_library(load_combine_op DEPS lod_tensor)
 op_library(concat_op DEPS concat)
-
-# FIXME(thuan): Move CSP operators to paddle/fluid/framework/operators/concurrency
-add_subdirectory(concurrency)
-op_library(channel_send_op DEPS concurrency)
-op_library(channel_recv_op DEPS concurrency)
 
 list(REMOVE_ITEM GENERAL_OPS ${DEPS_OPS})
 

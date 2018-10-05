@@ -120,6 +120,97 @@ TEST(GraphHelperTest, Basic) {
   ASSERT_EQ(node_map.at("op2"), 1UL);
   ASSERT_TRUE(node_map.at("op3") < node_map.at("op5"));
 }
+
+void BuildZeroGraph(Graph* g) {}
+
+void BuildOneGraph(Graph* g) {
+  ir::Node* o1 = g->CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g->CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* o3 = g->CreateEmptyNode("op3", Node::Type::kOperation);
+  ir::Node* o4 = g->CreateEmptyNode("op4", Node::Type::kOperation);
+  ir::Node* o5 = g->CreateEmptyNode("op5", Node::Type::kOperation);
+  ir::Node* v1 = g->CreateEmptyNode("var1", Node::Type::kVariable);
+  ir::Node* v2 = g->CreateEmptyNode("var2", Node::Type::kVariable);
+  ir::Node* v3 = g->CreateEmptyNode("var3", Node::Type::kVariable);
+  ir::Node* v4 = g->CreateEmptyNode("var4", Node::Type::kVariable);
+
+  // o1->v1->o2
+  o1->outputs.push_back(v1);
+  o2->inputs.push_back(v1);
+  v1->inputs.push_back(o1);
+  v1->outputs.push_back(o2);
+  // o2->v2->o3
+  // o2->v2->o4
+  o2->outputs.push_back(v2);
+  o3->inputs.push_back(v2);
+  o4->inputs.push_back(v2);
+  v2->inputs.push_back(o2);
+  v2->outputs.push_back(o3);
+  v2->outputs.push_back(o4);
+  // o2->v3->o5
+  o2->outputs.push_back(v3);
+  o5->inputs.push_back(v3);
+  v3->inputs.push_back(o2);
+  v3->outputs.push_back(o5);
+  // o3-v4->o5
+  o3->outputs.push_back(v4);
+  o5->inputs.push_back(v4);
+  v4->inputs.push_back(o3);
+  v4->outputs.push_back(o5);
+}
+
+void BuildTwoGraphs(Graph* g) {
+  ir::Node* o1 = g->CreateEmptyNode("op1", Node::Type::kOperation);
+  ir::Node* o2 = g->CreateEmptyNode("op2", Node::Type::kOperation);
+  ir::Node* o3 = g->CreateEmptyNode("op3", Node::Type::kOperation);
+  ir::Node* o4 = g->CreateEmptyNode("op4", Node::Type::kOperation);
+  ir::Node* o5 = g->CreateEmptyNode("op5", Node::Type::kOperation);
+  ir::Node* v1 = g->CreateEmptyNode("var1", Node::Type::kVariable);
+  ir::Node* v2 = g->CreateEmptyNode("var2", Node::Type::kVariable);
+  ir::Node* v3 = g->CreateEmptyNode("var3", Node::Type::kVariable);
+  ir::Node* v4 = g->CreateEmptyNode("var4", Node::Type::kVariable);
+
+  // o1->v1->o2
+  o1->outputs.push_back(v1);
+  o2->inputs.push_back(v1);
+  v1->inputs.push_back(o1);
+  v1->outputs.push_back(o2);
+  // o2->v2->o3
+  // o2->v2->o4
+  o2->outputs.push_back(v2);
+  o3->inputs.push_back(v2);
+  o4->inputs.push_back(v2);
+  v2->inputs.push_back(o2);
+  v2->outputs.push_back(o3);
+  v2->outputs.push_back(o4);
+  // o2->v3->o5
+  //  o2->outputs.push_back(v3);
+  o5->inputs.push_back(v3);
+  //  v3->inputs.push_back(o2);
+  v3->outputs.push_back(o5);
+  // o3-v4->o5
+  o3->outputs.push_back(v4);
+  //  o5->inputs.push_back(v4);
+  v4->inputs.push_back(o3);
+  //  v4->outputs.push_back(o5);
+}
+
+TEST(GraphHelperTest, GraphNum) {
+  ProgramDesc prog;
+
+  Graph g(prog);
+  BuildZeroGraph(&g);
+  ASSERT_EQ(GraphNum(g), 0);
+
+  Graph g2(prog);
+  BuildOneGraph(&g2);
+  ASSERT_EQ(GraphNum(g2), 1);
+
+  Graph g3(prog);
+  BuildTwoGraphs(&g3);
+  ASSERT_EQ(GraphNum(g3), 2);
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
