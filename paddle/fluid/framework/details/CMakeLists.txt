@@ -55,6 +55,9 @@ cc_library(scope_buffered_ssa_graph_executor SRCS scope_buffered_ssa_graph_execu
 cc_library(fast_threaded_ssa_graph_executor SRCS fast_threaded_ssa_graph_executor.cc
         DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool device_context)
 
+cc_library(double_queue_threaded_ssa_graph_executor SRCS double_queue_threaded_ssa_graph_executor.cc
+        DEPS fetch_op_handle ssa_graph_executor scope simple_threadpool device_context)
+
 cc_library(build_strategy SRCS build_strategy.cc DEPS
         graph_viz_pass multi_devices_graph_pass
         multi_devices_graph_print_pass multi_devices_graph_check_pass

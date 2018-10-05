@@ -647,7 +647,24 @@ All parameter, weight, gradient are variables in Paddle.
           },
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
+          })
+      .def_property(
+          "max_queue_size",
+          [](const ExecutionStrategy &self) { return self.max_queue_size_; },
+          [](ExecutionStrategy &self, size_t max_queue_size) {
+            self.max_queue_size_ = max_queue_size;
+          })
+      .def_property(
+          "type", [](const ExecutionStrategy &self) { return self.type_; },
+          [](ExecutionStrategy &self, ExecutionStrategy::ExecutorType type) {
+            self.type_ = type;
           });
+
+  py::enum_<ExecutionStrategy::ExecutorType>(exec_strategy, "ExecutorType")
+      .value("Default", ExecutionStrategy::ExecutorType::kDefault)
+      .value("Experimental", ExecutionStrategy::ExecutorType::kExperimental)
+      .value("DoubleQueue", ExecutionStrategy::ExecutorType::kDoubleQueue);
+
   exec_strategy.def_property(
       "use_experimental_executor",
       [](const ExecutionStrategy &self) {

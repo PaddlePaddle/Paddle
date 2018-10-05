@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/double_queue_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
@@ -164,12 +165,22 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 
-  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
-    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
-  } else {
-    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  switch (exec_strategy.type_) {
+    case ExecutionStrategy::kDefault:
+      member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, places, std::move(graph)));
+      break;
+    case ExecutionStrategy::kExperimental:
+      member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, places, std::move(graph)));
+      break;
+    case ExecutionStrategy::kDoubleQueue:
+      member_->executor_.reset(new details::DoubleQueueThreadedSSAGraphExecutor(
+          exec_strategy, member_->local_scopes_, places, std::move(graph)));
+      break;
+    default:
+      PADDLE_THROW("Not supported exec_strategy type %d",
+                   static_cast<size_t>(exec_strategy.type_));
   }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
