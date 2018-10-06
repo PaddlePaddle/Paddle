@@ -33,6 +33,14 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     bool reduce_all = context.Attr<bool>("reduce_all");
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
+    output->mutable_data<T>(context.GetPlace());
+
+    if (input->numel() == 1) {
+      auto out_dims = output->dims();
+      framework::TensorCopy(*input, context.GetPlace(), output);
+      output->Resize(out_dims);
+      return;
+    }
 
     auto dims = context.Attr<std::vector<int>>("dim");
     bool keep_dim = context.Attr<bool>("keep_dim");
@@ -51,11 +59,6 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     for (int i = 0; i < reduce_dims.size(); ++i) {
       reduce_num *= input->dims()[reduce_dims[i]];
     }
-
-    output->mutable_data<T>(context.GetPlace());
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    set_zero(context.template device_context<platform::CUDADeviceContext>(),
-             output, static_cast<T>(0));
 
     auto stream = context.cuda_device_context().stream();
     TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
