@@ -522,6 +522,7 @@ def fake(reader, data_num):
         while fake_reader.yield_num < data_num:
             yield fake_reader.data
             fake_reader.yield_num += 1
+        fake_reader.yield_num = 0
 
     fake_reader.data = None
     fake_reader.yield_num = 0
