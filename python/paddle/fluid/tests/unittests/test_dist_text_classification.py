@@ -13,29 +13,28 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+import os
 import unittest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.executor import Executor
+from test_dist_base import TestDistBase
 
 
-class TestRoutineOp(unittest.TestCase):
-    def test_simple_routine(self):
-        ch = fluid.make_channel(
-            dtype=core.VarDesc.VarType.BOOL, name="CreateChannel")
-        with fluid.Go():
-            fluid.channel_send(ch, True)
+class TestDistTextClassification2x2(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = True
+        self._enforce_place = "CPU"
 
-        result = fluid.channel_recv(ch)
-        fluid.channel_close(ch)
-
-        cpu = core.CPUPlace()
-        exe = Executor(cpu)
-
-        outs = exe.run(fetch_list=[result])
-        self.assertEqual(outs[0], True)
+    def test_text_classification(self):
+        self.check_with_place("dist_text_classification.py", delta=1e-6)
 
 
-if __name__ == '__main__':
+class TestDistTextClassification2x2Async(TestDistBase):
+    def _setup_config(self):
+        self._sync_mode = False
+        self._enforce_place = "CPU"
+
+    def test_se_resnext(self):
+        self.check_with_place("dist_text_classification.py", delta=100)
+
+
+if __name__ == "__main__":
     unittest.main()
