@@ -165,10 +165,12 @@ inline void AnyImpl(Predicate predicate, const framework::Tensor& tensor,
 }
 
 template <typename Predicate>
-struct AnyVisitor : public boost::static_visitor<bool> {
+class AnyVisitor : public boost::static_visitor<bool> {
+ private:
   const framework::Tensor& tensor_;
   Predicate predicate_;
 
+ public:
   AnyVisitor(const framework::Tensor& tensor, Predicate predicate)
       : tensor_(tensor), predicate_(std::move(predicate)) {}
 
@@ -207,10 +209,13 @@ struct AnyVisitor : public boost::static_visitor<bool> {
 };
 
 template <typename Predicate>
-struct AnyOutVisitor : public boost::static_visitor<> {
+class AnyOutVisitor : public boost::static_visitor<> {
+ private:
   const framework::Tensor& tensor_;
   mutable framework::Tensor* out_;
   Predicate predicate_;
+
+ public:
   AnyOutVisitor(const framework::Tensor& tensor, Predicate predicate,
                 framework::Tensor* out)
       : tensor_(tensor), out_(out), predicate_(std::move(predicate)) {}
