@@ -70,7 +70,7 @@ struct MergeAdd {
   void operator()(const DeviceContext& context,
                   const framework::SelectedRows& input,
                   framework::SelectedRows* output);
-  void operator()(const platform::CPUDeviceContext& context,
+  void operator()(const DeviceContext& context,
                   const std::vector<const framework::SelectedRows*>& inputs,
                   framework::SelectedRows* output);
 };
