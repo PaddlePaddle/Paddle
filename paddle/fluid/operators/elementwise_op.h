@@ -70,6 +70,7 @@ class ElementwiseOpInferVarType : public framework::VarTypeInference {
     auto& x = block->FindRecursiveOrCreateVar(x_name);
     auto& out = block->FindRecursiveOrCreateVar(out_name);
     out.SetType(x.GetType());
+    out.SetDataType(x.GetDataType());
   }
 };
 

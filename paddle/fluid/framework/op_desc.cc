@@ -63,8 +63,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
 
     PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
-                   "The type of %s and %s is not the same.", Outputs(out)[j],
-                   Inputs(in)[i]);
+                   "The type of %s and %s is not the same.", Inputs(in)[i],
+                   Outputs(out)[j]);
 
     SetDim(Outputs(out)[j], GetDim(Inputs(in)[i]));
   }
