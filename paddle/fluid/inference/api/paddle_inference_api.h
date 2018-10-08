@@ -94,11 +94,17 @@ class PaddleBuf {
 // Basic input and output data structure for PaddlePredictor.
 struct PaddleTensor {
   PaddleTensor() = default;
-  std::string name;  // variable name.
-  std::vector<int> shape;
-  PaddleBuf data;  // blob of data.
+  std::string name;        // variable name.
+  std::vector<int> shape;  // NOTE to be discarded.
+  PaddleBuf data;          // blob of data.
   PaddleDType dtype;
-  std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
+  std::vector<std::vector<size_t>>
+      lod;  // Tensor+LoD equals LoDTensor, NOTE to be discarded.
+
+  // Safely set shape of this tensor.
+  void SetShape(const std::vector<int>& other);
+  // Safely set lod of this tensor.
+  void SetLod(const std::vector<std::vector<size_t>>& other);
 };
 
 enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
@@ -124,7 +130,7 @@ class ZeroCopyTensor {
   std::vector<std::vector<size_t>> lod() const;
 
  protected:
-  ZeroCopyTensor(void* scope) : scope_{scope} {}
+  explicit ZeroCopyTensor(void* scope) : scope_{scope} {}
   void SetName(const std::string& name) { name_ = name; }
   void* FindTensor() const;
 

@@ -16,7 +16,6 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle_inference_api.h"
 
 namespace paddle {
 
@@ -95,6 +94,13 @@ void PaddleBuf::Free() {
     data_ = nullptr;
     length_ = 0;
   }
+}
+
+void PaddleTensor::SetShape(const std::vector<int> &other) {
+  this->shape = other;
+}
+void PaddleTensor::SetLod(const std::vector<std::vector<size_t>> &other) {
+  this->lod = other;
 }
 
 }  // namespace paddle
