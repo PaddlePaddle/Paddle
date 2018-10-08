@@ -692,6 +692,24 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
+PDNode *patterns::Embedding::operator()(PDNode *x) {
+  x->assert_is_op_input("lookup_table", "Ids");
+  auto *lookup_table_op =
+      pattern->NewNode(lookup_table_repr())->assert_is_op("lookup_table");
+#define NEW_NODE(arg__, io__)                    \
+  auto *arg__ = pattern->NewNode(arg__##_repr()) \
+                    ->assert_is_op_##io__("lookup_table", #arg__);
+
+  NEW_NODE(W, input);
+
+  NEW_NODE(Out, output);
+#undef NEW_NODE
+
+  lookup_table_op->LinksFrom({x, W});
+  lookup_table_op->LinksTo({Out});
+  return Out;
+}
+
 PDNode *patterns::LSTM::operator()(PDNode *x) {
   x->assert_is_op_input("lstm", "Input");
   auto *lstm_op = pattern->NewNode(lstm_repr())->assert_is_op("lstm");

@@ -418,6 +418,23 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(Out);
 };
 
+// Embedding
+struct Embedding : public PatternBase {
+  Embedding(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "embedding") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(lookup_table);
+  // Inputs
+  //
+  PATTERN_DECL_NODE(Ids);
+  PATTERN_DECL_NODE(W);  // embeddings
+  // Outputs
+  PATTERN_DECL_NODE(Out);
+};
+
 struct LSTM : public PatternBase {
   LSTM(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "lstm") {}
