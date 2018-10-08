@@ -164,7 +164,7 @@ if(WITH_DISTRIBUTE)
   set_source_files_properties(executor.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 else()
   cc_library(executor SRCS executor.cc DEPS op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass)
-  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor op_registry device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass elementwise_add_op)
+  cc_test(test_naive_executor SRCS naive_executor_test.cc DEPS naive_executor elementwise_add_op)
 endif()
  
 if (NOT WIN32)
