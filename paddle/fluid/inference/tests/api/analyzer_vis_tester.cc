@@ -61,8 +61,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->ir_passes.push_back("fc_gru_fuse_pass");
 #ifdef PADDLE_WITH_MKLDNN
   cfg->_use_mkldnn = true;
-  // disable mkldnn fuse since it should have some bugs
-  cfg->ir_passes.push_back("conv_relu_mkldnn_fuse_pass");
 #endif
 }
 

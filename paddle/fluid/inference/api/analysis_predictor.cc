@@ -71,6 +71,11 @@ bool AnalysisPredictor::Init(
   } else {
     inference_program_ = program;
   }
+
+  if (config_._use_mkldnn) {
+    executor_->EnableMKLDNN(*inference_program_);
+  }
+
   executor_->Prepare(scope_.get(), *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
@@ -92,6 +97,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
