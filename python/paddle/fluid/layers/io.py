@@ -842,6 +842,13 @@ def __create_unshared_decorated_reader__(op_type, reader, attrs, name=None):
 def shuffle(reader, buffer_size):
     """
     Shuffle the reader.
+
+    Args:
+        reader(Variable): The reader to be decorated with 'shuffling'.
+        buffer_size(int): The pre-read number of data in :code:`reader`.
+
+    Returns:
+        Variable: The reader which has been decorated with 'shuffling'.
     """
     return __create_unshared_decorated_reader__(
         'create_shuffle_reader', reader, {'buffer_size': int(buffer_size)})
