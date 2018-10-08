@@ -40,7 +40,7 @@ class SigmoidCrossEntropyWithLogitsOp : public framework::OperatorWithKernel {
                       "The 2nd dimension of Input(X) and Input(Label) should "
                       "be equal.");
 
-    ctx->ShareDimInfo("X", /*->*/ "Out");
+    ctx->ShareDimAndLod("X", /*->*/ "Out");
   }
 };
 

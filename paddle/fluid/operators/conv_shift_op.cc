@@ -44,7 +44,7 @@ class ConvShiftOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_LE(y_dims[1], x_dims[1],
                       "The 2nd dimension of Input(Y) should be less than or "
                       "equal to the 2nd dimension of Input(X).");
-    ctx->ShareDimInfo("X", /*->*/ "Out");
+    ctx->ShareDimAndLod("X", /*->*/ "Out");
   }
 };
 

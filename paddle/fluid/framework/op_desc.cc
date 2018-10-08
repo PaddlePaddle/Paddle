@@ -50,8 +50,8 @@ class CompileTimeInferShapeContext : public InferShapeContext {
   const std::vector<std::string> &Outputs(
       const std::string &name) const override;
 
-  void ShareDimInfo(const std::string &in, const std::string &out, size_t i = 0,
-                    size_t j = 0) override {
+  void ShareDimAndLod(const std::string &in, const std::string &out,
+                      size_t i = 0, size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
     PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,

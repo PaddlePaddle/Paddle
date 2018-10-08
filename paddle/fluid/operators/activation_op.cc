@@ -80,7 +80,7 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->ShareDimInfo("X", /*->*/ "Out");
+    ctx->ShareDimAndLod("X", /*->*/ "Out");
   }
 
  protected:
@@ -108,7 +108,7 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    ctx->ShareDimInfo("Out", framework::GradVarName("X"));
+    ctx->ShareDimAndLod("Out", framework::GradVarName("X"));
   }
 
  protected:

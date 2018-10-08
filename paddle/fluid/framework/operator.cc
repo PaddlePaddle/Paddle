@@ -579,8 +579,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
-  void ShareDimInfo(const std::string& in, const std::string& out, size_t i = 0,
-                    size_t j = 0) override {
+  void ShareDimAndLod(const std::string& in, const std::string& out,
+                      size_t i = 0, size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
     Variable* in_var = scope_.FindVar(Inputs(in)[i]);
@@ -604,7 +604,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_lod_tensor->set_lod(in_lod_tensor.lod());
     } else {
       PADDLE_THROW(
-          "Currently, the input type of ShareDimInfo only can be LoDTensor or "
+          "Currently, the input type of ShareDimAndLod only can be LoDTensor "
+          "or "
           "SelectedRows.");
     }
   }
