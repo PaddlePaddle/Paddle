@@ -35,25 +35,7 @@ __activations_noattr__ = [
     'softsign',
 ]
 
-__all__ = [
-    'mean',
-    'mul',
-    'sigmoid_cross_entropy_with_logits',
-    'clip',
-    'clip_by_norm',
-    'logical_and',
-    'logical_or',
-    'logical_xor',
-    'logical_not',
-    'uniform_random_batch_size_like',
-    'gaussian_random',
-    'sampling_id',
-    'gaussian_random_batch_size_like',
-    'sum',
-    'slice',
-    'shape',
-    'maxout',
-]
+__all__ = []
 
 for _OP in set(__all__):
     globals()[_OP] = generate_layer_fn(_OP)
@@ -62,6 +44,8 @@ for _OP in set(__all__):
 #   fluid.layers.scale(x=x, scale=10.0, out=out_var)
 # e.g.: test_program_code.py, test_dist_train.py
 globals()['_scale'] = generate_layer_fn('scale')
+
+globals()['_elementwise_div'] = generate_layer_fn('elementwise_div')
 
 __all__ += __activations_noattr__
 

@@ -16,9 +16,12 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
@@ -28,8 +31,11 @@ DECLARE_bool(profile);
 
 namespace paddle {
 
+using contrib::AnalysisConfig;
+
 bool AnalysisPredictor::Init(
-    const std::shared_ptr<framework::Scope>& parent_scope) {
+    const std::shared_ptr<framework::Scope> &parent_scope,
+    const std::shared_ptr<framework::ProgramDesc> &program) {
   VLOG(3) << "Predictor::init()";
 #if !defined(_WIN32)
   if (FLAGS_profile) {
@@ -43,7 +49,8 @@ bool AnalysisPredictor::Init(
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
-    LOG(WARNING) << "ir optimize only supports CPU currently";
+    LOG(WARNING) << "ir optimize only supports CPU currently, enable_ir_optim "
+                    "is turned false.";
     config_.enable_ir_optim = false;
   } else {
     place_ = paddle::platform::CPUPlace();
@@ -56,37 +63,140 @@ bool AnalysisPredictor::Init(
     scope_.reset(new paddle::framework::Scope());
   }
 
-  executor_.reset(new paddle::framework::Executor(place_));
+  executor_.reset(new paddle::framework::NaiveExecutor(place_));
 
-  // Initialize the inference program
-  if (!config_.model_dir.empty()) {
-    // Parameters are saved in separate files sited in
-    // the specified `dirname`.
-    inference_program_ = paddle::inference::Load(executor_.get(), scope_.get(),
-                                                 config_.model_dir);
-  } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
-    // All parameters are saved in a single file.
-    // The file names should be consistent with that used
-    // in Python API `fluid.io.save_inference_model`.
-    inference_program_ = paddle::inference::Load(
-        executor_.get(), scope_.get(), config_.prog_file, config_.param_file);
+  if (!program) {
+    if (!LoadProgramDesc()) return false;
+    OptimizeInferenceProgram();
   } else {
-    LOG(ERROR) << "fail to load inference model from " << config_.model_dir;
-    return false;
+    inference_program_ = program;
   }
 
-  OptimizeInferenceProgram();
-  ctx_ = executor_->Prepare(*inference_program_, 0);
   if (config_._use_mkldnn) {
     executor_->EnableMKLDNN(*inference_program_);
   }
 
-  VLOG(5) << "to create variables";
-  PADDLE_ENFORCE(scope_.get());
-  executor_->CreateVariables(*inference_program_,
-                             sub_scope_ ? sub_scope_ : scope_.get(), 0);
+  executor_->Prepare(scope_.get(), *inference_program_, 0,
+                     config_.use_feed_fetch_ops);
+
   // Get the feed_target_names and fetch_target_names
   PrepareFeedFetch();
+  return true;
+}
+
+bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
+                            std::vector<PaddleTensor> *output_data,
+                            int batch_size) {
+  VLOG(3) << "Predictor::predict";
+  inference::Timer timer;
+  timer.tic();
+  // set feed variable
+  std::vector<framework::LoDTensor> feeds;
+  framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
+  if (!SetFeed(inputs, scope)) {
+    LOG(ERROR) << "fail to set feed";
+    return false;
+  }
+
+  // Run the inference program
+  // if share variables, we need not create variables
+  executor_->Run();
+
+  // get fetch variable
+  if (!GetFetch(output_data, scope)) {
+    LOG(ERROR) << "fail to get fetches";
+    return false;
+  }
+  VLOG(3) << "predict cost: " << timer.toc() << "ms";
+  return true;
+}
+
+bool AnalysisPredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
+                                framework::Scope *scope) {
+  VLOG(3) << "Predictor::set_feed";
+  if (inputs.size() != feeds_.size()) {
+    LOG(ERROR) << "wrong feed input size, need " << feeds_.size() << " but get "
+               << inputs.size();
+    return false;
+  }
+
+  // Cache the inputs memory for better concurrency performance.
+  feed_tensors_.resize(inputs.size());
+
+  for (size_t i = 0; i < inputs.size(); ++i) {
+    auto &input = feed_tensors_[i];
+    framework::DDim ddim = framework::make_ddim(inputs[i].shape);
+    void *input_ptr;
+    if (inputs[i].dtype == PaddleDType::INT64) {
+      input_ptr = input.mutable_data<int64_t>(ddim, platform::CPUPlace());
+    } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
+      input_ptr = input.mutable_data<float>(ddim, platform::CPUPlace());
+    } else {
+      LOG(ERROR) << "unsupported feed type " << inputs[i].dtype;
+      return false;
+    }
+
+    // TODO(panyx0718): Init LoDTensor from existing memcpy to save a copy.
+    std::memcpy(static_cast<void *>(input_ptr), inputs[i].data.data(),
+                inputs[i].data.length());
+    // TODO(Superjomn) Low performance, need optimization for heavy LoD copy.
+    framework::LoD lod;
+    for (auto &level : inputs[i].lod) {
+      lod.emplace_back(level);
+    }
+    input.set_lod(lod);
+    int idx = -1;
+    if (config_.specify_input_name) {
+      idx = feed_names_[inputs[i].name];
+    } else {
+      idx = boost::get<int>(feeds_[i]->GetAttr("col"));
+    }
+    framework::SetFeedVariable(scope, input, "feed", idx);
+  }
+  return true;
+}
+
+template <typename T>
+void AnalysisPredictor::GetFetchOne(const framework::LoDTensor &fetch,
+                                    PaddleTensor *output) {
+  // set shape.
+  auto shape = framework::vectorize(fetch.dims());
+  output->shape.assign(shape.begin(), shape.end());
+  // set data.
+  const T *data = fetch.data<T>();
+  int num_elems = inference::VecReduceToInt(shape);
+  output->data.Resize(num_elems * sizeof(T));
+  // The fetched tensor output by fetch op, should always in CPU memory, so just
+  // copy.
+  memcpy(output->data.data(), data, num_elems * sizeof(T));
+  // set lod
+  output->lod.clear();
+  for (auto &level : fetch.lod()) {
+    output->lod.emplace_back(level.begin(), level.end());
+  }
+}
+
+bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
+                                 framework::Scope *scope) {
+  VLOG(3) << "Predictor::get_fetch";
+  outputs->resize(fetchs_.size());
+  for (size_t i = 0; i < fetchs_.size(); ++i) {
+    int idx = boost::get<int>(fetchs_[i]->GetAttr("col"));
+    PADDLE_ENFORCE((size_t)idx == i);
+    framework::LoDTensor &fetch =
+        framework::GetFetchVariable(*scope, "fetch", idx);
+    auto type = fetch.type();
+    auto output = &(outputs->at(i));
+    if (type == typeid(float)) {
+      GetFetchOne<float>(fetch, output);
+      output->dtype = PaddleDType::FLOAT32;
+    } else if (type == typeid(int64_t)) {
+      GetFetchOne<int64_t>(fetch, output);
+      output->dtype = PaddleDType::INT64;
+    } else {
+      LOG(ERROR) << "unknown type, only support float32 and int64 now.";
+    }
+  }
   return true;
 }
 
@@ -107,6 +217,7 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
         new std::string(config_.prog_file));
     argument_.fluid_model_param_path.reset(new std::string(config_.param_file));
   }
+
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
   PADDLE_ENFORCE(
@@ -127,9 +238,8 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 }
 
 template <>
-std::unique_ptr<PaddlePredictor>
-CreatePaddlePredictor<contrib::AnalysisConfig, PaddleEngineKind::kAnalysis>(
-    const contrib::AnalysisConfig& config) {
+std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<
+    AnalysisConfig, PaddleEngineKind::kAnalysis>(const AnalysisConfig &config) {
   VLOG(3) << "create AnalysisConfig";
   if (config.use_gpu) {
     // 1. GPU memeroy
@@ -150,15 +260,90 @@ CreatePaddlePredictor<contrib::AnalysisConfig, PaddleEngineKind::kAnalysis>(
   }
 
   std::unique_ptr<PaddlePredictor> predictor(new AnalysisPredictor(config));
-  if (!dynamic_cast<AnalysisPredictor*>(predictor.get())->Init(nullptr)) {
+  if (!dynamic_cast<AnalysisPredictor *>(predictor.get())->Init(nullptr)) {
     return nullptr;
   }
   return predictor;
 }
 
+void AnalysisPredictor::PrepareFeedFetch() {
+  for (auto *op : inference_program_->Block(0).AllOps()) {
+    if (op->Type() == "feed") {
+      int idx = boost::get<int>(op->GetAttr("col"));
+      if (feeds_.size() <= static_cast<size_t>(idx)) {
+        feeds_.resize(idx + 1);
+      }
+      feeds_[idx] = op;
+      feed_names_[op->Output("Out")[0]] = idx;
+    } else if (op->Type() == "fetch") {
+      int idx = boost::get<int>(op->GetAttr("col"));
+      if (fetchs_.size() <= static_cast<size_t>(idx)) {
+        fetchs_.resize(idx + 1);
+      }
+      fetchs_[idx] = op;
+    }
+  }
+}
+
+std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetInputTensor(
+    const std::string &name) {
+  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
+  std::unique_ptr<ZeroCopyTensor> res(
+      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+  res->input_or_output_ = true;
+  res->SetName(name);
+  return res;
+}
+
+std::unique_ptr<ZeroCopyTensor> AnalysisPredictor::GetOutputTensor(
+    const std::string &name) {
+  PADDLE_ENFORCE(executor_->scope()->FindVar(name), "no name called %s", name);
+  std::unique_ptr<ZeroCopyTensor> res(
+      new ZeroCopyTensor(static_cast<void *>(executor_->scope())));
+  res->input_or_output_ = false;
+  res->SetName(name);
+  return res;
+}
+
+bool AnalysisPredictor::ZeroCopyRun() {
+  executor_->Run();
+  return true;
+}
+
+bool AnalysisPredictor::LoadProgramDesc() {
+  // Initialize the inference program
+  std::unique_ptr<framework::Executor> tmp_exe(
+      new framework::Executor(platform::CPUPlace()));
+  if (!config_.model_dir.empty()) {
+    // Parameters are saved in separate files sited in
+    // the specified `dirname`.
+    inference_program_ = paddle::inference::Load(
+        static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
+        config_.model_dir);
+  } else if (!config_.prog_file.empty() && !config_.param_file.empty()) {
+    // All parameters are saved in a single file.
+    // The file names should be consistent with that used
+    // in Python API `fluid.io.save_inference_model`.
+    inference_program_ = paddle::inference::Load(
+        static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
+        config_.prog_file, config_.param_file);
+  } else {
+    LOG(ERROR) << string::Sprintf(
+        "not valid model path '%s' or program path '%s'.", config_.model_dir,
+        config_.param_file);
+    return false;
+  }
+  return true;
+}
+std::unique_ptr<PaddlePredictor> AnalysisPredictor::Clone() {
+  auto *x = new AnalysisPredictor(config_);
+  x->Init(scope_, inference_program_);
+  return std::unique_ptr<PaddlePredictor>(x);
+}
+
 template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<contrib::AnalysisConfig>(
-    const contrib::AnalysisConfig& config) {
+    const contrib::AnalysisConfig &config) {
   return CreatePaddlePredictor<contrib::AnalysisConfig,
                                PaddleEngineKind::kAnalysis>(config);
 }

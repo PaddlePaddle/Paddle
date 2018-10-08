@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -76,15 +75,13 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::CHANNEL) {
-    var->GetMutable<ChannelHolder>();
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
         var_type);
   }
 }
