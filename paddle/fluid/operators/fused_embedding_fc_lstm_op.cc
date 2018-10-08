@@ -93,7 +93,6 @@ void FusedEmbeddingFCLSTMOp::InferShape(
   ctx->SetOutputDim("Cell", out_dims);
   ctx->ShareLoD("Ids", "Hidden");
   ctx->ShareLoD("Ids", "Cell");
-  int xx_width = wh_dims[1];
   if (!ctx->Attrs().Get<bool>("use_seq")) {
     PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
                    "Assert only one Output(BatchedInput) of LSTM.");
@@ -109,7 +108,7 @@ void FusedEmbeddingFCLSTMOp::InferShape(
     ctx->SetOutputDim("BatchedHidden", out_dims);
     ctx->SetOutputDim("BatchedCell", out_dims);
   }
-  ctx->SetOutputDim("XX", {x_dims[0], xx_width});
+  ctx->SetOutputDim("XX", {x_dims[0], wh_dims[1]});
   ctx->ShareLoD("Ids", "XX");
 }
 
