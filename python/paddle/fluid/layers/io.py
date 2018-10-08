@@ -787,9 +787,9 @@ def create_py_reader_by_data(capacity,
         >>>
         >>> image = fluid.layers.data(name='image', shape=[3,224,224], dtypes='float32')
         >>> label = fluid.layers.data(name='label', shape=[1], dtypes='int64')
-        >>> reader = fluid.layers.py_reader(capacity=64, feed_list=[image, label])
+        >>> reader = fluid.layers.create_py_reader_by_data(capacity=64, feed_list=[image, label])
         >>> reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> img, label = fluid.layers.read_file(reader)
         >>> loss = network(img, label) # some network definition
