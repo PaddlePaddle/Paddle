@@ -124,7 +124,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op.set_attr("fuse_relu", True)
+                    current_op._set_attr("fuse_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
@@ -454,7 +454,7 @@ class InferenceTranspiler(object):
         :type eltwise_op: Operator
         '''
 
-        conv_op.set_attr("fuse_eltwise", True)
+        conv_op._set_attr("fuse_eltwise", True)
         self.input_map[conv_op.output("Output")[0]] = eltwise_op.input("Y")[0]
         self.input_map[eltwise_op.output("Out")[0]] = eltwise_op.input("Y")[0]
 
