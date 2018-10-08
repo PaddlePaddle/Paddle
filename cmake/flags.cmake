@@ -148,7 +148,7 @@ if(LINUX)
         -Wextra
         -Werror
         ${GPU_COMMON_FLAGS})
-endif()
+endif(LINUX)
 
 if(UNIX AND NOT APPLE)
   # except apple from nix*Os family
