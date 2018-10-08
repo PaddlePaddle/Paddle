@@ -49,8 +49,7 @@ class PReluOp : public framework::OperatorWithKernel {
     } else {
       PADDLE_THROW("Unkown mode %s", mode);
     }
-    ctx->SetOutputDim("Out", x_dim);
-    ctx->ShareLoD("X", /*->*/ "Out");
+    ctx->ShareDimInfo("X", /*->*/ "Out");
   }
 
  protected:

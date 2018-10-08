@@ -151,9 +151,8 @@ class ShrinkRNNMemoryGradInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"));
     PADDLE_ENFORCE(context->HasOutput(framework::GradVarName("X")));
-    context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
+
+    context->ShareDimInfo("X", /*->*/ framework::GradVarName("X"));
   }
 };
 
