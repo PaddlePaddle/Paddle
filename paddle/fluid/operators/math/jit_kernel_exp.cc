@@ -40,26 +40,27 @@ namespace jit = platform::jit;
 template <typename T, jit::cpu_isa_t isa, jit_block>
 class VExpKernelImpl : public VExpKernel<T> {
  public:
-  void Compute(const int n, const T* x, T* y) const override {
-    for (int i = 0; i < n; ++i) {
+  explicit VExpKernelImpl(int d) : VExpKernel<T>() { this->num_ = d; }
+  void Compute(const T* x, T* y) const override {
+    for (int i = 0; i < this->num_; ++i) {
       y[i] = std::exp(x[i]);
     }
   }
 };
 
 #ifdef PADDLE_WITH_MKLML
-#define MKL_FLOAT(isa, block)                                                  \
-  template <>                                                                  \
-  void VExpKernelImpl<float, isa, block>::Compute(const int n, const float* x, \
-                                                  float* y) const {            \
-    platform::dynload::vsExp(n, x, y);                                         \
+#define MKL_FLOAT(isa, block)                                               \
+  template <>                                                               \
+  void VExpKernelImpl<float, isa, block>::Compute(const float* x, float* y) \
+      const {                                                               \
+    platform::dynload::vsExp(this->num_, x, y);                             \
   }
 
-#define MKL_DOUBLE(isa, block)                         \
-  template <>                                          \
-  void VExpKernelImpl<double, isa, block>::Compute(    \
-      const int n, const double* x, double* y) const { \
-    platform::dynload::vdExp(n, x, y);                 \
+#define MKL_DOUBLE(isa, block)                                                 \
+  template <>                                                                  \
+  void VExpKernelImpl<double, isa, block>::Compute(const double* x, double* y) \
+      const {                                                                  \
+    platform::dynload::vdExp(this->num_, x, y);                                \
   }
 FOR_EACH_ISA(MKL_FLOAT, kLT8);
 FOR_EACH_ISA(MKL_FLOAT, kGT8LT16);
@@ -67,24 +68,24 @@ FOR_EACH_ISA(MKL_FLOAT, kGT16);
 FOR_EACH_ISA_BLOCK(MKL_DOUBLE);
 #endif
 
-#define INTRI8_FLOAT(isa)                                                     \
-  template <>                                                                 \
-  void VExpKernelImpl<float, isa, kEQ8>::Compute(const int n, const float* x, \
-                                                 float* y) const {            \
-    __m256 tmp = _mm256_loadu_ps(x);                                          \
-    _mm256_storeu_ps(y, detail::Exp(tmp));                                    \
+#define INTRI8_FLOAT(isa)                                                  \
+  template <>                                                              \
+  void VExpKernelImpl<float, isa, kEQ8>::Compute(const float* x, float* y) \
+      const {                                                              \
+    __m256 tmp = _mm256_loadu_ps(x);                                       \
+    _mm256_storeu_ps(y, detail::Exp(tmp));                                 \
   }
 
-#define INTRI16_FLOAT(isa)                                                     \
-  template <>                                                                  \
-  void VExpKernelImpl<float, isa, kEQ16>::Compute(const int n, const float* x, \
-                                                  float* y) const {            \
-    __m256 tmp0 = _mm256_loadu_ps(x);                                          \
-    __m256 tmp1 = _mm256_loadu_ps(x + 8);                                      \
-    tmp0 = detail::Exp(tmp0);                                                  \
-    tmp1 = detail::Exp(tmp1);                                                  \
-    _mm256_storeu_ps(y, tmp0);                                                 \
-    _mm256_storeu_ps(y + 8, tmp1);                                             \
+#define INTRI16_FLOAT(isa)                                                  \
+  template <>                                                               \
+  void VExpKernelImpl<float, isa, kEQ16>::Compute(const float* x, float* y) \
+      const {                                                               \
+    __m256 tmp0 = _mm256_loadu_ps(x);                                       \
+    __m256 tmp1 = _mm256_loadu_ps(x + 8);                                   \
+    tmp0 = detail::Exp(tmp0);                                               \
+    tmp1 = detail::Exp(tmp1);                                               \
+    _mm256_storeu_ps(y, tmp0);                                              \
+    _mm256_storeu_ps(y + 8, tmp1);                                          \
   }
 
 #ifdef __AVX__
@@ -123,7 +124,7 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
       y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
       y[i] = static_cast<T>(0) - y[i];
     }
-    vexp_->Compute(this->num_, y, y);
+    vexp_->Compute(y, y);
     for (int i = 0; i < this->num_; ++i) {
       y[i] = static_cast<T>(1) / (static_cast<T>(1) + y[i]);
     }
@@ -166,64 +167,66 @@ class VSigmoidKernelImpl : public VSigmoidKernel<T> {
     _mm256_storeu_ps(y + 8, tmp1);                                      \
   }
 
-#define INTRI_GT8LT16_FLOAT(isa)                                           \
-  template <>                                                              \
-  VSigmoidKernelImpl<float, isa, kGT8LT16>::VSigmoidKernelImpl(int d)      \
-      : VSigmoidKernel<float>() {                                          \
-    this->num_ = d;                                                        \
-    this->end_ = AVX_FLOAT_BLOCK;                                          \
-    this->rest_ = d - this->end_;                                          \
-    vexp_ = KernelPool::Instance().template Get<VExpKernel<float>>(d);     \
-  }                                                                        \
-  template <>                                                              \
-  void VSigmoidKernelImpl<float, isa, kGT8LT16>::Compute(const float* x,   \
-                                                         float* y) const { \
-    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                    \
-    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                    \
-    __m256 tmp = _mm256_loadu_ps(x);                                       \
-    INTRI_SIGMOID(tmp, min, max);                                          \
-    _mm256_storeu_ps(y, tmp);                                              \
-    const float min_ = SIGMOID_THRESHOLD_MIN;                              \
-    const float max_ = SIGMOID_THRESHOLD_MAX;                              \
-    for (int i = this->end_; i < this->num_; ++i) {                        \
-      y[i] = (x[i] < min_) ? min_ : ((x[i] > max_) ? max_ : x[i]);         \
-      y[i] = 0.f - y[i];                                                   \
-    }                                                                      \
-    vexp_->Compute(this->rest_, y + this->end_, y + this->end_);           \
-    for (int i = this->end_; i < this->num_; ++i) {                        \
-      y[i] = 1.f / (1.f + y[i]);                                           \
-    }                                                                      \
+#define INTRI_GT8LT16_FLOAT(isa)                                             \
+  template <>                                                                \
+  VSigmoidKernelImpl<float, isa, kGT8LT16>::VSigmoidKernelImpl(int d)        \
+      : VSigmoidKernel<float>() {                                            \
+    this->num_ = d;                                                          \
+    this->end_ = AVX_FLOAT_BLOCK;                                            \
+    this->rest_ = d - this->end_;                                            \
+    vexp_ =                                                                  \
+        KernelPool::Instance().template Get<VExpKernel<float>>(this->rest_); \
+  }                                                                          \
+  template <>                                                                \
+  void VSigmoidKernelImpl<float, isa, kGT8LT16>::Compute(const float* x,     \
+                                                         float* y) const {   \
+    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                      \
+    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                      \
+    __m256 tmp = _mm256_loadu_ps(x);                                         \
+    INTRI_SIGMOID(tmp, min, max);                                            \
+    _mm256_storeu_ps(y, tmp);                                                \
+    const float min_ = SIGMOID_THRESHOLD_MIN;                                \
+    const float max_ = SIGMOID_THRESHOLD_MAX;                                \
+    for (int i = this->end_; i < this->num_; ++i) {                          \
+      y[i] = (x[i] < min_) ? min_ : ((x[i] > max_) ? max_ : x[i]);           \
+      y[i] = 0.f - y[i];                                                     \
+    }                                                                        \
+    vexp_->Compute(y + this->end_, y + this->end_);                          \
+    for (int i = this->end_; i < this->num_; ++i) {                          \
+      y[i] = 1.f / (1.f + y[i]);                                             \
+    }                                                                        \
   }
 
-#define INTRI_GT16_FLOAT(isa)                                           \
-  template <>                                                           \
-  VSigmoidKernelImpl<float, isa, kGT16>::VSigmoidKernelImpl(int d)      \
-      : VSigmoidKernel<float>() {                                       \
-    this->num_ = d;                                                     \
-    this->rest_ = d % AVX_FLOAT_BLOCK;                                  \
-    this->end_ = d - this->rest_;                                       \
-    vexp_ = KernelPool::Instance().template Get<VExpKernel<float>>(d);  \
-  }                                                                     \
-  template <>                                                           \
-  void VSigmoidKernelImpl<float, isa, kGT16>::Compute(const float* x,   \
-                                                      float* y) const { \
-    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                 \
-    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                 \
-    for (int i = 0; i < this->end_; i += AVX_FLOAT_BLOCK) {             \
-      __m256 tmp = _mm256_loadu_ps(x + i);                              \
-      INTRI_SIGMOID(tmp, min, max);                                     \
-      _mm256_storeu_ps(y + i, tmp);                                     \
-    }                                                                   \
-    const float min_ = SIGMOID_THRESHOLD_MIN;                           \
-    const float max_ = SIGMOID_THRESHOLD_MAX;                           \
-    for (int i = this->end_; i < this->num_; ++i) {                     \
-      y[i] = (x[i] < min_) ? min_ : ((x[i] > max_) ? max_ : x[i]);      \
-      y[i] = 0.f - y[i];                                                \
-    }                                                                   \
-    vexp_->Compute(this->rest_, y + this->end_, y + this->end_);        \
-    for (int i = this->end_; i < this->num_; ++i) {                     \
-      y[i] = 1.f / (1.f + y[i]);                                        \
-    }                                                                   \
+#define INTRI_GT16_FLOAT(isa)                                                \
+  template <>                                                                \
+  VSigmoidKernelImpl<float, isa, kGT16>::VSigmoidKernelImpl(int d)           \
+      : VSigmoidKernel<float>() {                                            \
+    this->num_ = d;                                                          \
+    this->rest_ = d % AVX_FLOAT_BLOCK;                                       \
+    this->end_ = d - this->rest_;                                            \
+    vexp_ =                                                                  \
+        KernelPool::Instance().template Get<VExpKernel<float>>(this->rest_); \
+  }                                                                          \
+  template <>                                                                \
+  void VSigmoidKernelImpl<float, isa, kGT16>::Compute(const float* x,        \
+                                                      float* y) const {      \
+    __m256 max = _mm256_set1_ps(SIGMOID_THRESHOLD_MAX);                      \
+    __m256 min = _mm256_set1_ps(SIGMOID_THRESHOLD_MIN);                      \
+    for (int i = 0; i < this->end_; i += AVX_FLOAT_BLOCK) {                  \
+      __m256 tmp = _mm256_loadu_ps(x + i);                                   \
+      INTRI_SIGMOID(tmp, min, max);                                          \
+      _mm256_storeu_ps(y + i, tmp);                                          \
+    }                                                                        \
+    const float min_ = SIGMOID_THRESHOLD_MIN;                                \
+    const float max_ = SIGMOID_THRESHOLD_MAX;                                \
+    for (int i = this->end_; i < this->num_; ++i) {                          \
+      y[i] = (x[i] < min_) ? min_ : ((x[i] > max_) ? max_ : x[i]);           \
+      y[i] = 0.f - y[i];                                                     \
+    }                                                                        \
+    vexp_->Compute(y + this->end_, y + this->end_);                          \
+    for (int i = this->end_; i < this->num_; ++i) {                          \
+      y[i] = 1.f / (1.f + y[i]);                                             \
+    }                                                                        \
   }
 
 #ifdef __AVX__
@@ -251,12 +254,7 @@ INTRI16_FLOAT(jit::avx512f);
 #undef INTRI_GT16_FLOAT
 #undef INTRI_VSIGMOID
 
-#define JITKERNEL_NEW_ACT_IMPL(ker, dtype, isa, k) \
-  p = std::dynamic_pointer_cast<ker<dtype>>(       \
-      std::make_shared<ker##Impl<dtype, isa, k>>(d))
-
-REGISTER_JITKERNEL_ARGS(vsigmoid, VSigmoidKernel, JITKERNEL_DECLARE,
-                        JITKERNEL_KEY, JITKERNEL_NEW_ACT_IMPL);
+REGISTER_JITKERNEL(vsigmoid, VSigmoidKernel);
 
 /* VTanh JitKernel */
 template <typename T, jit::cpu_isa_t isa, jit_block>
@@ -269,10 +267,10 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     vaddbias_ = KernelPool::Instance().template Get<VAddBiasKernel<T>>(d);
   }
   void Compute(const T* x, T* y) const override {
-    vscal_->Compute(this->num_, static_cast<T>(2), x, y);
+    vscal_->Compute(static_cast<T>(2), x, y);
     vsigmoid_->Compute(y, y);
-    vscal_->Compute(this->num_, static_cast<T>(2), y);
-    vaddbias_->Compute(this->num_, static_cast<T>(-1), y, y);
+    vscal_->Compute(static_cast<T>(2), y);
+    vaddbias_->Compute(static_cast<T>(-1), y, y);
   }
 
  private:
@@ -332,10 +330,10 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     _mm256_storeu_ps(y, tmp);                                                 \
     x += AVX_FLOAT_BLOCK;                                                     \
     y += AVX_FLOAT_BLOCK;                                                     \
-    vscal_->Compute(this->rest_, 2.f, x, y);                                  \
+    vscal_->Compute(2.f, x, y);                                               \
     vsigmoid_->Compute(y, y);                                                 \
-    vscal_->Compute(this->rest_, 2.f, y);                                     \
-    vaddbias_->Compute(this->rest_, -1.f, y, y);                              \
+    vscal_->Compute(2.f, y);                                                  \
+    vaddbias_->Compute(-1.f, y, y);                                           \
   }
 
 #define INTRI_GT16_FLOAT(isa)                                                 \
@@ -362,10 +360,10 @@ class VTanhKernelImpl : public VTanhKernel<T> {
     }                                                                         \
     x += this->end_;                                                          \
     y += this->end_;                                                          \
-    vscal_->Compute(this->rest_, 2.f, x, y);                                  \
+    vscal_->Compute(2.f, x, y);                                               \
     vsigmoid_->Compute(y, y);                                                 \
-    vscal_->Compute(this->rest_, 2.f, y);                                     \
-    vaddbias_->Compute(this->rest_, -1.f, y, y);                              \
+    vscal_->Compute(2.f, y);                                                  \
+    vaddbias_->Compute(-1.f, y, y);                                           \
   }
 
 #ifdef __AVX__
@@ -391,8 +389,7 @@ INTRI16_FLOAT(jit::avx512f);
 #undef INTRI_GT16_FLOAT
 #undef INTRI_VTANH
 
-REGISTER_JITKERNEL_ARGS(vtanh, VTanhKernel, JITKERNEL_DECLARE, JITKERNEL_KEY,
-                        JITKERNEL_NEW_ACT_IMPL);
+REGISTER_JITKERNEL(vtanh, VTanhKernel);
 
 #undef JITKERNEL_NEW_ACT_IMPL
 

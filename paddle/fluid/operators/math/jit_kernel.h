@@ -64,32 +64,32 @@ class KernelPool {
 template <typename T>
 class VMulKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, const T *y, T *z) const = 0;
+  virtual void Compute(const T *x, const T *y, T *z) const = 0;
 };
 
 template <typename T>
 class VAddKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, const T *y, T *z) const = 0;
+  virtual void Compute(const T *x, const T *y, T *z) const = 0;
 };
 
 template <typename T>
 class VScalKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T a, const T *x, T *y) const = 0;
-  virtual void Compute(const int n, const T a, T *x) const = 0;
+  virtual void Compute(const T a, const T *x, T *y) const = 0;
+  virtual void Compute(const T a, T *x) const = 0;
 };
 
 template <typename T>
 class VAddBiasKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T a, const T *x, T *y) const = 0;
+  virtual void Compute(const T a, const T *x, T *y) const = 0;
 };
 
 template <typename T>
 class VExpKernel : public Kernel {
  public:
-  virtual void Compute(const int n, const T *x, T *y) const = 0;
+  virtual void Compute(const T *x, T *y) const = 0;
 };
 
 template <typename T>

@@ -57,7 +57,7 @@ namespace jit = platform::jit;
 
 #define JITKERNEL_NEW_IMPL(ker, dtype, isa, k) \
   p = std::dynamic_pointer_cast<ker<dtype>>(   \
-      std::make_shared<ker##Impl<dtype, isa, k>>())
+      std::make_shared<ker##Impl<dtype, isa, k>>(d))
 
 #define JITKERNEL_WITH_DTYPE(ker_key, ker_class, ker_dtype, dtype_key, \
                              marco_declare, macro_key, macro_impl)     \
