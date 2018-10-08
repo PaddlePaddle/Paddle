@@ -291,15 +291,15 @@ bool TensorIsfinite(const framework::Tensor& tensor) {
 
 #ifdef PADDLE_WITH_CUDA
 template <typename T>
-static inline void __global__ EqualAssign(const T* cmp, T* out) {
+static inline void __global__ BothFalse(const T* cmp, T* out) {
   out[0] = (!cmp[0]) && (!out[0]);
 }
 #endif
 
-struct EqualAssignVisitor : public boost::static_visitor<> {
+struct BothFalseVisitor : public boost::static_visitor<> {
   const framework::Tensor& in_;
   mutable framework::Tensor* out_;
-  EqualAssignVisitor(const framework::Tensor& in, framework::Tensor* out)
+  BothFalseVisitor(const framework::Tensor& in, framework::Tensor* out)
       : in_(in), out_(out) {}
 
   template <typename Place>
@@ -310,8 +310,8 @@ struct EqualAssignVisitor : public boost::static_visitor<> {
   void VisitorImpl(const platform::CUDAPlace& gpu) const {
 #ifdef PADDLE_WITH_CUDA
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(gpu);
-    EqualAssign<bool><<<1, 1, 0, ctx->stream()>>>(
-        in_.data<bool>(), out_->mutable_data<bool>(gpu));
+    BothFalse<bool><<<1, 1, 0, ctx->stream()>>>(in_.data<bool>(),
+                                                out_->mutable_data<bool>(gpu));
 #endif
   }
 
@@ -333,7 +333,7 @@ void TensorIsfinite(const framework::Tensor& tensor, framework::Tensor* out) {
   framework::Tensor tmp;
   TensorContainsInf(tensor, &tmp);
   TensorContainsNAN(tensor, out);
-  EqualAssignVisitor visitor(tmp, out);
+  BothFalseVisitor visitor(tmp, out);
   auto place = tensor.place();
   platform::VisitPlace(place, visitor);
 }

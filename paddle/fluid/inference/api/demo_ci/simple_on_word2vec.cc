@@ -71,7 +71,8 @@ void Main(bool use_gpu) {
     // The outputs' buffers are in CPU memory.
     for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
          i++) {
-      CHECK_EQ(static_cast<float*>(outputs.front().data.data())[i], result[i]);
+      CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i], result[i],
+                 0.001);
     }
   }
 }
@@ -117,8 +118,8 @@ void MainThreads(int num_threads, bool use_gpu) {
         // The outputs' buffers are in CPU memory.
         for (size_t i = 0; i < std::min(static_cast<size_t>(5), num_elements);
              i++) {
-          CHECK_EQ(static_cast<float*>(outputs.front().data.data())[i],
-                   result[i]);
+          CHECK_NEAR(static_cast<float*>(outputs.front().data.data())[i],
+                     result[i], 0.001);
         }
       }
     });

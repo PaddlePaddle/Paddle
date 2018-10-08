@@ -645,7 +645,13 @@ def load_combine(out, file_path):
 
 def has_inf(x):
     """
-    Test if any of x contains a infinity number
+    Test if any of x contains an infinity number
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, only a bool value.
     """
     helper = LayerHelper("isinf", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
@@ -656,6 +662,12 @@ def has_inf(x):
 def has_nan(x):
     """
     Test if any of x contains a NAN
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, only a bool value.
     """
     helper = LayerHelper("isnan", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
@@ -665,7 +677,14 @@ def has_nan(x):
 
 def isfinite(x):
     """
-    Test if any of x contains a infinity number
+    Test if any of x contains an infinity/NAN number. If all the elements are finite,
+    returns true, else false.
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, contains a bool value.
     """
     helper = LayerHelper("isfinite", **locals())
     out = helper.create_tmp_variable(dtype=x.dtype)
