@@ -101,6 +101,40 @@ struct PaddleTensor {
   std::vector<std::vector<size_t>> lod;  // Tensor+LoD equals LoDTensor
 };
 
+enum class PaddlePlace { kUNK = -1, kCPU, kGPU };
+// Tensor without copy, currently only supports AnalysisPredictor.
+class ZeroCopyTensor {
+ public:
+  void Reshape(const std::vector<int>& shape);
+
+  // Get the memory in CPU or GPU with specific data type, should Reshape first
+  // to tell the data size.
+  // Once can directly call this data to feed the data.
+  // This is for write the input tensor.
+  template <typename T>
+  T* mutable_data(PaddlePlace place);
+  // Get the memory directly, will return the place and memory size by pointer.
+  // This is for reading the output tensor.
+  template <typename T>
+  T* data(PaddlePlace* place, int* size);
+
+  std::vector<int64_t> shape();
+
+  void SetLoD(const std::vector<std::vector<size_t>>& x);
+  std::vector<std::vector<size_t>> lod() const;
+
+ protected:
+  ZeroCopyTensor(void* scope) : scope_{scope} {}
+  void SetName(const std::string& name) { name_ = name; }
+  void* FindTensor() const;
+
+ private:
+  std::string name_;
+  bool input_or_output_;
+  friend class AnalysisPredictor;
+  void* scope_{nullptr};
+};
+
 /*
  * A simple Inference API for Paddle.
  */
@@ -119,6 +153,19 @@ class PaddlePredictor {
   virtual bool Run(const std::vector<PaddleTensor>& inputs,
                    std::vector<PaddleTensor>* output_data,
                    int batch_size = -1) = 0;
+
+  // Zero copy input and output optimization.
+  // Get the input or output tensors, and operate on their memory directly,
+  // without copy.
+  virtual std::unique_ptr<ZeroCopyTensor> GetInputTensor(
+      const std::string& name) {
+    return nullptr;
+  }
+  virtual std::unique_ptr<ZeroCopyTensor> GetOutputTensor(
+      const std::string& name) {
+    return nullptr;
+  }
+  virtual bool ZeroCopyRun() { return false; }
 
   // Clone a predictor that share the model weights, the Cloned predictor should
   // be thread-safe.
@@ -194,6 +241,14 @@ struct MixedRTConfig : public NativeConfig {
   // For workspace_size, refer it from here:
   // https://docs.nvidia.com/deeplearning/sdk/tensorrt-developer-guide/index.html#troubleshooting
   int workspace_size{1 << 30};
+  //  We transform the Ops that can be converted into TRT layer in the model,
+  //  and aggregate these Ops into subgraphs for TRT execution.
+  //  We set this variable to control the minimum number of nodes in the
+  //  subgraph, 3 as default value.
+  int minimum_subgraph_size = 3;
+  // Reserved configuration
+  // We just support "FP32" now, "FP16" and "INT8" will be supported.
+  std::string precision_mode = "FP32";
 };
 
 // NOTE WIP, not stable yet.
@@ -204,12 +259,17 @@ struct AnalysisConfig : public NativeConfig {
     kExclude   // Specify the disabled passes in `ir_passes`.
   };
 
+  // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;
+  // Manually determine the IR passes to run.
   IrPassMode ir_mode{IrPassMode::kExclude};
-  // attention lstm fuse works only on some specific models, disable as default.
-  std::vector<std::string> ir_passes{"attention_lstm_fuse_pass"};
+  std::vector<std::string> ir_passes{"embedding_fc_lstm_fuse_pass"};
+
+  // NOT stable yet.
+  bool use_feed_fetch_ops{true};
 
   // NOTE this is just for internal development, please not use it.
+  // NOT stable yet.
   bool _use_mkldnn{false};
 };
 

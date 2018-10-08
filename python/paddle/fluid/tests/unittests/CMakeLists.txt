@@ -28,7 +28,6 @@ list(REMOVE_ITEM TEST_OPS test_cond_op) # FIXME(qijun): https://github.com/Paddl
 
 list(REMOVE_ITEM TEST_OPS op_test) # op_test is a helper python file, not a test
 list(REMOVE_ITEM TEST_OPS decorators) # decorators is a helper python file, not a test
-
 if(APPLE)
     if(NOT WITH_DISTRIBUTE)
         list(REMOVE_ITEM TEST_OPS test_desc_clone)
@@ -77,11 +76,13 @@ if(WITH_DISTRIBUTE)
     if(NOT APPLE)
         set_tests_properties(test_dist_mnist PROPERTIES TIMEOUT 200)
         set_tests_properties(test_dist_word2vec PROPERTIES TIMEOUT 200)
-        py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext SERIAL)
+        py_test_modules(test_dist_se_resnext MODULES test_dist_se_resnext)
+        set_tests_properties(test_dist_se_resnext PROPERTIES TIMEOUT 1000)
+        # TODO: fix this test
+        #py_test_modules(test_dist_transformer MODULES test_dist_transformer)
+        #set_tests_properties(test_dist_transformer PROPERTIES TIMEOUT 1000)
     endif(NOT APPLE)
     py_test_modules(test_dist_transpiler MODULES test_dist_transpiler)
-    #FIXME(gongwb): random fails.
-    #py_test_modules(test_dist_transformer MODULES test_dist_transformer SERIAL)
 endif()
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf SERIAL)
 py_test_modules(test_parallel_executor_fetch_feed MODULES test_parallel_executor_fetch_feed SERIAL)

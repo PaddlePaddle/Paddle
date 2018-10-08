@@ -13,101 +13,25 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
-
 #include <string>
 #include <tuple>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/ir/graph_viz_pass.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
 #include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_check_pass.h"
-#include "paddle/fluid/framework/details/multi_devices_graph_print_pass.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace framework {
-
-std::unique_ptr<ir::Graph> ApplyParallelExecutorPass(
-    const ProgramDesc &main_program, const std::vector<platform::Place> &places,
-    const std::string &loss_var_name,
-    const std::unordered_set<std::string> &param_names,
-    const std::vector<Scope *> &local_scopes, const bool use_cuda,
-#ifdef PADDLE_WITH_CUDA
-    const BuildStrategy &strategy, platform::NCCLContextMap *nccl_ctxs) {
-#else
-    const BuildStrategy &strategy) {
-#endif
-  // Convert the program to graph.
-  std::unique_ptr<ir::Graph> graph(new ir::Graph(main_program));
-
-  // Apply a graph viz pass to record a graph.
-  if (!strategy.debug_graphviz_path_.empty()) {
-    auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
-    const std::string graph_path = string::Sprintf(
-        "%s%s", strategy.debug_graphviz_path_.c_str(), "_original_graph");
-    viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
-    graph = viz_pass->Apply(std::move(graph));
-  }
-
-  // Apply op fusion.
-  if (strategy.fuse_elewise_add_act_ops_) {
-    auto fuse_elewise_add_act_pass =
-        ir::PassRegistry::Instance().Get("fuse_elewise_add_act_pass");
-    graph = fuse_elewise_add_act_pass->Apply(std::move(graph));
-    // Apply a graph viz pass to record a graph.
-    if (!strategy.debug_graphviz_path_.empty()) {
-      auto viz_pass = ir::PassRegistry::Instance().Get("graph_viz_pass");
-      const std::string graph_path = string::Sprintf(
-          "%s%s", strategy.debug_graphviz_path_.c_str(), "_fused_graph");
-      viz_pass->Set<std::string>("graph_viz_path", new std::string(graph_path));
-      graph = viz_pass->Apply(std::move(graph));
-    }
-  }
-
-  // Convert graph to run on multi-devices.
-  auto multi_devices_pass =
-      ir::PassRegistry::Instance().Get("multi_devices_pass");
-  multi_devices_pass->SetNotOwned<const std::vector<platform::Place>>("places",
-                                                                      &places);
-  multi_devices_pass->SetNotOwned<const std::string>("loss_var_name",
-                                                     &loss_var_name);
-  multi_devices_pass->SetNotOwned<const std::unordered_set<std::string>>(
-      "params", &param_names);
-  multi_devices_pass->SetNotOwned<const std::vector<Scope *>>("local_scopes",
-                                                              &local_scopes);
-  multi_devices_pass->SetNotOwned<const BuildStrategy>("strategy", &strategy);
-
-#ifdef PADDLE_WITH_CUDA
-  platform::NCCLContextMap *nctx = use_cuda ? nccl_ctxs : nullptr;
-  multi_devices_pass->SetNotOwned<platform::NCCLContextMap>("nccl_ctxs", nctx);
-#endif
-  graph = multi_devices_pass->Apply(std::move(graph));
-
-  // Apply a graph print pass to record a graph with device info.
-  if (!strategy.debug_graphviz_path_.empty()) {
-    auto multi_devices_print_pass =
-        ir::PassRegistry::Instance().Get("multi_devices_print_pass");
-    multi_devices_print_pass->SetNotOwned<const std::string>(
-        "debug_graphviz_path", &strategy.debug_graphviz_path_);
-    multi_devices_print_pass->Set<details::GraphvizSSAGraphPrinter>(
-        "graph_printer", new details::GraphvizSSAGraphPrinter);
-    graph = multi_devices_print_pass->Apply(std::move(graph));
-  }
-
-  // Verify that the graph is correct for multi-device executor.
-  auto multi_devices_check_pass =
-      ir::PassRegistry::Instance().Get("multi_devices_check_pass");
-  graph = multi_devices_check_pass->Apply(std::move(graph));
-  return graph;
-}
 
 class ParallelExecutorPrivate {
  public:
@@ -212,10 +136,9 @@ ParallelExecutor::ParallelExecutor(
 // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
-  std::unique_ptr<ir::Graph> graph = ApplyParallelExecutorPass(
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
       main_program, member_->places_, loss_var_name, params,
-      member_->local_scopes_, member_->use_cuda_, build_strategy,
-      member_->nccl_ctxs_.get());
+      member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
 
   auto max_memory_size = GetEagerDeletionThreshold();
   if (max_memory_size >= 0) {
@@ -241,10 +164,18 @@ ParallelExecutor::ParallelExecutor(
     }
   }
 #else
-  std::unique_ptr<ir::Graph> graph = ApplyParallelExecutorPass(
-      main_program, member_->places_, loss_var_name, params,
-      member_->local_scopes_, member_->use_cuda_, build_strategy);
+  std::unique_ptr<ir::Graph> graph =
+      build_strategy.Apply(main_program, member_->places_, loss_var_name,
+                           params, member_->local_scopes_, member_->use_cuda_);
 #endif
+
+  if (VLOG_IS_ON(5)) {
+    // If the loss_var_name is given, the number of graph should be only one.
+    if (loss_var_name.size()) {
+      PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                        "The number of graph should be only one");
+    }
+  }
 
   if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
     member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
@@ -332,6 +263,13 @@ void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
 #ifdef PADDLE_WITH_CUDA
   if (!gcs_.empty()) {
     ResetReferenceCount();
+    for (auto &pair : cur_ref_cnts_) {
+      auto &name_map = *(pair.second);
+      for (auto &fetch_name : fetch_tensors) {
+        name_map.erase(fetch_name);
+      }
+      name_map.erase(fetched_var_name);
+    }
   }
 #endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);
@@ -386,12 +324,6 @@ ParallelExecutor::~ParallelExecutor() {
 
 }  // namespace framework
 }  // namespace paddle
-
-USE_PASS(fuse_elewise_add_act_pass);
-USE_PASS(graph_viz_pass);
-USE_PASS(multi_devices_pass);
-USE_PASS(multi_devices_check_pass);
-USE_PASS(multi_devices_print_pass);
 #ifdef PADDLE_WITH_CUDA
 USE_PASS(reference_count_pass);
 #endif

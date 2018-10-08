@@ -97,8 +97,10 @@ void DataFlowGraphToFluidPass::AddFluidOp(Node *node) {
   }
 }
 
-void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
+void CreateTrtEngineOp(Node *node, Argument *argument,
                        framework::proto::BlockDesc *block) {
+  PADDLE_ENFORCE(argument->main_dfg.get());
+  const DataFlowGraph &graph = *(argument->main_dfg);
   static int counter{0};
   PADDLE_ENFORCE(node->IsFunctionBlock());
   framework::OpDesc desc;
@@ -204,7 +206,10 @@ void CreateTrtEngineOp(Node *node, const DataFlowGraph &graph,
 
   PADDLE_ENFORCE(!block->vars().empty(), "the block has no var-desc");
   // Set attrs
+
   SetAttr(desc.Proto(), "subgraph", block->SerializeAsString());
+  SetAttr(desc.Proto(), "max_batch_size", argument->Get<int>("max_batch_size"));
+  SetAttr(desc.Proto(), "workspace_size", argument->Get<int>("workspace_size"));
   SetAttr(desc.Proto(), "engine_uniq_key", "trt-" + std::to_string(counter++));
   SetAttr(desc.Proto(), "parameters", ExtractParameters(graph.nodes.nodes()));
   SetAttr(desc.Proto(), "output_name_mapping", output_mapping);
@@ -248,7 +253,7 @@ void DataFlowGraphToFluidPass::AddEngineOp(Node *node) {
   *block_desc.Proto()->mutable_vars() =
       argument_->origin_program_desc->blocks(0).vars();
   PADDLE_ENFORCE(!block_desc.Proto()->vars().empty());
-  CreateTrtEngineOp(node, *argument_->main_dfg, block_desc.Proto());
+  CreateTrtEngineOp(node, argument_, block_desc.Proto());
   auto *main_block = desc_->mutable_blocks(framework::kRootBlockIndex);
   auto *op = main_block->add_ops();
   PADDLE_ENFORCE(!node->pb_msg().empty(), "failed to set desc for block");
