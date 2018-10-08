@@ -210,7 +210,7 @@ class TestFakeReader(unittest.TestCase):
                 yield i
 
         data_num = 100
-        fake_reader = paddle.reader.fake(reader, data_num)
+        fake_reader = paddle.reader.Fake()(reader, data_num)
         for _ in range(10):
             i = 0
             for data in fake_reader():

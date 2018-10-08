@@ -14,4 +14,4 @@ if(WITH_INFERENCE)
   add_subdirectory(inference)
 endif()
 
-add_subdirectory(train)
+#add_subdirectory(train)
