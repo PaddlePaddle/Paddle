@@ -19,72 +19,40 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
-using contrib::AnalysisConfig;
-
-struct Record {
-  std::vector<float> data;
-  std::vector<int32_t> shape;
-};
-
-Record ProcessALine(const std::string &line) {
-  VLOG(3) << "process a line";
-  std::vector<std::string> columns;
-  split(line, '\t', &columns);
-  CHECK_EQ(columns.size(), 2UL)
-      << "data format error, should be <data>\t<shape>";
-
-  Record record;
-  std::vector<std::string> data_strs;
-  split(columns[0], ' ', &data_strs);
-  for (auto &d : data_strs) {
-    record.data.push_back(std::stof(d));
-  }
-
-  std::vector<std::string> shape_strs;
-  split(columns[1], ' ', &shape_strs);
-  for (auto &s : shape_strs) {
-    record.shape.push_back(std::stoi(s));
-  }
-  VLOG(3) << "data size " << record.data.size();
-  VLOG(3) << "data shape size " << record.shape.size();
-  return record;
-}
 
 void SetConfig(AnalysisConfig *cfg) {
-  cfg->param_file = FLAGS_infer_model + "/__params__";
-  cfg->prog_file = FLAGS_infer_model + "/__model__";
+  cfg->param_file = FLAGS_infer_model + "/params";
+  cfg->prog_file = FLAGS_infer_model + "/model";
   cfg->use_gpu = false;
   cfg->device = 0;
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
-  // TODO(TJ): fix fusion gru
-  cfg->ir_passes.push_back("fc_gru_fuse_pass");
-#ifdef PADDLE_WITH_MKLDNN
-  cfg->_use_mkldnn = true;
-#endif
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   PADDLE_ENFORCE_EQ(FLAGS_test_all_data, 0, "Only have single batch of data.");
-  std::string line;
-  std::ifstream file(FLAGS_infer_data);
-  std::getline(file, line);
-  auto record = ProcessALine(line);
 
   PaddleTensor input;
-  input.shape = record.shape;
+  // channel=3, height/width=318
+  std::vector<int> shape({FLAGS_batch_size, 3, 318, 318});
+  input.shape = shape;
   input.dtype = PaddleDType::FLOAT32;
-  size_t input_size = record.data.size() * sizeof(float);
-  input.data.Resize(input_size);
-  memcpy(input.data.data(), record.data.data(), input_size);
+
+  // fill input data, for profile easily, do not use random data here.
+  size_t size = FLAGS_batch_size * 3 * 318 * 318;
+  input.data.Resize(size * sizeof(float));
+  float *input_data = static_cast<float *>(input.data.data());
+  for (size_t i = 0; i < size; i++) {
+    *(input_data + i) = static_cast<float>(i) / size;
+  }
+
   std::vector<PaddleTensor> input_slots;
   input_slots.assign({input});
   (*inputs).emplace_back(input_slots);
 }
 
 // Easy for profiling independently.
-//  ocr, mobilenet and se_resnext50
-TEST(Analyzer_vis, profile) {
+TEST(Analyzer_resnet50, profile) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   std::vector<PaddleTensor> outputs;
@@ -94,31 +62,27 @@ TEST(Analyzer_vis, profile) {
   TestPrediction(cfg, input_slots_all, &outputs, FLAGS_num_threads);
 
   if (FLAGS_num_threads == 1 && !FLAGS_test_all_data) {
-    const float ocr_result_data[] = {
-        5.273636460856323538e-08, 3.296741795111302054e-07,
-        1.873261190610264748e-08, 3.403730275408634043e-08,
-        3.383312474625199684e-08};
     PADDLE_ENFORCE_EQ(outputs.size(), 1UL);
     size_t size = GetSize(outputs[0]);
-    PADDLE_ENFORCE_GT(size, 0);
-    float *result = static_cast<float *>(outputs[0].data.data());
-    for (size_t i = 0; i < std::min(5UL, size); i++) {
-      EXPECT_NEAR(result[i], ocr_result_data[i], 1e-3);
-    }
+    // output is a 512-dimension feature
+    EXPECT_EQ(size, 512 * FLAGS_batch_size);
   }
 }
 
 // Check the fuse status
-TEST(Analyzer_vis, fuse_statis) {
+TEST(Analyzer_resnet50, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   int num_ops;
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
-  GetFuseStatis(predictor.get(), &num_ops);
+  auto fuse_statis = GetFuseStatis(
+      static_cast<AnalysisPredictor *>(predictor.get()), &num_ops);
+  ASSERT_TRUE(fuse_statis.count("fc_fuse"));
+  EXPECT_EQ(fuse_statis.at("fc_fuse"), 1);
 }
 
 // Compare result of NativeConfig and AnalysisConfig
-TEST(Analyzer_vis, compare) {
+TEST(Analyzer_resnet50, compare) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
 
