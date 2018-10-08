@@ -18,6 +18,8 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle.fluid.core as core
+
 
 class TestClipByNormOp(OpTest):
     def setUp(self):
@@ -59,6 +61,42 @@ class TestCase2(TestClipByNormOp):
 class TestCase3(TestClipByNormOp):
     def initTestCase(self):
         self.shape = (4, 8, 16)
+        self.max_norm = 1.0
+
+
+class TestClipByNormOpWithSelectedRows(OpTest):
+    def setUp(self):
+        self.initTestCase()
+
+        self.max_relative_error = 0.006
+
+        scope = core.Scope()
+        x_selected_rows = scope.var('X').get_selected_rows()
+        x_selected_rows.set_rows([1, 1, 2, 0])
+        x_tensor = x_selected_rows.get_tensor()
+        x_tensor = np.random.random((4, 1)).astype("float32")
+        x_tensor[np.abs(x_tensor) < self.max_relative_error] = 0.5
+
+        self.op_type = "clip_by_norm"
+        self.inputs = {'X': x_selected_rows, }
+        self.attrs = {}
+        self.attrs['max_norm'] = self.max_norm
+        y_tensor = np.zeros((3, 1))
+        y_tensor[0::1] = np.sum(x_tensor[0::1], x_tensor[1::1])
+        y_tensor[1::1] = x_tensor[2::1]
+        y_tensor[2::1] = x_tensor[3::1]
+        norm = np.sqrt(np.sum(np.square(y_tensor)))
+        if norm > self.max_norm:
+            output = self.max_norm * y_tensor / norm
+        else:
+            output = y_tensor
+        self.outputs = {'Out': output}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def initTestCase(self):
+        self.shape = (100, )
         self.max_norm = 1.0
 
 
