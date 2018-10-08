@@ -264,15 +264,15 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
             context[self.group_name] = []
             context[self.group_name + "_clip_value"] = self.clip_norm
             context[self.group_name + "_clip"] = layers.fill_constant(
-                shape=[1], dtype="float32", value=self.clip_norm)
+                shape=[1], dtype=grad.dtype, value=self.clip_norm)
         else:
             if not self.clip_norm == context[self.group_name + "_clip_value"]:
                 raise ValueError(
                     "All parameters' 'clip_norm' of a same group should be the same"
                 )
 
-        square = grad * grad
-        local_norm_var = layers.cast(layers.reduce_sum(input=square), 'float64')
+        square = layers.pow(grad, 2.0)
+        local_norm_var = layers.reduce_sum(input=square)
         context[self.group_name].append(local_norm_var)
 
         self.context = context
@@ -282,7 +282,6 @@ class GradientClipByGlobalNorm(BaseGradientClipAttr):
         if group_scale_name not in self.context:
             group_norm_var = layers.sums(input=self.context[self.group_name])
             group_norm_var = layers.sqrt(x=group_norm_var)
-            group_norm_var = layers.cast(group_norm_var, 'float32')
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = layers.elementwise_div(
                 x=clip_var,
