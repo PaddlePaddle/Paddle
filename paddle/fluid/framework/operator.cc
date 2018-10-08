@@ -602,6 +602,10 @@ class RuntimeInferShapeContext : public InferShapeContext {
       out_lod_tensor->Resize(in_lod_tensor.dims());
       out_lod_tensor->set_layout(in_lod_tensor.layout());
       out_lod_tensor->set_lod(in_lod_tensor.lod());
+    } else {
+      PADDLE_THROW(
+          "Currently, the input type of ShareDimInfo only can be LoDTensor or "
+          "SelectedRows.");
     }
   }
 

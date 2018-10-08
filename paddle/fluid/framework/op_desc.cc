@@ -64,7 +64,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
 
     PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
                    "The type of %s and %s is not the same.", Outputs(out)[j],
-                   GetDim(Inputs(in)[i]));
+                   Inputs(in)[i]);
 
     SetDim(Outputs(out)[j], GetDim(Inputs(in)[i]));
   }
