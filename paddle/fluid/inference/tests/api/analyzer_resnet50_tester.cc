@@ -16,16 +16,13 @@
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
 #include <gtest/gtest.h>
-#include <algorithm>
-#include <cmath>
-#include <opencv2/opencv.hpp>
 #include <random>
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
-#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/inference/tests/api/data_reader.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DEFINE_string(infer_model, "", "Directory of the inference model.");
@@ -44,178 +41,6 @@ DEFINE_bool(debug_display_images, false, "Show images in windows for debug.");
 DECLARE_bool(profile);
 
 namespace paddle {
-
-struct DataReader {
-  explicit DataReader(const std::string& data_list_path,
-                      const std::string& data_dir_path, int width, int height,
-                      int channels, bool convert_to_rgb)
-      : data_list_path(data_list_path),
-        data_dir_path(data_dir_path),
-        file(std::ifstream(data_list_path)),
-        width(width),
-        height(height),
-        channels(channels),
-        convert_to_rgb(convert_to_rgb) {
-    if (!file.is_open()) {
-      throw std::invalid_argument("Cannot open data list file " +
-                                  data_list_path);
-    }
-
-    if (data_dir_path.empty()) {
-      throw std::invalid_argument(
-          "Data directory must be set to use imagenet.");
-    }
-
-    if (channels != 3) {
-      throw std::invalid_argument("Only 3 channel image loading supported");
-    }
-
-    if (!(width == height && width == 224)) {
-      std::stringstream ss;
-      ss << "Width and heigth must be both 224 because this reader is for "
-            "validation which does resize of smaller edge to 256 and "
-            "center crop of (224, 224). They are: ("
-         << width << ", " << height << ")." << std::endl;
-      throw std::invalid_argument(ss.str());
-    }
-  }
-
-  // return true if separator works or false otherwise
-  bool SetSeparator(char separator) {
-    sep = separator;
-
-    std::string line;
-    auto position = file.tellg();
-    std::getline(file, line);
-    file.clear();
-    file.seekg(position);
-
-    // test out
-    std::vector<std::string> pieces;
-    inference::split(line, separator, &pieces);
-
-    return (pieces.size() == 2);
-  }
-
-  bool NextBatch(float* input, int64_t* label, int batch_size,
-                 bool debug_display_images) {
-    std::string line;
-
-    for (int i = 0; i < batch_size; i++) {
-      if (!std::getline(file, line)) return false;
-
-      std::vector<std::string> pieces;
-      inference::split(line, sep, &pieces);
-      if (pieces.size() != 2) {
-        std::stringstream ss;
-        ss << "invalid number of separators '" << sep << "' found in line " << i
-           << ":'" << line << "' of file " << data_list_path;
-        throw std::runtime_error(ss.str());
-      }
-
-      auto filename = data_dir_path + pieces.at(0);
-      label[i] = std::stoi(pieces.at(1));
-
-      cv::Mat image = cv::imread(filename, cv::IMREAD_COLOR);
-
-      if (image.data == nullptr) {
-        std::string error_msg = "Couldn't open file " + filename;
-        throw std::runtime_error(error_msg);
-      }
-
-      if (convert_to_rgb) {
-        cv::cvtColor(image, image, CV_BGR2RGB);
-      }
-
-      if (debug_display_images)
-        cv::imshow(std::to_string(i) + " input image", image);
-
-      cv::Mat image_resized = resize_short(image, width);
-      cv::Mat image_cropped = center_crop_image(image_resized, width, height);
-
-      cv::Mat fimage;
-      image_cropped.convertTo(fimage, CV_32FC3);
-
-      fimage /= 255.f;
-
-      cv::Scalar mean(0.406f, 0.456f, 0.485f);
-      cv::Scalar std(0.225f, 0.224f, 0.229f);
-
-      if (convert_to_rgb) {
-        std::swap(mean[0], mean[2]);
-        std::swap(std[0], std[2]);
-      }
-
-      std::vector<cv::Mat> fimage_channels;
-      cv::split(fimage, fimage_channels);
-
-      for (int c = 0; c < channels; c++) {
-        fimage_channels[c] -= mean[c];
-        fimage_channels[c] /= std[c];
-        for (int row = 0; row < fimage.rows; ++row) {
-          const float* fimage_begin = fimage_channels[c].ptr<const float>(row);
-          const float* fimage_end = fimage_begin + fimage.cols;
-          std::copy(fimage_begin, fimage_end,
-                    input + row * fimage.cols + c * fimage.cols * fimage.rows +
-                        i * 3 * fimage.cols * fimage.rows);
-        }
-      }
-    }
-    return true;
-  }
-
- private:
-  cv::Mat center_crop_image(cv::Mat img, int width, int height) {
-    auto w_start = (img.cols - width) / 2;
-    auto h_start = (img.rows - height) / 2;
-
-    cv::Rect roi(w_start, h_start, width, height);
-    return img(roi);
-  }
-
-  cv::Mat resize_short(cv::Mat img, int target_size) {
-    auto percent =
-        static_cast<float>(target_size) / std::min(img.cols, img.rows);
-    auto resized_width = static_cast<int>(round(img.cols * percent));
-    auto resized_height = static_cast<int>(round(img.rows * percent));
-    cv::Mat resized_img;
-    cv::resize(img, resized_img, cv::Size(resized_width, resized_height), 0, 0,
-               cv::INTER_LANCZOS4);
-    return resized_img;
-  }
-
-  std::string data_list_path;
-  std::string data_dir_path;
-  std::ifstream file;
-  int width;
-  int height;
-  int channels;
-  bool convert_to_rgb;
-  char sep{'\t'};
-};
-
-void drawImages(float* input, bool is_rgb) {
-  if (FLAGS_debug_display_images) {
-    for (int b = 0; b < FLAGS_batch_size; b++) {
-      std::vector<cv::Mat> fimage_channels;
-      for (int c = 0; c < FLAGS_channels; c++) {
-        fimage_channels.emplace_back(
-            cv::Size(FLAGS_width, FLAGS_height), CV_32FC1,
-            input + FLAGS_width * FLAGS_height * c +
-                FLAGS_width * FLAGS_height * FLAGS_channels * b);
-      }
-      cv::Mat mat;
-      if (is_rgb) {
-        std::swap(fimage_channels[0], fimage_channels[2]);
-      }
-      cv::merge(fimage_channels, mat);
-      cv::imshow(std::to_string(b) + " output image", mat);
-    }
-    std::cout << "Press any key in image window or close it to continue"
-              << std::endl;
-    cv::waitKey(0);
-  }
-}
 
 template <typename T>
 void fill_data(T* data, unsigned int count) {
@@ -415,7 +240,10 @@ void Main() {
       }
     }
 
-    drawImages(static_cast<float*>(input.data.data()), convert_to_rgb);
+    if (FLAGS_debug_display_images)
+      DataReader::drawImages(static_cast<float*>(input.data.data()),
+                             convert_to_rgb, FLAGS_batch_size, FLAGS_channels,
+                             FLAGS_width, FLAGS_height);
 
     if (i == FLAGS_skip_batch_num) {
       timer_total.tic();
