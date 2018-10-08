@@ -34,7 +34,6 @@ class ReduceSumKernel : public framework::OpKernel<T> {
     auto* input = context.Input<Tensor>("X");
     auto* output = context.Output<Tensor>("Out");
     output->mutable_data<T>(context.GetPlace());
-
     if (input->numel() == 1) {
       auto out_dims = output->dims();
       framework::TensorCopy(*input, context.GetPlace(), output);
