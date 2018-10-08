@@ -6137,7 +6137,7 @@ def stack(x, axis=0):
     if not isinstance(x, list) and not isinstance(x, tuple):
         x = [x]
 
-    out = helper.create_tmp_variable(x[0].dtype)
+    out = helper.create_tmp_variable(dtype=x[0].dtype)
     helper.append_op(
         type='stack', inputs={'X': x}, outputs={'Y': out},
         attrs={'axis': axis})
@@ -6174,8 +6174,8 @@ def unstack(x, axis=0, num=None):
             num = x.shape[axis]
 
     outs = []
-    for _ in num:
-        outs.append(helper.create_tmp_variable(x.dtype))
+    for _ in xrange(num):
+        outs.append(helper.create_tmp_variable(dtype=x.dtype))
 
     helper.append_op(
         type='unstack',
