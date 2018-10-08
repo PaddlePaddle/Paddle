@@ -39,7 +39,7 @@ class TestDistW2V2x2Async(TestDistBase):
         self._sync_mode = False
 
     def test_dist_train(self):
-        self.check_with_place("dist_word2vec.py", delta=1)
+        self.check_with_place("dist_word2vec.py", delta=100)
 
 
 if __name__ == "__main__":

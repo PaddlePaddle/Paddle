@@ -80,15 +80,15 @@ std::unique_ptr<ir::Graph> ReferenceCountPass::ApplyImpl(
       // This is weird but there is really some variables without var_desc
       // in computation_op
       if (var_desc == nullptr) {
-        if (compute_op->Node()->Op()->Block()->FindVar(var_name) == nullptr)
-          continue;
-      } else {
-        if (var_desc->Persistable()) continue;
-        auto var_type = var_desc->Proto()->type().type();
-        if (var_type != proto::VarType::LOD_TENSOR &&
-            var_type != proto::VarType::SELECTED_ROWS) {
-          continue;
-        }
+        var_desc = compute_op->Node()->Op()->Block()->FindVar(var_name);
+        if (var_desc == nullptr) continue;
+      }
+
+      if (var_desc->Persistable()) continue;
+      auto var_type = var_desc->Proto()->type().type();
+      if (var_type != proto::VarType::LOD_TENSOR &&
+          var_type != proto::VarType::SELECTED_ROWS) {
+        continue;
       }
 
       // compute op only runs in one device

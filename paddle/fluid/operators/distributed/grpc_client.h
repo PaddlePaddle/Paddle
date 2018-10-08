@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <time.h>
+#include <atomic>
 
 #include <chrono>              // NOLINT
 #include <condition_variable>  // NOLINT
