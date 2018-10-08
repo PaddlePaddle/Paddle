@@ -11,7 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+''' Plot data 
+    plot data as a curve figure
+    feed data by using append function
+    draw the figure by using plot function	
+'''
 import os
 
 
@@ -50,6 +54,11 @@ class Ploter(object):
         return self.__disable_plot__ == "True"
 
     def append(self, title, step, value):
+        '''Feed data
+	:param title: the title of the figure
+	:param step: x_axis
+	:param value: y_axis
+	'''
         assert isinstance(title, basestring)
         assert self.__plot_data__.has_key(title)
         data = self.__plot_data__[title]
@@ -57,6 +66,9 @@ class Ploter(object):
         data.append(step, value)
 
     def plot(self, path=None):
+        '''Plot data
+	:param path: save figure path   
+	'''
         if self.__plot_is_disabled__():
             return
 
