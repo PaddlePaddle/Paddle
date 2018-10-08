@@ -36,8 +36,13 @@ void* GetVarPayLoad(const std::string varname, int64_t size) {
     return data;
   }
 #endif
+
+#ifdef PADDLE_WITH_CUDA
   platform::CUDAPinnedPlace cuda_pinned;
   return memory::Alloc(cuda_pinned, size);
+#else
+  return nullptr;
+#endif
 }
 
 void GetTensorPayload(framework::Variable* var,
