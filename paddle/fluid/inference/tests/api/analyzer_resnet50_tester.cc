@@ -133,15 +133,15 @@ void Main() {
     return sum;
   };
 
-  // define input: input
+  // define input: data
   std::vector<int> shape;
   shape.push_back(FLAGS_batch_size);
   shape.push_back(FLAGS_channels);
   shape.push_back(FLAGS_height);
   shape.push_back(FLAGS_width);
-  paddle::PaddleTensor input;
-  input.name = "xx";
-  input.shape = shape;
+  paddle::PaddleTensor input_data;
+  input_data.name = "xx";
+  input_data.shape = shape;
 
   // define input: label
   int label_size = FLAGS_batch_size;
@@ -161,10 +161,10 @@ void Main() {
   // Read first batch
   if (FLAGS_use_fake_data) {
     // create fake data
-    input.data.Resize(count(shape) * sizeof(float));
-    fill_data<float>(static_cast<float*>(input.data.data()), count(shape));
+    input_data.data.Resize(count(shape) * sizeof(float));
+    fill_data<float>(static_cast<float*>(input_data.data.data()), count(shape));
 
-    input.dtype = paddle::PaddleDType::FLOAT32;
+    input_data.dtype = paddle::PaddleDType::FLOAT32;
 
     std::cout << std::endl
               << "Executing model: " << FLAGS_infer_model << std::endl
@@ -181,10 +181,10 @@ void Main() {
                                 FLAGS_height, FLAGS_channels, convert_to_rgb));
     if (!reader->SetSeparator('\t')) reader->SetSeparator(' ');
     // get imagenet data and label
-    input.data.Resize(count(shape) * sizeof(float));
-    input.dtype = PaddleDType::FLOAT32;
+    input_data.data.Resize(count(shape) * sizeof(float));
+    input_data.dtype = PaddleDType::FLOAT32;
 
-    reader->NextBatch(static_cast<float*>(input.data.data()),
+    reader->NextBatch(static_cast<float*>(input_data.data.data()),
                       static_cast<int64_t*>(input_label.data.data()),
                       FLAGS_batch_size, FLAGS_debug_display_images);
   }
@@ -231,7 +231,7 @@ void Main() {
   for (int i = 0; i < FLAGS_iterations + FLAGS_skip_batch_num; i++) {
     if (i > 0) {
       if (!FLAGS_use_fake_data) {
-        if (!reader->NextBatch(static_cast<float*>(input.data.data()),
+        if (!reader->NextBatch(static_cast<float*>(input_data.data.data()),
                                static_cast<int64_t*>(input_label.data.data()),
                                FLAGS_batch_size, FLAGS_debug_display_images)) {
           std::cout << "No more full batches. stopping.";
@@ -241,7 +241,7 @@ void Main() {
     }
 
     if (FLAGS_debug_display_images)
-      DataReader::drawImages(static_cast<float*>(input.data.data()),
+      DataReader::drawImages(static_cast<float*>(input_data.data.data()),
                              convert_to_rgb, FLAGS_batch_size, FLAGS_channels,
                              FLAGS_width, FLAGS_height);
 
@@ -251,8 +251,9 @@ void Main() {
         paddle::platform::ResetProfiler();
       }
     }
+    std::vector<PaddleTensor> input = {input_data, input_label};
     timer.tic();
-    CHECK(predictor->Run({input, input_label}, &output_slots));
+    CHECK(predictor->Run(input, &output_slots));
     double batch_time = timer.toc() / 1000;
     CHECK_GE(output_slots.size(), 3UL);
     CHECK_EQ(output_slots[1].lod.size(), 0UL);
