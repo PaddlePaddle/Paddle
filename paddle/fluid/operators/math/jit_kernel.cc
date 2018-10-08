@@ -35,23 +35,6 @@ std::shared_ptr<const Kernel> KernelPool::Get(const std::string& key) const {
   return kers_.at(key);
 }
 
-template <>
-std::shared_ptr<const LSTMKernel<float>>
-KernelPool::Get<LSTMKernel<float>, int, const std::string&, const std::string&,
-                const std::string&>(int d, const std::string& act_gate,
-                                    const std::string& act_cand,
-                                    const std::string& act_cell) {
-  std::string key =
-      "lstmf" + std::to_string(d) + act_gate + act_cand + act_cell;
-  if (kers_.find(key) == kers_.end()) {
-    auto p =
-        std::make_shared<LSTMKernel<float>>(d, act_gate, act_cand, act_cell);
-    kers_.insert({key, std::dynamic_pointer_cast<Kernel>(p)});
-    return p;
-  }
-  return std::dynamic_pointer_cast<const LSTMKernel<float>>(kers_.at(key));
-}
-
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators
