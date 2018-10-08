@@ -27,6 +27,9 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->device = 0;
   cfg->enable_ir_optim = true;
   cfg->specify_input_name = true;
+#ifdef PADDLE_WITH_MKLDNN
+  cfg->_use_mkldnn = true;
+#endif
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
