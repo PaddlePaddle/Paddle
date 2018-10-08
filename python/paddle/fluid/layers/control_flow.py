@@ -1570,6 +1570,10 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
+    
+    NOTES:
+        Currently it is not supported that setting is_sparse to True of any 
+        layers within DynamicRNN.
     """
     BEFORE_RNN = 0
     IN_RNN = 1
