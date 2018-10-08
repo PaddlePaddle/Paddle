@@ -89,7 +89,7 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
         .SetDefault(false);
     AddComment(string::Sprintf(R"DOC(
-Limited Elementwise %s Operator
+Elementwise %s Operator
 
 The equation is:
 

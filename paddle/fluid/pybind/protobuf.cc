@@ -214,7 +214,6 @@ void BindVarDsec(pybind11::module *m) {
       .def("set_shapes", &pd::VarDesc::SetShapes)
       .def("set_dtype", &pd::VarDesc::SetDataType)
       .def("set_dtypes", &pd::VarDesc::SetDataTypes)
-      .def("set_capacity", &pd::VarDesc::SetCapacity)
       .def("shape", &pd::VarDesc::GetShape,
            pybind11::return_value_policy::reference)
       .def("shapes", &pd::VarDesc::GetShapes,
@@ -251,7 +250,6 @@ void BindVarDsec(pybind11::module *m) {
       .value("STEP_SCOPES", pd::proto::VarType::STEP_SCOPES)
       .value("LOD_RANK_TABLE", pd::proto::VarType::LOD_RANK_TABLE)
       .value("LOD_TENSOR_ARRAY", pd::proto::VarType::LOD_TENSOR_ARRAY)
-      .value("CHANNEL", pd::proto::VarType::CHANNEL)
       .value("PLACE_LIST", pd::proto::VarType::PLACE_LIST)
       .value("READER", pd::proto::VarType::READER)
       .value("RAW", pd::proto::VarType::RAW);
@@ -285,12 +283,12 @@ void BindOpDesc(pybind11::module *m) {
       .def("set_output", &pd::OpDesc::SetOutput)
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
-      .def("rename_input", &pd::OpDesc::RenameInput)
-      .def("rename_output", &pd::OpDesc::RenameOutput)
+      .def("_rename_input", &pd::OpDesc::RenameInput)
+      .def("_rename_output", &pd::OpDesc::RenameOutput)
       .def("has_attr", &pd::OpDesc::HasAttr)
       .def("attr_type", &pd::OpDesc::GetAttrType)
       .def("attr_names", &pd::OpDesc::AttrNames)
-      .def("set_attr", &pd::OpDesc::SetAttr)
+      .def("_set_attr", &pd::OpDesc::SetAttr)
       .def("attr", &pd::OpDesc::GetAttr)
       .def("set_block_attr", &pd::OpDesc::SetBlockAttr)
       .def("set_blocks_attr", &pd::OpDesc::SetBlocksAttr)
@@ -300,8 +298,8 @@ void BindOpDesc(pybind11::module *m) {
              std::string ser(seriralized);
              self.SetAttr(name, ser);
            })
-      .def("block_attr_id", &pd::OpDesc::GetBlockAttrId)
-      .def("blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
+      .def("_block_attr_id", &pd::OpDesc::GetBlockAttrId)
+      .def("_blocks_attr_ids", &pd::OpDesc::GetBlocksAttrIds)
       .def("check_attrs", &pd::OpDesc::CheckAttrs)
       .def("infer_shape", &pd::OpDesc::InferShape)
       .def("infer_var_type", &pd::OpDesc::InferVarType)

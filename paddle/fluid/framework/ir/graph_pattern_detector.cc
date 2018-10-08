@@ -638,11 +638,6 @@ PDNode *patterns::ConvReLU::operator()(
                               ->AsInput()
                               ->assert_is_persistable_var()
                               ->assert_is_op_input("conv2d", "Filter");
-  // Bias
-  auto *conv_bias_var = pattern->NewNode(conv_bias_repr())
-                            ->AsInput()
-                            ->assert_is_persistable_var()
-                            ->assert_is_op_input("conv2d", "Bias");
   // intermediate variable, will be removed in the IR after fuse.
   auto *conv_out_var = pattern->NewNode(conv_out_repr())
                            ->AsIntermediate()
@@ -653,8 +648,7 @@ PDNode *patterns::ConvReLU::operator()(
                            ->AsOutput()
                            ->assert_is_op_output("relu");
 
-  conv_op->LinksFrom({conv_input, conv_weight_var, conv_bias_var})
-      .LinksTo({conv_out_var});
+  conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
   relu_op->LinksFrom({conv_out_var}).LinksTo({relu_out_var});
   return relu_out_var;
 }
@@ -696,6 +690,24 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
     elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
     return fc_out;
   }
+}
+
+PDNode *patterns::Embedding::operator()(PDNode *x) {
+  x->assert_is_op_input("lookup_table", "Ids");
+  auto *lookup_table_op =
+      pattern->NewNode(lookup_table_repr())->assert_is_op("lookup_table");
+#define NEW_NODE(arg__, io__)                    \
+  auto *arg__ = pattern->NewNode(arg__##_repr()) \
+                    ->assert_is_op_##io__("lookup_table", #arg__);
+
+  NEW_NODE(W, input);
+
+  NEW_NODE(Out, output);
+#undef NEW_NODE
+
+  lookup_table_op->LinksFrom({x, W});
+  lookup_table_op->LinksTo({Out});
+  return Out;
 }
 
 PDNode *patterns::LSTM::operator()(PDNode *x) {

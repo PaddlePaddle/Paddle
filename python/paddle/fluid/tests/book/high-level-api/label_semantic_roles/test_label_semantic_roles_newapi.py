@@ -16,6 +16,16 @@ from __future__ import print_function
 
 import paddle
 import paddle.fluid as fluid
+import sys
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import numpy as np
 
 WORD_DICT, VERB_DICT, LABEL_DICT = paddle.dataset.conll05.get_dict()
@@ -149,7 +159,7 @@ def optimize_func():
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program, place=place, optimizer_func=optimize_func)
 
     feed_order = [
@@ -164,7 +174,7 @@ def train(use_cuda, train_program, params_dirname):
     #        place)
 
     def event_handler(event):
-        if isinstance(event, fluid.EndEpochEvent):
+        if isinstance(event, EndEpochEvent):
             test_reader = paddle.batch(
                 paddle.dataset.conll05.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
@@ -184,7 +194,7 @@ def train(use_cuda, train_program, params_dirname):
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
 
-        elif isinstance(event, fluid.EndStepEvent):
+        elif isinstance(event, EndStepEvent):
             print("Step {0}, Epoch {1} Metrics {2}".format(
                 event.step, event.epoch, list(map(np.array, event.metrics))))
             if event.step == 1:  # Run 2 iterations to speed CI
@@ -204,7 +214,7 @@ def train(use_cuda, train_program, params_dirname):
 
 def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         inference_program, param_path=params_dirname, place=place)
 
     # Setup input by creating LoDTensor to represent sequence of words.

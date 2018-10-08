@@ -26,6 +26,7 @@ from .layer_helper import LayerHelper
 from .regularizer import append_regularization_ops
 from .clip import append_gradient_clip_ops, error_clip_callback
 from contextlib import contextmanager
+from .layers import ops
 
 __all__ = [
     'SGD', 'Momentum', 'Adagrad', 'Adam', 'Adamax', 'DecayedAdagrad', 'Ftrl',
@@ -1301,7 +1302,7 @@ class ModelAverage(Optimizer):
             x=tmp, dtype='float32' if self._dtype == None else self._dtype)
         sum = layers.cast(
             x=sum, dtype='float32' if self._dtype == None else self._dtype)
-        layers.elementwise_div(x=sum, y=tmp, out=param)
+        ops._elementwise_div(x=sum, y=tmp, out=param)
 
     def _add_average_restore_op(self, block, param_grad):
         param = block._clone_variable(param_grad[0])
