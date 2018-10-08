@@ -268,13 +268,122 @@ INTRI16_FLOAT(jit::avx512f);
 
 #undef INTRI8_FLOAT
 #undef INTRI16_FLOAT
+
+/* VRelu JitKernel */
+template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+class VReluKernelImpl : public VReluKernel<T> {
+ public:
+  explicit VReluKernelImpl(int d) : VReluKernel<T>() { this->num_ = d; }
+  void Compute(const T* x, T* y) const override {
+    for (int i = 0; i < this->num_; ++i) {
+      y[i] = x[i] > 0 ? x[i] : 0;
+    }
+  }
+};
+
+#define INTRI8_FLOAT(isa)                                                   \
+  template <>                                                               \
+  void VReluKernelImpl<float, isa, kEQ8>::Compute(const float* x, float* y) \
+      const {                                                               \
+    __m256 tmp = _mm256_loadu_ps(x);                                        \
+    tmp = _mm256_max_ps(tmp, _mm256_setzero_ps());                          \
+    _mm256_storeu_ps(y, tmp);                                               \
+  }
+
+#define INTRI16_FLOAT(isa)                                                   \
+  template <>                                                                \
+  void VReluKernelImpl<float, isa, kEQ16>::Compute(const float* x, float* y) \
+      const {                                                                \
+    __m256 zeros = _mm256_setzero_ps();                                      \
+    __m256 tmp0 = _mm256_loadu_ps(x);                                        \
+    __m256 tmp1 = _mm256_loadu_ps(x + 8);                                    \
+    tmp0 = _mm256_max_ps(tmp0, zeros);                                       \
+    tmp1 = _mm256_max_ps(tmp1, zeros);                                       \
+    _mm256_storeu_ps(y, tmp0);                                               \
+    _mm256_storeu_ps(y + 8, tmp1);                                           \
+  }
+
+#define INTRI_GT8LT16_FLOAT(isa)                                        \
+  template <>                                                           \
+  VReluKernelImpl<float, isa, kGT8LT16>::VReluKernelImpl(int d)         \
+      : VReluKernel<float>() {                                          \
+    this->num_ = d;                                                     \
+    this->end_ = AVX_FLOAT_BLOCK;                                       \
+    this->rest_ = d - AVX_FLOAT_BLOCK;                                  \
+  }                                                                     \
+  template <>                                                           \
+  void VReluKernelImpl<float, isa, kGT8LT16>::Compute(const float* x,   \
+                                                      float* y) const { \
+    __m256 zeros = _mm256_setzero_ps();                                 \
+    __m256 tmp0 = _mm256_loadu_ps(x);                                   \
+    __m256 tmp1 = _mm256_loadu_ps(x + this->rest_);                     \
+    tmp0 = _mm256_max_ps(tmp0, zeros);                                  \
+    tmp1 = _mm256_max_ps(tmp1, zeros);                                  \
+    _mm256_storeu_ps(y, tmp0);                                          \
+    _mm256_storeu_ps(y + this->rest_, tmp1);                            \
+  }
+
+#define INTRI_GT16_FLOAT(isa)                                                \
+  template <>                                                                \
+  VReluKernelImpl<float, isa, kGT16>::VReluKernelImpl(int d)                 \
+      : VReluKernel<float>() {                                               \
+    this->num_ = d;                                                          \
+    this->end_ = d - d % AVX_FLOAT_BLOCK;                                    \
+    this->rest_ = d - AVX_FLOAT_BLOCK;                                       \
+  }                                                                          \
+  template <>                                                                \
+  void VReluKernelImpl<float, isa, kGT16>::Compute(const float* x, float* y) \
+      const {                                                                \
+    __m256 zeros = _mm256_setzero_ps();                                      \
+    for (int i = 0; i < this->end_; i += AVX_FLOAT_BLOCK) {                  \
+      __m256 tmp = _mm256_loadu_ps(x + i);                                   \
+      tmp = _mm256_max_ps(tmp, zeros);                                       \
+      _mm256_storeu_ps(y + i, tmp);                                          \
+    }                                                                        \
+    __m256 tmp = _mm256_loadu_ps(x + this->rest_);                           \
+    tmp = _mm256_max_ps(tmp, zeros);                                         \
+    _mm256_storeu_ps(y + this->rest_, tmp);                                  \
+  }
+
+#ifdef __AVX__
+INTRI8_FLOAT(jit::avx);
+INTRI16_FLOAT(jit::avx);
+INTRI_GT8LT16_FLOAT(jit::avx);
+INTRI_GT16_FLOAT(jit::avx);
+#endif
+#ifdef __AVX2__
+INTRI8_FLOAT(jit::avx2);
+INTRI16_FLOAT(jit::avx2);
+INTRI_GT8LT16_FLOAT(jit::avx2);
+INTRI_GT16_FLOAT(jit::avx2);
+#endif
+#ifdef __AVX512F__
+// TODO(TJ): refine avx512
+INTRI8_FLOAT(jit::avx512f);
+INTRI16_FLOAT(jit::avx512f);
+INTRI_GT8LT16_FLOAT(jit::avx512f);
+INTRI_GT16_FLOAT(jit::avx512f);
+#endif
+
+#undef INTRI8_FLOAT
+#undef INTRI16_FLOAT
 #undef INTRI_GT8LT16_FLOAT
 #undef INTRI_GT16_FLOAT
+
+/* An empty JitKernel */
+template <typename T, platform::jit::cpu_isa_t isa, jit_block>
+class VIdentityKernelImpl : public VIdentityKernel<T> {
+ public:
+  explicit VIdentityKernelImpl(int d) : VIdentityKernel<T>() { this->num_ = d; }
+  void Compute(const T* x, T* y) const override {}
+};
 
 REGISTER_JITKERNEL(vmul, VMulKernel);
 REGISTER_JITKERNEL(vadd, VAddKernel);
 REGISTER_JITKERNEL(vscal, VScalKernel);
 REGISTER_JITKERNEL(vaddb, VAddBiasKernel);
+REGISTER_JITKERNEL(vrelu, VReluKernel);
+REGISTER_JITKERNEL(videntity, VIdentityKernel);
 
 }  // namespace jitkernel
 }  // namespace math

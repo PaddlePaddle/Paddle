@@ -87,19 +87,37 @@ class VAddBiasKernel : public Kernel {
 };
 
 template <typename T>
-class VExpKernel : public Kernel {
+class VActKernel : public Kernel {
  public:
   virtual void Compute(const T *x, T *y) const = 0;
 };
 
 template <typename T>
-class VSigmoidKernel : public Kernel {
+class VReluKernel : public VActKernel<T> {
  public:
   virtual void Compute(const T *x, T *y) const = 0;
 };
 
 template <typename T>
-class VTanhKernel : public Kernel {
+class VIdentityKernel : public VActKernel<T> {
+ public:
+  virtual void Compute(const T *x, T *y) const = 0;
+};
+
+template <typename T>
+class VExpKernel : public VActKernel<T> {
+ public:
+  virtual void Compute(const T *x, T *y) const = 0;
+};
+
+template <typename T>
+class VSigmoidKernel : public VActKernel<T> {
+ public:
+  virtual void Compute(const T *x, T *y) const = 0;
+};
+
+template <typename T>
+class VTanhKernel : public VActKernel<T> {
  public:
   virtual void Compute(const T *x, T *y) const = 0;
 };
@@ -107,16 +125,7 @@ class VTanhKernel : public Kernel {
 template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  explicit LSTMKernel(int d, const std::string &act_gate,
-                      const std::string &act_cand, const std::string &act_cell);
-
-  void (*jit_ker)(T *, const T *, T *, T *);
-  std::function<void(T *, const T *, T *, T *)> ComputeCtHt, ComputeCtHt_NoC0H0;
-
- private:
-  int d_, d2_, d3_;
-  std::function<void(const int, const T *, T *)> act_gate_, act_cell_,
-      act_cand_;
+  virtual void ComputeCtHt(T *gates, const T *ct_1, T *ct, T *ht) const = 0;
 };
 
 }  // namespace jitkernel

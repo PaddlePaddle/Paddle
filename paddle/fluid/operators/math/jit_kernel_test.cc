@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/math/jit_kernel.h"
 #include <sys/time.h>
+#include <cmath>    // for exp
 #include <cstring>  // for memcpy
 #include <string>
 #include <vector>
@@ -45,6 +46,59 @@ void RandomVec(const int n, T* a, const T lower = static_cast<T>(-20.f),
   std::uniform_real_distribution<double> uniform_dist(0, 1);
   for (int i = 0; i < n; ++i) {
     a[i] = static_cast<T>(uniform_dist(rng) * (upper - lower) + lower);
+  }
+}
+
+void vrelu_ref(const int n, const float* x, float* y) {
+  for (int i = 0; i < n; ++i) {
+    y[i] = x[i] > 0.f ? x[i] : 0.f;
+  }
+}
+
+#if defined __AVX__ || defined __AVX2__
+void vrelu_intri8(const int n, const float* x, float* y) {
+  __m256 tmp = _mm256_loadu_ps(x);
+  tmp = _mm256_max_ps(tmp, _mm256_setzero_ps());
+  _mm256_storeu_ps(y, tmp);
+}
+#endif
+
+TEST(JitKernel, vrelu) {
+  namespace jit = paddle::operators::math::jitkernel;
+  for (int d : {7, 8, 15, 16, 30, 256, 512}) {
+    std::vector<float> x(d);
+    std::vector<float> zref(d), ztgt(d);
+    RandomVec<float>(d, x.data(), -10.f, 1.f);
+    const auto& ker =
+        jit::KernelPool::Instance().template Get<jit::VReluKernel<float>>(d);
+    const float* x_data = x.data();
+    float* ztgt_data = ztgt.data();
+    float* zref_data = zref.data();
+    auto trefs = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      vrelu_ref(d, x_data, zref_data);
+    }
+    auto trefe = GetCurrentUS();
+#if defined __AVX__ || defined __AVX2__
+    if (d == 8) {
+      auto si0 = GetCurrentUS();
+      for (int i = 0; i < repeat; ++i) {
+        vrelu_intri8(d, x_data, zref_data);
+      }
+      auto si1 = GetCurrentUS();
+      VLOG(3) << "Vec size 8 intr takes: " << (si1 - si0) / repeat;
+    }
+#endif
+    auto ttgts = GetCurrentUS();
+    for (int i = 0; i < repeat; ++i) {
+      ker->Compute(x_data, ztgt_data);
+    }
+    auto ttgte = GetCurrentUS();
+    VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
+            << " us, tgt takes: " << (ttgte - ttgts) / repeat;
+    for (int i = 0; i < d; ++i) {
+      EXPECT_NEAR(ztgt_data[i], zref_data[i], 1e-3);
+    }
   }
 }
 
