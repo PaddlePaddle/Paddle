@@ -73,7 +73,7 @@ TEST(JitKernel, vaddbias) {
     auto trefe = GetCurrentUS();
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, a, x_data, ztgt_data);
+      ker->Compute(a, x_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
 
@@ -99,7 +99,7 @@ void vexp_mkl(const int n, const float* x, float* y) {
 
 TEST(JitKernel, vexp) {
   namespace jit = paddle::operators::math::jitkernel;
-  for (int d : {7, 8, 15, 16, 30, 128}) {
+  for (int d : {7, 8, 15, 16, 30, 128, 256}) {
     std::vector<float> x(d);
     std::vector<float> zref(d), ztgt(d);
     RandomVec<float>(d, x.data(), -2.f, 2.f);
@@ -124,7 +124,7 @@ TEST(JitKernel, vexp) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, x_data, ztgt_data);
+      ker->Compute(x_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
 
@@ -164,7 +164,7 @@ void vsigmoid_better(
     y[i] = (x[i] < min) ? min : ((x[i] > max) ? max : x[i]);
     y[i] = 0.f - y[i];
   }
-  vexp->Compute(n, y, y);
+  vexp->Compute(y, y);
   for (int i = 0; i < n; ++i) {
     y[i] = 1.f / (1.f + y[i]);
   }
@@ -226,10 +226,10 @@ void vtanh_better(
         const paddle::operators::math::jitkernel::VAddBiasKernel<float>>&
         vaddbias,
     const int n, const float* x, float* y) {
-  vscal->Compute(n, 2.f, x, y);
+  vscal->Compute(2.f, x, y);
   vsigmoid->Compute(y, y);
-  vscal->Compute(n, 2.f, y);
-  vaddbias->Compute(n, -1.f, y, y);
+  vscal->Compute(2.f, y);
+  vaddbias->Compute(-1.f, y, y);
 }
 
 TEST(JitKernel, vtanh) {
@@ -359,12 +359,12 @@ TEST(JitKernel, vscal) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, a, x_data, ztgt_data);
+      ker->Compute(a, x_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
     auto ttgts1 = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, a, y_data);
+      ker->Compute(a, y_data);
     }
     auto ttgte1 = GetCurrentUS();
     VLOG(3) << "Vec size " << d << ": refer takes: " << (trefe - trefs) / repeat
@@ -444,7 +444,7 @@ TEST(JitKernel, vmul) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, x_data, y_data, ztgt_data);
+      ker->Compute(x_data, y_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
 
@@ -523,7 +523,7 @@ TEST(JitKernel, vadd) {
 
     auto ttgts = GetCurrentUS();
     for (int i = 0; i < repeat; ++i) {
-      ker->Compute(d, x_data, y_data, ztgt_data);
+      ker->Compute(x_data, y_data, ztgt_data);
     }
     auto ttgte = GetCurrentUS();
 
