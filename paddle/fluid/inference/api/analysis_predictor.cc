@@ -24,7 +24,6 @@
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
-#include "paddle/fluid/inference/api/timer.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -72,6 +71,11 @@ bool AnalysisPredictor::Init(
   } else {
     inference_program_ = program;
   }
+
+  if (config_._use_mkldnn) {
+    executor_->EnableMKLDNN(*inference_program_);
+  }
+
   executor_->Prepare(scope_.get(), *inference_program_, 0,
                      config_.use_feed_fetch_ops);
 
@@ -93,6 +97,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to set feed";
     return false;
   }
+
   // Run the inference program
   // if share variables, we need not create variables
   executor_->Run();
