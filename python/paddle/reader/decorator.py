@@ -533,7 +533,7 @@ class Fake(object):
     def __call__(self, reader, data_num):
         def fake_reader():
             if self.data is None:
-                self.data = reader().next()
+                self.data = next(reader())
             while self.yield_num < data_num:
                 yield self.data
                 self.yield_num += 1
