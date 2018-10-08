@@ -211,11 +211,12 @@ class TestFakeReader(unittest.TestCase):
 
         data_num = 100
         fake_reader = paddle.reader.fake(reader, data_num)
-        i = 0
-        for data in fake_reader():
-            self.assertEqual(data, 0)
-            i += 1
-        self.assertEqual(i, data_num)
+        for _ in range(10):
+            i = 0
+            for data in fake_reader():
+                self.assertEqual(data, 0)
+                i += 1
+            self.assertEqual(i, data_num)
 
 
 if __name__ == '__main__':
