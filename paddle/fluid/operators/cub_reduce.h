@@ -295,7 +295,9 @@ void TensorReduce(const framework::Tensor& x, framework::Tensor* y,
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
   if (reduce_num == 1) {
+    auto out_dims = y->dims();
     framework::TensorCopy(x, y->place(), y);
+    y->Resize(out_dims);
     return;
   }
 

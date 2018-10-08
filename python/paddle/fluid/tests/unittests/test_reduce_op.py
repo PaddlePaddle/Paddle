@@ -264,10 +264,10 @@ class TestReduceSumWithNumelOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_sum"
         self.inputs = {'X': np.random.random((1, 1)).astype("float64")}
-        self.attrs = {'dim': [1], 'keep_dim': True}
+        self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
             'Out': self.inputs['X'].sum(axis=tuple(self.attrs['dim']),
-                                        keepdims=True)
+                                        keepdims=False)
         }
 
     def test_check_output(self):
@@ -281,10 +281,10 @@ class TestReduceMeanWithDimOne(OpTest):
     def setUp(self):
         self.op_type = "reduce_mean"
         self.inputs = {'X': np.random.random((10, 1, 1)).astype("float64")}
-        self.attrs = {'dim': [1, 2], 'keep_dim': True}
+        self.attrs = {'dim': [1], 'keep_dim': False}
         self.outputs = {
             'Out': self.inputs['X'].mean(
-                axis=tuple(self.attrs['dim']), keepdims=True)
+                axis=tuple(self.attrs['dim']), keepdims=False)
         }
 
     def test_check_output(self):
@@ -303,6 +303,20 @@ class TestReduceMeanWithNumelOne(OpTest):
             'Out': self.inputs['X'].mean(
                 axis=tuple(self.attrs['dim']), keepdims=True)
         }
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestReduceAll(OpTest):
+    def setUp(self):
+        self.op_type = "reduce_sum"
+        self.inputs = {'X': np.random.random((1, 1, 1)).astype("float64")}
+        self.attrs = {'reduce_all': True, 'keep_dim': False}
+        self.outputs = {'Out': self.inputs['X'].sum()}
 
     def test_check_output(self):
         self.check_output()
