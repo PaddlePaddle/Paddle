@@ -54,19 +54,22 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                       size_t i = 0, size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    PADDLE_ENFORCE(Inputs(in)[i] != framework::kEmptyVarName,
-                   "The %s[%d] is @EMPTY@", in, i);
-    PADDLE_ENFORCE(Outputs(out)[j] != framework::kEmptyVarName,
+    const std::string &input_n = Inputs(in)[i];
+    const std::string &output_n = Outputs(out)[j];
+
+    PADDLE_ENFORCE(input_n != framework::kEmptyVarName, "The %s[%d] is @EMPTY@",
+                   in, i);
+    PADDLE_ENFORCE(output_n != framework::kEmptyVarName,
                    "The %s[%d] is @EMPTY@", out, j);
 
-    auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
-    auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
+    auto *in_var = block_.FindVarRecursive(input_n);
+    auto *out_var = block_.FindVarRecursive(output_n);
 
     PADDLE_ENFORCE(in_var->GetType() == out_var->GetType(),
-                   "The type of %s and %s is not the same.", Inputs(in)[i],
-                   Outputs(out)[j]);
+                   "The type of %s and %s is not the same.", input_n, output_n);
 
-    SetDim(Outputs(out)[j], GetDim(Inputs(in)[i]));
+    SetDim(output_n, GetDim(input_n));
+    out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
   void ShareLoD(const std::string &in, const std::string &out, size_t i = 0,

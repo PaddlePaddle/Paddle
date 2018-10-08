@@ -583,11 +583,14 @@ class RuntimeInferShapeContext : public InferShapeContext {
                       size_t i = 0, size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    const std::string& input_n = Inputs(in)[i];
+    const std::string& output_n = Outputs(out)[j];
+
+    Variable* in_var = scope_.FindVar(input_n);
+    Variable* out_var = scope_.FindVar(output_n);
     PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
-                   "The type of %s and %s is not the same.", Outputs(out)[j],
-                   GetDim(Inputs(in)[i]));
+                   "The type of %s and %s is not the same.", output_n,
+                   GetDim(input_n));
 
     if (in_var->IsType<framework::SelectedRows>()) {
       auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
@@ -605,8 +608,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
     } else {
       PADDLE_THROW(
           "Currently, the input type of ShareDimAndLod only can be LoDTensor "
-          "or "
-          "SelectedRows.");
+          "or SelectedRows.");
     }
   }
 
