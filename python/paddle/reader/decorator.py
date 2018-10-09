@@ -15,7 +15,7 @@
 __all__ = [
     'map_readers', 'buffered', 'compose', 'chain', 'shuffle',
     'ComposeNotAligned', 'firstn', 'xmap_readers', 'PipeReader',
-    'multiprocess_reader'
+    'multiprocess_reader', 'Fake'
 ]
 
 from threading import Thread
@@ -504,3 +504,39 @@ class PipeReader:
                     yield decomp_buff
             else:
                 break
+
+
+class Fake(object):
+    """
+    fake reader will cache the first data it read and yield it out for data_num times.
+    It is used to cache a data from real reader and use it for speed testing.
+
+    :param reader: the origin reader
+    :param data_num: times that this reader will yield data.
+
+    :return: a fake reader.
+
+    Examples:
+        .. code-block:: python
+
+            def reader():
+                for i in range(10):
+                    yield i
+
+            fake_reader = Fake()(reader, 100)
+    """
+
+    def __init__(self):
+        self.data = None
+        self.yield_num = 0
+
+    def __call__(self, reader, data_num):
+        def fake_reader():
+            if self.data is None:
+                self.data = next(reader())
+            while self.yield_num < data_num:
+                yield self.data
+                self.yield_num += 1
+            self.yield_num = 0
+
+        return fake_reader
