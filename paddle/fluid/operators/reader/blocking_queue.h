@@ -31,8 +31,8 @@ class BlockingQueue {
   // is a workaround and a simplified version of framework::Channel as it
   // doesn't support GPU and it implements on buffered blocking queue.
  public:
-  explicit BlockingQueue(size_t capacity)
-      : capacity_(capacity), test_mode_(false), closed_(false) {
+  explicit BlockingQueue(size_t capacity, bool test_mode = false)
+      : capacity_(capacity), test_mode_(test_mode), closed_(false) {
     PADDLE_ENFORCE_GT(
         capacity_, 0,
         "The capacity of a reader::BlockingQueue must be greater than 0.");
