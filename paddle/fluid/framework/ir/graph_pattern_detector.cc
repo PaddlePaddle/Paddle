@@ -864,6 +864,33 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
   }
 }
 
+PDNode *patterns::FCMKLDNN::operator()(paddle::framework::ir::PDNode *x,
+                                       bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("fc", "Input");
+
+  auto *fc_op = pattern->NewNode(fc_repr())->assert_is_op("fc");
+  // Create variables
+  // Filter
+  auto *fc_weight_var = pattern->NewNode(weights_repr())
+                            ->AsInput()
+                            ->assert_is_persistable_var()
+                            ->assert_is_op_input("fc", "W");
+  // Bias
+  auto *fc_bias_var = pattern->NewNode(bias_repr())
+                          ->AsInput()
+                          ->assert_is_persistable_var()
+                          ->assert_is_op_input("fc", "Bias");
+  // Output
+  auto *fc_out_var = pattern->NewNode(output_repr())
+                         ->AsOutput()
+                         ->assert_is_op_output("fc", "Out")
+                         ->assert_is_only_output_of_op("fc");
+
+  fc_op->LinksFrom({x, fc_weight_var, fc_bias_var}).LinksTo({fc_out_var});
+  return fc_out_var;
+}
+
 PDNode *patterns::Embedding::operator()(PDNode *x) {
   x->assert_is_op_input("lookup_table", "Ids");
   auto *lookup_table_op =
