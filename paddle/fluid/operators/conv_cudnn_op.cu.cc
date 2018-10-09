@@ -127,27 +127,14 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     cudnnConvolutionFwdAlgo_t algo;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-
-    CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
-        handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
-        cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
-        workspace_size_limit, &algo));
-
-#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
-    // Tensor core is supported since the volta GPU and
-    // is only enabled when input and filter data are float16
-    if (dev_ctx.GetComputeCapability() >= 70 &&
-        std::type_index(typeid(T)) ==
-            std::type_index(typeid(platform::float16))) {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          cudnn_conv_desc, CUDNN_TENSOR_OP_MATH));
-      // Currently tensor core is only enabled using this algo
+    if (platform::EnableTensorCore(dev_ctx, cudnn_conv_desc)) {
       algo = CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM;
     } else {
-      CUDNN_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(
-          cudnn_conv_desc, CUDNN_DEFAULT_MATH));
+      PADDLE_ENFORCE(platform::dynload::cudnnGetConvolutionForwardAlgorithm(
+          handle, cudnn_input_desc, cudnn_filter_desc, cudnn_conv_desc,
+          cudnn_output_desc, CUDNN_CONVOLUTION_FWD_SPECIFY_WORKSPACE_LIMIT,
+          workspace_size_limit, &algo));
     }
-#endif
 
     // get workspace size able to allocate
     CUDNN_ENFORCE(platform::dynload::cudnnGetConvolutionForwardWorkspaceSize(
@@ -285,6 +272,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
       } else {
         data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
       }
+      if (platform::EnableTensorCore(dev_ctx, cudnn_conv_desc)) {
+        data_algo = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
+      }
 
       CUDNN_ENFORCE(
           platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(
@@ -302,6 +292,9 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
                 CUDNN_CONVOLUTION_BWD_FILTER_SPECIFY_WORKSPACE_LIMIT,
                 workspace_size_limit, &filter_algo));
       } else {
+        filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
+      }
+      if (platform::EnableTensorCore(dev_ctx, cudnn_conv_desc)) {
         filter_algo = CUDNN_CONVOLUTION_BWD_FILTER_ALGO_1;
       }
 
@@ -359,7 +352,8 @@ REGISTER_OP_KERNEL(conv2d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv2d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<double>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>);
 
 REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<float>,
@@ -367,4 +361,5 @@ REGISTER_OP_KERNEL(conv3d, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvOpKernel<plat::float16>);
 REGISTER_OP_KERNEL(conv3d_grad, CUDNN, plat::CUDAPlace,
                    paddle::operators::CUDNNConvGradOpKernel<float>,
-                   paddle::operators::CUDNNConvGradOpKernel<double>);
+                   paddle::operators::CUDNNConvGradOpKernel<double>,
+                   paddle::operators::CUDNNConvGradOpKernel<plat::float16>)

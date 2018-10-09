@@ -15,6 +15,7 @@ limitations under the License. */
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -60,6 +61,7 @@ class GPUGaussianRandomKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(gaussian_random,
                         paddle::operators::GPUGaussianRandomKernel<float>,
                         paddle::operators::GPUGaussianRandomKernel<double>);

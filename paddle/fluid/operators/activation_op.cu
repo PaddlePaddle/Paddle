@@ -26,6 +26,8 @@ namespace plat = paddle::platform;
       act_type##_grad, ops::ActivationGradKernel<plat::CUDADeviceContext,   \
                                                  ops::grad_functor<float>>, \
       ops::ActivationGradKernel<plat::CUDADeviceContext,                    \
-                                ops::grad_functor<double>>);
+                                ops::grad_functor<double>>,                 \
+      ops::ActivationGradKernel<plat::CUDADeviceContext,                    \
+                                ops::grad_functor<plat::float16>>);
 
 FOR_EACH_KERNEL_FUNCTOR(REGISTER_ACTIVATION_CUDA_KERNEL);

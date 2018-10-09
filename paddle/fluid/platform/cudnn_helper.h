@@ -182,6 +182,23 @@ inline cudnnTensorFormat_t GetCudnnTensorFormat(
   return CUDNN_TENSOR_NCHW;
 }
 
+template <typename DeviceContext>
+bool EnableTensorCore(const DeviceContext& dev_ctx,
+                      cudnnConvolutionDescriptor_t cudnn_conv_desc) {
+  bool enable = false;
+  cudnnMathType_t cudnn_math = CUDNN_DEFAULT_MATH;
+#if CUDA_VERSION >= 9000 && CUDNN_VERSION_MIN(7, 0, 1)
+  // enable Tensor core in volta GPU. Check the compile-time and runtime both.
+  if (dev_ctx.GetComputeCapability() >= 70) {
+    enable = true;
+    cudnn_math = CUDNN_TENSOR_OP_MATH;
+  }
+#endif
+  PADDLE_ENFORCE(platform::dynload::cudnnSetConvolutionMathType(cudnn_conv_desc,
+                                                                cudnn_math));
+  return enable;
+}
+
 class ScopedTensorDescriptor {
  public:
   ScopedTensorDescriptor() {
