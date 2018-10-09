@@ -92,7 +92,8 @@ class SequenceReshapeGradOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasInput("X"),
                    "Input(X) of SequenceReshapeGradOp should  not be null.");
 
-    ctx->ShareDimAndLod("X", /*->*/ framework::GradVarName("X"));
+    ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
+    ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 };
 

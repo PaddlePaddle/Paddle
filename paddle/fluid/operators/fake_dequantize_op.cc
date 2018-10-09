@@ -49,7 +49,8 @@ class FakeDequantizeMaxAbsOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output(Out) of FakeDequantizeMaxAbsOp should not be null.");
 
-    ctx->ShareDimAndLod("X", /*->*/ "Out");
+    ctx->ShareDim("X", /*->*/ "Out");
+    ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
 
