@@ -28,13 +28,18 @@ namespace framework {
 namespace details {
 struct ComputationOpHandle : public OpHandleBase {
  public:
-  ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place);
+  ComputationOpHandle(ir::Node *node, Scope *scope, platform::Place place,
+                      size_t place_id);
 
   std::string Name() const override;
 
   const Scope *GetScope() const { return scope_; }
 
   const platform::Place &GetPlace() const { return place_; }
+
+  const OperatorBase &GetOp() const { return *op_; }
+
+  size_t GetPlaceId() const { return place_id_; }
 
  protected:
   void RunImpl() override;
@@ -45,6 +50,7 @@ struct ComputationOpHandle : public OpHandleBase {
   std::unique_ptr<OperatorBase> op_;
   Scope *scope_;
   platform::Place place_;
+  size_t place_id_;
 };
 }  // namespace details
 }  // namespace framework
