@@ -21,6 +21,12 @@
 namespace paddle {
 
 namespace {
+
+// Images are resized to ResizeSize x ResizeSize ...
+const int ResizeSize = 256;
+// ... and then cropped to CropSize x CropSize
+const int CropSize = 224;
+
 cv::Mat center_crop_image(cv::Mat img, int width, int height) {
   auto w_start = (img.cols - width) / 2;
   auto h_start = (img.rows - height) / 2;
@@ -38,6 +44,7 @@ cv::Mat resize_short(cv::Mat img, int target_size) {
              cv::INTER_LANCZOS4);
   return resized_img;
 }
+
 }  // namespace
 
 void DataReader::drawImages(float* input, bool is_rgb, int batch_size,
@@ -83,11 +90,11 @@ DataReader::DataReader(const std::string& data_list_path,
     throw std::invalid_argument("Only 3 channel image loading supported");
   }
 
-  if (!(width == height && width == 224)) {
+  if (!(width == height && width == CropSize)) {
     std::stringstream ss;
-    ss << "Width and heigth must be both 224 because this reader is for "
-          "validation which does resize of smaller edge to 256 and "
-          "center crop of (224, 224). They are: ("
+    ss << "Width and heigth must be both " << CropSize << " because this reader is for "
+          "validation which does resize of smaller edge to " << ResizeSize << " and "
+          "center crop of (" << CropSize << ", " << CropSize << "). Your width and heigth are: ("
        << width << ", " << height << ")." << std::endl;
     throw std::invalid_argument(ss.str());
   }
@@ -143,7 +150,7 @@ bool DataReader::NextBatch(float* input, int64_t* label, int batch_size,
     if (debug_display_images)
       cv::imshow(std::to_string(i) + " input image", image);
 
-    cv::Mat image_resized = resize_short(image, width);
+    cv::Mat image_resized = resize_short(image, ResizeSize);
     cv::Mat image_cropped = center_crop_image(image_resized, width, height);
 
     cv::Mat fimage;
