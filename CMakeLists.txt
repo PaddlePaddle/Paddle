@@ -72,7 +72,7 @@ option(WITH_INFERENCE    "Compile fluid inference library"              ON)
 option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
-option(WITH_FAST_MATH   "Make use of fast math library"                 OFF)
+option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent" ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
