@@ -153,7 +153,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
             v.persistable = True
 
             real_shape = list(var.shape)
-            real_shape[0] = args.batch_size / args.gpus
+            real_shape[0] = args.batch_size
             startup_prog.global_block().append_op(
                 outputs={"Out": v},
                 type="fill_constant",
@@ -216,7 +216,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
         if args.use_reader_op:
             train_args[4].start()
         while True:
-            if not args.use_reader_op:
+            if not args.use_reader_op and not args.use_fake_data:
                 data = next(reader_generator, None)
                 if data == None:
                     break
