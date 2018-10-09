@@ -131,21 +131,29 @@ class ConvMKLDNNHandler : public platform::MKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireWeightsMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_weights_memory_p,
       std::vector<mkldnn::primitive>& pipeline,  // NOLINT
-      bool is_persistent = false) {
+      bool is_persistent = false,
+      bool is_INT8 = false,
+      std::vector<float> scale_data = {1.0f},
+      int mask = 0) { 
     auto user_weights_pd = user_weights_memory_p->get_primitive_desc();
     auto weights_pd = conv_pd_->weights_primitive_desc();
     return this->AcquireMemory(weights_pd, user_weights_pd,
                                user_weights_memory_p, "@weights_mem_p",
-                               pipeline, is_persistent);
+                               pipeline, is_persistent,
+                               is_INT8, scale_data, mask);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireBiasMemoryFromPrimitive(
       const std::shared_ptr<mkldnn::memory> user_bias_memory_p,
-      std::vector<mkldnn::primitive>& pipeline) {  // NOLINT
+      std::vector<mkldnn::primitive>& pipeline,
+      bool is_INT8 = false,
+      std::vector<float> scale_data = {1.0f},
+      int mask = 0) {  // NOLINT
     auto user_bias_pd = user_bias_memory_p->get_primitive_desc();
     auto bias_pd = conv_pd_->bias_primitive_desc();
     return this->AcquireMemory(bias_pd, user_bias_pd, user_bias_memory_p,
-                               "@bias_mem_p", pipeline);
+                               "@bias_mem_p", pipeline, 
+                               false, is_INT8, scale_data, mask);
   }
 
   std::shared_ptr<mkldnn::convolution_forward> AcquireConvolution(
@@ -278,6 +286,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto* bias = ctx.HasInput("Bias") ? ctx.Input<Tensor>("Bias") : nullptr;
     auto* output = ctx.Output<Tensor>("Output");
 
+    bool is_INT8 = ctx.HasInput("Scale_in")? true : false;
+    auto* scale_in = ctx.HasInput("Scale_in") ? ctx.Input<Tensor>("Scale_in") : nullptr;
+    auto* scale_in_eltwise = ctx.HasInput("Scale_in_eltwise")? ctx.Input<Tensor>("Scale_in_eltwise") : nullptr;
+    auto* scale_weights = ctx.HasInput("Scale_weights")? ctx.Input<Tensor>("Scale_weights") : nullptr;
+    auto* scale_out = ctx.HasInput("Scale_out")? ctx.Input<Tensor>("Scale_out") : nullptr;
+    bool is_multi_channel = (is_INT8 && scale_weights->memory_size() > 1) ? true : false;
+
     PADDLE_ENFORCE(input->layout() == DataLayout::kMKLDNN &&
                        input->format() != memory::format::format_undef,
                    "Wrong layout/format set for Input tensor");
@@ -329,6 +344,29 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     }
     std::vector<int> dst_tz = paddle::framework::vectorize2int(output->dims());
 
+    std::vector<T> output_shift_scale;
+    T sum_scale = 1.0f;
+    if(is_INT8){
+        int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1; 
+        T scale_in_data = *(scale_in->data<T>());
+        T scale_in_eltwise_data = *(scale_in_eltwise->data<T>());
+        std::vector<T> scale_weights_data(count);
+        for(int i=0; i<count; i++){
+            scale_weights_data[i] =*(scale_weights->data<T>() + i);
+        }
+        T scale_out_data = *(scale_out->data<T>());
+
+        output_shift_scale.resize(count);
+        for(int i=0; i<count; i++){
+            if(scale_weights_data[i] == 0.0)
+                output_shift_scale[i] = scale_out_data;
+            else 
+                output_shift_scale[i] = scale_out_data / (scale_in_data * scale_weights_data[i]);
+        }
+
+        sum_scale = scale_out_data / scale_in_eltwise_data;
+    }
+
     // Get unique name for storing MKLDNN primitives
     const std::string key = ConvMKLDNNHandler::GetHash(
         src_tz, weights_tz, strides, paddings, dilations, groups,
@@ -367,13 +405,27 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       bias_tz = paddle::framework::vectorize2int(bias->dims());
       auto bias_md = platform::MKLDNNMemDesc(
           bias_tz, platform::MKLDNNGetDataType<T>(), memory::format::x);
-      conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
-                                     strides, paddings, mkldnn_engine,
-                                     fuse_relu, fuse_residual_conn);
+      if(is_INT8){
+          conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
+                                         strides, paddings, mkldnn_engine,
+                                         fuse_relu, fuse_residual_conn, 
+                                         output_shift_scale, sum_scale);
+      } else{
+          conv_pd = ConvFwdPrimitiveDesc(src_md, weights_md, bias_md, dst_md,
+                                         strides, paddings, mkldnn_engine,
+                                         fuse_relu, fuse_residual_conn);
+      }
     } else {
-      conv_pd =
-          ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
-                               mkldnn_engine, fuse_relu, fuse_residual_conn);
+      if(is_INT8){
+          conv_pd =
+              ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
+                                   mkldnn_engine, fuse_relu, fuse_residual_conn,
+                                   output_shift_scale, sum_scale);
+      } else{
+          conv_pd =
+              ConvFwdPrimitiveDesc(src_md, weights_md, dst_md, strides, paddings,
+                                   mkldnn_engine, fuse_relu, fuse_residual_conn);
+      }
     }
     // Save conv_pd/src_memory/weights_memory for backward pass
     dev_ctx.SetBlob(key_conv_pd, conv_pd);
@@ -411,6 +463,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         handler.AcquireSrcMemoryFromPrimitive(user_src_memory_p, pipeline);
     auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
         user_weights_memory_p, pipeline, is_test);
+    if(is_INT8){
+        int mask_reorder = is_multi_channel? 0 : ((g!= 1) ? (1<<1)+(1<<0) : 1<<0);
+        int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
+        std::vector<T> scale_weights_data(count);
+        for(int i=0; i<count; i++){
+            scale_weights_data[i] = *(scale_weights->data<T>() + i);
+        }
+        auto weights_memory_p = handler.AcquireWeightsMemoryFromPrimitive(
+            user_weights_memory_p, pipeline, is_test, is_INT8, scale_weights_data, mask_reorder);
+    }
     auto dst_memory_p =
         handler.AcquireDstMemoryFromPrimitive(to_void_cast<T>(output_data));
 
@@ -422,9 +484,18 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           {bias_tz}, platform::MKLDNNGetDataType<T>(), memory::format::x);
       auto user_bias_memory_p =
           handler.AcquireBiasMemory(user_bias_md, to_void_cast<T>(bias_data));
-
       auto bias_memory_p =
           handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline);
+      if(is_INT8){
+          int mask_reorder = is_multi_channel? 0 : 1<<0;
+          int count = is_multi_channel? (g>1? weights_tz[1]*weights_tz[0] : weights_tz[0]) : 1;
+          std::vector<T> scale_bias_data(count);
+          for(int i=0; i<count; i++){
+              scale_bias_data[i] = (*scale_in->data<T>()) * (*(scale_weights->data<T>() + i));
+          }
+          auto bias_memory_p =
+              handler.AcquireBiasMemoryFromPrimitive(user_bias_memory_p, pipeline, is_INT8, scale_bias_data, mask_reorder);
+      }
       conv_p = handler.AcquireConvolution(src_memory_p, weights_memory_p,
                                           bias_memory_p, dst_memory_p);
     } else {
@@ -441,79 +512,154 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  mkldnn::primitive_attr CreatePostOps(bool fuse_relu,
-                                       bool fuse_residual_conn) const {
-    mkldnn::primitive_attr conv_attr;
-    mkldnn::post_ops post_operations;
+    mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn,
+                          const std::vector<T> output_shift_scale, T sum_scale) const {
+      mkldnn::primitive_attr conv_attr;
+      mkldnn::post_ops post_operations;
     // Fusion with Elementwise layer relies on adding a sum post-operation with
     // the scale parameter. It is assumed that when fuse_residual_connection is
     // true, the output tensor contains the data coming from residual
     // connection. The result of this post_op is:
     // Output = scale * Output + Conv_Out.
-    if (fuse_residual_conn) {
-      post_operations.append_sum(1.0f);
+      int mask = output_shift_scale.size() > 1 ? 1<<1 : 0;
+      conv_attr.set_output_scales(mask, output_shift_scale);
+      if (fuse_residual_conn) {
+        post_operations.append_sum(sum_scale);
+      }
+      if (fuse_relu) {
+        constexpr float scale = 1.0f;
+        constexpr float negative_slope = 0.0f;
+        constexpr float placeholder = 0.0f; //beta
+        post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                       negative_slope, placeholder);
+      }
+      conv_attr.set_post_ops(post_operations);
+      return conv_attr;
     }
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
-    // PostOps object and configure it to execute an eltwise relu operation.
-    if (fuse_relu) {
-      constexpr float scale = 1.0f;
-      constexpr float negative_slope = 0.0f;
-      constexpr float placeholder = 0.0f;
-      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
-                                     negative_slope, placeholder);
+
+      mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_eltwise) const {
+
+      mkldnn::primitive_attr conv_attr;
+      mkldnn::post_ops post_operations;
+      // Fusion with Elementwise layer relies on adding a sum post-operation with
+      // the scale parameter. It is assumed that when fuse_eltwise is true, the
+      // Output tensor contains the data coming from residual connection. The
+      // result of this post_op is: Output = scale * Output + Conv_Out.
+
+      if (fuse_eltwise) {
+        post_operations.append_sum(1.0f);
+      }
+      // Fusion with ReLU layer is executed through the PostOps feature. Create a
+      // PostOps object and configure it to execute an eltwise relu operation.
+      if (fuse_relu) {
+        constexpr float scale = 1.0f;
+        constexpr float negative_slope = 0.0f;
+        constexpr float placeholder = 0.0f;
+        post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                       negative_slope, placeholder);
+      }
+      conv_attr.set_post_ops(post_operations);
+      return conv_attr;
     }
-    conv_attr.set_post_ops(post_operations);
-    return conv_attr;
-  }
+
+    std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
+    ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
+                         const memory::desc& dst, const std::vector<int>& strides,
+                         const std::vector<int>& paddings,
+                         const mkldnn::engine& engine, const bool fuse_relu,
+                         const bool fuse_residual_conn,
+                         const std::vector<T> output_shift_scale, const T sum_scale) const {
+      memory::dims stride_dims = {strides[0], strides[1]};
+      memory::dims padding_dims = {paddings[0], paddings[1]};
+
+      auto conv_desc = mkldnn::convolution_forward::desc(
+          mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+          dst, stride_dims, padding_dims, padding_dims,
+          mkldnn::padding_kind::zero);
+
+      mkldnn::primitive_attr conv_attr =
+          CreatePostOps(fuse_relu, fuse_residual_conn, output_shift_scale, sum_scale);
+
+      auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+          conv_desc, conv_attr, engine);
+
+      return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
+          p_conv_pd);
+    }
 
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
-  ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
-                       const memory::desc& dst, const std::vector<int>& strides,
-                       const std::vector<int>& paddings,
-                       const mkldnn::engine& engine, const bool fuse_relu,
-                       const bool fuse_residual_conn) const {
-    memory::dims stride_dims = {strides[0], strides[1]};
-    memory::dims padding_dims = {paddings[0], paddings[1]};
-
-    auto conv_desc = mkldnn::convolution_forward::desc(
-        mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
-        dst, stride_dims, padding_dims, padding_dims,
-        mkldnn::padding_kind::zero);
-
-    mkldnn::primitive_attr conv_attr =
-        CreatePostOps(fuse_relu, fuse_residual_conn);
-
-    auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
-        conv_desc, conv_attr, engine);
-
-    return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
-        p_conv_pd);
-  }
+    ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
+                         const memory::desc& dst, const std::vector<int>& strides,
+                         const std::vector<int>& paddings,
+                         const mkldnn::engine& engine, const bool fuse_relu,
+                         const bool fuse_residual_conn) const{
+      memory::dims stride_dims = {strides[0], strides[1]};
+      memory::dims padding_dims = {paddings[0], paddings[1]};
+  
+      auto conv_desc = mkldnn::convolution_forward::desc(
+          mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+          dst, stride_dims, padding_dims, padding_dims,
+          mkldnn::padding_kind::zero);
+  
+      mkldnn::primitive_attr conv_attr = CreatePostOps(fuse_relu, fuse_residual_conn);
+  
+      auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+          conv_desc, conv_attr, engine);
+  
+      return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
+          p_conv_pd);
+    }
 
   std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
-  ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
-                       const memory::desc& bias, const memory::desc& dst,
-                       const std::vector<int>& strides,
-                       const std::vector<int>& paddings,
-                       const mkldnn::engine& engine, const bool fuse_relu,
-                       const bool fuse_residual_conn) const {
-    memory::dims stride_dims = {strides[0], strides[1]};
-    memory::dims padding_dims = {paddings[0], paddings[1]};
+    ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
+                         const memory::desc& bias, const memory::desc& dst,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& paddings,
+                         const mkldnn::engine& engine, const bool fuse_relu,
+                         const bool fuse_residual_conn,
+                         const std::vector<T> output_shift_scale, const T sum_scale) const {
+      memory::dims stride_dims = {strides[0], strides[1]};
+      memory::dims padding_dims = {paddings[0], paddings[1]};
 
-    auto conv_desc = mkldnn::convolution_forward::desc(
-        mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
-        bias, dst, stride_dims, padding_dims, padding_dims,
-        mkldnn::padding_kind::zero);
+      auto conv_desc = mkldnn::convolution_forward::desc(
+          mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+          bias, dst, stride_dims, padding_dims, padding_dims,
+          mkldnn::padding_kind::zero);
 
-    mkldnn::primitive_attr conv_attr =
-        CreatePostOps(fuse_relu, fuse_residual_conn);
+      mkldnn::primitive_attr conv_attr = 
+          CreatePostOps(fuse_relu, fuse_residual_conn, output_shift_scale, sum_scale);
 
-    auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
-        conv_desc, conv_attr, engine);
+      auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+          conv_desc, conv_attr, engine);
 
-    return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
-        p_conv_pd);
-  }
+      return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
+          p_conv_pd);
+    }
+
+  std::unique_ptr<mkldnn::convolution_forward::primitive_desc>
+    ConvFwdPrimitiveDesc(const memory::desc& src, const memory::desc& weights,
+                         const memory::desc& bias, const memory::desc& dst,
+                         const std::vector<int>& strides,
+                         const std::vector<int>& paddings,
+                         const mkldnn::engine& engine, const bool fuse_relu,
+                         const bool fuse_residual_conn) const{
+      memory::dims stride_dims = {strides[0], strides[1]};
+      memory::dims padding_dims = {paddings[0], paddings[1]};
+
+      auto conv_desc = mkldnn::convolution_forward::desc(
+          mkldnn::prop_kind::forward, mkldnn::convolution_direct, src, weights,
+          bias, dst, stride_dims, padding_dims, padding_dims,
+          mkldnn::padding_kind::zero);
+
+      mkldnn::primitive_attr conv_attr = CreatePostOps(fuse_relu, fuse_residual_conn);
+
+      auto p_conv_pd = new mkldnn::convolution_forward::primitive_desc(
+          conv_desc, conv_attr, engine);
+
+      return std::unique_ptr<mkldnn::convolution_forward::primitive_desc>(
+          p_conv_pd);
+    }
+
 };
 
 template <typename T>

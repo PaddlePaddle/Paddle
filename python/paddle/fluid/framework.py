@@ -657,7 +657,10 @@ class Operator(object):
 
     def _has_kernel(self, op_type):
         return op_type not in self.OP_WITHOUT_KERNEL_SET
-
+    
+    def set_input(self, name, value):
+        self.desc.set_input(name, value)
+    
     def to_string(self, throw_on_error):
         """
         Get debug string.
