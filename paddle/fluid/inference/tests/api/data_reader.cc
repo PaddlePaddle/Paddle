@@ -66,7 +66,7 @@ DataReader::DataReader(const std::string& data_list_path,
                        int channels, bool convert_to_rgb)
     : data_list_path(data_list_path),
       data_dir_path(data_dir_path),
-      file(std::ifstream(data_list_path)),
+      file(data_list_path),
       width(width),
       height(height),
       channels(channels),
