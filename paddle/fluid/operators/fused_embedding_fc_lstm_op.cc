@@ -12,10 +12,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fusion_lstm_op.h"
+#include "paddle/fluid/operators/fused_embedding_fc_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_lstm_compute.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
@@ -24,10 +23,10 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
-  PADDLE_ENFORCE(ctx->HasInput("X"), "Assert only one Input(X) of LSTM.");
-  PADDLE_ENFORCE(ctx->HasInput("WeightX"),
-                 "Assert only one Input(WeightX) of LSTM.");
+void FusedEmbeddingFCLSTMOp::InferShape(
+    framework::InferShapeContext* ctx) const {
+  PADDLE_ENFORCE(ctx->HasInput("Embeddings"),
+                 "Assert only one Input(Embeddings) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("WeightH"),
                  "Assert only one Input(WeightH) of LSTM.");
   PADDLE_ENFORCE(ctx->HasInput("Bias"), "Assert only one Input(Bias) of LSTM.");
@@ -36,9 +35,19 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                  "Assert only one Output(Hidden) of LSTM.");
   PADDLE_ENFORCE(ctx->HasOutput("Cell"),
                  "Assert only one Output(Cell) of LSTM.");
+  PADDLE_ENFORCE(ctx->HasInput("Ids"),
+                 "Input(Ids) of LookupTableOp should not be null.");
 
-  auto x_dims = ctx->GetInputDim("X");
-  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(X)'s rank must be 2.");
+  auto table_dims = ctx->GetInputDim("Embeddings");
+  auto ids_dims = ctx->GetInputDim("Ids");
+  int ids_rank = ids_dims.size();
+
+  PADDLE_ENFORCE_EQ(table_dims.size(), 2);
+  PADDLE_ENFORCE_EQ(ids_dims[ids_rank - 1], 1,
+                    "The last dimension of the 'Ids' tensor must be 1.");
+
+  auto x_dims = ctx->GetInputDim("Ids");
+  PADDLE_ENFORCE_EQ(x_dims.size(), 2, "Input(Ids)'s rank must be 2.");
 
   if (ctx->HasInput("H0")) {
     PADDLE_ENFORCE(ctx->HasInput("C0"),
@@ -51,16 +60,12 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                    "should be the same.");
   }
 
-  auto wx_dims = ctx->GetInputDim("WeightX");
-  PADDLE_ENFORCE_EQ(wx_dims.size(), 2,
-                    "The rank of Input(WeightX) should be 2.");
-  PADDLE_ENFORCE_EQ(wx_dims[0], x_dims[1],
-                    "The first dimension of Input(WeightX) "
-                    "should be %d.",
-                    x_dims[1]);
+  auto embeddings_dims = ctx->GetInputDim("Embeddings");
+  PADDLE_ENFORCE_EQ(embeddings_dims.size(), 2,
+                    "The rank of Input(Embeddings) should be 2.");
 
-  int frame_size = wx_dims[1] / 4;
   auto wh_dims = ctx->GetInputDim("WeightH");
+  int frame_size = wh_dims[1] / 4;
   PADDLE_ENFORCE_EQ(wh_dims.size(), 2,
                     "The rank of Input(WeightH) should be 2.");
   PADDLE_ENFORCE_EQ(wh_dims[0], frame_size,
@@ -76,29 +81,23 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   PADDLE_ENFORCE_EQ(b_dims.size(), 2, "The rank of Input(Bias) should be 2.");
   PADDLE_ENFORCE_EQ(b_dims[0], 1,
                     "The first dimension of Input(Bias) should be 1.");
-  if (ctx->Attrs().Get<bool>("use_peepholes")) {
-    PADDLE_ENFORCE_EQ(b_dims[1], 7 * frame_size,
-                      "The second dimension of Input(Bias) should be "
-                      "7 * %d if enable peepholes connection",
-                      frame_size);
-    ctx->SetOutputDim("CheckedCell", {2, frame_size});
-  } else {
-    PADDLE_ENFORCE_EQ(b_dims[1], 4 * frame_size,
-                      "The second dimension of Input(Bias) should be "
-                      "4 * %d if disable peepholes",
-                      frame_size);
-  }
+  PADDLE_ENFORCE_EQ(
+      b_dims[1], (ctx->Attrs().Get<bool>("use_peepholes") ? 7 : 4) * frame_size,
+      "The second dimension of Input(Bias) should be "
+      "7 * %d if enable peepholes connection or"
+      "4 * %d if disable peepholes",
+      frame_size, frame_size);
 
   framework::DDim out_dims({x_dims[0], frame_size});
   ctx->SetOutputDim("Hidden", out_dims);
   ctx->SetOutputDim("Cell", out_dims);
-  ctx->ShareLoD("X", "Hidden");
-  ctx->ShareLoD("X", "Cell");
+  ctx->ShareLoD("Ids", "Hidden");
+  ctx->ShareLoD("Ids", "Cell");
   int xx_width;
   if (ctx->Attrs().Get<bool>("use_seq")) {
-    xx_width = wx_dims[1];
+    xx_width = wh_dims[1];
   } else {
-    xx_width = x_dims[1] > wx_dims[1] ? wx_dims[1] : x_dims[1];
+    xx_width = x_dims[1] > wh_dims[1] ? wh_dims[1] : x_dims[1];
     PADDLE_ENFORCE(ctx->HasOutput("BatchedInput"),
                    "Assert only one Output(BatchedInput) of LSTM.");
     PADDLE_ENFORCE(ctx->HasOutput("BatchedHidden"),
@@ -109,28 +108,28 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
                    "Assert only one Output(ReorderedH0) of LSTM");
     PADDLE_ENFORCE(ctx->HasOutput("ReorderedC0"),
                    "Assert only one Output(ReorderedC0) of LSTM.");
-    ctx->SetOutputDim("BatchedInput", {x_dims[0], wx_dims[1]});
+    ctx->SetOutputDim("BatchedInput", {x_dims[0], wh_dims[1]});
     ctx->SetOutputDim("BatchedHidden", out_dims);
     ctx->SetOutputDim("BatchedCell", out_dims);
   }
   ctx->SetOutputDim("XX", {x_dims[0], xx_width});
-  ctx->ShareLoD("X", "XX");
+  ctx->ShareLoD("Ids", "XX");
 }
 
-framework::OpKernelType FusionLSTMOp::GetExpectedKernelType(
+framework::OpKernelType FusedEmbeddingFCLSTMOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("X")->type()),
+      framework::ToDataType(
+          ctx.Input<framework::LoDTensor>("Embeddings")->type()),
       ctx.device_context());
 }
 
-void FusionLSTMOpMaker::Make() {
-  AddInput("X",
-           "(LoDTensor) the input is a LodTensor, which support "
-           "variable-time length input sequence. The underlying tensor in "
-           "this LoDTensor is a matrix with shape (T X M), where T is the "
-           "total time steps in this mini-batch, M is the dim size of x.");
-  AddInput("WeightX",
+void FusedEmbeddingFCLSTMOpMaker::Make() {
+  AddInput("Ids",
+           "An input with type int32 or int64 "
+           "contains the ids to be looked up in W. "
+           "The last dimension size must be 1.");
+  AddInput("Embeddings",
            "(Tensor) the learnable weights of X."
            " - The shape is (M x 4D), where M is the dim size of x, D is the "
            "hidden size. "
@@ -179,8 +178,6 @@ void FusionLSTMOpMaker::Make() {
   AddOutput("BatchedCell", "(LoDTensor) (T x D).").AsIntermediate();
   AddOutput("ReorderedH0", "(LoDTensor) (N x D).").AsIntermediate();
   AddOutput("ReorderedC0", "(LoDTensor) (N x D).").AsIntermediate();
-  AddOutput("CheckedCell", "(Tensor) (2 x D) only for peephole.")
-      .AsIntermediate();
   AddAttr<bool>("use_peepholes",
                 "(bool, defalut: True) "
                 "whether to enable diagonal/peephole connections.")
@@ -217,7 +214,7 @@ This operator fuse the X into LSTM, more details can refer to LSTM op.
 }
 
 template <typename T>
-class FuisonLSTMKernel : public framework::OpKernel<T> {
+class FusedEmbeddingFCLSTMKernel : public framework::OpKernel<T> {
  public:
 #define INIT_VEC_FUNC                                                          \
   std::function<void(const int, const T *, T *)> act_gate, act_cell, act_cand; \
@@ -237,10 +234,10 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   }
 
 #define INIT_BASE_INPUT_OUTPUT                        \
-  auto* x = ctx.Input<LoDTensor>("X");                \
+  auto* ids = ctx.Input<LoDTensor>("Ids");            \
   auto* h0 = ctx.Input<Tensor>("H0");                 \
   auto* c0 = ctx.Input<Tensor>("C0");                 \
-  auto* wx = ctx.Input<Tensor>("WeightX");            \
+  auto* embeddings = ctx.Input<Tensor>("Embeddings"); \
   auto* wh = ctx.Input<Tensor>("WeightH");            \
   auto* bias = ctx.Input<Tensor>("Bias");             \
   auto* xx = ctx.Output<LoDTensor>("XX");             \
@@ -249,28 +246,30 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   bool is_reverse = ctx.Attr<bool>("is_reverse");     \
   bool use_peepholes = ctx.Attr<bool>("use_peepholes");
 
-#define INIT_BASE_SIZES                  \
-  auto x_dims = x->dims();   /* T x M*/  \
-  auto wh_dims = wh->dims(); /* D x 4D*/ \
-  const int M = x_dims[1];               \
-  const int D = wh_dims[0];              \
-  const int D2 = D * 2;                  \
-  const int D3 = D * 3;                  \
+#define INIT_BASE_SIZES                       \
+  auto ids_dims = ids->dims();   /* T x M*/   \
+  auto ids_numel = ids->numel(); /* T x 1*/   \
+  auto wh_dims = wh->dims();     /* D x 4D*/  \
+  const int D = wh_dims[0];                   \
+  const int D2 = D * 2;                       \
+  const int D3 = D * 3;                       \
+  int64_t row_number = embeddings->dims()[0]; \
+  int64_t row_width = embeddings->dims()[1];  \
   const int D4 = wh_dims[1];
 
-#define INIT_BASE_INPUT_DATAS                                 \
-  const T* x_data = x->data<T>();                             \
-  const T* wx_data = wx->data<T>();                           \
-  const T* wh_data = wh->data<T>();                           \
-  /* diagonal weight*/                                        \
-  const T* wc_data = bias->data<T>() + D4;                    \
-  /* for peephole only*/                                      \
-  T* checked_cell_data = nullptr;                             \
-  auto place = ctx.GetPlace();                                \
-  if (use_peepholes) {                                        \
-    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/          \
-    auto* checked_cell = ctx.Output<Tensor>("CheckedCell");   \
-    checked_cell_data = checked_cell->mutable_data<T>(place); \
+#define INIT_BASE_INPUT_DATAS                                        \
+  const int64_t* ids_data = ids->data<int64_t>();                    \
+  const T* embeddings_data = embeddings->data<T>();                  \
+  const T* wh_data = wh->data<T>();                                  \
+  /* diagonal weight*/                                               \
+  const T* wc_data = bias->data<T>() + D4;                           \
+  /* for peephole only*/                                             \
+  Tensor checked_cell;                                               \
+  T* checked_cell_data = nullptr;                                    \
+  auto place = ctx.GetPlace();                                       \
+  if (use_peepholes) {                                               \
+    /* w_ic * Ct-1, w_fc * Ct-1  ; w_oc * Ct => ih*/                 \
+    checked_cell_data = checked_cell.mutable_data<T>({2, D}, place); \
   }
 
 /// Compute LSTM
@@ -278,6 +277,7 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   blas.GEMM(CblasNoTrans, CblasNoTrans, bs, D4, D, static_cast<T>(1), prev, D, \
             wh_data, D4, static_cast<T>(1), out, D4)
 
+// gates: W_ch, W_ih, W_fh, W_oh
 #define GET_Ct(ct_1, gates, ct)                   \
   /* C_t = C_t-1 * fgated + cand_gated * igated*/ \
   act_cand(D, gates, gates);                      \
@@ -334,17 +334,23 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
 
-    auto x_lod = x->lod();
-    const int total_T = x_dims[0];
-    const int N = x_lod[0].size() - 1;
+    //  std::cout << "====> SeqCompute" << std::endl;
+    auto ids_lod = ids->lod();
+    const int total_T = ids_dims[0];
+    const int N = ids_lod[0].size() - 1;
     const T* h0_data = h0 ? h0->data<T>() : nullptr;
     const T* c0_data = c0 ? c0->data<T>() : nullptr;
     T* xx_data = xx->mutable_data<T>(place);
     T* h_out_data = hidden_out->mutable_data<T>(place);
     T* c_out_data = cell_out->mutable_data<T>(place);
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
-    math::FCCompute<DeviceContext, T>(blas, total_T, D4, M, x_data, wx_data,
-                                      xx_data, bias->data<T>());
+
+    for (int64_t i = 0; i < ids_numel; ++i) {
+      PADDLE_ENFORCE_LT(ids_data[i], row_number);
+      PADDLE_ENFORCE_GE(ids_data[i], 0, "ids %d", i);
+      memcpy(xx_data + i * row_width, embeddings_data + ids_data[i] * row_width,
+             row_width * sizeof(T));
+    }
 
     int xx_offset = D4;
     int gate_offset = D;
@@ -364,11 +370,11 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   h_out_data = h_out_data + gate_offset; \
   c_out_data = c_out_data + gate_offset
 
-#define PROCESS_H0C0_DEFINES                       \
-  int bid = is_reverse ? N - 1 - i : i;            \
-  int seq_len = x_lod[0][bid + 1] - x_lod[0][bid]; \
-  const T* prev_c_data = nullptr;                  \
-  const T* prev_h_data = nullptr;                  \
+#define PROCESS_H0C0_DEFINES                           \
+  int bid = is_reverse ? N - 1 - i : i;                \
+  int seq_len = ids_lod[0][bid + 1] - ids_lod[0][bid]; \
+  const T* prev_c_data = nullptr;                      \
+  const T* prev_h_data = nullptr;                      \
   int tstart = 0
 
 #define PROCESS_H0C0_PEEPHOLE                                      \
@@ -403,22 +409,11 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      // TODO(TJ): unly workaround, clean me
-      std::function<void(T*, const T*, T*, T*)> compute_ctht;
-      if (platform::jit::MayIUse(platform::jit::avx) &&
-          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
-          act_cell_str == "tanh" && D == 8) {
-        compute_ctht = math::lstm_compute_ctht<T>;
-      } else {
-        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
-          COMPUTE_CtHt(gates, ct_1, ct, ht);
-        };
-      }
       for (int i = 0; i < N; ++i) {
         PROCESS_H0C0
         for (int step = tstart; step < seq_len; ++step) {
           GEMM_WH_ADDON(1, prev_h_data, xx_data);
-          compute_ctht(xx_data, prev_c_data, c_out_data, h_out_data);
+          COMPUTE_CtHt(xx_data, prev_c_data, c_out_data, h_out_data);
           MOVE_ONE_STEP;
         }
       }
@@ -432,14 +427,15 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   void BatchCompute(const framework::ExecutionContext& ctx) const {
     using DeviceContext = platform::CPUDeviceContext;
     INIT_BASE_INPUT_OUTPUT
-    INIT_BASE_SIZES
-    if (x->lod()[0].size() == 2) {
-      xx->Resize({x_dims[0], D4});
+    if (ids->lod()[0].size() == 2) {
       SeqCompute(ctx);
       return;
     }
+    INIT_BASE_SIZES
     INIT_VEC_FUNC
     INIT_BASE_INPUT_DATAS
+
+    // std::cout << "===> Batch Compute" << std::endl;
 
     auto* reordered_h0 = ctx.Output<Tensor>("ReorderedH0");
     auto* reordered_c0 = ctx.Output<Tensor>("ReorderedC0");
@@ -456,17 +452,15 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     math::LoDTensor2BatchFunctor<DeviceContext, T> to_batch;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto blas = math::GetBlas<DeviceContext, T>(dev_ctx);
-    if (M > D4) {
-      math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, x_data, wx_data,
-                                        xx_data, bias->data<T>());
-      to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
-    } else {
-      to_batch(dev_ctx, *x, xx, true, is_reverse);
-      batched_input->set_lod(xx->lod());
-      math::FCCompute<DeviceContext, T>(blas, x_dims[0], D4, M, xx_data,
-                                        wx_data, batched_input_data,
-                                        bias->data<T>());
+
+    for (int64_t i = 0; i < ids_numel; ++i) {
+      PADDLE_ENFORCE_LT(ids_data[i], row_number);
+      PADDLE_ENFORCE_GE(ids_data[i], 0, "ids %d", i);
+      memcpy(xx_data + i * row_width, embeddings_data + ids_data[i] * row_width,
+             row_width * sizeof(T));
     }
+
+    to_batch(dev_ctx, *xx, batched_input, true, is_reverse);
 
     auto batched_lod = batched_input->lod();
     const auto& seq_order = batched_lod[2];
@@ -552,23 +546,12 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         MOVE_ONE_STEP;
       }
     } else {
-      // TODO(TJ): unly workaround, clean me
-      std::function<void(T*, const T*, T*, T*)> compute_ctht;
-      if (platform::jit::MayIUse(platform::jit::avx) &&
-          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
-          act_cell_str == "tanh" && D == 8) {
-        compute_ctht = math::lstm_compute_ctht<T>;
-      } else {
-        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
-          COMPUTE_CtHt(gates, ct_1, ct, ht);
-        };
-      }
       for (int step = tstart; step < max_seq_len; ++step) {
         const int cur_bs = batch_starts[step + 1] - batch_starts[step];
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
-          compute_ctht(cur_in_data, cur_prev_c_data, cur_c_out_data,
+          COMPUTE_CtHt(cur_in_data, cur_prev_c_data, cur_c_out_data,
                        cur_h_out_data);
           MOVE_ONE_BATCH;
         }
@@ -612,8 +595,10 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fusion_lstm, ops::FusionLSTMOp, ops::FusionLSTMOpMaker,
+REGISTER_OPERATOR(fused_embedding_fc_lstm, ops::FusedEmbeddingFCLSTMOp,
+                  ops::FusedEmbeddingFCLSTMOpMaker,
                   paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(fusion_lstm, ops::FuisonLSTMKernel<float>,
-                       ops::FuisonLSTMKernel<double>);
+REGISTER_OP_CPU_KERNEL(fused_embedding_fc_lstm,
+                       ops::FusedEmbeddingFCLSTMKernel<float>,
+                       ops::FusedEmbeddingFCLSTMKernel<double>);

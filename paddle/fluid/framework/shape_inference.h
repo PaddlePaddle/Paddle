@@ -59,8 +59,6 @@ class InferShapeContext {
   virtual void ShareDimAndLod(const std::string &in, const std::string &out,
                               size_t i = 0, size_t j = 0) = 0;
 
-  void ShareLoDs(const std::string &in, const std::string &out) const;
-
   virtual void ShareLoD(const std::string &in, const std::string &out,
                         size_t i = 0, size_t j = 0) const = 0;
 

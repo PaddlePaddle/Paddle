@@ -11,29 +11,30 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #pragma once
 
-#include <chrono>  // NOLINT
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace inference {
+namespace framework {
+namespace ir {
 
-// Timer for timer
-class Timer {
+// Fusing of Embedding , FC and LSTM op
+
+// Just FC without bias
+class EmbeddingFCLSTMFusePass : public FusePassBase {
  public:
-  std::chrono::high_resolution_clock::time_point start;
-  std::chrono::high_resolution_clock::time_point startu;
+  virtual ~EmbeddingFCLSTMFusePass() {}
 
-  void tic() { start = std::chrono::high_resolution_clock::now(); }
-  double toc() {
-    startu = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> time_span =
-        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
-                                                                  start);
-    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
-    return used_time_ms;
-  }
+ protected:
+  std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+
+  const std::string name_scope_{"embedding_fc_lstm_fuse"};
 };
 
-}  // namespace inference
+}  // namespace ir
+}  // namespace framework
 }  // namespace paddle

@@ -14,17 +14,15 @@ limitations under the License. */
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 #define GOOGLE_GLOG_DLL_DECL
 
-#include "paddle/fluid/framework/operator.h"
 #include <gflags/gflags.h>
 #include <glog/logging.h>
+
 #include <algorithm>
-#include <sstream>
-#include <string>
-#include <vector>
+
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/shape_inference.h"
 #include "paddle/fluid/framework/var_type.h"
 #include "paddle/fluid/platform/profiler.h"
@@ -142,54 +140,19 @@ static LoD GetLoD(const Scope& scope, const std::string& name) {
 }
 
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
-  try {
-    if (VLOG_IS_ON(4)) {
-      VLOG(4) << place << " " << DebugStringEx(&scope);
-    }
-    if (platform::is_gpu_place(place)) {
+  VLOG(4) << place << " " << DebugStringEx(&scope);
+  if (platform::is_gpu_place(place)) {
 #ifndef PADDLE_WITH_CUDA
-      PADDLE_THROW("Cannot run operator on place %s", place);
+    PADDLE_THROW("Cannot run operator on place %s", place);
 #else
-      auto dev_id = boost::get<platform::CUDAPlace>(place).device;
-      platform::SetDeviceId(dev_id);
+    auto dev_id = boost::get<platform::CUDAPlace>(place).device;
+    platform::SetDeviceId(dev_id);
 #endif
-    }
-
-    if (platform::IsProfileEnabled()) {
-      platform::DeviceContextPool& pool =
-          platform::DeviceContextPool::Instance();
-      platform::RecordEvent record_event(Type(), pool.Get(place));
-    }
-
-    RunImpl(scope, place);
-
-    if (VLOG_IS_ON(3)) {
-      VLOG(3) << place << " " << DebugStringEx(&scope);
-    }
-  } catch (platform::EnforceNotMet exception) {
-    if (Attrs().count("sub_block") != 0) {
-      throw exception;
-    }
-
-    auto& callstack = Attr<std::vector<std::string>>(
-        OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
-
-    if (callstack.empty()) {
-      throw exception;
-    }
-    std::ostringstream sout;
-    sout << "Invoke operator " << Type() << " error.\n";
-    sout << "Python Callstacks: \n";
-    for (auto& line : callstack) {
-      sout << line;
-    }
-    sout << "C++ Callstacks: \n";
-    sout << exception.err_str_;
-    exception.err_str_ = sout.str();
-    throw exception;
-  } catch (...) {
-    std::rethrow_exception(std::current_exception());
   }
+  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+  platform::RecordEvent record_event(Type(), pool.Get(place));
+  RunImpl(scope, place);
+  VLOG(3) << place << " " << DebugStringEx(&scope);
 }
 
 bool OperatorBase::HasInputs(const std::string& name) const {
@@ -217,7 +180,7 @@ const std::vector<std::string>& OperatorBase::Inputs(
 }
 
 bool OperatorBase::HasOutputs(const std::string& name) const {
-  if (outputs_.end() != outputs_.find(name)) {
+  if (outputs_.find(name) != outputs_.end()) {
     return true;
   } else {
     return false;
@@ -614,11 +577,13 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    const std::vector<std::string>& inputs = Inputs(in);
+    const std::vector<std::string>& outputs = Outputs(out);
+    PADDLE_ENFORCE_LT(i, inputs.size());
+    PADDLE_ENFORCE_LT(j, outputs.size());
+    Variable* in_var = scope_.FindVar(inputs.at(i));
     if (!in_var->IsType<LoDTensor>()) return;
+    Variable* out_var = scope_.FindVar(outputs.at(j));
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
@@ -644,20 +609,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
     if (in_tensor.layout() != DataLayout::kMKLDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
-  }
-
-  void ShareLayout(const std::string& in, const std::string& out, size_t i = 0,
-                   size_t j = 0) const {
-    PADDLE_ENFORCE_LT(i, Inputs(in).size());
-    PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
-    if (!in_var->IsType<LoDTensor>()) return;
-    PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
-                   "The %d-th output of Output(%s) must be LoDTensor.", j, out);
-    auto in_tensor = in_var->Get<LoDTensor>();
-    auto* out_tensor = out_var->GetMutable<LoDTensor>();
-    out_tensor->set_layout(in_tensor.layout());
   }
 
   bool IsRuntime() const override { return true; }
