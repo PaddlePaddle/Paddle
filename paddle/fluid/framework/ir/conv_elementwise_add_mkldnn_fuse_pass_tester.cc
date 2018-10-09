@@ -204,7 +204,7 @@ TEST(ConvElementwiseAddMKLDNNFusePass, SigmoidConvolutionAddElementwiseRelu) {
              {"a", "b", "bias", "weights", "c", "d", "e", "f"})) {
       auto* var = prog.MutableBlock(0)->Var(v);
       var->SetType(proto::VarType::LOD_TENSOR);
-      if (v.find("weights")) {
+      if (v.find("weights") || v.find("bias")) {
         var->SetPersistable(true);
       }
     }
