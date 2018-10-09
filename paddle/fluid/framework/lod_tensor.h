@@ -111,9 +111,6 @@ class LoDTensor : public Tensor {
  public:
   LoDTensor() : Tensor() {}
 
-  /* Constructor with place should only be used in pybind */
-  explicit LoDTensor(const platform::Place& place) : Tensor(place) {}
-
   explicit LoDTensor(const LoD& lod) : lod_(lod) {}
 
   void set_lod(const LoD& lod) { lod_ = lod; }
