@@ -542,13 +542,45 @@ class RuntimeInferShapeContext : public InferShapeContext {
     return op_.Outputs(name);
   }
 
-  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
-                size_t j = 0) const override {
+  void ShareDim(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) override {
     PADDLE_ENFORCE_LT(i, Inputs(in).size());
     PADDLE_ENFORCE_LT(j, Outputs(out).size());
-    Variable* in_var = scope_.FindVar(Inputs(in)[i]);
-    Variable* out_var = scope_.FindVar(Outputs(out)[j]);
+    const std::string& input_n = Inputs(in)[i];
+    const std::string& output_n = Outputs(out)[j];
+
+    Variable* in_var = scope_.FindVar(input_n);
+    Variable* out_var = scope_.FindVar(output_n);
+    PADDLE_ENFORCE(in_var->Type() == out_var->Type(),
+                   "The type of %s and %s is not the same.", output_n,
+                   GetDim(input_n));
+
+    if (in_var->IsType<framework::SelectedRows>()) {
+      auto& in_sele_rows = in_var->Get<framework::SelectedRows>();
+      auto out_sele_rows = out_var->GetMutable<framework::SelectedRows>();
+      out_sele_rows->mutable_value()->Resize(in_sele_rows.value().dims());
+      out_sele_rows->set_rows(in_sele_rows.rows());
+      out_sele_rows->set_height(in_sele_rows.height());
+    } else if (in_var->IsType<framework::LoDTensor>()) {
+      auto& in_lod_tensor = in_var->Get<framework::LoDTensor>();
+      auto* out_lod_tensor = out_var->GetMutable<framework::LoDTensor>();
+      out_lod_tensor->Resize(in_lod_tensor.dims());
+    } else {
+      PADDLE_THROW(
+          "Currently, the input type of ShareDim only can be LoDTensor "
+          "or SelectedRows.");
+    }
+  }
+
+  void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
+                size_t j = 0) const override {
+    const std::vector<std::string>& inputs = Inputs(in);
+    const std::vector<std::string>& outputs = Outputs(out);
+    PADDLE_ENFORCE_LT(i, inputs.size());
+    PADDLE_ENFORCE_LT(j, outputs.size());
+    Variable* in_var = scope_.FindVar(inputs.at(i));
     if (!in_var->IsType<LoDTensor>()) return;
+    Variable* out_var = scope_.FindVar(outputs.at(j));
     PADDLE_ENFORCE(out_var->IsType<LoDTensor>(),
                    "The %d-th output of Output(%s) must be LoDTensor.", j, out);
     auto in_tensor = in_var->Get<LoDTensor>();
