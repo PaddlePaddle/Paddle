@@ -44,7 +44,8 @@ namespace ir {
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, pattern_name);     \
   GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance, pattern_name)
 
-LoDTensor tensor_apply(const LoDTensor& vec, float (*f)(float)) {
+template <typename UnaryOperation>
+LoDTensor tensor_apply(const LoDTensor& vec, UnaryOperation f) {
   LoDTensor vec_y;
   vec_y.Resize(vec.dims());
   const float* x = vec.data<float>();
@@ -132,7 +133,8 @@ void recompute_bias_and_weights(const Scope* scope,
                                 const LoDTensor& bn_bias_tensor,  //
                                 const ir::Node& bn_mean,          //
                                 const ir::Node& bn_variance,      //
-                                LoDTensor* eltwise_y_in_tensor) {
+                                LoDTensor* eltwise_y_in_tensor,   //
+                                float epsilon) {
   // Re-compute bias of conv2d from BN
   PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(), bn_bias_tensor.dims());
 
@@ -144,9 +146,15 @@ void recompute_bias_and_weights(const Scope* scope,
   auto std_tensor = LoDTensor();
   std_tensor.Resize(bn_bias_tensor.dims());
   std_tensor =
-      tensor_apply(*variance_tensor, [](float x) { return x + 1e-5f; });
+      tensor_apply(*variance_tensor, [&](float x) { return x + epsilon; });
 
-  tensor_apply_inplace(&std_tensor, std::sqrt);
+  using EigenVectorArrayMap =
+      Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
+
+  EigenVectorArrayMap std_vec(
+      std_tensor.mutable_data<float>(platform::CPUPlace()), std_tensor.numel(),
+      1);
+  std_vec = std_vec.sqrt();
   auto tmp_tensor =
       tensor_apply_eltwise(*scale_tensor, std_tensor, std::divides<float>());
   auto tensor_minus = tensor_apply_eltwise(*eltwise_y_in_tensor, *mean_tensor,
@@ -207,8 +215,10 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
                 eltwise_y_in_tensor->numel(), 0.0f);
 
     // update weights and biases
+    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
     recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
-                               *bn_mean, *bn_variance, eltwise_y_in_tensor);
+                               *bn_mean, *bn_variance, eltwise_y_in_tensor,
+                               epsilon);
 
     // Create an elementwise add node
     OpDesc desc;
@@ -282,8 +292,10 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
         scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
 
     // update weights and biases
+    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
     recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
-                               *bn_mean, *bn_variance, eltwise_y_in_tensor);
+                               *bn_mean, *bn_variance, eltwise_y_in_tensor,
+                               epsilon);
 
     // Update the elementwise_add node
     eltwise->Op()->SetAttr("axis", 1);
