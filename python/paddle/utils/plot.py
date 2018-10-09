@@ -30,6 +30,15 @@ class PlotData(object):
 
 
 class Ploter(object):
+    '''
+        Plot input data in a 2D graph
+        
+        Args:
+            title: assign the title of input data.
+            step: x_axis of the data.
+            value: y_axis of the data
+    '''
+
     def __init__(self, *args):
         self.__args__ = args
         self.__plot_data__ = {}
@@ -50,6 +59,19 @@ class Ploter(object):
         return self.__disable_plot__ == "True"
 
     def append(self, title, step, value):
+        '''
+            Feed data
+        
+            Args:
+                title: assign the group data to this subtitle.
+                step: the x_axis of data.
+                value: the y_axis of data.
+            
+            Examples:
+                .. code-block:: python
+                plot_curve = Ploter("Curve 1","Curve 2")
+                plot_curve.append(title="Curve 1",step=1,value=1)
+        '''
         assert isinstance(title, basestring)
         assert self.__plot_data__.has_key(title)
         data = self.__plot_data__[title]
@@ -57,6 +79,17 @@ class Ploter(object):
         data.append(step, value)
 
     def plot(self, path=None):
+        '''
+            Plot data in a 2D graph
+            
+            Args:
+                path: store the figure to this file path. Defaul None. 
+              
+            Examples:
+                .. code-block:: python
+                plot_curve = Ploter()
+                plot_cure.plot()
+        '''
         if self.__plot_is_disabled__():
             return
 
