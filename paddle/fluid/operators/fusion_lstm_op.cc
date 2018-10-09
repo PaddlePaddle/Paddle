@@ -15,9 +15,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fusion_lstm_op.h"
 #include <string>
 #include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/cpu_lstm_compute.h"
 #include "paddle/fluid/operators/math/cpu_vec.h"
 #include "paddle/fluid/operators/math/fc_compute.h"
+#include "paddle/fluid/operators/math/jit_kernel.h"
 #include "paddle/fluid/operators/math/sequence2batch.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
@@ -309,11 +309,6 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   act_gate(D, gates + D3, gates + D3);              \
   GET_Ht(ct, gates, ht)
 
-#define COMPUTE_CtHt(gates, ct_1, ct, ht) \
-  act_gate(D3, gates + D, gates + D);     \
-  GET_Ct(ct_1, gates, ct);                \
-  GET_Ht(ct, gates, ht)
-
 #define COMPUTE_CtHt_PEEPHOLE(gates, ct_1, ct, ht)        \
   /* get fgated and igated*/                              \
   blas.VMUL(D, wc_data, ct_1, checked_cell_data);         \
@@ -403,22 +398,18 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         }
       }
     } else {
-      // TODO(TJ): unly workaround, clean me
-      std::function<void(T*, const T*, T*, T*)> compute_ctht;
-      if (platform::jit::MayIUse(platform::jit::avx) &&
-          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
-          act_cell_str == "tanh" && D == 8) {
-        compute_ctht = math::lstm_compute_ctht<T>;
-      } else {
-        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
-          COMPUTE_CtHt(gates, ct_1, ct, ht);
-        };
-      }
+      const auto& ker =
+          math::jitkernel::KernelPool::Instance()
+              .template Get<math::jitkernel::LSTMKernel<T>, int,
+                            const std::string&, const std::string&,
+                            const std::string&>(D, act_gate_str, act_cand_str,
+                                                act_cell_str);
+
       for (int i = 0; i < N; ++i) {
         PROCESS_H0C0
         for (int step = tstart; step < seq_len; ++step) {
           GEMM_WH_ADDON(1, prev_h_data, xx_data);
-          compute_ctht(xx_data, prev_c_data, c_out_data, h_out_data);
+          ker->ComputeCtHt(xx_data, prev_c_data, c_out_data, h_out_data);
           MOVE_ONE_STEP;
         }
       }
@@ -552,24 +543,20 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
         MOVE_ONE_STEP;
       }
     } else {
-      // TODO(TJ): unly workaround, clean me
-      std::function<void(T*, const T*, T*, T*)> compute_ctht;
-      if (platform::jit::MayIUse(platform::jit::avx) &&
-          act_gate_str == "sigmoid" && act_cand_str == "tanh" &&
-          act_cell_str == "tanh" && D == 8) {
-        compute_ctht = math::lstm_compute_ctht<T>;
-      } else {
-        compute_ctht = [&](T* gates, const T* ct_1, T* ct, T* ht) {
-          COMPUTE_CtHt(gates, ct_1, ct, ht);
-        };
-      }
+      const auto& ker =
+          math::jitkernel::KernelPool::Instance()
+              .template Get<math::jitkernel::LSTMKernel<T>, int,
+                            const std::string&, const std::string&,
+                            const std::string&>(D, act_gate_str, act_cand_str,
+                                                act_cell_str);
+
       for (int step = tstart; step < max_seq_len; ++step) {
         const int cur_bs = batch_starts[step + 1] - batch_starts[step];
         GEMM_WH_ADDON(cur_bs, prev_h_data, batched_input_data);
         DEFINE_CUR;
         for (int i = 0; i < cur_bs; ++i) {
-          compute_ctht(cur_in_data, cur_prev_c_data, cur_c_out_data,
-                       cur_h_out_data);
+          ker->ComputeCtHt(cur_in_data, cur_prev_c_data, cur_c_out_data,
+                           cur_h_out_data);
           MOVE_ONE_BATCH;
         }
         MOVE_ONE_STEP;
@@ -595,7 +582,6 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
   }
 
 #undef COMPUTE_CtHt_PEEPHOLE
-#undef COMPUTE_CtHt
 #undef GET_Ct_NOH0C0
 #undef COMPUTE_CtHt_NOH0C0
 #undef COMPUTE_CtHt_PEEPHOLE_NOH0C0
