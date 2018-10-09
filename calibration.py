@@ -30,6 +30,48 @@ add_arg('model',            str, "SE_ResNeXt50_32x4d", "Set the network to use."
 
 model_list = [m for m in dir(models) if "__" not in m]
 
+DEBUG = 1
+
+def dot(program):
+    dot_graph = ""
+    dot_nodes = []
+    dot_edges = []
+    dot_graph += "digraph pm {\n"
+    for block in program.blocks:
+        ops = list(block.ops)
+        block_id = block.idx
+        for op in ops:
+            op_type = op.type
+            op_name = op_type + "_" + op.input_arg_names[0].replace(".", "_")
+            for name in op.input_arg_names:
+                name = name.replace(".", "_")
+                dot_edge = name + " -> " + op_name
+                if dot_edge not in dot_edges:
+                    dot_edges.append(dot_edge)
+                dot_node = name + " [shape=oval]"
+                if dot_node not in dot_nodes:
+                    dot_nodes.append(dot_node)
+
+            for name in op.output_arg_names:
+                name = name.replace(".", "_")
+                dot_edge = op_name + " -> " + name
+                if dot_edge not in dot_edges:
+                    dot_edges.append(dot_edge)
+
+            dot_node = op_name + " [shape=box]"
+            if dot_node not in dot_nodes:
+                dot_nodes.append(dot_node)
+
+    for dot_edge in dot_edges:
+        dot_graph += dot_edge + "\n"
+    for dot_node in dot_nodes:
+        dot_graph += dot_node + "\n"
+    dot_graph += "}"
+
+    file = open("model.dot", 'w')
+    file.write(dot_graph)
+    file.close()
+
 def get_quantization_op_pos(program):
     conv_op_index = [index for index, value in enumerate(program.global_block().ops) if value.type == 'conv2d']
     if len(conv_op_index) < 2:
@@ -42,7 +84,7 @@ def get_dequantization_op_pos(program):
         return None
     res = []
     support_int8_op_type = ["pool2d"]
-
+ 
     for index, value in enumerate(conv_op_index[:-1]):
         if index == 0: continue
 
@@ -53,11 +95,17 @@ def get_dequantization_op_pos(program):
             end_index = conv_op_index[index + 1]
             while start_index < end_index:
                 if program.global_block().ops[start_index].type not in support_int8_op_type:
+                    print program.global_block().ops[start_index].type, end_index
                     res.append(start_index)
                     break
                 else:
                     start_index += 1
-    res.append(conv_op_index[-1]) #need to fix
+    last_dequantize_op_index = conv_op_index[-1]
+    # skip pooling op which is the Successor of the last conv op
+    while program.global_block().ops[last_dequantize_op_index + 1].type in support_int8_op_type:
+        last_dequantize_op_index += 1
+    res.append(last_dequantize_op_index) # need to fix
+    
     return res
 
 
@@ -65,6 +113,30 @@ def get_requantization_op_pos(program):
     pass
 
 # def create_op(program, op_name, data_type):
+def update_program_for_saving_var(program, name, value, data_shape, dst, data_type="float32"):
+    tmp_var = program.current_block().create_var(
+        name=name,
+        dtype=data_type,
+        persistable=True,
+    )
+
+    program.current_block().append_op(
+        type='assign_value',
+        outputs={'Out': [tmp_var]},
+        attrs={
+            'dtype':core.VarDesc.VarType.FP32,
+            'shape': data_shape,
+            'fp32_values': value
+        }
+    )
+
+    program.current_block().append_op(
+        type = 'save',
+        inputs={'X': '{}'.format(name)},
+        outputs={},
+        attrs={"file_path": "{}/{}".format(dst, name)}
+    )
+
 
 def eval(args):
     # parameters from arguments
@@ -118,69 +190,35 @@ def eval(args):
 
         fluid.io.load_vars(exe, pretrained_model, predicate=if_exist)
     
-    print 120, pretrained_model
     t = fluid.transpiler.InferenceTranspiler()
     t.transpile(test_program, fluid.CUDAPlace(0) if args.use_gpu else fluid.CPUPlace())
     # for i in test_program.current_block().ops:
     #     print i
     # sys.exit(0)
     conv_op_index = [index for index, value in enumerate(test_program.global_block().ops) if value.type == 'conv2d']
+    pooling_op_index =  [index for index, value in enumerate(test_program.global_block().ops) if value.type == 'pool2d']
     print (conv_op_index)
     weights_var_name = []
     conv_input_var_name = []
     conv_output_var_name = []
-    weights_channel = {}
+    # weights_channel = {}
     for i in conv_op_index[1:]:
         weights_var_name.append(test_program.current_block().ops[i].input('Filter')[0])
         conv_input_var_name.append(test_program.current_block().ops[i].input('Input')[0])
         conv_output_var_name.append(test_program.current_block().ops[i].output('Output')[0])
-
-    for i in test_program.list_vars():
-        if i.name in weights_var_name:
-            weights_channel[i.name] = i.shape[0]
-
-    # print weights_var_name
-    # print '-------'
-    # print conv_input_var_name    
-    # print '-------'
-
-    # print conv_output_var_name
-    # for i in test_program.current_block().ops:
-    #     print ('-----------')
-    #     print (i.input_names, i.output_names)
-    #     if i.type == 'conv2d':
-    #         print i.input('Filter')
-        # print (i.input_arg_names)
-    #     print (i.output_arg_names)
-    #     # print (i.block_attr)
-    #     print (dir(i))
-    #     print (i.attr_names)
-    #     print ((i.attr))
-    #     for j in i.attr_names:
-    #         print ((i.attr(j)))
-        # print (i.blocks_attr)
-    # sys.exit(0)
-    # for i in test_program.list_vars():
-    #     print (i.name)
-    #     # print dir(i)
-    #     print i.shape, i.type, i.dtype
-        # if i.name == "batch_norm_52.b_0_fuse_bn":
-        #     i.dtype = fluid.core.VarDesc.VarType.INT8;
-    # print (test_program.global_block().ops[23].type)
-    # for i in conv_op_index:
-    #     op = test_program.current_block().ops[i]
-    #     print (op)
-    #     print (op.input_names, op.input_arg_names, op.output_arg_names)
-    not_persistable_vars = (i for i in test_program.list_vars() if not i.persistable)
-    for i in not_persistable_vars:
-    #     # print (i.name, i.persistable)
-        i.persistable= True
-    # int8_prog = test_program.clone()
-    var_name = [i.name for i in test_program.list_vars()]
-    # get_dequantization_op_pos(int8_prog)
-    # print var_name
-    # sys.exit(0)
     
+    for i in pooling_op_index:
+        conv_input_var_name.append(test_program.current_block().ops[i].input('X')[0])
+        conv_output_var_name.append(test_program.current_block().ops[i].output('Out')[0])
+    
+
+    not_persistable_vars = (i for i in test_program.list_vars() if not i.persistable)
+    
+    for i in not_persistable_vars:
+        i.persistable= True
+    
+    var_name = [i.name for i in test_program.list_vars()]
+
     val_reader = paddle.batch(reader.val(), batch_size=args.batch_size)
     feeder = fluid.DataFeeder(place=place, feed_list=[image, label])
 
@@ -204,7 +242,6 @@ def eval(args):
                 max_value = [float(np.amax(np_data))]
             var_max[i] = []
             var_max[i].append(max_value)
-        # print var_max
         
         t2 = time.time()
         period = t2 - t1
@@ -231,119 +268,106 @@ def eval(args):
     print("Test_loss {0}, test_acc1 {1}, test_acc5 {2}".format(
         test_loss, test_acc1, test_acc5))
     sys.stdout.flush()
-    #insert quantization op
+
     infer_prog = test_program.clone()
-    pos = get_quantization_op_pos(infer_prog)
-    print pos
-    print infer_prog.current_block().ops[1].output('Out')[0]
-    conv2_scale_in = infer_prog.global_block().create_var(
-        name="conv2_scale_in",
-        dtype="float32",
-        persistable=True,
-    )
-    # conv2_weights_in = infer_prog.global_block().create_var(
-    #     name="conv2_weights_in",
-    #     dtype="float32",
-    #     persistable=True,
-    # )
-    conv2_int8_tmp = infer_prog.global_block().create_var(
-        name="conv2_int8_tmp",
-        dtype="int8",
-        persistable=True,
-        shape= (np.array(fluid.global_scope().find_var('pool2d_0.tmp_0').get_tensor())).shape
-    )
-    # print ((np.array(fluid.global_scope().find_var('pool2d_0.tmp_0').get_tensor())).shape)
-    # sys.exit(0)
-    # fluid.initializer.Constant(value=1.0)(conv2_int8_tmp, infer_prog.global_block())
 
-    infer_prog.current_block().append_op(
-        type='assign_value',
-        outputs={'Out': [conv2_scale_in]},
-        attrs={
-            'dtype':core.VarDesc.VarType.FP32,
-            'shape': [1,1],
-            'fp32_values': var_max[var_name[1]][0]
-        }
-    )
-
-    # infer_prog.current_block().append_op(
-    #     type='assign_value',
-    #     outputs={'Out': [conv2_int8_tmp]},
-    #     attrs={
-    #         'dtype':core.VarDesc.VarType.UINT8,
-    #         'shape': (np.array(fluid.global_scope().find_var('pool2d_0.tmp_0').get_tensor())).shape,
-    #         # 'fp32_values': var_max[var_name[1]][0]
-    #     }
-    # )
-    # op = infer_prog.current_block()._insert_op(
-    #     index=pos[0],
-    #     type= "quantize",
-    #     inputs={"Input": infer_prog.current_block().ops[1].output('Out')[0],
-    #             "Scale": conv2_scale_in},
-    #     outputs={"Output":conv2_int8_tmp},
-    #     # attrs= {
-    #     #     "data_format": "NCHW"
-    #     # }
-    #     )
-    # op.set_attr("data_format", "NCHW")
-    # op.set_attr("use_mkldnn", 1)
-    # infer_prog.current_block().ops[3].set_input("Input", ['conv2_int8_tmp'])
-    # infer_prog.current_block().append_op(
-    #     type='assign_value',
-    #     outputs={'Out': [conv2_weights_in]},
-    #     attrs={
-    #         'dtype':core.VarDesc.VarType.FP32,
-    #         'shape': [1,1],
-    #         'fp32_values':  [3.12]
-    #     }
-    # )
-
-    # for i in infer_prog.current_block().ops[:4]:
-    #     print (i)
-    # sys.exit(0)
-    # with open("/home/guomingz/__model_xiaoli_quantize__", "wb") as f:
-    #     f.write(infer_prog.desc.serialize_to_string())
-
-    infer_prog.current_block().append_op(
-        type = 'save',
-        inputs={'X': 'conv2_scale_in'},
-        outputs={},
-        attrs={"file_path": "{}/conv2_scale_in".format(pretrained_model)}
-    )
+    for i in conv_input_var_name:
+        update_program_for_saving_var(infer_prog, i+"_scale.input.test", var_max[i][0], np.array(var_max[i]).shape, pretrained_model)
     
-        # infer_prog.current_block().append_op(
-        #     type = 'save',
-        #     inputs={'X': 'conv2_int8_tmp'},
-        #     outputs={},
-        #     attrs={"file_path": "{}/conv2_int8_tmp".format(pretrained_model)}
-        # )
-    # val_reader = paddle.batch(reader.val(), batch_size=args.batch_size)
+    for i in conv_output_var_name:
+        update_program_for_saving_var(infer_prog, i+"_scale.output.test", var_max[i][0], np.array(var_max[i]).shape, pretrained_model)
+    
+    for i in weights_var_name:
+        update_program_for_saving_var(infer_prog, i+"_scale.weights.test", var_max[i][0], np.array(var_max[i]).shape, pretrained_model)
+    # update_program_for_saving_var(infer_prog, 'conv2_int8_tmp',  var_max[var_name[1]][0], [1,], pretrained_model)
 
+    #Step 2 save all variable
     for batch_id, data in enumerate(val_reader()):
-        # print (feeder.feed(data))
-        # print (fetch_list)
         loss, acc1, acc5 = exe.run(infer_prog,
                                    fetch_list=fetch_list,
                                    feed=feeder.feed(data))
-        sys.exit(0)
-    # infer_prog.current_block().append_op(
-    #     type = 'save',
-    #     inputs={'X': 'conv2_weights_in'},
-    #     outputs={},
-    #     attrs={"file_path": "{}/conv2_weights_in".format(pretrained_model)}
-    # )
-
-    #insert dequantization op
+        break
     
-    #rerun to save variable
+    int8_prog = test_program.clone()
+    for index, value in enumerate(conv_op_index[1:]):
+        # print index,conv_input_var_name[index], ["{}_scale.input.test".format(conv_input_var_name[index])]
+        int8_prog.current_block().ops[value].desc.set_input("Scale_in", ["{}_scale.input.test".format(conv_input_var_name[index])])
+        int8_prog.current_block().ops[value].desc.set_input("Scale_out", ["{}_scale.output.test".format(conv_output_var_name[index])])
+        int8_prog.current_block().ops[value].desc.set_input("Scale_weights", ["{}_scale.weights.test".format(weights_var_name[index])])
+        if int8_prog.current_block().ops[value].desc.input("ResidualData"):
+            name = int8_prog.current_block().ops[value].desc.input("ResidualData")[0]
+            int8_prog.current_block().ops[value].desc.set_input("Scale_in_eltwise", ["{}_scale.output.test".format(name)])
+    
+    
+    quantize_pos = get_quantization_op_pos(int8_prog)
 
-    # for batch_id, data in enumerate(val_reader()):
-    #     t1 = time.time()
-    # loss, acc1, acc5 = exe.run(test_program,
-    #                            fetch_list=fetch_list,
-    #                            feed=feeder.feed(data))
-    # with open("/home/guomingz/__model__", "wb") as f:
-    #     f.write(test_program.desc.serialize_to_string())
+    conv2_quantize_tmp = int8_prog.current_block().create_var(
+        name="conv2_quantize_tmp",
+        dtype="float32",
+        persistable=True,
+        #shape= (np.array(fluid.global_scope().find_var('pool2d_0.tmp_0').get_tensor())).shape
+    )
+
+    op = int8_prog.current_block()._insert_op(
+       index=quantize_pos[0],
+        
+       type= "quantize",
+        
+       inputs={"Input": int8_prog.current_block().ops[quantize_pos[0] - 1].output('Out')[0],
+               "Scale": "{}_scale.input.test".format(conv_input_var_name[1])},
+        
+       outputs={"Output": conv2_quantize_tmp},
+
+    )
+    op._set_attr("data_format", "NCHW")
+    op._set_attr("use_mkldnn", 1)
+    int8_prog.current_block().ops[quantize_pos[0] + 1 ].desc.set_input("Input", ["conv2_quantize_tmp"])
+    for i in int8_prog.current_block().ops[quantize_pos[0] + 2:]:
+        if i.type == 'conv2d' and i.input('Input')[0] == int8_prog.current_block().ops[quantize_pos[0] - 1].output('Out')[0]:
+            i.desc.set_input("Input",  ["conv2_quantize_tmp"])
+    dequantize_pos = get_dequantization_op_pos(int8_prog)
+    dequantize_tmp_var = int8_prog.current_block().create_var(
+        name="dequantize_tmp_var",
+        dtype="float32",
+        persistable=True,
+        #shape= (np.array(fluid.global_scope().find_var('pool2d_0.tmp_0').get_tensor())).shape
+    )
+
+    op = int8_prog.current_block()._insert_op(
+       index=dequantize_pos[0] + 1,
+        
+       type= "dequantize",
+        
+       inputs={"Input": int8_prog.current_block().ops[dequantize_pos[0]].output('Out')[0],
+               "Scale": "{}_scale.output.test".format( int8_prog.current_block().ops[dequantize_pos[0]].output('Out')[0])},
+        
+       outputs={"Output": dequantize_tmp_var},
+    )
+
+    int8_prog.current_block().ops[dequantize_pos[0] + 2].desc.set_input("X", ["dequantize_tmp_var"])
+
+    #Step 3 Save the new model 
+
+    # for i in int8_prog.current_block().ops:
+    #     print '********'
+    #     print i
+        # if i.type == 'conv2d':
+        #     print i
+    #     # print i.input_names;
+    #     print  '----'
+    #     print i.type
+    #     for j in i.input_names:
+    #         print j, i.input(j)[0] if i.input(j) else ' '
+    #     for k in i.output_names:
+    #         print k, i.output(k)[0]
+    # print conv_op_index
+    # print dequantize_pos
+    if DEBUG:
+        dot(int8_prog)
+   
+    with open("__model_quantized__", "wb") as f:
+        f.write(int8_prog.desc.serialize_to_string())
+
 
 def main():
     args = parser.parse_args()
