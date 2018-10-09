@@ -163,8 +163,8 @@ class ElementwiseOpGrad : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", /*->*/ x_grad_name);
     }
     if (ctx->HasOutput(y_grad_name)) {
-      ctx->ShareDim("X", /*->*/ y_grad_name);
-      ctx->ShareLoD("X", /*->*/ y_grad_name);
+      ctx->ShareDim("Y", /*->*/ y_grad_name);
+      ctx->ShareLoD("Y", /*->*/ y_grad_name);
     }
   }
 
