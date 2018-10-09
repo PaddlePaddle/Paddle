@@ -24,7 +24,7 @@ namespace jitkernel {
 namespace jit = platform::jit;
 
 KernelPool& KernelPool::Instance() {
-  static KernelPool g_jit_kernels;
+  static thread_local KernelPool g_jit_kernels;
   return g_jit_kernels;
 }
 
