@@ -45,6 +45,11 @@ class ConcatOp : public framework::OperatorWithKernel {
     for (size_t i = 1; i < n; i++) {
       for (size_t j = 0; j < in_zero_dims_size; j++) {
         if (j == axis) {
+          if (axis != 0) {
+            PADDLE_ENFORCE_GT(ins[i][j], 0,
+                              "do not support unknown dim on nonzero axis %d",
+                              axis);
+          }
           out_dims[axis] += ins[i][j];
         } else {
           PADDLE_ENFORCE_EQ(out_dims[j], ins[i][j],
@@ -54,6 +59,7 @@ class ConcatOp : public framework::OperatorWithKernel {
       }
     }
     if (out_dims[axis] < 0) {
+      // restore unknown dim to default value
       out_dims[axis] = -1;
     }
     ctx->SetOutputDim("Out", out_dims);
