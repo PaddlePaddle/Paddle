@@ -52,6 +52,7 @@ class GPUTruncatedGaussianRandomKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto* tensor = context.Output<framework::Tensor>("Out");
     T* data = tensor->mutable_data<T>(context.GetPlace());
+
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     if (seed == 0) {
       std::random_device rd;
