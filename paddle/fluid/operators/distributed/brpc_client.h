@@ -121,8 +121,7 @@ class BRPCClient : public RPCClient {
                                          ChannelContextPtr ch_ctx,
                                          BRPCClient* cls);
   void DecreaseReqCount() {
-    req_count_--;
-    if (req_count_.load() <= 0) {
+    if (--req_count_ <= 0) {
       sync_cond_.notify_all();
     }
   }

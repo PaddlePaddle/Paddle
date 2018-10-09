@@ -24,8 +24,8 @@ ExternalProject_Add(
     extern_leveldb
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX ${LEVELDB_SOURCES_DIR}
-    URL "https://github.com/google/leveldb/archive/v1.18.tar.gz"
-    URL_MD5 "73770de34a2a5ab34498d2e05b2b7fa0"
+    GIT_REPOSITORY "https://github.com/google/leveldb"
+    GIT_TAG v1.18
     CONFIGURE_COMMAND ""
     BUILD_COMMAND CXXFLAGS=-fPIC make -j ${NUM_OF_PROCESSOR} libleveldb.a
     INSTALL_COMMAND mkdir -p ${LEVELDB_INSTALL_DIR}/lib/ 

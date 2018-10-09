@@ -98,12 +98,6 @@ class BRPCServiceImpl : public SendRecvService {
     }
   }
 
-  /*
-  static void HandlePrefetchRequest(distributed::VariableResponse* resp){
-      delete resp;
-  }
-  */
-
   void PrefetchVariable(google::protobuf::RpcController* cntl_butil,
                         const VariableMessage* request,
                         VariableMessage* response,
