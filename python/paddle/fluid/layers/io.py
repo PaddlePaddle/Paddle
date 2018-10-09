@@ -477,7 +477,8 @@ def _py_reader(capacity,
                lod_levels=None,
                name=None,
                use_double_buffer=True,
-               feed_list=None):
+               feed_list=None,
+               test_mode=False):
 
     if feed_list is not None:
         if not isinstance(feed_list, list):
@@ -517,7 +518,8 @@ def _py_reader(capacity,
         double_buffer_name = "_".join([name, "double_buffer"])
 
     var = global_scope().var(queue_name)
-    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes)
+    feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes,
+                                                     test_mode)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)
@@ -628,7 +630,8 @@ def py_reader(capacity,
               dtypes,
               lod_levels=None,
               name=None,
-              use_double_buffer=True):
+              use_double_buffer=True,
+              test_mode=False):
     """
     Create a Python reader for data feeding in Python
 
@@ -753,13 +756,15 @@ def py_reader(capacity,
         dtypes=dtypes,
         lod_levels=lod_levels,
         name=name,
-        use_double_buffer=use_double_buffer)
+        use_double_buffer=use_double_buffer,
+        test_mode=test_mode)
 
 
 def create_py_reader_by_data(capacity,
                              feed_list,
                              name=None,
-                             use_double_buffer=True):
+                             use_double_buffer=True,
+                             test_mode=False):
     """
     Create a Python reader for data feeding in Python
 
@@ -812,7 +817,8 @@ def create_py_reader_by_data(capacity,
         lod_levels=None,
         name=name,
         use_double_buffer=use_double_buffer,
-        feed_list=feed_list)
+        feed_list=feed_list,
+        test_mode=test_mode)
 
 
 def open_files(filenames,

@@ -32,7 +32,7 @@ class BlockingQueue {
   // doesn't support GPU and it implements on buffered blocking queue.
  public:
   explicit BlockingQueue(size_t capacity)
-      : capacity_(capacity), closed_(false) {
+      : capacity_(capacity), test_mode_(false), closed_(false) {
     PADDLE_ENFORCE_GT(
         capacity_, 0,
         "The capacity of a reader::BlockingQueue must be greater than 0.");
@@ -72,7 +72,9 @@ class BlockingQueue {
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(elem);
       *elem = queue_.front();
-      queue_.pop_front();
+      if (!test_mode_) {
+        queue_.pop_front();
+      }
       send_cv_.notify_one();
       return true;
     } else {
@@ -114,6 +116,9 @@ class BlockingQueue {
 
  private:
   size_t capacity_;
+  // if test_mode_ is true, the queue will not
+  // remove data from queue for speed test
+  bool test_mode_;
   bool closed_;
   std::deque<T> queue_;
 
