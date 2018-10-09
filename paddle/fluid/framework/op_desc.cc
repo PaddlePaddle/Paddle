@@ -69,6 +69,10 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                    "The type of %s and %s is not the same.", input_n, output_n);
 
     SetDim(output_n, GetDim(input_n));
+    if (in_var->GetType() != proto::VarType::LOD_TENSOR) {
+      VLOG(3) << "input " << in << "[" << i << "] is not LodTensor";
+      return;
+    }
     out_var->SetLoDLevel(in_var->GetLoDLevel());
   }
 
