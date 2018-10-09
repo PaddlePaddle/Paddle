@@ -30,7 +30,7 @@ class ConvElementwiseAddMKLDNNFusePass : public FusePassBase {
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
 
-  const std::string name_scope_{"conv_elementwise_add_mkldnn_fuse_pass"};
+  const std::string name_scope_{"residual_connections_fuse_pass"};
 };
 
 }  // namespace ir
