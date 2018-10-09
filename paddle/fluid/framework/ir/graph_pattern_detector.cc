@@ -21,9 +21,11 @@
 #include "paddle/fluid/framework/ir/graph_traits.h"
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/pretty_log.h"
 #include "paddle/fluid/string/printf.h"
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -31,6 +33,8 @@ namespace ir {
 using string::PrettyLogEndl;
 using string::PrettyLog;
 using string::Style;
+using inference::analysis::TimerScope;
+using inference::analysis::LightTimer;
 
 size_t PDPattern::id_ = 0UL;
 
@@ -81,7 +85,7 @@ void GraphPatternDetector::operator()(Graph *graph,
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
-
+  ADD_ONCE_TIMER("GraphPatternDetector");
   auto subgraphs = DetectPatterns();
   UniquePatterns(&subgraphs);
   RemoveOverlappedMatch(&subgraphs);
@@ -97,14 +101,18 @@ void GraphPatternDetector::operator()(Graph *graph,
 }
 
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
+  ADD_ONCE_TIMER("fMarkPDNodesInGraph");
   VLOG(3) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
-  for (auto &node : GraphTraits::DFS(graph)) {
-    for (const auto &pdnode : pattern_.nodes()) {
-      if (pdnode->Tell(&node)) {
-        VLOG(4) << "pdnode " << pdnode->name() << " marked";
-        pdnodes2nodes_[pdnode.get()].insert(&node);
+  {
+    ADD_ONCE_TIMER("mark1");
+    for (auto &node : GraphTraits::DFS(graph)) {
+      for (const auto &pdnode : pattern_.nodes()) {
+        if (pdnode->Tell(&node)) {
+          VLOG(4) << "pdnode " << pdnode->name() << " marked";
+          pdnodes2nodes_[pdnode.get()].insert(&node);
+        }
       }
     }
   }
@@ -130,7 +138,7 @@ bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
 void GraphPatternDetector::ValidateByNodeRole(
     std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
   std::vector<GraphPatternDetector::subgraph_t> result;
-
+  ADD_ONCE_TIMER("ValidateByNodeRole");
   subgraphs->erase(
       std::remove_if(
           subgraphs->begin(), subgraphs->end(),
@@ -191,34 +199,9 @@ bool IsNodesLink(Node *a, Node *b) {
   return false;
 }
 
-struct PDEdgeSorter {
-  using edge_t = PDPattern::edge_t;
-  PDEdgeSorter(const std::unordered_map<const PDNode *,
-                                        std::unordered_set<Node *>> &roles)
-      : roles_(roles) {}
-
-  bool operator()(const edge_t &a, const edge_t b) {
-    // The role with less nodes prefer to sort to the front, so that it will
-    // prune more cases in the beginning of the search.
-    PADDLE_ENFORCE(roles_.count(a.first));
-    PADDLE_ENFORCE(roles_.count(a.second));
-    PADDLE_ENFORCE(roles_.count(b.first));
-    PADDLE_ENFORCE(roles_.count(b.second));
-    int a_count = roles_.at(a.first).size() + roles_.at(a.second).size();
-    int b_count = roles_.at(b.first).size() + roles_.at(b.second).size();
-    return a_count < b_count;
-  }
-
- private:
-  const std::unordered_map<const PDNode *, std::unordered_set<Node *>> &roles_;
-};
-
 std::vector<GraphPatternDetector::subgraph_t>
 GraphPatternDetector::DetectPatterns() {
-  // Sort the edge, the role with less Nodes in the front, so that it will prune
-  // more other cases.
-  PDEdgeSorter edge_sorter(pdnodes2nodes_);
-  pattern_.SortEdgesBy(edge_sorter);
+  ADD_ONCE_TIMER("DetectPatterns");
   // Init empty subgraphs.
   std::vector<GraphPatternDetector::subgraph_t> result;
   std::vector<HitGroup> init_groups;
@@ -286,6 +269,7 @@ GraphPatternDetector::DetectPatterns() {
 
 void GraphPatternDetector::UniquePatterns(
     std::vector<GraphPatternDetector::subgraph_t> *subgraphs) {
+  ADD_ONCE_TIMER("UniquePatterns");
   if (subgraphs->empty()) return;
   std::vector<GraphPatternDetector::subgraph_t> result;
 
@@ -306,6 +290,7 @@ void GraphPatternDetector::UniquePatterns(
 
 void GraphPatternDetector::RemoveOverlappedMatch(
     std::vector<subgraph_t> *subgraphs) {
+  ADD_ONCE_TIMER("RemoveOverlappedMatch");
   std::vector<subgraph_t> result;
   std::unordered_set<Node *> node_set;
 

@@ -495,5 +495,11 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
             << total_time_of_threads / FLAGS_num_threads / FLAGS_repeat;
 }
 
+TEST(Analyzer_rnn1, analysis) {
+  contrib::AnalysisConfig cfg;
+  SetConfig(&cfg);
+  CreatePaddlePredictor<AnalysisConfig>(cfg);
+}
+
 }  // namespace inference
 }  // namespace paddle

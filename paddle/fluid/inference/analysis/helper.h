@@ -25,11 +25,108 @@ limitations under the License. */
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace inference {
 namespace analysis {
+
+/*
+ * A light weight profiler which consumes less performance and memory.
+ */
+class LightTimer {
+ public:
+  struct Record {
+    explicit Record(const std::string &name) : repr(name) {}
+    void Accumulate(double latency) {
+      if (cell < latency) {
+        cell = latency;
+      }
+      if (floor > latency) {
+        floor = latency;
+      }
+      total += latency;
+      ++count;
+    }
+
+    double average() const { return total / count; }
+
+    double cell{0};
+    double floor{std::numeric_limits<double>::max()};
+    double total{0};
+    size_t count{0};
+    std::string repr;
+  };
+
+  LightTimer(int init_space = 0) { records_.reserve(init_space); }
+  ~LightTimer() { LOG(INFO) << "\n" << DebugString(); }
+
+  // Add a new timer record and return record ID.
+  size_t NewTimer(const std::string &key) {
+    records_.emplace_back(key);
+    return records_.size() - 1;
+  }
+
+  void AddRecord(size_t id, double latency) {
+    PADDLE_ENFORCE_LT(id, records_.size());
+    records_[id].Accumulate(latency);
+  }
+
+  const Record &GetRecord(size_t id) const {
+    PADDLE_ENFORCE_LT(id, records_.size());
+    return records_[id];
+  }
+
+  static LightTimer &Global() {
+    static std::unique_ptr<LightTimer> timer(new LightTimer(10));
+    return *timer;
+  }
+
+  std::string DebugString() const {
+    std::stringstream ss;
+    ss << "Light Timer: \n";
+    ss.setf(std::ios::left);
+    int width = 10;
+    int key_width = 25;
+    ss << std::setw(key_width) << "key" << std::setw(width) << "total"
+       << std::setw(width) << "average" << std::setw(width) << "max"
+       << std::setw(width) << "max" << std::setw(width) << "count"
+       << "\n";
+    for (auto &r : records_) {
+      ss << std::setw(key_width) << r.repr;
+      ss << std::setw(width) << r.total;
+      ss << std::setw(width) << r.average();
+      ss << std::setw(width) << r.cell;
+      ss << std::setw(width) << r.floor;
+      ss << std::setw(width) << r.count;
+      ss << "\n";
+    }
+    return ss.str();
+  }
+
+ private:
+  std::vector<Record> records_;
+};
+
+struct TimerScope {
+  TimerScope(LightTimer *root, size_t id) : root_(root), id_(id) {
+    timer_.tic();
+  }
+
+  ~TimerScope() { root_->AddRecord(id_, timer_.toc()); }
+
+ private:
+  LightTimer *root_;
+  Timer timer_;
+  size_t id_;
+};
+
+#define ADD_ONCE_TIMER(key__)                                 \
+  static const size_t __timer_scope_id_##__LINE__ =           \
+      LightTimer::Global().NewTimer(key__);                   \
+  TimerScope __timer_scope__##__LINE__(&LightTimer::Global(), \
+                                       __timer_scope_id_##__LINE__);
 
 template <typename T>
 void SetAttr(framework::proto::OpDesc *op, const std::string &name,
