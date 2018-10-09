@@ -45,6 +45,7 @@ if(WITH_MKLDNN)
     pass_library(conv_bias_mkldnn_fuse_pass inference)
     pass_library(conv_relu_mkldnn_fuse_pass inference)
     pass_library(conv_elementwise_add_mkldnn_fuse_pass inference)
+    pass_library(fc_mkldnn_pass inference)
 endif()
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
