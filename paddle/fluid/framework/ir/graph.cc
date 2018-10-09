@@ -89,31 +89,34 @@ bool IsDistTrainOp(ir::Node *node, const std::vector<std::string> &send_vars,
 Graph::Graph(const ProgramDesc &program) : program_(program) {
   // Make the nodes id start from 0.
   Node::ResetId();
+  InitFromProgram(program_);
+  ResolveHazard();
+}
 
+void Graph::InitFromProgram(const ProgramDesc &program) {
   VLOG(3) << "block in program:" << program_.Size();
   std::unordered_map<std::string, VarDesc *> all_vars;
   for (auto *var : program.Block(0).AllVars()) {
     all_vars.emplace(var->Name(), var);
   }
 
-  std::map<std::string, std::vector<ir::Node *>> var_nodes;
   for (auto *op : program.Block(0).AllOps()) {
     ir::Node *node = CreateOpNode(op);
     // For input args, reuse the same var name if it was created before.
     // Otherwise, create a new one.
     for (auto &each_var_name : op->InputArgumentNames()) {
       ir::Node *var = nullptr;
-      if (var_nodes.find(each_var_name) != var_nodes.end()) {
-        var = var_nodes.at(each_var_name).back();
+      if (var_nodes_.find(each_var_name) != var_nodes_.end()) {
+        var = var_nodes_.at(each_var_name).back();
       } else if (all_vars.count(each_var_name) != 0) {
         var = CreateVarNode(all_vars.at(each_var_name));
-        var_nodes[each_var_name].push_back(var);
+        var_nodes_[each_var_name].push_back(var);
       } else {
         // Operation input var can be optional (dispensable). Which means
         // the operation doesn't really need the var at runtime. In this
         // case, the no-existed var is ready at the beginning.
         var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
-        var_nodes[each_var_name].push_back(var);
+        var_nodes_[each_var_name].push_back(var);
       }
       node->inputs.push_back(var);
       var->outputs.push_back(node);
@@ -129,12 +132,14 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
         // TODO(panyx0718): Add a test.
         var = CreateEmptyNode(each_var_name, ir::Node::Type::kVariable);
       }
-      var_nodes[each_var_name].push_back(var);
+      var_nodes_[each_var_name].push_back(var);
       node->outputs.push_back(var);
       var->inputs.push_back(node);
     }
   }
+}
 
+void Graph::ResolveHazard() {
   /**
    * We should handle write after read(WAR) and write after write(WAW) here.
    * Because some of the operators of the program can be executed parallelly.
@@ -145,7 +150,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
 
-  for (auto &var : var_nodes) {
+  for (auto &var : var_nodes_) {
     auto &versions = var.second;
     if (versions.size() <= 1) continue;
 

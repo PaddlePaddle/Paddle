@@ -161,6 +161,10 @@ class Graph {
     return nullptr;
   }
 
+  void ResetNodeId() { Node::ResetId(); }
+  void InitFromProgram(const ProgramDesc &program);
+  void ResolveHazard();
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -176,6 +180,8 @@ class Graph {
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;
   std::unordered_set<ir::Node *> node_set_;
+  // var nodes for each var name, will have multiple versions in SSA
+  std::map<std::string, std::vector<ir::Node *>> var_nodes_;
 };
 
 bool IsControlDepVar(const ir::Node &var);
