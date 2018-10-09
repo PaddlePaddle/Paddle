@@ -39,6 +39,7 @@ import six
 import scipy.io as scio
 from paddle.dataset.image import *
 from paddle.reader import *
+from paddle import compat as cpt
 import os
 import numpy as np
 from multiprocessing import cpu_count
@@ -126,9 +127,11 @@ def reader_creator(data_file,
                         batch = pickle.load(f)
                     else:
                         batch = pickle.load(f, encoding='bytes')
-                data = batch[six.b('data')]
-                labels = batch[six.b('label')]
-                for sample, label in zip(data, batch[six.b('label')]):
+                if batch is not None:
+                    batch = cpt.to_text(batch)
+                data = batch['data']
+                labels = batch['label']
+                for sample, label in zip(data, batch['label']):
                     yield sample, int(label) - 1
             if not cycle:
                 break
