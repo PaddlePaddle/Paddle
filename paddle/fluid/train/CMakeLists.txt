@@ -4,7 +4,6 @@ function(train_test TARGET_NAME)
     set(multiValueArgs ARGS)
     cmake_parse_arguments(train_test "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-    set(PYTHON_TESTS_DIR ${PADDLE_BINARY_DIR}/python/paddle/fluid/tests)
     set(arg_list "")
     if(train_test_ARGS)
         foreach(arg ${train_test_ARGS})
