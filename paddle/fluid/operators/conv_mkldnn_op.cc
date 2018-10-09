@@ -537,16 +537,16 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       return conv_attr;
     }
 
-      mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_eltwise) const {
+      mkldnn::primitive_attr CreatePostOps(bool fuse_relu, bool fuse_residual_conn) const {
 
       mkldnn::primitive_attr conv_attr;
       mkldnn::post_ops post_operations;
       // Fusion with Elementwise layer relies on adding a sum post-operation with
-      // the scale parameter. It is assumed that when fuse_eltwise is true, the
+      // the scale parameter. It is assumed that when fuse_residual_conn is true, the
       // Output tensor contains the data coming from residual connection. The
       // result of this post_op is: Output = scale * Output + Conv_Out.
 
-      if (fuse_eltwise) {
+      if (fuse_residual_conn) {
         post_operations.append_sum(1.0f);
       }
       // Fusion with ReLU layer is executed through the PostOps feature. Create a
