@@ -58,6 +58,8 @@ def create_lod_tensor(data, recursive_seq_lens, place):
         place(Place): CPU or GPU place indicating where the data in the new
             LoDTensor will be stored.
 
+    Note: This API only supports data type with int64 yet.
+
     Returns:
         A fluid LoDTensor object with tensor data and recursive_seq_lens info.
     """
