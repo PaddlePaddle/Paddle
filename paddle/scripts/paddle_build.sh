@@ -395,10 +395,11 @@ EOF
         ctest --output-on-failure -j $1     
         # make install should also be test when unittest 
         make install -j 8
-        pip install ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
+        pip install --user ${INSTALL_PREFIX:-/paddle/build}/opt/paddle/share/wheels/*.whl
         if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]] ; then
             paddle version
         fi
+        pip uninstall -y paddlepaddle
     fi
 }
 
@@ -597,9 +598,9 @@ EOF
 EOF
 
     if [[ ${WITH_GPU} == "ON"  ]]; then
-        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} &&"
+        NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
     else
-        NCCL_DEPS=""
+        NCCL_DEPS="true"
     fi
 
     if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
@@ -613,9 +614,8 @@ EOF
     cat >> ${PADDLE_ROOT}/build/Dockerfile <<EOF
     ADD python/dist/*.whl /
     # run paddle version to install python packages first
-    RUN apt-get update &&\
-        ${NCCL_DEPS}\
-        apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
+    RUN apt-get update && ${NCCL_DEPS}
+    RUN apt-get install -y wget python-pip python-opencv libgtk2.0-dev dmidecode python-tk && easy_install -U pip && \
         pip install /*.whl; apt-get install -f -y && \
         apt-get clean -y && \
         rm -f /*.whl && \

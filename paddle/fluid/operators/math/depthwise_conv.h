@@ -32,8 +32,7 @@ class DepthwiseConvFunctor {
   void operator()(const DeviceContext& context, const framework::Tensor& input,
                   const framework::Tensor& filter,
                   const std::vector<int>& strides,
-                  const std::vector<int>& paddings,
-                  const std::vector<int>& dilations, framework::Tensor* output);
+                  const std::vector<int>& paddings, framework::Tensor* output);
 };
 
 template <typename DeviceContext, typename T>
@@ -44,7 +43,6 @@ class DepthwiseConvInputGradFunctor {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
                   framework::Tensor* input_grad);
 };
 
@@ -55,7 +53,6 @@ class DepthwiseConvFilterGradFunctor {
                   const framework::Tensor& output_grad,
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
-                  const std::vector<int>& dilations,
                   framework::Tensor* filter_grad);
 };
 
