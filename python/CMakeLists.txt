@@ -52,7 +52,6 @@ add_custom_command(OUTPUT ${FLUID_CORE}
         DEPENDS paddle_pybind)
 add_custom_target(copy_paddle_pybind ALL DEPENDS ${FLUID_CORE})
 
-
 add_custom_command(OUTPUT ${PADDLE_PYTHON_BUILD_DIR}/.timestamp
     COMMAND touch stub.cc
     COMMAND cp -r ${PADDLE_SOURCE_DIR}/python/paddle ${PADDLE_BINARY_DIR}/python
