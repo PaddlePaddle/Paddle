@@ -345,7 +345,7 @@ class DepthwiseConvTransposeKernel : public framework::OpKernel<T> {
     math::DepthwiseConvInputGradFunctor<DeviceContext, T>
         depthwiseConvInputGrad;
     depthwiseConvInputGrad(dev_ctx, *output, filter, *input, strides, paddings,
-                           dilations, output);
+                           output);
   }
 };
 
@@ -367,11 +367,10 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     std::vector<int> strides = context.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilations = context.Attr<std::vector<int>>("dilations");
 
     if (input_grad) {
       math::DepthwiseConvFunctor<DeviceContext, T> depthwiseConv;
-      depthwiseConv(dev_ctx, *output_grad, filter, strides, paddings, dilations,
+      depthwiseConv(dev_ctx, *output_grad, filter, strides, paddings,
                     input_grad);
     }
 
@@ -383,7 +382,7 @@ class DepthwiseConvTransposeGradKernel : public framework::OpKernel<T> {
       math::DepthwiseConvFilterGradFunctor<DeviceContext, T>
           depthwiseConvFilterGrad;
       depthwiseConvFilterGrad(dev_ctx, *output_grad, *input, strides, paddings,
-                              dilations, filter_grad);
+                              filter_grad);
     }
   }
 };
