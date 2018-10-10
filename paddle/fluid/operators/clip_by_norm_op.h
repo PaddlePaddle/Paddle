@@ -61,6 +61,7 @@ class ClipByNormKernel : public framework::OpKernel<T> {
       output_selected_rows->set_height(merged_input->height());
       output = output_selected_rows->mutable_value();
       output->Resize(merged_input->value().dims());
+      output->mutable_data<T>(context.GetPlace());
     } else {
       PADDLE_THROW("Unexpected branch, input variable type is %s",
                    in_var->Type().name());
