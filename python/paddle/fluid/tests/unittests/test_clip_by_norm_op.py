@@ -18,6 +18,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
@@ -65,39 +66,57 @@ class TestCase3(TestClipByNormOp):
 
 
 class TestClipByNormOpWithSelectedRows(OpTest):
-    def setUp(self):
-        self.initTestCase()
-
-        self.max_relative_error = 0.006
-
+    def check_with_place(self, place):
+        self.config_test_case()
         scope = core.Scope()
+
+        # set input
         x_selected_rows = scope.var('X').get_selected_rows()
-        x_selected_rows.set_rows([1, 1, 2, 0])
+        x_selected_rows.set_rows(self.grad_rows)
         x_tensor = x_selected_rows.get_tensor()
-        x_tensor = np.random.random((4, 1)).astype("float32")
-        x_tensor[np.abs(x_tensor) < self.max_relative_error] = 0.5
+        x_np = np.random.random(self.grad_shape).astype("float32")
+        x_np[np.abs(x_np) < self.max_relative_error] = 0.5
+        x_tensor.set(x_np, place)
 
-        self.op_type = "clip_by_norm"
-        self.inputs = {'X': x_selected_rows, }
-        self.attrs = {}
-        self.attrs['max_norm'] = self.max_norm
-        y_tensor = np.zeros((3, 1))
-        y_tensor[0::1] = np.sum(x_tensor[0::1], x_tensor[1::1])
-        y_tensor[1::1] = x_tensor[2::1]
-        y_tensor[2::1] = x_tensor[3::1]
-        norm = np.sqrt(np.sum(np.square(y_tensor)))
+        # set output
+        out_selected_rows = scope.var('Out').get_selected_rows()
+
+        # run clip_by_norm_op
+        clip_by_norm_op = fluid.op.Operator(
+            "clip_by_norm", max_norm=self.max_norm, X='X', Out='Out')
+        clip_by_norm_op.run(scope, place)
+
+        # check output
+        self.assertEqual(out_selected_rows.rows(), self.grad_clipped_rows)
+        out_tensor = out_selected_rows.get_tensor()
+        y_np = np.zeros(self.grad_clipped_shape)
+        y_np[0] = np.sum(x_np[0:2])
+        y_np[1] = x_np[2]
+        y_np[2] = x_np[3]
+        norm = np.sqrt(np.sum(np.square(y_np)))
         if norm > self.max_norm:
-            output = self.max_norm * y_tensor / norm
+            output = self.max_norm * y_np / norm
         else:
-            output = y_tensor
-        self.outputs = {'Out': output}
+            output = y_np
+        self.assertTrue(
+            np.allclose(
+                np.array(out_tensor), output, atol=1e-5, equal_nan=False))
 
-    def test_check_output(self):
-        self.check_output()
+    def test_clip_by_norm_with_selected_ros(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
 
-    def initTestCase(self):
-        self.shape = (100, )
+        for place in places:
+            self.check_with_place(place)
+
+    def config_test_case(self):
         self.max_norm = 1.0
+        self.max_relative_error = 0.006
+        self.grad_shape = (4, 1)
+        self.grad_clipped_shape = (3, 1)
+        self.grad_rows = [0, 0, 1, 2]
+        self.grad_clipped_rows = [0, 1, 2]
 
 
 if __name__ == '__main__':
