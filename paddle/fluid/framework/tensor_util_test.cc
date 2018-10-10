@@ -36,7 +36,7 @@ TEST(TensorCopy, Tensor) {
   TensorCopy(src_tensor, *cpu_place, &dst_tensor);
 
   const int* dst_ptr = dst_tensor.data<int>();
-  ASSERT_NE(src_ptr, dst_ptr);
+  EXPECT_NE(src_ptr, dst_ptr);
   for (size_t i = 0; i < 9; ++i) {
     EXPECT_EQ(src_ptr[i], dst_ptr[i]);
   }
@@ -47,7 +47,7 @@ TEST(TensorCopy, Tensor) {
   TensorCopy(slice_tensor, *cpu_place, &dst_tensor);
   const int* slice_ptr = slice_tensor.data<int>();
   dst_ptr = dst_tensor.data<int>();
-  ASSERT_NE(dst_ptr, slice_ptr);
+  EXPECT_NE(dst_ptr, slice_ptr);
   for (size_t i = 0; i < 3; ++i) {
     EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
   }
@@ -77,7 +77,7 @@ TEST(TensorCopy, Tensor) {
     // Sync before Compare Tensors
     gpu_ctx.Wait();
     const int* dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(src_ptr, dst_ptr);
+    EXPECT_NE(src_ptr, dst_ptr);
     for (size_t i = 0; i < 9; ++i) {
       EXPECT_EQ(src_ptr[i], dst_ptr[i]);
     }
@@ -94,7 +94,7 @@ TEST(TensorCopy, Tensor) {
     gpu_ctx.Wait();
     const int* slice_ptr = slice_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(dst_ptr, slice_ptr);
+    EXPECT_NE(dst_ptr, slice_ptr);
     for (size_t i = 0; i < 3; ++i) {
       EXPECT_EQ(dst_ptr[i], slice_ptr[i]);
     }
@@ -117,7 +117,7 @@ TEST(TensorFromVector, Tensor) {
     // Compare Tensors
     const int* cpu_ptr = cpu_tensor.data<int>();
     const int* src_ptr = src_vec.data();
-    ASSERT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, cpu_ptr);
     for (size_t i = 0; i < 9; ++i) {
       EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
     }
@@ -127,7 +127,7 @@ TEST(TensorFromVector, Tensor) {
     paddle::framework::TensorFromVector<int>(src_vec, &cpu_tensor);
     cpu_ptr = cpu_tensor.data<int>();
     src_ptr = src_vec.data();
-    ASSERT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, cpu_ptr);
     for (size_t i = 0; i < 5; ++i) {
       EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
     }
@@ -161,8 +161,8 @@ TEST(TensorFromVector, Tensor) {
     const int* src_ptr = src_vec.data();
     const int* cpu_ptr = cpu_tensor.data<int>();
     const int* dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(src_ptr, cpu_ptr);
-    ASSERT_NE(src_ptr, dst_ptr);
+    EXPECT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, dst_ptr);
     for (size_t i = 0; i < 9; ++i) {
       EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
       EXPECT_EQ(src_ptr[i], dst_ptr[i]);
@@ -181,8 +181,8 @@ TEST(TensorFromVector, Tensor) {
     src_ptr = src_vec.data();
     cpu_ptr = cpu_tensor.data<int>();
     dst_ptr = dst_tensor.data<int>();
-    ASSERT_NE(src_ptr, cpu_ptr);
-    ASSERT_NE(src_ptr, dst_ptr);
+    EXPECT_NE(src_ptr, cpu_ptr);
+    EXPECT_NE(src_ptr, dst_ptr);
     for (size_t i = 0; i < 5; ++i) {
       EXPECT_EQ(src_ptr[i], cpu_ptr[i]);
       EXPECT_EQ(src_ptr[i], dst_ptr[i]);
@@ -235,9 +235,9 @@ TEST(TensorContainsNAN, CPU) {
     buf[0] = 0.0;
     buf[1] = NAN;
     buf[2] = 0.0;
-    ASSERT_TRUE(paddle::framework::TensorContainsNAN(src));
+    EXPECT_TRUE(paddle::framework::TensorContainsNAN(src));
     buf[1] = 0.0;
-    ASSERT_FALSE(paddle::framework::TensorContainsNAN(src));
+    EXPECT_FALSE(paddle::framework::TensorContainsNAN(src));
   }
 
   {
@@ -248,9 +248,9 @@ TEST(TensorContainsNAN, CPU) {
     buf[0] = 0.0;
     buf[1].x = 0x7fff;
     buf[2] = 0.0;
-    ASSERT_TRUE(paddle::framework::TensorContainsNAN(src));
+    EXPECT_TRUE(paddle::framework::TensorContainsNAN(src));
     buf[1] = 0.0;
-    ASSERT_FALSE(paddle::framework::TensorContainsNAN(src));
+    EXPECT_FALSE(paddle::framework::TensorContainsNAN(src));
   }
 }
 
@@ -261,9 +261,9 @@ TEST(TensorContainsInf, CPU) {
     buf[0] = 1.0;
     buf[1] = INFINITY;
     buf[2] = 0.0;
-    ASSERT_TRUE(paddle::framework::TensorContainsInf(src));
+    EXPECT_TRUE(paddle::framework::TensorContainsInf(src));
     buf[1] = 1.0;
-    ASSERT_FALSE(paddle::framework::TensorContainsInf(src));
+    EXPECT_FALSE(paddle::framework::TensorContainsInf(src));
   }
 
   {
@@ -274,9 +274,55 @@ TEST(TensorContainsInf, CPU) {
     buf[0] = 1.0;
     buf[1].x = 0x7c00;
     buf[2] = 0.0;
-    ASSERT_TRUE(paddle::framework::TensorContainsInf(src));
+    EXPECT_TRUE(paddle::framework::TensorContainsInf(src));
     buf[1] = 1.0;
-    ASSERT_FALSE(paddle::framework::TensorContainsInf(src));
+    EXPECT_FALSE(paddle::framework::TensorContainsInf(src));
+  }
+}
+
+TEST(TensorIsfinite, CPU) {
+  {
+    paddle::framework::Tensor src, out;
+    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    buf[0] = 1.0;
+    buf[1] = INFINITY;
+    buf[2] = 0.0;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], false);
+    buf[1] = 1.0;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], true);
+  }
+
+  {
+    paddle::framework::Tensor src, out;
+    double* buf = src.mutable_data<double>({3}, paddle::platform::CPUPlace());
+    buf[0] = 1.0;
+    buf[1] = NAN;
+    buf[2] = 0.0;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], false);
+    buf[1] = 1.0;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], true);
+  }
+
+  {
+    paddle::framework::Tensor src, out;
+    paddle::platform::float16* buf =
+        src.mutable_data<paddle::platform::float16>(
+            {3}, paddle::platform::CPUPlace());
+    buf[0] = 1.0;
+    buf[1].x = 0x7c00;
+    buf[2] = 0.0;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], false);
+    buf[1] = 1.0;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], true);
+    buf[1].x = 0x7fff;
+    paddle::framework::TensorIsfinite(src, &out);
+    EXPECT_EQ(out.data<bool>()[0], false);
   }
 }
 
@@ -299,9 +345,9 @@ TEST(Tensor, FromAndToStream) {
     TensorFromStream(iss, &dst_tensor, cpu_ctx);
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 5; ++i) {
-      ASSERT_EQ(dst_ptr[i], array[i]);
+      EXPECT_EQ(dst_ptr[i], array[i]);
     }
-    ASSERT_EQ(dst_tensor.dims(), src_tensor.dims());
+    EXPECT_EQ(dst_tensor.dims(), src_tensor.dims());
     delete place;
   }
 #ifdef PADDLE_WITH_CUDA
@@ -323,7 +369,7 @@ TEST(Tensor, FromAndToStream) {
 
     int* dst_ptr = dst_tensor.mutable_data<int>(platform::CPUPlace());
     for (int i = 0; i < 6; ++i) {
-      ASSERT_EQ(dst_ptr[i], array[i]);
+      EXPECT_EQ(dst_ptr[i], array[i]);
     }
     delete gpu_place;
   }

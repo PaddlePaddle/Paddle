@@ -17,11 +17,12 @@ limitations under the License. */
  */
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
+#include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
 #include <fstream>
 #include <iostream>
+
+// #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/demo_ci/utils.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -78,18 +79,17 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
-  PADDLE_ENFORCE_EQ(numel, refer.data.size());
+  CHECK_EQ(numel, refer.data.size());
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_EQ(static_cast<int64_t*>(output.data.data())[i],
-                          refer.data[i]);
+        CHECK_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
       }
       break;
     }
     case PaddleDType::FLOAT32:
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_LT(
+        CHECK_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
             1e-5);
       }
