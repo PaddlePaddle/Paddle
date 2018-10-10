@@ -324,6 +324,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
                  bool merge_thread,
                  EventSortingKey sorted_by = EventSortingKey::kDefault) {
   if (g_state == ProfilerState::kDisabled) return;
+  if (merge_thread && events.size() < 2) return;
 
   std::string sorted_domain;
   std::function<bool(const EventItem&, const EventItem&)> sorted_func;
@@ -362,29 +363,44 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
       sorted_domain = "event first end time";
   }
 
+  const std::vector<std::vector<Event>>* analyze_events;
+  if (merge_thread) {
+    std::vector<std::vector<Event>> merged_events_list;
+    std::vector<Event> merged_events;
+    for (int i = 0; i < events.size(); ++i) {
+      for (int j = 0; j < events[i].size(); ++i) {
+        merged_events.push_back(events[i][j]);
+      }
+    }
+    merged_events_list.push_back(merged_events);
+    analyze_events = &merged_events_list;
+  } else {
+    analyze_events = &events;
+  }
+
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
   double total = 0.;  // the total time
-  for (size_t i = 0; i < events.size(); i++) {
+  for (size_t i = 0; i < (*analyze_events).size(); i++) {
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
     std::unordered_map<std::string, int> event_idx;
 
-    for (size_t j = 0; j < events[i].size(); j++) {
-      if (events[i][j].type() == EventType::kPushRange) {
-        pushed_events.push_back(events[i][j]);
-      } else if (events[i][j].type() == EventType::kPopRange) {
+    for (size_t j = 0; j < (*analyze_events)[i].size(); j++) {
+      if ((*analyze_events)[i][j].type() == EventType::kPushRange) {
+        pushed_events.push_back((*analyze_events)[i][j]);
+      } else if ((*analyze_events)[i][j].type() == EventType::kPopRange) {
         std::list<Event>::reverse_iterator rit = pushed_events.rbegin();
         while (rit != pushed_events.rend() &&
-               rit->name() != events[i][j].name()) {
+               rit->name() != (*analyze_events)[i][j].name()) {
           ++rit;
         }
 
         if (rit != pushed_events.rend()) {
           double event_time = (g_state == ProfilerState::kCUDA ||
                                g_state == ProfilerState::kAll)
-                                  ? rit->CudaElapsedMs(events[i][j])
-                                  : rit->CpuElapsedMs(events[i][j]);
+                                  ? rit->CudaElapsedMs((*analyze_events)[i][j])
+                                  : rit->CpuElapsedMs((*analyze_events)[i][j]);
           total += event_time;
 
           std::string event_name;
@@ -420,7 +436,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
           pushed_events.erase((++rit).base());
         } else {
           LOG(WARNING) << "Cannot find the push marker of event \'"
-                       << events[i][j].name()
+                       << (*analyze_events)[i][j].name()
                        << "\', which will be ignored in profiling report.";
         }
       }
