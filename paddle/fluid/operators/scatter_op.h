@@ -34,9 +34,9 @@ class ScatterOpKernel : public framework::OpKernel<T> {
     auto *Updates = ctx.Input<Tensor>("Updates");
     auto *Out = ctx.Output<Tensor>("Out");
 
-    // In place output: Out = X, Out[Ids] += Updates
+    // In place output: Out = X, Out[Ids] = Updates
     framework::TensorCopySync(*X, ctx.GetPlace(), Out);
-    // Apply ScatterUpdate: Out[index] += Updates[:]
+    // Apply ScatterUpdate: Out[index] = Updates[:]
     ScatterAssign<T>(ctx.device_context(), *Updates, *Ids, Out);
   }
 };
@@ -55,7 +55,7 @@ class ScatterGradientOpKernel : public framework::OpKernel<T> {
     // In place gradient: dX = dO
     framework::TensorCopySync(*dOut, ctx.GetPlace(), dX);
     dUpdates->mutable_data<T>(ctx.GetPlace());
-    // Gradient by Gather: dUpdates += dO[Ids]
+    // Gradient by Gather: dUpdates = dO[Ids]
     CPUGather<T>(ctx.device_context(), *dOut, *Ids, dUpdates);
   }
 };

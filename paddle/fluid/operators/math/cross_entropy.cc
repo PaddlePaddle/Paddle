@@ -28,7 +28,8 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& ctx, framework::Tensor* out,
                   const framework::Tensor* prob,
-                  const framework::Tensor* labels, const bool softLabel) {
+                  const framework::Tensor* labels, const bool softLabel,
+                  const int ignore_index) {
     const int batch_size = prob->dims()[0];
     if (softLabel) {
       auto in = EigenMatrix<T>::From(*prob);
@@ -49,8 +50,12 @@ class CrossEntropyFunctor<platform::CPUDeviceContext, T> {
         int lbl = label_data[i];
         PADDLE_ENFORCE_GE(lbl, 0);
         PADDLE_ENFORCE_LT(lbl, class_num);
+        PADDLE_ENFORCE((lbl >= 0 && lbl < class_num) || lbl == ignore_index);
         int index = i * class_num + lbl;
-        loss_data[i] = -math::TolerableValue<T>()(std::log(prob_data[index]));
+        loss_data[i] =
+            lbl == ignore_index
+                ? 0
+                : -math::TolerableValue<T>()(std::log(prob_data[index]));
       }
     }
   }

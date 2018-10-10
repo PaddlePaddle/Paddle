@@ -62,9 +62,21 @@ class ConcatGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const {
     auto* out_grad =
         ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    auto ins = ctx.MultiInput<framework::LoDTensor>("X");
     auto out_var_names = ctx.Outputs(framework::GradVarName("X"));
-    auto outs = ctx.MultiOutput<framework::Tensor>(framework::GradVarName("X"));
+    auto outs =
+        ctx.MultiOutput<framework::LoDTensor>(framework::GradVarName("X"));
+
+    {
+      auto dx = outs;
+      auto x = ins;
+      for (size_t i = 0; i < dx.size(); ++i) {
+        if (dx[i] != nullptr) {
+          dx[i]->set_lod(x[i]->lod());
+        }
+      }
+    }
+
     int64_t axis = static_cast<int64_t>(ctx.Attr<int>("axis"));
 
     // get output tensor that the name is not kEmptyVarName
@@ -97,8 +109,9 @@ class ConcatGradKernel : public framework::OpKernel<T> {
       auto& dev_ctx = ctx.template device_context<DeviceContext>();
       paddle::operators::math::ConcatGradFunctor<DeviceContext, T>
           concat_grad_functor;
-      concat_grad_functor(dev_ctx, *out_grad, ins, static_cast<int>(axis),
-                          &outputs);
+      concat_grad_functor(dev_ctx, *out_grad,
+                          ctx.MultiInput<framework::Tensor>("X"),
+                          static_cast<int>(axis), &outputs);
     }
   }
 };

@@ -27,6 +27,7 @@ import paddle.fluid.layers as layers
 from paddle.fluid.layers.io import ListenAndServ
 from paddle.fluid.layers.io import Recv
 from paddle.fluid.layers.io import Send
+import paddle.fluid.layers.ops as ops
 
 from paddle.fluid import core
 
@@ -89,7 +90,7 @@ class TestSendOp(unittest.TestCase):
                     name="X",
                     append_batch_size=False)
                 fluid.initializer.Constant(value=1.0)(x, main.global_block())
-                layers.scale(x=x, scale=10.0, out=out_var)
+                ops._scale(x=x, scale=10.0, out=out_var)
 
         self.server_exe = fluid.Executor(place)
         self.server_exe.run(main)
@@ -100,7 +101,7 @@ class TestSendOp(unittest.TestCase):
             main.global_block().append_op(
                 type="fetch_barrier",
                 inputs={},
-                outputs={},
+                outputs={"Out": []},
                 attrs={
                     "endpoints": ["127.0.0.1:{0}".format(port)],
                     RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE

@@ -62,7 +62,10 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     }
 
     if (dst_num_rows != 0) {
-      out_tensor.ShareDataWith(x_tensor.Slice(0, height));
+      out_tensor.mutable_data(place, x_tensor.type());
+      auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
+      framework::TensorCopy(x_tensor.Slice(0, height), place, *dev_ctx,
+                            &out_tensor);
     }
   }
 };
@@ -148,9 +151,9 @@ class ShrinkRNNMemoryGradInferShape : public framework::InferShapeBase {
   void operator()(framework::InferShapeContext *context) const override {
     PADDLE_ENFORCE(context->HasInput("X"));
     PADDLE_ENFORCE(context->HasOutput(framework::GradVarName("X")));
-    context->SetOutputDim(framework::GradVarName("X"),
-                          context->GetInputDim("X"));
-    context->ShareLoD("X", framework::GradVarName("X"));
+
+    context->ShareDim("X", /*->*/ framework::GradVarName("X"));
+    context->ShareLoD("X", /*->*/ framework::GradVarName("X"));
   }
 };
 

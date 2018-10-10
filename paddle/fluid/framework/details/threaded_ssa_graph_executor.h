@@ -73,7 +73,6 @@ class ThreadedSSAGraphExecutor : public SSAGraphExecutor {
   void InsertFetchOps(
       const std::vector<std::string> &fetch_tensors,
       std::vector<std::unique_ptr<FetchOpHandle>> *fetch_ops,
-      std::vector<std::unique_ptr<ir::Node>> *temp_nodes,
       std::unordered_set<std::unique_ptr<VarHandleBase>> *fetch_dependencies,
       std::unordered_map<OpHandleBase *, size_t> *pending_ops,
       std::unordered_set<VarHandleBase *> *pending_vars,

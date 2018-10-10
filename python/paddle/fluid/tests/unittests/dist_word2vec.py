@@ -49,28 +49,32 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 dtype='float32',
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
-                    name='shared_w', initializer=fluid.initializer.Constant()))
+                    name='shared_w',
+                    initializer=fluid.initializer.Constant(value=0.1)))
             embed_second = fluid.layers.embedding(
                 input=words[1],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
-                    name='shared_w', initializer=fluid.initializer.Constant()))
+                    name='shared_w',
+                    initializer=fluid.initializer.Constant(value=0.1)))
             embed_third = fluid.layers.embedding(
                 input=words[2],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
-                    name='shared_w', initializer=fluid.initializer.Constant()))
+                    name='shared_w',
+                    initializer=fluid.initializer.Constant(value=0.1)))
             embed_forth = fluid.layers.embedding(
                 input=words[3],
                 size=[dict_size, EMBED_SIZE],
                 dtype='float32',
                 is_sparse=IS_SPARSE,
                 param_attr=fluid.ParamAttr(
-                    name='shared_w', initializer=fluid.initializer.Constant()))
+                    name='shared_w',
+                    initializer=fluid.initializer.Constant(value=0.1)))
 
             concat_embed = fluid.layers.concat(
                 input=[embed_first, embed_second, embed_third, embed_forth],
@@ -80,13 +84,13 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
                 size=HIDDEN_SIZE,
                 act='sigmoid',
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant()))
+                    initializer=fluid.initializer.Constant(value=0.1)))
             predict_word = fluid.layers.fc(
                 input=hidden1,
                 size=dict_size,
                 act='softmax',
                 param_attr=fluid.ParamAttr(
-                    initializer=fluid.initializer.Constant()))
+                    initializer=fluid.initializer.Constant(value=0.1)))
             cost = fluid.layers.cross_entropy(
                 input=predict_word, label=words[4])
             avg_cost = fluid.layers.mean(cost)
@@ -118,4 +122,7 @@ class TestDistWord2vec2x2(TestDistRunnerBase):
 
 
 if __name__ == "__main__":
+    import os
+    os.environ['CPU_NUM'] = '1'
+    os.environ['USE_CUDA'] = "FALSE"
     runtime_main(TestDistWord2vec2x2)

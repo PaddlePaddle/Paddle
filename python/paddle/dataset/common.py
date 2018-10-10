@@ -19,6 +19,7 @@ import hashlib
 import os
 import errno
 import shutil
+import six
 import sys
 import importlib
 import paddle.dataset
@@ -76,13 +77,14 @@ def download(url, module_name, md5sum, save_name=None):
     retry_limit = 3
     while not (os.path.exists(filename) and md5file(filename) == md5sum):
         if os.path.exists(filename):
-            print("file md5", md5file(filename), md5sum)
+            sys.stderr.write("file %s  md5 %s" % (md5file(filename), md5sum))
         if retry < retry_limit:
             retry += 1
         else:
             raise RuntimeError("Cannot download {0} within retry limit {1}".
                                format(url, retry_limit))
-        print("Cache file %s not found, downloading %s" % (filename, url))
+        sys.stderr.write("Cache file %s not found, downloading %s" %
+                         (filename, url))
         r = requests.get(url, stream=True)
         total_length = r.headers.get('content-length')
 
@@ -94,13 +96,16 @@ def download(url, module_name, md5sum, save_name=None):
                 dl = 0
                 total_length = int(total_length)
                 for data in r.iter_content(chunk_size=4096):
+                    if six.PY2:
+                        data = six.b(data)
                     dl += len(data)
                     f.write(data)
                     done = int(50 * dl / total_length)
-                    sys.stdout.write("\r[%s%s]" % ('=' * done,
+                    sys.stderr.write("\r[%s%s]" % ('=' * done,
                                                    ' ' * (50 - done)))
                     sys.stdout.flush()
-
+    sys.stderr.write("\n")
+    sys.stdout.flush()
     return filename
 
 
