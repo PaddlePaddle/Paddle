@@ -105,11 +105,11 @@ void GraphPatternDetector::operator()(Graph *graph,
 
 // OpDesc real-time structure.
 struct OpDescRT {
-  OpDescRT(framework::OpDesc* op) {
+  explicit OpDescRT(framework::OpDesc *op) {
     type = op->Proto()->type();
     for (int i = 0; i < op->Proto()->inputs().size(); i++) {
       inputs.emplace_back();
-      const auto& the_inputs = op->Proto()->inputs()[i];
+      const auto &the_inputs = op->Proto()->inputs()[i];
       for (int j = 0; j < the_inputs.arguments_size(); j++) {
         inputs.back().emplace_back(the_inputs.arguments(j));
       }
@@ -117,7 +117,7 @@ struct OpDescRT {
 
     for (int i = 0; i < op->Proto()->outputs().size(); i++) {
       outputs.emplace_back();
-      const auto& the_outputs = op->Proto()->outputs()[i];
+      const auto &the_outputs = op->Proto()->outputs()[i];
       for (int j = 0; j < the_outputs.arguments_size(); j++) {
         outputs.back().emplace_back(the_outputs.arguments(j));
       }
@@ -130,7 +130,7 @@ struct OpDescRT {
 
 // VarDesc real-time structure.
 struct VarDescRT {
-  VarDescRT(framework::VarDesc* var) {
+  explicit VarDescRT(framework::VarDesc *var) {
     name = var->Name();
     persistable = var->Persistable();
   }
@@ -142,7 +142,7 @@ struct VarDescRT {
 void GraphPatternDetector::CreateProtoCache(const Graph &graph) {
   ADD_ONCE_TIMER("CreateProtoCache");
   for (auto &node : GraphTraits::DFS(graph)) {
-    void* p{nullptr};
+    void *p{nullptr};
     if (node.IsOp()) {
       p = new OpDescRT(node.Op());
     } else {
@@ -250,6 +250,28 @@ bool IsNodesLink(Node *a, Node *b) {
   }
   return false;
 }
+
+struct PDEdgeSorter {
+  using edge_t = PDPattern::edge_t;
+  PDEdgeSorter(const std::unordered_map<const PDNode *,
+                                        std::unordered_set<Node *>> &roles)
+      : roles_(roles) {}
+
+  bool operator()(const edge_t &a, const edge_t b) {
+    // The role with less nodes prefer to sort to the front, so that it will
+    // prune more cases in the beginning of the search.
+    PADDLE_ENFORCE(roles_.count(a.first));
+    PADDLE_ENFORCE(roles_.count(a.second));
+    PADDLE_ENFORCE(roles_.count(b.first));
+    PADDLE_ENFORCE(roles_.count(b.second));
+    int a_count = roles_.at(a.first).size() + roles_.at(a.second).size();
+    int b_count = roles_.at(b.first).size() + roles_.at(b.second).size();
+    return a_count < b_count;
+  }
+
+ private:
+  const std::unordered_map<const PDNode *, std::unordered_set<Node *>> &roles_;
+};
 
 std::vector<GraphPatternDetector::subgraph_t>
 GraphPatternDetector::DetectPatterns() {
