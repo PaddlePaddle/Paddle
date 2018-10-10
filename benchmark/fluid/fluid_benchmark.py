@@ -228,7 +228,8 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                 profiler.stop_profiler("total", "/tmp/profile_%d_pass%d" %
                                        (trainer_id, pass_id))
             if iters == args.iterations:
-                reader_generator.close()
+                if args.use_reader_op:
+                    reader_generator.close()
                 break
 
             if iters == args.skip_batch_num:
@@ -249,7 +250,7 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
                     break
             else:
                 fetch_ret = exe.run(fetch_list, feed=feeder.feed(data))
-            if args.use_reader_op:
+            if args.use_reader_op or args.use_fake_data:
                 num_samples += args.batch_size * args.gpus
             else:
                 num_samples += len(data)
