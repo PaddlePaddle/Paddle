@@ -372,21 +372,6 @@ $out = \min(\max(0, x), 6)$
   }
 };
 
-class PowOpMaker : public framework::OpProtoAndCheckerMaker {
- public:
-  void Make() override {
-    AddInput("X", "Input of Pow operator");
-    AddOutput("Out", "Output of Pow operator");
-    AddAttr<float>("factor", "The exponential factor of Pow").SetDefault(1.0f);
-    AddComment(R"DOC(
-Pow Activation Operator.
-
-$out = x^{factor}$
-
-)DOC");
-  }
-};
-
 class STanhOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -524,7 +509,6 @@ namespace ops = paddle::operators;
   __macro(Log, log);                 \
   __macro(Square, square);           \
   __macro(BRelu, brelu);             \
-  __macro(Pow, pow);                 \
   __macro(STanh, stanh);             \
   __macro(Softplus, softplus);       \
   __macro(Softsign, softsign);       \
