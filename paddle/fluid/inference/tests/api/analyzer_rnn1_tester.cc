@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include <gperftools/profiler.h>
 
 DEFINE_bool(with_precision_check, true, "turn on test");
 
@@ -498,7 +499,9 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
 TEST(Analyzer_rnn1, analysis) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  ProfilerStart("/tmp/profile.out");
   CreatePaddlePredictor<AnalysisConfig>(cfg);
+  ProfilerStop();
 }
 
 }  // namespace inference

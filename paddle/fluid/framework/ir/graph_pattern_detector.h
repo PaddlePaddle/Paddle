@@ -275,6 +275,8 @@ class GraphPatternDetector {
   // Validate whether the intermediate nodes are linked by external nodes.
   void ValidateByNodeRole(std::vector<subgraph_t>* subgraphs);
 
+  void CreateProtoCache(const Graph& graph);
+
 #ifdef PADDLE_WITH_TESTING
   FRIEND_TEST(GraphPatternDetecter, MarkPDNodesInGraph);
   FRIEND_TEST(GraphPatternDetecter, DetectPatterns);
@@ -285,6 +287,7 @@ class GraphPatternDetector {
       std::pair<Node* /*node in graph*/, PDNode* /*node in pattern*/>;
   PDPattern pattern_;
   std::unordered_map<const PDNode*, std::unordered_set<Node*>> pdnodes2nodes_;
+  std::unordered_map<Node*, void*> proto_cache_;
 };
 
 // some helper methods.

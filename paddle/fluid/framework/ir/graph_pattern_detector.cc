@@ -82,6 +82,9 @@ void PDPattern::AddEdge(PDNode *a, PDNode *b) {
 
 void GraphPatternDetector::operator()(Graph *graph,
                                       GraphPatternDetector::handle_t handler) {
+  // Debug
+  CreateProtoCache(*graph);
+
   if (!MarkPDNodesInGraph(*graph)) {
     return;
   }
@@ -100,8 +103,57 @@ void GraphPatternDetector::operator()(Graph *graph,
   }
 }
 
+// OpDesc real-time structure.
+struct OpDescRT {
+  OpDescRT(framework::OpDesc* op) {
+    type = op->Proto()->type();
+    for (int i = 0; i < op->Proto()->inputs().size(); i++) {
+      inputs.emplace_back();
+      const auto& the_inputs = op->Proto()->inputs()[i];
+      for (int j = 0; j < the_inputs.arguments_size(); j++) {
+        inputs.back().emplace_back(the_inputs.arguments(j));
+      }
+    }
+
+    for (int i = 0; i < op->Proto()->outputs().size(); i++) {
+      outputs.emplace_back();
+      const auto& the_outputs = op->Proto()->outputs()[i];
+      for (int j = 0; j < the_outputs.arguments_size(); j++) {
+        outputs.back().emplace_back(the_outputs.arguments(j));
+      }
+    }
+  }
+  std::string type;
+  std::vector<std::vector<std::string>> inputs;
+  std::vector<std::vector<std::string>> outputs;
+};
+
+// VarDesc real-time structure.
+struct VarDescRT {
+  VarDescRT(framework::VarDesc* var) {
+    name = var->Name();
+    persistable = var->Persistable();
+  }
+
+  std::string name;
+  bool persistable;
+};
+
+void GraphPatternDetector::CreateProtoCache(const Graph &graph) {
+  ADD_ONCE_TIMER("CreateProtoCache");
+  for (auto &node : GraphTraits::DFS(graph)) {
+    void* p{nullptr};
+    if (node.IsOp()) {
+      p = new OpDescRT(node.Op());
+    } else {
+      p = new VarDescRT(node.Var());
+    }
+    proto_cache_.emplace(&node, p);
+  }
+}
+
 bool GraphPatternDetector::MarkPDNodesInGraph(const ir::Graph &graph) {
-  ADD_ONCE_TIMER("fMarkPDNodesInGraph");
+  ADD_ONCE_TIMER("MarkPDNodesInGraph");
   VLOG(3) << "mark pdnodes in graph";
   if (graph.Nodes().empty()) return false;
 
