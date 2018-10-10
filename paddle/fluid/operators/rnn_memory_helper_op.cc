@@ -54,7 +54,7 @@ class RNNMemoryHelperOpShapeInference : public framework::InferShapeBase {
                    "Input(X) of rnn_memory_helper op should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Out"),
                    "Output of rnn_memory_helper op should not be null.");
-    ctx->SetOutputDim("Out", ctx->GetInputDim("X"));
+    ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
 };
