@@ -294,11 +294,11 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 
   std::cout << "Place: " << place << std::endl;
   std::cout << "Time unit: ms" << std::endl;
-  std::cout << "Sorted by " << sorted_domain
-            << " in descending order in the same thread\n\n";
   if (merge_thread) {
     std::cout << "merge all thread" << std::endl;
   }
+  std::cout << "Sorted by " << sorted_domain
+            << " in descending order in the same thread\n\n";
   // Output events table
   std::cout.setf(std::ios::left);
   std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
