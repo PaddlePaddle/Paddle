@@ -717,33 +717,6 @@ struct ELUGradFunctor : public BaseActivationFunctor<T> {
   }
 };
 
-// FIXME(qijun) https://github.com/PaddlePaddle/Paddle/issues/5198
-template <typename T>
-struct PowFunctor : public BaseActivationFunctor<T> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
-  template <typename Device, typename X, typename Out>
-  void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.pow(static_cast<T>(factor));
-  }
-};
-
-template <typename T>
-struct PowGradFunctor : public BaseActivationFunctor<T> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
-  template <typename Device, typename X, typename Out, typename dOut,
-            typename dX>
-  void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(factor) *
-                   x.pow(static_cast<T>(factor - static_cast<T>(1)));
-  }
-};
-
 template <typename T>
 struct STanhFunctor : public BaseActivationFunctor<T> {
   float scale_a;
@@ -892,7 +865,6 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
   __macro(square, SquareFunctor, SquareGradFunctor);                 \
   __macro(brelu, BReluFunctor, BReluGradFunctor);                    \
   __macro(soft_relu, SoftReluFunctor, SoftReluGradFunctor);          \
-  __macro(pow, PowFunctor, PowGradFunctor);                          \
   __macro(stanh, STanhFunctor, STanhGradFunctor);                    \
   __macro(softplus, SoftplusFunctor, SoftplusGradFunctor);           \
   __macro(softsign, SoftsignFunctor, SoftsignGradFunctor);           \
