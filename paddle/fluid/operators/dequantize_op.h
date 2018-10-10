@@ -28,7 +28,10 @@ class DeQuantOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
-  void InferShape(framework::InferShapeContext* ctx) const override {}
+  void InferShape(framework::InferShapeContext* ctx) const override{
+    ctx->SetOutputDim("Output", ctx->GetInputDim("Input"));
+    ctx->ShareLoD("Input", /*->*/ "Output");
+  } 
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
