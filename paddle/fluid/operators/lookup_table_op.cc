@@ -137,6 +137,7 @@ class LookupTableOpGradVarTypeInference : public framework::VarTypeInference {
               << " is set to LoDTensor";
       block->Var(out_var_name)->SetType(framework::proto::VarType::LOD_TENSOR);
     }
+    block->Var(out_var_name)->SetDataType(block->Var("W")->GetDataType());
   }
 };
 
