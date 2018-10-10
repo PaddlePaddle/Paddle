@@ -33,14 +33,6 @@ using platform::GetMKLDNNFormat;
 template <typename DeviceContext, typename T>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE(ctx->HasInput("Input"), "Input should not be null");
-    PADDLE_ENFORCE(ctx->HasOutput("Output"), "Output should not be null");
-
-    ctx->SetOutputDim("Output", ctx->GetInputDim("Input"));
-    ctx->ShareLoD("Input", /*->*/ "Output");
-  }
-
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* input = ctx.Input<Tensor>("Input");
     auto* scale = ctx.Input<Tensor>("Scale");
