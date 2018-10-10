@@ -28,7 +28,7 @@ static __device__ __forceinline__ float real_pow(float x, float factor) {
   return powf(x, factor);
 }
 static __device__ __forceinline__ double real_pow(double x, float factor) {
-  return powf(x, factor);
+  return pow(x, factor);
 }
 
 template <typename T>
