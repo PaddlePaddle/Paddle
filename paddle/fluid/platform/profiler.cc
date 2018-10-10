@@ -276,7 +276,7 @@ struct EventItem {
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                    const std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width, double total, bool merge_thread) {
+                   const size_t data_width, bool merge_thread) {
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
@@ -315,8 +315,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                 << std::setw(data_width) << event_item.min_time
                 << std::setw(data_width) << event_item.max_time
                 << std::setw(data_width) << event_item.ave_time
-                << std::setw(data_width) << event_item.total_time / total
-                << std::endl;
+                << std::setw(data_width) << event_item.ratio << std::endl;
     }
   }
   std::cout << std::endl;
@@ -383,8 +382,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
 
   std::vector<std::vector<EventItem>> events_table;
   size_t max_name_width = 0;
-  double total = 0.;  // the total time
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
+    double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
     std::vector<EventItem> event_items;
     std::unordered_map<std::string, int> event_idx;
@@ -447,6 +446,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
     // average time
     for (auto& item : event_items) {
       item.ave_time = item.total_time / item.calls;
+      item.ratio = item.total_time / total;
     }
     // sort
     if (sorted_by != EventSortingKey::kDefault) {
@@ -464,7 +464,7 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12, total,
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12,
                 merge_thread);
 }
 
