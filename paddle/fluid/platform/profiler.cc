@@ -293,8 +293,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   }
 
   if (merge_thread) {
-    std::cout << "Note! This Report merge all thread into one" << place
-              << std::endl;
+    std::cout << "Note! This Report merge all thread into one." << std::endl;
   }
   std::cout << "Place: " << place << std::endl;
   std::cout << "Time unit: ms" << std::endl;
