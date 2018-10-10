@@ -292,11 +292,12 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
     PADDLE_THROW("Invalid profiler state", g_state);
   }
 
+  if (merge_thread) {
+    std::cout << "Note! This Report merge all thread into one" << place
+              << std::endl;
+  }
   std::cout << "Place: " << place << std::endl;
   std::cout << "Time unit: ms" << std::endl;
-  if (merge_thread) {
-    std::cout << "merge all thread" << std::endl;
-  }
   std::cout << "Sorted by " << sorted_domain
             << " in descending order in the same thread\n\n";
   // Output events table
