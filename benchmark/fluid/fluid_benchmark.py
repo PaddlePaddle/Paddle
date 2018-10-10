@@ -241,7 +241,6 @@ def train_parallel(train_args, test_args, args, train_prog, test_prog,
 
             if args.use_fake_data or args.use_reader_op:
                 try:
-
                     fetch_ret = exe.run(fetch_list)
                 except fluid.core.EOFException as eof:
                     break
