@@ -24,6 +24,7 @@ COPY ./paddle/scripts/docker/root/ /root/
 
 RUN apt-get update && \
     apt-get install -y --allow-downgrades patchelf \
+    python3 python3-dev python3-pip \
     git python-pip python-dev python-opencv openssh-server bison \
     libnccl2=2.1.2-1+cuda8.0 libnccl-dev=2.1.2-1+cuda8.0 \
     wget unzip unrar tar xz-utils bzip2 gzip coreutils ntp \
@@ -70,24 +71,33 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 # specify sphinx version as 1.5.6 and remove -U option for [pip install -U
 # sphinx-rtd-theme] since -U option will cause sphinx being updated to newest
 # version(1.7.1 for now), which causes building documentation failed.
-RUN easy_install -U pip && \
+RUN pip3 install -U wheel && \
+    pip3 install -U docopt PyYAML sphinx==1.5.6 && \
+    pip3 install sphinx-rtd-theme==0.1.9 recommonmark && \
+    easy_install -U pip && \
     pip install -U wheel && \
     pip install -U docopt PyYAML sphinx==1.5.6 && \
     pip install sphinx-rtd-theme==0.1.9 recommonmark
 
-RUN pip install pre-commit 'ipython==5.3.0' && \
+RUN pip3 install pre-commit 'ipython==5.3.0' && \
+    pip3 install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
+    pip3 install opencv-python && \
+    pip install pre-commit 'ipython==5.3.0' && \
     pip install 'ipykernel==4.6.0' 'jupyter==1.0.0' && \
     pip install opencv-python
 
 #For docstring checker
+RUN pip3 install pylint pytest astroid isort
 RUN pip install pylint pytest astroid isort LinkChecker
 
 COPY ./python/requirements.txt /root/
+RUN pip3 install -r /root/requirements.txt
 RUN pip install -r /root/requirements.txt
 
 # To fix https://github.com/PaddlePaddle/Paddle/issues/1954, we use
 # the solution in https://urllib3.readthedocs.io/en/latest/user-guide.html#ssl-py2
 RUN apt-get install -y libssl-dev libffi-dev
+RUN pip3 install certifi urllib3[secure]
 RUN pip install certifi urllib3[secure]
 
 

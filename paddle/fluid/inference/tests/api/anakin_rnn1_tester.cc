@@ -22,7 +22,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
 #include "utils/logger/logger.h"
 
 DEFINE_string(model, "", "Directory of the inference model.");
@@ -97,10 +96,10 @@ void Data::get_batch_data(
 
 namespace paddle {
 
-AnakinConfig GetConfig() {
-  AnakinConfig config;
+contrib::AnakinConfig GetConfig() {
+  contrib::AnakinConfig config;
   // using AnakinConfig::X86 if you need to use cpu to do inference
-  config.target_type = AnakinConfig::X86;
+  config.target_type = contrib::AnakinConfig::X86;
   config.model_file = FLAGS_model;
   config.device = 0;
   config.max_batch_size = 1000;  // the max number of token
@@ -121,9 +120,10 @@ void set_tensor(std::string name, std::vector<int> shape,
 }
 
 void single_test() {
-  AnakinConfig config = GetConfig();
+  auto config = GetConfig();
   auto predictor =
-      CreatePaddlePredictor<AnakinConfig, PaddleEngineKind::kAnakin>(config);
+      CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
+          config);
 
   int max_batch_size = 1000;
   std::string feature_file = FLAGS_datapath;

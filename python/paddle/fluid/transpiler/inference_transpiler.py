@@ -124,7 +124,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op.set_attr("fuse_relu", True)
+                    current_op._set_attr("fuse_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
@@ -163,7 +163,7 @@ class InferenceTranspiler(object):
                 next_op = self.block.ops[i + 1]
                 if next_op.type == 'relu':
                     # modify bnorm OP to include relu
-                    current_op.set_attr("fuse_with_relu", True)
+                    current_op._set_attr("fuse_with_relu", True)
                     # remove relu OP
                     self.block._remove_op(i + 1)
             i = i + 1
@@ -377,7 +377,7 @@ class InferenceTranspiler(object):
                 type=old_var.type,
                 dtype=old_var.dtype,
                 shape=old_var.shape)
-            op.rename_input(old_param_name, new_param_name)
+            op._rename_input(old_param_name, new_param_name)
             self.scope.var(new_param_name)
 
             tensor = self.scope.find_var(new_param_name).get_tensor()
@@ -454,7 +454,7 @@ class InferenceTranspiler(object):
         :type eltwise_op: Operator
         '''
 
-        conv_op.set_attr("fuse_eltwise", True)
+        conv_op._set_attr("fuse_eltwise", True)
         self.input_map[conv_op.output("Output")[0]] = eltwise_op.input("Y")[0]
         self.input_map[eltwise_op.output("Out")[0]] = eltwise_op.input("Y")[0]
 
@@ -463,8 +463,8 @@ class InferenceTranspiler(object):
             current_op = self.block.ops[i]
             for input_arg in current_op.input_arg_names:
                 if input_arg in self.input_map:
-                    current_op.rename_input(input_arg,
-                                            self.input_map[input_arg])
+                    current_op._rename_input(input_arg,
+                                             self.input_map[input_arg])
 
     def _remove_unused_var(self):
         '''
