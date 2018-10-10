@@ -3,7 +3,7 @@ INCLUDE(ExternalProject)
 SET(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3)
 SET(EIGEN_INCLUDE_DIR ${EIGEN_SOURCE_DIR}/src/extern_eigen3)
 INCLUDE_DIRECTORIES(${EIGEN_INCLUDE_DIR})
-if(NOT WITH_FAST_MATH)
+if(NOT WITH_EIGEN_FAST_MATH)
   # EIGEN_FAST_MATH: https://eigen.tuxfamily.org/dox/TopicPreprocessorDirectives.html
   # enables some optimizations which might affect the accuracy of the result. 
   # This currently enables the SSE vectorization of sin() and cos(), 

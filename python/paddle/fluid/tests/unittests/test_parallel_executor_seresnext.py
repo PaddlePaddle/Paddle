@@ -237,6 +237,7 @@ class TestResnet(TestParallelExecutorBase):
                                   use_cuda=True,
                                   use_reduce=False,
                                   iter=20,
+                                  delta1=1e-6,
                                   delta2=1e-6):
         if use_cuda and not core.is_compiled_with_cuda():
             return
@@ -268,12 +269,13 @@ class TestResnet(TestParallelExecutorBase):
             optimizer=optimizer)
 
         self.assertAlmostEquals(
-            np.mean(parallel_first_loss), single_first_loss[0], delta=1e-6)
+            np.mean(parallel_first_loss), single_first_loss[0], delta=delta1)
         self.assertAlmostEquals(
             np.mean(parallel_last_loss), single_last_loss[0], delta=delta2)
 
     def test_seresnext_with_learning_rate_decay(self):
-        self._check_resnet_convergence(model=SE_ResNeXt50Small, use_cuda=True)
+        self._check_resnet_convergence(
+            model=SE_ResNeXt50Small, use_cuda=True, delta1=1e-5)
         self._check_resnet_convergence(
             model=SE_ResNeXt50Small, use_cuda=False, iter=2, delta2=1e-3)
 

@@ -72,7 +72,12 @@ option(WITH_INFERENCE    "Compile fluid inference library"              ON)
 option(WITH_INFERENCE_API_TEST   "Test fluid inference high-level api interface"  OFF)
 option(WITH_SYSTEM_BLAS   "Use system blas library"           OFF)
 option(PY_VERSION       "Compile PaddlePaddle with python3 support"     ${PY_VERSION})
-option(WITH_FAST_MATH   "Make use of fast math library, might affect the precision to some extent"                 OFF)
+
+# FIXME(chengduo): XX_FAST_MATH may induce the result of some functor is wrong, for example 'powf'.
+# For more information, please refer to: https://github.com/torch/DEPRECEATED-torch7-distro/issues/132
+option(WITH_FAST_MATH   "Make use of fast math library of CUDA which might affect the precision to some extent"                      OFF)
+option(WITH_EIGEN_FAST_MATH   "Make use of fast math library of Eigen which might affect the precision to some extent"   ON)
+
 
 # PY_VERSION
 if(NOT PY_VERSION)
