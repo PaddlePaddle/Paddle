@@ -321,6 +321,7 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
 
 // Parse the event list and output the profiling report
 void ParseEvents(const std::vector<std::vector<Event>>& events,
+                 bool merge_thread,
                  EventSortingKey sorted_by = EventSortingKey::kDefault) {
   if (g_state == ProfilerState::kDisabled) return;
 
@@ -386,9 +387,15 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
                                   : rit->CpuElapsedMs(events[i][j]);
           total += event_time;
 
-          std::string event_name =
-              "thread" + std::to_string(rit->thread_id()) + "::" + rit->name();
-          max_name_width = std::max(max_name_width, event_name.size());
+          std::string event_name;
+          if (merge_thread) {
+            event_name = rit->name();
+            max_name_width = std::max(max_name_width, event_name.size());
+          } else {
+            event_name = "thread" + std::to_string(rit->thread_id()) + "::" +
+                         rit->name();
+            max_name_width = std::max(max_name_width, event_name.size());
+          }
 
           if (event_idx.find(event_name) == event_idx.end()) {
             event_idx[event_name] = event_items.size();
@@ -449,7 +456,8 @@ void DisableProfiler(EventSortingKey sorted_key,
   Mark("_stop_profiler_", nullptr);
 
   std::vector<std::vector<Event>> all_events = GetAllEvents();
-  ParseEvents(all_events, sorted_key);
+  ParseEvents(all_events, true, sorted_key);
+  ParseEvents(all_events, false, sorted_key);
   ResetProfiler();
   DeviceTracer* tracer = GetDeviceTracer();
   if (tracer->IsEnabled()) {
