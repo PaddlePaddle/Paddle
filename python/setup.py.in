@@ -27,7 +27,7 @@ def _get_version_detail(idx):
     if re.match('@TAG_VERSION_REGEX@', '@PADDLE_VERSION@'):
         version_details = '@PADDLE_VERSION@'.split('.')
 
-        if len(version_details) == 3:
+        if len(version_details) >= 3:
             return version_details[idx]
 
     return 0
