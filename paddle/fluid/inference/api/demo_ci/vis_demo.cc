@@ -124,9 +124,7 @@ void Main(bool use_gpu, bool use_trt) {
     config.device = 0;
     config.max_batch_size = 1;
     config.fraction_of_gpu_memory = 0.1;  // set by yourself
-    predictor =
-        CreatePaddlePredictor<paddle::contrib::MixedRTConfig,
-                              PaddleEngineKind::kAutoMixedTensorRT>(config);
+    predictor = CreatePaddlePredictor<paddle::contrib::MixedRTConfig>(config);
   }
 
   VLOG(3) << "begin to process data";
@@ -166,7 +164,7 @@ int main(int argc, char** argv) {
   } else if (FLAGS_use_gpu) {
     paddle::demo::Main(true /*use_gpu*/, false);
   } else {
-    paddle::demo::Main(false /* use_gpu*/, false /*use_tensorrt*/);
+    paddle::demo::Main(false /*use_gpu*/, false /*use_tensorrt*/);
   }
   return 0;
 }
