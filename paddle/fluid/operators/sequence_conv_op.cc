@@ -90,8 +90,8 @@ class SequenceConvGradOp : public framework::OperatorWithKernel {
                         ctx->GetInputDim("PaddingData"));
     }
     if (ctx->HasOutput(framework::GradVarName("X"))) {
-      ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-      ctx->ShareLoD("X", framework::GradVarName("X"));
+      ctx->ShareDim("X", /*->*/ framework::GradVarName("X"));
+      ctx->ShareLoD("X", /*->*/ framework::GradVarName("X"));
     }
     if (ctx->HasOutput(framework::GradVarName("Filter"))) {
       ctx->SetOutputDim(framework::GradVarName("Filter"),
