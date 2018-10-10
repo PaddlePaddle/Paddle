@@ -90,7 +90,7 @@ Graph::Graph(const ProgramDesc &program) : program_(program) {
   // Make the nodes id start from 0.
   Node::ResetId();
   InitFromProgram(program_);
-  ResolveHazard();
+  ResolveHazard(var_nodes_);
 }
 
 void Graph::InitFromProgram(const ProgramDesc &program) {
@@ -139,7 +139,8 @@ void Graph::InitFromProgram(const ProgramDesc &program) {
   }
 }
 
-void Graph::ResolveHazard() {
+void Graph::ResolveHazard(
+    const std::map<std::string, std::vector<ir::Node *>> &var_nodes) {
   /**
    * We should handle write after read(WAR) and write after write(WAW) here.
    * Because some of the operators of the program can be executed parallelly.
@@ -150,7 +151,7 @@ void Graph::ResolveHazard() {
    * https://en.wikipedia.org/wiki/Hazard_(computer_architecture)#Write_after_read_(WAR)
    */
 
-  for (auto &var : var_nodes_) {
+  for (auto &var : var_nodes) {
     auto &versions = var.second;
     if (versions.size() <= 1) continue;
 
@@ -158,6 +159,7 @@ void Graph::ResolveHazard() {
     auto it_old = versions.rbegin();
     ++it_old;
     for (; it_old != versions.rend(); it_new = it_old, ++it_old) {
+      VLOG(3) << "deal with var: " << (*it_new)->Name();
       ir::Node *write_op =
           (*it_new)->inputs.empty() ? nullptr : (*it_new)->inputs[0];
       const auto &read_ops = (*it_old)->outputs;

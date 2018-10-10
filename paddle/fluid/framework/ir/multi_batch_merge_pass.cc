@@ -26,6 +26,7 @@ namespace framework {
 namespace ir {
 
 static const char kNumRepeats[] = "num_repeats";
+typedef std::unordered_map<std::string, std::vector<ir::Node*>> SSAVarList;
 
 ir::Node* SameNameVar(std::unordered_set<ir::Node*> all, ir::Node* target) {
   for (auto n : all) {
@@ -36,17 +37,17 @@ ir::Node* SameNameVar(std::unordered_set<ir::Node*> all, ir::Node* target) {
   return nullptr;
 }
 
-VarDesc* UpdateGradVarDesc(VarDesc* var_desc, int repeat,
-                           const std::unordered_set<std::string> grad_names) {
-  VLOG(3) << "update " << var_desc->Name() << " to repeat " << repeat;
+VarDesc UpdateGradVarDesc(VarDesc* var_desc, int repeat,
+                          const std::unordered_set<std::string> grad_names) {
   if (grad_names.find(var_desc->Name()) != grad_names.end()) {
-    VarDesc* repeated_var = new VarDesc(*var_desc->Proto());
+    VLOG(3) << "update " << var_desc->Name() << " to repeat " << repeat;
+    VarDesc repeated_var(*var_desc->Proto());
     std::string new_gname =
-        string::Sprintf("%s.repeat.%d", repeated_var->Name(), repeat);
-    repeated_var->SetName(new_gname);
+        string::Sprintf("%s.repeat.%d", repeated_var.Name(), repeat);
+    repeated_var.SetName(new_gname);
     return repeated_var;
   }
-  return var_desc;
+  return *var_desc;
 }
 
 std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
@@ -55,7 +56,8 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
   result->ResetNodeId();
   int num_repeats = Get<const int>(kNumRepeats);
   std::vector<Node*> forward_backward_ops;
-  std::vector<Node*> optimize_ops;  // record op_role != forward/backward
+  std::vector<Node*> optimize_ops;
+  std::vector<Node*> lr_ops;  // ops other than forward/backward/optimize
   std::unordered_set<std::string> grad_names;
 
   std::vector<ir::Node*> nodes = TopologySortOperations(*graph);
@@ -66,13 +68,21 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     int op_role = boost::get<int>(node->Op()->GetAttr(
         framework::OpProtoAndCheckerMaker::OpRoleAttrName()));
     if (op_role == static_cast<int>(framework::OpRole::kForward) ||
-        op_role == static_cast<int>(framework::OpRole::kBackward)) {
+        op_role == static_cast<int>(framework::OpRole::kBackward) ||
+        op_role == static_cast<int>(framework::OpRole::kLoss) ||
+        op_role == (static_cast<int>(framework::OpRole::kForward) |
+                    static_cast<int>(framework::OpRole::kLoss)) ||
+        op_role == (static_cast<int>(framework::OpRole::kBackward) |
+                    static_cast<int>(framework::OpRole::kLoss))) {
       forward_backward_ops.push_back(node);
-    } else if (op_role == static_cast<int>(framework::OpRole::kOptimize)) {
+    } else if (op_role == static_cast<int>(framework::OpRole::kOptimize) ||
+               op_role == static_cast<int>(framework::OpRole::kDist)) {
       optimize_ops.push_back(node);
       auto op_role_var =
           node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName());
       grad_names.insert(boost::get<std::vector<std::string>>(op_role_var)[1]);
+    } else if (op_role == static_cast<int>(framework::OpRole::kLRSched)) {
+      lr_ops.push_back(node);
     }
   }
 
@@ -80,21 +90,21 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
   ir::Node* prev_repeat_last_op_node = nullptr;
   // record origin_grad -> repeated grad list map.
   std::map<ir::Node*, std::vector<ir::Node*>> grad_repeated_map;
+  std::map<std::string, std::vector<ir::Node*>> created;
   for (int i = 0; i < num_repeats; ++i) {
     std::unordered_set<ir::Node*> copied;
-    std::unordered_map<std::string, std::vector<ir::Node*>> created;
     for (size_t node_idx = 0; node_idx < forward_backward_ops.size();
          ++node_idx) {
       auto node = forward_backward_ops[node_idx];
-      OpDesc* repeated_op = new OpDesc(*(node->Op()), node->Op()->Block());
+      OpDesc repeated_op(*(node->Op()), node->Op()->Block());
       // 3. rename grad outputs to current repeat.
-      for (auto outname : repeated_op->OutputArgumentNames()) {
+      for (auto outname : repeated_op.OutputArgumentNames()) {
         if (grad_names.find(outname) != grad_names.end()) {
           std::string new_gname = string::Sprintf("%s.repeat.%d", outname, i);
-          repeated_op->RenameOutput(outname, new_gname);
+          repeated_op.RenameOutput(outname, new_gname);
         }
       }
-      auto repeated_node = result->CreateOpNode(repeated_op);
+      auto repeated_node = result->CreateOpNode(&repeated_op);
       copied.insert(node);
 
       // 4. add deps between repeats
@@ -114,16 +124,21 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
           continue;
         }
         ir::Node* var = nullptr;
-        if (copied.find(in_node) == copied.end()) {
-          var = result->CreateVarNode(
-              UpdateGradVarDesc(in_node->Var(), i, grad_names));
-          if (grad_names.find(in_node->Var()->Name()) != grad_names.end()) {
-            grad_repeated_map[in_node].push_back(var);
-          }
-          copied.insert(in_node);
-          created[in_node->Name()].push_back(var);
-        } else {
+        auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names);
+        if (in_node->inputs.empty() && i > 0) {
+          // do not copy head vars in repeats > 0
           var = created.at(in_node->Name()).back();
+        } else {
+          if (copied.find(in_node) == copied.end()) {
+            var = result->CreateVarNode(&updated_var);
+            if (grad_names.find(in_node->Var()->Name()) != grad_names.end()) {
+              grad_repeated_map[in_node].push_back(var);
+            }
+            copied.insert(in_node);
+            created[updated_var.Name()].push_back(var);
+          } else {
+            var = created.at(updated_var.Name()).back();
+          }
         }
         repeated_node->inputs.push_back(var);
         var->outputs.push_back(repeated_node);
@@ -133,16 +148,16 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
           continue;
         }
         ir::Node* var = nullptr;
+        auto updated_var = UpdateGradVarDesc(out_node->Var(), i, grad_names);
         if (copied.find(out_node) == copied.end()) {
-          var = result->CreateVarNode(
-              UpdateGradVarDesc(out_node->Var(), i, grad_names));
+          var = result->CreateVarNode(&updated_var);
           if (grad_names.find(out_node->Var()->Name()) != grad_names.end()) {
             grad_repeated_map[out_node].push_back(var);
           }
           copied.insert(out_node);
-          created[out_node->Name()].push_back(var);
+          created[updated_var.Name()].push_back(var);
         } else {
-          var = created.at(out_node->Name()).back();
+          var = created.at(updated_var.Name()).back();
         }
         repeated_node->outputs.push_back(var);
         var->inputs.push_back(repeated_node);
@@ -170,6 +185,7 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     auto sum_out_var_node = result->CreateVarNode(kv.first->Var());
     sum_op_node->outputs.push_back(sum_out_var_node);
     sum_out_var_node->inputs.push_back(sum_op_node);
+    created[sum_out_var_node->Name()].push_back(sum_out_var_node);
 
     OpDesc scale_op;
     scale_op.SetType("scale");
@@ -184,10 +200,46 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     auto scale_out_var_node = result->CreateVarNode(sum_out_var_node->Var());
     scale_op_node->outputs.push_back(scale_out_var_node);
     scale_out_var_node->inputs.push_back(scale_op_node);
+    created[scale_out_var_node->Name()].push_back(scale_out_var_node);
   }
   // 6. add optimize ops
-  // 7. release original op_descs (forward/backward)
-  result->ResolveHazard();
+  {
+    auto copy_node = [&result, &created](ir::Node* node) {
+      auto op_node = result->CreateOpNode(node->Op());
+      // copy op ins/outs
+      for (auto in_node : node->inputs) {
+        if (in_node->IsCtrlVar()) {
+          continue;
+        }
+        ir::Node* var = nullptr;
+        if (created.find(in_node->Name()) == created.end()) {
+          var = result->CreateVarNode(in_node->Var());
+          created[in_node->Name()].push_back(var);
+        } else {
+          var = created.at(in_node->Name()).back();
+        }
+        op_node->inputs.push_back(var);
+        var->outputs.push_back(op_node);
+      }
+      for (auto out_node : node->outputs) {
+        if (out_node->IsCtrlVar()) {
+          continue;
+        }
+        auto var = result->CreateVarNode(out_node->Var());
+        created[out_node->Name()].push_back(var);
+        op_node->outputs.push_back(var);
+        var->inputs.push_back(op_node);
+      }
+    };
+    for (auto node : lr_ops) {
+      copy_node(node);
+    }
+    for (auto node : optimize_ops) {
+      copy_node(node);
+    }
+  }
+
+  result->ResolveHazard(created);
   return result;
 }
 
