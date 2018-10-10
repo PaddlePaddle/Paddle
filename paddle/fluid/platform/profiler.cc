@@ -276,7 +276,7 @@ struct EventItem {
 // Print results
 void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
                    const std::string& sorted_domain, const size_t name_width,
-                   const size_t data_width, double total) {
+                   const size_t data_width, double total, bool merge_thread) {
   // Output header information
   std::cout << "\n------------------------->"
             << "     Profiling Report     "
@@ -296,6 +296,9 @@ void PrintProfiler(const std::vector<std::vector<EventItem>>& events_table,
   std::cout << "Time unit: ms" << std::endl;
   std::cout << "Sorted by " << sorted_domain
             << " in descending order in the same thread\n\n";
+  if (merge_thread) {
+    std::cout << "merge all thread" << std::endl;
+  }
   // Output events table
   std::cout.setf(std::ios::left);
   std::cout << std::setw(name_width) << "Event" << std::setw(data_width)
@@ -461,7 +464,8 @@ void ParseEvents(const std::vector<std::vector<Event>>& events,
   }
 
   // Print report
-  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12, total);
+  PrintProfiler(events_table, sorted_domain, max_name_width + 4, 12, total,
+                merge_thread);
 }
 
 void DisableProfiler(EventSortingKey sorted_key,
