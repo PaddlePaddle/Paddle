@@ -29,6 +29,9 @@ namespace allocation {
 // NOTE(yy): kAlignment must be 2^N. a `static_assert` should be added.
 template <size_t kAlignment>
 class AlignedAllocation : public Allocation {
+  static_assert(kAlignment > 0 && (kAlignment & (kAlignment - 1)) == 0,
+                "kAlignment must be 2^N");
+
  public:
   AlignedAllocation(std::unique_ptr<Allocation>&& underlying_allocation,
                     size_t size)
