@@ -162,9 +162,13 @@ class Graph {
   }
 
   void ResetNodeId() { Node::ResetId(); }
+
   void InitFromProgram(const ProgramDesc &program);
+
   void ResolveHazard(
       const std::map<std::string, std::vector<ir::Node *>> &var_nodes);
+
+  std::vector<VarDesc *> AllVars();
 
  private:
   // This method takes ownership of `node`.

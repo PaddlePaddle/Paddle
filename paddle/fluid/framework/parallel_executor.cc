@@ -109,18 +109,9 @@ ParallelExecutor::ParallelExecutor(
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
     BCastParamsToDevices(bcast_vars);
   }
-  // Startup Program has been run. All local scopes has correct parameters.
+// Startup Program has been run. All local scopes has correct parameters.
 
-  // Step 2. Create vars in each scope;
-  std::vector<details::VariableInfo> var_infos;
-  for (auto *var : main_program.Block(0).AllVars()) {
-    var_infos.emplace_back();
-    var_infos.back().name_ = var->Name();
-    var_infos.back().type_ = var->GetType();
-    var_infos.back().persistable_ = var->Persistable();
-  }
-
-// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+// Step 2. Convert main_program to SSA form and dependency graph. Also, insert
 // ncclOp
 #ifdef PADDLE_WITH_CUDA
   std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
@@ -155,6 +146,15 @@ ParallelExecutor::ParallelExecutor(
       build_strategy.Apply(main_program, member_->places_, loss_var_name,
                            params, member_->local_scopes_, member_->use_cuda_);
 #endif
+
+  // Step 3. Create vars in each scope. Passes may also create new vars.
+  std::vector<details::VariableInfo> var_infos;
+  for (auto *var : graph->AllVars()) {
+    var_infos.emplace_back();
+    var_infos.back().name_ = var->Name();
+    var_infos.back().type_ = var->GetType();
+    var_infos.back().persistable_ = var->Persistable();
+  }
 
   if (VLOG_IS_ON(5)) {
     // If the loss_var_name is given, the number of graph should be only one.

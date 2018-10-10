@@ -40,11 +40,13 @@ ir::Node* SameNameVar(std::unordered_set<ir::Node*> all, ir::Node* target) {
 VarDesc UpdateGradVarDesc(VarDesc* var_desc, int repeat,
                           const std::unordered_set<std::string> grad_names) {
   if (grad_names.find(var_desc->Name()) != grad_names.end()) {
-    VLOG(3) << "update " << var_desc->Name() << " to repeat " << repeat;
+    // NOTE: create var in the program, parallel_executor will use program to
+    // init vars in scope.
     VarDesc repeated_var(*var_desc->Proto());
     std::string new_gname =
         string::Sprintf("%s.repeat.%d", repeated_var.Name(), repeat);
     repeated_var.SetName(new_gname);
+    VLOG(3) << "update " << var_desc->Name() << " to repeat " << repeat;
     return repeated_var;
   }
   return *var_desc;
@@ -131,6 +133,8 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
         } else {
           if (copied.find(in_node) == copied.end()) {
             var = result->CreateVarNode(&updated_var);
+            // NOTE: parallel_executor use program to init vars.
+
             if (grad_names.find(in_node->Var()->Name()) != grad_names.end()) {
               grad_repeated_map[in_node].push_back(var);
             }

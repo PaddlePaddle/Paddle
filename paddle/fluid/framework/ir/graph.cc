@@ -206,6 +206,16 @@ void Graph::ResolveHazard(
   }
 }
 
+std::vector<VarDesc *> Graph::AllVars() {
+  std::vector<VarDesc *> all_vars;
+  for (auto &node : Nodes()) {
+    if (node->IsVar()) {
+      all_vars.push_back(node->Var());
+    }
+  }
+  return all_vars;
+}
+
 bool IsControlDepVar(const ir::Node &var) {
   return var.Name().find(ir::Node::kControlDepVarName) != std::string::npos;
 }
