@@ -100,7 +100,7 @@ def create_global_var(shape,
                       force_cpu=False,
                       name=None):
     """
-    Create a new variable in the global block(block 0).
+    Create a new tensor variable with value in the global block(block 0).
 
     Args:
         shape(list[int]): shape of the variable
