@@ -175,7 +175,14 @@ list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 list(APPEND CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
 endif(NOT WIN32)
 
-list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
+
+if(WITH_FAST_MATH)
+  # Make use of fast math library. https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html
+  # FIXME(chengduo): 'use_fast_math' may induce the result of some function is wrong, for example 'powf'.
+  # For more information, please refer to: https://github.com/torch/DEPRECEATED-torch7-distro/issues/132
+  list(APPEND CUDA_NVCC_FLAGS "--use_fast_math")
+endif() 
+
 # in cuda9, suppress cuda warning on eigen 
 list(APPEND CUDA_NVCC_FLAGS "-w")
 # Set :expt-relaxed-constexpr to suppress Eigen warnings
