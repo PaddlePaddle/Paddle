@@ -209,7 +209,7 @@ void Graph::ResolveHazard(
 std::vector<VarDesc *> Graph::AllVars() {
   std::vector<VarDesc *> all_vars;
   for (auto &node : Nodes()) {
-    if (node->IsVar()) {
+    if (node->IsVar() && !node->IsCtrlVar() && !node->Name().empty()) {
       all_vars.push_back(node->Var());
     }
   }

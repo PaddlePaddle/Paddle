@@ -37,14 +37,29 @@ ir::Node* SameNameVar(std::unordered_set<ir::Node*> all, ir::Node* target) {
   return nullptr;
 }
 
+VarDesc CopyVarDesc(VarDesc* var_desc) {
+  VarDesc repeated_var(var_desc->Name());
+  // copy other variable attributes
+  if (var_desc->GetType() != proto::VarType::READER) {
+    repeated_var.SetType(var_desc->GetType());
+    repeated_var.SetShape(var_desc->GetShape());
+    repeated_var.SetDataType(var_desc->GetDataType());
+    repeated_var.SetLoDLevel(var_desc->GetLoDLevel());
+    repeated_var.SetPersistable(var_desc->Persistable());
+  } else {
+    // TODO(typhoonzero): copy reader var
+  }
+  return repeated_var;
+}
+
 VarDesc UpdateGradVarDesc(VarDesc* var_desc, int repeat,
                           const std::unordered_set<std::string> grad_names) {
   if (grad_names.find(var_desc->Name()) != grad_names.end()) {
     // NOTE: create var in the program, parallel_executor will use program to
     // init vars in scope.
-    VarDesc repeated_var(*var_desc->Proto());
     std::string new_gname =
-        string::Sprintf("%s.repeat.%d", repeated_var.Name(), repeat);
+        string::Sprintf("%s.repeat.%d", var_desc->Name(), repeat);
+    VarDesc repeated_var = CopyVarDesc(var_desc);
     repeated_var.SetName(new_gname);
     VLOG(3) << "update " << var_desc->Name() << " to repeat " << repeat;
     return repeated_var;
@@ -128,13 +143,11 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
         ir::Node* var = nullptr;
         auto updated_var = UpdateGradVarDesc(in_node->Var(), i, grad_names);
         if (in_node->inputs.empty() && i > 0) {
-          // do not copy head vars in repeats > 0
+          // do not copy head vars (inputs, params) in repeats > 0
           var = created.at(in_node->Name()).back();
         } else {
           if (copied.find(in_node) == copied.end()) {
             var = result->CreateVarNode(&updated_var);
-            // NOTE: parallel_executor use program to init vars.
-
             if (grad_names.find(in_node->Var()->Name()) != grad_names.end()) {
               grad_repeated_map[in_node].push_back(var);
             }

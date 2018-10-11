@@ -347,7 +347,7 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
           BuildStrategy::GradientScaleStrategy::kCustomized) {
         // TODO(paddle-dev): Why is there no input for this op_handle?
         auto loss_grad_name = node->Op()->OutputArgumentNames()[0];
-        CreateScaleLossGradOp(&result, loss_grad_name);
+        CreateScaleLossGradOp(&result, loss_grad_name, node->outputs[0]);
       }
       // This assumes the backward generating code will ensure IsScaleLossOp
       // is true only for the op that scale the final scalar loss.
@@ -602,7 +602,8 @@ int MultiDevSSAGraphBuilder::GetVarDeviceID(const ir::Graph &graph,
 }
 
 void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
-    ir::Graph *result, const std::string &loss_grad_name) const {
+    ir::Graph *result, const std::string &loss_grad_name,
+    ir::Node *out_var_node) const {
   for (size_t i = 0; i < places_.size(); ++i) {
     // Insert ScaleCost OpHandle
     auto *dev_ctx = platform::DeviceContextPool::Instance().Get(places_[i]);
@@ -617,10 +618,8 @@ void MultiDevSSAGraphBuilder::CreateScaleLossGradOp(
     // loss->pending_ops_.emplace_back(op_handle);
     // op_handle->inputs_.emplace_back(loss);
 
-    CreateOpOutput(
-        result, op_handle,
-        result->CreateEmptyNode(loss_grad_name, ir::Node::Type::kVariable),
-        places_[i], i);
+    CreateOpOutput(result, op_handle,
+                   result->CreateVarNode(out_var_node->Var()), places_[i], i);
   }
 }
 
