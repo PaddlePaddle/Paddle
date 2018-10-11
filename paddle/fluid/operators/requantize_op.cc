@@ -63,13 +63,13 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
 
     auto src_md = platform::MKLDNNMemDesc(
             {src_tz}, src_dt, src_fmt); //FIX ME WITH S8
-    auto src_pd = mkldnn::memory::primitive_desc{src_md, engine};
+    auto src_pd = mkldnn::memory::primitive_desc(src_md, engine);
     auto src_memory = std::make_shared<mkldnn::memory>(src_pd, to_void_cast<T>(input_data));
     std::shared_ptr<primitive::at> src_memory_p = std::shared_ptr<primitive::at>(new primitive::at(*src_memory));
 
     auto dst_md = platform::MKLDNNMemDesc(
             {dst_tz}, dst_dt, dst_fmt);
-    auto dst_pd = mkldnn::memory::primitive_desc{dst_md, engine};
+    auto dst_pd = mkldnn::memory::primitive_desc(dst_md, engine);
     auto dst_memory = mkldnn::memory(dst_pd, to_void_cast<T>(output_data));
     
     auto reorder_pd = std::shared_ptr<reorder::primitive_desc>(
