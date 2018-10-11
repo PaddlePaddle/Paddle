@@ -86,9 +86,9 @@ __m256 AVXActImpl<kIdentity>::Compute(__m256 x) const {
 template <typename T, jit::cpu_isa_t isa, jit_block>
 class LSTMKernelImpl : public LSTMKernel<T> {
  public:
-  explicit LSTMKernelImpl(int d, const std::string& act_gate,
+  explicit LSTMKernelImpl(const std::string& act_gate,
                           const std::string& act_cand,
-                          const std::string& act_cell)
+                          const std::string& act_cell, int d)
       : LSTMKernel<T>() {
     d_ = d;
     d2_ = d * 2;
@@ -134,7 +134,8 @@ class LSTMKernelImpl : public LSTMKernel<T> {
 #endif
   }
 
-  void ComputeCtHt(T* gates, const T* ct_1, T* ct, T* ht) const override {
+  void ComputeCtHt(T* gates, const T* ct_1, T* ct, T* ht,
+                   T* checked) const override {
     // gates: W_ch, W_ih, W_fh, W_oh
     act_gate_3d_->Compute(gates + d_, gates + d_);
 
@@ -162,7 +163,8 @@ class LSTMKernelImpl : public LSTMKernel<T> {
 #define INTRI8_FLOAT(isa)                                                    \
   template <>                                                                \
   void LSTMKernelImpl<float, isa, kEQ8>::ComputeCtHt(                        \
-      float* gates, const float* ct_1, float* ct, float* ht) const {         \
+      float* gates, const float* ct_1, float* ct, float* ht, float* checked) \
+      const {                                                                \
     /* gates: W_ch, W_ih, W_fh, W_oh */                                      \
     __m256 c, i, f, o;                                                       \
     c = _mm256_loadu_ps(gates);                                              \
@@ -192,21 +194,86 @@ INTRI8_FLOAT(jit::avx2);
 INTRI8_FLOAT(jit::avx512f);
 #endif
 
-#define JITKERNEL_DECLARE_LSTM(ker_class, ker_dtype)                   \
-  template <>                                                          \
-  std::shared_ptr<const ker_class<ker_dtype>>                          \
-  KernelPool::Get<ker_class<ker_dtype>, int, const std::string&,       \
-                  const std::string&, const std::string&>(             \
-      int d, const std::string& act_gate, const std::string& act_cand, \
-      const std::string& act_cell)
+/* Peephole JitKernel */
+template <typename T, jit::cpu_isa_t isa, jit_block>
+class PeepholeKernelImpl : public LSTMKernel<T> {
+ public:
+  explicit PeepholeKernelImpl(const std::string& act_gate,
+                              const std::string& act_cand,
+                              const std::string& act_cell, int d)
+      : LSTMKernel<T>() {
+    d_ = d;
+    d2_ = d * 2;
+    d3_ = d * 3;
+    auto GetActKernel = [&](const std::string& type,
+                            int n) -> std::shared_ptr<const VActKernel<T>> {
+      if (type == "sigmoid") {
+        return std::dynamic_pointer_cast<const VActKernel<T>>(
+            KernelPool::Instance().template Get<VSigmoidKernel<T>>(n));
+      } else if (type == "relu") {
+        return std::dynamic_pointer_cast<const VActKernel<T>>(
+            KernelPool::Instance().template Get<VReluKernel<T>>(n));
+      } else if (type == "tanh") {
+        return std::dynamic_pointer_cast<const VActKernel<T>>(
+            KernelPool::Instance().template Get<VTanhKernel<T>>(n));
+      } else if (type == "identity" || type == "") {
+        return std::dynamic_pointer_cast<const VActKernel<T>>(
+            KernelPool::Instance().template Get<VIdentityKernel<T>>(n));
+      }
+      PADDLE_THROW("Not support type: %s", type);
+    };
+    act_gate_3d_ = GetActKernel(act_gate, d * 3);
+    act_cand_d_ = GetActKernel(act_cand, d);
+    act_cell_d_ = GetActKernel(act_cell, d);
+    vmul_d_ = KernelPool::Instance().template Get<VMulKernel<T>>(d);
+    vadd_d_ = KernelPool::Instance().template Get<VAddKernel<T>>(d);
+  }
 
-#define JITKERNEL_KEY_LSTM(ker_key, dtype_key) \
-  #ker_key #dtype_key + std::to_string(d) + act_gate + act_cand + act_cell
+  void ComputeCtHt(T* gates, const T* ct_1, T* ct, T* ht,
+                   T* checked) const override {
+    // gates: W_ch, W_ih, W_fh, W_oh
+    act_gate_3d_->Compute(gates + d_, gates + d_);
 
-#define JITKERNEL_NEW_LSTM_IMPL(ker, dtype, isa, k)                     \
-  p = std::dynamic_pointer_cast<ker<dtype>>(                            \
-      std::make_shared<ker##Impl<dtype, isa, k>>(d, act_gate, act_cand, \
-                                                 act_cell))
+    /* C_t = C_t-1 * fgated + cand_gated * igated */
+    act_cand_d_->Compute(gates, gates);
+    vmul_d_->Compute(gates, gates + d_, gates + d_);
+    vmul_d_->Compute(ct_1, gates + d2_, gates + d2_);
+    vadd_d_->Compute(gates + d_, gates + d2_, ct);
+
+    /* H_t = act_cell(C_t) * ogated */
+    act_cell_d_->Compute(ct, gates + d2_);
+    vmul_d_->Compute(gates + d2_, gates + d3_, ht);
+  }
+
+ private:
+  int d_, d2_, d3_;
+  std::shared_ptr<const VActKernel<T>> act_gate_3d_, act_cand_d_, act_cell_d_;
+  std::shared_ptr<const VMulKernel<T>> vmul_d_;
+  std::shared_ptr<const VAddKernel<T>> vadd_d_;
+};
+
+#define JITKERNEL_DECLARE_LSTM(ker_class, ker_dtype)                  \
+  template <>                                                         \
+  std::shared_ptr<const LSTMKernel<ker_dtype>>                        \
+  KernelPool::Get<LSTMKernel<ker_dtype>, const std::string&,          \
+                  const std::string&, const std::string&, int, bool>( \
+      const std::string& act_gate, const std::string& act_cand,       \
+      const std::string& act_cell, int d, bool use_peephole)
+
+#define JITKERNEL_KEY_LSTM(ker_key, dtype_key)                               \
+  #ker_key #dtype_key + std::to_string(d) + act_gate + act_cand + act_cell + \
+                                       (use_peephole ? "p" : "n")
+
+#define JITKERNEL_NEW_LSTM_IMPL(ker, dtype, isa, k)                    \
+  if (use_peephole) {                                                  \
+    p = std::dynamic_pointer_cast<ker<dtype>>(                         \
+        std::make_shared<PeepholeKernelImpl<dtype, isa, k>>(           \
+            act_gate, act_cand, act_cell, d));                         \
+  } else {                                                             \
+    p = std::dynamic_pointer_cast<ker<dtype>>(                         \
+        std::make_shared<ker##Impl<dtype, isa, k>>(act_gate, act_cand, \
+                                                   act_cell, d));      \
+  }
 
 REGISTER_JITKERNEL_ARGS(lstm, LSTMKernel, JITKERNEL_DECLARE_LSTM,
                         JITKERNEL_KEY_LSTM, JITKERNEL_NEW_LSTM_IMPL);
@@ -215,7 +282,6 @@ REGISTER_JITKERNEL_ARGS(lstm, LSTMKernel, JITKERNEL_DECLARE_LSTM,
 #undef JITKERNEL_DECLARE_LSTM
 #undef JITKERNEL_KEY_LSTM
 #undef JITKERNEL_NEW_LSTM_IMPL
-
 }  // namespace jitkernel
 }  // namespace math
 }  // namespace operators
