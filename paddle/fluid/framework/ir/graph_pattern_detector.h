@@ -578,6 +578,27 @@ struct ElewiseAddActInplaceGrad : public PatternBase {
   PATTERN_DECL_NODE(d_ele_y);
   PATTERN_DECL_NODE(ele_y);
 };
+
+// Conv with Elementwise_add as bias
+// op: conv + elementwise_add
+// named nodes:
+// conv_input, conv_weight,
+// conv_out, conv,
+// eltwise_bias, eltwise_out,
+// elementwise_add
+struct ConvBias : public PatternBase {
+  ConvBias(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "conv_bias") {}
+  PDNode* operator()(PDNode* conv_input);
+  // declare operator node's name
+  PATTERN_DECL_NODE(conv);
+  PATTERN_DECL_NODE(eltwise);
+  // declare variable node's name
+  PATTERN_DECL_NODE(conv_weight);
+  PATTERN_DECL_NODE(conv_out);
+  PATTERN_DECL_NODE(eltwise_bias);
+  PATTERN_DECL_NODE(eltwise_out);
+};
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
