@@ -1188,7 +1188,15 @@ to transpile() call.")
     def _create_table_optimize_block(self, pserver_index, pserver_program,
                                      pre_block_idx, grad_to_block_id):
         # STEP: create table optimize block
+        table_opt_block = pserver_program._create_block(pre_block_idx)
         # create table param and grad var in pserver program
+        # create table optimize block in pserver program
+        table_opt_op = [
+            op for op in self.optimize_ops
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
+        ][0]
+
         origin_param_var = self.origin_program.global_block().vars[
             self.table_name]
 
@@ -1210,13 +1218,9 @@ to transpile() call.")
             self.origin_program.global_block().vars[grad_var_name(
                 self.table_name)])
 
-        # create table optimize block in pserver program
-        table_opt_op = [
-            op for op in self.optimize_ops
-            if 'Param' in op.input_names and op.input("Param")[0] ==
-            self.table_name
-        ][0]
-        table_opt_block = pserver_program._create_block(pre_block_idx)
+        lr_var = pserver_program.global_block()._clone_variable(
+            self.origin_program.global_block().vars[table_opt_op.input(
+                "LearningRate")[0]])
 
         if self.sync_mode:
             # create grad vars in pserver program
@@ -1248,8 +1252,6 @@ to transpile() call.")
             grad_var = pserver_program.global_block()._rename_var(
                 origin_grad_name, splited_grad_name)
 
-        lr_var = pserver_program.global_block().vars[table_opt_op.input(
-            "LearningRate")[0]]
         inputs = {
             "Param": [param_var],
             "Grad": [grad_var],
