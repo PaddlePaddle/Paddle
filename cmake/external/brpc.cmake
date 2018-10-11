@@ -22,6 +22,14 @@ find_library(CRYPTO_LIBRARY NAMES crypto)
 ADD_LIBRARY(crypto SHARED IMPORTED GLOBAL)
 SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${CRYPTO_LIBRARY})
 
+if(NOT ssl)
+  message(FATAL_ERROR "can't find ssl lib")
+endif()
+
+if(NOT crypto)
+  message(FATAL_ERROR "can't find crypto lib")
+endif()
+
 
 SET(BRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/brpc)
 SET(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
