@@ -93,11 +93,15 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
                     static_cast<int>(framework::OpRole::kLoss))) {
       forward_backward_ops.push_back(node);
     } else if (op_role == static_cast<int>(framework::OpRole::kOptimize) ||
-               op_role == static_cast<int>(framework::OpRole::kDist)) {
+               op_role == static_cast<int>(framework::OpRole::kDist) ||
+               op_role == static_cast<int>(framework::OpRole::kRPC)) {
       optimize_ops.push_back(node);
-      auto op_role_var =
-          node->Op()->GetAttr(OpProtoAndCheckerMaker::OpRoleVarAttrName());
-      grad_names.insert(boost::get<std::vector<std::string>>(op_role_var)[1]);
+      auto op_role_var = node->Op()->GetNullableAttr(
+          OpProtoAndCheckerMaker::OpRoleVarAttrName());
+      auto op_role_vars = boost::get<std::vector<std::string>>(op_role_var);
+      for (size_t i = 0; i < op_role_vars.size(); i += 2) {
+        grad_names.insert(op_role_vars[i + 1]);
+      }
     } else if (op_role == static_cast<int>(framework::OpRole::kLRSched)) {
       lr_ops.push_back(node);
     }
@@ -224,8 +228,10 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
     auto copy_node = [&result, &created](ir::Node* node) {
       auto op_node = result->CreateOpNode(node->Op());
       // copy op ins/outs
+      // NOTE: for send/recv ops, the OpDesc uses ctrldepvar to describe
+      // dependencies, so create those depvars if OpDesc have in/outs.
       for (auto in_node : node->inputs) {
-        if (in_node->IsCtrlVar()) {
+        if (in_node->IsCtrlVar() && !in_node->Var()) {
           continue;
         }
         ir::Node* var = nullptr;
@@ -239,7 +245,7 @@ std::unique_ptr<Graph> BatchMergePass::ApplyImpl(
         var->outputs.push_back(op_node);
       }
       for (auto out_node : node->outputs) {
-        if (out_node->IsCtrlVar()) {
+        if (out_node->IsCtrlVar() && !out_node->Var()) {
           continue;
         }
         auto var = result->CreateVarNode(out_node->Var());
