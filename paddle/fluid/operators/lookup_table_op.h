@@ -21,8 +21,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/selected_rows.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -106,87 +104,34 @@ class LookupTableGradKernel : public framework::OpKernel<T> {
     // Since paddings are not trainable and fixed in forward, the gradient of
     // paddings makes no sense and we don't deal with it in backward.
     if (is_sparse) {
-      if (true) {
-        auto *ids = context.Input<LoDTensor>("Ids");
-        auto *d_output =
-            context.Input<LoDTensor>(framework::GradVarName("Out"));
-        auto *d_table =
-            context.Output<SelectedRows>(framework::GradVarName("W"));
+      auto *ids = context.Input<LoDTensor>("Ids");
+      auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
+      auto *d_table = context.Output<SelectedRows>(framework::GradVarName("W"));
 
-        const int64_t *ids_data = ids->data<int64_t>();
-        int64_t ids_num = ids->numel();
+      auto *ids_data = ids->data<int64_t>();
+      int64_t ids_num = ids->numel();
 
-        std::vector<int64_t> new_rows;
-        new_rows.reserve(ids_num);
-        std::unordered_map<int64_t, size_t> rows_pos_map;
-        rows_pos_map.reserve(ids_num);
-        size_t index = 0u;
-        for (int64_t i = 0; i < ids_num; i++) {
-          int64_t id = ids_data[i];
-          if (rows_pos_map.find(id) == rows_pos_map.end()) {
-            rows_pos_map[id] = index++;
-            new_rows.emplace_back(id);
-          }
-        }
-        d_table->set_rows(new_rows);
-
-        auto *d_table_value = d_table->mutable_value();
-        d_table_value->Resize(
-            {static_cast<int64_t>(new_rows.size()), table_dim[1]});
-        d_table_value->mutable_data<T>(context.GetPlace());
-
-        d_table->set_height(table_dim[0]);
-
-        auto *d_output_data = d_output->data<T>();
-        auto *d_table_data = d_table_value->data<T>();
-
-        auto d_output_dims = d_output->dims();
-        // PADDLE_ENFORCE_EQ(
-        // d_table_value->dims(),
-        // framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
-
-        math::SetConstant<platform::CPUDeviceContext, T> constant_functor;
-        constant_functor(
-            context.template device_context<platform::CPUDeviceContext>(),
-            d_table_value, 0.0);
-
-        auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
-        for (int64_t i = 0; i < ids_num; i++) {
-          size_t index = rows_pos_map[ids_data[i]];
-          blas.AXPY(table_dim[1], 1., d_output_data + i, d_table_data + index);
-        }
-      } else {
-        auto *ids = context.Input<LoDTensor>("Ids");
-        auto *d_output =
-            context.Input<LoDTensor>(framework::GradVarName("Out"));
-        auto *d_table =
-            context.Output<SelectedRows>(framework::GradVarName("W"));
-
-        auto *ids_data = ids->data<int64_t>();
-        int64_t ids_num = ids->numel();
-
-        framework::Vector<int64_t> new_rows;
-        new_rows.reserve(ids_num);
-        for (int64_t i = 0; i < ids_num; i++) {
-          new_rows.push_back(ids_data[i]);
-        }
-        d_table->set_rows(new_rows);
-
-        auto *d_table_value = d_table->mutable_value();
-        d_table_value->Resize({ids_num, table_dim[1]});
-        d_table_value->mutable_data<T>(context.GetPlace());
-
-        d_table->set_height(table_dim[0]);
-
-        auto *d_output_data = d_output->data<T>();
-        auto *d_table_data = d_table_value->data<T>();
-
-        auto d_output_dims = d_output->dims();
-        PADDLE_ENFORCE_EQ(
-            d_table_value->dims(),
-            framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
-        memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
+      framework::Vector<int64_t> new_rows;
+      new_rows.reserve(ids_num);
+      for (int64_t i = 0; i < ids_num; i++) {
+        new_rows.push_back(ids_data[i]);
       }
+      d_table->set_rows(new_rows);
+
+      auto *d_table_value = d_table->mutable_value();
+      d_table_value->Resize({ids_num, table_dim[1]});
+      d_table_value->mutable_data<T>(context.GetPlace());
+
+      d_table->set_height(table_dim[0]);
+
+      auto *d_output_data = d_output->data<T>();
+      auto *d_table_data = d_table_value->data<T>();
+
+      auto d_output_dims = d_output->dims();
+      PADDLE_ENFORCE_EQ(
+          d_table_value->dims(),
+          framework::flatten_to_2d(d_output_dims, d_output_dims.size() - 1));
+      memcpy(d_table_data, d_output_data, sizeof(T) * d_output->numel());
     } else {
       auto *ids = context.Input<LoDTensor>("Ids");
       auto *d_output = context.Input<LoDTensor>(framework::GradVarName("Out"));
