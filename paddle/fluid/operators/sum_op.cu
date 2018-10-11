@@ -12,6 +12,11 @@ limitations under the License. */
 #define EIGEN_USE_GPU
 #include "paddle/fluid/operators/sum_op.h"
 
+template struct SelectedRowsSumFunctor<platform::CUDADeviceContext, float>;
+template struct SelectedRowsSumFunctor<platform::CUDADeviceContext, double>;
+template struct SelectedRowsSumFunctor<platform::CUDADeviceContext, int>;
+template struct SelectedRowsSumFunctor<platform::CUDADeviceContext, int64_t>;
+
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     sum, ops::SumKernel<paddle::platform::CUDADeviceContext, float>,

@@ -14,8 +14,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/selected_rows_functor.h"
+#include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
 namespace operators {
@@ -26,6 +29,268 @@ using LoDTensor = framework::LoDTensor;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+
+template <typename DeviceContext, typename T>
+struct SelectedRowsSumFunctor {
+  void operator()(const framework::ExecutionContext &context,
+                  const std::vector<const framework::Variable *> &in_vars,
+                  const int N, framework::Variable *out_var, bool in_place) {
+    std::unique_ptr<framework::SelectedRows> in0;
+    if (in_place) {
+      // If is in_place, we store the input[0] to in0
+      auto &in_sel0 = in_vars[0]->Get<framework::SelectedRows>();
+      auto &rows = in_sel0.rows();
+#ifdef PADDLE_WITH_CUDA
+      std::vector<int64_t> rows_in_cpu;
+      rows_in_cpu.reserve(rows.size());
+      for (auto item : rows) {
+        rows_in_cpu.push_back(item);
+      }
+      in0.reset(new framework::SelectedRows(rows_in_cpu, in_sel0.height()));
+#else
+      in0.reset(new framework::SelectedRows(rows, in_sel0.height()));
+#endif
+      in0->mutable_value()->ShareDataWith(in_sel0.value());
+    }
+
+    auto get_selected_row = [&](size_t i) -> const framework::SelectedRows & {
+      if (i == 0 && in0) {
+        return *in0.get();
+      } else {
+        return in_vars[i]->Get<framework::SelectedRows>();
+      }
+    };
+
+    auto *out = context.Output<framework::SelectedRows>("Out");
+    out->mutable_rows()->clear();
+    auto *out_value = out->mutable_value();
+
+    // Runtime InferShape
+    size_t first_dim = 0;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      first_dim += sel_row.rows().size();
+    }
+
+    // if all the input sparse vars are empty, no need to
+    // merge these vars.
+    if (first_dim == 0UL) {
+      return;
+    }
+
+    std::vector<int64_t> in_dim;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      if (sel_row.rows().size() > 0) {
+        in_dim = framework::vectorize(sel_row.value().dims());
+        break;
+      }
+    }
+    if (in_dim.empty()) {
+      VLOG(3) << "WARNING: all the inputs are empty";
+      in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+    } else {
+      in_dim[0] = static_cast<int64_t>(first_dim);
+    }
+
+    out_value->Resize(framework::make_ddim(in_dim));
+    out_value->mutable_data<T>(context.GetPlace());
+
+    math::SelectedRowsAddTo<DeviceContext, T> functor;
+
+    int64_t offset = 0;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      if (sel_row.rows().size() == 0) {
+        continue;
+      }
+      PADDLE_ENFORCE_EQ(out->height(), sel_row.height());
+      functor(context.template device_context<DeviceContext>(), sel_row, offset,
+              out);
+      offset += sel_row.value().numel();
+    }
+  }
+};
+
+template <>
+struct SelectedRowsSumFunctor<platform::CPUDeviceContext, float> {
+  void operator()(const framework::ExecutionContext &context,
+                  const std::vector<const framework::Variable *> &in_vars,
+                  const int N, framework::Variable *out_var, bool in_place) {
+    std::unique_ptr<framework::SelectedRows> in0;
+    if (in_place) {
+      // If is in_place, we store the input[0] to in0
+      auto &in_sel0 = in_vars[0]->Get<framework::SelectedRows>();
+      auto &rows = in_sel0.rows();
+#ifdef PADDLE_WITH_CUDA
+      std::vector<int64_t> rows_in_cpu;
+      rows_in_cpu.reserve(rows.size());
+      for (auto item : rows) {
+        rows_in_cpu.push_back(item);
+      }
+      in0.reset(new framework::SelectedRows(rows_in_cpu, in_sel0.height()));
+#else
+      in0.reset(new framework::SelectedRows(rows, in_sel0.height()));
+#endif
+      in0->mutable_value()->ShareDataWith(in_sel0.value());
+    }
+
+    auto get_selected_row = [&](size_t i) -> const framework::SelectedRows & {
+      if (i == 0 && in0) {
+        return *in0.get();
+      } else {
+        return in_vars[i]->Get<framework::SelectedRows>();
+      }
+    };
+
+    auto *out = context.Output<framework::SelectedRows>("Out");
+    out->mutable_rows()->clear();
+    auto *out_value = out->mutable_value();
+
+    // Runtime InferShape
+    size_t first_dim = 0;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      first_dim += sel_row.rows().size();
+    }
+
+    // if all the input sparse vars are empty, no need to
+    // merge these vars.
+    if (first_dim == 0UL) {
+      return;
+    }
+
+    std::vector<int64_t> in_dim;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      if (sel_row.rows().size() > 0) {
+        in_dim = framework::vectorize(sel_row.value().dims());
+        break;
+      }
+    }
+    if (in_dim.empty()) {
+      VLOG(3) << "WARNING: all the inputs are empty";
+      in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+    } else {
+      in_dim[0] = static_cast<int64_t>(first_dim);
+    }
+
+    out_value->Resize(framework::make_ddim(in_dim));
+    out_value->mutable_data<float>(context.GetPlace());
+
+    math::SelectedRowsSumTo<platform::CPUDeviceContext, float> functor;
+
+    std::vector<framework::SelectedRows *> selected_rows_vec;
+    selected_rows_vec.reserve(N);
+    std::vector<int64_t> offset_vec;
+    offset_vec.reserve(N);
+    int64_t offset = 0;
+    for (int i = 0; i != N; ++i) {
+      auto &sel_row = get_selected_row(i);
+      if (sel_row.rows().size() == 0) {
+        continue;
+      }
+
+      selected_rows_vec.emplace_back(
+          const_cast<framework::SelectedRows *>(&sel_row));
+
+      offset_vec.emplace_back(offset);
+      offset = sel_row.value().numel();
+    }
+    functor(context.template device_context<platform::CPUDeviceContext>(),
+            selected_rows_vec, offset_vec, out);
+  }
+};
+
+template <>
+struct SelectedRowsSumFunctor<platform::CPUDeviceContext, double> {
+  void operator()(const framework::ExecutionContext &context,
+                  const std::vector<const framework::Variable *> &in_vars,
+                  const int N, framework::Variable *out_var, bool in_place) {
+    std::unique_ptr<framework::SelectedRows> in0;
+    if (in_place) {
+      // If is in_place, we store the input[0] to in0
+      auto &in_sel0 = in_vars[0]->Get<framework::SelectedRows>();
+      auto &rows = in_sel0.rows();
+#ifdef PADDLE_WITH_CUDA
+      std::vector<int64_t> rows_in_cpu;
+      rows_in_cpu.reserve(rows.size());
+      for (auto item : rows) {
+        rows_in_cpu.push_back(item);
+      }
+      in0.reset(new framework::SelectedRows(rows_in_cpu, in_sel0.height()));
+#else
+      in0.reset(new framework::SelectedRows(rows, in_sel0.height()));
+#endif
+      in0->mutable_value()->ShareDataWith(in_sel0.value());
+    }
+
+    auto get_selected_row = [&](size_t i) -> const framework::SelectedRows & {
+      if (i == 0 && in0) {
+        return *in0.get();
+      } else {
+        return in_vars[i]->Get<framework::SelectedRows>();
+      }
+    };
+
+    auto *out = context.Output<framework::SelectedRows>("Out");
+    out->mutable_rows()->clear();
+    auto *out_value = out->mutable_value();
+
+    // Runtime InferShape
+    size_t first_dim = 0;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      first_dim += sel_row.rows().size();
+    }
+
+    // if all the input sparse vars are empty, no need to
+    // merge these vars.
+    if (first_dim == 0UL) {
+      return;
+    }
+
+    std::vector<int64_t> in_dim;
+    for (int i = 0; i < N; i++) {
+      auto &sel_row = get_selected_row(i);
+      if (sel_row.rows().size() > 0) {
+        in_dim = framework::vectorize(sel_row.value().dims());
+        break;
+      }
+    }
+    if (in_dim.empty()) {
+      VLOG(3) << "WARNING: all the inputs are empty";
+      in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
+    } else {
+      in_dim[0] = static_cast<int64_t>(first_dim);
+    }
+
+    out_value->Resize(framework::make_ddim(in_dim));
+    out_value->mutable_data<double>(context.GetPlace());
+
+    math::SelectedRowsSumTo<platform::CPUDeviceContext, double> functor;
+
+    std::vector<framework::SelectedRows *> selected_rows_vec;
+    selected_rows_vec.reserve(N);
+    std::vector<int64_t> offset_vec;
+    offset_vec.reserve(N);
+    int64_t offset = 0;
+    for (int i = 0; i != N; ++i) {
+      auto &sel_row = get_selected_row(i);
+      if (sel_row.rows().size() == 0) {
+        continue;
+      }
+
+      selected_rows_vec.emplace_back(
+          const_cast<framework::SelectedRows *>(&sel_row));
+
+      offset_vec.emplace_back(offset);
+      offset = sel_row.value().numel();
+    }
+    functor(context.template device_context<platform::CPUDeviceContext>(),
+            selected_rows_vec, offset_vec, out);
+  }
+};
 
 template <typename DeviceContext, typename T>
 class SumKernel : public framework::OpKernel<T> {
@@ -69,80 +334,8 @@ class SumKernel : public framework::OpKernel<T> {
         }
       }
     } else if (out_var->IsType<framework::SelectedRows>()) {
-      std::unique_ptr<framework::SelectedRows> in0;
-      if (in_place) {
-        // If is in_place, we store the input[0] to in0
-        auto &in_sel0 = in_vars[0]->Get<SelectedRows>();
-        auto &rows = in_sel0.rows();
-#ifdef PADDLE_WITH_CUDA
-        std::vector<int64_t> rows_in_cpu;
-        rows_in_cpu.reserve(rows.size());
-        for (auto item : rows) {
-          rows_in_cpu.push_back(item);
-        }
-        in0.reset(new framework::SelectedRows(rows_in_cpu, in_sel0.height()));
-#else
-        in0.reset(new framework::SelectedRows(rows, in_sel0.height()));
-#endif
-        in0->mutable_value()->ShareDataWith(in_sel0.value());
-      }
-
-      auto get_selected_row = [&](size_t i) -> const SelectedRows & {
-        if (i == 0 && in0) {
-          return *in0.get();
-        } else {
-          return in_vars[i]->Get<SelectedRows>();
-        }
-      };
-
-      auto *out = context.Output<SelectedRows>("Out");
-      out->mutable_rows()->clear();
-      auto *out_value = out->mutable_value();
-
-      // Runtime InferShape
-      size_t first_dim = 0;
-      for (int i = 0; i < N; i++) {
-        auto &sel_row = get_selected_row(i);
-        first_dim += sel_row.rows().size();
-      }
-
-      std::vector<int64_t> in_dim;
-      for (int i = 0; i < N; i++) {
-        auto &sel_row = get_selected_row(i);
-        if (sel_row.rows().size() > 0) {
-          in_dim = framework::vectorize(sel_row.value().dims());
-          break;
-        }
-      }
-      if (in_dim.empty()) {
-        VLOG(3) << "WARNING: all the inputs are empty";
-        in_dim = framework::vectorize(get_selected_row(N - 1).value().dims());
-      } else {
-        in_dim[0] = static_cast<int64_t>(first_dim);
-      }
-
-      out_value->Resize(framework::make_ddim(in_dim));
-      out_value->mutable_data<T>(context.GetPlace());
-
-      // if all the input sparse vars are empty, no need to
-      // merge these vars.
-      if (first_dim == 0UL) {
-        return;
-      }
-
-      math::SelectedRowsAddTo<DeviceContext, T> functor;
-
-      int64_t offset = 0;
-      for (int i = 0; i < N; i++) {
-        auto &sel_row = get_selected_row(i);
-        if (sel_row.rows().size() == 0) {
-          continue;
-        }
-        PADDLE_ENFORCE_EQ(out->height(), sel_row.height());
-        functor(context.template device_context<DeviceContext>(), sel_row,
-                offset, out);
-        offset += sel_row.value().numel();
-      }
+      SelectedRowsSumFunctor<DeviceContext, T> functor;
+      functor(context, in_vars, N, out_var, in_place);
     } else if (out_var->IsType<framework::LoDTensorArray>()) {
       auto &out_array = *out_var->GetMutable<framework::LoDTensorArray>();
       for (size_t i = in_place ? 1 : 0; i < in_vars.size(); ++i) {
