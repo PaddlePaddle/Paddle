@@ -489,12 +489,12 @@ def _py_reader(capacity,
         ranks = []
         shapes = []
 
-        for data in feed_list:
-            dtypes.append(data.dtype)
-            shape_concat.extend(data.shape)
-            ranks.append(len(data.shape))
-            shapes.append(data.shape)
-            lod_levels.append(data.lod_level)
+        for feed_data in feed_list:
+            dtypes.append(feed_data.dtype)
+            shape_concat.extend(feed_data.shape)
+            ranks.append(len(feed_data.shape))
+            shapes.append(feed_data.shape)
+            lod_levels.append(feed_data.lod_level)
     else:
         dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
         shape_concat = []
