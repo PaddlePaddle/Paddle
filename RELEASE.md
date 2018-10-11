@@ -1,3 +1,5 @@
+# Release v1.1
+
 # Release v0.11.0
 
 ## PaddlePaddle Fluid
