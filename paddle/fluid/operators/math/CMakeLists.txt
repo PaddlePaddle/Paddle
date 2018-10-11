@@ -3,8 +3,8 @@ add_subdirectory(detail)
 endif(NOT WIN32)
 
 function(math_library TARGET)
-    # math_library is a function to create math library. 
-    # The interface is the same as cc_library. 
+    # math_library is a function to create math library.
+    # The interface is the same as cc_library.
     # But it handle split GPU/CPU code and link some common library.
     set(cc_srcs)
     set(cu_srcs)
