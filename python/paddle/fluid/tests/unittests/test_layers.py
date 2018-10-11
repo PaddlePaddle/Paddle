@@ -825,6 +825,15 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(out)
         print(str(program))
 
+    def iou_similarity(self):
+        program = Program()
+        with program_guard(program):
+            x = layers.data(name="x", shape=[16], dtype="float32")
+            y = layers.data(name="y", shape=[16], dtype="float32")
+            out = layers.iou_similarity(x, y, name='iou_similarity')
+            self.assertIsNotNone(out)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()

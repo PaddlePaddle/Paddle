@@ -42,8 +42,8 @@ class ArgsortOp : public framework::OperatorWithKernel {
                    "-rank(Input(X)) (%d).",
                    axis, num_dims);
 
-    ctx->SetOutputDim("Out", in_dims);
-    ctx->SetOutputDim("Indices", in_dims);
+    ctx->ShareDim("X", "Out");
+    ctx->ShareDim("X", "Indices");
     ctx->ShareLoD("X", "Out");
     ctx->ShareLoD("X", "Indices");
   }

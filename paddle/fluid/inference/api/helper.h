@@ -16,16 +16,33 @@
 
 #include <glog/logging.h>
 #include <sys/time.h>
-#include <algorithm>
+#include <chrono>  // NOLINT
 #include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-#include "paddle/fluid/inference/api/timer.h"
+#include "paddle/fluid/string/printf.h"
+#include "paddle_inference_api.h"
 
 namespace paddle {
 namespace inference {
+
+// Timer for timer
+class Timer {
+ public:
+  std::chrono::high_resolution_clock::time_point start;
+  std::chrono::high_resolution_clock::time_point startu;
+
+  void tic() { start = std::chrono::high_resolution_clock::now(); }
+  double toc() {
+    startu = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span =
+        std::chrono::duration_cast<std::chrono::duration<double>>(startu -
+                                                                  start);
+    double used_time_ms = static_cast<double>(time_span.count()) * 1000.0;
+    return used_time_ms;
+  }
+};
 
 static void split(const std::string &str, char sep,
                   std::vector<std::string> *pieces) {
@@ -91,6 +108,20 @@ static void TensorAssignData(PaddleTensor *tensor,
       static_cast<T *>(tensor->data.data())[c++] = v;
     }
   }
+}
+
+template <typename T>
+static int ZeroCopyTensorAssignData(ZeroCopyTensor *tensor,
+                                    const std::vector<std::vector<T>> &data) {
+  int size{0};
+  auto *ptr = tensor->mutable_data<T>(PaddlePlace::kCPU);
+  int c = 0;
+  for (const auto &f : data) {
+    for (T v : f) {
+      ptr[c++] = v;
+    }
+  }
+  return size;
 }
 
 static std::string DescribeTensor(const PaddleTensor &tensor) {

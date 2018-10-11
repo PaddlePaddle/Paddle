@@ -22,7 +22,7 @@ from test_dist_base import TestDistBase
 class TestDistSimnetBowDense2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
-        self._use_cuda = False
+        self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
         need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '0'}
@@ -36,7 +36,7 @@ class TestDistSimnetBowDense2x2(TestDistBase):
 class TestDistSimnetBow2x2DenseAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
-        self._use_cuda = False
+        self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
         need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '0'}
@@ -50,7 +50,7 @@ class TestDistSimnetBow2x2DenseAsync(TestDistBase):
 class TestDistSimnetBowSparse2x2(TestDistBase):
     def _setup_config(self):
         self._sync_mode = True
-        self._use_cuda = False
+        self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
         need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '1'}
@@ -64,7 +64,7 @@ class TestDistSimnetBowSparse2x2(TestDistBase):
 class TestDistSimnetBow2x2SparseAsync(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False
-        self._use_cuda = False
+        self._enforce_place = "CPU"
 
     def test_simnet_bow(self):
         need_envs = {"IS_DISTRIBUTED": '0', "IS_SPARSE": '1'}

@@ -35,16 +35,15 @@ import itertools
 import functools
 from .common import download
 import tarfile
-import six
 import scipy.io as scio
 from paddle.dataset.image import *
 from paddle.reader import *
+from paddle import compat as cpt
 import os
 import numpy as np
 from multiprocessing import cpu_count
 import six
 from six.moves import cPickle as pickle
-from six.moves import zip
 __all__ = ['train', 'test', 'valid']
 
 DATA_URL = 'http://paddlemodels.cdn.bcebos.com/flowers/102flowers.tgz'
@@ -126,9 +125,11 @@ def reader_creator(data_file,
                         batch = pickle.load(f)
                     else:
                         batch = pickle.load(f, encoding='bytes')
+                if six.PY3:
+                    batch = cpt.to_text(batch)
                 data = batch['data']
                 labels = batch['label']
-                for sample, label in zip(data, batch['label']):
+                for sample, label in six.moves.zip(data, batch['label']):
                     yield sample, int(label) - 1
             if not cycle:
                 break
