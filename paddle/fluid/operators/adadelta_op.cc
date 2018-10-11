@@ -36,12 +36,14 @@ class AdadeltaOp : public framework::OperatorWithKernel {
         ctx->GetInputsVarType("Param").front() ==
             framework::proto::VarType::LOD_TENSOR,
         "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
+        ctx->Inputs("Param").front(),
+        framework::DataTypeToString(ctx->GetInputsVarType("Param").front()));
     PADDLE_ENFORCE(
         ctx->GetInputsVarType("Grad").front() ==
             framework::proto::VarType::LOD_TENSOR,
         "The input var's type should be LoDTensor, but the received is %s",
-        ctx->Inputs("Grad").front(), ctx->GetInputsVarType("Grad").front());
+        ctx->Inputs("Grad").front(),
+        framework::DataTypeToString(ctx->GetInputsVarType("Grad").front()));
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of AdadeltaOp should not be null.");

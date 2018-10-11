@@ -58,7 +58,7 @@ class SGDOpInferVarType : public framework::VarTypeInference {
                        in_var_type == framework::proto::VarType::LOD_TENSOR,
                    "The input Var's type should be LoDtensor or SelectedRows,"
                    " but the received var(%s)'s type is %s",
-                   input_var_n, in_var_type);
+                   input_var_n, framework::DataTypeToString(in_var_type));
 
     for (auto &out_var_n : op_desc.Output("ParamOut")) {
       auto &out_var = block->FindRecursiveOrCreateVar(out_var_n);
