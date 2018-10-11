@@ -107,6 +107,7 @@ __all__ = [
     'log',
     'crop',
     'rank_loss',
+    'margin_rank_loss',
     'elu',
     'relu6',
     'pow',
@@ -5827,6 +5828,46 @@ def rank_loss(label, left, right, name=None):
     return out
 
 
+def margin_rank_loss(label, left, right, margin=0.1, name=None):
+    """
+    **Margin Rank loss layer for RankNet**
+     Args:
+        label (Variable): Indicats whether A ranked higher than B or not.
+        left (Variable): RankNet's output score for doc A.
+        right (Variable): RankNet's output score for doc B.
+        name(str|None): A name for this layer(optional). If set None, the layer
+                        will be named automatically.
+     Returns:
+        list: The value of rank loss.
+     Raises:
+        ValueError: Any of label, left, and right is not a variable.
+     Examples:
+         .. code-block:: python
+             label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
+            right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
+            out = fluid.layers.margin_rank_loss(label, left, right)
+     """
+    helper = LayerHelper('margin_rank_loss', **locals())
+    if not (isinstance(label, Variable)):
+        raise ValueError("The label should be a Variable")
+    if not (isinstance(left, Variable)):
+        raise ValueError("The left should be a Variable")
+    if not (isinstance(right, Variable)):
+        raise ValueError("The right should be a Variable")
+    out = helper.create_tmp_variable("float32")
+    act = helper.create_tmp_variable("float32")
+    helper.append_op(
+        type='margin_rank_loss',
+        inputs={"Label": label,
+                "X1": left,
+                "X2": right},
+        outputs={'Out': out,
+                 'Activated': act},
+        attrs={'margin': margin})
+    return out
+
+
 def pad2d(input,
           paddings=[0, 0, 0, 0],
           mode='constant',
@@ -6290,6 +6331,7 @@ def sequence_enumerate(input, win_size, pad_value=0, name=None):
         outputs={'Out': out},
         attrs={'win_size': win_size,
                'pad_value': pad_value})
+    return out
 
 
 def sequence_mask(x, maxlen=None, dtype='int64', name=None):
