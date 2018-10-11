@@ -57,8 +57,8 @@ class TestDistMnist2x2(TestDistRunnerBase):
 
         inference_program = fluid.default_main_program().clone()
         # Optimization
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, use_lars=True)
+        opt = fluid.optimizer.LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9)
 
         # Reader
         train_reader = paddle.batch(
