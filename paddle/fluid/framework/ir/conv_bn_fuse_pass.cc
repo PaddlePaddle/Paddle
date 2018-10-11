@@ -92,6 +92,20 @@ void make_tensor_2d(LoDTensor& tensor_to_reshape) {
   tensor_to_reshape.Resize(make_ddim({tensor_to_reshape.dims()[0], size2}));
 }
 
+// Check environment flag whether MKL-DNN should be used
+// TODO(wojtuss): remove after the "OP placement" pass is added
+static bool IsMKLDNNSetOn() {
+  const char* flag = std::getenv("FLAGS_use_mkldnn");
+  if (flag) {
+    std::string flag_str(flag);
+    std::transform(flag_str.begin(), flag_str.end(), flag_str.begin(),
+                   ::toupper);
+    return !flag_str.compare("ON") || !flag_str.compare("TRUE") ||
+           !flag_str.compare("1");
+  }
+  return false;
+}
+
 std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
@@ -135,14 +149,14 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, conv_bn_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance,
                               conv_bn_pattern);
+    PADDLE_ENFORCE(subgraph.count(conv_input));
 
     // Create y (bias) variable
     VarDesc y_desc(patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+    y_desc.SetPersistable(true);
     auto* y_var_node = g->CreateVarNode(&y_desc);
     auto* bias_y_tensor =
         scope->Var(y_var_node->Name())->GetMutable<LoDTensor>();
-    std::fill_n(bias_y_tensor->mutable_data<float>(platform::CPUPlace()),
-                bias_y_tensor->numel(), 0.0f);
 
     // Compute bias from BN
     auto* bn_bias_var = scope->FindVar(bn_bias->Name());
@@ -188,26 +202,57 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     // reshape weights to the original dims {A, B, C, ...}
     current_param->Resize(current_param_shape);
 
-    // Create an elementwise add node.
-    OpDesc desc;
-    desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
-    desc.SetInput("Y", std::vector<std::string>({y_var_node->Name()}));
-    desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
-    desc.SetType("elementwise_add");
-    desc.SetAttr("axis", 1);
-    bool a = boost::get<bool>(conv->Op()->GetAttr("use_mkldnn"));
-    desc.SetAttr("use_mkldnn", a);
-    auto bias_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
+    // check if MKL-DNN should be used
+    // TODO(wojtuss): replace after the "OP placement" pass is added
+    // bool use_mkldnn = boost::get<bool>(conv->Op()->GetAttr("use_mkldnn"));
+    bool use_mkldnn = IsMKLDNNSetOn();
+    // with MKL-DNN fuse conv+bn into conv with bias
+    // without MKL-DNN fuse conv+bn into conv+elementwise_add
+    if (use_mkldnn) {
+      auto conv_bias_names = conv->Op()->Input("Bias");
+      if (conv_bias_names.size() > 0) {
+        // reuse existing conv bias node
+        PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1);
+        auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
+        auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
+        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(), bias_y_tensor->dims());
+        *conv_bias_tensor = tensor_apply_eltwise(
+            *conv_bias_tensor, *bias_y_tensor, std::plus<float>());
+      } else {
+        // add new conv_bias node
+        conv->Op()->SetInput("Bias",
+                             std::vector<std::string>({y_var_node->Name()}));
+        IR_NODE_LINK_TO(y_var_node, conv);
+      }
+      conv->Op()->SetOutput("Output",
+                            std::vector<std::string>({bn_out->Name()}));
 
-    GraphSafeRemoveNodes(graph.get(), {bn_scale, bn_bias, bn_mean, bn_variance,
-                                       batch_norm, bn_mean_out, bn_variance_out,
-                                       bn_saved_mean, bn_saved_variance});
+      GraphSafeRemoveNodes(
+          graph.get(),
+          {conv_out, bn_scale, bn_bias, bn_mean, bn_variance, batch_norm,
+           bn_mean_out, bn_variance_out, bn_saved_mean, bn_saved_variance});
 
-    PADDLE_ENFORCE(subgraph.count(conv_input));
-    IR_NODE_LINK_TO(conv_out, bias_op);
-    IR_NODE_LINK_TO(y_var_node, bias_op);
-    IR_NODE_LINK_TO(bias_op, bn_out);
+      IR_NODE_LINK_TO(conv, bn_out);
+    } else {
+      // create an elementwise add node.
+      OpDesc desc;
+      desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
+      desc.SetInput("Y", std::vector<std::string>({y_var_node->Name()}));
+      desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
+      desc.SetType("elementwise_add");
+      desc.SetAttr("axis", 1);
+      auto bias_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
+      GraphSafeRemoveNodes(
+          graph.get(),
+          {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
+           bn_variance_out, bn_saved_mean, bn_saved_variance});
+
+      PADDLE_ENFORCE(subgraph.count(conv_input));
+      IR_NODE_LINK_TO(conv_out, bias_op);
+      IR_NODE_LINK_TO(y_var_node, bias_op);
+      IR_NODE_LINK_TO(bias_op, bn_out);
+    }
     found_conv_bn_count++;
   };
 
