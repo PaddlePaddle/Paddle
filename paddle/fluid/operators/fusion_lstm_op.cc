@@ -400,10 +400,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     } else {
       const auto& ker =
           math::jitkernel::KernelPool::Instance()
-              .template Get<math::jitkernel::LSTMKernel<T>, int,
-                            const std::string&, const std::string&,
-                            const std::string&>(D, act_gate_str, act_cand_str,
-                                                act_cell_str);
+              .template Get<math::jitkernel::LSTMKernel<T>, const std::string&,
+                            const std::string&, const std::string&>(
+                  act_gate_str, act_cand_str, act_cell_str, D, false);
 
       for (int i = 0; i < N; ++i) {
         PROCESS_H0C0
@@ -545,10 +544,9 @@ class FuisonLSTMKernel : public framework::OpKernel<T> {
     } else {
       const auto& ker =
           math::jitkernel::KernelPool::Instance()
-              .template Get<math::jitkernel::LSTMKernel<T>, int,
-                            const std::string&, const std::string&,
-                            const std::string&>(D, act_gate_str, act_cand_str,
-                                                act_cell_str);
+              .template Get<math::jitkernel::LSTMKernel<T>, const std::string&,
+                            const std::string&, const std::string&>(
+                  act_gate_str, act_cand_str, act_cell_str, D, false);
 
       for (int step = tstart; step < max_seq_len; ++step) {
         const int cur_bs = batch_starts[step + 1] - batch_starts[step];

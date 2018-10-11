@@ -125,7 +125,8 @@ class VTanhKernel : public VActKernel<T> {
 template <typename T>
 class LSTMKernel : public Kernel {
  public:
-  virtual void ComputeCtHt(T *gates, const T *ct_1, T *ct, T *ht) const = 0;
+  virtual void ComputeCtHt(T *gates, const T *ct_1, T *ct, T *ht,
+                           T *checked = nullptr) const = 0;
 };
 
 }  // namespace jitkernel

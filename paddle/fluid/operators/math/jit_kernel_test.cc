@@ -390,9 +390,9 @@ TEST(JitKernel, lstm) {
     std::string act_gate = "sigmoid", act_cand = "tanh", act_cell = "tanh";
     const auto& ker =
         jit::KernelPool::Instance()
-            .template Get<jit::LSTMKernel<float>, int, const std::string&,
+            .template Get<jit::LSTMKernel<float>, const std::string&,
                           const std::string&, const std::string&>(
-                d, act_gate, act_cand, act_cell);
+                act_gate, act_cand, act_cell, d, false);
     // below kernels are used to compute refer
     const auto& vsigmoid_3d =
         jit::KernelPool::Instance().template Get<jit::VSigmoidKernel<float>>(
@@ -717,15 +717,20 @@ TEST(JitKernel, pool) {
   std::string act_gate = "sigmoid", act_cand = "tanh", act_cell = "tanh";
   const auto& plstm1 =
       jit::KernelPool::Instance()
-          .template Get<jit::LSTMKernel<float>, int, const std::string&,
+          .template Get<jit::LSTMKernel<float>, const std::string&,
                         const std::string&, const std::string&>(
-              frame_size, act_gate, act_cand, act_cell);
+              act_gate, act_cand, act_cell, frame_size, false);
   const auto& plstm2 =
       jit::KernelPool::Instance()
-          .template Get<jit::LSTMKernel<float>, int, const std::string&,
+          .template Get<jit::LSTMKernel<float>, const std::string&,
                         const std::string&, const std::string&>(
-              frame_size, act_gate, act_cand, act_cell);
-  EXPECT_EQ(plstm1, plstm2);
+              act_gate, act_cand, act_cell, frame_size, false);
+  const auto& peephole =
+      jit::KernelPool::Instance()
+          .template Get<jit::LSTMKernel<float>, const std::string&,
+                        const std::string&, const std::string&>(
+              act_gate, act_cand, act_cell, frame_size, true);
+  EXPECT_TRUE(plstm1 != peephole);
 
   const auto& pvmul_f =
       jit::KernelPool::Instance().template Get<jit::VMulKernel<float>>(4);
