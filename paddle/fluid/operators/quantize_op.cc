@@ -82,7 +82,7 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(const framework::Executio
     layout_ = framework::DataLayout::kMKLDNN;
   }
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
+      framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
       //ctx.device_context());
 }
 
