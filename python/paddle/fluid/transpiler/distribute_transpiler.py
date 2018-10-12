@@ -1212,6 +1212,7 @@ to transpile() call.")
             dtype=origin_param_var.dtype,
             type=core.VarDesc.VarType.SELECTED_ROWS,
             persistable=True)
+
         # parameter must be selected rows
         param_var.desc.set_type(core.VarDesc.VarType.SELECTED_ROWS)
         grad_var = pserver_program.global_block()._clone_variable(
