@@ -81,6 +81,7 @@ __all__ = [
     'row_conv',
     'multiplex',
     'layer_norm',
+    'group_norm',
     'softmax_with_cross_entropy',
     'smooth_l1',
     'one_hot',
@@ -2303,6 +2304,107 @@ def layer_norm(input,
                "begin_norm_axis": begin_norm_axis})
 
     return helper.append_activation(layer_norm_out)
+
+
+@templatedoc()
+def group_norm(input,
+               scale=True,
+               shift=True,
+               groups=1,
+               epsilon=1e-05,
+               param_attr=None,
+               bias_attr=None,
+               act=None,
+               data_layout='NCHW',
+               name=None):
+    """
+    ${comment}
+
+    TODO: change from layer norm to group norm
+    The formula is as follows:
+
+    ..  math::
+
+        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
+
+        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
+
+        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
+
+    * :math:`a`: the vector representation of the summed inputs to the neurons
+    in that layer.
+
+    * :math:`H`: the number of hidden units in a layers
+
+    * :math:`g`: the trainable scale parameter.
+
+    * :math:`b`: the trainable bias parameter.
+
+    Args:
+        input(Variable): The input tensor variable.
+        scale(bool): Whether to learn the adaptive gain :math:`g` after
+            normalization.
+        shift(bool): Whether to learn the adaptive bias :math:`b` after
+            normalization.
+        groups(int): The number of groups that divided from channels.
+        epsilon(float): The small value added to the variance to prevent
+            division by zero.
+        param_attr(ParamAttr|None): The parameter attribute for the learnable
+            gain :math:`g`.
+        bias_attr(ParamAttr|None): The parameter attribute for the learnable
+            bias :math:`b`.
+        act(str): Activation to be applied to the output of layer normalizaiton.
+        data_layout(string|NCHW): Only NCHW is supported.
+        name (str): The name of this layer. It is optional.
+
+    Returns:
+        ${y_comment}
+
+    Examples:
+
+        >>> data = fluid.layers.data(name='data', shape=[3, 32, 32],
+        >>>                          dtype='float32')
+        >>> x = fluid.layers.group_norm(input=data, begin_norm_axis=1)
+    """
+    helper = LayerHelper('group_norm', **locals())
+    dtype = helper.input_dtype()
+
+    # create intput and parameters
+    inputs = {'X': input}
+    input_shape = input.shape
+    if data_layout != 'NCHW':
+        raise ValueError("unsupported data layout:" + data_layout)
+    param_shape = [input_shape[1]]
+    if scale:
+        scale = helper.create_parameter(
+            attr=helper.param_attr,
+            shape=param_shape,
+            dtype=dtype,
+            default_initializer=Constant(1.0))
+        inputs['Scale'] = scale
+    if shift:
+        assert bias_attr is not False
+        bias = helper.create_parameter(
+            attr=helper.bias_attr, shape=param_shape, dtype=dtype, is_bias=True)
+        inputs['Bias'] = bias
+
+    # create output
+    mean_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    variance_out = helper.create_tmp_variable(dtype=dtype, stop_gradient=True)
+    group_norm_out = helper.create_tmp_variable(dtype)
+
+    helper.append_op(
+        type="group_norm",
+        inputs=inputs,
+        outputs={
+            "Y": group_norm_out,
+            "Mean": mean_out,
+            "Variance": variance_out,
+        },
+        attrs={"epsilon": epsilon,
+               "groups": groups})
+
+    return helper.append_activation(group_norm_out)
 
 
 def conv2d_transpose(input,
