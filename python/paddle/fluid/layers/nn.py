@@ -40,75 +40,21 @@ import random
 from .. import unique_name
 
 __all__ = [
-    'fc',
-    'embedding',
-    'dynamic_lstm',
-    'dynamic_lstmp',
-    'dynamic_gru',
-    'gru_unit',
-    'linear_chain_crf',
-    'crf_decoding',
-    'cos_sim',
-    'cross_entropy',
-    'square_error_cost',
-    'chunk_eval',
-    'sequence_conv',
-    'conv2d',
-    'conv3d',
-    'sequence_pool',
-    'sequence_softmax',
-    'softmax',
-    'pool2d',
-    'pool3d',
-    'batch_norm',
-    'beam_search_decode',
-    'conv2d_transpose',
-    'conv3d_transpose',
-    'sequence_expand',
-    'lstm_unit',
-    'reduce_sum',
-    'reduce_mean',
-    'reduce_max',
-    'reduce_min',
-    'reduce_prod',
-    'sequence_first_step',
-    'sequence_last_step',
-    'dropout',
-    'split',
-    'ctc_greedy_decoder',
-    'edit_distance',
-    'l2_normalize',
-    'matmul',
-    'topk',
-    'warpctc',
-    'sequence_reshape',
-    'transpose',
-    'im2sequence',
-    'nce',
-    'beam_search',
-    'row_conv',
-    'multiplex',
-    'layer_norm',
-    'softmax_with_cross_entropy',
-    'smooth_l1',
-    'one_hot',
-    'autoincreased_step_counter',
-    'reshape',
-    'lod_reset',
-    'lrn',
-    'pad',
-    'label_smooth',
-    'roi_pool',
-    'dice_loss',
-    'image_resize',
-    'image_resize_short',
-    'resize_bilinear',
-    'gather',
-    'random_crop',
-    'mean_iou',
-    'relu',
-    'log',
-    'crop',
+    'fc', 'embedding', 'dynamic_lstm', 'dynamic_lstmp', 'dynamic_gru',
+    'gru_unit', 'linear_chain_crf', 'crf_decoding', 'cos_sim', 'cross_entropy',
+    'square_error_cost', 'chunk_eval', 'sequence_conv', 'conv2d', 'conv3d',
+    'sequence_pool', 'sequence_softmax', 'softmax', 'pool2d', 'pool3d',
+    'batch_norm', 'beam_search_decode', 'conv2d_transpose', 'conv3d_transpose',
+    'sequence_expand', 'lstm_unit', 'reduce_sum', 'reduce_mean', 'reduce_max',
+    'reduce_min', 'reduce_prod', 'sequence_first_step', 'sequence_last_step',
+    'dropout', 'split', 'ctc_greedy_decoder', 'edit_distance', 'l2_normalize',
+    'matmul', 'topk', 'warpctc', 'sequence_reshape', 'transpose', 'im2sequence',
+    'nce', 'beam_search', 'row_conv', 'multiplex', 'layer_norm',
+    'softmax_with_cross_entropy', 'smooth_l1', 'one_hot',
+    'autoincreased_step_counter', 'reshape', 'lod_reset', 'lrn', 'pad',
+    'label_smooth', 'roi_pool', 'dice_loss', 'image_resize',
+    'image_resize_short', 'resize_bilinear', 'gather', 'random_crop',
+    'mean_iou', 'relu', 'log', 'crop', 'affine_grid_gen'
 ]
 
 
@@ -5210,5 +5156,124 @@ def crop(x, shape=None, offsets=None, name=None):
         type='crop',
         inputs=ipts,
         outputs={'Out': out},
+        attrs=None if len(attrs) == 0 else attrs)
+    return out
+
+
+def affine_grid_gen(theta, out_shape):
+    """
+    It generates a grid of (x,y) coordinates using the parameters of
+    the affine transformation that correspond to a set of points where
+    the input feature map should be sampled to produce the transformed
+    output feature map.
+
+
+    Crop input into output, as specified by offsets and shape.
+
+    .. code-block:: text
+
+        * Case 1:
+
+          Given:
+
+              Theta = [[[x_11, x_12, x_13]
+                        [x_14, x_15, x_16]]
+                       [[x_21, x_22, x_23]
+                        [x_24, x_25, x_26]]]
+      
+              Size = [2, 3, 5, 5]
+      
+          Step 1:
+      
+              Generate relative coordinates according to Size.
+              The values of relative coordinates are in the interval between -1 and 1.
+              The shape of the relative coordinates is [2, H, W] as below:
+      
+              C = [[[-1.  -1.  -1.  -1.  -1. ]
+                    [-0.5 -0.5 -0.5 -0.5 -0.5]
+                    [ 0.   0.   0.   0.   0. ]
+                    [ 0.5  0.5  0.5  0.5  0.5]
+                    [ 1.   1.   1.   1.   1. ]]
+                   [[-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]
+                    [-1.  -0.5  0.   0.5  1. ]]]
+              C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+
+          Step2:
+
+              Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+              C_ = [[-1.  -1.   1. ]
+                    [-0.5 -1.   1. ]
+                    [ 0.  -1.   1. ]
+                    [ 0.5 -1.   1. ]
+                    [ 1.  -1.   1. ]
+                    [-1.  -0.5  1. ]
+                    [-0.5 -0.5  1. ]
+                    [ 0.  -0.5  1. ]
+                    [ 0.5 -0.5  1. ]
+                    [ 1.  -0.5  1. ]
+                    [-1.   0.   1. ]
+                    [-0.5  0.   1. ]
+                    [ 0.   0.   1. ]
+                    [ 0.5  0.   1. ]
+                    [ 1.   0.   1. ]
+                    [-1.   0.5  1. ]
+                    [-0.5  0.5  1. ]
+                    [ 0.   0.5  1. ]
+                    [ 0.5  0.5  1. ]
+                    [ 1.   0.5  1. ]
+                    [-1.   1.   1. ]
+                    [-0.5  1.   1. ]
+                    [ 0.   1.   1. ]
+                    [ 0.5  1.   1. ]
+                    [ 1.   1.   1. ]]
+          Step3:
+              Compute output by equation $$Output[i] = C_ * Theta[i]^T$$
+
+    Args:
+        theta (Variable): A batch of affine transform parameters with shape [N, 2, 3].
+        size (Variable | list | tuple): The target output image shape with format [N, C, H, W].
+
+    Returns:
+        Variable: The output with shape [N, H, W, 2].
+
+    Raises:
+        ValueError: If the type of arguments is not supported.
+
+    Examples:
+
+        .. code-block:: python
+
+            theta = fluid.layers.data(name="x", shape=[5, 2, 3], dtype="float32")
+            out_shape = fluid.layers.data(name="y", shape=[4], dtype="float32")
+            data = fluid.layers.affine_grid_gen(theta, out_shape)
+
+            # or
+            data = fluid.layers.affine_grid_gen(theta, [5, 3, 28, 28])
+
+    """
+    helper = LayerHelper('affine_grid_gen')
+
+    if not (isinstance(out_shape, list) or isinstance(out_shape, tuple) or \
+        isinstance(out_shape, Variable)):
+        raise ValueError("The out_shape should be a list, tuple or Variable.")
+
+    if not isinstance(theta, Variable):
+        raise ValueError("The theta should be a Variable.")
+
+    out = helper.create_tmp_variable(theta.dtype)
+    ipts = {'Theta': theta}
+    attrs = {}
+    if isinstance(out_shape, Variable):
+        ipts['Size'] = out_shape
+    else:
+        attrs['size'] = out_shape
+
+    helper.append_op(
+        type='affine_grid',
+        inputs=ipts,
+        outputs={'Output': out},
         attrs=None if len(attrs) == 0 else attrs)
     return out

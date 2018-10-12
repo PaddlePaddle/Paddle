@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <string>
 #include "paddle/fluid/operators/affine_grid_op.h"
+#include <string>
 #include "paddle/fluid/framework/op_registry.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cudnn_helper.h"
@@ -25,16 +25,17 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-struct Linspace<paddle::platform::CPUDeviceContext, T>{
-    framework::Tensor operator()(T start, T end, int count, const framework::ExecutionContext& ctx) {
-        Tensor numbers;
-        T* number_data = numbers.mutable_data<T>({count}, platform::CPUPlace());
-        T slice =  (end - start) / (T)(count-1);
-        for (int i=0; i<count; ++i) {
-            number_data[i] = start + (T)i * slice;
-        }
-        return numbers;
+struct Linspace<paddle::platform::CPUDeviceContext, T> {
+  framework::Tensor operator()(T start, T end, int count,
+                               const framework::ExecutionContext& ctx) {
+    Tensor numbers;
+    T* number_data = numbers.mutable_data<T>({count}, platform::CPUPlace());
+    T slice = (end - start) / (T)(count - 1);
+    for (int i = 0; i < count; ++i) {
+      number_data[i] = start + (T)i * slice;
     }
+    return numbers;
+  }
 };
 
 class AffineGridOp : public framework::OperatorWithKernel {
@@ -43,16 +44,24 @@ class AffineGridOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE(ctx->HasInput("Theta"),
                    "Input(Theta) of AffineGridOp should not be null.");
-    PADDLE_ENFORCE(ctx->HasInput("Size"),
-                   "Input(Size) of AffineGridOp should not be null.");
     PADDLE_ENFORCE(ctx->HasOutput("Output"),
                    "Output(Output) of AffineGridOp should not be null.");
     auto theta_dims = ctx->GetInputDim("Theta");
-    auto size_dims = ctx->GetInputDim("Size");
     PADDLE_ENFORCE(theta_dims.size() == 3,
                    "AffineGrid's Input(Theta) should be 3-D tensor.");
-    PADDLE_ENFORCE(size_dims.size() == 1,
-                   "AffineGrid's Input(Size) should be 1-D tensor.");
+
+    auto size = ctx->Attrs().Get<std::vector<int>>("size");
+    if (size.size() == 0) {
+      PADDLE_ENFORCE(ctx->HasInput("Size"),
+                     "Input(Size) of AffineGridOp should not be null if "
+                     "attr(size) is not configured.");
+      auto size_dims = ctx->GetInputDim("Size");
+      PADDLE_ENFORCE(size_dims.size() == 1,
+                     "AffineGrid's Input(Size) should be 1-D tensor.");
+    } else {
+      PADDLE_ENFORCE(size.size() == 4, "The size of attr(size) should be 4.");
+    }
+
     PADDLE_ENFORCE(theta_dims[1] == 2, "Input(theta) dims[1] should be 2.");
     PADDLE_ENFORCE(theta_dims[2] == 3, "Input(theta) dims[2] should be 3.");
     // N * H * W * 2
@@ -79,14 +88,83 @@ class AffineGridOp : public framework::OperatorWithKernel {
 class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Theta", "(Tensor) Input batch of affine matrices (N×2×3).");
-    AddInput("Size", "(Tensor) the target output image size (N×C×H×W).");
-    AddOutput("Output", "(Tensor) output Tensor of size (N×H×W×2).");
+    AddInput(
+        "Theta",
+        "(Tensor) A batch of affine transform parameters with shape [N, 2, 3]. "
+        "It is used to transform coordinate (x_0, y_0) to coordinate (x_1, "
+        "y_1).");
+    AddInput("Size",
+             "(Tensor) The target output image shape with format [N, C, H, W].")
+        .AsDispensable();
+    AddOutput("Output", "(Tensor) Output Tensor with shape [N, H, W, 2].");
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
         .SetDefault(true);
+    AddAttr<std::vector<int>>(
+        "size", "The target output image shape with format [N, C, H, W].")
+        .SetDefault(std::vector<int>());
+
     AddComment(R"DOC(
+    It generates a grid of (x,y) coordinates using the parameters of the
+    affine transformation that correspond to a set of points where the input
+    feature map should be sampled to produce the transformed output feature map.
+
+    Given:
+        Theta = [[[x_11, x_12, x_13]
+                  [x_14, x_15, x_16]]
+                 [[x_21, x_22, x_23]
+                  [x_24, x_25, x_26]]]
+    
+        Size = [2, 3, 5, 5]
+
+    Step 1:
+
+        Generate relative coordinates according to Size.
+        The values of relative coordinates are in the interval between -1 and 1.
+        The shape of the relative coordinates is [2, H, W] as below:
+    
+        C = [[[-1.  -1.  -1.  -1.  -1. ]
+              [-0.5 -0.5 -0.5 -0.5 -0.5]
+              [ 0.   0.   0.   0.   0. ]
+              [ 0.5  0.5  0.5  0.5  0.5]
+              [ 1.   1.   1.   1.   1. ]] 
+             [[-1.  -0.5  0.   0.5  1. ]
+              [-1.  -0.5  0.   0.5  1. ]
+              [-1.  -0.5  0.   0.5  1. ]
+              [-1.  -0.5  0.   0.5  1. ]
+              [-1.  -0.5  0.   0.5  1. ]]]
+        C[0] is the coordinates in height axis and  C[1] is the coordinates in width axis.
+    
+    Step2:
+        Tanspose and reshape C to shape [H * W, 2] and append ones to last dimension. The we get:
+        C_ = [[-1.  -1.   1. ]
+              [-0.5 -1.   1. ]
+              [ 0.  -1.   1. ]
+              [ 0.5 -1.   1. ]
+              [ 1.  -1.   1. ]
+              [-1.  -0.5  1. ]
+              [-0.5 -0.5  1. ]
+              [ 0.  -0.5  1. ]
+              [ 0.5 -0.5  1. ]
+              [ 1.  -0.5  1. ]
+              [-1.   0.   1. ]
+              [-0.5  0.   1. ]
+              [ 0.   0.   1. ]
+              [ 0.5  0.   1. ]
+              [ 1.   0.   1. ]
+              [-1.   0.5  1. ]
+              [-0.5  0.5  1. ]
+              [ 0.   0.5  1. ]
+              [ 0.5  0.5  1. ]
+              [ 1.   0.5  1. ]
+              [-1.   1.   1. ]
+              [-0.5  1.   1. ]
+              [ 0.   1.   1. ]
+              [ 0.5  1.   1. ]
+              [ 1.   1.   1. ]]
+    Step3:
+        Compute output by equation $$Output[i] = C_ * Theta[i]^T$$
     )DOC");
   }
 };
@@ -145,6 +223,8 @@ REGISTER_OPERATOR(affine_grid, ops::AffineGridOp, ops::AffineGridOpMaker,
 REGISTER_OPERATOR(affine_grid_grad, ops::AffineGridOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    affine_grid, ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>);
+    affine_grid,
+    ops::AffineGridOpKernel<paddle::platform::CPUDeviceContext, float>);
 REGISTER_OP_CPU_KERNEL(
-    affine_grid_grad, ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>);
+    affine_grid_grad,
+    ops::AffineGridGradOpKernel<paddle::platform::CPUDeviceContext, float>);

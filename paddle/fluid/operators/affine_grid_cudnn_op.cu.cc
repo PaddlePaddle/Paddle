@@ -31,17 +31,27 @@ class CUDNNAffineGridOpKernel : public framework::OpKernel<T> {
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto* theta = ctx.Input<Tensor>("Theta");
-    auto* size = ctx.Input<Tensor>("Size");
     auto* output = ctx.Output<Tensor>("Output");
     const T* theta_data = theta->data<T>();
-    //    const T* size_data = size->data<T>();
 
+    int n = theta->dims()[0];
+    auto size_attr = ctx.Attr<std::vector<int>>("size");
     Tensor h_sizes;
-    framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
-    const int* h_size_data = h_sizes.data<int>();
+    int* h_size_data;
+    if (size_attr.size() == 0) {
+      auto* size = ctx.Input<Tensor>("Size");
+      framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+      h_size_data = h_sizes.data<int>();
+    } else {
+      h_size_data = h_sizes.mutable_data<int>({4}, ctx.GetPlace());
+      h_size_data[0] = n;
+      h_size_data[1] = size_attr[1];
+      h_size_data[2] = size_attr[2];
+      h_size_data[3] = size_attr[3];
+    }
 
     T* output_data = output->mutable_data<T>(
-        {h_size_data[0], h_size_data[2], h_size_data[3], 2}, ctx.GetPlace());
+        {n, h_size_data[2], h_size_data[3], 2}, ctx.GetPlace());
     ScopedSpatialTransformerDescriptor st_desc;
     cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
         st_desc.descriptor<T>(4, h_size_data);
@@ -59,13 +69,25 @@ class CUDNNAffineGridGradOpKernel : public framework::OpKernel<T> {
                    "It must use CUDAPlace.");
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
-    auto* size = ctx.Input<Tensor>("Size");
-    //    const T* size_data = size->data<T>();
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
+
+    int n = output_grad->dims()[0];
+    auto size_attr = ctx.Attr<std::vector<int>>("size");
     Tensor h_sizes;
-    framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
-    const int* h_size_data = h_sizes.data<int>();
+    int* h_size_data;
+    if (size_attr.size() == 0) {
+      auto* size = ctx.Input<Tensor>("Size");
+      framework::TensorCopy(*size, platform::CPUPlace(), &h_sizes);
+      h_size_data = h_sizes.data<int>();
+    } else {
+      h_size_data = h_sizes.mutable_data<int>({4}, ctx.GetPlace());
+      h_size_data[0] = n;
+      h_size_data[1] = size_attr[1];
+      h_size_data[2] = size_attr[2];
+      h_size_data[3] = size_attr[3];
+    }
+
     ScopedSpatialTransformerDescriptor st_desc;
     cudnnSpatialTransformerDescriptor_t cudnn_st_desc =
         st_desc.descriptor<T>(4, h_size_data);

@@ -432,6 +432,22 @@ class TestBook(unittest.TestCase):
             self.assertIsNotNone(ids)
         print(str(program))
 
+    def test_affine_grid_gen(self):
+        program = Program()
+        with program_guard(program):
+            data = layers.data(name='x', shape=[2, 3, 3], dtype="float32")
+            out, ids = layers.argsort(input=data, axis=1)
+
+            theta = fluid.layers.data(
+                name="x", shape=[5, 2, 3], dtype="float32")
+            out_shape = fluid.layers.data(name="y", shape=[4], dtype="float32")
+            data_0 = fluid.layers.affine_grid_gen(theta, out_shape)
+            data_1 = fluid.layers.affine_grid_gen(theta, [5, 3, 28, 28])
+
+            self.assertIsNotNone(data_0)
+            self.assertIsNotNone(data_1)
+        print(str(program))
+
 
 if __name__ == '__main__':
     unittest.main()
