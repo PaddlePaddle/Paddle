@@ -13,17 +13,20 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/parallel_executor.h"
-
 #include <string>
 #include <tuple>
 #include <vector>
+#include "paddle/fluid/framework/ir/graph_helper.h"
+
+#include "paddle/fluid/framework/ir/graph.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/nccl_helper.h"
 #endif
 
+#include "paddle/fluid/framework/details/fast_threaded_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
-#include "paddle/fluid/framework/details/ssa_graph_builder_factory.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -45,6 +48,7 @@ class ParallelExecutorPrivate {
 #endif
   bool own_local_scope_;
   bool use_cuda_;
+  bool use_all_reduce_;
 };
 
 std::vector<Scope *> &ParallelExecutor::GetLocalScopes() {
@@ -62,6 +66,14 @@ ParallelExecutor::ParallelExecutor(
     : member_(new ParallelExecutorPrivate(places)) {
   member_->global_scope_ = scope;
   member_->use_cuda_ = exec_strategy.use_cuda_;
+  member_->use_all_reduce_ =
+      build_strategy.reduce_ == BuildStrategy::ReduceStrategy::kAllReduce;
+
+  if (!member_->use_all_reduce_) {
+    PADDLE_ENFORCE(places.size() > 1,
+                   "If you set build_strategy.reduce with 'Reduce',"
+                   "the number of places must be greater than 1.");
+  }
 
   // Step 1. Bcast the params to devs.
   // Create local scopes
@@ -95,7 +107,7 @@ ParallelExecutor::ParallelExecutor(
   }
 
   if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
-    BCastParamsToGPUs(bcast_vars);
+    BCastParamsToDevices(bcast_vars);
   }
   // Startup Program has been run. All local scopes has correct parameters.
 
@@ -108,48 +120,68 @@ ParallelExecutor::ParallelExecutor(
     var_infos.back().persistable_ = var->Persistable();
   }
 
-  // Step 3. Convert main_program to SSA form and dependency graph. Also, insert
-  // ncclOp
-  details::SSAGraphBuilderFactory builder_factory(
-      member_->places_, loss_var_name, params, member_->local_scopes_,
-      build_strategy);
-  if (member_->use_cuda_) {
+// Step 3. Convert main_program to SSA form and dependency graph. Also, insert
+// ncclOp
 #ifdef PADDLE_WITH_CUDA
-    builder_factory.SetNCCLContextMap(member_->nccl_ctxs_.get());
+  std::unique_ptr<ir::Graph> graph = build_strategy.Apply(
+      main_program, member_->places_, loss_var_name, params,
+      member_->local_scopes_, member_->use_cuda_, member_->nccl_ctxs_.get());
+
+  auto max_memory_size = GetEagerDeletionThreshold();
+  if (max_memory_size >= 0) {
+    for (auto &place : member_->places_) {
+      if (!platform::is_gpu_place(place)) continue;
+      auto gpu_place = boost::get<platform::CUDAPlace>(place);
+      if (gcs_[gpu_place.device] == nullptr) {
+        ref_cnts_[gpu_place.device].reset(new details::ReferenceCountMap());
+        cur_ref_cnts_[gpu_place.device].reset(
+            new details::AtomicReferenceCountMap());
+        gcs_[gpu_place.device].reset(
+            new StreamGarbageCollector<Tensor>(gpu_place, max_memory_size));
+      }
+    }
+    if (!gcs_.empty()) {
+      auto ref_cnt_pass =
+          ir::PassRegistry::Instance().Get("reference_count_pass");
+      ref_cnt_pass->SetNotOwned(details::kGlobalReferenceCount, &ref_cnts_);
+      ref_cnt_pass->SetNotOwned(details::kCurReferenceCount, &cur_ref_cnts_);
+      ref_cnt_pass->SetNotOwned(details::kGarbageCollector, &gcs_);
+      graph = ref_cnt_pass->Apply(std::move(graph));
+      graph->SetNotOwned("garbage_collector", &gcs_);
+    }
+  }
 #else
-    PADDLE_THROW("Not compiled with CUDA");
+  std::unique_ptr<ir::Graph> graph =
+      build_strategy.Apply(main_program, member_->places_, loss_var_name,
+                           params, member_->local_scopes_, member_->use_cuda_);
 #endif
+
+  if (VLOG_IS_ON(5)) {
+    // If the loss_var_name is given, the number of graph should be only one.
+    if (loss_var_name.size()) {
+      PADDLE_ENFORCE_EQ(ir::GraphNum(*graph), 1,
+                        "The number of graph should be only one");
+    }
   }
 
-  builder_ = builder_factory.Create();
-  member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
-      exec_strategy, member_->local_scopes_, places,
-      builder_->Build(main_program)));
+  if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
+    member_->executor_.reset(new details::ThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  } else {
+    member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
+        exec_strategy, member_->local_scopes_, places, std::move(graph)));
+  }
 
   member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
       exec_strategy, member_->local_scopes_, std::move(var_infos),
       member_->places_, std::move(member_->executor_)));
 }
 
-void ParallelExecutor::BCastParamsToGPUs(
+void ParallelExecutor::BCastParamsToDevices(
     const std::unordered_set<std::string> &vars) const {
-  // the the initializing bcast, all vars would be bcast from device(0),
-  // otherwise
-  // bcast from the specified device.
-  bool initializing = builder_.get() == nullptr ? true : false;
-
+  // the initializing bcast, all vars would be bcast from device(0).
   for (auto &var : vars) {
-    int var_dev_id =
-        builder_.get() == nullptr ? -1 : builder_->GetVarDeviceID(var);
-    if (!initializing && var_dev_id == -1) continue;
-
-    framework::Variable *main_var = nullptr;
-    if (initializing) {
-      main_var = member_->local_scopes_[0]->FindVar(var);
-    } else {
-      main_var = member_->local_scopes_[var_dev_id]->FindVar(var);
-    }
-
+    framework::Variable *main_var = member_->local_scopes_[0]->FindVar(var);
     if (main_var == nullptr || !main_var->IsType<LoDTensor>()) {
       continue;
     }
@@ -165,8 +197,7 @@ void ParallelExecutor::BCastParamsToGPUs(
         auto place = member_->places_[i];
         void *buffer;
 
-        if ((initializing && i == 0) ||
-            (!initializing && static_cast<int>(i) == var_dev_id)) {
+        if (i == 0) {
           buffer = const_cast<void *>(main_tensor.data<void>());
         } else {
           auto local_scope = member_->local_scopes_[i];
@@ -183,31 +214,31 @@ void ParallelExecutor::BCastParamsToGPUs(
         platform::NCCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &nccl_ctx = member_->nccl_ctxs_->at(member_->places_[i]);
-          if (initializing) {
-            platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
-                                         nccl_ctx.comm_, nccl_ctx.stream());
-          } else {
-            if (var_dev_id >= 0) {
-              platform::dynload::ncclBcast(buffers[i], numel, data_type,
-                                           var_dev_id, nccl_ctx.comm_,
-                                           nccl_ctx.stream());
-            }
-          }
+          platform::dynload::ncclBcast(buffers[i], numel, data_type, 0,
+                                       nccl_ctx.comm_, nccl_ctx.stream());
         }
         member_->nccl_ctxs_->WaitAll();
       }
-
 #else
       PADDLE_THROW("Not compiled with CUDA");
 #endif
     } else {
       platform::CPUPlace cpu;
-      for (size_t i = 1; i < member_->places_.size(); ++i) {
+      for (size_t i = 0; i < member_->places_.size(); ++i) {
+        if (i == 0) continue;
+
         auto local_scope = member_->local_scopes_[i];
         auto *t = local_scope->Var(var)->GetMutable<LoDTensor>();
-        t->Resize(dims);
-        t->mutable_data(cpu, main_tensor.type());
-        paddle::framework::TensorCopy(main_tensor, cpu, t);
+
+        // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
+        if (member_->use_all_reduce_ || member_->use_cuda_ ||
+            var == "@LR_DECAY_COUNTER@") {
+          t->Resize(dims);
+          t->mutable_data(cpu, main_tensor.type());
+          paddle::framework::TensorCopy(main_tensor, cpu, t);
+        } else {
+          t->ShareDataWith(main_tensor);
+        }
       }
     }
   }
@@ -216,6 +247,18 @@ void ParallelExecutor::BCastParamsToGPUs(
 void ParallelExecutor::Run(const std::vector<std::string> &fetch_tensors,
                            const std::string &fetched_var_name) {
   platform::RecordBlock b(0);
+#ifdef PADDLE_WITH_CUDA
+  if (!gcs_.empty()) {
+    ResetReferenceCount();
+    for (auto &pair : cur_ref_cnts_) {
+      auto &name_map = *(pair.second);
+      for (auto &fetch_name : fetch_tensors) {
+        name_map.erase(fetch_name);
+      }
+      name_map.erase(fetched_var_name);
+    }
+  }
+#endif
   auto fetch_data = member_->executor_->Run(fetch_tensors);
   *member_->global_scope_->Var(fetched_var_name)->GetMutable<FeedFetchList>() =
       fetch_data;
@@ -258,10 +301,16 @@ void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
 ParallelExecutor::~ParallelExecutor() {
   if (member_->own_local_scope_) {
     for (size_t i = 1; i < member_->local_scopes_.size(); ++i) {
-      member_->global_scope_->DeleteScope(member_->local_scopes_[i]);
+      Scope *local_scope = member_->local_scopes_[i];
+      if (member_->global_scope_->HasKid(local_scope)) {
+        member_->global_scope_->DeleteScope(local_scope);
+      }
     }
   }
 }
 
 }  // namespace framework
 }  // namespace paddle
+#ifdef PADDLE_WITH_CUDA
+USE_PASS(reference_count_pass);
+#endif

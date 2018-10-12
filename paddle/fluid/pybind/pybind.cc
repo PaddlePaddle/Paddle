@@ -14,16 +14,17 @@ limitations under the License. */
 #include <Python.h>
 #include <algorithm>
 #include <map>
+#include <memory>
 #include <mutex>  // NOLINT // for call_once
 #include <string>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -32,6 +33,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/prune.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/selected_rows.h"
+#include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/reader/lod_tensor_blocking_queue.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -53,6 +55,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 
+#include "pybind11/stl.h"
+
 // disable auto conversion to list in Python
 PYBIND11_MAKE_OPAQUE(paddle::framework::LoDTensorArray);
 
@@ -63,6 +67,14 @@ bool IsCompiledWithCUDA() {
   return false;
 #else
   return true;
+#endif
+}
+
+bool IsCompiledWithDIST() {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  return true;
+#else
+  return false;
 #endif
 }
 
@@ -78,37 +90,37 @@ PYBIND11_PLUGIN(core) {
   py::class_<Tensor>(m, "Tensor", py::buffer_protocol())
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
-      .def("get_dims",
+      .def("_get_dims",
            [](const Tensor &self) { return vectorize(self.dims()); })
-      .def("set_dims",
+      .def("_set_dims",
            [](Tensor &self, const std::vector<int64_t> &dim) {
              self.Resize(make_ddim(dim));
            })
-      .def("set_layout",
+      .def("_set_layout",
            [](Tensor &self, const std::string &layout) {
              self.set_layout(StringToDataLayout(layout));
            })
-      .def("alloc_float",
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("alloc_float",
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<float>(place);
            })
-      .def("alloc_int",
+      .def("_alloc_int",
            [](Tensor &self, paddle::platform::CPUPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("alloc_int",
+      .def("_alloc_int",
            [](Tensor &self, paddle::platform::CUDAPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("alloc_int",
+      .def("_alloc_int",
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<int>(place);
            })
-      .def("alloc_float",
+      .def("_alloc_float",
            [](Tensor &self, paddle::platform::CUDAPinnedPlace &place) {
              self.mutable_data<float>(place);
            })
@@ -119,6 +131,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCPUTensorSetFromArray<bool>)
       .def("set", PyCPUTensorSetFromArray<uint16_t>)
       .def("set", PyCPUTensorSetFromArray<uint8_t>)
+      .def("set", PyCPUTensorSetFromArray<int8_t>)
 #ifdef PADDLE_WITH_CUDA
       .def("set", PyCUDATensorSetFromArray<float>)
       .def("set", PyCUDATensorSetFromArray<int>)
@@ -127,6 +140,7 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDATensorSetFromArray<bool>)
       .def("set", PyCUDATensorSetFromArray<uint16_t>)
       .def("set", PyCUDATensorSetFromArray<uint8_t>)
+      .def("set", PyCUDATensorSetFromArray<int8_t>)
       .def("set", PyCUDAPinnedTensorSetFromArray<float>)
       .def("set", PyCUDAPinnedTensorSetFromArray<int>)
       .def("set", PyCUDAPinnedTensorSetFromArray<double>)
@@ -134,13 +148,14 @@ PYBIND11_PLUGIN(core) {
       .def("set", PyCUDAPinnedTensorSetFromArray<bool>)
       .def("set", PyCUDAPinnedTensorSetFromArray<uint16_t>)
       .def("set", PyCUDAPinnedTensorSetFromArray<uint8_t>)
+      .def("set", PyCUDAPinnedTensorSetFromArray<int8_t>)
 #endif
       .def("shape", [](Tensor &self) { return vectorize(self.dims()); })
-      .def("set_float_element", TensorSetElement<float>)
-      .def("get_float_element", TensorGetElement<float>)
-      .def("set_double_element", TensorSetElement<double>)
-      .def("get_double_element", TensorGetElement<double>)
-      .def("dtype", [](Tensor &self) { return ToDataType(self.type()); });
+      .def("_set_float_element", TensorSetElement<float>)
+      .def("_get_float_element", TensorGetElement<float>)
+      .def("_set_double_element", TensorSetElement<double>)
+      .def("_get_double_element", TensorGetElement<double>)
+      .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
   py::class_<LoDTensor, Tensor>(m, "LoDTensor")
       .def_buffer(
@@ -238,16 +253,13 @@ PYBIND11_PLUGIN(core) {
         self.set_rows(new_rows);
 #endif
            })
+      .def("sync_index", [](SelectedRows &instance) { instance.SyncIndex(); })
       .def("rows", [](SelectedRows &self) {
-#ifndef PADDLE_WITH_CUDA
-        return self.rows();
-#else
-         auto rows = self.rows();
-         std::vector<int64_t> new_rows;
-         new_rows.reserve(rows.size());
-         std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
-         return new_rows;
-#endif
+        auto rows = self.rows();
+        std::vector<int64_t> new_rows;
+        new_rows.reserve(rows.size());
+        std::copy(rows.begin(), rows.end(), std::back_inserter(new_rows));
+        return new_rows;
       });
 
   py::class_<Variable>(m, "Variable", R"DOC(Variable Class.
@@ -302,7 +314,8 @@ All parameter, weight, gradient are variables in Paddle.
       ::paddle::operators::reader::LoDTensorBlockingQueue;
   using LoDTensorBlockingQueueHolder =
       ::paddle::operators::reader::LoDTensorBlockingQueueHolder;
-  py::class_<LoDTensorBlockingQueue>(m, "LoDTensorBlockingQueue", "")
+  py::class_<LoDTensorBlockingQueue, std::shared_ptr<LoDTensorBlockingQueue>>(
+      m, "LoDTensorBlockingQueue", "")
       .def("push",
            [](LoDTensorBlockingQueue &self,
               const std::vector<framework::LoDTensor> &lod_tensor_vec) {
@@ -317,7 +330,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("init_lod_tensor_blocking_queue",
         [](Variable &var, size_t capacity,
            const std::vector<std::vector<int64_t>> &shapes)
-            -> LoDTensorBlockingQueue * {
+            -> std::shared_ptr<LoDTensorBlockingQueue> {
               std::vector<DDim> dims(shapes.size());
               std::transform(shapes.begin(), shapes.end(), dims.begin(),
                              [](const std::vector<int64_t> &shape) {
@@ -325,9 +338,9 @@ All parameter, weight, gradient are variables in Paddle.
                              });
               auto *holder = var.GetMutable<LoDTensorBlockingQueueHolder>();
               holder->InitOnce(capacity, dims);
-              return holder->GetQueue().get();
+              return holder->GetQueue();
             },
-        py::return_value_policy::reference);
+        py::return_value_policy::copy);
 
   py::class_<Scope>(m, "Scope", "")
       .def("var",
@@ -383,13 +396,10 @@ All parameter, weight, gradient are variables in Paddle.
     Prune(*prog_with_targets.Proto(), &pruned_desc);
     return new ProgramDesc(pruned_desc);
   });
-  m.def("inference_optimize", [](ProgramDesc &origin) {
-    proto::ProgramDesc pruned_desc;
-    InferenceOptimize(*(origin.Proto()), &pruned_desc);
-    return new ProgramDesc(pruned_desc);
-  });
-  m.def("empty_var_name", []() { return framework::kEmptyVarName; });
-  m.def("grad_var_suffix", []() { return framework::kGradVarSuffix; });
+  m.def("empty_var_name",
+        []() { return std::string(framework::kEmptyVarName); });
+  m.def("grad_var_suffix",
+        []() { return std::string(framework::kGradVarSuffix); });
   m.def_submodule(
        "var_names",
        "The module will return special predefined variable name in Paddle")
@@ -492,10 +502,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   py::class_<framework::Executor>(m, "Executor")
       .def(py::init<const platform::Place &>())
-#ifdef PADDLE_WITH_DISTRIBUTE
-      .def("begin_pass", &Executor::BeginPass)
-      .def("end_pass", &Executor::EndPass)
-#endif
+      .def("close", &Executor::Close)
       .def("run", [](Executor &self, const ProgramDesc &prog, Scope *scope,
                      int block_id, bool create_local_scope, bool create_vars) {
         pybind11::gil_scoped_release release;
@@ -508,6 +515,7 @@ All parameter, weight, gradient are variables in Paddle.
         [](bool init_p2p) { framework::InitDevices(init_p2p); });
 
   m.def("is_compiled_with_cuda", IsCompiledWithCUDA);
+  m.def("is_compiled_with_dist", IsCompiledWithDIST);
 #ifdef PADDLE_WITH_CUDA
   m.def("is_float16_supported", [](const platform::CUDAPlace &place) -> bool {
     // Only GPUs with Compute Capability >= 53 support float16
@@ -517,6 +525,8 @@ All parameter, weight, gradient are variables in Paddle.
 
   m.def("set_feed_variable", framework::SetFeedVariable);
   m.def("get_fetch_variable", framework::GetFetchVariable);
+
+  m.def("_is_program_version_supported", IsProgramVersionSupported);
 
   BindProgramDesc(&m);
   BindBlockDesc(&m);
@@ -534,6 +544,8 @@ All parameter, weight, gradient are variables in Paddle.
       });
 
   py::class_<LoDTensorArray>(m, "LoDTensorArray")
+      .def("__init__",
+           [](LoDTensorArray &instance) { new (&instance) LoDTensorArray(); })
       .def("__getitem__",
            [](LoDTensorArray &self, size_t i) { return &self.at(i); },
            py::return_value_policy::reference)
@@ -583,10 +595,49 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
 
+  py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
+  pass.def(py::init())
+      .def("set_str", [](ir::Pass &self, const std::string &name,
+                         const std::string &attr) {
+        self.Set<std::string>(name, new std::string(attr));
+      });
+
+  py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
+      m, "PassBuilder");
+  pb.def(py::init())
+      .def("append_pass",
+           [](ir::PassBuilder &self,
+              const std::string &pass_type) -> std::shared_ptr<ir::Pass> {
+             return self.AppendPass(pass_type);
+           })
+      .def("all_passes", [](ir::PassBuilder &self) { return self.AllPasses(); })
+      .def("insert_pass",
+           [](ir::PassBuilder &self, size_t idx, const std::string &pass_type) {
+             return self.InsertPass(idx, pass_type);
+           })
+      .def("remove_pass",
+           [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
+
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy>(pe, "ExecutionStrategy")
-      .def(py::init())
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
+    ExecutionStrategy allows the user to more preciously control how to run
+    the program in ParallelExecutor by setting the property.
+
+    The available properties include:
+        use_cuda (bool): Whether to use CUDA or not. Default True.
+        num_threads (int): The number of threads that used to run the
+            operators in ParallelExecutor. If it is not set, it will be
+            set in ParallelExecutor according to the device count.
+            Default 0.
+        allow_op_delay (bool): Whether to delay the communication operators
+            to run. Default False.
+        num_iteration_per_drop_scope (int): how many iterations between
+            the two dropping local scopes. Default 100.
+
+        )DOC");
+
+  exec_strategy.def(py::init())
       .def_property(
           "num_threads",
           [](const ExecutionStrategy &self) { return self.num_threads_; },
@@ -613,7 +664,35 @@ All parameter, weight, gradient are variables in Paddle.
           [](ExecutionStrategy &self, size_t num_iteration_per_drop_scope) {
             self.num_iteration_per_drop_scope_ = num_iteration_per_drop_scope;
           });
-  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
+  exec_strategy.def_property(
+      "use_experimental_executor",
+      [](const ExecutionStrategy &self) {
+        return self.type_ == ExecutionStrategy::kExperimental;
+      },
+      [](ExecutionStrategy &self, bool experimental) {
+        self.type_ = experimental ? ExecutionStrategy::kExperimental
+                                  : ExecutionStrategy::kDefault;
+      });
+
+  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
+    BuildStrategy allows the user to more preciously control how to
+    build the SSA Graph in ParallelExecutor by setting the property.
+
+    The available properties include:
+        reduce_strategy (str): There are two reduce strategies, 'AllReduce'
+            and 'Reduce'. If you want that all parameters will be optimized
+            on all devices, you can choose 'AllReduce'; if you choose
+            'Reduce', all parameters will be evenly allocated to different
+            devices for optimization, and then broadcast the optimized
+            parameter to other devices. Default 'AllReduce'.
+        gradient_scale_strategy (str): There are two ways of defining loss@grad,
+            'CoeffNumDevice' and 'Customized'. By default, ParallelExecutor
+            sets the loss@grad according to the number of devices. If you want
+            to customize loss@grad, you can choose 'Customized'.
+            Default 'CoeffNumDevice'.
+        debug_graphviz_path (str): Whether to write the SSA Graph to file in the
+            form of graphviz. It is useful for debugging. Default "".
+)DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
@@ -648,7 +727,18 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; });
+          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+      .def_property("fuse_elewise_add_act_ops",
+                    [](const BuildStrategy &self) {
+                      return self.fuse_elewise_add_act_ops_;
+                    },
+                    [](BuildStrategy &self, bool b) {
+                      self.fuse_elewise_add_act_ops_ = b;
+                    })
+      .def("_create_passes_from_strategy",
+           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
+             return self.CreatePassesFromStrategy();
+           });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,
@@ -656,7 +746,6 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::string &, Scope *, std::vector<Scope *> &,
                   const ExecutionStrategy &, const BuildStrategy &, size_t,
                   size_t>())
-      .def("bcast_params", &ParallelExecutor::BCastParamsToGPUs)
       // NOTE: even we return a vec<Scope*>* to Python use reference policy.
       // We still cannot get local_scope from this vector, since the element
       // of vec<Scope*> will be freed by Python GC. We can only return Scope*

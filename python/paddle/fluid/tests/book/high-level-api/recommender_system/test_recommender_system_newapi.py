@@ -12,11 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import math
 import sys
 import numpy as np
 import paddle
 import paddle.fluid as fluid
+import sys
+try:
+    from paddle.fluid.contrib.trainer import *
+    from paddle.fluid.contrib.inferencer import *
+except ImportError:
+    print(
+        "In the fluid 1.0, the trainer and inferencer are moving to paddle.fluid.contrib",
+        file=sys.stderr)
+    from paddle.fluid.trainer import *
+    from paddle.fluid.inferencer import *
 import paddle.fluid.layers as layers
 import paddle.fluid.nets as nets
 
@@ -162,7 +174,7 @@ def optimizer_func():
 def train(use_cuda, train_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
 
-    trainer = fluid.Trainer(
+    trainer = Trainer(
         train_func=train_program, place=place, optimizer_func=optimizer_func)
 
     feed_order = [
@@ -171,7 +183,7 @@ def train(use_cuda, train_program, params_dirname):
     ]
 
     def event_handler(event):
-        if isinstance(event, fluid.EndStepEvent):
+        if isinstance(event, EndStepEvent):
             test_reader = paddle.batch(
                 paddle.dataset.movielens.test(), batch_size=BATCH_SIZE)
             avg_cost_set = trainer.test(
@@ -186,8 +198,9 @@ def train(use_cuda, train_program, params_dirname):
                 trainer.save_params(params_dirname)
                 trainer.stop()
             else:
-                print('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
-                                                              float(avg_cost)))
+                print(
+                    ('BatchID {0}, Test Loss {1:0.2}'.format(event.epoch + 1,
+                                                             float(avg_cost))))
                 if math.isnan(float(avg_cost)):
                     sys.exit("got NaN loss, training failed.")
 
@@ -205,7 +218,7 @@ def train(use_cuda, train_program, params_dirname):
 
 def infer(use_cuda, inference_program, params_dirname):
     place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    inferencer = fluid.Inferencer(
+    inferencer = Inferencer(
         inference_program, param_path=params_dirname, place=place)
 
     # Use the first data from paddle.dataset.movielens.test() as input.

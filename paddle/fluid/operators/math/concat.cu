@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/mixed_vector.h"
 #include "paddle/fluid/operators/math/concat.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -118,7 +119,7 @@ template <typename T>
 class ConcatFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const platform::CUDADeviceContext& context,
-                  const std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
     // TODO(zcd): Add input data validity checking
     int in_num = input.size();
@@ -177,6 +178,9 @@ class ConcatFunctor<platform::CUDADeviceContext, T> {
           dev_ins_data, dev_ins_col_data, static_cast<int>(inputs_col.size()),
           out_row, out_col, output->data<T>());
     }
+    // Wait() must be called because `inputs_data` may be destructed before
+    // kernel ends
+    context.Wait();
   }
 };
 
@@ -190,7 +194,7 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
                   const std::vector<const framework::Tensor*>& ref_inputs,
-                  const int axis, std::vector<framework::Tensor*>* outputs) {
+                  int axis, std::vector<framework::Tensor*>* outputs) {
     // TODO(zcd): Add input data validity checking
     int o_num = outputs->size();
     int out_row = 1;
@@ -252,18 +256,17 @@ class ConcatGradFunctor<platform::CUDADeviceContext, T> {
           input.data<T>(), in_row, in_col, dev_outs_col_data,
           static_cast<int>(outputs_cols.size()), dev_out_gpu_data);
     }
+    // Wait() must be called because `outputs_data` may be destructed before
+    // kernel ends
+    context.Wait();
   }
 };
 
-template class ConcatFunctor<platform::CUDADeviceContext, int>;
-template class ConcatFunctor<platform::CUDADeviceContext, int64_t>;
-template class ConcatFunctor<platform::CUDADeviceContext, float>;
-template class ConcatFunctor<platform::CUDADeviceContext, double>;
+#define DEFINE_FUNCTOR(type)                                       \
+  template class ConcatFunctor<platform::CUDADeviceContext, type>; \
+  template class ConcatGradFunctor<platform::CUDADeviceContext, type>
 
-template class ConcatGradFunctor<platform::CUDADeviceContext, int>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, int64_t>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, float>;
-template class ConcatGradFunctor<platform::CUDADeviceContext, double>;
+FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 }  // namespace math
 }  // namespace operators

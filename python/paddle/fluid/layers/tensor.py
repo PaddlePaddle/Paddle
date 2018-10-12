@@ -12,31 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from ..layer_helper import LayerHelper
 from ..param_attr import ParamAttr
 from ..framework import convert_np_dtype_to_dtype_
 from ..framework import Variable
 from ..initializer import Constant, force_init_on_cpu
 from ..core import VarDesc
-from layer_function_generator import templatedoc
+from .layer_function_generator import templatedoc
 import numpy
 
 __all__ = [
-    'create_tensor',
-    'create_parameter',
-    'create_global_var',
-    'cast',
-    'concat',
-    'sums',
-    'assign',
-    'fill_constant_batch_size_like',
-    'fill_constant',
-    'argmin',
-    'argmax',
-    'argsort',
-    'ones',
-    'zeros',
-    'reverse',
+    'create_tensor', 'create_parameter', 'create_global_var', 'cast', 'concat',
+    'sums', 'assign', 'fill_constant_batch_size_like', 'fill_constant',
+    'argmin', 'argmax', 'argsort', 'ones', 'zeros', 'reverse', 'has_inf',
+    'has_nan', 'isfinite'
 ]
 
 
@@ -650,3 +641,52 @@ def load_combine(out, file_path):
         inputs={},
         output={"Out": out},
         args={"file_path": file_path})
+
+
+def has_inf(x):
+    """
+    Test if any of x contains an infinity number
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, only a bool value.
+    """
+    helper = LayerHelper("isinf", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="isinf", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def has_nan(x):
+    """
+    Test if any of x contains a NAN
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, only a bool value.
+    """
+    helper = LayerHelper("isnan", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="isnan", inputs={"X": x}, outputs={"Out": out})
+    return out
+
+
+def isfinite(x):
+    """
+    Test if any of x contains an infinity/NAN number. If all the elements are finite,
+    returns true, else false.
+
+    Args:
+       x(variable): The Tensor/LoDTensor to be checked.
+
+    Returns:
+        Variable: The tensor variable storing the output, contains a bool value.
+    """
+    helper = LayerHelper("isfinite", **locals())
+    out = helper.create_tmp_variable(dtype=x.dtype)
+    helper.append_op(type="isfinite", inputs={"X": x}, outputs={"Out": out})
+    return out

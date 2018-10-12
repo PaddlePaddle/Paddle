@@ -153,17 +153,29 @@ class WarpCTCKernel : public framework::OpKernel<T> {
         framework::make_ddim({static_cast<int64_t>(num_sequences), 1});
 
     // warpctc needs sequences data stored in transposed padding format
-    Tensor warpctc_logits;
+    LoDTensor warpctc_logits;
     const size_t max_sequence_length =
-        math::MaximumSequenceLength(logits_lod, level);
+        math::MaximumSequenceLength(logits_lod[level]);
     auto warpctc_logits_dims =
         framework::make_ddim({static_cast<int64_t>(max_sequence_length),
                               static_cast<int64_t>(num_sequences),
                               static_cast<int64_t>(sequence_width)});
     warpctc_logits.mutable_data<T>(warpctc_logits_dims, ctx.GetPlace());
+
+    LoDTensor cpu_pad_value;
+    T* pad_value_data =
+        cpu_pad_value.mutable_data<T>({1}, platform::CPUPlace());
+    *pad_value_data = static_cast<T>(0);
+    LoDTensor pad_value;
+    if (platform::is_cpu_place(ctx.GetPlace())) {
+      pad_value = cpu_pad_value;
+    } else {
+      TensorCopySync(cpu_pad_value, ctx.GetPlace(), &pad_value);
+    }
+
     math::PaddingLoDTensorFunctor<DeviceContext, T>()(
         ctx.template device_context<DeviceContext>(), *logits, &warpctc_logits,
-        false);
+        pad_value, -1, 0, false /* norm_by_times */, math::kLengthBatchWidth);
     const T* warpctc_logits_data = warpctc_logits.data<T>();
 
     std::vector<int> warpctc_label_lengths(num_sequences);
@@ -209,15 +221,15 @@ template <typename DeviceContext, typename T>
 class WarpCTCGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* warpctc_grad = ctx.Input<Tensor>("WarpCTCGrad");
+    auto* warpctc_grad = ctx.Input<LoDTensor>("WarpCTCGrad");
     auto* logits_grad = ctx.Output<LoDTensor>(framework::GradVarName("Logits"));
     const Tensor* loss_grad = ctx.Input<Tensor>(framework::GradVarName("Loss"));
 
     logits_grad->mutable_data<T>(ctx.GetPlace());
     bool norm_by_times = ctx.Attr<bool>("norm_by_times");
     math::UnpaddingLoDTensorFunctor<DeviceContext, T>()(
-        ctx.template device_context<DeviceContext>(), logits_grad,
-        *warpctc_grad, norm_by_times);
+        ctx.template device_context<DeviceContext>(), *warpctc_grad,
+        logits_grad, -1, 0, norm_by_times, math::kLengthBatchWidth);
 
     const T* loss_grad_data = loss_grad->data<T>();
     math::ScaleLoDTensorFunctor<DeviceContext, T>()(

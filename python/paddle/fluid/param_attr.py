@@ -12,8 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from initializer import Initializer, Xavier, Constant
-from regularizer import WeightDecayRegularizer
+from __future__ import print_function
+
+import six
+
+from .initializer import Initializer, Xavier, Constant
+from .regularizer import WeightDecayRegularizer
 
 __all__ = [
     'ParamAttr',
@@ -67,7 +71,7 @@ class ParamAttr(object):
         self.gradient_clip = gradient_clip
         self.model_average = do_model_average
 
-    def set_default_initializer(self, initializer):
+    def _set_default_initializer(self, initializer):
         """
         Set the default initializer, the initializer should be Constant,
         Uniform, Normal, Xavier, MSRA.
@@ -88,7 +92,7 @@ class ParamAttr(object):
 
         self.initializer = initializer
 
-    def set_default_param_initializer(self):
+    def _set_default_param_initializer(self):
         """
         Set the default initializer for the parameter with Xavier.
 
@@ -98,9 +102,9 @@ class ParamAttr(object):
         Returns:
             None.
         """
-        self.set_default_initializer(Xavier())
+        self._set_default_initializer(Xavier())
 
-    def set_default_bias_initializer(self):
+    def _set_default_bias_initializer(self):
         """
         Set the default initializer for the bias with Constant(0.0).
 
@@ -110,10 +114,10 @@ class ParamAttr(object):
         Returns:
             None.
         """
-        self.set_default_initializer(Constant(0.0))
+        self._set_default_initializer(Constant(0.0))
 
     @staticmethod
-    def to_attr(arg):
+    def _to_attr(arg):
         """
         Create ParamAttr[s].
 
@@ -131,21 +135,21 @@ class ParamAttr(object):
         if arg is None:
             return ParamAttr()
         elif isinstance(arg, list) or isinstance(arg, tuple):
-            return [ParamAttr.to_attr(a) for a in arg]
+            return [ParamAttr._to_attr(a) for a in arg]
         elif isinstance(arg, ParamAttr):
             return arg
-        elif isinstance(arg, str) or isinstance(arg, unicode):
+        elif isinstance(arg, six.string_types):
             return ParamAttr(name=arg)
         elif isinstance(arg, Initializer):
             return ParamAttr(initializer=arg)
         elif isinstance(arg, WeightDecayRegularizer):
             return ParamAttr(regularizer=arg)
         elif isinstance(arg, bool):
-            return ParamAttr.to_attr(None) if arg else False
+            return ParamAttr._to_attr(None) if arg else False
         else:
             raise TypeError("{0} cast to ParamAttr".format(type(arg)))
 
-    def to_kwargs(self, with_initializer=False):
+    def _to_kwargs(self, with_initializer=False):
         """
         Returns the attributes of this parameter.
 
@@ -181,7 +185,17 @@ class WeightNormParamAttr(ParamAttr):
 
     Args:
         dim(list): The parameter's name. Default None.
-        kwargs: Any field in ParamAttr. Default None.
+        name(str): The parameter's name. Default None.
+        initializer(Initializer): The method to initial this parameter. Default None.
+        learning_rate(float): The parameter's learning rate. The learning rate when
+            optimize is :math:`global\_lr * parameter\_lr * scheduler\_factor`.
+            Default 1.0.
+        regularizer(WeightDecayRegularizer): Regularization factor. Default None.
+        trainable(bool): Whether this parameter is trainable. Default True.
+        gradient_clip(BaseGradientClipAttr): The method to clip this parameter's
+            gradient. Default None.
+        do_model_average(bool): Whether this parameter should do model average.
+            Default False.
 
     Examples:
         .. code-block:: python
@@ -200,6 +214,21 @@ class WeightNormParamAttr(ParamAttr):
     # these paramters for inference.
     params_with_weight_norm = []
 
-    def __init__(self, dim=None, **kwargs):
-        super(WeightNormParamAttr, self).__init__(**kwargs)
+    def __init__(self,
+                 dim=None,
+                 name=None,
+                 initializer=None,
+                 learning_rate=1.0,
+                 regularizer=None,
+                 trainable=True,
+                 gradient_clip=None,
+                 do_model_average=False):
+        super(WeightNormParamAttr, self).__init__(
+            name=name,
+            initializer=initializer,
+            learning_rate=learning_rate,
+            regularizer=regularizer,
+            trainable=trainable,
+            gradient_clip=gradient_clip,
+            do_model_average=do_model_average)
         self.dim = dim

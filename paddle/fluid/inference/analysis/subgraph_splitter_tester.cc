@@ -31,8 +31,8 @@ SubGraphSplitter::NodeInsideSubgraphTeller teller = [](const Node* node) {
   return false;
 };
 
-TEST_F(DFG_Tester, Split) {
-  auto desc = LoadProgramDesc();
+TEST(SubGraphSplitter, Split) {
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
   LOG(INFO) << "spliter\n" << dfg.DotString();
 
@@ -63,13 +63,15 @@ TEST_F(DFG_Tester, Split) {
   ASSERT_EQ(subgraphs.back().size(), 6UL);
 }
 
-TEST_F(DFG_Tester, Fuse) {
-  auto desc = LoadProgramDesc();
+TEST(SubGraphSplitter, Fuse) {
+  auto desc = LoadProgramDesc(FLAGS_inference_model_dir + "/__model__");
   auto dfg = ProgramDescToDFG(desc);
+  Argument argument;
+  argument.Set<int>("minimum_subgraph_size", new int(3));
 
   size_t count0 = dfg.nodes.size();
 
-  SubGraphFuse fuse(&dfg, teller);
+  SubGraphFuse fuse(&dfg, teller, &argument);
   fuse();
 
   int count1 = 0;
@@ -82,7 +84,7 @@ TEST_F(DFG_Tester, Fuse) {
 
   // At least one nodes should be deleted.
   ASSERT_EQ(dfg.nodes.size(), count0 + 1);  // added a new FunctionBlock
-  ASSERT_EQ(6, count1);
+  ASSERT_EQ(11, count1);
 }
 
 }  // namespace analysis

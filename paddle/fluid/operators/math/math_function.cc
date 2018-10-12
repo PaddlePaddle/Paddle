@@ -13,6 +13,15 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/math_function.h"
+
+#ifdef PADDLE_WITH_MKLML
+#include "paddle/fluid/platform/dynload/mklml.h"
+#endif
+
+#ifdef PADDLE_USE_OPENBLAS
+#include <cblas.h>
+#endif
+
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/operators/math/math_function_impl.h"
@@ -41,7 +50,8 @@ template struct SetConstant<platform::CPUDeviceContext, uint8_t>;
   template struct Transpose<platform::CPUDeviceContext, int64_t, RANK>;    \
   template struct Transpose<platform::CPUDeviceContext, bool, RANK>;       \
   template struct Transpose<platform::CPUDeviceContext, int16_t, RANK>;    \
-  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;
+  template struct Transpose<platform::CPUDeviceContext, uint8_t, RANK>;    \
+  template struct Transpose<platform::CPUDeviceContext, int8_t, RANK>;
 
 DEFINE_CPU_TRANS(1);
 DEFINE_CPU_TRANS(2);
@@ -54,7 +64,7 @@ struct TensorSetConstantCPU {
   TensorSetConstantCPU(framework::Tensor* tensor, float value)
       : tensor_(tensor), value_(value) {}
   template <typename T>
-  void operator()() const {
+  void apply() const {
     auto cpu = platform::CPUPlace();
     auto* begin = tensor_->mutable_data<T>(cpu);
     std::fill(begin, begin + tensor_->numel(), static_cast<T>(value_));

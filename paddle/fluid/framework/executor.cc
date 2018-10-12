@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/executor.h"
 
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -37,7 +36,11 @@ int kProgramId = -1;
 
 ExecutorPrepareContext::ExecutorPrepareContext(
     const framework::ProgramDesc& prog, size_t block_id)
-    : prog_(prog), block_id_(block_id) {}
+    : prog_(prog), block_id_(block_id) {
+  if (GetEagerDeletionThreshold() >= 0) {
+    ref_cnts_ = GetNonPersistableReferenceCount<int>(prog_, block_id_);
+  }
+}
 
 ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
@@ -45,19 +48,13 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
 
 Executor::Executor(const platform::Place& place) : place_(place) {}
 
+void Executor::Close() {
 #ifdef PADDLE_WITH_DISTRIBUTE
-void Executor::BeginPass() {
   ::paddle::operators::distributed::RPCClient::GetInstance<
       ::paddle::operators::distributed::GRPCClient>()
-      ->SendBeginPass();
-}
-
-void Executor::EndPass() {
-  ::paddle::operators::distributed::RPCClient::GetInstance<
-      ::paddle::operators::distributed::GRPCClient>()
-      ->SendEndPass();
-}
+      ->SendComplete();
 #endif
+}
 
 void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
   if (var_type == proto::VarType::LOD_TENSOR) {
@@ -78,15 +75,13 @@ void InitializeVariable(Variable* var, proto::VarType::Type var_type) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
     var->GetMutable<ReaderHolder>();
-  } else if (var_type == proto::VarType::CHANNEL) {
-    var->GetMutable<ChannelHolder>();
   } else if (var_type == proto::VarType::RAW) {
     // GetMutable will be called in operator
   } else {
     PADDLE_THROW(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "LOD_RANK_TABLE, PLACE_LIST, READER, CHANNEL, RAW]",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW]",
         var_type);
   }
 }
@@ -335,20 +330,81 @@ void Executor::RunPreparedContext(ExecutorPrepareContext* ctx, Scope* scope,
     CreateVariables(ctx->prog_, local_scope, ctx->block_id_);
   }
 
+  int64_t max_memory_size = GetEagerDeletionThreshold();
+
+  std::unique_ptr<GarbageCollector<Tensor>> gc;
+  if (max_memory_size >= 0) {
+    ctx->ResetReferenceCount();
+#ifdef PADDLE_WITH_CUDA
+    if (platform::is_gpu_place(place_)) {
+      gc.reset(new DefaultStreamGarbageCollector<Tensor>(
+          boost::get<platform::CUDAPlace>(place_), max_memory_size));
+    } else {
+#endif
+      gc.reset(new CPUGarbageCollector<Tensor>(
+          boost::get<platform::CPUPlace>(place_), max_memory_size));
+#ifdef PADDLE_WITH_CUDA
+    }
+#endif
+  }
+
   for (auto& op : ctx->ops_) {
-    VLOG(4) << place_ << " " << op->DebugStringEx(local_scope);
     op->Run(*local_scope, place_);
-    // NOTE! Please do not delete this line, it's usefull because the debug
-    // string before and after op.run are different, after run the output
-    // will have right shape which is usefull for debug.
-    VLOG(3) << place_ << " " << op->DebugStringEx(local_scope);
+
+    if (gc != nullptr) {
+      std::vector<std::string> erase_vars;
+      for (auto& input : op->Inputs()) {
+        for (auto& input_name : input.second) {
+          auto it = ctx->cur_ref_cnts_.find(input_name);
+          if (it == ctx->cur_ref_cnts_.end()) continue;
+          if (it->second == 1) {  // should delete it
+            erase_vars.emplace_back(input_name);
+            ctx->cur_ref_cnts_.erase(input_name);
+          } else {
+            --(it->second);
+          }
+        }
+      }
+
+      for (auto& output : op->Outputs()) {
+        for (auto& output_name : output.second) {
+          auto it = ctx->cur_ref_cnts_.find(output_name);
+          if (it == ctx->cur_ref_cnts_.end()) continue;
+          if (it->second == 1) {
+            erase_vars.emplace_back(output_name);
+            ctx->cur_ref_cnts_.erase(output_name);
+          } else {
+            --(it->second);
+          }
+        }
+      }
+
+      if (!erase_vars.empty()) {
+        std::vector<framework::LoDTensor*> erase_tensors;
+        for (auto& name : erase_vars) {
+          auto* var = local_scope->FindVar(name);
+          if (var == nullptr) continue;
+          if (var->IsType<framework::LoDTensor>()) {
+            auto* tensor = var->GetMutable<framework::LoDTensor>();
+            erase_tensors.push_back(tensor);
+          }
+        }
+        if (!erase_tensors.empty()) gc->Add(erase_tensors);
+      }
+    }
 
     if (FLAGS_benchmark) {
       VLOG(2) << "Memory used after operator " + op->Type() + " running: "
               << memory::memory_usage(place_);
     }
   }
-  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+  if (gc != nullptr) {
+    gc->Wait();
+  } else {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+
   if (local_scope != scope) {
     scope->DeleteScope(local_scope);
   } else {

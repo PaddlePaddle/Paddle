@@ -43,7 +43,7 @@ class TestAffineGridOp(OpTest):
         self.initTestCase()
         self.op_type = "affine_grid"
         theta = np.random.randint(1, 3, self.theta_shape).astype("float32")
-        #        theta = np.ones(self.theta_shape).astype("float32")
+        theta = np.ones(self.theta_shape).astype("float32")
         self.inputs = {'Theta': theta, 'Size': self.size}
         self.attrs = {"use_cudnn": True}
         self.outputs = {'Output': AffineGrid(theta, self.size)}
@@ -56,7 +56,7 @@ class TestAffineGridOp(OpTest):
 
     def initTestCase(self):
         self.theta_shape = (3, 2, 3)
-        self.size = np.array([3, 2, 4, 7]).astype("int32")
+        self.size = np.array([3, 2, 5, 7]).astype("int32")
 
 
 #        self.size = np.array([1, 2, 5, 5]).astype("int32")

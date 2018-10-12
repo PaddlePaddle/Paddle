@@ -13,9 +13,14 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_CUDA
+#include "paddle/fluid/framework/details/reference_count_op_handle.h"
+#endif
 
 namespace paddle {
 namespace framework {
@@ -53,15 +58,38 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       }
     }
   }
+  std::vector<framework::LoDTensor> fetch_data;
+  std::exception_ptr eptr;
+  try {
+    fetch_data = underlying_executor_->Run(fetch_tensors);
+  } catch (...) {
+    eptr = std::current_exception();
+  }
 
-  auto fetch_data = underlying_executor_->Run(fetch_tensors);
+  platform::RecordEvent e("ScopeBufferedSSAGraphExecutorAfterRun", nullptr);
   drop_scope_counter_ += 1;
+
+#ifdef PADDLE_WITH_CUDA
+  const std::string gc_name = "garbage_collector";
+  DeviceGarbageCollectorMap *gc =
+      Graph().Has(gc_name) ? &(Graph().Get<DeviceGarbageCollectorMap>(gc_name))
+                           : nullptr;
+#endif
+
   if (!fetch_tensors.empty() ||
       drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_) {
     drop_scope_counter_ = 0;
     // Wait All computational streams
     for (auto p : places_) {
       platform::DeviceContextPool::Instance().Get(p)->Wait();
+#ifdef PADDLE_WITH_CUDA
+      if (gc != nullptr && platform::is_gpu_place(p)) {
+        auto gpu_place = boost::get<platform::CUDAPlace>(p);
+        auto &gc_at_place = gc->at(gpu_place.device);
+        gc_at_place->Wait();
+        gc_at_place->Reset();
+      }
+#endif
     }
     for (auto &scope : local_scopes_) {
       auto &local_scope =
@@ -69,7 +97,11 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
       scope->DeleteScope(local_scope);
     }
   }
-  return fetch_data;
+  if (eptr) {
+    std::rethrow_exception(eptr);
+  } else {
+    return fetch_data;
+  }
 }
 }  // namespace details
 }  // namespace framework

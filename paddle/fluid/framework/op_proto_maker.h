@@ -26,7 +26,13 @@ enum class OpRole {
   kForward = 0x0000,
   kBackward = 0x0001,
   kOptimize = 0x0002,
+  // RPC role is for send/recv releated op
   kRPC = 0x0003,
+  // Dist role is for split_byref/split_selected_rows/concat
+  // used for distributed training.
+  kDist = 0x0004,
+  // Tag all learning rate scheduler operators.
+  kLRSched = 0x0005,
 
   kLoss = 0x0100,
   // The default value of op's role. This should be only used for unittests and
@@ -39,6 +45,7 @@ class OpProtoAndCheckerMaker {
  public:
   static const char *OpRoleAttrName() { return "op_role"; }
   static const char *OpRoleVarAttrName() { return "op_role_var"; }
+  static const char *OpNamescopeAttrName() { return "op_namescope"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
@@ -77,6 +84,8 @@ class OpProtoAndCheckerMaker {
 
   VariableBuilder AddOutput(const std::string &name,
                             const std::string &comment);
+
+  void Reuse(const std::string &name, const std::string &reused_name);
 
   template <typename T>
   TypedAttrChecker<T> &AddAttr(const std::string &name,

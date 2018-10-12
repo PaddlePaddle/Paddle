@@ -58,7 +58,7 @@ def resnet_cifar10(input, depth=32):
         return tmp
 
     assert (depth - 2) % 6 == 0
-    n = (depth - 2) / 6
+    n = (depth - 2) // 6
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1)
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
@@ -125,8 +125,8 @@ opts = optimizer.minimize(avg_cost)
 batch_size = fluid.layers.create_tensor(dtype='int64')
 batch_acc = fluid.layers.accuracy(input=predict, label=label, total=batch_size)
 
-# fluid.memory_optimize(fluid.default_main_program(), level=0)
-fluid.release_memory(fluid.default_main_program())
+fluid.memory_optimize(fluid.default_main_program(), level=0)
+# fluid.release_memory(fluid.default_main_program())
 
 BATCH_SIZE = 16
 PASS_NUM = 1

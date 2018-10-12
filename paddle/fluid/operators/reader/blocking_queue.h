@@ -81,6 +81,15 @@ class BlockingQueue {
     }
   }
 
+  void ReOpen() {
+    std::lock_guard<std::mutex> lock(mutex_);
+    closed_ = false;
+    std::deque<T> new_deque;
+    queue_.swap(new_deque);
+    send_cv_.notify_all();
+    receive_cv_.notify_all();
+  }
+
   void Close() {
     std::lock_guard<std::mutex> lock(mutex_);
     closed_ = true;

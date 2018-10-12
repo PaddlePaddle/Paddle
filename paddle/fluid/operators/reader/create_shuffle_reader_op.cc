@@ -48,9 +48,9 @@ class ShuffleReader : public framework::DecoratedReader {
 
  private:
   void ShutdownImpl() override {
+    reader_->Shutdown();
     buffer_.clear();
     iteration_pos_ = 0;
-    reader_->Shutdown();
   }
 
   void StartImpl() override {

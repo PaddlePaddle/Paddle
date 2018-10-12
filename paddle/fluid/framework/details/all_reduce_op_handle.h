@@ -30,11 +30,11 @@ namespace details {
 
 struct AllReduceOpHandle : public OpHandleBase {
 #ifdef PADDLE_WITH_CUDA
-  AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+  AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places,
                     const platform::NCCLContextMap *ctxs);
 #else
-  AllReduceOpHandle(const std::vector<Scope *> &local_scopes,
+  AllReduceOpHandle(ir::Node *node, const std::vector<Scope *> &local_scopes,
                     const std::vector<platform::Place> &places);
 #endif
   std::string Name() const override;

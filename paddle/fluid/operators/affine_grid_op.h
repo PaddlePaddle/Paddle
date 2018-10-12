@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
@@ -44,6 +45,7 @@ template <typename DeviceContext, typename T>
 class AffineGridOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto* theta = ctx.Input<Tensor>("Theta");
     int n = theta->dims()[0];
 
@@ -65,22 +67,17 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     auto* output = ctx.Output<Tensor>("Output");
     output->mutable_data<T>({n, h, w, 2}, ctx.GetPlace());
 
+    math::SetConstant<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), output,
+        static_cast<T>(0));
+
     Linspace<DeviceContext, T> linspace;
     // Get indexes of height with shape [height, width, 1]
     auto h_idx = linspace((T)-1, (T)1, h, ctx);
-    auto h_idx_t = EigenTensor<T, 1>::From(h_idx)
-                       .reshape(Array2(1, h))
-                       .broadcast(Array2(w, 1))
-                       .shuffle(Array2(1, 0))
-                       .reshape(Array3(h, w, 1));
-    LOG(ERROR) << "h_idx_t: " << h_idx_t;
+    auto h_idx_t = EigenTensor<T, 1>::From(h_idx);
     // Get indexes of width with shape [height, width, 1]
     auto w_idx = linspace((T)-1, (T)1, w, ctx);
-    auto w_idx_t = EigenTensor<T, 1>::From(w_idx)
-                       .reshape(Array2(1, w))
-                       .broadcast(Array2(h, 1))
-                       .reshape(Array3(h, w, 1));
-    LOG(ERROR) << "w_idx_t: " << w_idx_t;
+    auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
     // Get constant ones tensor with shape [height, width, 1]
     Tensor ones;
     ones.mutable_data<T>({h, w, 1}, ctx.GetPlace());
@@ -90,13 +87,18 @@ class AffineGridOpKernel : public framework::OpKernel<T> {
     Tensor grid;
     grid.mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
     auto grid_t = EigenTensor<T, 4>::From(grid);
-    grid_t = w_idx_t.concatenate(h_idx_t, 2)
-                 .eval()
-                 .concatenate(ones_t, 2)
-                 .reshape(Array4(1, h, w, 3))
-                 .broadcast(Array4(n, 1, 1, 1));
-    LOG(ERROR) << "grid_t: " << grid_t;
-
+    grid_t.device(place) = w_idx_t.reshape(Array2(1, w))
+                               .broadcast(Array2(h, 1))
+                               .reshape(Array3(h, w, 1))
+                               .concatenate(h_idx_t.reshape(Array2(1, h))
+                                                .broadcast(Array2(w, 1))
+                                                .shuffle(Array2(1, 0))
+                                                .reshape(Array3(h, w, 1)),
+                                            2)
+                               .eval()
+                               .concatenate(ones_t, 2)
+                               .reshape(Array4(1, h, w, 3))
+                               .broadcast(Array4(n, 1, 1, 1));
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
@@ -114,6 +116,7 @@ template <typename DeviceContext, typename T>
 class AffineGridGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto theta_grad = ctx.Output<Tensor>(framework::GradVarName("Theta"));
 
@@ -135,21 +138,18 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
 
     theta_grad->mutable_data<T>({n, 2, 3}, ctx.GetPlace());
 
+    math::SetConstant<DeviceContext, T>()(
+        ctx.template device_context<DeviceContext>(), theta_grad,
+        static_cast<T>(0));
+
     Linspace<DeviceContext, T> linspace;
 
     // Get indexes of height with shape [height, width, 1]
     auto h_idx = linspace((T)-1, (T)1, h, ctx);
-    auto h_idx_t = EigenTensor<T, 1>::From(h_idx)
-                       .reshape(Array2(1, h))
-                       .broadcast(Array2(w, 1))
-                       .shuffle(Array2(1, 0))
-                       .reshape(Array3(h, w, 1));
+    auto h_idx_t = EigenTensor<T, 1>::From(h_idx);
     // Get indexes of width with shape [height, width, 1]
     auto w_idx = linspace((T)-1, (T)1, w, ctx);
-    auto w_idx_t = EigenTensor<T, 1>::From(w_idx)
-                       .reshape(Array2(1, w))
-                       .broadcast(Array2(h, 1))
-                       .reshape(Array3(h, w, 1));
+    auto w_idx_t = EigenTensor<T, 1>::From(w_idx);
     // Get constant ones tensor with shape [height, width, 1]
     Tensor ones;
     ones.mutable_data<T>({h, w, 1}, ctx.GetPlace());
@@ -159,11 +159,18 @@ class AffineGridGradOpKernel : public framework::OpKernel<T> {
     Tensor grid;
     grid.mutable_data<T>({n, h, w, 3}, ctx.GetPlace());
     auto grid_t = EigenTensor<T, 4>::From(grid);
-    grid_t = w_idx_t.concatenate(h_idx_t, 2)
-                 .eval()
-                 .concatenate(ones_t, 2)
-                 .reshape(Array4(1, h, w, 3))
-                 .broadcast(Array4(n, 1, 1, 1));
+    grid_t.device(place) = w_idx_t.reshape(Array2(1, w))
+                               .broadcast(Array2(h, 1))
+                               .reshape(Array3(h, w, 1))
+                               .concatenate(h_idx_t.reshape(Array2(1, h))
+                                                .broadcast(Array2(w, 1))
+                                                .shuffle(Array2(1, 0))
+                                                .reshape(Array3(h, w, 1)),
+                                            2)
+                               .eval()
+                               .concatenate(ones_t, 2)
+                               .reshape(Array4(1, h, w, 3))
+                               .broadcast(Array4(n, 1, 1, 1));
     // output = grid * theta.T
     // TODO(wanghaoshuang): Refine batched matrix multiply
     auto blas = math::GetBlas<DeviceContext, T>(ctx);
