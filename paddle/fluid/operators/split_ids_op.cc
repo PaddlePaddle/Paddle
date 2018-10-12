@@ -20,12 +20,9 @@ namespace operators {
 class SplitIdsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}");
-    AddInput(
-        "Refs",
-        "if this has value, split lod by the it and share the lod information")
-        .AsDuplicable()
-        .AsDispensable();
+    AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}")
+        .AsDuplicable();
+
     AddOutput("Out", "(LoDTensors) The outputs of the input Ids.")
         .AsDuplicable();
 
@@ -33,12 +30,17 @@ class SplitIdsOpMaker : public framework::OpProtoAndCheckerMaker {
 Split a LoDTensor of Ids into multi LoDTensors, the number is pserver's number
 Example:
   Input:
-    X = [1,2,3,4,5,6]
+    X = [[1,2,3,4,5,6],[2,3]]
 
   Out(3 output):
-    out0 = [3, 6]
-    out1 = [1, 4]
-    out2 = [2, 5]
+    if compress is True:
+        out0 = [3, 3, 6]
+        out1 = [1, 4]
+        out2 = [2, 2, 5]
+    else:
+        out0 = [3, 6]
+        out1 = [1, 4]
+        out2 = [2, 5]
 )DOC");
   }
 };
