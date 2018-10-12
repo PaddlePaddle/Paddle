@@ -203,5 +203,21 @@ class TestMultiProcessReader(unittest.TestCase):
         self.reader_test(use_pipe=True)
 
 
+class TestFakeReader(unittest.TestCase):
+    def test_fake_reader(self):
+        def reader():
+            for i in range(10):
+                yield i
+
+        data_num = 100
+        fake_reader = paddle.reader.Fake()(reader, data_num)
+        for _ in range(10):
+            i = 0
+            for data in fake_reader():
+                self.assertEqual(data, 0)
+                i += 1
+            self.assertEqual(i, data_num)
+
+
 if __name__ == '__main__':
     unittest.main()
