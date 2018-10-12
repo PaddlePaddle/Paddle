@@ -600,7 +600,7 @@ EOF
     if [[ ${WITH_GPU} == "ON"  ]]; then
         NCCL_DEPS="apt-get install -y --allow-downgrades libnccl2=2.2.13-1+cuda${CUDA_MAJOR} libnccl-dev=2.2.13-1+cuda${CUDA_MAJOR} || true"
     else
-        NCCL_DEPS=""
+        NCCL_DEPS="true"
     fi
 
     if [[ ${WITH_FLUID_ONLY:-OFF} == "OFF" ]]; then
@@ -683,7 +683,7 @@ function test_fluid_inference_lib() {
     ========================================
 EOF
         cd ${PADDLE_ROOT}/paddle/fluid/inference/api/demo_ci
-        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR}
+        ./run.sh ${PADDLE_ROOT} ${WITH_MKL:-ON} ${WITH_GPU:-OFF} ${INFERENCE_DEMO_INSTALL_DIR} ${TENSORRT_INCLUDE_DIR:-/usr/local/TensorRT/include} ${TENSORRT_LIB_DIR:-/usr/local/TensorRT/lib}
         ./clean.sh
       fi
 }
