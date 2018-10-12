@@ -94,8 +94,8 @@ message(STATUS "OpenCV found (${OpenCV_CONFIG_PATH})")
 add_library(data_reader STATIC data_reader.cc)
 target_link_libraries(data_reader ${OpenCV_LIBS})
 
-# ResNet50
-set(RESNET50_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/resnet50")
-inference_analysis_api_test(test_analyzer_resnet50 ${RESNET50_INSTALL_DIR} analyzer_resnet50_tester.cc)
-add_dependencies(test_analyzer_resnet50 data_reader)
-target_link_libraries(test_analyzer_resnet50 data_reader)
+# Image classification
+set(INFERENCE_CLASSIFICATION_INSTALL_DIR "${INFERENCE_DEMO_INSTALL_DIR}/image_classification")
+inference_analysis_api_test(test_analyzer_image_classification ${INFERENCE_CLASSIFICATION_INSTALL_DIR} analyzer_image_classification_tester.cc)
+add_dependencies(test_analyzer_image_classification data_reader)
+target_link_libraries(test_analyzer_image_classification data_reader)
