@@ -5840,13 +5840,13 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
 
     Args:
        label (Variable): Indicates whether the left is ranked higher than the right or not.
-       left (Variable): ranking score for left.
-       right (Variable): ranking score for right.
+       left (Variable): Ranking score for left.
+       right (Variable): Ranking score for right.
        margin (float): Indicates the given margin to be added to right
        name (str|None): A name for this layer (optional). If set None, the layer
                        will be named automatically.
     Returns:
-       list: The Variable of ranking loss.
+       Variable: The ranking loss.
     Raises:
        ValueError: Any of label, left, and right is not a Variable.
     Examples:
