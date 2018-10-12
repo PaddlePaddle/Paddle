@@ -172,7 +172,6 @@ struct SelectedRowsSumTo<platform::CPUDeviceContext, T> {
     }
     input2->set_rows(in2_rows);
 
-    // start = std::chrono::system_clock::now();
     auto* in2_value = input2->mutable_value();
     auto* in2_data = in2_value->data<T>();
     auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
@@ -275,7 +274,7 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
     auto* input_data = input.value().data<T>();
 
     for (size_t i = 0; i < input_rows.size(); i++) {
-      size_t out_i = FindPos(merge_rows, input_rows[i]);
+      size_t out_i = rows_pos_map[input_rows[i]];
       for (int64_t j = 0; j < input_width; j++) {
         out_data[out_i * input_width + j] += input_data[i * input_width + j];
       }
