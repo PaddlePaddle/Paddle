@@ -522,7 +522,7 @@ void MultiDevSSAGraphBuilder::CreateFusedBroadcastOp(
       local_scopes_, places_, nccl_ctxs_);
 #else
   auto *op_handle = new FusedBroadcastOpHandle(
-      result->CreateEmptyNode("fused_broadcast" m ir::Node::Type::kOperation),
+      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
       local_scopes_, places_);
 #endif
   result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
