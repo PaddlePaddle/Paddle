@@ -28,6 +28,7 @@ class ConvBiasFusePass : public FusePassBase {
 
  protected:
   std::unique_ptr<ir::Graph> ApplyImpl(std::unique_ptr<ir::Graph> graph) const;
+  const std::string name_scope_{"conv_bias_mkldnn_fuse"};
 };
 }  // namespace ir
 }  // namespace framework
