@@ -24,20 +24,41 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-LoDTensor tensor_apply(const LoDTensor& vec, float (*f)(float)) {
+#define GET_CONV_BN_NODES(pattern_name)                                      \
+  /* OPERATORS */                                                            \
+  GET_IR_NODE_FROM_SUBGRAPH(conv, conv, pattern_name);                       \
+  GET_IR_NODE_FROM_SUBGRAPH(batch_norm, batch_norm, pattern_name);           \
+  /* CONV inputs */                                                          \
+  GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight, pattern_name);         \
+  /* CONV outputs */                                                         \
+  GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, pattern_name);               \
+  /* BN inputs */                                                            \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_scale, bn_scale, pattern_name);               \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_bias, bn_bias, pattern_name);                 \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_mean, bn_mean, pattern_name);                 \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_variance, bn_variance, pattern_name);         \
+  /* BN outputs */                                                           \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_out, bn_out, pattern_name); /* Out */         \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_mean_out, bn_mean_out, pattern_name);         \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_variance_out, bn_variance_out, pattern_name); \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, pattern_name);     \
+  GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance, pattern_name)
+
+template <typename UnaryOperation>
+LoDTensor tensor_apply(const LoDTensor& vec, UnaryOperation f) {
   LoDTensor vec_y;
   vec_y.Resize(vec.dims());
   const float* x = vec.data<float>();
   float* y = vec_y.mutable_data<float>(platform::CPUPlace());
-  for (int i = 0; i < vec.numel(); i++) {
+  for (int64_t i = 0; i < vec.numel(); i++) {
     y[i] = f(x[i]);
   }
   return vec_y;
 }
 
-void tensor_apply_inplace(LoDTensor& vec, float (*f)(float)) {
-  float* data = vec.mutable_data<float>(platform::CPUPlace());
-  for (int i = 0; i < vec.numel(); i++) {
+void tensor_apply_inplace(LoDTensor* vec, float (*f)(float)) {
+  float* data = vec->mutable_data<float>(platform::CPUPlace());
+  for (int64_t i = 0; i < vec->numel(); i++) {
     data[i] = f(data[i]);
   }
 }
@@ -51,7 +72,7 @@ LoDTensor tensor_apply_eltwise(const LoDTensor& vec_a, const LoDTensor& vec_b,
   const float* a = vec_a.data<float>();
   const float* b = vec_b.data<float>();
   float* y = vec_y.mutable_data<float>(platform::CPUPlace());
-  for (int i = 0; i < vec_a.numel(); i++) {
+  for (int64_t i = 0; i < vec_a.numel(); i++) {
     y[i] = f(a[i], b[i]);
   }
   return vec_y;
@@ -81,15 +102,15 @@ LoDTensor tensor_apply_eltwise_broadcast(const LoDTensor& vec_a,
 }
 
 // reshape to two dimensions {A, B * C * ...}
-void make_tensor_2d(LoDTensor& tensor_to_reshape) {
-  auto dims_count = tensor_to_reshape.dims().size();
+void make_tensor_2d(LoDTensor* tensor_to_reshape) {
+  auto dims_count = tensor_to_reshape->dims().size();
   PADDLE_ENFORCE_GT(dims_count, 0);
 
   int size2 = 1;
   for (int i = 1; i < dims_count; i++) {
-    size2 *= tensor_to_reshape.dims()[i];
+    size2 *= tensor_to_reshape->dims()[i];
   }
-  tensor_to_reshape.Resize(make_ddim({tensor_to_reshape.dims()[0], size2}));
+  tensor_to_reshape->Resize(make_ddim({tensor_to_reshape->dims()[0], size2}));
 }
 
 // Check environment flag whether MKL-DNN should be used
@@ -106,6 +127,63 @@ static bool IsMKLDNNSetOn() {
   return false;
 }
 
+void recompute_conv_weights(LoDTensor* weights, LoDTensor* tmp) {
+  // remember the weights tensor shape {A, B, C, ...}
+  auto weights_shape = weights->dims();
+  // reduce the weights to 2d {A, B * C * ...}
+  make_tensor_2d(weights);
+  // make tmp tensor 2d by adding 1 as second dim {A, 1}
+  make_tensor_2d(tmp);
+
+  *weights =
+      tensor_apply_eltwise_broadcast(*weights, *tmp, std::multiplies<float>());
+  // reshape weights to the original dims {A, B, C, ...}
+  weights->Resize(weights_shape);
+}
+
+void recompute_bias_and_weights(const Scope* scope,
+                                ir::Node* conv_weight,            //
+                                const ir::Node& bn_scale,         //
+                                const LoDTensor& bn_bias_tensor,  //
+                                const ir::Node& bn_mean,          //
+                                const ir::Node& bn_variance,      //
+                                LoDTensor* eltwise_y_in_tensor,   //
+                                float epsilon) {
+  // Re-compute bias of conv2d from BN
+  PADDLE_ENFORCE_EQ(eltwise_y_in_tensor->dims(), bn_bias_tensor.dims());
+
+  auto* scale_tensor = scope->FindVar(bn_scale.Name())->GetMutable<LoDTensor>();
+  auto* variance_tensor =
+      scope->FindVar(bn_variance.Name())->GetMutable<LoDTensor>();
+  auto* mean_tensor = scope->FindVar(bn_mean.Name())->GetMutable<LoDTensor>();
+
+  auto std_tensor = LoDTensor();
+  std_tensor.Resize(bn_bias_tensor.dims());
+  std_tensor =
+      tensor_apply(*variance_tensor, [&](float x) { return x + epsilon; });
+
+  using EigenVectorArrayMap =
+      Eigen::Map<Eigen::Array<float, Eigen::Dynamic, 1>>;
+
+  EigenVectorArrayMap std_vec(
+      std_tensor.mutable_data<float>(platform::CPUPlace()), std_tensor.numel(),
+      1);
+  std_vec = std_vec.sqrt();
+  auto tmp_tensor =
+      tensor_apply_eltwise(*scale_tensor, std_tensor, std::divides<float>());
+  auto tensor_minus = tensor_apply_eltwise(*eltwise_y_in_tensor, *mean_tensor,
+                                           std::minus<float>());
+  auto tensor_mul =
+      tensor_apply_eltwise(tensor_minus, tmp_tensor, std::multiplies<float>());
+  *eltwise_y_in_tensor =
+      tensor_apply_eltwise(tensor_mul, bn_bias_tensor, std::plus<float>());
+
+  // Re-compute weight of conv2d from BN
+  auto* current_param =
+      scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
+  recompute_conv_weights(current_param, &tmp_tensor);
+}
+
 std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
@@ -113,8 +191,6 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
 
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
-
-  std::unordered_set<Node*> nodes2delete;
 
   GraphPatternDetector gpd;
   auto* conv_input =
@@ -129,78 +205,37 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle ConvBN fuse";
-    // OPERATORS
-    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(batch_norm, batch_norm, conv_bn_pattern);
-    // CONV inputs
-    GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight, conv_bn_pattern);
-    // CONV outputs
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_bn_pattern);
-    // BN inputs
-    GET_IR_NODE_FROM_SUBGRAPH(bn_scale, bn_scale, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_bias, bn_bias, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_mean, bn_mean, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_variance, bn_variance, conv_bn_pattern);
-    // BN outputs
-    GET_IR_NODE_FROM_SUBGRAPH(bn_out, bn_out, conv_bn_pattern);  // Out
-    GET_IR_NODE_FROM_SUBGRAPH(bn_mean_out, bn_mean_out, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_variance_out, bn_variance_out,
-                              conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance,
-                              conv_bn_pattern);
+
+    // conv, batch_norm,
+    // conv_weight, conv_out,
+    // bn_scale, bn_bias, bn_mean, bn_variance,
+    // bn_out, bn_mean_out, bn_variance_out, bn_saved_mean, bn_saved_variance
+    GET_CONV_BN_NODES(conv_bn_pattern);
     PADDLE_ENFORCE(subgraph.count(conv_input));
 
-    // Create y (bias) variable
-    VarDesc y_desc(patterns::PDNodeName(name_scope_, "eltwise_y_in"));
+
+    // Create eltwise_y (conv bias) variable
+    VarDesc eltwise_y_in_desc(
+        patterns::PDNodeName(name_scope_, "eltwise_y_in"));
     y_desc.SetPersistable(true);
-    auto* y_var_node = g->CreateVarNode(&y_desc);
-    auto* bias_y_tensor =
-        scope->Var(y_var_node->Name())->GetMutable<LoDTensor>();
+    auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
+    auto* eltwise_y_in_tensor =
+        scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
 
-    // Compute bias from BN
-    auto* bn_bias_var = scope->FindVar(bn_bias->Name());
-    auto* bn_bias_tensor = bn_bias_var->GetMutable<LoDTensor>();
+    // Get batch norm bias
+    auto* bn_bias_tensor =
+        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
 
-    bias_y_tensor->Resize(bn_bias_tensor->dims());
-    std::fill_n(bias_y_tensor->mutable_data<float>(platform::CPUPlace()),
-                bn_bias_tensor->numel(), 0.0f);
+    // Initialize eltwise_y
+    eltwise_y_in_tensor->Resize(bn_bias_tensor->dims());
+    std::fill_n(eltwise_y_in_tensor->mutable_data<float>(platform::CPUPlace()),
+                eltwise_y_in_tensor->numel(), 0.0f);
 
-    auto* scale_tensor =
-        scope->FindVar(bn_scale->Name())->GetMutable<LoDTensor>();
-    auto* variance_tensor =
-        scope->FindVar(bn_variance->Name())->GetMutable<LoDTensor>();
-    auto* mean_tensor =
-        scope->FindVar(bn_mean->Name())->GetMutable<LoDTensor>();
-
-    auto std_tensor = LoDTensor();
-    std_tensor.Resize(bn_bias_tensor->dims());
-    std_tensor =
-        tensor_apply(*variance_tensor, [](float x) { return x + 1e-5f; });
-
-    tensor_apply_inplace(std_tensor, std::sqrt);
-    auto tmp_tensor =
-        tensor_apply_eltwise(*scale_tensor, std_tensor, std::divides<float>());
-    *bias_y_tensor = tensor_apply_eltwise(
-        tensor_apply_eltwise(tensor_apply_eltwise(*bias_y_tensor, *mean_tensor,
-                                                  std::minus<float>()),
-                             tmp_tensor, std::multiplies<float>()),
-        *bn_bias_tensor, std::plus<float>());
-
-    // Re-compute weight of conv2d from BN
-    auto* current_param =
-        scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
-    // remember the weights tensor shape {A, B, C, ...}
-    auto current_param_shape = current_param->dims();
-    // reduce the weights to 2d {A, B * C * ...}
-    make_tensor_2d(*current_param);
-    // make tmp tensor 2d by adding 1 as second dim {A, 1}
-    make_tensor_2d(tmp_tensor);
-
-    *current_param = tensor_apply_eltwise_broadcast(*current_param, tmp_tensor,
-                                                    std::multiplies<float>());
-    // reshape weights to the original dims {A, B, C, ...}
-    current_param->Resize(current_param_shape);
+    // update weights and biases
+    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
+    recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
+                               *bn_mean, *bn_variance, eltwise_y_in_tensor,
+                               epsilon);
 
     // check if MKL-DNN should be used
     // TODO(wojtuss): replace after the "OP placement" pass is added
@@ -215,14 +250,14 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
         PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1);
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
-        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(), bias_y_tensor->dims());
+        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(), eltwise_y_in_tensor->dims());
         *conv_bias_tensor = tensor_apply_eltwise(
-            *conv_bias_tensor, *bias_y_tensor, std::plus<float>());
+            *conv_bias_tensor, *eltwise_y_in_tensor, std::plus<float>());
       } else {
         // add new conv_bias node
         conv->Op()->SetInput("Bias",
-                             std::vector<std::string>({y_var_node->Name()}));
-        IR_NODE_LINK_TO(y_var_node, conv);
+                             std::vector<std::string>({eltwise_y_in_node->Name()}));
+        IR_NODE_LINK_TO(eltiwse_y_in_node, conv);
       }
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({bn_out->Name()}));
@@ -237,11 +272,11 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
       // create an elementwise add node.
       OpDesc desc;
       desc.SetInput("X", std::vector<std::string>({conv_out->Name()}));
-      desc.SetInput("Y", std::vector<std::string>({y_var_node->Name()}));
+      desc.SetInput("Y", std::vector<std::string>({eltwise_y_in_node->Name()}));
       desc.SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
       desc.SetType("elementwise_add");
       desc.SetAttr("axis", 1);
-      auto bias_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
+      auto eltwise_op = g->CreateOpNode(&desc);  // OpDesc will be copied.
 
       GraphSafeRemoveNodes(
           graph.get(),
@@ -249,9 +284,9 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
            bn_variance_out, bn_saved_mean, bn_saved_variance});
 
       PADDLE_ENFORCE(subgraph.count(conv_input));
-      IR_NODE_LINK_TO(conv_out, bias_op);
-      IR_NODE_LINK_TO(y_var_node, bias_op);
-      IR_NODE_LINK_TO(bias_op, bn_out);
+      IR_NODE_LINK_TO(conv_out, eltwise_op);
+      IR_NODE_LINK_TO(y_var_node, eltwise_op);
+      IR_NODE_LINK_TO(eltwise_op, bn_out);
     }
     found_conv_bn_count++;
   };
@@ -270,8 +305,6 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
   auto* scope = param_scope();
   PADDLE_ENFORCE(scope);
 
-  std::unordered_set<Node*> nodes2delete;
-
   GraphPatternDetector gpd;
   auto* conv_input =
       gpd.mutable_pattern()
@@ -285,93 +318,74 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle ConvBN fuse";
+
+    // conv, batch_norm,
+    // conv_weight, conv_out,
+    // bn_scale, bn_bias, bn_mean, bn_variance,
+    // bn_out, bn_mean_out, bn_variance_out, bn_saved_mean,bn_saved_variance
+    GET_CONV_BN_NODES(conv_bn_pattern);
     // OPERATORS
-    GET_IR_NODE_FROM_SUBGRAPH(conv, conv, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bias, bias, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(batch_norm, batch_norm, conv_bn_pattern);
-    // CONV inputs
-    GET_IR_NODE_FROM_SUBGRAPH(conv_weight, conv_weight, conv_bn_pattern);
-    // CONV outputs
-    GET_IR_NODE_FROM_SUBGRAPH(conv_out, conv_out, conv_bn_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_bn_pattern);
     // BIAS inputs
-    GET_IR_NODE_FROM_SUBGRAPH(bias_y, bias_y, conv_bn_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltwise_y_in, eltwise_y_in, conv_bn_pattern);
     // BIAS outputs
-    GET_IR_NODE_FROM_SUBGRAPH(bias_out, bias_out, conv_bn_pattern);
-    // BN inputs
-    GET_IR_NODE_FROM_SUBGRAPH(bn_scale, bn_scale, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_bias, bn_bias, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_mean, bn_mean, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_variance, bn_variance, conv_bn_pattern);
-    // BN outputs
-    GET_IR_NODE_FROM_SUBGRAPH(bn_out, bn_out, conv_bn_pattern);  // Out
-    GET_IR_NODE_FROM_SUBGRAPH(bn_mean_out, bn_mean_out, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_variance_out, bn_variance_out,
-                              conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_mean, bn_saved_mean, conv_bn_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(bn_saved_variance, bn_saved_variance,
-                              conv_bn_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(eltwise_out, eltwise_out, conv_bn_pattern);
 
-    // Find bias from BN
-    auto* bn_bias_var = scope->FindVar(bn_bias->Name());
-    auto* bn_bias_tensor = bn_bias_var->GetMutable<LoDTensor>();
+    // Get eltwise_y (conv bias) variable
+    auto* eltwise_y_in_tensor =
+        scope->FindVar(eltwise_y_in->Name())->GetMutable<LoDTensor>();
 
-    // Get y (bias) variable
-    auto* bias_y_tensor =
-        scope->FindVar(bias_y->Name())->GetMutable<LoDTensor>();
+    // Get batch norm bias
+    auto* bn_bias_tensor =
+        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
 
-    PADDLE_ENFORCE_EQ(bias_y_tensor->dims(), bn_bias_tensor->dims());
+    // update weights and biases
+    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
+    recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
+                               *bn_mean, *bn_variance, eltwise_y_in_tensor,
+                               epsilon);
 
-    // Compute new weights and bias
-    auto* scale_tensor =
-        scope->FindVar(bn_scale->Name())->GetMutable<LoDTensor>();
-    auto* variance_tensor =
-        scope->FindVar(bn_variance->Name())->GetMutable<LoDTensor>();
-    auto* mean_tensor =
-        scope->FindVar(bn_mean->Name())->GetMutable<LoDTensor>();
+    // Update the elementwise_add node
+    eltwise->Op()->SetAttr("axis", 1);
+    eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
 
-    auto std_tensor = LoDTensor();
-    std_tensor.Resize(bn_bias_tensor->dims());
-    std_tensor =
-        tensor_apply(*variance_tensor, [](float x) { return x + 1e-5f; });
+    // conv, batch_norm,
+    // conv_weight, conv_out,
+    // bn_scale, bn_bias, bn_mean, bn_variance,
+    // bn_out, bn_mean_out, bn_variance_out, bn_saved_mean,bn_saved_variance
+    GET_CONV_BN_NODES(conv_bn_pattern);
+    // OPERATORS
+    GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_bn_pattern);
+    // BIAS inputs
+    GET_IR_NODE_FROM_SUBGRAPH(eltwise_y_in, eltwise_y_in, conv_bn_pattern);
+    // BIAS outputs
+    GET_IR_NODE_FROM_SUBGRAPH(eltwise_out, eltwise_out, conv_bn_pattern);
 
-    tensor_apply_inplace(std_tensor, std::sqrt);
-    auto tmp_tensor =
-        tensor_apply_eltwise(*scale_tensor, std_tensor, std::divides<float>());
-    *bias_y_tensor = tensor_apply_eltwise(
-        tensor_apply_eltwise(tensor_apply_eltwise(*bias_y_tensor, *mean_tensor,
-                                                  std::minus<float>()),
-                             tmp_tensor, std::multiplies<float>()),
-        *bn_bias_tensor, std::plus<float>());
+    // Get eltwise_y (conv bias) variable
+    auto* eltwise_y_in_tensor =
+        scope->FindVar(eltwise_y_in->Name())->GetMutable<LoDTensor>();
 
-    // Re-compute weight of conv2d from BN
-    auto* current_param =
-        scope->FindVar(conv_weight->Name())->GetMutable<LoDTensor>();
-    // remember the weights tensor shape {A, B, C, ...}
-    auto current_param_shape = current_param->dims();
-    // flatten the weights tensor shape {A, B * C * ...}
-    if (current_param->dims().size() > 1) {
-      int size2 = current_param->dims()[1];
-      for (int i = 2; i < current_param->dims().size(); i++) {
-        size2 *= current_param->dims()[i];
-      }
-      current_param->Resize(make_ddim({current_param->dims()[0], size2}));
-    }
-    *current_param = tensor_apply_eltwise_broadcast(*current_param, tmp_tensor,
-                                                    std::multiplies<float>());
-    // reshape weights to the original dims {A, B, C, ...}
-    current_param->Resize(current_param_shape);
+    // Get batch norm bias
+    auto* bn_bias_tensor =
+        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
 
-    // Modify bias of elementwise add node.
-    bias->Op()->SetAttr("axis", 1);
-    bias->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
+    // update weights and biases
+    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
+    recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
+                               *bn_mean, *bn_variance, eltwise_y_in_tensor,
+                               epsilon);
+
+    // Update the elementwise_add node
+    eltwise->Op()->SetAttr("axis", 1);
+    eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
 
     GraphSafeRemoveNodes(
         graph.get(),
         {bn_scale, bn_bias, bn_mean, bn_variance, batch_norm, bn_mean_out,
-         bn_variance_out, bn_saved_mean, bn_saved_variance, bias_out});
+         bn_variance_out, bn_saved_mean, bn_saved_variance, eltwise_out});
 
     PADDLE_ENFORCE(subgraph.count(conv_input));
-    IR_NODE_LINK_TO(bias, bn_out);
+    IR_NODE_LINK_TO(eltwise, bn_out);
 
     found_conv_bn_count++;
   };

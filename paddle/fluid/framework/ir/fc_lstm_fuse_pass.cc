@@ -77,10 +77,12 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     const std::string BatchedCellPreAct =
         patterns::UniqueKey("BatchedCellPreAct");
     const std::string BatchedGate = patterns::UniqueKey("BatchedGate");
+    const std::string CheckedCell = patterns::UniqueKey("CheckedCell");
 
     scope->Var(BatchedInput)->GetMutable<framework::LoDTensor>();
     scope->Var(BatchedCellPreAct)->GetMutable<framework::LoDTensor>();
     scope->Var(BatchedGate)->GetMutable<framework::LoDTensor>();
+    scope->Var(CheckedCell)->GetMutable<framework::LoDTensor>();
 
     op_desc.SetInput("H0", {});
     op_desc.SetInput("C0", {});
@@ -90,6 +92,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     op_desc.SetOutput("BatchedGate", {BatchedGate});
     op_desc.SetOutput("BatchCellPreAct", {BatchedCellPreAct});
     op_desc.SetOutput("BatchedInput", {BatchedInput});
+    op_desc.SetOutput("CheckedCell", {CheckedCell});
     op_desc.SetAttr("is_reverse", lstm->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm->Op()->GetAttr("use_peepholes"));
     // TODO(TJ): get from attr

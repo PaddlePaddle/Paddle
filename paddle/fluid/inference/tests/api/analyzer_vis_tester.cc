@@ -19,6 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace inference {
 namespace analysis {
+using contrib::AnalysisConfig;
 
 struct Record {
   std::vector<float> data;
@@ -59,9 +60,7 @@ void SetConfig(AnalysisConfig *cfg) {
   // TODO(TJ): fix fusion gru
   cfg->ir_passes.push_back("fc_gru_fuse_pass");
 #ifdef PADDLE_WITH_MKLDNN
-  cfg->use_mkldnn = true;
-  // disable mkldnn fuse since it should have some bugs
-  cfg->ir_passes.push_back("conv_relu_mkldnn_fuse_pass");
+  cfg->_use_mkldnn = true;
 #endif
 }
 
@@ -114,7 +113,8 @@ TEST(Analyzer_vis, fuse_statis) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   int num_ops;
-  GetFuseStatis(cfg, &num_ops);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(cfg);
+  GetFuseStatis(predictor.get(), &num_ops);
 }
 
 // Compare result of NativeConfig and AnalysisConfig

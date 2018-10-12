@@ -52,6 +52,7 @@ ExternalProject_Add(
     PREFIX              ${ANAKIN_SOURCE_DIR}
     UPDATE_COMMAND      ""
     CMAKE_ARGS          ${CMAKE_ARGS_PREFIX}
+                        -DUSE_LOGGER=YES
                         -DUSE_X86_PLACE=YES
                         -DBUILD_WITH_UNIT_TEST=NO
                         -DPROTOBUF_ROOT=${THIRD_PARTY_PATH}/install/protobuf

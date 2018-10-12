@@ -21,10 +21,10 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/channel.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
@@ -595,9 +595,48 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
 
+  py::class_<ir::Pass, std::shared_ptr<ir::Pass>> pass(m, "Pass");
+  pass.def(py::init())
+      .def("set_str", [](ir::Pass &self, const std::string &name,
+                         const std::string &attr) {
+        self.Set<std::string>(name, new std::string(attr));
+      });
+
+  py::class_<ir::PassBuilder, std::shared_ptr<ir::PassBuilder>> pb(
+      m, "PassBuilder");
+  pb.def(py::init())
+      .def("append_pass",
+           [](ir::PassBuilder &self,
+              const std::string &pass_type) -> std::shared_ptr<ir::Pass> {
+             return self.AppendPass(pass_type);
+           })
+      .def("all_passes", [](ir::PassBuilder &self) { return self.AllPasses(); })
+      .def("insert_pass",
+           [](ir::PassBuilder &self, size_t idx, const std::string &pass_type) {
+             return self.InsertPass(idx, pass_type);
+           })
+      .def("remove_pass",
+           [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
+
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy");
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
+    ExecutionStrategy allows the user to more preciously control how to run
+    the program in ParallelExecutor by setting the property.
+
+    The available properties include:
+        use_cuda (bool): Whether to use CUDA or not. Default True.
+        num_threads (int): The number of threads that used to run the
+            operators in ParallelExecutor. If it is not set, it will be
+            set in ParallelExecutor according to the device count.
+            Default 0.
+        allow_op_delay (bool): Whether to delay the communication operators
+            to run. Default False.
+        num_iteration_per_drop_scope (int): how many iterations between
+            the two dropping local scopes. Default 100.
+
+        )DOC");
+
   exec_strategy.def(py::init())
       .def_property(
           "num_threads",
@@ -635,7 +674,25 @@ All parameter, weight, gradient are variables in Paddle.
                                   : ExecutionStrategy::kDefault;
       });
 
-  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy");
+  py::class_<BuildStrategy> build_strategy(pe, "BuildStrategy", R"DOC(
+    BuildStrategy allows the user to more preciously control how to
+    build the SSA Graph in ParallelExecutor by setting the property.
+
+    The available properties include:
+        reduce_strategy (str): There are two reduce strategies, 'AllReduce'
+            and 'Reduce'. If you want that all parameters will be optimized
+            on all devices, you can choose 'AllReduce'; if you choose
+            'Reduce', all parameters will be evenly allocated to different
+            devices for optimization, and then broadcast the optimized
+            parameter to other devices. Default 'AllReduce'.
+        gradient_scale_strategy (str): There are two ways of defining loss@grad,
+            'CoeffNumDevice' and 'Customized'. By default, ParallelExecutor
+            sets the loss@grad according to the number of devices. If you want
+            to customize loss@grad, you can choose 'Customized'.
+            Default 'CoeffNumDevice'.
+        debug_graphviz_path (str): Whether to write the SSA Graph to file in the
+            form of graphviz. It is useful for debugging. Default "".
+)DOC");
 
   py::enum_<BuildStrategy::ReduceStrategy>(build_strategy, "ReduceStrategy")
       .value("Reduce", BuildStrategy::ReduceStrategy::kReduce)
@@ -677,7 +734,11 @@ All parameter, weight, gradient are variables in Paddle.
                     },
                     [](BuildStrategy &self, bool b) {
                       self.fuse_elewise_add_act_ops_ = b;
-                    });
+                    })
+      .def("_create_passes_from_strategy",
+           [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
+             return self.CreatePassesFromStrategy();
+           });
 
   pe.def(py::init<const std::vector<platform::Place> &,
                   const std::unordered_set<std::string> &,

@@ -17,11 +17,12 @@ limitations under the License. */
  */
 
 #include <gflags/gflags.h>
-#include <glog/logging.h>  // use glog instead of PADDLE_ENFORCE to avoid importing other paddle header files.
+#include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
 #include <fstream>
 #include <iostream>
+
+// #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/demo_ci/utils.h"
-#include "paddle/fluid/platform/enforce.h"
 
 #ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -33,6 +34,7 @@ DEFINE_string(
     "path of data; each line is a record, format is "
     "'<space splitted floats as data>\t<space splitted ints as shape'");
 DEFINE_bool(use_gpu, false, "Whether use gpu.");
+DEFINE_bool(use_trt, false, "Whether use trt.");
 
 namespace paddle {
 namespace demo {
@@ -78,18 +80,17 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;
   VLOG(3) << "reference output numel " << refer.data.size();
-  PADDLE_ENFORCE_EQ(numel, refer.data.size());
+  CHECK_EQ(numel, refer.data.size());
   switch (output.dtype) {
     case PaddleDType::INT64: {
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_EQ(static_cast<int64_t*>(output.data.data())[i],
-                          refer.data[i]);
+        CHECK_EQ(static_cast<int64_t*>(output.data.data())[i], refer.data[i]);
       }
       break;
     }
     case PaddleDType::FLOAT32:
       for (size_t i = 0; i < numel; ++i) {
-        PADDLE_ENFORCE_LT(
+        CHECK_LT(
             fabs(static_cast<float*>(output.data.data())[i] - refer.data[i]),
             1e-5);
       }
@@ -100,19 +101,31 @@ void CheckOutput(const std::string& referfile, const PaddleTensor& output) {
 /*
  * Use the native fluid engine to inference the demo.
  */
-void Main(bool use_gpu) {
-  NativeConfig config;
-  config.param_file = FLAGS_modeldir + "/__params__";
-  config.prog_file = FLAGS_modeldir + "/__model__";
-  config.use_gpu = use_gpu;
-  config.device = 0;
-  if (FLAGS_use_gpu) {
-    config.fraction_of_gpu_memory = 0.1;  // set by yourself
-  }
+void Main(bool use_gpu, bool use_trt) {
+  std::unique_ptr<PaddlePredictor> predictor;
+  if (!use_trt) {
+    NativeConfig config;
+    config.param_file = FLAGS_modeldir + "/__params__";
+    config.prog_file = FLAGS_modeldir + "/__model__";
+    config.use_gpu = use_gpu;
+    config.device = 0;
+    if (FLAGS_use_gpu) {
+      config.fraction_of_gpu_memory = 0.1;  // set by yourself
+    }
 
-  VLOG(3) << "init predictor";
-  auto predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+    VLOG(3) << "init predictor";
+    predictor =
+        CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  } else {
+    paddle::contrib::MixedRTConfig config;
+    config.param_file = FLAGS_modeldir + "/__params__";
+    config.prog_file = FLAGS_modeldir + "/__model__";
+    config.use_gpu = true;
+    config.device = 0;
+    config.max_batch_size = 1;
+    config.fraction_of_gpu_memory = 0.1;  // set by yourself
+    predictor = CreatePaddlePredictor<paddle::contrib::MixedRTConfig>(config);
+  }
 
   VLOG(3) << "begin to process data";
   // Just a single batch of data.
@@ -131,7 +144,7 @@ void Main(bool use_gpu) {
 
   VLOG(3) << "run executor";
   std::vector<PaddleTensor> output;
-  predictor->Run({input}, &output);
+  predictor->Run({input}, &output, 1);
 
   VLOG(3) << "output.size " << output.size();
   auto& tensor = output.front();
@@ -146,9 +159,12 @@ void Main(bool use_gpu) {
 
 int main(int argc, char** argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
-  paddle::demo::Main(false /* use_gpu*/);
-  if (FLAGS_use_gpu) {
-    paddle::demo::Main(true /*use_gpu*/);
+  if (FLAGS_use_gpu && FLAGS_use_trt) {
+    paddle::demo::Main(true /*use_gpu*/, true);
+  } else if (FLAGS_use_gpu) {
+    paddle::demo::Main(true /*use_gpu*/, false);
+  } else {
+    paddle::demo::Main(false /*use_gpu*/, false /*use_tensorrt*/);
   }
   return 0;
 }

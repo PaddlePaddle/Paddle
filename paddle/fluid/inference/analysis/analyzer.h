@@ -68,6 +68,7 @@ class Analyzer : public OrderedRegistry<PassManager> {
       // Manual update the passes here.
       "infer_clean_graph_pass",        //
       "attention_lstm_fuse_pass",      //
+      "embedding_fc_lstm_fuse_pass",   //
       "fc_lstm_fuse_pass",             //
       "mul_lstm_fuse_pass",            //
       "fc_gru_fuse_pass",              //

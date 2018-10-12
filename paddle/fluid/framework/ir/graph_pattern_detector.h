@@ -389,17 +389,17 @@ struct ConvBN : public PatternBase {
   PDNode* operator()(PDNode* conv_input, bool with_eltwise_add);
 
   // declare operator node's name
-  PATTERN_DECL_NODE(conv);  // CONV op
+  PATTERN_DECL_NODE(conv);
   PATTERN_DECL_NODE(batch_norm);
-  PATTERN_DECL_NODE(bias);  // ELEMENTWISE_ADD
+  PATTERN_DECL_NODE(eltwise);  // ELEMENTWISE_ADD
   // CONV inputs
   PATTERN_DECL_NODE(conv_weight);  // Filter
   // CONV outputs
   PATTERN_DECL_NODE(conv_out);  // tmp
-  // BIAS inputs
-  PATTERN_DECL_NODE(bias_y);
-  // BIAS outputs
-  PATTERN_DECL_NODE(bias_out);  // tmp
+  // ELTWISE inputs
+  PATTERN_DECL_NODE(eltwise_y_in);
+  // ELTWISE outputs
+  PATTERN_DECL_NODE(eltwise_out);  // tmp
   // BN inputs
   PATTERN_DECL_NODE(bn_scale);
   PATTERN_DECL_NODE(bn_bias);
@@ -453,6 +453,23 @@ struct FC : public PatternBase {
   PATTERN_DECL_NODE(w);
   PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
   PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(Out);
+};
+
+// Embedding
+struct Embedding : public PatternBase {
+  Embedding(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "embedding") {}
+
+  PDNode* operator()(PDNode* x);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(lookup_table);
+  // Inputs
+  //
+  PATTERN_DECL_NODE(Ids);
+  PATTERN_DECL_NODE(W);  // embeddings
+  // Outputs
   PATTERN_DECL_NODE(Out);
 };
 

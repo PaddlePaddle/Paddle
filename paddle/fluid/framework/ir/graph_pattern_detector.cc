@@ -633,9 +633,10 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   conv_input->assert_is_op_input("conv2d", "Input");
   auto *conv_op = pattern->NewNode(conv_repr())->assert_is_op("conv2d");
 
-  PDNode *bias_op = nullptr;
+  PDNode *eltwise_op = nullptr;
   if (with_eltwise_add) {
-    bias_op = pattern->NewNode(bias_repr())->assert_is_op("elementwise_add");
+    eltwise_op =
+        pattern->NewNode(eltwise_repr())->assert_is_op("elementwise_add");
   }
   auto *batch_norm_op =
       pattern->NewNode(batch_norm_repr())->assert_is_op("batch_norm");
@@ -650,19 +651,19 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
                            ->AsIntermediate()
                            ->assert_is_only_output_of_op("conv2d");
 
-  PDNode *bias_y_var = nullptr;
-  PDNode *bias_out_var = nullptr;
+  PDNode *eltwise_y_in_var = nullptr;
+  PDNode *eltwise_out_var = nullptr;
   if (with_eltwise_add) {
     // Conv output as Bias input
     conv_out_var->assert_is_op_input("elementwise_add", "X");
     // Bias
-    bias_y_var = pattern->NewNode(bias_y_repr())
-                     ->assert_is_op_input("elementwise_add", "Y")
-                     ->assert_is_persistable_var()
-                     ->AsInput();
-    bias_out_var = pattern->NewNode(bias_out_repr())
-                       ->AsIntermediate()
-                       ->assert_is_only_output_of_op("elementwise_add");
+    eltwise_y_in_var = pattern->NewNode(eltwise_y_in_repr())
+                           ->assert_is_op_input("elementwise_add", "Y")
+                           ->assert_is_persistable_var()
+                           ->AsInput();
+    eltwise_out_var = pattern->NewNode(eltwise_out_repr())
+                          ->AsIntermediate()
+                          ->assert_is_only_output_of_op("elementwise_add");
   } else {
     // Conv output as BN input
     conv_out_var->assert_is_op_input("batch_norm", "X");
@@ -716,9 +717,10 @@ PDNode *patterns::ConvBN::operator()(paddle::framework::ir::PDNode *conv_input,
   conv_op->LinksFrom({conv_input, conv_weight_var}).LinksTo({conv_out_var});
 
   if (with_eltwise_add) {
-    bias_op->LinksFrom({conv_out_var, bias_y_var}).LinksTo({bias_out_var});
+    eltwise_op->LinksFrom({conv_out_var, eltwise_y_in_var})
+        .LinksTo({eltwise_out_var});
     batch_norm_op
-        ->LinksFrom({bias_out_var, bn_scale_var, bn_bias_var, bn_mean_var,
+        ->LinksFrom({eltwise_out_var, bn_scale_var, bn_bias_var, bn_mean_var,
                      bn_variance_var})
         .LinksTo({bn_out_var, bn_mean_out_var, bn_variance_out_var,
                   bn_saved_mean_var, bn_saved_variance_var});
@@ -796,6 +798,24 @@ PDNode *patterns::FC::operator()(paddle::framework::ir::PDNode *x,
     elementwise_add->LinksFrom({mul_out_var, bias}).LinksTo({fc_out});
     return fc_out;
   }
+}
+
+PDNode *patterns::Embedding::operator()(PDNode *x) {
+  x->assert_is_op_input("lookup_table", "Ids");
+  auto *lookup_table_op =
+      pattern->NewNode(lookup_table_repr())->assert_is_op("lookup_table");
+#define NEW_NODE(arg__, io__)                    \
+  auto *arg__ = pattern->NewNode(arg__##_repr()) \
+                    ->assert_is_op_##io__("lookup_table", #arg__);
+
+  NEW_NODE(W, input);
+
+  NEW_NODE(Out, output);
+#undef NEW_NODE
+
+  lookup_table_op->LinksFrom({x, W});
+  lookup_table_op->LinksTo({Out});
+  return Out;
 }
 
 PDNode *patterns::LSTM::operator()(PDNode *x) {
