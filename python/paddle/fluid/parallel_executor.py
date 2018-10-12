@@ -46,8 +46,17 @@ class ParallelExecutor(object):
         loss_name (str): The loss name must set in training. Default None.
         main_program (Program): The program that need to run, if not provided,
             then default_main_program will be used. Default None.
-        share_vars_from(ParallelExecutor): If provied, it will share variables
+        share_vars_from(ParallelExecutor): If provide, it will share variables
             from the specified ParallelExecutor. Default None.
+        exec_strategy(ExecutionStrategy): exec_strategy is used to control how to run
+            the program in ParallelExecutor, for example how many threads are used to
+            execute the program, how many iterations to clean up the temp variables
+            which is generated during execution. For more information, please refer
+            to fluid.ExecutionStrategy. Default None.
+        build_strategy(BuildStrategy): build_strategy is used to control how to
+            build the SSA Graph in ParallelExecutor by setting the property,
+            for example reduce_strategy, gradient_scale_strategy. For more information,
+            please refer to fluid.BuildStrategy. Default None.
         num_trainers(int): If greater than 1, NCCL will be initialized with
             multiple rank of nodes, each node should have same number of GPUs.
             Distributed training will be enabled then. Default 1.
