@@ -117,16 +117,10 @@ class UniformRandomOpVarTypeInference : public framework::VarTypeInference {
     auto out_var_name = op_desc.Output("Out").front();
     auto var_data_type = static_cast<framework::proto::VarType::Type>(
         boost::get<int>(op_desc.GetAttr("dtype")));
+
     auto out_var = block->FindRecursiveOrCreateVar(out_var_name);
-    if (out_var.GetType() == framework::proto::VarType::SELECTED_ROWS) {
-      out_var.SetType(framework::proto::VarType::SELECTED_ROWS);
-    } else if (out_var.GetType() == framework::proto::VarType::LOD_TENSOR) {
+    if (out_var.GetType() != framework::proto::VarType::SELECTED_ROWS) {
       out_var.SetType(framework::proto::VarType::LOD_TENSOR);
-    } else {
-      PADDLE_THROW(
-          "The UniformRandom's output(%s) only can be SELECTED_ROWS "
-          "and LOD_TENSOR, but the received type is %s",
-          out_var_name, framework::DataTypeToString(var_data_type));
     }
     out_var.SetDataType(var_data_type);
   }

@@ -14,8 +14,8 @@
 
 from __future__ import print_function
 from .layer_function_generator import generate_layer_fn, generate_layer_fn_noattr
-from ..framework import convert_np_dtype_to_dtype_
 from .. import core
+from ..framework import convert_np_dtype_to_dtype_
 
 __activations_noattr__ = [
     'sigmoid',
