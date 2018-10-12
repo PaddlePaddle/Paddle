@@ -476,7 +476,7 @@ def py_reader(capacity,
               lod_levels=None,
               name=None,
               use_double_buffer=True,
-              test_mode=False):
+              speed_test_mode=False):
     """
     Create a Python reader for data feeding in Python
 
@@ -500,7 +500,7 @@ def py_reader(capacity,
        name(basestring): The prefix Python queue name and Reader name. None will
             be generated automatically.
        use_double_buffer(bool): Whether use double buffer or not.
-       test_mode(bool): If test_mode is true, then the blocking queue for py_reader will
+       speed_test_mode(bool): If speed_test_mode is true, then the blocking queue for py_reader will
        only input data but not output data, it is used for speed testing.
 
     Returns:
@@ -619,7 +619,7 @@ def py_reader(capacity,
 
     var = global_scope().var(queue_name)
     feed_queue = core.init_lod_tensor_blocking_queue(var, capacity, shapes,
-                                                     test_mode)
+                                                     speed_test_mode)
 
     startup_blk = default_startup_program().current_block()
     startup_var = startup_blk.create_var(name=reader_name)

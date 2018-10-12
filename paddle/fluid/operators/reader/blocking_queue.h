@@ -31,8 +31,8 @@ class BlockingQueue {
   // is a workaround and a simplified version of framework::Channel as it
   // doesn't support GPU and it implements on buffered blocking queue.
  public:
-  explicit BlockingQueue(size_t capacity, bool test_mode = false)
-      : capacity_(capacity), test_mode_(test_mode), closed_(false) {
+  explicit BlockingQueue(size_t capacity, bool speed_test_mode = false)
+      : capacity_(capacity), speed_test_mode_(speed_test_mode), closed_(false) {
     PADDLE_ENFORCE_GT(
         capacity_, 0,
         "The capacity of a reader::BlockingQueue must be greater than 0.");
@@ -72,7 +72,7 @@ class BlockingQueue {
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(elem);
       *elem = queue_.front();
-      if (UNLIKELY(!test_mode_)) {
+      if (UNLIKELY(!speed_test_mode_)) {
         queue_.pop_front();
       }
       send_cv_.notify_one();
@@ -116,9 +116,9 @@ class BlockingQueue {
 
  private:
   size_t capacity_;
-  // if test_mode_ is true, the queue will not
+  // if speed_test_mode_ is true, the queue will not
   // remove data from queue for speed test
-  bool test_mode_;
+  bool speed_test_mode_;
   bool closed_;
   std::deque<T> queue_;
 
