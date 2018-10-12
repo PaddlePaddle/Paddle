@@ -32,7 +32,7 @@ void Transpose(float* data, size_t rows, unsigned cols) {
     }
   }
 
-  memcpy(data, &temp[0], temp.size() * sizeof(float));
+  std::copy(temp.begin(), temp.end(), data);
 }
 
 std::unique_ptr<ir::Graph> FCMKLDNNPass::ApplyImpl(
