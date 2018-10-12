@@ -81,20 +81,16 @@ bool AnalysisPredictor::Init(
 
   if (!program) {
     if (!LoadProgramDesc()) return false;
+    if (IsMKLDNNSetOn() || config_._use_mkldnn) {
+      LOG(INFO) << "MKL-DNN enabled";
+      config_._use_mkldnn = true;
+    }
     OptimizeInferenceProgram();
+    if (config_._use_mkldnn) {
+      executor_->EnableMKLDNN(*inference_program_);
+    }
   } else {
     inference_program_ = program;
-  }
-
-  if (IsMKLDNNSetOn() || config_.use_mkldnn) {
-    LOG(INFO) << "MKL-DNN enabled";
-    config_._use_mkldnn = true;
-  }
-
-  OptimizeInferenceProgram();
-
-  if (config_._use_mkldnn) {
-    executor_->EnableMKLDNN(*inference_program_);
   }
 
   executor_->Prepare(scope_.get(), *inference_program_, 0,

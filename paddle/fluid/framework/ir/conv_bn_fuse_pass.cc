@@ -213,11 +213,10 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
     GET_CONV_BN_NODES(conv_bn_pattern);
     PADDLE_ENFORCE(subgraph.count(conv_input));
 
-
     // Create eltwise_y (conv bias) variable
     VarDesc eltwise_y_in_desc(
         patterns::PDNodeName(name_scope_, "eltwise_y_in"));
-    y_desc.SetPersistable(true);
+    eltwise_y_in_desc.SetPersistable(true);
     auto* eltwise_y_in_node = g->CreateVarNode(&eltwise_y_in_desc);
     auto* eltwise_y_in_tensor =
         scope->Var(eltwise_y_in_node->Name())->GetMutable<LoDTensor>();
@@ -250,14 +249,15 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
         PADDLE_ENFORCE_EQ(conv_bias_names.size(), 1);
         auto* conv_bias_var = scope->FindVar(conv_bias_names[0]);
         auto* conv_bias_tensor = conv_bias_var->GetMutable<LoDTensor>();
-        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(), eltwise_y_in_tensor->dims());
+        PADDLE_ENFORCE_EQ(conv_bias_tensor->dims(),
+                          eltwise_y_in_tensor->dims());
         *conv_bias_tensor = tensor_apply_eltwise(
             *conv_bias_tensor, *eltwise_y_in_tensor, std::plus<float>());
       } else {
         // add new conv_bias node
-        conv->Op()->SetInput("Bias",
-                             std::vector<std::string>({eltwise_y_in_node->Name()}));
-        IR_NODE_LINK_TO(eltiwse_y_in_node, conv);
+        conv->Op()->SetInput(
+            "Bias", std::vector<std::string>({eltwise_y_in_node->Name()}));
+        IR_NODE_LINK_TO(eltwise_y_in_node, conv);
       }
       conv->Op()->SetOutput("Output",
                             std::vector<std::string>({bn_out->Name()}));
@@ -285,7 +285,7 @@ std::unique_ptr<ir::Graph> ConvBNFusePass::ApplyImpl(
 
       PADDLE_ENFORCE(subgraph.count(conv_input));
       IR_NODE_LINK_TO(conv_out, eltwise_op);
-      IR_NODE_LINK_TO(y_var_node, eltwise_op);
+      IR_NODE_LINK_TO(eltwise_y_in_node, eltwise_op);
       IR_NODE_LINK_TO(eltwise_op, bn_out);
     }
     found_conv_bn_count++;
@@ -318,36 +318,6 @@ std::unique_ptr<ir::Graph> ConvEltwiseAddBNFusePass::ApplyImpl(
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "handle ConvBN fuse";
-
-    // conv, batch_norm,
-    // conv_weight, conv_out,
-    // bn_scale, bn_bias, bn_mean, bn_variance,
-    // bn_out, bn_mean_out, bn_variance_out, bn_saved_mean,bn_saved_variance
-    GET_CONV_BN_NODES(conv_bn_pattern);
-    // OPERATORS
-    GET_IR_NODE_FROM_SUBGRAPH(eltwise, eltwise, conv_bn_pattern);
-    // BIAS inputs
-    GET_IR_NODE_FROM_SUBGRAPH(eltwise_y_in, eltwise_y_in, conv_bn_pattern);
-    // BIAS outputs
-    GET_IR_NODE_FROM_SUBGRAPH(eltwise_out, eltwise_out, conv_bn_pattern);
-
-    // Get eltwise_y (conv bias) variable
-    auto* eltwise_y_in_tensor =
-        scope->FindVar(eltwise_y_in->Name())->GetMutable<LoDTensor>();
-
-    // Get batch norm bias
-    auto* bn_bias_tensor =
-        scope->FindVar(bn_bias->Name())->GetMutable<LoDTensor>();
-
-    // update weights and biases
-    float epsilon = boost::get<float>(batch_norm->Op()->GetAttr("epsilon"));
-    recompute_bias_and_weights(scope, conv_weight, *bn_scale, *bn_bias_tensor,
-                               *bn_mean, *bn_variance, eltwise_y_in_tensor,
-                               epsilon);
-
-    // Update the elementwise_add node
-    eltwise->Op()->SetAttr("axis", 1);
-    eltwise->Op()->SetOutput("Out", std::vector<std::string>({bn_out->Name()}));
 
     // conv, batch_norm,
     // conv_weight, conv_out,
