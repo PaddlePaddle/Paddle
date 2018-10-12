@@ -30,7 +30,7 @@ using framework::DataLayout;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class QuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -76,14 +76,17 @@ framework::OpKernelType QuantOp::GetExpectedKernelType(const framework::Executio
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
+#ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
+#endif
+
   return framework::OpKernelType(
       framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
-      //ctx.device_context());
 }
 
 
@@ -103,10 +106,7 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(quantize, ops::QuantOp, ops::QuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(quantize, ops::QuantOpKernel<paddle::platform::CPUDeviceContext, float>);
-
-//REGISTER_OP_KERNEL(quantization, MKLDNN, paddle::platform::CPUPlace, ops::QuantOpKernel<paddle::platform::CPUDeviceContext, float>);
-
+REGISTER_OP_KERNEL(quantize, MKLDNN, ::paddle::platform::CPUPlace, ops::QuantOpKernel<float>);
 
 
 

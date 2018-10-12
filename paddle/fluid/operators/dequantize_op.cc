@@ -32,7 +32,7 @@ using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 //using MKLDNNDataType = mkldnn::memory::data_type;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class DeQuantOpKernel : public framework::OpKernel<T> {
  public:
 
@@ -83,13 +83,17 @@ framework::OpKernelType DeQuantOp::GetExpectedKernelType(const framework::Execut
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
+#ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
+#endif
+
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
+      framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
 }
 
 void DeQuantOpMaker::Make() {
@@ -108,6 +112,5 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(dequantize, ops::DeQuantOp, ops::DeQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(dequantize, ops::DeQuantOpKernel<paddle::platform::CPUDeviceContext, float>);
-
+REGISTER_OP_KERNEL(dequantize, MKLDNN, ::paddle::platform::CPUPlace, ops::DeQuantOpKernel<float>);
                    

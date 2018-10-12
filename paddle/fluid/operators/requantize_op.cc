@@ -31,7 +31,7 @@ using framework::DataLayout;
 using mkldnn::stream;
 using platform::GetMKLDNNFormat;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class ReQuantOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -84,13 +84,17 @@ framework::OpKernelType ReQuantOp::GetExpectedKernelType(const framework::Execut
   framework::LibraryType library_{framework::LibraryType::kPlain};
   std::string data_format = ctx.Attr<std::string>("data_format");
   framework::DataLayout layout_ = framework::StringToDataLayout(data_format);
+
+#ifdef PADDLE_WITH_MKLDNN
   if (library_ == framework::LibraryType::kPlain &&
       platform::CanMKLDNNBeUsed(ctx)) {
     library_ = framework::LibraryType::kMKLDNN;
     layout_ = framework::DataLayout::kMKLDNN;
   }
+#endif
+
   return framework::OpKernelType(
-      framework::ToDataType(ctx.Input<framework::LoDTensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
+      framework::ToDataType(ctx.Input<framework::Tensor>("Input")->type()),ctx.GetPlace(),layout_, library_);
 }
 
 void ReQuantOpMaker::Make() {
@@ -109,5 +113,4 @@ namespace ops = paddle::operators;
 
 REGISTER_OPERATOR(requantize, ops::ReQuantOp, ops::ReQuantOpMaker, paddle::framework::DefaultGradOpDescMaker<true>);
 
-REGISTER_OP_CPU_KERNEL(requantize, ops::ReQuantOpKernel<paddle::platform::CPUDeviceContext, float>);
-
+REGISTER_OP_KERNEL(requantize, MKLDNN, ::paddle::platform::CPUPlace, ops::ReQuantOpKernel<float>);
