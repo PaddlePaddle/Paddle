@@ -728,6 +728,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
           [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+      .def_property(
+          "fuse_broadcast_op",
+          [](const BuildStrategy &self) { return self.fuse_broadcast_op_; },
+          [](BuildStrategy &self, bool b) { self.fuse_broadcast_op_ = b; })
       .def_property("fuse_elewise_add_act_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_elewise_add_act_ops_;

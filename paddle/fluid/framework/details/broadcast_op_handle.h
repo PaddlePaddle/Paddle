@@ -61,7 +61,10 @@ struct BroadcastOpHandle : public OpHandleBase {
  protected:
   void RunImpl() override;
 
- private:
+  void BroadcastOneVar(const VarHandle &in_var_handle,
+                       const std::vector<VarHandle *> &out_var_handles,
+                       const std::vector<const Scope *> &var_scopes);
+
   std::vector<Scope *> local_scopes_;
   std::vector<platform::Place> places_;
 #ifdef PADDLE_WITH_CUDA

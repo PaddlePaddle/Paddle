@@ -21,6 +21,7 @@
 #include "paddle/fluid/framework/details/broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/data_balance_op_handle.h"
+#include "paddle/fluid/framework/details/fused_broadcast_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_graph_pass.h"
 #include "paddle/fluid/framework/details/reduce_op_handle.h"
 #include "paddle/fluid/framework/details/rpc_op_handle.h"
@@ -436,10 +437,14 @@ std::unique_ptr<ir::Graph> MultiDevSSAGraphBuilder::ApplyImpl(
   if ((use_gpu &&
        strategy_.reduce_ == BuildStrategy::ReduceStrategy::kReduce) ||
       is_dist_train) {
-    for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
-      auto &to_bcast_set = bcast_var_name_set[dev_id];
-      for (auto &bcast_name : to_bcast_set) {
-        CreateBroadcastOp(&result, bcast_name, dev_id);
+    if (strategy_.fuse_broadcast_op_) {
+      CreateFusedBroadcastOp(&result, bcast_var_name_set);
+    } else {
+      for (size_t dev_id = 0; dev_id < bcast_var_name_set.size(); ++dev_id) {
+        auto &to_bcast_set = bcast_var_name_set[dev_id];
+        for (auto &bcast_name : to_bcast_set) {
+          CreateBroadcastOp(&result, bcast_name, dev_id);
+        }
       }
     }
   }
@@ -505,6 +510,44 @@ void MultiDevSSAGraphBuilder::CreateBroadcastOp(ir::Graph *result,
         i, p_name, p);
     vars.emplace_back(out_var);
     op_handle->AddOutput(out_var);
+  }
+}
+
+void MultiDevSSAGraphBuilder::CreateFusedBroadcastOp(
+    ir::Graph *result,
+    const std::vector<std::unordered_set<std::string>> &bcast_varnames) const {
+#ifdef PADDLE_WITH_CUDA
+  auto *op_handle = new FusedBroadcastOpHandle(
+      result->CreateEmptyNode("fused_broadcast", ir::Node::Type::kOperation),
+      local_scopes_, places_, nccl_ctxs_);
+#else
+  auto *op_handle = new FusedBroadcastOpHandle(
+      result->CreateEmptyNode("fused_broadcast" m ir::Node::Type::kOperation),
+      local_scopes_, places_);
+#endif
+  result->Get<GraphOps>(kGraphOps).emplace_back(op_handle);
+
+  for (size_t i = 0; i < places_.size(); ++i) {
+    auto &p = places_[i];
+    SetCommunicationContext(op_handle, p);
+  }
+
+  for (size_t dev_id = 0; dev_id < bcast_varnames.size(); ++dev_id) {
+    for (auto &p_name : bcast_varnames[dev_id]) {
+      auto *in =
+          result->Get<GraphVars>(kGraphVars).at(dev_id).at(p_name).back().get();
+      op_handle->AddInput(in);
+      for (size_t out_dev_id = 0; out_dev_id < places_.size(); ++out_dev_id) {
+        auto &p = places_[out_dev_id];
+        auto &vars =
+            result->Get<GraphVars>(kGraphVars).at(out_dev_id).at(p_name);
+        auto *out_var = new VarHandle(
+            result->CreateEmptyNode(p_name, ir::Node::Type::kVariable),
+            vars.size(), out_dev_id, p_name, p);
+        vars.emplace_back(out_var);
+        op_handle->AddOutput(out_var);
+      }
+    }
   }
 }
 
