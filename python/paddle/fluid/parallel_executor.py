@@ -31,7 +31,15 @@ BuildStrategy = core.ParallelExecutor.BuildStrategy
 
 class ParallelExecutor(object):
     """
-    ParallelExecutor can run program in parallel.
+    ParallelExecutor is designed for data parallelism, which focuses on distributing
+    the data across different nodes and every node operates on the data in parallel.
+    If you use ParallelExecutor to run the current program on GPU, the node means GPU
+    device, and ParallelExecutor will get the available GPU device automatically on
+    the current machine. If you use ParallelExecutor to run the current program on CPU,
+    the node means the CPU device, and you can specify the CPU device number by adding
+    'CPU_NUM' environment variable, for example 'CPU_NUM=4', if the environment variable
+    is not found, ParallelExecutor will call `multiprocessing.cpu_count` to get the number
+    of CPUs in the system.
 
     Args:
         use_cuda (bool): Whether to use CUDA or not.

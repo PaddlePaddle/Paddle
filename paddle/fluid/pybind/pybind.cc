@@ -647,19 +647,22 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is INT, num_threads represents the size of thread pool that
             used to run the operators of the current program in ParallelExecutor.
-            If :math:`num\_threads = 1`, all the operators will execute one by one,
-            but the order maybe difference between iteration.
+            If :math:`num\_threads=1`, all the operators will execute one by one,
+            but the order maybe difference between iterations.
             If it is not set, it will be set in ParallelExecutor according to the
-            device count, for GPU, :math:`num\_threads = device\_count * 4`, for CPU,
-            :math:`num\_threads = CPU\_NUM * 4`, the :math:`CPU\_NUM` is an environment
-            variable, if it is not set, ParallelExecutor will get the cpu count by call
+            device type and device count, for GPU, :math:`num\_threads=device\_count*4`, for CPU,
+            :math:`num\_threads=CPU\_NUM*4`, the explanation of:math:`CPU\_NUM` is in ParallelExecutor.
+            if it is not set, ParallelExecutor will get the cpu count by calling
             `multiprocessing.cpu_count()`. Default 0.)DOC")
       .def_property(
           "use_cuda",
           [](const ExecutionStrategy &self) { return self.use_cuda_; },
           [](ExecutionStrategy &self, bool use_cuda) {
             self.use_cuda_ = use_cuda;
-          })
+          })  // FIXME(chengduo): Doesn't add doc for 'use_cuda', use_cuda may
+      // make user confuse, because ParallelExecutor has a parameter named
+      // 'use_cuda' too, in current implementation, ParallelExecutor's
+      // 'use_cuda' will rewrite ExecutionStrategy's 'use_cuda'.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
@@ -679,11 +682,12 @@ All parameter, weight, gradient are variables in Paddle.
           },
           R"DOC(The type is INT, num_iteration_per_drop_scope indicates how
                 many iterations intervals to clean up the temp variables which
-                is generated during execution, it may make the execution faster,
+                is generated during execution. It may make the execution faster,
                 because the temp variable's shape maybe the same between two iterations. Default 100.
 
                 NOTES:
-                    1. If you fetch data, ParallelExecutor will clean up the temp variables.
+                    1. If you fetch data when calling the 'run', the ParallelExecutor
+                       will clean up the temp variables at the end of the current iteration.
                     2. In some NLP model, it may cause the GPU memory is insufficient,
                        in this case, you should reduce `num_iteration_per_drop_scope`.
               )DOC");
@@ -762,7 +766,9 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property(
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
-          [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+          [](BuildStrategy &self, bool b) {
+            self.enable_data_balance_ = b;
+          })  // FIXME(chengudo): enable_data_balance seems not important
       .def_property(
           "fuse_elewise_add_act_ops",
           [](const BuildStrategy &self) {
