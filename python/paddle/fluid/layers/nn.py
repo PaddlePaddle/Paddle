@@ -5830,12 +5830,13 @@ def rank_loss(label, left, right, name=None):
 
 def margin_rank_loss(label, left, right, margin=0.1, name=None):
     """
-    **Margin Rank loss layer for RankNet**
+    **Margin Rank loss layer for rank problem**
      Args:
-        label (Variable): Indicats whether A ranked higher than B or not.
-        left (Variable): RankNet's output score for doc A.
-        right (Variable): RankNet's output score for doc B.
-        name(str|None): A name for this layer(optional). If set None, the layer
+        label (Variable): Indicats whether left higher than (right + margin) or not.
+        left (Variable): rank score for left.
+        right (Variable): rank score for right.
+        margin (float): Indicates the margin to be added to right
+        name (str|None): A name for this layer (optional). If set None, the layer
                         will be named automatically.
      Returns:
         list: The value of rank loss.
@@ -5843,7 +5844,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
         ValueError: Any of label, left, and right is not a variable.
      Examples:
          .. code-block:: python
-             label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
+            label = fluid.layers.data(name="label", shape=[4, 1], dtype="float32")
             left = fluid.layers.data(name="left", shape=[4, 1], dtype="float32")
             right = fluid.layers.data(name="right", shape=[4, 1], dtype="float32")
             out = fluid.layers.margin_rank_loss(label, left, right)
