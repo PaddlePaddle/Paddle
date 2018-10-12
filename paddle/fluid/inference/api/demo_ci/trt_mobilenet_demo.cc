@@ -18,15 +18,9 @@ limitations under the License. */
 
 #include <gflags/gflags.h>
 #include <glog/logging.h>  // use glog instead of CHECK to avoid importing other paddle header files.
-#include <fstream>
-#include <iostream>
-
-// #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/inference/demo_ci/utils.h"
 
-#ifdef PADDLE_WITH_CUDA
 DECLARE_double(fraction_of_gpu_memory_to_use);
-#endif
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(refer, "", "path to reference result for comparison.");
 DEFINE_string(
@@ -38,7 +32,7 @@ namespace paddle {
 namespace demo {
 
 /*
- * Use the native fluid engine to inference the demo.
+ * Use the tensorrt fluid engine to inference the demo.
  */
 void Main() {
   std::unique_ptr<PaddlePredictor> predictor;
