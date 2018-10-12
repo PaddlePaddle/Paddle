@@ -987,6 +987,7 @@ PDNode *patterns::ConvBias::operator()(
   // Bias stored in elementwise_add
   auto *eltwise_bias_var = pattern->NewNode(eltwise_bias_repr())
                                ->AsInput()
+                               ->assert_is_persistable_var()
                                ->assert_is_op_input("elementwise_add", "Y");
   // output
   auto *eltwise_out_var = pattern->NewNode(eltwise_out_repr())
