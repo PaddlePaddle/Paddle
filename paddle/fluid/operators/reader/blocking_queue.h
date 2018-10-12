@@ -72,7 +72,7 @@ class BlockingQueue {
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(elem);
       *elem = queue_.front();
-      if (!test_mode_) {
+      if (UNLIKELY(!test_mode_)) {
         queue_.pop_front();
       }
       send_cv_.notify_one();
