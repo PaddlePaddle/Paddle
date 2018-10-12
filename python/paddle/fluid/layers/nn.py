@@ -5831,7 +5831,7 @@ def rank_loss(label, left, right, name=None):
 def margin_rank_loss(label, left, right, margin=0.1, name=None):
     """
     Margin Ranking Loss Layer for ranking problem,
-    which compare left score and right score passed in.
+    which compares left score and right score passed in.
     The ranking loss can be defined as following equation:
 
     .. math::
@@ -5842,7 +5842,7 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
        label (Variable): Indicates whether the left is ranked higher than the right or not.
        left (Variable): Ranking score for left.
        right (Variable): Ranking score for right.
-       margin (float): Indicates the given margin to be added to right
+       margin (float): Indicates the given margin.
        name (str|None): A name for this layer (optional). If set None, the layer
                        will be named automatically.
     Returns:
@@ -5857,12 +5857,12 @@ def margin_rank_loss(label, left, right, margin=0.1, name=None):
            out = fluid.layers.margin_rank_loss(label, left, right)
     """
     helper = LayerHelper('margin_rank_loss', **locals())
-    if not (isinstance(label, Variable)):
-        raise ValueError("The label should be a Variable")
-    if not (isinstance(left, Variable)):
-        raise ValueError("The left should be a Variable")
-    if not (isinstance(right, Variable)):
-        raise ValueError("The right should be a Variable")
+    if not isinstance(label, Variable):
+        raise ValueError("The label should be a Variable.")
+    if not isinstance(left, Variable):
+        raise ValueError("The left should be a Variable.")
+    if not isinstance(right, Variable):
+        raise ValueError("The right should be a Variable.")
     out = helper.create_tmp_variable(left.dtype)
     act = helper.create_tmp_variable(left.dtype)
     helper.append_op(
