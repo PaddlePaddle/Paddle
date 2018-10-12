@@ -48,16 +48,23 @@ void BroadcastOpHandle::RunImpl() {
     var_scopes.emplace_back(s->FindVar(kLocalExecScopeName)->Get<Scope *>());
   }
 
+  BroadcastOneVar(*in_var_handle, out_var_handles, var_scopes);
+}
+
+void BroadcastOpHandle::BroadcastOneVar(
+    const VarHandle &in_var_handle,
+    const std::vector<VarHandle *> &out_var_handles,
+    const std::vector<const Scope *> &var_scopes) {
   auto *in_var =
-      var_scopes.at(in_var_handle->scope_idx_)->FindVar(in_var_handle->name_);
+      var_scopes.at(in_var_handle.scope_idx_)->FindVar(in_var_handle.name_);
   PADDLE_ENFORCE_NOT_NULL(in_var);
   Tensor &in_tensor = VariableVisitor::GetMutableTensor(in_var);
 
-  InitOutputValue(*in_var_handle, out_var_handles);
+  InitOutputValue(in_var_handle, out_var_handles);
 
   if (platform::is_cpu_place(in_tensor.place())) {
     for (auto *out_var_handle : out_var_handles) {
-      if (out_var_handle->IsTheSameVar(*in_var_handle)) {
+      if (out_var_handle->IsTheSameVar(in_var_handle)) {
         continue;
       }
       auto &out_p = out_var_handle->place_;
@@ -114,12 +121,12 @@ void BroadcastOpHandle::RunImpl() {
         }
       }
 
-      if (!out_handle->IsTheSameVar(*in_var_handle)) {
-        auto out_var = var_scopes.at(in_var_handle->scope_idx_)
+      if (!out_handle->IsTheSameVar(in_var_handle)) {
+        auto out_var = var_scopes.at(in_var_handle.scope_idx_)
                            ->FindVar(out_var_handles[0]->name_);
         paddle::framework::TensorCopy(
-            in_tensor, in_var_handle->place_,
-            *(dev_ctxes_.at(in_var_handle->place_)),
+            in_tensor, in_var_handle.place_,
+            *(dev_ctxes_.at(in_var_handle.place_)),
             &VariableVisitor::GetMutableTensor(out_var));
       }
     });

@@ -728,6 +728,10 @@ All parameter, weight, gradient are variables in Paddle.
           "enable_data_balance",
           [](const BuildStrategy &self) { return self.enable_data_balance_; },
           [](BuildStrategy &self, bool b) { self.enable_data_balance_ = b; })
+      .def_property(
+          "fuse_broadcast_op",
+          [](const BuildStrategy &self) { return self.fuse_broadcast_op_; },
+          [](BuildStrategy &self, bool b) { self.fuse_broadcast_op_ = b; })
       .def_property("fuse_elewise_add_act_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_elewise_add_act_ops_;
@@ -735,6 +739,10 @@ All parameter, weight, gradient are variables in Paddle.
                     [](BuildStrategy &self, bool b) {
                       self.fuse_elewise_add_act_ops_ = b;
                     })
+      .def_property(
+          "multi_batch_merge_repeats",
+          [](const BuildStrategy &self) { return self.merge_batches_repeats_; },
+          [](BuildStrategy &self, int b) { self.merge_batches_repeats_ = b; })
       .def("_create_passes_from_strategy",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy();

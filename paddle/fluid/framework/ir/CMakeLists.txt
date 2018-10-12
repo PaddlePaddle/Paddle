@@ -38,7 +38,7 @@ pass_library(fc_lstm_fuse_pass inference)
 pass_library(embedding_fc_lstm_fuse_pass inference)
 pass_library(fc_gru_fuse_pass inference)
 pass_library(seq_concat_fc_fuse_pass inference)
-pass_library(conv_bn_fuse_pass inference)
+pass_library(multi_batch_merge_pass base)
 
 cc_library(fuse_elewise_add_act_pass SRCS fuse_elewise_add_act_pass.cc DEPS pass graph_pattern_detector )
 
