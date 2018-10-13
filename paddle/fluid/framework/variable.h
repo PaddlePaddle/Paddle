@@ -38,12 +38,8 @@ class Variable {
 
   template <typename T>
   T* GetMutable() {
-    if (!holder_) {
+    if (!IsType<T>()) {
       holder_.reset(new PlaceholderImpl<T>(new T()));
-    } else {
-      PADDLE_ENFORCE(IsType<T>(),
-                     "Variable must be type %s, the holding type is %s",
-                     typeid(T).name(), holder_->Type().name());
     }
     return static_cast<T*>(holder_->Ptr());
   }
