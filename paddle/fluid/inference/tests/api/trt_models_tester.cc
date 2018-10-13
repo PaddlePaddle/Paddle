@@ -51,11 +51,8 @@ void CompareTensorRTWithFluid(int batch_size, std::string model_dirname) {
   config1.model_dir = model_dirname;
   config1.max_batch_size = batch_size;
 
-  auto predictor0 =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config0);
-  auto predictor1 =
-      CreatePaddlePredictor<MixedRTConfig,
-                            PaddleEngineKind::kAutoMixedTensorRT>(config1);
+  auto predictor0 = CreatePaddlePredictor<NativeConfig>(config0);
+  auto predictor1 = CreatePaddlePredictor<MixedRTConfig>(config1);
   // Prepare inputs
   int height = 224;
   int width = 224;
