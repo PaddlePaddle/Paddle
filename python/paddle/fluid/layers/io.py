@@ -598,6 +598,7 @@ def _py_reader(capacity,
                             lod_level=lod_level))
                     counter += 1
 
+            data_names = [feed_data.name for feed_data in actual_feed_list]
             feeder = DataFeeder(
                 feed_list=actual_feed_list, place=core.CPUPlace())
             paddle_reader = feeder.decorate_reader(
@@ -605,7 +606,7 @@ def _py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
+                yield [slots[data_name] for data_name in data_names]
 
         __set_tensor_provider__(__tensor_provider__)
 
