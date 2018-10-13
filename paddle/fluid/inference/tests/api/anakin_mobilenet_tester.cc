@@ -34,9 +34,7 @@ contrib::AnakinConfig GetConfig() {
 
 TEST(inference, anakin) {
   auto config = GetConfig();
-  auto predictor =
-      CreatePaddlePredictor<contrib::AnakinConfig, PaddleEngineKind::kAnakin>(
-          config);
+  auto predictor = CreatePaddlePredictor<contrib::AnakinConfig>(config);
 
   float data[1 * 3 * 224 * 224] = {1.0f};
   PaddleTensor tensor;
