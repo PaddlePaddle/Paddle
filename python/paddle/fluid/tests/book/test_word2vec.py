@@ -17,6 +17,7 @@ from __future__ import print_function
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 import unittest
 import os
 import numpy as np
@@ -83,7 +84,18 @@ def train(use_cuda, is_sparse, is_parallel, save_dirname, is_local=True):
         avg_cost, predict_word = __network__(
             [first_word, second_word, third_word, forth_word, next_word])
     else:
-        raise ValueError('is_parallel=True not implemented')
+        places = get_places()
+        pd = ParallelDo(places)
+        with pd.do():
+            avg_cost, predict_word = __network__(
+                list(
+                    map(pd.read_input, [
+                        first_word, second_word, third_word, forth_word,
+                        next_word
+                    ])))
+            pd.write_output(avg_cost)
+
+        avg_cost = fluid.layers.mean(pd())
 
     sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
     sgd_optimizer.minimize(avg_cost)
@@ -250,7 +262,7 @@ def inject_test_method(use_cuda, is_sparse, is_parallel):
 
 for use_cuda in (False, True):
     for is_sparse in (False, True):
-        for is_parallel in (False, ):  # TODO(paddle-dev): Add parallel test.
+        for is_parallel in (False, True):
             inject_test_method(use_cuda, is_sparse, is_parallel)
 
 if __name__ == '__main__':
