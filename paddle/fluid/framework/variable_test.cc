@@ -33,10 +33,9 @@ TEST(Variable, GetMutable) {
   const Tensor& tt = v->Get<Tensor>();
   EXPECT_EQ(1234, tt.content_);
 
-  try {
-    v->GetMutable<std::string>();
-  } catch (std::exception& e) {
-    return;
-  }
-  EXPECT_TRUE(false);
+  std::string* s = v->GetMutable<std::string>();
+  *s = "hello";
+
+  const std::string& ss = v->Get<std::string>();
+  EXPECT_EQ("hello", ss);
 }
