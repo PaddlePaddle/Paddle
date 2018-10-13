@@ -256,17 +256,8 @@ struct MixedRTConfig : public NativeConfig {
 
 // NOTE WIP, not stable yet.
 struct AnalysisConfig : public NativeConfig {
-  enum class IrPassMode {
-    kSystem,   // Use system default passes, not customize.
-    kInclude,  // Specify the passes in `ir_passes`.
-    kExclude   // Specify the disabled passes in `ir_passes`.
-  };
-
   // Determine whether to perform graph optimization.
   bool enable_ir_optim = true;
-  // Manually determine the IR passes to run.
-  IrPassMode ir_mode{IrPassMode::kExclude};
-  std::vector<std::string> ir_passes{"embedding_fc_lstm_fuse_pass"};
 
   // Get a pass builder for customize the passes in IR analysis phase.
   PaddlePassBuilder* pass_builder();
@@ -278,8 +269,8 @@ struct AnalysisConfig : public NativeConfig {
   // NOT stable yet.
   bool _use_mkldnn{false};
 
-  explicit AnalysisConfig(bool use_gpu=false);
-  explicit AnalysisConfig(const AnalysisConfig &other);
+  explicit AnalysisConfig(bool use_gpu = false);
+  explicit AnalysisConfig(const AnalysisConfig& other);
 
  private:
   std::unique_ptr<PaddlePassBuilder> pass_builder_;

@@ -49,9 +49,6 @@ bool AnalysisPredictor::Init(
 
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
-    LOG(WARNING) << "ir optimize only supports CPU currently, enable_ir_optim "
-                    "is turned false.";
-    config_.enable_ir_optim = false;
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -201,10 +198,10 @@ bool AnalysisPredictor::GetFetch(std::vector<PaddleTensor> *outputs,
 }
 
 void AnalysisPredictor::OptimizeInferenceProgram() {
-  LOG(INFO) << "optimize begin";
-  FLAGS_IA_enable_ir = config_.enable_ir_optim;
+  // Currentlly, the IR not works with TensorRT, turn TensorRT off temporarily.
   FLAGS_IA_enable_tensorrt_subgraph_engine = false;
   FLAGS_IA_output_storage_path = "";  // Don't output the model.
+  FLAGS_IA_enable_ir = config_.enable_ir_optim;
   // Analyze inference_program
   if (!config_.model_dir.empty()) {
     argument_.fluid_model_dir.reset(new std::string(config_.model_dir));
@@ -220,10 +217,10 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 
   argument_.origin_program_desc.reset(
       new ProgramDesc(*inference_program_->Proto()));
-  PADDLE_ENFORCE(
-      config_.ir_mode == contrib::AnalysisConfig::IrPassMode::kExclude,
-      "Only kExclude is supported yet.");
-  Analyzer().DisableIrPasses(config_.ir_passes).Run(&argument_);
+
+  auto passes = config_.pass_builder()->AllPasses();
+  if (!config_.enable_ir_optim) passes.clear();
+  Analyzer(passes).Run(&argument_);
 
   CHECK(argument_.transformed_program_desc);
   VLOG(5) << "to prepare executor";
@@ -328,6 +325,11 @@ bool AnalysisPredictor::LoadProgramDesc() {
         static_cast<framework::Executor *>(tmp_exe.get()), scope_.get(),
         config_.prog_file, config_.param_file);
   } else {
+    if (config_.model_dir.empty() && config_.prog_file.empty()) {
+      LOG(ERROR)
+          << "Either model_dir or (prog_file, param_file) should be set.";
+      return false;
+    }
     LOG(ERROR) << string::Sprintf(
         "not valid model path '%s' or program path '%s'.", config_.model_dir,
         config_.param_file);

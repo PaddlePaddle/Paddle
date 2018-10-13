@@ -210,7 +210,6 @@ void SetConfig(AnalysisConfig *cfg) {
   cfg->device = 0;
   cfg->specify_input_name = true;
   cfg->enable_ir_optim = true;
-  cfg->ir_passes.clear();  // Do not exclude any pass.
 }
 
 void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
@@ -228,6 +227,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_rnn1, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
+  cfg.use_gpu = true;
+  cfg.fraction_of_gpu_memory = 0.1;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -308,13 +309,10 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   PaddlePlace place;
   int output_size{0};
 
-  auto predictor =
-      CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
-          config);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
 
   config.use_feed_fetch_ops = true;
-  auto native_predictor =
-      CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+  auto native_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   config.use_feed_fetch_ops = true;  // the analysis predictor needs feed/fetch.
   auto analysis_predictor =
