@@ -157,7 +157,50 @@ PYBIND11_PLUGIN(core) {
       .def("_get_double_element", TensorGetElement<double>)
       .def("_dtype", [](Tensor &self) { return ToDataType(self.type()); });
 
-  py::class_<LoDTensor, Tensor>(m, "LoDTensor")
+  py::class_<LoDTensor, Tensor>(m, "LoDTensor", R"DOC(
+    LoDTensor is a Tensor with optional LoD information.
+
+    np.array(lod_tensor) can convert LoDTensor to numpy array.
+    lod_tensor.lod() can retrieve the LoD information.
+
+    LoD is short for Level of Details and is usually used for varied sequence
+    length. You can skip the following comment if you don't need optional LoD.
+
+  For example:
+     A LoDTensor X can look like the example below. It contains 2 sequences.
+     The first has length 2 and the second has length 3, as described by x.lod.
+
+     The first tensor dimension 6=2+3 is calculated from LoD if it's available.
+     It means the total number of sequence element. In X, each element has 2
+     columns, hence [6, 2].
+
+      x.lod  = [[2, 3]]
+      x.data = [[1, 2], [3, 4],
+                [5, 6], [7, 8], [9, 10], [11, 12]]
+      x.shape = [6, 2]
+
+      LoD can have multiple levels (for example, a paragraph can have multiple
+      sentences and a sentence can have multiple words). In the following
+      LodTensor Y, the lod_level is 2. It means there are 2 sequence, the
+      first sequence length is 2 (has 2 sub-sequences), the second one's
+      length is 1. The first sequence's 2 sub-sequences have length 2 and 2,
+      respectively. And the second sequence's 1 sub-sequence has length 3.
+
+      y.lod = [[2 1], [2 2 3]]
+      y.shape = [2+2+3, ...]
+
+  Note:
+      In above description, LoD is length-based. In Paddle internal
+      implementation, lod is offset-based. Hence, internally,
+      y.lod is represented as [[0, 2, 3], [0, 2, 4, 7]] (length-based
+      equivlent would be [[2-0, 3-2], [2-0, 4-2, 7-4]]).
+
+      Sometimes LoD is called recursive_sequence_length to be more
+      self-explanatory. In this case, it must be length-based. Due to history
+      reasons. when LoD is called lod in public API, it might be offset-based.
+      Users should be careful about it.
+
+        )DOC")
       .def_buffer(
           [](Tensor &self) -> py::buffer_info { return CastToPyBuffer(self); })
       .def("__init__",
