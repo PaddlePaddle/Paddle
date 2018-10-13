@@ -20,13 +20,16 @@ namespace operators {
 class MergeIdsOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}");
-    AddInput(
-        "X",
-        "(LoDTensors) multi input tensor with shape{batch_num, N}, N is the "
-        "size of embedding table")
+    AddInput("Ids", "(LoDTensor) the input ids with shape{batch_num, 1}")
         .AsDuplicable();
-    AddOutput("Out", "(LoDTensor) The merged outputs of the input tensors.");
+    AddInput("Rows", "(LoDTensor) the input ids with shape{row_size, 1}, ")
+        .AsDuplicable();
+    AddInput("X",
+             "(LoDTensors) multi input tensor with shape{Rows, N}, N is the "
+             "size of embedding table")
+        .AsDuplicable();
+    AddOutput("Out", "(LoDTensor) The merged outputs of the input tensors.")
+        .AsDuplicable();
 
     AddComment(R"DOC(
 Merge multi LoDTensor's into one according to Ids's shard num.

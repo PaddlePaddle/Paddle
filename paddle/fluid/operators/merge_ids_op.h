@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <tuple>
+#include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor_util.h"
@@ -30,59 +32,65 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     if (!platform::is_cpu_place(place)) {
       PADDLE_THROW("MergeIds do not support GPU kernel");
     }
-    VLOG(3) << "run in MergeIdsOpKernel";
 
-    const auto *ids_var = ctx.InputVar("Ids");
-    PADDLE_ENFORCE(ids_var->IsType<framework::LoDTensor>(),
-                   "only support to merge Ids of LoDTensor");
-
-    const auto &ids_tensor = ids_var->Get<framework::LoDTensor>();
-    const auto &ids_dims = ids_tensor.dims();
-    const int64_t *ids = ids_tensor.data<int64_t>();
-
+    auto ids = ctx.MultiInput<framework::LoDTensor>("Ids");
+    auto row_ids = ctx.MultiInput<framework::LoDTensor>("Rows");
     auto x_tensors = ctx.MultiInput<framework::LoDTensor>("X");
+    auto outs = ctx.MultiOutput<framework::LoDTensor>("Out");
 
-    auto *out = ctx.Output<framework::LoDTensor>("Out");
+    PADDLE_ENFORCE_EQ(row_ids.size(), x_tensors.size(),
+                      "the number of Rows and X should be the same");
+    PADDLE_ENFORCE_EQ(ids.size(), outs.size(),
+                      "the number of Ids and Out should be the same");
 
-    int batch_size = 0;
+    int row_ids_size = 0;
+    int row_size = 0;
     int embedding_size = 0;
-    for (auto &input : x_tensors) {
-      if (framework::product(input->dims()) != 0) {
-        if (embedding_size == 0) {
-          embedding_size = input->dims()[1];
-        }
-        PADDLE_ENFORCE_EQ(embedding_size, input->dims()[1],
-                          "embedding size of all input should be the same");
-        batch_size += input->dims()[0];
+
+    for (int i = 0; i < x_tensors.size(); ++i) {
+      T *x_tensor = x_tensors[i];
+      T *row_id = row_ids[i];
+
+      if (embedding_size == 0) {
+        embedding_size = x_tensor->dims()[1];
       }
+      PADDLE_ENFORCE_EQ(embedding_size, x_tensor->dims()[1],
+                        "embedding size of all input should be the same");
+      row_size += x_tensor->dims()[0];
+      row_ids_size += row_id->dims()[0];
     }
     PADDLE_ENFORCE_EQ(
-        batch_size, ids_dims[0],
-        "the batch size of ids and merged embedding value should be the same");
+        row_size, row_ids_size,
+        "the merged X dim[0] and merged Rows dim[0] should be the same");
 
-    const size_t shard_num = x_tensors.size();
+    std::unordered_map<int64_t, std::tuple<T *, int64_t>> selected_rows_idx_map;
+    for (int i = 0; i < x_tensors.size(); ++i) {
+      T *x_tensor = x_tensors[i];
+      T *row_id = row_ids[i];
 
-    if (shard_num == 1) {
-      VLOG(3) << "only one shard, we can copy the data directly";
-      TensorCopy(*x_tensors[0], place, out);
-    } else {
-      std::vector<int> in_indexs(shard_num, 0);
-      auto *out_data = out->mutable_data<T>(
-          framework::make_ddim({batch_size, embedding_size}), place);
-      // copy data from ins[shard_num] to out.
-      for (int i = 0; i < ids_dims[0]; ++i) {
-        int64_t id = ids[i];
-        size_t shard_id = static_cast<size_t>(id) % shard_num;
-        int index = in_indexs[shard_id];
-        memcpy(out_data + embedding_size * i,
-               x_tensors[shard_id]->data<T>() + index * embedding_size,
-               sizeof(T) * embedding_size);
-        in_indexs[shard_id] += 1;
+      for (int j = 0; j < row_id->numel(); ++j) {
+        int64_t key = row_id->data()[j];
+        std::tuple<T *, int64_t> val = std::make_tuple(x_tensor, j);
+        selected_rows_idx_map.insert(std::make_pair(key, val));
       }
+    }
+    PADDLE_ENFORCE_EQ(row_ids_size, selected_rows_idx_map.size(),
+                      "the rows and tensor map size should be the same");
 
-      for (size_t i = 0; i < shard_num; ++i) {
-        PADDLE_ENFORCE_EQ(in_indexs[i], x_tensors[i]->dims()[0],
-                          "after merge, all data in x_tensor should be used");
+    for (int i = 0; i < outs.size(); ++i) {
+      auto *out_ids = ids[i];
+      auto *out = outs[i];
+      int nums = out_ids->dims()[0];
+      auto *out_data = out->mutable_data<T>(
+          framework::make_ddim({nums, embedding_size}), place);
+      for (int j = 0; j < nums; ++j) {
+        const int id = out_data->data();
+        auto *row_tuple = selected_rows_idx_map[id];
+        T *row_data = row_tuple->get(0);
+        int64_t row_idx = row_tuple->get(1);
+        memcpy(out_data + embedding_size * j,
+               row_data->data() + row_idx * embedding_size,
+               sizeof(T) * embedding_size);
       }
     }
   }
