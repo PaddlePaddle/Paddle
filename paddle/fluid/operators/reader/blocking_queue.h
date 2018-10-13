@@ -14,10 +14,13 @@
 
 #pragma once
 
+#include <gflags/gflags.h>
 #include <condition_variable>  // NOLINT
 #include <deque>
 
 #include "paddle/fluid/platform/enforce.h"
+
+DECLARE_bool(reader_queue_speed_test_mode);
 
 namespace paddle {
 namespace operators {
@@ -72,7 +75,9 @@ class BlockingQueue {
     if (!queue_.empty()) {
       PADDLE_ENFORCE_NOT_NULL(elem);
       *elem = queue_.front();
-      queue_.pop_front();
+      if (LIKELY(!FLAGS_reader_queue_speed_test_mode)) {
+        queue_.pop_front();
+      }
       send_cv_.notify_one();
       return true;
     } else {

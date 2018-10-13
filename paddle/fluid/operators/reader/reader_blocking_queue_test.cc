@@ -20,6 +20,10 @@
 
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
+DEFINE_bool(reader_queue_speed_test_mode, false,
+            "If set true, the queue.pop will only get data from queue but not "
+            "remove the data from queue for speed testing");
+
 using paddle::operators::reader::BlockingQueue;
 
 TEST(BlockingQueue, CapacityTest) {
