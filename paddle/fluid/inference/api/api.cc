@@ -97,4 +97,42 @@ void PaddleBuf::Free() {
   }
 }
 
+PaddlePassBuilder *contrib::AnalysisConfig::pass_builder() {
+  PADDLE_ENFORCE(
+      pass_builder_.get(),
+      "Should call constructor first, that will init the pass_builder_.");
+  return pass_builder_.get();
+}
+
+contrib::AnalysisConfig::AnalysisConfig(bool use_gpu) {
+  this->use_gpu = use_gpu;
+  if (use_gpu) {
+    pass_builder_.reset(new GpuPassStrategy);
+  } else {
+    pass_builder_.reset(new CpuPassStrategy);
+  }
+}
+
+contrib::AnalysisConfig::AnalysisConfig(const contrib::AnalysisConfig &other) {
+  // fields from Config
+  model_dir = other.model_dir;
+  // fields from NativeConfig
+  use_gpu = other.use_gpu;
+  device = other.device;
+  fraction_of_gpu_memory = other.fraction_of_gpu_memory;
+  prog_file = other.prog_file;
+  param_file = other.param_file;
+  specify_input_name = other.specify_input_name;
+  // fields from this.
+  enable_ir_optim = other.enable_ir_optim;
+  use_feed_fetch_ops = other.use_feed_fetch_ops;
+  _use_mkldnn = other._use_mkldnn;
+
+  if (use_gpu) {
+    pass_builder_.reset(new GpuPassStrategy);
+  } else {
+    pass_builder_.reset(new CpuPassStrategy);
+  }
+}
+
 }  // namespace paddle

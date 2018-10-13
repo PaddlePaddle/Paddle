@@ -25,6 +25,9 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
+// Here we include some header files with relative paths, for that in deploy,
+// the abstract path of this header file will be changed.
+#include "paddle_pass_builder.h"  // NOLINT
 
 namespace paddle {
 
@@ -265,12 +268,21 @@ struct AnalysisConfig : public NativeConfig {
   IrPassMode ir_mode{IrPassMode::kExclude};
   std::vector<std::string> ir_passes{"embedding_fc_lstm_fuse_pass"};
 
+  // Get a pass builder for customize the passes in IR analysis phase.
+  PaddlePassBuilder* pass_builder();
+
   // NOT stable yet.
   bool use_feed_fetch_ops{true};
 
   // NOTE this is just for internal development, please not use it.
   // NOT stable yet.
   bool _use_mkldnn{false};
+
+  explicit AnalysisConfig(bool use_gpu=false);
+  explicit AnalysisConfig(const AnalysisConfig &other);
+
+ private:
+  std::unique_ptr<PaddlePassBuilder> pass_builder_;
 };
 
 // Configurations for Anakin engine.

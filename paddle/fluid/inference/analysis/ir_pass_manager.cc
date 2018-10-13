@@ -40,6 +40,7 @@ void IRPassManager::Apply(const std::vector<std::string> &passes) {
   std::string pre_pass;
   int pass_num = 0;
   for (const std::string &pass_name : passes) {
+    LOG(INFO) << "pass_name: " << pass_name;
     PrettyLogEndl(Style::H2(), "--- Running IR pass [%s]", pass_name);
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
     if (pass_name == "graph_viz_pass") {
