@@ -27,7 +27,8 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
   Variable* g_feed_value = scope->Var(var_name);
-  auto& feed_inputs = *(g_feed_value->GetMutable<FeedFetchList>());
+  auto& feed_inputs =
+      *(g_feed_value->GetMutable<std::vector<paddle::framework::LoDTensor>>());
   if (index >= feed_inputs.size()) {
     feed_inputs.resize(index + 1);
   }
