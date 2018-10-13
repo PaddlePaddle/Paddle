@@ -221,3 +221,28 @@ TEST(BlockingQueue, MyClassTest) {
   q.Receive(&b);
   EXPECT_EQ(a.val_, b.val_);
 }
+
+TEST(BlockingQueue, reader_queue_speed_test_mode_flag) {
+  FLAGS_reader_queue_speed_test_mode = false;
+  size_t queue_size = 10;
+  BlockingQueue<size_t> q(queue_size);
+  for (size_t i = 0; i < queue_size; ++i) {
+    q.Send(i);
+  }
+  size_t b;
+  for (size_t i = 0; i < queue_size; ++i) {
+    q.Receive(&b);
+    EXPECT_EQ(b, i);
+  }
+  EXPECT_EQ(q.Size(), 0);
+
+  FLAGS_reader_queue_speed_test_mode = true;
+  for (size_t i = 0; i < queue_size; ++i) {
+    q.Send(i);
+  }
+  for (size_t i = 0; i < queue_size; ++i) {
+    q.Receive(&b);
+    EXPECT_EQ(b, 0);
+  }
+  EXPECT_EQ(q.Size(), queue_size);
+}
