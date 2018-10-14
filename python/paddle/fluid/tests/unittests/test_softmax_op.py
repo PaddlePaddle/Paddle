@@ -95,6 +95,8 @@ class TestSoftmaxCUDNNOp2(TestSoftmaxCUDNNOp):
                  "core is not compiled with CUDA")
 class TestSoftmaxFP16Op(TestSoftmaxOp):
     def init_kernel_type(self):
+        # float16 softmax pure GPU emplement may overflow.
+        self.use_cudnn = True
         self.dtype = np.float16
 
     def test_check_output(self):
