@@ -150,7 +150,7 @@ __global__ void GroupNormBackwardGetMeanAndVar(
     T dval = d_y[(bid * C + ccid) * imsize + imid];
     if (d_bias) d_bias_data += dval;
     if (d_scale) d_scale_data += val * dval;
-    dval = dval * scale[ccid];
+    if (scale) dval = dval * scale[ccid];
     d_var_data += (tmp - x_mean) * dval;
     T d_tmp = dval * var_inv;
     d_x[(bid * C + ccid) * imsize + imid] = d_tmp;
@@ -229,12 +229,8 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 
     // TODO(liangdun): need to check d_x is null
     d_x->mutable_data<T>(ctx.GetPlace());
-    d_scale->mutable_data<T>(ctx.GetPlace());
-    d_bias->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<platform::CUDADeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    set_zero(dev_ctx, d_scale, static_cast<T>(0));
-    set_zero(dev_ctx, d_bias, static_cast<T>(0));
 
     Tensor temp_var;
     temp_var.mutable_data<T>(var->dims(), ctx.GetPlace());
@@ -252,9 +248,17 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
     auto* mean_data = mean->data<T>();
     auto* var_data = var->data<T>();
     T* d_scale_data = nullptr;
-    if (d_scale) d_scale_data = d_scale->data<T>();
+    if (d_scale) {
+      d_scale->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_scale, static_cast<T>(0));
+      d_scale_data = d_scale->data<T>();
+    }
     T* d_bias_data = nullptr;
-    if (d_bias) d_bias_data = d_bias->data<T>();
+    if (d_bias) {
+      d_bias->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_bias, static_cast<T>(0));
+      d_bias_data = d_bias->data<T>();
+    }
 
     const T* scale_data = nullptr;
     if (scale) scale_data = scale->data<T>();

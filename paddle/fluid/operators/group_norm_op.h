@@ -115,13 +115,9 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
 
     // TODO(liangdun): need to check d_x is null
     d_x->mutable_data<T>(ctx.GetPlace());
-    d_scale->mutable_data<T>(ctx.GetPlace());
-    d_bias->mutable_data<T>(ctx.GetPlace());
     math::SetConstant<DeviceContext, T> set_zero;
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     set_zero(dev_ctx, d_x, static_cast<T>(0));
-    set_zero(dev_ctx, d_scale, static_cast<T>(0));
-    set_zero(dev_ctx, d_bias, static_cast<T>(0));
 
     auto* x_data = x->data<T>();
     auto* d_x_data = d_x->data<T>();
@@ -129,9 +125,17 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     auto* mean_data = mean->data<T>();
     auto* var_data = var->data<T>();
     T* d_scale_data = nullptr;
-    if (d_scale) d_scale_data = d_scale->data<T>();
+    if (d_scale) {
+      d_scale->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_scale, static_cast<T>(0));
+      d_scale_data = d_scale->data<T>();
+    }
     T* d_bias_data = nullptr;
-    if (d_bias) d_bias_data = d_bias->data<T>();
+    if (d_bias) {
+      d_bias->mutable_data<T>(ctx.GetPlace());
+      set_zero(dev_ctx, d_bias, static_cast<T>(0));
+      d_bias_data = d_bias->data<T>();
+    }
 
     const T* scale_data = nullptr;
     if (scale) scale_data = scale->data<T>();
@@ -169,10 +173,9 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
             T val = (tmp[0] - x_mean) * var_inv;
             T dval = iter_y_data[0];
             if (d_bias_data) d_bias_data[gid * group_size + cid] += dval;
-            if (d_scale_data) {
+            if (d_scale_data)
               d_scale_data[gid * group_size + cid] += val * dval;
-            }
-            dval = scale_data[gid * group_size + cid] * dval;
+            if (scale_data) dval = scale_data[gid * group_size + cid] * dval;
 
             d_var_inv += (tmp[0] - x_mean) * dval;
             T d_tmp = dval * var_inv;

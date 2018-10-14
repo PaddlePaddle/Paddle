@@ -21,6 +21,8 @@ import paddle.fluid.core as core
 import paddle.fluid as fluid
 from op_test import OpTest
 
+from testsuite import create_op
+
 
 def group_norm_naive(x, scale, bias, epsilon, groups):
     N, C, H, W = x.shape
@@ -41,6 +43,7 @@ class TestGroupNormOp(OpTest):
         self.dtype = np.float32
         self.shape = (2, 4, 3, 3)
         self.attrs = {'epsilon': 1e-5, 'groups': 2}
+        self.compare_between_place = False
         self.init_test_case()
 
         input = np.random.random(self.shape).astype(self.dtype)
@@ -57,16 +60,39 @@ class TestGroupNormOp(OpTest):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
 
     def test_check_output(self):
+        atol = 1e-4
         place = core.CPUPlace()
-        self.check_output_with_place(place, atol=1e-5)
+        self.check_output_with_place(place, atol=atol)
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(place, atol=atol)
+
+    def do_compare_between_place(self):
+        if not core.is_compiled_with_cuda(): return
+        place = core.CPUPlace()
+        place2 = core.CUDAPlace(0)
+        self.scope = core.Scope()
+        op_inputs = self.inputs if hasattr(self, "inputs") else dict()
+        op_outputs = self.outputs if hasattr(self, "outputs") else dict()
+        op_attrs = self.attrs if hasattr(self, "attrs") else dict()
+        self.op = create_op(self.scope, self.op_type, op_inputs, op_outputs,
+                            op_attrs)
+        inputs_to_check = set(['X', 'Scale', 'Bias'])
+        output_names = 'Y'
+        cpu_grads = self._get_gradient(inputs_to_check, place, output_names,
+                                       None)
+        gpu_grads = self._get_gradient(inputs_to_check, place2, output_names,
+                                       None)
+        self._assert_is_close(cpu_grads, gpu_grads, inputs_to_check, 0.005,
+                              "Gradient Check On %s" % str(place))
 
     def test_check_grad(self):
+        if self.compare_between_place:
+            self.do_compare_between_place()
+            return
         place = core.CPUPlace()
         self.check_grad_with_place(
-            place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=0.02)
+            place, set(['X', 'Scale', 'Bias']), 'Y', max_relative_error=0.005)
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
@@ -104,6 +130,13 @@ class TestGroupNormOpBigEps2(TestGroupNormOp):
 class TestGroupNormOpBigEps3(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
+
+
+class TestGroupNormOpLargeData(TestGroupNormOp):
+    def init_test_case(self):
+        self.shape = (2, 32, 64, 64)
+        self.attrs['groups'] = 8
+        self.compare_between_place = True
 
 
 if __name__ == '__main__':
