@@ -17,7 +17,13 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 namespace ir {
-const char Node::kControlDepVarName[] = "__control_var";
+constexpr char Node::kControlDepVarName[];
+int Node::count_ = 0;
+
+std::unique_ptr<Node> CreateNodeForTest(const std::string& name,
+                                        Node::Type type) {
+  return std::unique_ptr<Node>(new Node(name, type));
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

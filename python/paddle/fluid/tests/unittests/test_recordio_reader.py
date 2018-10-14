@@ -12,11 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 
 import paddle.fluid as fluid
-import paddle.v2 as paddle
-import paddle.v2.dataset.mnist as mnist
+import paddle
+import paddle.dataset.mnist as mnist
+from paddle.fluid.layers.io import open_recordio_file
 
 
 class TestRecordIO(unittest.TestCase):
@@ -38,7 +41,7 @@ class TestRecordIO(unittest.TestCase):
     def test_main(self, decorator_callback=None):
         # use new program
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data_file = fluid.layers.open_recordio_file(
+            data_file = open_recordio_file(
                 './mnist.recordio',
                 shapes=[[-1, 784], [-1, 1]],
                 lod_levels=[0, 0],

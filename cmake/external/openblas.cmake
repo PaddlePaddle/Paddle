@@ -17,8 +17,12 @@ IF(USE_EIGEN_FOR_BLAS)
 ENDIF(USE_EIGEN_FOR_BLAS)
 
 INCLUDE(cblas)
+# IF(WIN32 AND NOT ${CBLAS_FOUND})
+
+
 
 IF(NOT ${CBLAS_FOUND})
+
     INCLUDE(ExternalProject)
 
     SET(CBLAS_SOURCES_DIR ${THIRD_PARTY_PATH}/openblas)
@@ -30,7 +34,12 @@ IF(NOT ${CBLAS_FOUND})
         CACHE FILEPATH "openblas library." FORCE)
 
     ADD_DEFINITIONS(-DPADDLE_USE_OPENBLAS)
+    IF (WIN32)
+        SET(CBLAS_FOUND true)
+        MESSAGE(WARNING, "In windows, openblas only support msvc build, please build it manually and put it at " ${CBLAS_INSTALL_DIR})
+    ENDIF(WIN32)
 
+    IF (NOT WIN32)
     SET(OPENBLAS_CC "${CMAKE_C_COMPILER} -Wno-unused-but-set-variable -Wno-unused-variable")
     SET(OPENBLAS_COMMIT "v0.2.20")
 
@@ -69,7 +78,6 @@ IF(NOT ${CBLAS_FOUND})
     ENDIF()
 
     SET(COMMON_ARGS CC=${OPENBLAS_CC} NO_SHARED=1 NO_LAPACK=1 libs)
-
     ExternalProject_Add(
         extern_openblas
         ${EXTERNAL_PROJECT_LOG_ARGS}
@@ -84,6 +92,8 @@ IF(NOT ${CBLAS_FOUND})
         UPDATE_COMMAND      ""
         CONFIGURE_COMMAND   ""
     )
+    ELSE()
+    ENDIF(NOT WIN32)
     SET(CBLAS_PROVIDER openblas)
     IF(WITH_C_API)
         INSTALL(DIRECTORY ${CBLAS_INC_DIR} DESTINATION third_party/openblas)
@@ -107,6 +117,7 @@ IF(NOT ${CBLAS_FOUND})
 ENDIF(NOT ${CBLAS_FOUND})
 
 MESSAGE(STATUS "BLAS library: ${CBLAS_LIBRARIES}")
+MESSAGE(STATUS "BLAS Include: ${CBLAS_INC_DIR}")
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
 # FIXME(gangliao): generate cblas target to track all high performance

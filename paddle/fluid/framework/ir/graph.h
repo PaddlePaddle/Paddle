@@ -94,15 +94,25 @@ class Graph {
     };
   }
 
+  template <typename AttrType>
+  void SetNotOwned(const std::string &attr_name, AttrType *attr) {
+    PADDLE_ENFORCE(attrs_.count(attr_name) == 0, "%s already set in the graph",
+                   attr_name);
+    attrs_[attr_name] = attr;
+    attr_dels_[attr_name] = []() {};
+  }
+
   const std::unordered_set<ir::Node *> &Nodes() const { return node_set_; }
 
   // Create a normal variable with non-null VarDesc.
   ir::Node *CreateVarNode(VarDesc *var_desc) {
+    PADDLE_ENFORCE(var_desc);
     return AddNode(new ir::Node(var_desc));
   }
 
   // Create a normal runnable operator with OpDesc.
   ir::Node *CreateOpNode(OpDesc *op_desc) {
+    PADDLE_ENFORCE(op_desc);
     return AddNode(new ir::Node(op_desc));
   }
 
@@ -134,6 +144,22 @@ class Graph {
     return ret;
   }
 
+  void RemoveNode(ir::Node *node) {
+    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
+    node_set_.erase(node);
+    nodes_.erase(node);
+  }
+
+  // NOTE low performance, but simple and secure.
+  Node *RetriveNode(int id) {
+    for (auto &node : nodes_) {
+      if (node.second->id() == id) {
+        return node.second.get();
+      }
+    }
+    return nullptr;
+  }
+
  private:
   // This method takes ownership of `node`.
   ir::Node *AddNode(ir::Node *node) {
@@ -143,14 +169,8 @@ class Graph {
     return node;
   }
 
-  void RemoveNode(ir::Node *node) {
-    PADDLE_ENFORCE(node_set_.find(node) != node_set_.end());
-    node_set_.erase(node);
-    nodes_.erase(node);
-  }
-
   // NOTE: program_ shouldn't be exposed to user.
-  const ProgramDesc &program_;
+  const ProgramDesc program_;
   std::map<std::string, boost::any> attrs_;
   std::map<std::string, std::function<void(void)>> attr_dels_;
   std::map<ir::Node *, std::unique_ptr<ir::Node>> nodes_;

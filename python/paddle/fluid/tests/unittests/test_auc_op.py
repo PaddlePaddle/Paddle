@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import unittest
 import numpy as np
 from op_test import OpTest
@@ -24,20 +26,21 @@ class TestAucOp(OpTest):
         pred = np.random.random((128, 2)).astype("float32")
         labels = np.random.randint(0, 2, (128, 1))
         num_thresholds = 200
-        tp = np.zeros((num_thresholds, )).astype("int64")
-        tn = np.zeros((num_thresholds, )).astype("int64")
-        fp = np.zeros((num_thresholds, )).astype("int64")
-        fn = np.zeros((num_thresholds, )).astype("int64")
+
+        stat_pos = np.zeros((num_thresholds + 1, )).astype("int64")
+        stat_neg = np.zeros((num_thresholds + 1, )).astype("int64")
 
         self.inputs = {
             'Predict': pred,
             'Label': labels,
-            'TP': tp,
-            'TN': tn,
-            'FP': fp,
-            'FN': fn
+            "StatPos": stat_pos,
+            "StatNeg": stat_neg
         }
-        self.attrs = {'curve': 'ROC', 'num_thresholds': num_thresholds}
+        self.attrs = {
+            'curve': 'ROC',
+            'num_thresholds': num_thresholds,
+            "slide_steps": 1
+        }
 
         python_auc = metrics.Auc(name="auc",
                                  curve='ROC',
@@ -45,11 +48,9 @@ class TestAucOp(OpTest):
         python_auc.update(pred, labels)
 
         self.outputs = {
-            'AUC': python_auc.eval(),
-            'TPOut': python_auc.tp_list,
-            'FNOut': python_auc.fn_list,
-            'TNOut': python_auc.tn_list,
-            'FPOut': python_auc.fp_list
+            'AUC': np.array(python_auc.eval()),
+            'StatPosOut': np.array(python_auc._stat_pos),
+            'StatNegOut': np.array(python_auc._stat_neg)
         }
 
     def test_check_output(self):

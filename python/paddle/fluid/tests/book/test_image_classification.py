@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 import paddle
 import paddle.fluid as fluid
 import contextlib
@@ -60,7 +62,7 @@ def resnet_cifar10(input, depth=32):
         return tmp
 
     assert (depth - 2) % 6 == 0
-    n = (depth - 2) / 6
+    n = (depth - 2) // 6
     conv1 = conv_bn_layer(
         input=input, ch_out=16, filter_size=3, stride=1, padding=1)
     res1 = layer_warp(basicblock, conv1, 16, 16, n, 1)
@@ -221,7 +223,7 @@ def infer(use_cuda, save_dirname=None):
 
         # Use inference_transpiler to speedup
         inference_transpiler_program = inference_program.clone()
-        t = fluid.InferenceTranspiler()
+        t = fluid.transpiler.InferenceTranspiler()
         t.transpile(inference_transpiler_program, place)
 
         # Construct feed as a dictionary of {feed_target_name: feed_target_data}

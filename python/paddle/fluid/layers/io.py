@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 import multiprocessing
+import six
 import threading
 
 from ..data_feeder import DataFeeder
@@ -21,14 +24,13 @@ from .layer_function_generator import templatedoc
 from .. import core
 from ..executor import global_scope
 from ..framework import convert_np_dtype_to_dtype_, default_main_program, \
-    default_startup_program, program_guard, Program
+    default_startup_program, program_guard, Program, Variable
 from ..layer_helper import LayerHelper
 from ..unique_name import generate as unique_name
 
 __all__ = [
-    'data', 'open_recordio_file', 'open_files', 'read_file', 'shuffle', 'batch',
-    'double_buffer', 'random_data_generator', 'py_reader', 'Preprocessor',
-    'load'
+    'data', 'open_files', 'read_file', 'shuffle', 'batch', 'double_buffer',
+    'random_data_generator', 'py_reader', 'Preprocessor', 'load'
 ]
 
 
@@ -53,7 +55,11 @@ def data(name,
     Args:
        name(str): The name/alias of the function
        shape(list): Tuple declaring the shape.
-       append_batch_size(bool): Whether or not to append the data as a batch.
+       append_batch_size(bool):
+          1. If true, it prepends -1 to the shape.
+            For example if shape=[1], the resulting shape is [-1, 1].
+          2. If shape contains -1, such as shape=[1, -1],
+            append_batch_size will be enforced to be be False (ineffective).
        dtype(int|float): The type of data : float32, float_16, int etc
        type(VarType): The output type. By default it is LOD_TENSOR.
        lod_level(int): The LoD Level. 0 means the input data is not a sequence.
@@ -69,7 +75,7 @@ def data(name,
     """
     helper = LayerHelper('data', **locals())
     shape = list(shape)
-    for i in range(len(shape)):
+    for i in six.moves.range(len(shape)):
         if shape[i] is None:
             shape[i] = -1
             append_batch_size = False
@@ -206,7 +212,7 @@ class ListenAndServ(object):
             })
 
 
-def Send(endpoints, send_vars, sync=True):
+def Send(endpoints, send_vars, dummy_output=None, sync=True):
     """
     Send variables to the server side, and get vars from server
     side when server have finished running server side program.
@@ -220,6 +226,13 @@ def Send(endpoints, send_vars, sync=True):
     """
     assert (type(send_vars) == list)
 
+    if dummy_output is None:
+        dummy_output = []
+    elif isinstance(dummy_output, Variable):
+        dummy_output = [dummy_output]
+
+    assert (type(dummy_output) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
@@ -229,16 +242,21 @@ def Send(endpoints, send_vars, sync=True):
     helper.append_op(
         type="send",
         inputs={"X": send_vars},
+        outputs={"Out": dummy_output},
         attrs={
             "endpoints": endpoints,
             "epmap": epmap,
             rpc_op_role_name: core.op_proto_and_checker_maker.OpRole.RPC
         })
     if sync:
-        helper.append_op(type="send_barrier", attrs={"endpoints": endpoints})
+        helper.append_op(
+            type="send_barrier",
+            inputs={"X": dummy_output},
+            outputs={"Out": []},
+            attrs={"endpoints": endpoints})
 
 
-def Recv(endpoints, get_vars, sync=True):
+def Recv(endpoints, get_vars, dummy_input=None, sync=True):
     """
     Receive variables from server side
 
@@ -253,18 +271,28 @@ def Recv(endpoints, get_vars, sync=True):
     """
     assert (type(get_vars) == list)
 
+    if dummy_input is None:
+        dummy_input = []
+    elif isinstance(dummy_input, Variable):
+        dummy_input = [dummy_input]
+
+    assert (type(dummy_input) == list)
+
     epmap = endpoints.split(",")
     endpoints = list(set(epmap))
 
     helper = LayerHelper("Recv", **locals())
     helper.append_op(
         type="recv",
-        inputs={"X": get_vars},
+        inputs={"X": dummy_input},
         outputs={"Out": get_vars},
         attrs={"endpoints": endpoints,
                "epmap": epmap})
     if sync:
-        helper.append_op(type="fetch_barrier", attrs={"endpoints": endpoints})
+        helper.append_op(
+            type="fetch_barrier",
+            outputs={"Out": get_vars},
+            attrs={"endpoints": endpoints})
     return get_vars
 
 
@@ -483,7 +511,6 @@ def py_reader(capacity,
 
         1. The basic usage of :code:`py_reader` is as follows:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
@@ -491,7 +518,7 @@ def py_reader(capacity,
         >>>                                 shapes=[(-1,3,224,224), (-1,1)],
         >>>                                 dtypes=['float32', 'int64'])
         >>> reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> img, label = fluid.layers.read_file(reader)
         >>> loss = network(img, label) # some network definition
@@ -510,7 +537,6 @@ def py_reader(capacity,
         2. When training and testing are both performed, two different
         :code:`py_reader` should be created with different names, e.g.:
 
-        >>> import paddle.v2
         >>> import paddle.fluid as fluid
         >>> import paddle.dataset.mnist as mnist
         >>>
@@ -524,7 +550,7 @@ def py_reader(capacity,
         >>>                                       dtypes=['float32', 'int64'],
         >>>                                       name='train_reader')
         >>> train_reader.decorate_paddle_reader(
-        >>>     paddle.v2.reader.shuffle(paddle.batch(mnist.train())
+        >>>     paddle.reader.shuffle(paddle.batch(mnist.train())
         >>>
         >>> test_reader = fluid.layers.py_reader(capacity=32,
         >>>                                      shapes=[(-1,3,224,224), (-1,1)],
@@ -674,7 +700,7 @@ def py_reader(capacity,
 
         def __tensor_provider__():
             for slots in paddle_reader():
-                yield [slots[str(idx)] for idx in xrange(counter)]
+                yield [slots[str(idx)] for idx in six.moves.xrange(counter)]
 
         __set_tensor_provider__(__tensor_provider__)
 
@@ -750,7 +776,7 @@ def open_files(filenames,
     else:
         buffer_size = int(buffer_size)
 
-    if isinstance(filenames, basestring):
+    if isinstance(filenames, six.string_types):
         filenames = [filenames]
     dtypes = [convert_np_dtype_to_dtype_(dt) for dt in dtypes]
     shape_concat = []
@@ -983,9 +1009,9 @@ class Preprocessor(object):
     @contextlib.contextmanager
     def block(self):
         self.status = Preprocessor.IN_SUB_BLOCK
-        self.sub_block = self.main_prog.create_block()
+        self.sub_block = self.main_prog._create_block()
         yield
-        self.main_prog.rollback()
+        self.main_prog._rollback()
         self.status = Preprocessor.AFTER_SUB_BLOCK
         if not self._is_completed():
             raise RuntimeError(
@@ -1005,7 +1031,7 @@ class Preprocessor(object):
         source_lod_levels = self.underlying_reader.desc.lod_levels()
         self.source_var_names = [
             unique_name("preprocessor_source")
-            for _ in range(len(source_shapes))
+            for _ in six.moves.range(len(source_shapes))
         ]
         source_vars = []
         for var_name, shape, dtype, lod_level in zip(

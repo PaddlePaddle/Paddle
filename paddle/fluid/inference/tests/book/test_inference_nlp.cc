@@ -21,6 +21,8 @@ limitations under the License. */
 #include "paddle/fluid/inference/tests/test_helper.h"
 #include "paddle/fluid/platform/cpu_helper.h"
 
+#include "paddle/fluid/framework/feed_fetch_method.h"
+
 DEFINE_string(model_path, "", "Directory of the inference model.");
 DEFINE_string(data_file, "", "File of input index data.");
 DEFINE_int32(repeat, 100, "Running the inference program repeat times");
@@ -124,14 +126,35 @@ void ThreadRunInfer(
   std::map<std::string, const paddle::framework::LoDTensor*> feed_targets;
   PADDLE_ENFORCE_EQ(feed_target_names.size(), 1UL);
 
+  // map the data of feed_targets to feed_holder
+  for (auto* op : inference_program->Block(0).AllOps()) {
+    if (op->Type() == "feed") {
+      std::string feed_target_name = op->Output("Out")[0];
+      int idx = boost::get<int>(op->GetAttr("col"));
+      paddle::framework::SetFeedVariable(scope, *feed_targets[feed_target_name],
+                                         "feed", idx);
+    }
+  }
+
   auto& inputs = jobs[tid];
   auto start_ms = GetCurrentMs();
   for (size_t i = 0; i < inputs.size(); ++i) {
     feed_targets[feed_target_names[0]] = inputs[i];
-    executor.RunPreparedContext(ctx.get(), &sub_scope, &feed_targets,
-                                &fetch_targets, false /*create_local_scope*/);
+    executor.RunPreparedContext(ctx.get(), &sub_scope,
+                                false /*create_local_scope*/);
   }
   auto stop_ms = GetCurrentMs();
+
+  // obtain the data of fetch_targets from fetch_holder
+  for (auto* op : inference_program->Block(0).AllOps()) {
+    if (op->Type() == "fetch") {
+      std::string fetch_target_name = op->Input("X")[0];
+      int idx = boost::get<int>(op->GetAttr("col"));
+      *fetch_targets[fetch_target_name] =
+          paddle::framework::GetFetchVariable(*scope, "fetch", idx);
+    }
+  }
+
   scope->DeleteScope(&sub_scope);
   LOG(INFO) << "Tid: " << tid << ", process " << inputs.size()
             << " samples, avg time per sample: "

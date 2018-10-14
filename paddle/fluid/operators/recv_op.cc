@@ -44,12 +44,15 @@ class RecvOp : public framework::OperatorBase {
     distributed::RPCClient* rpc_client =
         distributed::RPCClient::GetInstance<RPCCLIENT_T>();
 
+    std::vector<distributed::VarHandlePtr> rets;
     for (size_t i = 0; i < outs.size(); i++) {
       VLOG(3) << "getting " << outs[i] << " from " << epmap[i];
-      rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]);
+      rets.push_back(rpc_client->AsyncGetVar(epmap[i], ctx, scope, outs[i]));
     }
     if (sync_mode) {
-      PADDLE_ENFORCE(rpc_client->Wait(), "internal error in RPCClient");
+      for (size_t i = 0; i < rets.size(); i++) {
+        PADDLE_ENFORCE(rets[i]->Wait(), "internal error in RPCClient");
+      }
     }
   }
 };
@@ -57,6 +60,8 @@ class RecvOp : public framework::OperatorBase {
 class RecvOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
+    AddInput("X", "(Any) Dummy inputs, used for control dependency")
+        .AsDuplicable();
     AddOutput("Out", "(Tensor) Variables to get from server.").AsDuplicable();
     AddComment(R"DOC(
 Recv operator

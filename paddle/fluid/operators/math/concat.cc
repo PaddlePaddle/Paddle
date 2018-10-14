@@ -27,7 +27,7 @@ template <typename T>
 class ConcatFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const platform::CPUDeviceContext& context,
-                  const std::vector<framework::Tensor>& input, const int axis,
+                  const std::vector<framework::Tensor>& input, int axis,
                   framework::Tensor* output) {
     // TODO(zcd): Add input data validity checking
     int num = input.size();
@@ -48,16 +48,16 @@ class ConcatFunctor<platform::CPUDeviceContext, T> {
     auto cpu_place = boost::get<platform::CPUPlace>(context.GetPlace());
 
     // computation
-    for (int k = 0; k < out_rows; ++k) {
-      T* dst_ptr = output->data<T>() + k * out_cols;
-      int col_idx = 0;
-      for (int j = 0; j < num; ++j) {
-        int col_len = input_cols[j];
-        const T* src_prt = input[j].data<T>() + k * col_len;
-        memory::Copy(cpu_place, dst_ptr + col_idx, cpu_place, src_prt,
-                     sizeof(T) * col_len);
-        col_idx += col_len;
+    auto output_data = output->data<T>();
+    int col_idx = 0;
+    for (int j = 0; j < num; ++j) {
+      int col_len = input_cols[j];
+      auto input_data = input[j].data<T>();
+      for (int k = 0; k < out_rows; ++k) {
+        memory::Copy(cpu_place, output_data + k * out_cols + col_idx, cpu_place,
+                     input_data + k * col_len, sizeof(T) * col_len);
       }
+      col_idx += col_len;
     }
   }
 };
@@ -109,16 +109,11 @@ class ConcatGradFunctor<platform::CPUDeviceContext, T> {
     }
   }
 };
+#define DEFINE_FUNCTOR(type)                                      \
+  template class ConcatFunctor<platform::CPUDeviceContext, type>; \
+  template class ConcatGradFunctor<platform::CPUDeviceContext, type>;
 
-template class ConcatFunctor<platform::CPUDeviceContext, int>;
-template class ConcatFunctor<platform::CPUDeviceContext, int64_t>;
-template class ConcatFunctor<platform::CPUDeviceContext, float>;
-template class ConcatFunctor<platform::CPUDeviceContext, double>;
-
-template class ConcatGradFunctor<platform::CPUDeviceContext, int>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, int64_t>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, float>;
-template class ConcatGradFunctor<platform::CPUDeviceContext, double>;
+FOR_ALL_TYPES(DEFINE_FUNCTOR);
 
 }  // namespace math
 }  // namespace operators

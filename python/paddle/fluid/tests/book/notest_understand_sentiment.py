@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function
+
 from paddle.fluid.layers.device import get_places
+from paddle.fluid.layers.control_flow import ParallelDo
 import unittest
 import paddle.fluid as fluid
 import paddle
@@ -145,7 +148,7 @@ def train(word_dict,
             data, label, input_dim=dict_dim, class_dim=class_dim)
     else:
         places = get_places()
-        pd = fluid.layers.ParallelDo(places)
+        pd = ParallelDo(places)
         with pd.do():
             cost, acc, _ = net_method(
                 pd.read_input(data),

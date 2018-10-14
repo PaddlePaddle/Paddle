@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+from __future__ import print_function
 import contextlib
 
 from .layer_function_generator import autodoc, templatedoc
@@ -19,9 +21,10 @@ from .. import core
 from ..framework import Program, Variable, Operator
 from ..layer_helper import LayerHelper, unique_name
 from ..initializer import force_init_on_cpu
-from .ops import logical_and, logical_not, logical_or
+from .nn import logical_and, logical_not, logical_or
 import numpy
 import warnings
+import six
 from functools import reduce
 
 __all__ = [
@@ -38,7 +41,6 @@ __all__ = [
     'DynamicRNN',
     'StaticRNN',
     'reorder_lod_tensor_by_rank',
-    'ParallelDo',
     'Print',
     'is_empty',
 ]
@@ -186,7 +188,6 @@ def Print(input,
                message="The content of some_layer: ")
     '''
     helper = LayerHelper('print', **locals())
-    out = helper.create_tmp_variable(dtype=helper.input_dtype())
     helper.append_op(
         type='print',
         inputs={'In': input},
@@ -199,9 +200,7 @@ def Print(input,
             'print_tensor_shape': print_tensor_shape,
             'print_tensor_lod': print_tensor_lod,
             'print_phase': print_phase.upper()
-        },
-        outputs={'Out': out})
-    return out
+        })
 
 
 class BlockGuard(object):
@@ -218,10 +217,10 @@ class BlockGuard(object):
         self.main_program = main_program
 
     def __enter__(self):
-        self.main_program.create_block()
+        self.main_program._create_block()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.main_program.rollback()
+        self.main_program._rollback()
         if exc_type is not None:
             return False  # re-raise exception
         return True
@@ -259,7 +258,7 @@ class ParallelDo(object):
       # ParallelDo version & Single-thread version
       if thread_num > 1:
           places = fluid.layers.get_places(thread_num)
-          pd = fluid.layers.ParallelDo(places)
+          pd = fluid.layers.control_flow.ParallelDo(places)
           with pd.do():
               images = pd.read_input(images)
               label = pd.read_input(label)
@@ -602,7 +601,7 @@ class StaticRNN(object):
         boot_memories = []
         pre_memories = []
         memories = []
-        for _, mem in list(self.memories.items()):
+        for _, mem in six.iteritems(self.memories):
             boot_memories.append(mem.init)
             pre_memories.append(mem.pre_mem.name)
             mem_var = rnn_block.var(mem.mem.name)
@@ -658,6 +657,7 @@ class While(object):
 
     Args:
         cond (Variable): condition used to compare.
+        is_test(bool): A flag indicating whether execution is in test phase.
         name (str): The name of this layer.
 
     Examples:
@@ -680,7 +680,7 @@ class While(object):
     IN_WHILE_BLOCK = 1
     AFTER_WHILE_BLOCK = 2
 
-    def __init__(self, cond, name=None):
+    def __init__(self, cond, is_test=False, name=None):
         self.helper = LayerHelper("while", name=name)
         self.status = While.BEFORE_WHILE_BLOCK
         if not isinstance(cond, Variable):
@@ -691,6 +691,7 @@ class While(object):
         if reduce(lambda a, b: a * b, cond.shape, 1) != 1:
             raise TypeError("condition should be a bool scalar")
         self.cond_var = cond
+        self.is_test = is_test
 
     def block(self):
         return WhileGuard(self)
@@ -732,7 +733,8 @@ class While(object):
             },
             outputs={'Out': out_vars,
                      'StepScopes': [step_scope]},
-            attrs={'sub_block': while_block})
+            attrs={'sub_block': while_block,
+                   "is_test": self.is_test})
 
 
 def lod_rank_table(x, level=0):
@@ -1269,8 +1271,8 @@ class ConditionalBlock(object):
         parent_block.append_op(
             type='conditional_block',
             inputs={
-                'X': self.inputs,
-                'Params': param_list,
+                'Cond': self.inputs,
+                'Input': param_list,
             },
             outputs={'Out': out_list,
                      'Scope': [step_scope]},
@@ -1568,6 +1570,10 @@ class DynamicRNN(object):
 
     The dynamic RNN can mark multiple variables as its output. Use `drnn()` to
     get the output sequence.
+    
+    NOTES:
+        Currently it is not supported that setting is_sparse to True of any 
+        layers within DynamicRNN.
     """
     BEFORE_RNN = 0
     IN_RNN = 1
