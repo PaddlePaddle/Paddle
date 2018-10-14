@@ -46,7 +46,8 @@ FeedFetchList ScopeBufferedSSAGraphExecutor::Run(
           &local_scope;
 
       for (auto &info : var_infos_) {
-        if (scope->FindVar(info.name_) != nullptr) {
+        if (scope->FindVar(info.name_) != nullptr &&
+            info.name_.find("_generated_var_0") == info.name_.npos) {
           continue;
         }
 
