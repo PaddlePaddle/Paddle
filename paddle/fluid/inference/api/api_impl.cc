@@ -24,13 +24,13 @@ limitations under the License. */
 #include "paddle/fluid/inference/api/api_impl.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/platform/light_profiler.h"
 
 DEFINE_bool(profile, false, "Turn on profiler for fluid");
 
 namespace paddle {
 namespace {
-using paddle::inference::Timer;
-
 template <class T>
 std::string num2str(T a) {
   std::stringstream istr;
@@ -38,6 +38,9 @@ std::string num2str(T a) {
   return istr.str();
 }
 }  // namespace
+
+using platform::Timer;
+
 
 void NativePaddlePredictor::PrepareFeedFetch() {
   for (auto *op : inference_program_->Block(0).AllOps()) {

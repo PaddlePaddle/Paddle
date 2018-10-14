@@ -19,6 +19,7 @@
 #include <string>
 #include <thread>  // NOLINT
 #include <vector>
+#include "paddle/fluid/platform/light_profiler.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
 #include "paddle/fluid/inference/analysis/ut_helper.h"
@@ -119,7 +120,7 @@ void TestOneThreadPrediction(
   int batch_size = FLAGS_batch_size;
   int num_times = FLAGS_repeat;
   auto predictor = CreateTestPredictor(config, use_analysis);
-  Timer timer;
+  platform::Timer timer;
   timer.tic();
   for (int i = 0; i < num_times; i++) {
     for (size_t j = 0; j < inputs.size(); j++) {
@@ -150,7 +151,7 @@ void TestMultiThreadPrediction(
       // The inputs of each thread are all the same.
       std::vector<std::vector<PaddleTensor>> inputs_tid = inputs;
       std::vector<PaddleTensor> outputs_tid;
-      Timer timer;
+      platform::Timer timer;
       timer.tic();
       for (int i = 0; i < num_times; i++) {
         for (size_t j = 0; j < inputs_tid.size(); j++) {

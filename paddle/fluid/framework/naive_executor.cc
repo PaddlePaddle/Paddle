@@ -22,6 +22,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/string/pretty_log.h"
+#include "paddle/fluid/platform/light_profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -70,9 +71,13 @@ void NaiveExecutor::Prepare(Scope *parent_scope,
 }
 
 void NaiveExecutor::Run() {
+  int op_id = 0;
   for (auto &op : ops_) {
     VLOG(4) << "run " << op->Type();
+    auto op_key = op->Type() + "/" + std::to_string(op_id);
+    ADD_ONCE_TIMER(op_key);
     op->Run(*scope_, place_);
+    ++op_id;
   }
 }
 

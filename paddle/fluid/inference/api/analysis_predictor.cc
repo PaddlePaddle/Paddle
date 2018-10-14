@@ -26,6 +26,7 @@
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/platform/light_profiler.h"
 
 DECLARE_bool(profile);
 
@@ -85,7 +86,7 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
                             std::vector<PaddleTensor> *output_data,
                             int batch_size) {
   VLOG(3) << "Predictor::predict";
-  inference::Timer timer;
+  platform::Timer timer;
   timer.tic();
   // set feed variable
   std::vector<framework::LoDTensor> feeds;

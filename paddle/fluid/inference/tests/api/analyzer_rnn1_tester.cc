@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/platform/light_profiler.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 
 DEFINE_bool(with_precision_check, true, "turn on test");
@@ -227,8 +228,8 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
 TEST(Analyzer_rnn1, profile) {
   contrib::AnalysisConfig cfg;
   SetConfig(&cfg);
-  cfg.use_gpu = true;
-  cfg.fraction_of_gpu_memory = 0.1;
+  cfg.use_gpu = false;
+  //cfg.fraction_of_gpu_memory = 0.1;
   std::vector<PaddleTensor> outputs;
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
@@ -353,7 +354,7 @@ TEST(Analyzer_rnn1, ZeroCopy) {
   ASSERT_EQ(num_ops,
             13);  // After graph optimization, only 13 operators exists.
 
-  Timer timer;
+  platform::Timer timer;
   double total_time{0};
   double native_total_time{0};
   double analysis_total_time{0.};
@@ -466,7 +467,7 @@ TEST(Analyzer_rnn1, ZeroCopyMultiThread) {
 
       // Prepare data for AnalysisPredictor
       DataRecord data(FLAGS_infer_data, FLAGS_batch_size);
-      Timer timer;
+      platform::Timer timer;
       double total_time{0};
 
       for (int i = 0; i < FLAGS_repeat; i++) {
