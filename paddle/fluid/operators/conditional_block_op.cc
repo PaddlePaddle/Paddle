@@ -99,9 +99,12 @@ class ConditionalBlockOp : public ConditionalOp {
     }
 
     if (need_run) {
-      auto *scope_var = scope.FindVar(Output("Scope"));
+      std::string scope_var_name = Output("Scope");
+      auto *scope_var = scope.FindVar(scope_var_name);
       PADDLE_ENFORCE(scope_var != nullptr, "Must set scope");
+      // LOG(ERROR) << "before   !!!  " << scope_var_name;
       auto *scopes = scope_var->GetMutable<std::vector<framework::Scope *>>();
+      // LOG(ERROR) << "after!!!!";
       scopes->resize(1);
       scopes->front() = &scope.NewScope();
       auto &cur_scope = *scopes->front();
@@ -246,12 +249,26 @@ class ConditionalBlockGradMaker : public framework::SingleGradOpDescMaker {
   }
 };
 
+class ConditionalBlockTypeInference : public framework::VarTypeInference {
+ public:
+  void operator()(const framework::OpDesc &op_desc,
+                  framework::BlockDesc *block) const override {
+    // LOG(ERROR) << "!!!infer conditional block type";
+    for (auto &out_var : op_desc.Output("Scope")) {
+      auto &scope_var = block->FindRecursiveOrCreateVar(out_var);
+      // LOG(ERROR) << "!!!done infer conditional block type" << out_var;
+      scope_var.SetType(framework::proto::VarType::STEP_SCOPES);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OPERATOR(conditional_block, ops::ConditionalBlockOp,
                   ops::ConditionalBlockOpProtoMaker,
-                  ops::ConditionalBlockGradMaker);
+                  ops::ConditionalBlockGradMaker,
+                  ops::ConditionalBlockTypeInference);
 REGISTER_OPERATOR(conditional_block_grad, ops::ConditionalBlockGradOp,
                   ops::ConditionalBlockGradInferShape);
