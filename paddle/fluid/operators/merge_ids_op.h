@@ -80,11 +80,11 @@ class MergeIdsOpKernel : public framework::OpKernel<T> {
     for (int i = 0; i < outs.size(); ++i) {
       auto *out_ids = ids[i];
       auto *out = outs[i];
-      int nums = out_ids->dims()[0];
+      int nums = static_cast<int>(out_ids->dims()[0]);
       auto *out_data = out->mutable_data<T>(
           framework::make_ddim({nums, embedding_size}), place);
       for (int j = 0; j < nums; ++j) {
-        const int id = out_data->data();
+        int id = out_ids->data<T>()[j];
         auto *row_tuple = selected_rows_idx_map[id];
         T *row_data = row_tuple->get(0);
         int64_t row_idx = row_tuple->get(1);

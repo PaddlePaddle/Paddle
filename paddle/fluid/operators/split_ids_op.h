@@ -42,17 +42,16 @@ class SplitIdsOpKernel : public framework::OpKernel<T> {
       int batch_size = 0;
       const auto ids_tensors = ctx.MultiInput<framework::LoDTensor>("Ids");
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
-        auto *ids = ids_tensors[i];
-        batch_size += ids->dims()[0];
+        batch_size += ids_tensors[i]->dims()[0];
       }
       VLOG(4) << "Get Total BatchSize is: " << batch_size;
 
-      batch_size = 0;
       std::vector<T> all_ids(batch_size);
+      int offset = 0;
       for (size_t i = 0; i < ids_tensors.size(); ++i) {
         T *ids = ids_tensors[i];
-        std::memcpy(all_ids.data() + batch_size, ids->data(), ids->numel());
-        batch_size += ids->numel();
+        std::memcpy(all_ids.data() + offset, ids->data(), ids->numel());
+        offset += ids->numel();
       }
 
       std::set<T> st(all_ids.begin(), all_ids.end());
