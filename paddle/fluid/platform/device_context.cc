@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/framework/rw_lock.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 #endif
 
 namespace paddle {
@@ -209,8 +210,11 @@ CUDADeviceContext::CUDADeviceContext(CUDAPlace place)
   PADDLE_ENFORCE(dynload::cublasSetStream(cublas_handle_, stream_));
 
 #if CUDA_VERSION >= 9000
-  PADDLE_ENFORCE(
-      dynload::cublasSetMathMode(cublas_handle_, CUBLAS_TENSOR_OP_MATH));
+  if (!FLAGS_cudnn_deterministic) {
+    // Tensor Core math is undetermisnistic
+    PADDLE_ENFORCE(
+        dynload::cublasSetMathMode(cublas_handle_, CUBLAS_TENSOR_OP_MATH));
+  }
 #endif  // CUDA>=9000
   if (dynload::HasCUDNN()) {
     cudnn_holder_.reset(new CudnnHolder(&stream_, place));
