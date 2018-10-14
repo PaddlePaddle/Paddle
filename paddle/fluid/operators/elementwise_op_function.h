@@ -97,8 +97,8 @@ class MidWiseTransformIterator;
 // NOTE(dzhwinter): ptrdiff_t in iterator is deperecated in c++17
 template <typename T>
 class RowwiseTransformIterator<T, platform::CPUDeviceContext>
-    : public std::iterator<std::random_access_iterator_tag, typename T,
-                           std::ptrdiff_t, typename T *, typename T &> {
+    : public std::iterator<std::random_access_iterator_tag, T,
+                           std::ptrdiff_t, T *, T &> {
  public:
   RowwiseTransformIterator(const T *ptr, int n) : ptr_(ptr), i_(0), n_(n) {}
 

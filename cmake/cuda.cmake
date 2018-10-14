@@ -172,6 +172,9 @@ set(CUDA_PROPAGATE_HOST_FLAGS OFF)
 
 if (NOT WIN32) # windows msvc2015 support c++11 natively. 
 # -std=c++11 -fPIC not recoginize by msvc
+list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
+list(APPEND CUDA_NVCC_FLAGS "-w" "-Xcompiler -fPIC")
+else(NOT WIN32)
 list(APPEND CUDA_NVCC_FLAGS "-w" "-Xcompiler -fPIC" "-Xcompiler /w")
 endif(NOT WIN32)
 
