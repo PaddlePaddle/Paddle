@@ -70,8 +70,8 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsDispensable();
     AddInput("Bias",
              "Bias is a 1-dimensional tensor of size C "
-             "that is applied to the output");
-    .AsDispensable();
+             "that is applied to the output")
+        .AsDispensable();
     AddOutput("Y", "Result after normalization.");
     AddOutput("Mean", "Mean of each group.").AsIntermediate();
     AddOutput("Variance", "Variance of each group.").AsIntermediate();
