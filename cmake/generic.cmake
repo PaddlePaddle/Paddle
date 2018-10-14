@@ -243,7 +243,6 @@ function(cc_library TARGET_NAME)
       # add libxxx.lib prefix in windows
       set(${TARGET_NAME}_LIB_NAME "${CMAKE_STATIC_LIBRARY_PREFIX}${TARGET_NAME}${CMAKE_STATIC_LIBRARY_SUFFIX}" CACHE STRING "output library name for target ${TARGET_NAME}")
   endif(WIN32)
-  message("flags" ${CMAKE_CXX_FLAGS})
   if(cc_library_SRCS)
     if(cc_library_SHARED OR cc_library_shared) # build *.so
       add_library(${TARGET_NAME} SHARED ${cc_library_SRCS})

@@ -27,7 +27,7 @@ namespace ir {
 class Node {
  public:
   enum class Type { kOperation, kVariable };
-  static char kControlDepVarName[];
+  static constexpr char kControlDepVarName[] = "__control_var";
 
   explicit Node(const std::string& name, Type type)
       : name_(name),
