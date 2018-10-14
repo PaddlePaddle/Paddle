@@ -114,6 +114,7 @@ class NCEKernel : public framework::OpKernel<T> {
     if (label != nullptr) {
       num_true_class = label->dims()[1];
     }
+    int64_t sampled_labels_num = sample_labels->dims()[1];
     //    T b = 1. / num_total_classes * num_neg_samples;
     // forward bias
     auto bias = context.Input<Tensor>("Bias");
@@ -140,21 +141,13 @@ class NCEKernel : public framework::OpKernel<T> {
     }
     // forward cost
     for (int64_t i = 0; i < sample_labels->dims()[0]; ++i) {
-      int64_t j = 0;
       out_data[i] = 0;
       T w = sample_weight == nullptr ? 1. : sample_weight_data[i];
-      // for true classes
-      for (; j < num_true_class; ++j) {
-        float b = sampler->Probability(j) * num_neg_samples;
-        T o = sample_out_data[i * sample_out->dims()[1] + j];
-        T cost = -log(o / (o + b));
-        out_data[i] += w * cost;
-      }
-      // for sampled neg classes
-      for (; j < sample_labels->dims()[1]; ++j) {
-        float b = sampler->Probability(j) * num_neg_samples;
-        T o = sample_out_data[i * sample_out->dims()[1] + j];
-        T cost = -log(b / (o + b));
+      for (int64_t j = 0; j < sampled_labels_num; ++j) {
+        int64_t target = sample_labels_data[i * sampled_labels_num + j];
+        T o = sample_out_data[i * sampled_labels_num + j];
+        float b = sampler->Probability(target) * num_neg_samples;
+        T cost = (j < num_true_class) ? -log(o / (o + b)) : -log(b / (o + b));
         out_data[i] += w * cost;
       }
     }
@@ -214,15 +207,15 @@ class NCEGradKernel : public framework::OpKernel<T> {
         sample_grad.mutable_data<T>(sample_labels->dims(), context.GetPlace());
     // backward cost
     for (int64_t i = 0; i < sample_labels->numel(); ++i) {
-      float b = sampler->Probability(i) * num_neg_samples;
+      int64_t label_idx = i % sample_labels->dims()[1];
+      int64_t sample_idx = i / sample_labels->dims()[1];
+      float b = sampler->Probability(sample_labels_data[i]) * num_neg_samples;
       T o = sample_out_data[i];
-      T w = sample_weight == nullptr
-                ? 1
-                : sample_weight_data[i / sample_labels->dims()[1]];
-      sample_grad_data[i] = (i % sample_labels->dims()[1]) < num_true_class
+      T w = sample_weight == nullptr ? 1 : sample_weight_data[sample_idx];
+      sample_grad_data[i] = label_idx < num_true_class
                                 ? w * (b / (o + b)) * (o - 1)
                                 : w * (o * (1 - o) / (o + b));
-      sample_grad_data[i] *= d_out_data[i / sample_labels->dims()[1]];
+      sample_grad_data[i] *= d_out_data[sample_idx];
     }
     // get d_bias
     auto d_bias = context.Output<Tensor>(framework::GradVarName("Bias"));

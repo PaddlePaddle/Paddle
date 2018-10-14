@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/math/sampler.h"
+#include <iostream>
 #include <queue>
 #include <utility>
 #include <vector>
@@ -72,13 +73,14 @@ CustomSampler::CustomSampler(int64_t range, const float* probabilities,
   std::queue<std::pair<int64_t, float>> bigs;
   std::queue<std::pair<int64_t, float>> littles;
   for (int64_t i = 0; i <= range; ++i) {
-    probs_->push_back(probabilities[i]);
-    if (probabilities[i] > 1.0) {
-      bigs.emplace(i, probabilities[i]);
-    } else if (probabilities[i] < 1.0) {
-      littles.emplace(i, probabilities[i]);
+    (*probs_)[i] = probabilities[i];
+    float normal_prob = probabilities[i] * (range + 1);
+    if (normal_prob - 1.0 > 1e-4) {
+      bigs.emplace(i, normal_prob);
+    } else if (1.0 - normal_prob > 1e-4) {
+      littles.emplace(i, normal_prob);
     } else {
-      (*alias_probs_)[i] = probabilities[i];
+      (*alias_probs_)[i] = normal_prob;
       (*alias_)[i] = -1;
     }
   }
@@ -91,9 +93,9 @@ CustomSampler::CustomSampler(int64_t range, const float* probabilities,
     (*alias_probs_)[little.first] = little.second;
     (*alias_)[little.first] = big.first;
     auto big_left = big.second - (1 - little.second);
-    if (big_left > 1.0) {
+    if (big_left - 1.0 > 1e-4) {
       bigs.emplace(big.first, big_left);
-    } else if (big_left < 1.0) {
+    } else if (1.0 - big_left > 1e-4) {
       littles.emplace(big.first, big_left);
     } else {
       (*alias_probs_)[big.first] = big_left;

@@ -4025,6 +4025,16 @@ def nce(input,
             loss = layers.nce(input=embs, label=words[label_word],
                           num_total_classes=dict_size, param_attr='nce.w',
                           bias_attr='nce.b')
+
+            #or use custom distribution
+            dist = fluid.layers.assign(input=np.array([0.05,0.5,0.1,0.3,0.05]).astype("float32"))
+            loss = layers.nce(input=embs, label=words[label_word],
+                          num_total_classes=5, param_attr='nce.w',
+                          bias_attr='nce.b',
+                          num_neg_samples=3,
+                          sampler="custom_dist",
+                          custom_dist=dist)
+            
     """
     helper = LayerHelper('nce', **locals())
     assert isinstance(input, Variable)
@@ -4065,7 +4075,7 @@ def nce(input,
     elif sampler == "custom_dist":
         assert custom_dist is not None
         assert isinstance(custom_dist, Variable)
-        inputs['CustomDist'] = custom_dist
+        inputs['CustomDistribution'] = custom_dist
         sampler = 2
     else:
         raise Exception("Unsupported sampler type.")
