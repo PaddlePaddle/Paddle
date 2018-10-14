@@ -43,31 +43,91 @@ __global__ void MomentumKernel(const T* p, const T* g, const T* v,
 }
 
 template <typename T>
+__global__ void SparseMomentumKernel(const T* p, const T* g, const T* v,
+                                     const T* lr, const T mu,
+                                     const int64_t* grad_rows,
+                                     const size_t grad_row_numel,
+                                     const size_t grad_row_size,
+                                     const T use_nesterov, T* p_out, T* v_out) {
+  for (int i = blockIdx.x; i < grad_row_size; i += gridDim.x) {
+    for (int j = threadIdx.x; j < grad_row_numel; j += blockDim.x) {
+      size_t p_i = grad_rows[i] * grad_row_numel + j;
+      size_t g_i = i * grad_row_numel + j;
+      v_out[g_i] = v[g_i] * mu + g[g_i];
+      if (use_nesterov) {
+        p_out[p_i] = p[p_i] - (g[g_i] + v_out[g_i] * mu) * lr[0];
+      } else {
+        p_out[p_i] = p[p_i] - v_out[g_i] * lr[0];
+      }
+    }
+  }
+}
+
+template <typename T>
 class MomentumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
-    auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
-    auto param = ctx.Input<framework::Tensor>("Param");
-    auto velocity = ctx.Input<framework::Tensor>("Velocity");
-    auto grad = ctx.Input<framework::Tensor>("Grad");
-    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
-
-    T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
-    T* v_out = velocity_out->mutable_data<T>(ctx.GetPlace());
-
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
 
-    auto* p = param->data<T>();
-    auto* v = velocity->data<T>();
-    auto* g = grad->data<T>();
-    auto* lr = learning_rate->data<T>();
+    auto learning_rate = ctx.Input<framework::Tensor>("LearningRate");
+    auto param = ctx.Input<framework::Tensor>("Param");
+    auto param_out = ctx.Output<framework::Tensor>("ParamOut");
+    auto* velocity_var = ctx.InputVar("Velocity");
+    auto* grad_var = ctx.InputVar("Grad");
 
-    int block = 512;
-    int grid = (param->numel() + block - 1) / block;
-    MomentumKernel<T><<<grid, block, 0, ctx.cuda_device_context().stream()>>>(
-        p, g, v, lr, mu, param->numel(), use_nesterov, p_out, v_out);
+    if (grad_var->IsType<framework::LoDTensor>()) {
+      PADDLE_ENFORCE(velocity_var->IsType<framework::LoDTensor>(),
+                     "Unmatched Type of Param and Grad");
+      auto velocity = ctx.Input<framework::Tensor>("Velocity");
+      auto grad = ctx.Input<framework::Tensor>("Grad");
+      auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
+      T* p_out = param_out->mutable_data<T>(ctx.GetPlace());
+      T* v_out = velocity_out->mutable_data<T>(ctx.GetPlace());
+      auto* p = param->data<T>();
+      auto* v = velocity->data<T>();
+      auto* g = grad->data<T>();
+      auto* lr = learning_rate->data<T>();
+
+      const int kThreadPerBlock = 256;
+      int grid = (param->numel() + kThreadPerBlock - 1) / kThreadPerBlock;
+      MomentumKernel<
+          T><<<grid, kThreadPerBlock, 0, ctx.cuda_device_context().stream()>>>(
+          p, g, v, lr, mu, param->numel(), use_nesterov, p_out, v_out);
+    } else if (grad_var->IsType<framework::SelectedRows>()) {
+      // sparse update embedding with selectedrows
+      PADDLE_ENFORCE(velocity_var->IsType<framework::SelectedRows>(),
+                     "Unmatched Type of Param and Grad");
+      auto velocity = ctx.Input<framework::SelectedRows>("Velocity");
+      auto grad = ctx.Input<framework::SelectedRows>("Grad");
+      auto velocity_out = ctx.Output<framework::SelectedRows>("VelocityOut");
+
+      // sparse update maybe empty.
+      if (grad->rows().size() == 0) {
+        return;
+      }
+      PADDLE_ENFORCE(grad->height() == velocity->height(),
+                     "Unmatched gradient and velocity.");
+      auto* p_out = param_out->mutable_data<T>(ctx.GetPlace());
+      auto* v_out =
+          velocity_out->mutable_value()->mutable_data<T>(ctx.GetPlace());
+      auto* lr = learning_rate->data<T>();
+      auto* p = param->data<T>();
+      auto* g = grad->value().data<T>();
+      auto* v = velocity->value().data<T>();
+      size_t grad_row_numel = grad->value().numel() / grad->rows().size();
+      size_t grad_row_size = grad->rows().size();
+      framework::Vector<int64_t> rows(grad->rows());
+
+      const int kThreadPerBlock = 256;
+      int grid = (param->numel() + kThreadPerBlock - 1) / kThreadPerBlock;
+      SparseMomentumKernel<
+          T><<<grid, kThreadPerBlock, 0, ctx.cuda_device_context().stream()>>>(
+          p, g, v, lr, mu, rows.CUDAData(ctx.GetPlace()), grad_row_numel,
+          grad->rows().size(), use_nesterov, p_out, v_out);
+    } else {
+      PADDLE_THROW("Unsupported Variable Type of Grad");
+    }
   }
 };
 
