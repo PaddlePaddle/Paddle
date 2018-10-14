@@ -211,11 +211,9 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<Tensor>("X");
-    // auto* y = ctx.Input<Tensor>("Y");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* var = ctx.Input<Tensor>("Variance");
     auto* scale = ctx.Input<Tensor>("Scale");
-    // auto* bias = ctx.Input<Tensor>("Bias");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto groups = ctx.Attr<int>("groups");
 
@@ -262,9 +260,6 @@ class GroupNormGradKernel<platform::CUDADeviceContext, T>
 
     const T* scale_data = nullptr;
     if (scale) scale_data = scale->data<T>();
-
-    // const T* bias_data = nullptr;
-    // if (bias) bias_data = bias->data<T>();
 
     int imsize = x_dims[2] * x_dims[3];
     int block_size = std::min(512, imsize);

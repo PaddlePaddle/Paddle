@@ -97,11 +97,9 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     const float epsilon = ctx.Attr<float>("epsilon");
     auto* x = ctx.Input<Tensor>("X");
-    // auto* y = ctx.Input<Tensor>("Y");
     auto* mean = ctx.Input<Tensor>("Mean");
     auto* var = ctx.Input<Tensor>("Variance");
     auto* scale = ctx.Input<Tensor>("Scale");
-    // auto* bias = ctx.Input<Tensor>("Bias");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto groups = ctx.Attr<int>("groups");
 
@@ -140,9 +138,6 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
     const T* scale_data = nullptr;
     if (scale) scale_data = scale->data<T>();
 
-    // const T* bias_data = nullptr;
-    // if (bias) bias_data = bias->data<T>();
-
     int imsize = x_dims[2] * x_dims[3];
     auto* iter_x_data = x_data;
     auto* iter_d_x_data = d_x_data;
@@ -156,16 +151,6 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
                               static_cast<int>(x_dims[1] - gid * group_size));
         auto* tmp = iter_x_data;
         auto* tmp2 = iter_d_x_data;
-        /*
-        for (int cid=0; cid<number; cid++) {
-            for (int imid=0; imid<imsize; imid++, tmp++, iter_y_data++) {
-                T val=(tmp[0] - x_mean) * var_inv;
-                if (scale_data) val *= scale_data[gid*group_size+cid];
-                if (bias_data) val += d_bias_data[gid*group_size+cid];
-                iter_y_data[0] = val;
-            }
-        }
-        */
         T d_var_inv = 0, d_x_mean = 0;
         for (int cid = 0; cid < number; cid++) {
           for (int imid = 0; imid < imsize;
@@ -183,27 +168,13 @@ class GroupNormGradKernel : public framework::OpKernel<T> {
             d_x_mean -= d_tmp;
           }
         }
-        /*
-        x_mean /= number * imsize;
-        x_var /= number * imsize;
-        x_var = x_var - x_mean*x_mean;
-        T var_inv = 1.0 / sqrt(x_var + epsilon);
-        T x_mean = mean_data[bid*groups + gid];
-        T x_var = var_data[bid*groups + gid];
-        */
+
         T d_x_var =
             -1.0 / (2 * (x_var + epsilon) * sqrt(x_var + epsilon)) * d_var_inv;
         d_x_mean -= 2 * d_x_var * x_mean;
         d_x_var /= number * imsize;
         d_x_mean /= number * imsize;
-        /*
-        for (int cid=0; cid<number; cid++) {
-            for (int imid=0; imid<imsize; imid++, iter_x_data++) {
-                x_mean += iter_x_data[0];
-                x_var += iter_x_data[0] * iter_x_data[0];
-            }
-        }
-        */
+
         iter_d_x_data = tmp2;
         for (int cid = 0; cid < number; cid++) {
           for (int imid = 0; imid < imsize;

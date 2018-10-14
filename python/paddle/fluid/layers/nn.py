@@ -2318,34 +2318,14 @@ def group_norm(input,
                data_layout='NCHW',
                name=None):
     """
-    ${comment}
+    **Group Normalization Layer**
 
-    TODO: change from layer norm to group norm
-    The formula is as follows:
-
-    ..  math::
-
-        \\mu & = \\frac{1}{H}\\sum_{i=1}^{H} a_i
-
-        \\sigma & = \\sqrt{\\frac{1}{H}\sum_{i=1}^{H}(a_i - \\mu)^2}
-
-        h & = f(\\frac{g}{\\sigma}(a - \\mu) + b)
-
-    * :math:`a`: the vector representation of the summed inputs to the neurons
-    in that layer.
-
-    * :math:`H`: the number of hidden units in a layers
-
-    * :math:`g`: the trainable scale parameter.
-
-    * :math:`b`: the trainable bias parameter.
+    Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`
 
     Args:
         input(Variable): The input tensor variable.
-        scale(bool): Whether to learn the adaptive gain :math:`g` after
-            normalization.
-        shift(bool): Whether to learn the adaptive bias :math:`b` after
-            normalization.
+        scale(bool): Scale is a 1-dimensional tensor of size C that is multiply to the output.
+        shift(bool): Shift is a 1-dimensional tensor of size C that is add to the output.
         groups(int): The number of groups that divided from channels.
         epsilon(float): The small value added to the variance to prevent
             division by zero.
@@ -2353,7 +2333,7 @@ def group_norm(input,
             gain :math:`g`.
         bias_attr(ParamAttr|None): The parameter attribute for the learnable
             bias :math:`b`.
-        act(str): Activation to be applied to the output of layer normalizaiton.
+        act(str): Activation to be applied to the output of group normalizaiton.
         data_layout(string|NCHW): Only NCHW is supported.
         name (str): The name of this layer. It is optional.
 

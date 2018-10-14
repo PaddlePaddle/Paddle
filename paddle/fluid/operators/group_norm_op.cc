@@ -65,19 +65,16 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input tensor.");
     AddInput("Scale",
-             "(optional) Scale is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
+             "Scale is a 1-dimensional tensor of size C"
+             "that is applied to the output.")
         .AsDispensable();
     AddInput("Bias",
-             "(optional) Bias is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
-        .AsDispensable();
+             "Bias is a 1-dimensional tensor of size C "
+             "that is applied to the output");
+    .AsDispensable();
     AddOutput("Y", "Result after normalization.");
-    AddOutput("Mean", "Mean of the current mini batch.").AsIntermediate();
-    AddOutput("Variance", "Variance of the current mini batch.")
-        .AsIntermediate();
+    AddOutput("Mean", "Mean of each group.").AsIntermediate();
+    AddOutput("Variance", "Variance of each group.").AsIntermediate();
 
     AddAttr<float>("epsilon",
                    "Constant for numerical stability [default 1e-5].")
@@ -89,20 +86,13 @@ class GroupNormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("groups", "The number of groups that divided from channels.")
         .SetDefault(32)
         .AddCustomChecker([](const int &groups) {
-          PADDLE_ENFORCE_GT(groups, 0,
-                            "'begin_norm_axis' should be greater than zero.");
+          PADDLE_ENFORCE_GT(groups, 0, "'groups' should be greater than zero.");
         });
 
     AddComment(R"DOC(
-        TODO:
-Assume feature vectors exist on dimensions
-:attr:`begin_norm_axis ... rank(input)` and calculate the moment statistics
-along these dimensions for each feature vector :math:`a` with size
-:math:`H`, then normalize each feature vector using the corresponding
-statistics. After that, apply learnable gain and bias on the normalized
-tensor to scale and shift if :attr:`scale` and :attr:`shift` are set.
+Group Normalization
 
-Refer to `Layer Normalization <https://arxiv.org/pdf/1607.06450v1.pdf>`_
+Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_
 )DOC");
   }
 };
