@@ -56,6 +56,7 @@ __all__ = [
     'sequence_expand',
     'sequence_expand_as',
     'sequence_pad',
+    'sequence_unpad',
     'lstm_unit',
     'reduce_sum',
     'reduce_mean',
@@ -2841,6 +2842,64 @@ def sequence_pad(x, pad_value, maxlen=None):
                  'Length': length},
         attrs={'padded_length': maxlen})
     return out, length
+
+
+def sequence_unpad(x, length):
+    """
+    Sequence Unpad Layer
+
+    This layer removes the padding data in the input sequences and convert 
+    them into sequences with actual length as output, identitied by lod 
+    information.
+
+    .. code-block:: text
+
+	Example:
+
+	Given input Variable **x**:
+	    x.data = [[ 1.0,  2.0,  3.0,  4.0,  5.0],
+		      [ 6.0,  7.0,  8.0,  9.0, 10.0],
+		      [11.0, 12.0, 13.0, 14.0, 15.0]], 
+     
+	in which there are 3 sequences padded to length 5, and the acutal length 
+	specified by input Variable *length*:
+
+	    length.data = [[2], [3], [4]],
+
+	after unpadding, the output Variable will be:
+
+	    out.data = [[1.0, 2.0, 6.0, 7.0, 8.0, 11.0, 12.0, 13.0, 14.0]]
+	    out.lod = [[0, 2, 5, 9]]      
+
+    Args:
+        x(Variable): Input Variable which contains the padded sequences with
+            equal length.
+        length(Variable): The Variable that specifies the actual ength of
+            sequences after unpadding.
+
+    Returns:
+        Variable: The Variable contains the unpadded sequences.
+
+    Examples:
+        .. code-block:: python
+
+            x = fluid.layers.data(name='x', shape=[10, 5], dtype='float32')
+            len = fluid.layers.data(name='length', shape=[1], dtype='int64')
+            out = fluid.layers.sequence_unpad(x=x, length=len)
+    """
+
+    helper = LayerHelper('sequence_unpad', input=x, **locals())
+    dtype = helper.input_dtype()
+    out = helper.create_tmp_variable(dtype)
+
+    length.stop_gradient = True
+
+    helper.append_op(
+        type='sequence_unpad',
+        inputs={'X': x,
+                'Length': length},
+        outputs={'Out': out})
+    return out
 
 
 def beam_search(pre_ids,
