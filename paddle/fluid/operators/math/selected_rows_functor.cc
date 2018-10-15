@@ -300,11 +300,11 @@ struct MergeAdd<platform::CPUDeviceContext, T> {
 
     auto* out_data = out.mutable_value()->data<T>();
 
+    auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
     for (auto* input : inputs) {
       auto* input_data = input->value().data<T>();
       auto& input_rows = input->rows();
 
-      auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
       for (size_t i = 0; i < input_rows.size(); i++) {
         size_t out_i = rows_to_id[input_rows[i]];
         elementwise_add<platform::CPUDeviceContext, T>(
