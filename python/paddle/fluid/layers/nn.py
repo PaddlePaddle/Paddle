@@ -1925,19 +1925,19 @@ def sequence_slice(input, offset, length, name=None):
 	        out.data = [[a1, a2], [b1, b2], [e1, e2]],
 	        out.lod = [[0, 2, 3]], out.dims = (3, 2)
 	
-    NOTE: The first dimension size of input, the size of offset and Length, 
+    NOTE: The first dimension size of input, the size of offset and Length 
           should be equal. The offset start from 0.
     
     Args:
         input(Variable): The input Variable which consists of the complete 
-                         sentences.
+                         sequences.
         offset(Variable): The offset to slice each sequence.
         length(Variable): The length of each subsequence.
         name(str|None): A name for this layer(optional). If set None, the
                         layer will be named automatically.
 
     Returns:
-        Variable: The subsequences.
+        Variable: The output subsequences.
 
     Examples:
 
