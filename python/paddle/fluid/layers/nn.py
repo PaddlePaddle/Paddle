@@ -2793,7 +2793,7 @@ def sequence_expand_as(x, y, name=None):
 
 
 @templatedoc()
-def sequence_pad(x, pad_value, maxlen=None):
+def sequence_pad(x, pad_value, maxlen=None, name=None):
     """
     ${comment}
 
@@ -2807,7 +2807,9 @@ def sequence_pad(x, pad_value, maxlen=None):
             None or any positive int. When it is None, all sequences will be
             padded up to the length of the longest one among them; when it a
             certain positive value, it must be greater than the length of the
-            longest original sequence."
+            longest original sequence.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
     Returns:
         Variable: The padded sequence batch and the original lengths before
@@ -2844,7 +2846,7 @@ def sequence_pad(x, pad_value, maxlen=None):
     return out, length
 
 
-def sequence_unpad(x, length):
+def sequence_unpad(x, length, name=None):
     """
     Sequence Unpad Layer
 
@@ -2876,6 +2878,8 @@ def sequence_unpad(x, length):
             equal length.
         length(Variable): The Variable that specifies the actual ength of
             sequences after unpadding.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
 
     Returns:
         Variable: The Variable contains the unpadded sequences.
