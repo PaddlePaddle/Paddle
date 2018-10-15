@@ -237,6 +237,7 @@ class L1DecayRegularizer(WeightDecayRegularizer):
                         'Ids': idx},
                 outputs={'Out': decay},
                 attrs={'is_sparse': True})
+            param = decay
 
         # Append sign op
         block.append_op(
