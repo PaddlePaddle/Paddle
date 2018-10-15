@@ -72,6 +72,7 @@ class AnalysisPredictor : public PaddlePredictor {
   template <typename T>
   void GetFetchOne(const framework::LoDTensor &fetchs,
                    PaddleTensor *output_data);
+  ~AnalysisPredictor();
 
  private:
   contrib::AnalysisConfig config_;
