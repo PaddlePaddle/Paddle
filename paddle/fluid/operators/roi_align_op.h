@@ -290,9 +290,6 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
 
       for (int n = 0; n < rois_num; ++n) {
         int roi_batch_idx = roi_batch_id_data[n];
-        T* batch_grad_data = in_grad_data + roi_batch_idx * in_stride[0];
-        const T* batch_out_grad_data =
-            out_grad_data + roi_batch_idx * out_stride[0];
         T roi_xmin = rois_data[0] * spatial_scale;
         T roi_ymin = rois_data[1] * spatial_scale;
         T roi_xmax = rois_data[2] * spatial_scale;
@@ -303,6 +300,10 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
             static_cast<T>(roi_height) / static_cast<T>(pooled_height);
         T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
         for (int c = 0; c < channels; ++c) {
+          T* batch_grad_data =
+              in_grad_data + roi_batch_idx * in_stride[0] + c * in_stride[1];
+          const T* batch_out_grad_data =
+              out_grad_data + n * out_stride[0] + c * out_stride[1];
           for (int ph = 0; ph < pooled_height; ++ph) {
             for (int pw = 0; pw < pooled_width; ++pw) {
               int pool_index = ph * pooled_width + pw;
@@ -329,8 +330,6 @@ class CPUROIAlignGradOpKernel : public framework::OpKernel<T> {
               }
             }
           }
-          batch_grad_data += in_stride[1];
-          batch_out_grad_data += out_stride[1];
         }
         rois_data += roi_stride[0];
       }
