@@ -26,10 +26,11 @@ static int HighestBitPos(size_t N) {
   if (UNLIKELY(N == 0)) {
     return 0;
   } else {
-    // NOTE: here we can use __builtin_clz in GCC.
-    // However, let's use std::log2 for better readability
-    // and trust std::log2's performance.
+#ifdef __GNUC__
+    return sizeof(unsigned int) * 8 - __builtin_clz(N);
+#else
     return static_cast<int>(std::log2(N) + 1);
+#endif
   }
 }
 

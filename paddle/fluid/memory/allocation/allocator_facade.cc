@@ -74,10 +74,24 @@ class CUDAManagedAllocator : public ManagedAllocator {
   explicit CUDAManagedAllocator(int dev_id) {
     platform::CUDADeviceGuard guard(dev_id);
     max_chunk_size_ = platform::GpuMaxChunkSize();
+
     raw_allocator_ = NaiveManagedAllocator::Create(std::unique_ptr<Allocator>(
         new CUDAAllocator(platform::CUDAPlace(dev_id))));
-    default_allocator_ = std::make_shared<AutoIncrementAllocator>(
-        [this] { return std::move(BestFitAllocatorCreator()); });
+
+    if (max_chunk_size_ == 0) {
+      default_allocator_ = raw_allocator_;
+    } else {
+      size_t available, total;
+      platform::GpuMemoryUsage(&available, &total);
+      size_t capacity = available / max_chunk_size_;
+
+      if (capacity == 1) {
+        default_allocator_ = BestFitAllocatorCreator();
+      } else {
+        default_allocator_ = std::make_shared<AutoIncrementAllocator>(
+            [this] { return std::move(BestFitAllocatorCreator()); }, capacity);
+      }
+    }
 
     auto* cond_allocator = new ConditionalAllocator();
     cond_allocator
@@ -110,9 +124,11 @@ class CUDAManagedAllocator : public ManagedAllocator {
     chunks_.emplace_back(raw_allocator_->Allocate(max_chunk_size_));
     auto* allocation = chunks_.back().get();
     return std::make_shared<AlignedAllocator<64u>>(
-        NaiveManagedAllocator::Create(
-            std::unique_ptr<Allocator>(new BestFitAllocator(allocation))));
+        NaiveManagedAllocator::Create(std::unique_ptr<Allocator>(
+            new LockedAllocator(std::unique_ptr<Allocator>(
+                new BestFitAllocator(allocation))))));
   }
+
   bool IsAllocThreadSafe() const override { return true; }
 
  private:
