@@ -73,9 +73,6 @@ bool NativePaddlePredictor::Init(
   }
 #endif
 
-  // no matter with or without MKLDNN
-  paddle::platform::SetNumThreads(config_.num_threads);
-
   if (config_.use_gpu) {
     place_ = paddle::platform::CUDAPlace(config_.device);
   } else {
@@ -298,6 +295,10 @@ template <>
 std::unique_ptr<PaddlePredictor> CreatePaddlePredictor<NativeConfig>(
     const NativeConfig &config) {
   return CreatePaddlePredictor<NativeConfig, PaddleEngineKind::kNative>(config);
+}
+
+void PaddlePredictor::Config::SetNumThreads(int n) {
+  paddle::platform::SetNumThreads(n);
 }
 
 }  // namespace paddle

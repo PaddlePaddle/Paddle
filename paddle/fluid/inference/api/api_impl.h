@@ -25,9 +25,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-
-#include "paddle/fluid/inference/api/paddle_inference_api.h"
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/naive_executor.h"
@@ -40,8 +37,9 @@ namespace paddle {
 
 class NativePaddlePredictor : public PaddlePredictor {
  public:
-  explicit NativePaddlePredictor(const NativeConfig &config)
-      : config_(config) {}
+  explicit NativePaddlePredictor(const NativeConfig &config) : config_(config) {
+    config_.SetNumThreads(1);
+  }
 
   // will only create sub scope if have global scope
   bool Init(std::shared_ptr<framework::Scope> parent_scope);

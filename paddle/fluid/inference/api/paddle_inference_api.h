@@ -176,7 +176,8 @@ class PaddlePredictor {
 
   // The common configs for all the predictors.
   struct Config {
-    std::string model_dir;  // path to the model directory.
+    std::string model_dir;    // path to the model directory.
+    void SetNumThreads(int);  // number of threads for each instance
   };
 };
 
@@ -185,7 +186,6 @@ struct NativeConfig : public PaddlePredictor::Config {
   bool use_gpu{false};
   int device{0};
   float fraction_of_gpu_memory{-1.f};  // Change to a float in (0,1] if needed.
-  int num_threads{1};                  // number of threads for each instance
 
   // Specify the exact path of program and parameter files.
   std::string prog_file;

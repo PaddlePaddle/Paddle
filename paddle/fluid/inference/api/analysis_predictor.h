@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <map>
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/naive_executor.h"
@@ -35,7 +36,9 @@ using contrib::AnalysisConfig;
  */
 class AnalysisPredictor : public PaddlePredictor {
  public:
-  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {}
+  explicit AnalysisPredictor(const AnalysisConfig &config) : config_(config) {
+    config_.SetNumThreads(1);
+  }
 
   bool Init(const std::shared_ptr<framework::Scope> &parent_scope,
             const std::shared_ptr<framework::ProgramDesc> &program = nullptr);
