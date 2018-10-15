@@ -82,7 +82,7 @@ if(CUDNN_FOUND)
 
         if(NOT CUDNN_MAJOR_VERSION)
             set(CUDNN_VERSION "???")
-        else()
+        else() 
             math(EXPR CUDNN_VERSION
                 "${CUDNN_MAJOR_VERSION} * 1000 +
                  ${CUDNN_MINOR_VERSION} * 100 + ${CUDNN_PATCHLEVEL_VERSION}")
