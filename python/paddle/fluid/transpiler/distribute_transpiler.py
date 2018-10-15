@@ -1242,6 +1242,37 @@ to transpile() call.")
 
         lr_var = pserver_program.global_block().vars[table_opt_op.input(
             "LearningRate")[0]]
+
+        if self.sync_mode:
+            # create grad vars in pserver program
+            table_grad_var = self.table_param_grad[1]
+            pserver_side_table_grad_list = [
+                pserver_program.global_block().create_var(
+                    name="%s.trainer_%d.pserver_%d" %
+                    (table_grad_var.name, index, pserver_index),
+                    type=table_grad_var.type,
+                    shape=table_grad_var.shape,
+                    dtype=table_grad_var.dtype)
+                for index in range(self.trainer_num)
+            ]
+
+            # append sum op for pserver_side_table_grad_list
+            table_opt_block.append_op(
+                type="sum",
+                inputs={"X": pserver_side_table_grad_list},
+                outputs={"Out": [grad_var]},
+                attrs={"use_mkldnn": False})
+        else:
+            # in async_mode, for table gradient, it also need to be splited to each parameter server
+            origin_grad_name = grad_var.name
+            splited_grad_name = self.trainer_side_table_grad_list[
+                pserver_index].name
+            if not splited_grad_name.startswith(origin_grad_name):
+                raise ValueError("origin_grad_var: " + splited_grad_name +
+                                 " grad_var:" + grad_var.name)
+            grad_var = pserver_program.global_block()._rename_var(
+                origin_grad_name, splited_grad_name)
+
         inputs = {
             "Param": [param_var],
             "Grad": [grad_var],
