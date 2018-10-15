@@ -1,3 +1,17 @@
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <glog/logging.h>
@@ -44,7 +58,7 @@ class PassStrategy : public PaddlePassBuilder {
   void EnableMKLDNN() { use_mkldnn_ = true; }
   void DisableMklDNN() { use_mkldnn_ = false; }
 
- private:
+ protected:
   bool use_mkldnn_;
 };
 
@@ -60,7 +74,7 @@ class CpuPassStrategy : public PassStrategy {
     passes_.assign({
         "infer_clean_graph_pass",    //
         "attention_lstm_fuse_pass",  //
-        //"embedding_fc_lstm_fuse_pass",   // disable by default.
+        // "embedding_fc_lstm_fuse_pass", disable by default.
         "fc_lstm_fuse_pass",             //
         "mul_lstm_fuse_pass",            //
         "fc_gru_fuse_pass",              //

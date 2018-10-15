@@ -108,7 +108,7 @@ TEST(Analyzer_Text_Classification, compare_against_embedding_fc_lstm_fused) {
   AnalysisConfig cfg;
   SetConfig(&cfg);
   // Enable embedding_fc_lstm_fuse_pass (disabled by default)
-  cfg.pass_builder()->AppendPass("embedding_fc_lstm_fuse_pass");
+  cfg.pass_builder()->InsertPass(2, "embedding_fc_lstm_fuse_pass");
 
   std::vector<std::vector<PaddleTensor>> input_slots_all;
   SetInput(&input_slots_all);

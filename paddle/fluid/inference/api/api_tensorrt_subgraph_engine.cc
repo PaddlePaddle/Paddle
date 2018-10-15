@@ -112,7 +112,7 @@ class TensorRTSubgraphPredictor : public NativePaddlePredictor {
     }
     argument.origin_program_desc.reset(
         new ProgramDesc(*inference_program_->Proto()));
-    Analyzer analyzer({});
+    Analyzer analyzer;
     analyzer.Run(&argument);
     CHECK(argument.transformed_program_desc);
     VLOG(5) << "transformed program:\n"

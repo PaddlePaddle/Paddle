@@ -113,8 +113,9 @@ TEST(trt_models_test, main) {
 TEST(Analyzer, use_gpu) {
   AnalysisConfig config(true);
   config.model_dir = FLAGS_dirname + "/" + "mobilenet";
-  config.fraction_of_gpu_memory = 0.45;
+  config.fraction_of_gpu_memory = 0.1;
   config.device = 0;
+  config.enable_ir_optim = true;
 
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto base_predictor = CreatePaddlePredictor<NativeConfig>(config);
@@ -125,13 +126,13 @@ TEST(Analyzer, use_gpu) {
   std::vector<PaddleTensor> outputs;
   inference::Timer timer;
   timer.tic();
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < FLAGS_repeat; i++) {
     ASSERT_TRUE(predictor->Run(inputs, &outputs));
   }
   LOG(INFO) << "analysis latency: " << timer.toc() / 10 << " ms";
 
   timer.tic();
-  for (int i = 0; i < 10; i++) {
+  for (int i = 0; i < FLAGS_repeat; i++) {
     ASSERT_TRUE(base_predictor->Run(inputs, &outputs));
   }
   LOG(INFO) << "native latency: " << timer.toc() / 10 << " ms";
