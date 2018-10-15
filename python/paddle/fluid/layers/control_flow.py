@@ -1267,7 +1267,7 @@ class ConditionalBlock(object):
         ]
 
         step_scope = parent_block.create_var(
-            type=core.VarDesc.VarType.STEP_SCOPES)
+            name='control_scope', type=core.VarDesc.VarType.STEP_SCOPES)
         parent_block.append_op(
             type='conditional_block',
             inputs={

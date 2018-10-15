@@ -70,7 +70,7 @@ class DfgPassManagerImpl final : public DfgPassManager {
       auto trt_teller = [&](const Node* node) {
         std::unordered_set<std::string> teller_set(
             {"mul", "conv2d", "pool2d", "relu", "softmax", "sigmoid",
-             "depthwise_conv2d", "batch_norm", "concat", "tanh",
+             "depthwise_conv2d", "batch_norm", "concat", "tanh", "pad",
              "elementwise_add", "dropout"});
         if (!node->IsFunction()) return false;
 
