@@ -851,7 +851,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
 
   /* Create an extended hole array */
   gpc_malloc<int>(extended_hole, (p->num_contours + 1) * sizeof(int),
-                  const_cast<char *>(("contour hole addition"));
+                  const_cast<char *>("contour hole addition"));
 
   /* Create an extended contour array */
   gpc_malloc<gpc_vertex_list>(extended_contour,
