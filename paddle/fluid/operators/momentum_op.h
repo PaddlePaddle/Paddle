@@ -25,6 +25,12 @@ template <typename T>
 class MomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    const auto* param_var = ctx.InputVar("Param");
+    PADDLE_ENFORCE(param_var->IsType<framework::LoDTensor>(),
+                   "The Var(%s)'s type should be LoDTensor, "
+                   "but the received is %s",
+                   ctx.Inputs("Param").front(), param_var->Type().name());
+
     auto param_out = ctx.Output<framework::Tensor>("ParamOut");
     auto velocity_out = ctx.Output<framework::Tensor>("VelocityOut");
     auto param = ctx.Input<framework::Tensor>("Param");
@@ -69,6 +75,11 @@ class MomentumOp : public framework::OperatorWithKernel {
                    "Input(velocity) of Momentum should not be null.");
     PADDLE_ENFORCE(ctx->HasInput("LearningRate"),
                    "Input(LearningRate) of Momentum should not be null.");
+    PADDLE_ENFORCE(
+        ctx->GetInputsVarType("Param").front() ==
+            framework::proto::VarType::LOD_TENSOR,
+        "The input var's type should be LoDTensor, but the received is %s",
+        ctx->Inputs("Param").front(), ctx->GetInputsVarType("Param").front());
 
     PADDLE_ENFORCE(ctx->HasOutput("ParamOut"),
                    "Output(ParamOut) of Momentum should not be null.");

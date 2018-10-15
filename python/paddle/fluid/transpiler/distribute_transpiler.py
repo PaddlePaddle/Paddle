@@ -788,7 +788,8 @@ in a single call.")
             tuple: (main_program, startup_program), of type "Program"
         """
         pserver_prog = self.get_pserver_program(endpoint)
-        pserver_startup = self.get_startup_program(endpoint)
+        pserver_startup = self.get_startup_program(
+            endpoint, pserver_program=pserver_prog)
         return pserver_prog, pserver_startup
 
     def get_startup_program(self,
