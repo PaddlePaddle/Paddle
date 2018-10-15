@@ -28,6 +28,7 @@ cc_library(graph_pattern_detector SRCS graph_pattern_detector.cc DEPS graph grap
 
 pass_library(graph_to_program_pass base)
 pass_library(graph_viz_pass base)
+pass_library(lock_free_optimize_embedding_pass base)
 pass_library(fc_fuse_pass inference)
 if (WITH_MKLDNN)
     pass_library(conv_relu_mkldnn_fuse_pass inference)

@@ -25,6 +25,19 @@ std::unique_ptr<ir::Graph> LockFreeOptimizeEmbeddingPass::ApplyImpl(
     std::unique_ptr<ir::Graph> graph) const {
   PADDLE_ENFORCE(graph.get());
 
+  for (auto* node : graph->Nodes()) {
+    for (Node* input_node : node->inputs) {
+      LOG(ERROR) << "Input link: " << input_node->Name() << "_"
+                 << input_node->id() << " --> " << node->Name() << "_"
+                 << node->id();
+    }
+
+    for (Node* output_node : node->outputs) {
+      LOG(ERROR) << "Output link: " << node->Name() << "_" << node->id()
+                 << " --> " << output_node->Name() << "_" << output_node->id();
+    }
+  }
+
   return graph;
 }
 
