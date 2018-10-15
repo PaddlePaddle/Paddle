@@ -20,10 +20,6 @@
 
 #include "paddle/fluid/operators/reader/blocking_queue.h"
 
-DEFINE_bool(reader_queue_speed_test_mode, false,
-            "If set true, the queue.pop will only get data from queue but not "
-            "remove the data from queue for speed testing");
-
 using paddle::operators::reader::BlockingQueue;
 
 TEST(BlockingQueue, CapacityTest) {
@@ -222,27 +218,26 @@ TEST(BlockingQueue, MyClassTest) {
   EXPECT_EQ(a.val_, b.val_);
 }
 
-TEST(BlockingQueue, reader_queue_speed_test_mode_flag) {
-  FLAGS_reader_queue_speed_test_mode = false;
+TEST(BlockingQueue, speed_test_mode) {
   size_t queue_size = 10;
-  BlockingQueue<size_t> q(queue_size);
+  BlockingQueue<size_t> q1(queue_size, false);
   for (size_t i = 0; i < queue_size; ++i) {
-    q.Send(i);
+    q1.Send(i);
   }
   size_t b;
   for (size_t i = 0; i < queue_size; ++i) {
-    q.Receive(&b);
+    q1.Receive(&b);
     EXPECT_EQ(b, i);
   }
-  EXPECT_EQ(q.Size(), 0);
+  EXPECT_EQ(q1.Size(), 0);
 
-  FLAGS_reader_queue_speed_test_mode = true;
+  BlockingQueue<size_t> q2(queue_size, true);
   for (size_t i = 0; i < queue_size; ++i) {
-    q.Send(i);
+    q2.Send(i);
   }
   for (size_t i = 0; i < queue_size; ++i) {
-    q.Receive(&b);
+    q2.Receive(&b);
     EXPECT_EQ(b, 0);
   }
-  EXPECT_EQ(q.Size(), queue_size);
+  EXPECT_EQ(q2.Size(), queue_size);
 }
